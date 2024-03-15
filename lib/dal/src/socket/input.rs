@@ -1,6 +1,8 @@
-use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -35,11 +37,11 @@ pub enum InputSocketError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
-    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
@@ -123,9 +125,9 @@ impl InputSocket {
         node_weight: &NodeWeight,
     ) -> InputSocketResult<Self> {
         let content: InputSocketContent = ctx
-            .content_store()
-            .try_lock()?
-            .get(&node_weight.content_hash())
+            .layer_db()
+            .cas()
+            .try_read_as(&node_weight.content_hash())
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
                 node_weight.id(),
@@ -220,10 +222,16 @@ impl InputSocket {
             ui_hidden: false,
             connection_annotations,
         };
-        let hash = ctx
-            .content_store()
-            .try_lock()?
-            .add(&InputSocketContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(InputSocketContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -308,9 +316,9 @@ impl InputSocket {
         }
 
         let content_map: HashMap<ContentHash, InputSocketContent> = ctx
-            .content_store()
-            .try_lock()?
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
             .await?;
 
         let mut input_sockets = Vec::new();

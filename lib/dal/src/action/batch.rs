@@ -2,10 +2,12 @@
 //! and indicates whether or not all "actions" in the group have completed executing.
 
 use chrono::{DateTime, Utc};
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -50,6 +52,8 @@ pub enum ActionBatchError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("no action runners in batch: action batch is empty")]
     NoActionRunnersInBatch(ActionBatchId),
     #[error("node weight error: {0}")]
@@ -62,8 +66,6 @@ pub enum ActionBatchError {
     Schema(#[from] SchemaError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Store(#[from] StoreError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -139,11 +141,16 @@ impl ActionBatch {
             timestamp,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionBatchContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionBatchContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -176,10 +183,9 @@ impl ActionBatch {
         let hash = node_weight.content_hash();
 
         let content: ActionBatchContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or_else(|| WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
@@ -216,10 +222,9 @@ impl ActionBatch {
         }
 
         let contents: HashMap<ContentHash, ActionBatchContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(hashes.as_slice())
             .await?;
 
         for node_weight in node_weights {
@@ -250,50 +255,38 @@ impl ActionBatch {
         status: Option<ActionCompletionStatus>,
     ) -> ActionBatchResult<()> {
         self.completion_status = status;
+        self.update_content(ctx).await
+    }
+
+    async fn update_content(&self, ctx: &DalContext) -> ActionBatchResult<()> {
         let content = ActionBatchContentV1::from(self.clone());
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionBatchContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionBatchContent::V1(content).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         ctx.workspace_snapshot()?
             .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
             .await?;
+
         Ok(())
     }
 
     pub async fn set_started_at(&mut self, ctx: &DalContext) -> ActionBatchResult<()> {
         self.started_at = Some(Utc::now());
-        let content = ActionBatchContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionBatchContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     pub async fn set_finished_at(&mut self, ctx: &DalContext) -> ActionBatchResult<()> {
         self.finished_at = Some(Utc::now());
-        let content = ActionBatchContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionBatchContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     /// A safe wrapper around setting the finished and completion status columns.

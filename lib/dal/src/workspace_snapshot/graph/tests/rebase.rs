@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
-    use content_store::ContentHash;
     use pretty_assertions_sorted::assert_eq;
+    use si_events::ContentHash;
 
     use crate::change_set_pointer::ChangeSetPointer;
     use crate::workspace_snapshot::content_address::ContentAddress;

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;

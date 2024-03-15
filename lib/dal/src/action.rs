@@ -1,6 +1,7 @@
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 
 use si_data_pg::PgError;
@@ -44,6 +45,8 @@ pub enum ActionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("in head")]
     InHead,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("action not found: {0}")]
@@ -52,8 +55,6 @@ pub enum ActionError {
     Pg(#[from] PgError),
     #[error("action prototype not found for: {0}")]
     PrototypeNotFoundFor(ActionId),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -118,11 +119,16 @@ impl Action {
             creation_user_pk: actor_user_pk,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -176,13 +182,12 @@ impl Action {
         let ulid: ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
+        let hash: ContentHash = node_weight.content_hash();
 
         let content: ActionContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
@@ -207,9 +212,9 @@ impl Action {
         let content_hash = node_weight.content_hash();
 
         let content = ctx
-            .content_store()
-            .try_lock()?
-            .get(&content_hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&content_hash)
             .await?
             .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
 
@@ -234,9 +239,9 @@ impl Action {
         let content_hash = node_weight.content_hash();
 
         let content = ctx
-            .content_store()
-            .try_lock()?
-            .get(&content_hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&content_hash)
             .await?
             .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
 
@@ -267,9 +272,9 @@ impl Action {
         }
 
         let content_map: HashMap<ContentHash, ActionContent> = ctx
-            .content_store()
-            .try_lock()?
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(&content_hashes)
             .await?;
 
         let mut actions = Vec::with_capacity(node_weights.len());

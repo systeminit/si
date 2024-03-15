@@ -17,6 +17,10 @@ pub enum LayerDbError {
     CacheUpdateNoHeaders,
     #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
+    #[error("content conversion error: {0}")]
+    ContentConversion(String),
+    #[error("could not convert to key from string")]
+    CouldNotConvertToKeyFromString(String),
     #[error("failed to parse content hash from str: {0}")]
     HashParse(#[from] ContentHashParseError),
     #[error("invalid cache name: {0}")]

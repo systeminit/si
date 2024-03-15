@@ -50,7 +50,6 @@ pub(crate) async fn setup_and_run_core_loop(
     encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
     messaging_config: RebaserMessagingConfig,
-    content_store_pg_pool: PgPool,
     layer_db: DalLayerDb,
 ) -> CoreLoopSetupResult<()> {
     let services_context = ServicesContext::new(
@@ -63,7 +62,6 @@ pub(crate) async fn setup_and_run_core_loop(
         None,
         symmetric_crypto_service,
         messaging_config.clone(),
-        content_store_pg_pool,
         layer_db,
     );
 

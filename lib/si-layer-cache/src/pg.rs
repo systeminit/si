@@ -63,11 +63,19 @@ impl PgLayer {
         }
     }
 
-    pub async fn get_many(&self, keys: &[&str]) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
+    pub async fn get_many(
+        &self,
+        keys: &[Arc<str>],
+    ) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
         let mut result = HashMap::new();
         let client = self.pool.get().await?;
 
-        for row in client.query(&self.get_value_many_query, &[&keys]).await? {
+        let key_refs: Vec<&str> = keys.iter().map(|key_arc| key_arc.as_ref()).collect();
+
+        for row in client
+            .query(&self.get_value_many_query, &[&key_refs])
+            .await?
+        {
             result.insert(
                 row.get::<&str, String>("key").to_owned(),
                 row.get::<&str, Vec<u8>>("value"),

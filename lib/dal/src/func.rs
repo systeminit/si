@@ -1,8 +1,9 @@
 use base64::{engine::general_purpose, Engine};
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -37,10 +38,10 @@ pub enum FuncError {
     IntrinsicFuncNotFound(String),
     #[error("intrinsic spec creation error {0}")]
     IntrinsicSpecCreation(String),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -171,11 +172,16 @@ impl Func {
             code_blake3,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&FuncContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(FuncContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -267,7 +273,7 @@ impl Func {
     ) -> FuncResult<(FuncNodeWeight, FuncContentV1)> {
         let (func_node_weight, hash) = Self::get_node_weight_and_content_hash(ctx, func_id).await?;
 
-        let content: FuncContent = ctx.content_store().lock().await.get(&hash).await?.ok_or(
+        let content: FuncContent = ctx.layer_db().cas().try_read_as(&hash).await?.ok_or(
             WorkspaceSnapshotError::MissingContentFromStore(func_id.into()),
         )?;
 
@@ -329,11 +335,16 @@ impl Func {
         let updated = FuncContentV1::from(func.clone());
 
         if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&FuncContent::V1(updated.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(FuncContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
             workspace_snapshot
                 .update_content(ctx.change_set_pointer()?, func.id.into(), hash)
                 .await?;
@@ -401,10 +412,9 @@ impl Func {
         }
 
         let func_contents: HashMap<ContentHash, FuncContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(func_content_hash.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(func_content_hash.as_slice())
             .await?;
 
         for node_weight in func_node_weights {

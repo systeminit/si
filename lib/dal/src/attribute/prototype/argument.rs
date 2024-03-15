@@ -55,14 +55,14 @@ pub enum AttributePrototypeArgumentError {
     InterComponentDestinationPrototypeHasNoFuncArgs(AttributePrototypeId),
     #[error("Destination prototype {0} has more than one function argument")]
     InterComponentDestinationPrototypeHasTooManyFuncArgs(AttributePrototypeId),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("attribute prototype argument {0} has no func argument")]
     MissingFuncArgument(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

@@ -1,6 +1,8 @@
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
@@ -29,10 +31,10 @@ pub enum SchemaError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -89,11 +91,16 @@ impl Schema {
             ui_hidden: false,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&SchemaContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(SchemaContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -124,10 +131,9 @@ impl Schema {
         let hash = node_weight.content_hash();
 
         let content: SchemaContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
@@ -148,11 +154,16 @@ impl Schema {
         let updated = SchemaContentV1::from(schema.clone());
 
         if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&SchemaContent::V1(updated.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(SchemaContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, schema.id.into(), hash)
@@ -189,10 +200,9 @@ impl Schema {
         }
 
         let schema_contents: HashMap<ContentHash, SchemaContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(schema_content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(schema_content_hashes.as_slice())
             .await?;
 
         for node_weight in schema_node_weights {

@@ -17,6 +17,7 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug, EnumString, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 enum CacheName {
     Cas,
 }

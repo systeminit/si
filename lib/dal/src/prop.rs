@@ -1,9 +1,10 @@
-use content_store::{ContentHash, Store};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_events::ContentHash;
 use si_pkg::PropSpecKind;
 use std::collections::VecDeque;
+use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -51,6 +52,8 @@ pub enum PropError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("map or array {0} missing element prop")]
     MapOrArrayMissingElementProp(PropId),
     #[error("missing prototype for prop {0}")]
@@ -69,8 +72,6 @@ pub enum PropError {
     SingleChildPropHasUnexpectedSiblings(PropId, PropId, Vec<PropId>),
     #[error("no single child prop found for parent: {0}")]
     SingleChildPropNotFound(PropId),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -524,11 +525,17 @@ impl Prop {
             refers_to_prop_id: None,
             diff_func_id: None,
         };
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&PropContent::V1(content.clone()))?;
+
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(PropContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -584,10 +591,9 @@ impl Prop {
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
@@ -803,10 +809,9 @@ impl Prop {
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
@@ -827,11 +832,16 @@ impl Prop {
         let updated = PropContentV1::from(prop.clone());
 
         if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&PropContent::V1(updated.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(PropContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, prop.id.into(), hash)
