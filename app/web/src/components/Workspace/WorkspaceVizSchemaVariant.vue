@@ -64,22 +64,23 @@ const search_query = ref("");
 
 interface State {
   hoveredNode?: string;
+  hoveredNeighbors?: Set<string>;
 
-  // State derived from query:
+  clickedNodes: Set<string>;
+  clickedNeighbors: Set<string>;
+
+  // find a node
   selectedNode?: string;
   suggestions?: Set<string>;
-
-  // State derived from hovered node:
-  hoveredNeighbors?: Set<string>;
 }
-const state: State = {};
+const state: State = { clickedNodes: new Set(), clickedNeighbors: new Set() };
 
 onMounted(async () => {
   let nodesAndEdges;
   let size: number;
   if (!props.schemaVariantId) {
     nodesAndEdges = await vizStore.FETCH_VIZ();
-    size = 2;
+    size = 3;
   } else {
     nodesAndEdges = await vizStore.FETCH_SCHEMA_VARIANT_VIZ(
       props.schemaVariantId,
@@ -127,6 +128,21 @@ onMounted(async () => {
     setHoveredNode(undefined);
   });
 
+  function build_clicked_neighbors() {
+    state.clickedNeighbors = new Set(
+      [...state.clickedNodes].flatMap((n) => graph.neighbors(n)),
+    );
+  }
+
+  renderer.on("clickNode", ({ node }) => {
+    if (state.clickedNodes.has(node)) {
+      state.clickedNodes.delete(node);
+    } else {
+      state.clickedNodes.add(node);
+    }
+    build_clicked_neighbors();
+  });
+
   function setHoveredNode(node?: string) {
     if (node) {
       state.hoveredNode = node;
@@ -141,20 +157,43 @@ onMounted(async () => {
 
   renderer.setSetting("nodeReducer", (node, data) => {
     const res: Partial<NodeDisplayData> = { ...data };
+    let dim = false;
 
     if (
       state.hoveredNeighbors &&
       !state.hoveredNeighbors.has(node) &&
       state.hoveredNode !== node
     ) {
-      res.label = "";
-      res.color = "#f6f6f6";
+      dim = true;
+    }
+
+    if (state.clickedNeighbors.size > 0 && !state.clickedNeighbors.has(node)) {
+      dim = true;
+    }
+
+    if (state.suggestions && !state.suggestions.has(node)) {
+      dim = true;
     }
 
     if (state.selectedNode === node) {
+      res.highlighted = true; // displays the label
+      dim = false;
+    }
+
+    if (state.clickedNodes.has(node)) {
       res.highlighted = true;
-    } else if (state.suggestions && !state.suggestions.has(node)) {
-      res.label = "";
+      dim = false;
+    }
+
+    if (
+      state.clickedNeighbors.has(node) ||
+      state.suggestions?.has(node) ||
+      state.hoveredNeighbors?.has(node)
+    ) {
+      dim = false;
+    }
+
+    if (dim) {
       res.color = "#f6f6f6";
     }
 
@@ -163,6 +202,8 @@ onMounted(async () => {
 
   renderer.setSetting("edgeReducer", (edge, data) => {
     const res: Partial<EdgeDisplayData> = { ...data };
+    const source = graph.source(edge);
+    const target = graph.target(edge);
 
     if (state.hoveredNode && !graph.hasExtremity(edge, state.hoveredNode)) {
       res.hidden = true;
@@ -170,10 +211,18 @@ onMounted(async () => {
 
     if (
       state.suggestions &&
-      (!state.suggestions.has(graph.source(edge)) ||
-        !state.suggestions.has(graph.target(edge)))
+      (!state.suggestions.has(source) || !state.suggestions.has(target))
     ) {
       res.hidden = true;
+    }
+
+    if (
+      state.clickedNeighbors.has(source) ||
+      state.clickedNeighbors.has(target) ||
+      state.clickedNodes.has(source) ||
+      state.clickedNodes.has(target)
+    ) {
+      res.hidden = false;
     }
 
     return res;
@@ -210,6 +259,8 @@ onMounted(async () => {
       state.selectedNode = undefined;
       state.suggestions = new Set(options.map(({ id }) => id));
     }
+
+    renderer.refresh(); // edgeReducer doesn't run without this
   });
 });
 </script>
