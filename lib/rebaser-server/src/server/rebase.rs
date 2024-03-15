@@ -1,4 +1,4 @@
-use dal::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
@@ -15,7 +15,7 @@ use ulid::Ulid;
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
     #[error("workspace snapshot error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error("missing change set pointer")]
     MissingChangeSetPointer(ChangeSetId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
@@ -38,12 +38,11 @@ pub(crate) async fn perform_rebase(
 ) -> RebaseResult<ReplyRebaseMessage> {
     let start = Instant::now();
     // Gather everything we need to detect conflicts and updates from the inbound message.
-    let mut to_rebase_change_set =
-        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into())
-            .await?
-            .ok_or(RebaseError::MissingChangeSetPointer(
-                message.to_rebase_change_set_id.into(),
-            ))?;
+    let mut to_rebase_change_set = ChangeSet::find(ctx, message.to_rebase_change_set_id.into())
+        .await?
+        .ok_or(RebaseError::MissingChangeSetPointer(
+            message.to_rebase_change_set_id.into(),
+        ))?;
     let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
         RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;

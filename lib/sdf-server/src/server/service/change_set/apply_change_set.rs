@@ -4,7 +4,7 @@ use crate::server::service::change_set::ChangeSetError;
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::change_set_pointer::ChangeSetPointer;
+use dal::change_set::ChangeSet;
 use dal::{
     action::ActionBag,
     job::definition::{ActionRunnerItem, ActionsJob},
@@ -24,7 +24,7 @@ pub struct ApplyChangeSetRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyChangeSetResponse {
-    pub change_set: ChangeSetPointer,
+    pub change_set: ChangeSet,
 }
 
 pub async fn apply_change_set(
@@ -49,7 +49,7 @@ pub async fn apply_change_set(
 
     ctx.blocking_commit().await?;
 
-    let mut change_set = ChangeSetPointer::find(&ctx, request.visibility.change_set_id)
+    let mut change_set = ChangeSet::find(&ctx, request.visibility.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
@@ -72,7 +72,7 @@ pub async fn apply_change_set(
         let base_change_set_id = change_set
             .base_change_set_id
             .ok_or(ChangeSetError::BaseChangeSetNotFound(change_set.id))?;
-        let head = ChangeSetPointer::find(&ctx, base_change_set_id)
+        let head = ChangeSet::find(&ctx, base_change_set_id)
             .await?
             .ok_or(ChangeSetError::ChangeSetNotFound)?;
         ctx.update_visibility_and_snapshot_to_visibility(head.id)

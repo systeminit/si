@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
@@ -62,7 +62,7 @@ pub enum ActionPrototypeError {
     #[error(transparent)]
     BeforeFunc(#[from] BeforeFuncError),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("edge weight error: {0}")]
@@ -178,7 +178,7 @@ impl ActionPrototype {
             .await
             .add(&ActionPrototypeContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionPrototype(hash))?;

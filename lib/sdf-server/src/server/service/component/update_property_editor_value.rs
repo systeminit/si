@@ -1,6 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::{AttributeValue, AttributeValueId, ChangeSetPointer, ComponentId, PropId, Visibility};
+use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -28,7 +28,7 @@ pub async fn update_property_editor_value(
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
 

@@ -10,7 +10,7 @@ mod test {
     use std::collections::HashMap;
     use std::collections::HashSet;
 
-    use crate::change_set_pointer::ChangeSetPointer;
+    use crate::change_set::ChangeSet;
     use crate::workspace_snapshot::conflict::Conflict;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{
@@ -29,7 +29,7 @@ mod test {
 
     #[test]
     fn new() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -80,7 +80,7 @@ mod test {
             (Some("a"), "b"),
         ];
 
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -183,7 +183,7 @@ mod test {
 
     #[test]
     fn add_nodes_and_edges() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -330,7 +330,7 @@ mod test {
 
     #[test]
     fn cyclic_failure() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -435,7 +435,7 @@ mod test {
 
     #[test]
     fn update_content() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -586,7 +586,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_no_updates_in_base() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut initial_graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -639,7 +639,7 @@ mod test {
 
         initial_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = initial_graph.clone();
 
@@ -693,7 +693,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_with_purely_new_content_in_base() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -747,7 +747,7 @@ mod test {
         println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let new_graph = base_graph.clone();
 
@@ -817,7 +817,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_with_purely_new_content_in_new_graph() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -848,7 +848,7 @@ mod test {
         println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
 
@@ -915,7 +915,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_with_updates_on_both_sides() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -969,7 +969,7 @@ mod test {
         println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
 
@@ -1076,7 +1076,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_with_content_conflict() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -1165,7 +1165,7 @@ mod test {
         println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
 
@@ -1217,7 +1217,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -1306,7 +1306,7 @@ mod test {
         println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
 
@@ -1358,7 +1358,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_complex() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
         let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -1569,7 +1569,7 @@ mod test {
         base_graph.dot();
 
         // Create a new change set to cause some problems!
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
 
@@ -1665,7 +1665,7 @@ mod test {
 
     #[test]
     fn add_ordered_node() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -1873,7 +1873,7 @@ mod test {
 
     #[test]
     fn reorder_ordered_node() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -2136,7 +2136,7 @@ mod test {
 
     #[test]
     fn remove_unordered_node_and_detect_edge_removal() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -2240,7 +2240,7 @@ mod test {
             .expect("Unable to mark initial graph as seen");
 
         let mut graph_with_deleted_edge = graph.clone();
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
 
         graph_with_deleted_edge.dot();
@@ -2298,7 +2298,7 @@ mod test {
 
     #[test]
     fn remove_unordered_node() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -2421,7 +2421,7 @@ mod test {
 
     #[test]
     fn remove_ordered_node() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -2703,7 +2703,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_ordering_no_conflicts_no_updates_in_base() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut initial_graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -2892,7 +2892,7 @@ mod test {
         initial_graph.cleanup();
         initial_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = initial_graph.clone();
 
@@ -2940,7 +2940,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_ordering_no_conflicts_with_updates_in_base() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut initial_graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -3128,7 +3128,7 @@ mod test {
 
         initial_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let new_graph = initial_graph.clone();
 
@@ -3234,7 +3234,7 @@ mod test {
 
     #[test]
     fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_updates() {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut initial_graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -3422,7 +3422,7 @@ mod test {
 
         initial_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = initial_graph.clone();
 
@@ -3541,7 +3541,7 @@ mod test {
     #[test]
     fn detect_conflicts_and_updates_simple_ordering_with_no_conflicts_add_in_onto_remove_in_to_rebase(
     ) {
-        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let initial_change_set = &initial_change_set;
         let mut initial_graph = WorkspaceSnapshotGraph::new(initial_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -3733,7 +3733,7 @@ mod test {
             .expect("Unable to update recently seen information");
         // initial_graph.dot();
 
-        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = initial_graph.clone();
 
@@ -3838,7 +3838,7 @@ mod test {
     #[tokio::test]
     #[cfg(ignore)]
     async fn attribute_value_build_view() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -4139,7 +4139,7 @@ mod test {
     #[tokio::test]
     #[cfg(ignore)]
     async fn attribute_value_build_view_unordered_object() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -4509,7 +4509,7 @@ mod test {
     #[tokio::test]
     #[cfg(ignore)]
     async fn attribute_value_build_view_ordered_array() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -5086,7 +5086,7 @@ mod test {
     #[tokio::test]
     #[cfg(ignore)]
     async fn attribute_value_build_view_ordered_map() {
-        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");

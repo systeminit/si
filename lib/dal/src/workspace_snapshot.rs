@@ -42,7 +42,7 @@ use thiserror::Error;
 use tokio::time::Instant;
 use ulid::Ulid;
 
-use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -66,7 +66,7 @@ const FIND_FOR_CHANGE_SET: &str =
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
     #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("missing content from store for id: {0}")]
@@ -147,7 +147,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn initial(
         ctx: &DalContext,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> WorkspaceSnapshotResult<Self> {
         let mut graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(change_set)?;
 
@@ -265,7 +265,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn add_ordered_node(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         node: NodeWeight,
     ) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self
@@ -278,7 +278,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn update_content(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotResult<()> {
@@ -324,7 +324,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn add_ordered_edge(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
@@ -498,13 +498,13 @@ impl WorkspaceSnapshot {
 
     pub async fn find_for_change_set(
         ctx: &DalContext,
-        change_set_pointer_id: ChangeSetId,
+        change_set_id: ChangeSetId,
     ) -> WorkspaceSnapshotResult<Self> {
         let row = ctx
             .txns()
             .await?
             .pg()
-            .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
+            .query_one(FIND_FOR_CHANGE_SET, &[&change_set_id])
             .await?;
         Self::try_from(row)
     }
@@ -578,7 +578,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_all_edges(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let id = id.into();
@@ -699,7 +699,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_incoming_edges_of_kind(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
@@ -720,7 +720,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_node_by_id(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let id: Ulid = id.into();
@@ -735,7 +735,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_edge(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -753,7 +753,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn perform_updates(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_change_set: &ChangeSet,
         onto: &WorkspaceSnapshot,
         updates: &[Update],
     ) -> WorkspaceSnapshotResult<()> {

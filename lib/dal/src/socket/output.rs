@@ -5,7 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -27,7 +27,7 @@ pub enum OutputSocketError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
@@ -145,7 +145,7 @@ impl OutputSocket {
             .await
             .add(&OutputSocketContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::OutputSocket(hash))?;

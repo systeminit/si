@@ -1,6 +1,6 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
-use dal::{ChangeSetPointer, Component, ComponentId, DalContext, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -98,7 +98,7 @@ pub async fn delete_components(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     for component_id in request.component_ids {
         delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;

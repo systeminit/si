@@ -2,7 +2,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use dal::secret::SecretView;
 use dal::{
-    key_pair::KeyPairPk, ChangeSetPointer, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion,
+    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion,
     Visibility, WsEvent,
 };
 use dal::{HistoryActor, SecretError, SecretId, StandardModel};
@@ -41,7 +41,7 @@ pub async fn update_secret(
 ) -> SecretResult<impl IntoResponse> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let mut secret = EncryptedSecret::get_by_id(&ctx, &request.id)
         .await?

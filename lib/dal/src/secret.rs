@@ -17,7 +17,7 @@ use thiserror::Error;
 use ulid::Ulid;
 use veritech_client::SensitiveContainer;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::schema::variant::SchemaVariantError;
@@ -47,7 +47,7 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum SecretError {
     #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error("error when decrypting crypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
@@ -173,7 +173,7 @@ impl Secret {
             .add(&SecretContent::V1(content.clone()))?;
 
         let id = Ulid::from(secret_id);
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Secret(hash))?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -313,7 +313,7 @@ impl Secret {
                 .add(&SecretContent::V1(after.clone()))?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, raw_id, hash)
+                .update_content(ctx.change_set()?, raw_id, hash)
                 .await?;
         }
 

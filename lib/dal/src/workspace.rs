@@ -5,7 +5,7 @@ use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
@@ -24,7 +24,7 @@ const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("change set not found by id: {0}")]
     ChangeSetNotFound(ChangeSetId),
     #[error(transparent)]
@@ -93,7 +93,7 @@ impl Workspace {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
-            let change_set = ChangeSetPointer::find(ctx, found_builtin.default_change_set_id)
+            let change_set = ChangeSet::find(ctx, found_builtin.default_change_set_id)
                 .await?
                 .ok_or(WorkspaceError::ChangeSetNotFound(
                     found_builtin.default_change_set_id,
@@ -105,7 +105,7 @@ impl Workspace {
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
-        let mut change_set = ChangeSetPointer::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
+        let mut change_set = ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id().await)
@@ -197,7 +197,7 @@ impl Workspace {
         // Create a new change set whose base is the default change set of the workspace.
         // Point to the snapshot that the builtin's default change set is pointing to.
         let mut change_set =
-            ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
+            ChangeSet::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
         let workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         change_set
@@ -224,7 +224,7 @@ impl Workspace {
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
 
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
-        // should set_change_set_pointer and set_workspace_snapshot happen in update_visibility?
+        // should set_change_set and set_workspace_snapshot happen in update_visibility?
         ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
             .await?;
 

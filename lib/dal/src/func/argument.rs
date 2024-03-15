@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -24,7 +24,7 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum FuncArgumentError {
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("history event error: {0}")]
@@ -177,7 +177,7 @@ impl FuncArgument {
             .await
             .add(&FuncArgumentContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func_argument(change_set, id, name.into(), hash)?;
 
@@ -353,8 +353,8 @@ impl FuncArgument {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         if func_arg_node_weight.name() != func_arg.name.as_str() {
-            let mut new_func_arg = func_arg_node_weight
-                .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            let mut new_func_arg =
+                func_arg_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
             new_func_arg.set_name(&func_arg.name);
 
             workspace_snapshot
@@ -373,7 +373,7 @@ impl FuncArgument {
                 .add(&FuncArgumentContent::V1(updated.clone()))?;
 
             workspace_snapshot
-                .update_content(ctx.change_set_pointer()?, ulid, hash)
+                .update_content(ctx.change_set()?, ulid, hash)
                 .await?;
         }
 
@@ -381,7 +381,7 @@ impl FuncArgument {
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
 
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)

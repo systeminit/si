@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -37,7 +37,7 @@ pub enum ActionBatchError {
     #[error("cannot stamp batch as started since it already started")]
     AlreadyStarted,
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("edge weight error: {0}")]
@@ -145,7 +145,7 @@ impl ActionBatch {
             .await
             .add(&ActionBatchContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionBatch(hash))?;
@@ -259,7 +259,7 @@ impl ActionBatch {
             .add(&ActionBatchContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -275,7 +275,7 @@ impl ActionBatch {
             .add(&ActionBatchContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -291,7 +291,7 @@ impl ActionBatch {
             .add(&ActionBatchContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }

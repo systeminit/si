@@ -50,7 +50,7 @@ impl StaticArgumentValue {
             .await
             .add(&StaticArgumentValueContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::StaticArgumentValue(hash))?;
