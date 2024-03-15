@@ -37,7 +37,7 @@ use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, No
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
-    ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, InputSocket,
+    ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetId, DalContext, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
     SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
@@ -1144,7 +1144,7 @@ impl Component {
 pub struct ComponentCreatedPayload {
     success: bool,
     component_id: ComponentId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 impl WsEvent {
@@ -1156,7 +1156,7 @@ impl WsEvent {
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload {
                 success: true,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
                 component_id,
             }),
         )
@@ -1168,7 +1168,7 @@ impl WsEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
     component_id: ComponentId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 impl WsEvent {
@@ -1180,7 +1180,7 @@ impl WsEvent {
             ctx,
             WsPayload::ComponentUpdated(ComponentUpdatedPayload {
                 component_id,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await

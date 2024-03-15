@@ -1,4 +1,4 @@
-use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use dal::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
@@ -17,9 +17,9 @@ pub(crate) enum RebaseError {
     #[error("workspace snapshot error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("missing change set pointer")]
-    MissingChangeSetPointer(ChangeSetPointerId),
+    MissingChangeSetPointer(ChangeSetId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
-    MissingWorkspaceSnapshotForChangeSet(ChangeSetPointerId),
+    MissingWorkspaceSnapshotForChangeSet(ChangeSetId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -119,7 +119,7 @@ pub(crate) async fn perform_rebase(
     let change_set_ulid: Ulid = to_rebase_change_set.id.into();
 
     let to_rebase_ctx = ctx
-        .clone_with_new_visibility(Visibility::new_change_set(change_set_ulid.into(), false))
+        .clone_with_new_visibility(Visibility::new(change_set_ulid.into()))
         .clone_with_new_tenancy(Tenancy::new(
             to_rebase_change_set
                 .workspace_id

@@ -77,8 +77,8 @@ pub use attribute::{
     value::{AttributeValue, AttributeValueId},
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
-pub use change_set::{ChangeSetPk, ChangeSetStatus};
-pub use change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+pub use change_set::ChangeSetStatus;
+pub use change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
 pub use component::Component;
 pub use component::ComponentError;
 pub use component::ComponentId;
@@ -114,7 +114,7 @@ pub use standard_model::{StandardModel, StandardModelError, StandardModelResult}
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
-pub use visibility::{Visibility, VisibilityError};
+pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
 pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
 pub use workspace_snapshot::WorkspaceSnapshot;

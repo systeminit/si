@@ -14,8 +14,8 @@ use crate::{
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ActionPrototypeError, ChangeSetPk, FuncBackendKind, FuncBackendResponseType, OutputSocketId,
-    SchemaError, SchemaVariantId,
+    ActionPrototypeError, ChangeSetId, DalContext, FuncBackendKind, FuncBackendResponseType,
+    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
 };
 use crate::{FuncId, PropId, PropKind};
 
@@ -31,8 +31,6 @@ mod import;
 pub enum PkgError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    // #[error(transparent)]
-    // AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
@@ -41,30 +39,12 @@ pub enum PkgError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attrbute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    // #[error(transparent)]
-    // AttributeValue(#[from] AttributeValueError),
-    // #[error("parent prop could not be found with path: {0}")]
-    // AttributeValueParentPropNotFound(String),
-    // #[error("parent value could not be found for prop path: {0} and key {1:?}, index {2:?}")]
-    // AttributeValueParentValueNotFound(String, Option<String>, Option<i64>),
-    // #[error("attribute value is a proxy but there is no value to proxy")]
-    // AttributeValueSetToProxyButNoProxyFound,
-    // #[error("encountered an attribute value with a key or index but no parent")]
-    // AttributeValueWithKeyOrIndexButNoParent,
-    // #[error(transparent)]
-    // ChangeSet(#[from] ChangeSetError),
-    // #[error("change set {0} not found")]
-    // ChangeSetNotFound(ChangeSetPk),
     #[error(transparent)]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
-    // #[error(transparent)]
-    // Edge(#[from] EdgeError),
-    // #[error("edge refers to component not in export: {0}")]
-    // EdgeRefersToMissingComponent(ComponentId),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]
@@ -73,56 +53,16 @@ pub enum PkgError {
     FuncArgumentNotFoundByName(FuncId, String),
     #[error("func {0} could not be found by name")]
     FuncNotFoundByName(String),
-    // #[error(transparent)]
-    // FuncBinding(#[from] FuncBindingError),
-    // #[error(transparent)]
-    // FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    // #[error(transparent)]
-    // FuncExecution(#[from] crate::func::execution::FuncExecutionError),
-    // #[error("Installed func id {0} does not exist")]
-    // InstalledFuncMissing(FuncId),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
-    // #[error("Installed schema variant definition {0} does not exist")]
-    // InstalledSchemaVariantDefinitionMissing(SchemaVariantDefinitionId),
-    // #[error("Installed schema variant {0} does not exist")]
-    // InstalledSchemaVariantMissing(SchemaVariantId),
-    // #[error("Leaf Function {0} has invalid argument {1}")]
-    // InvalidLeafArgument(FuncId, String),
-    // #[error("Missing Func {1} for AttributePrototype {0}")]
-    // MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
-    // #[error("Missing value for context {0:?}")]
-    // MissingAttributeValueForContext(AttributeReadContext),
-    // #[error("Missing a func map for changeset {0}")]
-    // MissingChangeSetFuncMap(ChangeSetPk),
-    // #[error("Missing component {0} for edge from {1} to {2}")]
-    // MissingComponentForEdge(String, String, String),
-    // #[error("Func {0} missing from exported funcs")]
-    // MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
-    // #[error("Cannot find FuncArgument {0}")]
-    // MissingFuncArgumentById(FuncArgumentId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
     #[error("Cannot find InputSocket for name: {0}")]
     MissingInputSocketName(String),
-    // #[error("Intrinsic function {0} not found")]
-    // MissingIntrinsicFunc(String),
-    // #[error("Intrinsic function (0) argument {1} not found")]
-    // MissingIntrinsicFuncArgument(String, String),
-    // #[error("Cannot find item prop for installed map prop {0}")]
-    // MissingItemPropForMapProp(PropId),
-    // #[error("Cannot find installed prop {0}")]
-    // MissingProp(PropId),
-    // #[error("Cannot find root prop for variant {0}")]
-    // MissingRootProp(SchemaVariantId),
-    // #[error("Cannot find schema_variant_definition {0}")]
-    // MissingSchemaVariantDefinition(SchemaVariantId),
-    // #[error("Cannot find socket with name {0} for edge kind {1}")]
-    // MissingSocketName(String, SocketEdgeKind),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
     #[error("output socket error: {0}")]
@@ -139,56 +79,16 @@ pub enum PkgError {
     Prop(#[from] PropError),
     #[error("prop {0} missing attribute prototype")]
     PropMissingPrototype(PropId),
-    // #[error("prop spec structure is invalid: {0}")]
-    // PropSpecChildrenInvalid(String),
-    // #[error(transparent)]
-    // PropTree(#[from] PropTreeError),
-    // #[error("prop tree structure is invalid: {0}")]
-    // PropTreeInvalid(String),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    // #[error(transparent)]
-    // SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
-    // #[error("schema variant not found: {0}")]
-    // SchemaVariantNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    // #[error(transparent)]
-    // Socket(#[from] SocketError),
-    // #[error(transparent)]
-    // StandardModel(#[from] StandardModelError),
-    // #[error("standard model relationship {0} missing belongs_to for {1} with id {2}")]
-    // StandardModelMissingBelongsTo(&'static str, &'static str, String),
-    // #[error("standard model relationship {0} found multiple belongs_to for {1} with id {2}")]
-    // StandardModelMultipleBelongsTo(&'static str, &'static str, String),
-    // #[error(transparent)]
-    // UlidDecode(#[from] ulid::DecodeError),
-    // #[error(transparent)]
-    // UrlParse(#[from] ParseError),
-    // #[error(transparent)]
-    // Workspace(#[from] WorkspaceError),
-    // #[error("Cannot find default change set \"{0}\" in workspace backup")]
-    // WorkspaceBackupNoDefaultChangeSet(String),
-    // #[error("Workspace backup missing workspace name")]
-    // WorkspaceNameNotInBackup,
-    // #[error("Workspace not found: {0}")]
-    // WorkspaceNotFound(WorkspacePk),
-    // #[error("Workspace backup missing workspace pk")]
-    // WorkspacePkNotInBackup,
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
-}
-
-impl PkgError {
-    // fn prop_tree_invalid(message: impl Into<String>) -> Self {
-    //     Self::PropTreeInvalid(message.into())
-    // }
-
-    // fn prop_spec_children_invalid(message: impl Into<String>) -> Self {
-    //     Self::PropSpecChildrenInvalid(message.into())
-    // }
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;
@@ -286,56 +186,59 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
 }
 
 /// A generic hash map of hash maps for tracking the presence of a thing in each change set. If a
-/// thing is asked for in a specific change set, and not found, the NONE change set will be
+/// thing is asked for in a specific change set, and not found, the HEAD change set will be
 /// checked.
-pub struct ChangeSetThingMap<Key, Thing>(HashMap<ChangeSetPk, HashMap<Key, Thing>>);
+pub struct ChangeSetThingMap<Key, Thing> {
+    inner: HashMap<ChangeSetId, HashMap<Key, Thing>>,
+    default_change_set_id: ChangeSetId,
+}
 
+// TODO(nick): we need a better strategy for tracking the head change set in the thing map.
 impl<Key, Thing> ChangeSetThingMap<Key, Thing>
 where
     Key: Eq + PartialEq + std::hash::Hash,
 {
-    pub fn new() -> Self {
+    pub async fn new(ctx: &DalContext) -> PkgResult<Self> {
         let head_thing_map = HashMap::new();
 
-        let mut change_set_map: HashMap<ChangeSetPk, HashMap<Key, Thing>> = HashMap::new();
-        change_set_map.insert(ChangeSetPk::NONE, head_thing_map);
+        let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
 
-        Self(change_set_map)
+        let mut change_set_map = HashMap::new();
+        change_set_map.insert(default_change_set_id, head_thing_map);
+
+        Ok(Self {
+            inner: change_set_map,
+            default_change_set_id,
+        })
     }
 
-    pub fn get(&self, change_set_pk: Option<ChangeSetPk>, key: &Key) -> Option<&Thing> {
-        match self.0.get(&change_set_pk.unwrap_or(ChangeSetPk::NONE)) {
+    pub fn get(&self, change_set_id: Option<ChangeSetId>, key: &Key) -> Option<&Thing> {
+        match self
+            .inner
+            .get(&change_set_id.unwrap_or(self.default_change_set_id))
+        {
             Some(change_set_map) => change_set_map.get(key).or_else(|| {
-                self.0
-                    .get(&ChangeSetPk::NONE)
+                self.inner
+                    .get(&self.default_change_set_id)
                     .and_then(|things| things.get(key))
             }),
             None => self
-                .0
-                .get(&ChangeSetPk::NONE)
+                .inner
+                .get(&self.default_change_set_id)
                 .and_then(|things| things.get(key)),
         }
     }
 
     pub fn insert(
         &mut self,
-        change_set_pk: Option<ChangeSetPk>,
+        change_set_id: Option<ChangeSetId>,
         key: Key,
         thing: Thing,
     ) -> Option<Thing> {
-        self.0
-            .entry(change_set_pk.unwrap_or(ChangeSetPk::NONE))
+        self.inner
+            .entry(change_set_id.unwrap_or(self.default_change_set_id))
             .or_default()
             .insert(key, thing)
-    }
-}
-
-impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>
-where
-    Key: Eq + PartialEq + std::hash::Hash,
-{
-    fn default() -> Self {
-        Self::new()
     }
 }
 

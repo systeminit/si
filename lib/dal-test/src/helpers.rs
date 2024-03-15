@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
+use dal::change_set_pointer::{ChangeSetId, ChangeSetPointer};
 use dal::{DalContext, UserClaim};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
@@ -32,7 +32,7 @@ pub async fn create_auth_token(claim: UserClaim) -> String {
 pub async fn workspace_signup(ctx: &DalContext) -> Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
-    let mut ctx = ctx.clone_with_head();
+    let mut ctx = ctx.clone_with_head().await?;
 
     let workspace_name = generate_fake_name();
     let user_name = format!("frank {workspace_name}");
@@ -141,7 +141,7 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
 
 pub async fn create_change_set_and_update_ctx(
     ctx: &mut DalContext,
-    base_change_set_id: ChangeSetPointerId,
+    base_change_set_id: ChangeSetId,
 ) {
     let base_change_set = ChangeSetPointer::find(ctx, base_change_set_id)
         .await

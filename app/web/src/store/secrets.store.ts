@@ -488,14 +488,14 @@ export function useSecretsStore() {
             {
               eventType: "SecretCreated",
               callback: (data) => {
-                if (data.changeSetPk !== changeSetId) return;
+                if (data.changeSetId !== changeSetId) return;
                 this.LOAD_SECRETS();
               },
             },
             {
               eventType: "SecretUpdated",
               callback: (data) => {
-                if (data.changeSetPk !== changeSetId) return;
+                if (data.changeSetId !== changeSetId) return;
                 this.LOAD_SECRETS();
               },
             },

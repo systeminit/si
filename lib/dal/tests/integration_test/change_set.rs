@@ -143,9 +143,11 @@ async fn abandon_change_set(ctx: &mut DalContext) {
         view.change_sets.len()  // actual
     );
 
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&abandonment_change_set)
-        .await
-        .expect("could not update visibility");
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
+        abandonment_change_set.id,
+    )
+    .await
+    .expect("could not update visibility");
     abandonment_change_set
         .update_status(ctx, ChangeSetStatus::Abandoned)
         .await

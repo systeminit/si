@@ -435,21 +435,21 @@ export const useAssetStore = () => {
           {
             eventType: "SchemaVariantDefinitionCreated",
             callback: (data) => {
-              if (data.changeSetPk !== changeSetId) return;
+              if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
             eventType: "SchemaVariantDefinitionCloned",
             callback: (data) => {
-              if (data.changeSetPk !== changeSetId) return;
+              if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
             eventType: "SchemaVariantDefinitionSaved",
             callback: (data) => {
-              if (data.changeSetPk !== changeSetId) return;
+              if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },

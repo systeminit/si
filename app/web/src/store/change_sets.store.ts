@@ -77,10 +77,10 @@ export function useChangeSetsStore() {
         selectedWorkspacePk: () => workspacePk,
       },
       actions: {
-        async setActiveChangeset(changeSetPk: string) {
+        async setActiveChangeset(changeSetId: string) {
           // We need to force refetch changesets since there's a race condition in which redirects
           // will be triggered but the frontend won't have refreshed the list of changesets
-          if (!this.changeSetsById[changeSetPk]) {
+          if (!this.changeSetsById[changeSetId]) {
             await this.FETCH_CHANGE_SETS();
           }
 
@@ -89,7 +89,7 @@ export function useChangeSetsStore() {
             name: route.name ?? undefined,
             params: {
               ...route.params,
-              changeSetId: changeSetPk,
+              changeSetId,
             },
           });
         },
@@ -121,7 +121,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/abandon_change_set",
             params: {
-              changeSetPk: this.selectedChangeSet.id,
+              changeSetId: this.selectedChangeSet.id,
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
@@ -271,7 +271,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetAbandoned",
             callback: async (data) => {
-              if (data.changeSetPk === this.selectedChangeSetId) {
+              if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
                   await this.setActiveChangeset(this.headChangeSetId);
                 }
@@ -283,17 +283,17 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetCancelled",
             callback: (data) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { changeSetPk, userPk } = data as any as {
-                changeSetPk: string;
+              const { changeSetId, userPk } = data as any as {
+                changeSetId: string;
                 userPk: UserId;
               };
-              const changeSet = this.changeSetsById[changeSetPk];
+              const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Abandoned;
-                if (this.selectedChangeSet?.id === changeSetPk) {
+                if (this.selectedChangeSet?.id === changeSetId) {
                   this.postAbandonActor = userPk;
                 }
-                this.changeSetsById[changeSetPk] = changeSet;
+                this.changeSetsById[changeSetId] = changeSet;
               }
 
               this.FETCH_CHANGE_SETS();
@@ -303,27 +303,27 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetApplied",
             callback: (data) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { changeSetPk, userPk } = data as any as {
-                changeSetPk: string;
+              const { changeSetId, userPk } = data as any as {
+                changeSetId: string;
                 userPk: UserId;
               };
-              const changeSet = this.changeSetsById[changeSetPk];
+              const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
-                if (this.selectedChangeSet?.id === changeSetPk) {
+                if (this.selectedChangeSet?.id === changeSetId) {
                   this.postApplyActor = userPk;
                 }
-                this.changeSetsById[changeSetPk] = changeSet;
+                this.changeSetsById[changeSetId] = changeSet;
               }
             },
           },
           {
             eventType: "ChangeSetBeginApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals = {};
               }
-              const changeSet = this.changeSetsById[data.changeSetPk];
+              const changeSet = this.changeSetsById[data.changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.NeedsApproval;
                 changeSet.mergeRequestedAt = new Date().toISOString();
@@ -334,10 +334,10 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCancelApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals = {};
               }
-              const changeSet = this.changeSetsById[data.changeSetPk];
+              const changeSet = this.changeSetsById[data.changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Open;
               }
@@ -347,10 +347,10 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetBeginAbandonProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals = {};
               }
-              const changeSet = this.changeSetsById[data.changeSetPk];
+              const changeSet = this.changeSetsById[data.changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.NeedsAbandonApproval;
                 changeSet.abandonRequestedAt = new Date().toISOString();
@@ -361,10 +361,10 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCancelAbandonProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals = {};
               }
-              const changeSet = this.changeSetsById[data.changeSetPk];
+              const changeSet = this.changeSetsById[data.changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Open;
               }
@@ -373,7 +373,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetMergeVote",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals[data.userPk] = data.vote;
               }
             },
@@ -381,7 +381,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetAbandonVote",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.id === data.changeSetId) {
                 this.changeSetApprovals[data.userPk] = data.vote;
               }
             },

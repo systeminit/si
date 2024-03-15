@@ -5,7 +5,7 @@ use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
@@ -26,7 +26,7 @@ pub enum WorkspaceError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("change set not found by id: {0}")]
-    ChangeSetNotFound(ChangeSetPointerId),
+    ChangeSetNotFound(ChangeSetId),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
@@ -58,7 +58,7 @@ pk!(WorkspaceId);
 pub struct Workspace {
     pk: WorkspacePk,
     name: String,
-    default_change_set_id: ChangeSetPointerId,
+    default_change_set_id: ChangeSetId,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -83,7 +83,7 @@ impl Workspace {
         &self.pk
     }
 
-    pub fn default_change_set_id(&self) -> ChangeSetPointerId {
+    pub fn default_change_set_id(&self) -> ChangeSetId {
         self.default_change_set_id
     }
 

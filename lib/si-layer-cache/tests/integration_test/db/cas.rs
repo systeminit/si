@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use si_events::{Actor, CasPk, CasValue, ChangeSetPk, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, CasPk, CasValue, ChangeSetId, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 
@@ -23,7 +23,7 @@ async fn write_to_db() {
         .write(
             cas_value.clone(),
             None,
-            Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
+            Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
         .await
@@ -91,7 +91,7 @@ async fn write_and_read_many() {
             .write(
                 cas_value.clone(),
                 None,
-                Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
+                Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
                 Actor::User(UserPk::new()),
             )
             .await
@@ -113,6 +113,7 @@ async fn write_and_read_many() {
         assert!(cas_values.contains(value));
     }
 }
+
 #[tokio::test]
 async fn cold_read_from_db() {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
@@ -130,7 +131,7 @@ async fn cold_read_from_db() {
         .write(
             cas_value.clone(),
             None,
-            Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
+            Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
         .await
@@ -230,7 +231,7 @@ async fn writes_are_gossiped() {
         .write(
             cas_value.clone(),
             None,
-            Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
+            Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
         .await

@@ -61,7 +61,7 @@ pub async fn create_component(
                     "prototype_kind": prototype.kind,
                     "component_id": component.id(),
                     "component_name": component.name(&ctx).await?,
-                    "change_set_pk": ctx.visibility().change_set_pk,
+                    "change_set_id": ctx.change_set_id(),
                 }),
             );
             break;

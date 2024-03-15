@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{tenancy::ChangeSetPk, tenancy::WorkspacePk};
+use crate::{tenancy::ChangeSetId, tenancy::WorkspacePk};
 
 const DEFAULT_WEB_EVENT_VERSION: u64 = 1;
 
@@ -8,7 +8,7 @@ const DEFAULT_WEB_EVENT_VERSION: u64 = 1;
 pub struct WebEvent {
     version: u64,
     workspace_pk: WorkspacePk,
-    change_set_pk: ChangeSetPk,
+    change_set_pk: ChangeSetId,
     payload: WebEventPayload,
 }
 
@@ -17,7 +17,7 @@ impl WebEvent {
         self.workspace_pk
     }
 
-    pub fn change_set_pk(&self) -> ChangeSetPk {
+    pub fn change_set_pk(&self) -> ChangeSetId {
         self.change_set_pk
     }
 
@@ -25,7 +25,7 @@ impl WebEvent {
         &self.payload
     }
 
-    pub fn change_set_written(workspace_pk: WorkspacePk, change_set_pk: ChangeSetPk) -> Self {
+    pub fn change_set_written(workspace_pk: WorkspacePk, change_set_pk: ChangeSetId) -> Self {
         Self {
             version: DEFAULT_WEB_EVENT_VERSION,
             workspace_pk,
@@ -38,5 +38,5 @@ impl WebEvent {
 #[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum WebEventPayload {
-    ChangeSetWritten(ChangeSetPk),
+    ChangeSetWritten(ChangeSetId),
 }

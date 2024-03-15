@@ -14,7 +14,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
-use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::layer_db_types::ContentTypes;
@@ -22,8 +21,9 @@ use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
+use crate::Workspace;
 use crate::{
-    change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
+    change_set_pointer::{ChangeSetId, ChangeSetPointer},
     job::{
         definition::ActionsJob,
         processor::{JobQueueProcessor, JobQueueProcessorError},
@@ -34,7 +34,6 @@ use crate::{
     AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
     WorkspacePk, WorkspaceSnapshot,
 };
-use crate::{ChangeSetPk, Workspace};
 
 pub type DalLayerDb = LayerDb<ContentTypes>;
 
@@ -316,7 +315,7 @@ impl DalContext {
 
     pub async fn get_workspace_default_change_set_id(
         &self,
-    ) -> Result<ChangeSetPointerId, TransactionsError> {
+    ) -> Result<ChangeSetId, TransactionsError> {
         let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
         let workspace = Workspace::get_by_pk(self, &workspace_pk)
             .await
@@ -589,63 +588,21 @@ impl DalContext {
     /// Updates this context with a new [`Visibility`], specific to the new engine.
     pub async fn update_visibility_and_snapshot_to_visibility(
         &mut self,
-        change_set_id: ChangeSetPointerId,
+        change_set_id: ChangeSetId,
     ) -> Result<(), TransactionsError> {
-        self.update_visibility_deprecated(Visibility::new(
-            ChangeSetPk::from(Ulid::from(change_set_id)),
-            None,
-        ));
+        self.update_visibility_deprecated(Visibility::new(change_set_id));
         self.update_snapshot_to_visibility().await?;
         Ok(())
     }
 
     pub async fn update_visibility_and_snapshot_to_visibility_no_editing_change_set(
         &mut self,
-        change_set_v2: &ChangeSetPointer,
+        change_set_id: ChangeSetId,
     ) -> Result<(), TransactionsError> {
-        self.update_visibility_deprecated(Visibility::new(
-            ChangeSetPk::from(Ulid::from(change_set_v2.id)),
-            None,
-        ));
+        self.update_visibility_deprecated(Visibility::new(change_set_id));
         self.update_snapshot_to_visibility_no_editing_change_set()
             .await?;
         Ok(())
-    }
-
-    /// Runs a block of code with "deleted" [`Visibility`] DalContext using the same transactions
-    pub async fn run_with_deleted_visibility<F, Fut, R>(&self, fun: F) -> R
-    where
-        F: FnOnce(DalContext) -> Fut,
-        Fut: Future<Output = R>,
-    {
-        self.run_with_visibility(
-            Visibility::new_change_set(self.visibility().change_set_pk, true),
-            fun,
-        )
-        .await
-    }
-
-    /// Mutates [`self`](DalContext) with a "deleted" [`Visibility`].
-    pub fn update_with_deleted_visibility(&mut self) {
-        self.update_visibility_deprecated(Visibility::new_change_set(
-            self.visibility().change_set_pk,
-            true,
-        ));
-    }
-
-    /// Mutates [`self`](DalContext) with a "non-deleted" [`Visibility`].
-    pub fn update_without_deleted_visibility(&mut self) {
-        self.update_visibility_deprecated(Visibility::new_change_set(
-            self.visibility().change_set_pk,
-            false,
-        ));
-    }
-
-    /// Clones a new context from this one without deleted visibility.
-    pub fn clone_without_deleted_visibility(&self) -> Self {
-        let mut ctx = self.clone();
-        ctx.update_without_deleted_visibility();
-        ctx
     }
 
     /// Clones a new context from this one with a new [`Visibility`].
@@ -653,14 +610,6 @@ impl DalContext {
         let mut new = self.clone();
         new.update_visibility_deprecated(visibility);
         new
-    }
-
-    /// Clones a new context from this one [`Visibility`] that allows querying deleted values.
-    pub fn clone_with_delete_visibility(&self) -> Self {
-        self.clone_with_new_visibility(Visibility::new_change_set(
-            self.visibility().change_set_pk,
-            true,
-        ))
     }
 
     pub async fn parent_is_head(&self) -> bool {
@@ -692,16 +641,15 @@ impl DalContext {
         new
     }
 
-    /// Updates this context with a head [`Visibility`].
-    pub fn update_to_head(&mut self) {
-        self.visibility = Visibility::new_head(false);
-    }
-
     /// Clones a new context from this one with a head [`Visibility`].
-    pub fn clone_with_head(&self) -> Self {
+    pub async fn clone_with_head(&self) -> Result<Self, TransactionsError> {
         let mut new = self.clone();
-        new.update_to_head();
-        new
+        let default_change_set_id = new.get_workspace_default_change_set_id().await?;
+        new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
+            default_change_set_id,
+        )
+        .await?;
+        Ok(new)
     }
 
     pub async fn enqueue_dependencies_update_component(
@@ -712,7 +660,7 @@ impl DalContext {
             .await?
             .enqueue_dependencies_update_component(
                 *self.tenancy(),
-                self.visibility().change_set_pk,
+                self.change_set_id(),
                 component_id,
             )
             .await;
@@ -736,11 +684,7 @@ impl DalContext {
         self.txns()
             .await?
             .job_queue
-            .enqueue_dependent_values_update(
-                self.visibility().change_set_pk,
-                self.access_builder(),
-                ids,
-            )
+            .enqueue_dependent_values_update(self.change_set_id(), self.access_builder(), ids)
             .await;
         Ok(())
     }
@@ -862,8 +806,8 @@ impl DalContext {
     }
 
     // NOTE(nick,zack,jacob): likely a temporary func to get the change set id from the visibility.
-    pub fn change_set_id(&self) -> ChangeSetPointerId {
-        ChangeSetPointerId::from(Ulid::from(self.visibility.change_set_pk))
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.visibility.change_set_id
     }
 
     pub fn access_builder(&self) -> AccessBuilder {
@@ -881,18 +825,6 @@ pub struct RequestContext {
     pub visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     pub history_actor: HistoryActor,
-}
-
-impl Default for RequestContext {
-    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing objects that live outside of the standard model)
-    /// and a head [`Visibility`] and the given [`HistoryActor`].
-    fn default() -> Self {
-        Self {
-            tenancy: Tenancy::new_empty(),
-            visibility: Visibility::new_head(false),
-            history_actor: HistoryActor::SystemInit,
-        }
-    }
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
@@ -965,7 +897,7 @@ impl DalContextBuilder {
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: Tenancy::new_empty(),
-            visibility: Visibility::new_head(false),
+            visibility: Visibility::new_head(),
             history_actor: HistoryActor::SystemInit,
             content_store: Arc::new(Mutex::new(content_store)),
             no_dependent_values: self.no_dependent_values,
@@ -988,7 +920,7 @@ impl DalContextBuilder {
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: access_builder.tenancy,
             history_actor: access_builder.history_actor,
-            visibility: Visibility::new_head(false),
+            visibility: Visibility::new_head(),
             no_dependent_values: self.no_dependent_values,
             content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
@@ -1067,7 +999,7 @@ pub enum TransactionsError {
     #[error("change set error: {0}")]
     ChangeSet(String),
     #[error("change set pointer not found for change set id: {0}")]
-    ChangeSetPointerNotFound(ChangeSetPointerId),
+    ChangeSetPointerNotFound(ChangeSetId),
     #[error("Change set pointer not set on DalContext")]
     ChangeSetPointerNotSet,
     #[error(transparent)]
@@ -1079,7 +1011,7 @@ pub enum TransactionsError {
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error("rebase of snapshot {0} change set id {1} failed {2}")]
-    RebaseFailed(WorkspaceSnapshotId, ChangeSetPointerId, String),
+    RebaseFailed(WorkspaceSnapshotId, ChangeSetId, String),
     #[error(transparent)]
     RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
@@ -1172,12 +1104,12 @@ pub struct Transactions {
     job_queue: JobQueue,
     #[allow(clippy::type_complexity)]
     dependencies_update_component:
-        Arc<Mutex<HashMap<(Tenancy, ChangeSetPk), HashSet<ComponentId>>>>,
+        Arc<Mutex<HashMap<(Tenancy, ChangeSetId), HashSet<ComponentId>>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct RebaseRequest {
-    pub to_rebase_change_set_id: ChangeSetPointerId,
+    pub to_rebase_change_set_id: ChangeSetId,
     pub onto_workspace_snapshot_id: WorkspaceSnapshotId,
     pub onto_vector_clock_id: VectorClockId,
 }
@@ -1361,24 +1293,24 @@ impl Transactions {
     pub async fn enqueue_dependencies_update_component(
         &self,
         tenancy: Tenancy,
-        change_set_pk: ChangeSetPk,
+        change_set_id: ChangeSetId,
         component_id: ComponentId,
     ) {
         self.dependencies_update_component
             .lock()
             .await
-            .entry((tenancy, change_set_pk))
+            .entry((tenancy, change_set_id))
             .or_default()
             .insert(component_id);
     }
 
     #[instrument(level = "info", skip_all)]
     async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
-        for ((tenancy, change_set_pk), component_ids) in
+        for ((tenancy, change_set_id), component_ids) in
             std::mem::take(&mut *self.dependencies_update_component.lock().await)
         {
             for component_id in component_ids {
-                let visibility = Visibility::new(change_set_pk, None);
+                let visibility = Visibility::new(change_set_id);
                 self.pg()
                     .execute(
                         "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",

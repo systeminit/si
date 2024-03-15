@@ -5,13 +5,13 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set_pointer::ChangeSetPointer;
-use dal::{ChangeSetPk, ChangeSetStatus};
+use dal::{ChangeSetId, ChangeSetStatus};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AbandonChangeSetRequest {
-    pub change_set_pk: ChangeSetPk,
+    pub change_set_id: ChangeSetId,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,10 +29,10 @@ pub async fn abandon_change_set(
 ) -> ChangeSetResult<()> {
     let mut ctx = builder.build_head(access_builder).await?;
 
-    let mut change_set = ChangeSetPointer::find(&ctx, request.change_set_pk.into())
+    let mut change_set = ChangeSetPointer::find(&ctx, request.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&change_set)
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
         .await?;
     change_set
         .update_status(&ctx, ChangeSetStatus::Abandoned)
@@ -44,7 +44,7 @@ pub async fn abandon_change_set(
         &original_uri,
         "abandon_change_set",
         serde_json::json!({
-            "abandoned_change_set": request.change_set_pk,
+            "abandoned_change_set": request.change_set_id,
         }),
     );
 

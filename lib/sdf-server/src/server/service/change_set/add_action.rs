@@ -41,7 +41,7 @@ pub async fn add_action(
             "prototype_kind": prototype.kind,
             "component_name": component.name(&ctx).await?,
             "component_id": component.id(),
-            "change_set_pk": ctx.visibility().change_set_pk,
+            "change_set_id": ctx.change_set_id(),
         }),
     );
 

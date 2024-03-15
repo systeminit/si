@@ -13,8 +13,8 @@ use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
-    id, ChangeSetPk, ChangeSetStatus, DalContext, HistoryEvent, HistoryEventError,
-    TransactionsError, Workspace, WorkspacePk, WsEvent, WsEventError,
+    id, ChangeSetStatus, DalContext, HistoryEvent, HistoryEventError, TransactionsError, Workspace,
+    WorkspacePk, WsEvent, WsEventError,
 };
 
 pub mod view;
@@ -25,9 +25,9 @@ pub enum ChangeSetPointerError {
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("could not find default change set: {0}")]
-    DefaultChangeSetNotFound(ChangeSetPointerId),
+    DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
-    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
+    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
     #[error("enum parse error: {0}")]
     EnumParse(#[from] strum::ParseError),
     #[error("history event error: {0}")]
@@ -37,11 +37,11 @@ pub enum ChangeSetPointerError {
     #[error("mutex error: {0}")]
     Mutex(String),
     #[error("Changeset {0} does not have a base change set")]
-    NoBaseChangeSet(ChangeSetPointerId),
+    NoBaseChangeSet(ChangeSetId),
     #[error("no tenancy set in context")]
     NoTenancySet,
     #[error("Changeset {0} does not have a workspace snapshot")]
-    NoWorkspaceSnapshot(ChangeSetPointerId),
+    NoWorkspaceSnapshot(ChangeSetId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
@@ -49,7 +49,7 @@ pub enum ChangeSetPointerError {
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
-    UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetPointerId>),
+    UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace not found: {0}")]
@@ -60,17 +60,17 @@ pub enum ChangeSetPointerError {
 
 pub type ChangeSetPointerResult<T> = Result<T, ChangeSetPointerError>;
 
-id!(ChangeSetPointerId);
+id!(ChangeSetId);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSetPointer {
-    pub id: ChangeSetPointerId,
+    pub id: ChangeSetId,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 
     pub name: String,
     pub status: ChangeSetStatus,
-    pub base_change_set_id: Option<ChangeSetPointerId>,
+    pub base_change_set_id: Option<ChangeSetId>,
     pub workspace_snapshot_id: Option<WorkspaceSnapshotId>,
     pub workspace_id: Option<WorkspacePk>,
 
@@ -99,10 +99,6 @@ impl TryFrom<PgRow> for ChangeSetPointer {
 }
 
 impl ChangeSetPointer {
-    pub fn changeset_pk(&self) -> ChangeSetPk {
-        ChangeSetPk::from(Ulid::from(self.id))
-    }
-
     pub fn new_local() -> ChangeSetPointerResult<Self> {
         let mut generator = Generator::new();
         let id = generator.generate()?;
@@ -133,7 +129,7 @@ impl ChangeSetPointer {
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
-        base_change_set_id: Option<ChangeSetPointerId>,
+        base_change_set_id: Option<ChangeSetId>,
     ) -> ChangeSetPointerResult<Self> {
         let workspace_id = ctx.tenancy().workspace_pk();
         let name = name.as_ref();
@@ -268,7 +264,7 @@ impl ChangeSetPointer {
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
-        change_set_pointer_id: ChangeSetPointerId,
+        change_set_pointer_id: ChangeSetId,
     ) -> ChangeSetPointerResult<Option<Self>> {
         let row = ctx
             .txns()
@@ -330,21 +326,19 @@ impl ChangeSetPointer {
         Ok(())
     }
 
-    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetPointerResult<Option<ChangeSetPk>> {
+    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetPointerResult<Option<ChangeSetId>> {
         let maybe_fake_pk =
             if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
                 let change_set = Self::fork_head(ctx, Self::generate_name()).await?;
                 ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
                     .await?;
 
-                let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
-
-                WsEvent::change_set_created(ctx, fake_pk)
+                WsEvent::change_set_created(ctx, change_set.id)
                     .await?
                     .publish_on_commit(ctx)
                     .await?;
 
-                Some(fake_pk)
+                Some(change_set.id)
             } else {
                 None
             };

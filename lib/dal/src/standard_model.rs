@@ -647,7 +647,7 @@ pub trait StandardModel {
         format!("{} {}", Self::history_event_message_name(), msg)
     }
 
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn get_by_pk(ctx: &DalContext, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
@@ -656,7 +656,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn get_by_id(ctx: &DalContext, id: &Self::Id) -> StandardModelResult<Option<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -665,7 +665,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn find_by_attr<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -679,7 +679,7 @@ pub trait StandardModel {
         Ok(objects)
     }
 
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn find_by_attr_null(ctx: &DalContext, attr_name: &str) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -693,7 +693,7 @@ pub trait StandardModel {
     /// provided in `value` (equivalent to `WHERE attr_name IN (a, b, c)`). Same
     /// caveats as `find_by_attr`: `V` is almost always &String, untested with
     /// other types.
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn find_by_attr_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -708,7 +708,7 @@ pub trait StandardModel {
         )
     }
 
-    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip(ctx), fields(table = % Self::table_name()))]
     async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -723,7 +723,7 @@ pub trait StandardModel {
         )
     }
 
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name()))]
+    #[instrument(level = "trace", skip_all, fields(table = % Self::table_name()))]
     async fn list(ctx: &DalContext) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -732,84 +732,84 @@ pub trait StandardModel {
         Ok(result)
     }
 
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
-    async fn delete_by_pk(&mut self, ctx: &DalContext) -> StandardModelResult<()>
-    where
-        Self: Send + Sync + Sized,
-    {
-        let updated_at: DateTime<Utc> =
-            crate::standard_model::delete_by_pk(ctx, Self::table_name(), self.pk()).await?;
+    // #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
+    // async fn delete_by_pk(&mut self, ctx: &DalContext) -> StandardModelResult<()>
+    // where
+    //     Self: Send + Sync + Sized,
+    // {
+    //     let updated_at: DateTime<Utc> =
+    //         crate::standard_model::delete_by_pk(ctx, Self::table_name(), self.pk()).await?;
+    //
+    //     self.visibility_mut().deleted_at = Some(updated_at);
+    //     self.timestamp_mut().updated_at = updated_at;
+    //
+    //     HistoryEvent::new(
+    //         ctx,
+    //         &Self::history_event_label(vec!["deleted"]),
+    //         &Self::history_event_message("deleted"),
+    //         &serde_json::json![{
+    //             "pk": self.pk(),
+    //             "id": self.id(),
+    //             "visibility": self.visibility(),
+    //         }],
+    //     )
+    //     .await?;
+    //     Ok(())
+    // }
 
-        self.visibility_mut().deleted_at = Some(updated_at);
-        self.timestamp_mut().updated_at = updated_at;
+    // #[instrument(level = "trace", skip_all, fields(table = % Self::table_name(), id = % self.id()))]
+    // async fn delete_by_id(&mut self, ctx: &DalContext) -> StandardModelResult<()>
+    //     where
+    //         Self: Send + Sync + Sized,
+    // {
+    //     let deleted_at: DateTime<Utc> =
+    //         crate::standard_model::delete_by_id(ctx, Self::table_name(), self.id()).await?;
+    //
+    //     self.visibility_mut().deleted_at = Some(deleted_at);
+    //     self.timestamp_mut().updated_at = deleted_at;
+    //
+    //     HistoryEvent::new(
+    //         ctx,
+    //         &Self::history_event_label(vec!["deleted"]),
+    //         &Self::history_event_message("deleted"),
+    //         &serde_json::json![{
+    //             "pk": self.pk(),
+    //             "id": self.id(),
+    //             "visibility": self.visibility(),
+    //         }],
+    //     )
+    //         .await?;
+    //     Ok(())
+    // }
 
-        HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["deleted"]),
-            &Self::history_event_message("deleted"),
-            &serde_json::json![{
-                "pk": self.pk(),
-                "id": self.id(),
-                "visibility": self.visibility(),
-            }],
-        )
-        .await?;
-        Ok(())
-    }
-
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), id = %self.id()))]
-    async fn delete_by_id(&mut self, ctx: &DalContext) -> StandardModelResult<()>
-    where
-        Self: Send + Sync + Sized,
-    {
-        let deleted_at: DateTime<Utc> =
-            crate::standard_model::delete_by_id(ctx, Self::table_name(), self.id()).await?;
-
-        self.visibility_mut().deleted_at = Some(deleted_at);
-        self.timestamp_mut().updated_at = deleted_at;
-
-        HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["deleted"]),
-            &Self::history_event_message("deleted"),
-            &serde_json::json![{
-                "pk": self.pk(),
-                "id": self.id(),
-                "visibility": self.visibility(),
-            }],
-        )
-        .await?;
-        Ok(())
-    }
-
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
-    async fn undelete(&mut self, ctx: &DalContext) -> StandardModelResult<()>
-    where
-        Self: Send + Sync + Sized,
-    {
-        let updated_at: DateTime<Utc> =
-            crate::standard_model::undelete(ctx, Self::table_name(), self.pk()).await?;
-
-        self.visibility_mut().deleted_at = None;
-        self.timestamp_mut().updated_at = updated_at;
-
-        HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["undeleted"]),
-            &Self::history_event_message("undeleted"),
-            &serde_json::json![{
-                "pk": self.pk(),
-                "id": self.id(),
-                "visibility": self.visibility(),
-            }],
-        )
-        .await?;
-        Ok(())
-    }
+    // #[instrument(level = "trace", skip_all, fields(table = % Self::table_name(), pk = % self.pk()))]
+    // async fn undelete(&mut self, ctx: &DalContext) -> StandardModelResult<()>
+    //     where
+    //         Self: Send + Sync + Sized,
+    // {
+    //     let updated_at: DateTime<Utc> =
+    //         crate::standard_model::undelete(ctx, Self::table_name(), self.pk()).await?;
+    //
+    //     self.visibility_mut().deleted_at = None;
+    //     self.timestamp_mut().updated_at = updated_at;
+    //
+    //     HistoryEvent::new(
+    //         ctx,
+    //         &Self::history_event_label(vec!["undeleted"]),
+    //         &Self::history_event_message("undeleted"),
+    //         &serde_json::json![{
+    //             "pk": self.pk(),
+    //             "id": self.id(),
+    //             "visibility": self.visibility(),
+    //         }],
+    //     )
+    //         .await?;
+    //     Ok(())
+    // }
 
     /// Permanently delete this object from the database. This is not reversible!
     /// However, we do store the object's json representation as a HistoryEvent.
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
+    #[instrument(level = "trace", skip_all, fields(table = % Self::table_name(), pk = % self.pk()))]
     async fn hard_delete(self, ctx: &DalContext) -> StandardModelResult<Self>
     where
         Self: Send + Sync + Sized + Serialize + DeserializeOwned,
@@ -827,17 +827,17 @@ pub trait StandardModel {
         Ok(obj)
     }
 
-    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), id = %self.id()))]
-    async fn exists_in_head(&self, ctx: &DalContext) -> StandardModelResult<bool>
-    where
-        Self: Send + Sync + Sized + Serialize + DeserializeOwned,
-    {
-        let head_ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
-        let obj: Option<Self> =
-            crate::standard_model::get_by_id(&head_ctx, Self::table_name(), self.id()).await?;
-
-        Ok(obj.is_some())
-    }
+    // #[instrument(level = "trace", skip_all, fields(table = % Self::table_name(), id = % self.id()))]
+    // async fn exists_in_head(&self, ctx: &DalContext) -> StandardModelResult<bool>
+    //     where
+    //         Self: Send + Sync + Sized + Serialize + DeserializeOwned,
+    // {
+    //     let head_ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
+    //     let obj: Option<Self> =
+    //         crate::standard_model::get_by_id(&head_ctx, Self::table_name(), self.id()).await?;
+    //
+    //     Ok(obj.is_some())
+    // }
 }
 
 #[macro_export]

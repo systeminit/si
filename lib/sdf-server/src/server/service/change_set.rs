@@ -5,10 +5,10 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ActionBatchError, ActionError, ActionPrototypeError, ActionRunnerError,
-    ChangeSetPointerError as DalChangeSetPointerError, ChangeSetPointerId, ComponentError,
-    FuncError, StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError,
-    WorkspacePk, WsEventError,
+    ActionBatchError, ActionError, ActionPrototypeError, ActionRunnerError, ChangeSetId,
+    ChangeSetPointerError as DalChangeSetPointerError, ComponentError, FuncError,
+    StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk,
+    WsEventError,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
@@ -42,7 +42,7 @@ pub enum ChangeSetError {
     // #[error("action {0} not found")]
     // ActionNotFound(ActionId),
     #[error("base change set not found for change set: {0}")]
-    BaseChangeSetNotFound(ChangeSetPointerId),
+    BaseChangeSetNotFound(ChangeSetId),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]
@@ -56,9 +56,9 @@ pub enum ChangeSetError {
     #[error("dal change set error: {0}")]
     DalChangeSet(#[from] DalChangeSetPointerError),
     #[error("could not find default change set: {0}")]
-    DefaultChangeSetNotFound(ChangeSetPointerId),
+    DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
-    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
+    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
     #[error(transparent)]
     Func(#[from] FuncError),
     // #[error(transparent)]

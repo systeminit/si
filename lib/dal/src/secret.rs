@@ -36,7 +36,7 @@ use crate::{
     property_editor::schema::PropertyEditorPropWidgetKind,
     serde_impls::{base64_bytes_serde, nonce_serde},
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, ActorView, ChangeSetPk, DalContext,
+    standard_model_accessor, standard_model_accessor_ro, ActorView, ChangeSetId, DalContext,
     HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError, Prop, PropId,
     SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
     TransactionsError, UserPk, Visibility, WsEvent, WsEventResult, WsPayload,
@@ -360,14 +360,14 @@ impl Secret {
 #[serde(rename_all = "camelCase")]
 pub struct SecretCreatedPayload {
     secret_id: SecretId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretUpdatedPayload {
     secret_id: SecretId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 impl WsEvent {
@@ -376,7 +376,7 @@ impl WsEvent {
             ctx,
             WsPayload::SecretCreated(SecretCreatedPayload {
                 secret_id,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await
@@ -387,7 +387,7 @@ impl WsEvent {
             ctx,
             WsPayload::SecretUpdated(SecretUpdatedPayload {
                 secret_id,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await
@@ -916,7 +916,7 @@ mod tests {
                 timestamp: Timestamp::now(),
                 created_by: None,
                 updated_by: None,
-                visibility: Visibility::new_head(false),
+                visibility: Visibility::new_head(),
             }
         }
 
