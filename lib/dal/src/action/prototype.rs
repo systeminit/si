@@ -295,7 +295,7 @@ impl ActionPrototype {
 
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,
-            serde_json::to_value(component_view)?,
+            serde_json::json!({ "properties" : component_view }),
             self.func_id(ctx).await?,
             before,
         )
