@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { reactive } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -24,30 +25,10 @@ export type ContentKind =
   | "StaticArgumentValue"
   | "ValidationPrototype";
 
-export type EdgeWeightKind =
-  | "Use"
-  | "Action"
-  | "ActionPrototype"
-  | "AuthenticationPrototype"
-  | "Contain"
-  | "FrameContains"
-  | "Ordering"
-  | "Ordinal"
-  | "Prop"
-  | "Prototype"
-  | "PrototypeArgument"
-  | "PrototypeArgumentValue"
-  | "Proxy"
-  | "Root"
-  | "Socket"
-  | "SocketValue"
-  | "Use";
-
 export interface VizResponse {
   edges: {
     from: string;
     to: string;
-    edgeWeightKind: EdgeWeightKind | null;
   }[];
 
   nodes: {
@@ -60,46 +41,46 @@ export interface VizResponse {
   rootNodeId: string;
 }
 
-export const useVizStore = () => {
-  const changeSetStore = useChangeSetsStore();
-  const selectedChangeSetId = changeSetStore.selectedChangeSetId;
-  const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspacePk;
+export const useVizStore = addStoreHooks(
+  // TODO look into whether this ID on the store needs to be more dynamic
+  defineStore(`ws/viz`, () => {
+    const changeSetStore = useChangeSetsStore();
+    const selectedChangeSetId = changeSetStore.selectedChangeSetId;
 
-  // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
-  // query to find the default change set.
-  const visibility: Visibility = {
-    visibility_change_set_pk:
-      selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
-  };
+    // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
+    // query to find the default change set.
+    const visibility: Visibility = {
+      visibility_change_set_pk:
+        selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
+    };
+    const data: VizResponse = reactive({
+      edges: [],
+      nodes: [],
+      rootNodeId: "",
+    });
 
-  return addStoreHooks(
-    defineStore(
-      `ws${workspaceId || "NONE"}/cs${selectedChangeSetId || "NONE"}/viz`,
-      {
-        state: () => ({
-          edges: [],
-          nodes: [],
-        }),
-        getters: {
-          nodes: (state) => state.nodes,
-          edges: (state) => state.edges,
-        },
-        actions: {
-          async FETCH_VIZ() {
-            return new ApiRequest<VizResponse>({
-              url: "/graphviz/nodes_edges",
-              params: { ...visibility },
-            });
-          },
-          async FETCH_SCHEMA_VARIANT_VIZ(schemaVariantId: string) {
-            return new ApiRequest<VizResponse>({
-              url: "/graphviz/schema_variant",
-              params: { schemaVariantId, ...visibility },
-            });
-          },
-        },
-      },
-    ),
-  )();
-};
+    async function LOAD_DATA(schemaVariantId: string | null) {
+      function onSuccess(response: VizResponse): void {
+        data.nodes.splice(0, data.nodes.length);
+        data.edges.splice(0, data.edges.length);
+        data.edges.push(...response.edges);
+        data.nodes.push(...response.nodes);
+        data.rootNodeId = response.rootNodeId;
+      }
+
+      return schemaVariantId === null
+        ? new ApiRequest<VizResponse>({
+            url: "/graphviz/nodes_edges",
+            params: { ...visibility },
+            onSuccess,
+          })
+        : new ApiRequest<VizResponse>({
+            url: "/graphviz/schema_variant",
+            params: { schemaVariantId, ...visibility },
+            onSuccess,
+          });
+    }
+
+    return { edges: data.edges, nodes: data.nodes, LOAD_DATA };
+  }),
+);

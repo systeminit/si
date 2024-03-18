@@ -41,9 +41,10 @@ import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import { onMounted, ref, computed, watchPostEffect, Ref, reactive } from "vue";
-import { useVizStore, VizResponse } from "@/store/viz.store";
+import { useVizStore } from "@/store/viz.store";
 import { useComponentsStore } from "@/store/components.store";
 
+const vizStore = useVizStore();
 const componentStore = useComponentsStore();
 
 const loading: Ref<boolean> = ref(true);
@@ -55,8 +56,6 @@ const schemaVariantOptions = computed(() =>
     value: sv.id,
   })),
 );
-
-const vizStore = useVizStore();
 
 const getColor = (nodeKind: string, contentKind: string | null) => {
   const kindMap: { [key: string]: string } = {
@@ -139,37 +138,31 @@ function clearSelections() {
 }
 
 onMounted(async () => {
-  const nodesAndEdges: Record<string, unknown> = reactive({ result: {} });
   const size: Ref<number> = ref(3);
 
   watchPostEffect(async (): Promise<void> => {
     if (renderer) {
       renderer.kill();
     }
-    loading.value = true;
 
-    let res: ApiRequest<VizResponse>;
     if (!schemaVariant.value) {
-      res = await vizStore.FETCH_VIZ();
       size.value = 3;
-      loading.value = false;
     } else {
-      res = await vizStore.FETCH_SCHEMA_VARIANT_VIZ(schemaVariant.value);
       size.value = 6;
-      loading.value = false;
     }
-    nodesAndEdges.result = res.result;
 
-    if (!nodesAndEdges || !nodesAndEdges.result.success) {
+    loading.value = true;
+    await vizStore.LOAD_DATA(schemaVariant.value);
+    loading.value = false;
+
+    console.log("COMPONENT NODES", vizStore.nodes);
+    if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
       return;
     }
 
-    const nodes = nodesAndEdges.result.data.nodes;
-    const edges = nodesAndEdges.result.data.edges;
-
     graph = new DirectedGraph();
 
-    for (const node of nodes) {
+    for (const node of vizStore.nodes) {
       graph.addNode(node.id, {
         color: getColor(node.nodeKind, node.contentKind),
         label: `${node.contentKind ?? node.nodeKind}${
@@ -181,7 +174,7 @@ onMounted(async () => {
       });
     }
 
-    for (const edge of edges) {
+    for (const edge of vizStore.edges) {
       graph.addEdge(edge.from, edge.to);
     }
 
