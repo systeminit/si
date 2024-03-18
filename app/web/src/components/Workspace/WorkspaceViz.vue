@@ -6,6 +6,8 @@
       type="dropdown"
       class="flex-1"
       :options="schemaVariantOptions"
+      placeholder="--- None ---"
+      placeholderSelectable
     />
 
     <WorkspaceVizSchemaVariant
