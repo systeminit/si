@@ -1,14 +1,32 @@
 <template>
-  <Stack class="h-full w-full">
-    <section>
+  <Stack class="h-full w-full my-4 mx-4">
+    <Inline align="center" alignY="bottom">
+      <VormInput
+        v-model="schemaVariant"
+        label="Display"
+        type="dropdown"
+        class="flex-1"
+        :options="schemaVariantOptions"
+        placeholder="Entire Workspace"
+        placeholderSelectable
+      />
       <VormInput
         v-model="search_query"
         label="Find Node"
         type="text"
         class="flex-1"
       />
-    </section>
+      <div>
+        <VButton
+          :disabled="clickedNodes.size === 0 && clickedNeighbors.size === 0"
+          @click="clearSelections"
+          >Reset Selection(s)</VButton
+        >
+      </div>
+    </Inline>
+    <h1 v-show="loading" align="center">Loading...</h1>
     <section
+      v-show="!loading"
       id="vizDiv"
       class="h-full w-full m-0 p-0 overflow-hidden"
     ></section>
@@ -16,18 +34,29 @@
 </template>
 
 <script lang="ts" setup>
-import { VormInput, Stack } from "@si/vue-lib/design-system";
+import { VormInput, Stack, Inline, VButton } from "@si/vue-lib/design-system";
 import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
 import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import { onMounted, ref, watchPostEffect } from "vue";
-import { useVizStore } from "@/store/viz.store";
+import { onMounted, ref, computed, watchPostEffect, Ref, reactive } from "vue";
+import { useVizStore, VizResponse } from "@/store/viz.store";
+import { useComponentsStore } from "@/store/components.store";
+
+const componentStore = useComponentsStore();
+
+const loading: Ref<boolean> = ref(true);
+
+const schemaVariant = ref();
+const schemaVariantOptions = computed(() =>
+  componentStore.schemaVariants.map((sv) => ({
+    label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
+    value: sv.id,
+  })),
+);
 
 const vizStore = useVizStore();
-
-const props = defineProps<{ schemaVariantId?: string }>();
 
 const getColor = (nodeKind: string, contentKind: string | null) => {
   const kindMap: { [key: string]: string } = {
@@ -73,159 +102,190 @@ interface State {
   selectedNode?: string;
   suggestions?: Set<string>;
 }
-const state: State = { clickedNodes: new Set(), clickedNeighbors: new Set() };
+const clickedNodes: Set<string> = reactive(new Set());
+const clickedNeighbors: Set<string> = reactive(new Set());
+
+const state: State = {
+  clickedNodes,
+  clickedNeighbors,
+};
+let graph: DirectedGraph;
+let renderer: Sigma;
+
+function buildClickedNeighbors() {
+  state.clickedNeighbors.clear();
+  state.clickedNodes.forEach((c: string) => {
+    for (const n in graph.neighbors(c)) {
+      state.clickedNeighbors.add(n);
+    }
+  });
+}
+
+function setHoveredNode(node?: string) {
+  if (node) {
+    state.hoveredNode = node;
+    state.hoveredNeighbors = new Set(graph.neighbors(node));
+  } else {
+    state.hoveredNode = undefined;
+    state.hoveredNeighbors = undefined;
+  }
+
+  renderer.refresh();
+}
+
+function clearSelections() {
+  state.clickedNodes.clear();
+  state.clickedNeighbors.clear();
+}
 
 onMounted(async () => {
-  let nodesAndEdges;
-  let size: number;
-  if (!props.schemaVariantId) {
-    nodesAndEdges = await vizStore.FETCH_VIZ();
-    size = 3;
-  } else {
-    nodesAndEdges = await vizStore.FETCH_SCHEMA_VARIANT_VIZ(
-      props.schemaVariantId,
-    );
-    size = 6;
-  }
+  const nodesAndEdges: Record<string, unknown> = reactive({ result: {} });
+  const size: Ref<number> = ref(3);
 
-  if (!nodesAndEdges.result.success) {
-    return;
-  }
+  watchPostEffect(async (): Promise<void> => {
+    if (renderer) {
+      renderer.kill();
+    }
+    loading.value = true;
 
-  const nodes = nodesAndEdges.result.data.nodes;
-  const edges = nodesAndEdges.result.data.edges;
+    let res: ApiRequest<VizResponse>;
+    if (!schemaVariant.value) {
+      res = await vizStore.FETCH_VIZ();
+      size.value = 3;
+      loading.value = false;
+    } else {
+      res = await vizStore.FETCH_SCHEMA_VARIANT_VIZ(schemaVariant.value);
+      size.value = 6;
+      loading.value = false;
+    }
+    nodesAndEdges.result = res.result;
 
-  const graph = new DirectedGraph();
+    if (!nodesAndEdges || !nodesAndEdges.result.success) {
+      return;
+    }
 
-  for (const node of nodes) {
-    graph.addNode(node.id, {
-      color: getColor(node.nodeKind, node.contentKind),
-      label: `${node.contentKind ?? node.nodeKind}${
-        node.name ? `: ${node.name}` : ""
-      }`,
-      x: Math.floor(Math.random() * 1000),
-      y: Math.floor(Math.random() * 1000),
-      size,
+    const nodes = nodesAndEdges.result.data.nodes;
+    const edges = nodesAndEdges.result.data.edges;
+
+    graph = new DirectedGraph();
+
+    for (const node of nodes) {
+      graph.addNode(node.id, {
+        color: getColor(node.nodeKind, node.contentKind),
+        label: `${node.contentKind ?? node.nodeKind}${
+          node.name ? `: ${node.name}` : ""
+        }`,
+        x: Math.floor(Math.random() * 1000),
+        y: Math.floor(Math.random() * 1000),
+        size: size.value,
+      });
+    }
+
+    for (const edge of edges) {
+      graph.addEdge(edge.from, edge.to);
+    }
+
+    const sensibleSettings = forceAtlas2.inferSettings(graph);
+    const fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
+
+    fa2Layout.start();
+
+    const container = document.getElementById("vizDiv") as HTMLElement;
+    renderer = new Sigma(graph, container, {
+      allowInvalidContainer: true,
     });
-  }
 
-  for (const edge of edges) {
-    graph.addEdge(edge.from, edge.to);
-  }
+    renderer.on("enterNode", ({ node }) => {
+      setHoveredNode(node);
+    });
+    renderer.on("leaveNode", () => {
+      setHoveredNode(undefined);
+    });
 
-  const sensibleSettings = forceAtlas2.inferSettings(graph);
-  const fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
+    renderer.on("clickNode", ({ node }) => {
+      if (state.clickedNodes.has(node)) {
+        state.clickedNodes.delete(node);
+      } else {
+        state.clickedNodes.add(node);
+      }
+      buildClickedNeighbors();
+    });
 
-  fa2Layout.start();
+    renderer.setSetting("nodeReducer", (node, data) => {
+      const res: Partial<NodeDisplayData> = { ...data };
+      let dim = false;
 
-  const container = document.getElementById("vizDiv") as HTMLElement;
-  const renderer = new Sigma(graph, container, { allowInvalidContainer: true });
+      if (
+        state.hoveredNeighbors &&
+        !state.hoveredNeighbors.has(node) &&
+        state.hoveredNode !== node
+      ) {
+        dim = true;
+      }
 
-  renderer.on("enterNode", ({ node }) => {
-    setHoveredNode(node);
-  });
-  renderer.on("leaveNode", () => {
-    setHoveredNode(undefined);
-  });
+      if (
+        state.clickedNeighbors.size > 0 &&
+        !state.clickedNeighbors.has(node)
+      ) {
+        dim = true;
+      }
 
-  function build_clicked_neighbors() {
-    state.clickedNeighbors = new Set(
-      [...state.clickedNodes].flatMap((n) => graph.neighbors(n)),
-    );
-  }
+      if (state.suggestions && !state.suggestions.has(node)) {
+        dim = true;
+      }
 
-  renderer.on("clickNode", ({ node }) => {
-    if (state.clickedNodes.has(node)) {
-      state.clickedNodes.delete(node);
-    } else {
-      state.clickedNodes.add(node);
-    }
-    build_clicked_neighbors();
-  });
+      if (state.selectedNode === node) {
+        res.highlighted = true; // displays the label
+        dim = false;
+      }
 
-  function setHoveredNode(node?: string) {
-    if (node) {
-      state.hoveredNode = node;
-      state.hoveredNeighbors = new Set(graph.neighbors(node));
-    } else {
-      state.hoveredNode = undefined;
-      state.hoveredNeighbors = undefined;
-    }
+      if (state.clickedNodes.has(node)) {
+        res.highlighted = true;
+        dim = false;
+      }
 
-    renderer.refresh();
-  }
+      if (
+        state.clickedNeighbors.has(node) ||
+        state.suggestions?.has(node) ||
+        state.hoveredNeighbors?.has(node)
+      ) {
+        dim = false;
+      }
 
-  renderer.setSetting("nodeReducer", (node, data) => {
-    const res: Partial<NodeDisplayData> = { ...data };
-    let dim = false;
+      if (dim) {
+        res.color = "#f6f6f6";
+      }
 
-    if (
-      state.hoveredNeighbors &&
-      !state.hoveredNeighbors.has(node) &&
-      state.hoveredNode !== node
-    ) {
-      dim = true;
-    }
+      return res;
+    });
 
-    if (state.clickedNeighbors.size > 0 && !state.clickedNeighbors.has(node)) {
-      dim = true;
-    }
+    renderer.setSetting("edgeReducer", (edge, data) => {
+      const res: Partial<EdgeDisplayData> = { ...data };
+      const source = graph.source(edge);
+      const target = graph.target(edge);
 
-    if (state.suggestions && !state.suggestions.has(node)) {
-      dim = true;
-    }
+      if (state.hoveredNode && !graph.hasExtremity(edge, state.hoveredNode)) {
+        res.hidden = true;
+      }
 
-    if (state.selectedNode === node) {
-      res.highlighted = true; // displays the label
-      dim = false;
-    }
+      if (
+        state.suggestions &&
+        (!state.suggestions.has(source) || !state.suggestions.has(target))
+      ) {
+        res.hidden = true;
+      }
 
-    if (state.clickedNodes.has(node)) {
-      res.highlighted = true;
-      dim = false;
-    }
+      if (
+        state.clickedNeighbors.has(source) ||
+        state.clickedNeighbors.has(target) ||
+        state.clickedNodes.has(source) ||
+        state.clickedNodes.has(target)
+      ) {
+        res.hidden = false;
+      }
 
-    if (
-      state.clickedNeighbors.has(node) ||
-      state.suggestions?.has(node) ||
-      state.hoveredNeighbors?.has(node)
-    ) {
-      dim = false;
-    }
-
-    if (dim) {
-      res.color = "#f6f6f6";
-    }
-
-    return res;
-  });
-
-  renderer.setSetting("edgeReducer", (edge, data) => {
-    const res: Partial<EdgeDisplayData> = { ...data };
-    const source = graph.source(edge);
-    const target = graph.target(edge);
-
-    if (state.hoveredNode && !graph.hasExtremity(edge, state.hoveredNode)) {
-      res.hidden = true;
-    }
-
-    if (
-      state.suggestions &&
-      (!state.suggestions.has(source) || !state.suggestions.has(target))
-    ) {
-      res.hidden = true;
-    }
-
-    if (
-      state.clickedNeighbors.has(source) ||
-      state.clickedNeighbors.has(target) ||
-      state.clickedNodes.has(source) ||
-      state.clickedNodes.has(target)
-    ) {
-      res.hidden = false;
-    }
-
-    return res;
+      return res;
+    });
   });
 
   watchPostEffect((): void => {
