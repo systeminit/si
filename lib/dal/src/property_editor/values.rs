@@ -16,6 +16,7 @@ use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, InputSocketId,
     Prop, PropId,
 };
+use crate::component::ControllingFuncData;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -142,11 +143,11 @@ impl PropertyEditorValues {
                     .find(|&s| connected_sockets_on_component.contains(s))
                     .is_some();
 
-                let (
-                    this_controlling_func_id,
-                    this_controlling_attribute_value_id,
-                    this_controlling_func_is_dynamic,
-                ) = controlling_ancestors_for_av_id
+                let ControllingFuncData {
+                    func_id: this_controlling_func_id, 
+                    av_id: this_controlling_attribute_value_id, 
+                    is_dynamic_func: this_controlling_func_is_dynamic,
+                } = controlling_ancestors_for_av_id
                     .get(&child_av_id)
                     .ok_or(AttributeValueError::MissingForId(child_av_id))?;
 

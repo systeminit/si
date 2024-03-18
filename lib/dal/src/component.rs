@@ -187,6 +187,13 @@ impl From<Component> for ComponentContentV1 {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct ControllingFuncData {
+    pub func_id: FuncId,
+    pub av_id: AttributeValueId,
+    pub is_dynamic_func: bool,
+}
+
 impl Component {
     pub fn assemble(node_weight: &ComponentNodeWeight, content: ComponentContentV1) -> Self {
         Self {
@@ -1098,29 +1105,32 @@ impl Component {
     pub async fn list_av_controlling_func_ids_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<AttributeValueId, (FuncId, AttributeValueId, bool)>> {
+    ) -> ComponentResult<HashMap<AttributeValueId, ControllingFuncData>> {
         let root_av_id: AttributeValueId =
             Component::root_attribute_value_id(ctx, component_id).await?;
 
         let mut av_queue = VecDeque::from([(root_av_id, None)]);
-        let mut result: HashMap<AttributeValueId, (FuncId, AttributeValueId, bool)> =
-            HashMap::new();
+        let mut result: HashMap<AttributeValueId, ControllingFuncData> = HashMap::new();
 
         while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
             let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
             let func = Func::get_by_id(ctx, func_id).await?;
 
-            let this_tuple = (func_id, av_id, func.is_dynamic());
+            let this_tuple = ControllingFuncData {
+                func_id,
+                av_id,
+                is_dynamic_func: func.is_dynamic(),
+            };
 
             // if av has a parent and parent is controlled by dynamic func (tuple.2), that's the controller
             // else av controls itself
             let controlling_tuple = if let Some(parent_av_id) = maybe_parent_av_id {
                 // We can unwrap because if we're on the child, we've added the parent to result
-                let parent_tuple = result.get(&parent_av_id).unwrap().clone();
+                let parent_controlling_data = result.get(&parent_av_id).unwrap().clone();
 
-                if parent_tuple.2 {
-                    parent_tuple
+                if parent_controlling_data.is_dynamic_func {
+                    parent_controlling_data
                 } else {
                     this_tuple
                 }
@@ -1133,28 +1143,38 @@ impl Component {
             //     let this_prop = Prop::get_by_id(ctx, prop_id).await?;
             //
             //     let controlling_prop = {
-            //         let prop_id = AttributeValue::prop_id_for_id(ctx, controlling_tuple.1).await?;
+            //         let prop_id =
+            //             AttributeValue::prop_id_for_id(ctx, controlling_tuple.av_id).await?;
             //         Prop::get_by_id(ctx, prop_id).await?
             //     };
-            //     let controlling_func = { Func::get_by_id(ctx, controlling_tuple.0).await? };
+            //     let controlling_func = Func::get_by_id(ctx, controlling_tuple.func_id).await?;
             //
-            //     let overridden = controlling_tuple.1 != this_tuple.1;
+            //     let controlled_by_ancestor = controlling_tuple.av_id != this_tuple.av_id;
+            //     println!("===========================");
             //
             //     println!(
             //         "Prop {} is controlled by {}, through func {}({}dynamic){}",
             //         this_prop.name,
-            //         if overridden {
+            //         if controlled_by_ancestor {
             //             controlling_prop.name
             //         } else {
             //             "itself".to_string()
             //         },
             //         controlling_func.name,
-            //         if controlling_tuple.2 { "" } else { "non-" },
-            //         if overridden {
+            //         if controlling_tuple.is_dynamic_func {
+            //             ""
+            //         } else {
+            //             "non-"
+            //         },
+            //         if controlled_by_ancestor {
             //             format!(
-            //                 " - overrides func {}({}dynamic)",
+            //                 " - controlled. original func {}({}dynamic)",
             //                 func.name,
-            //                 if this_tuple.2 { "" } else { "non-" }
+            //                 if this_tuple.is_dynamic_func {
+            //                     ""
+            //                 } else {
+            //                     "non-"
+            //                 }
             //             )
             //         } else {
             //             "".to_string()
