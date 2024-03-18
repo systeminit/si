@@ -1,36 +1,27 @@
-//! This module provides [`ComponentViewProperties`], which is a builder-pattern struct that enables
-//! users to modify an existing [`ComponentView`] safely.
+//! This module provides [`ComponentProperties`], which is a builder-pattern struct that enables
+//! users to modify an existing component safely.
 
+use crate::ComponentError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::component::view::ComponentViewResult;
-use crate::component::ComponentViewError;
-use crate::ComponentView;
-
-/// This struct provides the ability to drop fields from a [`ComponentView`](crate::ComponentView)
-/// properties tree and then re-render the view using [`Self::to_value()`].
-///
-/// - It is not recommended to use [`self`] "as-is" in assertions.
-/// - It is recommended to use [`Self::to_value()`] in assertions.
-///
-/// The fields on this struct are **intentionally private**.
 #[derive(Deserialize, Serialize, Debug, Default)]
-pub struct ComponentViewProperties {
-    si: serde_json::Value,
+pub struct ComponentProperties {
+    pub(crate) si: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    domain: Option<serde_json::Value>,
+    pub(crate) domain: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    resource: Option<ResourceProperties>,
+    pub(crate) resource: Option<ResourceProperties>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    code: Option<serde_json::Value>,
+    pub(crate) code: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    qualification: Option<serde_json::Value>,
+    pub(crate) qualification: Option<serde_json::Value>,
 }
 
 /// This _private_ struct provides the ability to drop fields for the "/root/resource" tree at a
 /// more granular level than [`ComponentViewProperties`].
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
-struct ResourceProperties {
+pub struct ResourceProperties {
     #[serde(skip_serializing_if = "Option::is_none")]
     status: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -43,13 +34,7 @@ struct ResourceProperties {
     last_synced: Option<serde_json::Value>,
 }
 
-impl ComponentViewProperties {
-    /// Create a new [`ComponentViewProperties`] object by using [`Self::try_from`] with a
-    /// [`ComponentView`].
-    pub fn new(view: ComponentView) -> ComponentViewResult<Self> {
-        Self::try_from(view)
-    }
-
+impl ComponentProperties {
     pub fn drop_private(&mut self) -> &mut Self {
         *self = Self {
             si: self.si.take(),
@@ -79,18 +64,12 @@ impl ComponentViewProperties {
         }
         self
     }
-
-    /// Converts [`self`](ComponentViewProperties) into a serialized [`Value`](serde_json::Value).
-    pub fn to_value(&self) -> ComponentViewResult<serde_json::Value> {
-        let value = serde_json::to_value(self)?;
-        Ok(value)
-    }
 }
 
-impl TryFrom<ComponentView> for ComponentViewProperties {
-    type Error = ComponentViewError;
+impl TryFrom<serde_json::Value> for ComponentProperties {
+    type Error = ComponentError;
 
-    fn try_from(view: ComponentView) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_value(view.properties)?)
+    fn try_from(view: Value) -> Result<Self, Self::Error> {
+        Ok(serde_json::from_value(view)?)
     }
 }

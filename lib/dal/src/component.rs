@@ -45,18 +45,15 @@ use crate::{
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
-pub mod resource;
-
-// pub mod code;
-// pub mod diff;
-mod code;
+pub mod code;
+pub mod diff;
 pub mod frame;
+pub mod properties;
 pub mod qualification;
+pub mod resource;
 // pub mod status;
 // pub mod validation;
 // pub mod view;
-
-// pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
@@ -102,6 +99,8 @@ pub enum ComponentError {
     MissingCodeValue(ComponentId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
+    #[error("component {0} missing attribute value for root")]
+    MissingRootProp(ComponentId),
     #[error("found multiple parents for component: {0}")]
     MultipleParentsForComponent(ComponentId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]

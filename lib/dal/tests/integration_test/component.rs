@@ -9,6 +9,7 @@ use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
 
 mod get_code;
+mod get_diff;
 mod set_type;
 
 #[test]
