@@ -232,7 +232,6 @@ impl ChunkedMessagesStream {
                                 },
                                 ackers: Arc::new(ackers),
                             };
-
                             Some(Poll::Ready(Some(Ok(new_msg))))
                         } else {
                             // Still more chunks to go with this message, so try for more

@@ -6,6 +6,7 @@ use telemetry::tracing::{info, warn};
 use ulid::Ulid;
 
 use crate::{
+    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivitySubscriber},
     error::LayerDbResult,
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterServer},
@@ -28,6 +29,7 @@ where
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
+    activity_publisher: ActivityPublisher,
     instance_id: Ulid,
     tracker: TaskTracker,
     cancellation_token: CancellationToken,
@@ -88,7 +90,10 @@ where
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
 
+        let activity_publisher = ActivityPublisher::new(&nats_client);
+
         Ok(LayerDb {
+            activity_publisher,
             cas,
             sled,
             pg_pool,
@@ -137,5 +142,19 @@ where
         self.cas.cache.pg().migrate().await?;
 
         Ok(())
+    }
+
+    // Publish an activity
+    pub fn activity_publish(&self, activity: &Activity) -> LayerDbResult<()> {
+        self.activity_publisher.publish(activity)
+    }
+
+    // Subscribe to all activities, or provide an optional array of activity kinds
+    // to subscribe to.
+    pub async fn activity_subscribe(
+        &self,
+        to_receive: Option<Vec<ActivityPayloadDiscriminants>>,
+    ) -> LayerDbResult<ActivitySubscriber> {
+        ActivitySubscriber::new(self.instance_id, &self.nats_client, to_receive).await
     }
 }

@@ -23,6 +23,7 @@
 //! returned to the user
 //!
 
+pub mod activities;
 pub mod chunking_nats;
 pub mod db;
 pub mod disk_cache;
