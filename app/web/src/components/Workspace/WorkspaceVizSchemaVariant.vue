@@ -23,6 +23,11 @@
           >Reset Selection(s)</VButton
         >
       </div>
+      <div>
+        <VButton @click="toggleLayout"
+          >{{ animate_layout ? "Stop" : "Start" }} Animation</VButton
+        >
+      </div>
     </Inline>
     <h1 v-show="loading" align="center">Loading...</h1>
     <section
@@ -34,15 +39,15 @@
 </template>
 
 <script lang="ts" setup>
+import { onMounted, ref, computed, watchPostEffect, Ref, reactive } from "vue";
 import { VormInput, Stack, Inline, VButton } from "@si/vue-lib/design-system";
 import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
 import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import { onMounted, ref, computed, watchPostEffect, Ref, reactive } from "vue";
-import { useVizStore } from "@/store/viz.store";
 import { useComponentsStore } from "@/store/components.store";
+import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
 const componentStore = useComponentsStore();
@@ -89,7 +94,9 @@ const getColor = (nodeKind: string, contentKind: string | null) => {
 };
 
 const search_query = ref("");
+const animate_layout = ref(true);
 
+// vanilla JS used for the graph library interactions
 interface State {
   hoveredNode?: string;
   hoveredNeighbors?: Set<string>;
@@ -101,6 +108,7 @@ interface State {
   selectedNode?: string;
   suggestions?: Set<string>;
 }
+// reactivity used for controls
 const clickedNodes: Set<string> = reactive(new Set());
 const clickedNeighbors: Set<string> = reactive(new Set());
 
@@ -110,6 +118,16 @@ const state: State = {
 };
 let graph: DirectedGraph;
 let renderer: Sigma;
+let fa2Layout: FA2Layout;
+
+function toggleLayout() {
+  if (fa2Layout.isRunning()) {
+    fa2Layout.stop();
+  } else {
+    fa2Layout.start();
+  }
+  animate_layout.value = !animate_layout.value;
+}
 
 function buildClickedNeighbors() {
   state.clickedNeighbors.clear();
@@ -137,18 +155,21 @@ function clearSelections() {
   state.clickedNeighbors.clear();
 }
 
+// we need DOM loaded
 onMounted(async () => {
   const size: Ref<number> = ref(3);
 
+  // whenever the schema variant changes, we need to re-load the graph
+  // `Post` because we need the DOM loaded
   watchPostEffect(async (): Promise<void> => {
     if (renderer) {
-      renderer.kill();
+      renderer.kill(); // without this the graph draws new nodes on top of old nodes
     }
 
     if (!schemaVariant.value) {
       size.value = 3;
     } else {
-      size.value = 6;
+      size.value = 6; // smaller graph, fewer nodes
     }
 
     loading.value = true;
@@ -159,6 +180,7 @@ onMounted(async () => {
       return;
     }
 
+    // build graph nodes
     graph = new DirectedGraph();
 
     for (const node of vizStore.nodes) {
@@ -170,6 +192,8 @@ onMounted(async () => {
         x: Math.floor(Math.random() * 1000),
         y: Math.floor(Math.random() * 1000),
         size: size.value,
+        grouping:
+          node.nodeKind === "Content" ? node.contentKind : node.contentKind,
       });
     }
 
@@ -177,16 +201,21 @@ onMounted(async () => {
       graph.addEdge(edge.from, edge.to);
     }
 
-    const sensibleSettings = forceAtlas2.inferSettings(graph);
-    const fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
-
-    fa2Layout.start();
-
     const container = document.getElementById("vizDiv") as HTMLElement;
     renderer = new Sigma(graph, container, {
       allowInvalidContainer: true,
     });
 
+    const sensibleSettings = forceAtlas2.inferSettings(graph);
+    fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
+    fa2Layout.start();
+
+    // Cheap trick: tilt the camera a bit to make labels more readable
+    renderer.getCamera().setState({
+      angle: 0.2,
+    });
+
+    // Define graph interactivity
     renderer.on("enterNode", ({ node }) => {
       setHoveredNode(node);
     });
@@ -280,6 +309,7 @@ onMounted(async () => {
     });
   });
 
+  // search reactivity needs manual intervention for the graph library
   watchPostEffect((): void => {
     if (!search_query.value) {
       state.selectedNode = undefined;
