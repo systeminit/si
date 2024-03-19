@@ -38,16 +38,11 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, AttributePrototype, AttributeValue,
-    AttributeValueId, ChangeSetPk, DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
     func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
-    ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetId, DalContext, InputSocket,
-    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
+    DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
+    Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
+    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -1123,11 +1118,11 @@ impl Component {
                 is_dynamic_func: func.is_dynamic(),
             };
 
-            // if av has a parent and parent is controlled by dynamic func (tuple.2), that's the controller
+            // if av has a parent and parent is controlled by dynamic func, that's the controller
             // else av controls itself
             let controlling_tuple = if let Some(parent_av_id) = maybe_parent_av_id {
                 // We can unwrap because if we're on the child, we've added the parent to result
-                let parent_controlling_data = result.get(&parent_av_id).unwrap().clone();
+                let parent_controlling_data = *result.get(&parent_av_id).unwrap();
 
                 if parent_controlling_data.is_dynamic_func {
                     parent_controlling_data
@@ -1182,7 +1177,7 @@ impl Component {
             //     );
             // }
 
-            result.insert(av_id, controlling_tuple.clone());
+            result.insert(av_id, controlling_tuple);
 
             av_queue.extend(
                 AttributeValue::get_child_av_ids_for_ordered_parent(ctx, av_id)

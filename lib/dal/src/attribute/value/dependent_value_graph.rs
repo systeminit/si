@@ -3,14 +3,14 @@ use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use tokio::{fs::File, io::AsyncWriteExt};
 use ulid::Ulid;
 
-use crate::component::{Component, ControllingFuncData};
+use crate::component::ControllingFuncData;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
         value::ValueIsFor,
     },
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    ComponentId, Component, DalContext, Prop,
+    Component, ComponentId, DalContext, Prop,
 };
 
 use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};

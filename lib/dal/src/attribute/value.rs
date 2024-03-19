@@ -49,9 +49,7 @@ use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
-use content_store::{Store, StoreError};
 pub use dependent_value_graph::DependentValueGraph;
-use telemetry::prelude::*;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
@@ -141,10 +139,10 @@ pub enum AttributeValueError {
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
-    #[error("missing attribute value with id: {0}")]
-    MissingForId(AttributeValueId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("missing attribute value with id: {0}")]
+    MissingForId(AttributeValueId),
     #[error("attribute value {0} missing prop edge when one was expected")]
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
@@ -1446,13 +1444,6 @@ impl AttributeValue {
         })
     }
 
-    pub async fn is_overridden_for_id(
-        ctx: &DalContext,
-        av_id: AttributeValueId,
-    ) -> AttributeValueResult<bool> {
-        Ok(Self::component_prototype_id(ctx, av_id).await?.is_some())
-    }
-
     /// The id of the prototype that controls this attribute value at the level of the schema
     /// variant
     pub async fn schema_variant_prototype_id(
@@ -2107,10 +2098,8 @@ impl AttributeValue {
         for apa_id in apa_ids {
             let maybe_value_source =
                 AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?;
-            if let Some(value_source) = maybe_value_source {
-                if let ValueSource::InputSocket(socket_id) = value_source {
-                    input_socket_ids.push(socket_id);
-                }
+            if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {
+                input_socket_ids.push(socket_id);
             }
         }
 

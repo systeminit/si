@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::ActionKind;
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
+use crate::ActionKind;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {

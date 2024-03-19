@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::attribute::value::AttributeValueError;
+use crate::component::ControllingFuncData;
 use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
@@ -16,7 +17,6 @@ use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, InputSocketId,
     Prop, PropId,
 };
-use crate::component::ControllingFuncData;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -140,16 +140,29 @@ impl PropertyEditorValues {
 
                 let is_from_external_source = sockets_for_av
                     .iter()
-                    .find(|&s| connected_sockets_on_component.contains(s))
-                    .is_some();
+                    .any(|s| connected_sockets_on_component.contains(s));
 
                 let ControllingFuncData {
-                    func_id: this_controlling_func_id, 
-                    av_id: this_controlling_attribute_value_id, 
+                    func_id: this_controlling_func_id,
+                    av_id: this_controlling_attribute_value_id,
                     is_dynamic_func: this_controlling_func_is_dynamic,
-                } = controlling_ancestors_for_av_id
+                } = *controlling_ancestors_for_av_id
                     .get(&child_av_id)
                     .ok_or(AttributeValueError::MissingForId(child_av_id))?;
+
+                // Note (victor): An attribute value is overridden if there is an attribute
+                // prototype for this specific AV, which means it's set for the component,
+                // not the schema variant. If the av is controlled, this check should be
+                // made for its controlling AV.
+                // This could be standalone func for AV, but we'd have to implement a
+                // controlling_ancestors_for_av_id for av, instead of for the whole component.
+                // Not a complicated task, but the PR that adds this has enough code as it is.
+                let overridden = AttributeValue::component_prototype_id(
+                    ctx,
+                    this_controlling_attribute_value_id,
+                )
+                .await?
+                .is_some();
 
                 let child_property_editor_value = PropertyEditorValue {
                     id: child_property_editor_value_id,
@@ -161,10 +174,10 @@ impl PropertyEditorValues {
                         .unwrap_or(Value::Null),
                     can_be_set_by_socket: !sockets_for_av.is_empty(),
                     is_from_external_source,
-                    controlling_func_id: *this_controlling_func_id,
-                    controlling_attribute_value_id: *this_controlling_attribute_value_id,
-                    is_controlled_by_dynamic_func: *this_controlling_func_is_dynamic,
-                    overridden: AttributeValue::is_overridden_for_id(ctx, child_av_id).await?,
+                    controlling_func_id: this_controlling_func_id,
+                    controlling_attribute_value_id: this_controlling_attribute_value_id,
+                    is_controlled_by_dynamic_func: this_controlling_func_is_dynamic,
+                    overridden,
                 };
 
                 // Load the work queue with the child attribute value.

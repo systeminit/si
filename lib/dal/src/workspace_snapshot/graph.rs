@@ -3,20 +3,23 @@ use std::fs::File;
 use std::io::Write;
 
 use chrono::Utc;
-use si_events::ContentHash;
-use petgraph::{algo, prelude::*, visit::DfsEvent};
-pub use petgraph::Direction;
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::Edges;
+pub use petgraph::Direction;
+use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use thiserror::Error;
 use ulid::Ulid;
 
-use content_store::{ContentHash, Store, StoreError};
 use telemetry::prelude::*;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{
     conflict::Conflict,
     content_address::ContentAddress,
@@ -24,10 +27,6 @@ use crate::workspace_snapshot::{
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
 };
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 
 mod tests;
 
@@ -907,7 +906,7 @@ impl WorkspaceSnapshotGraph {
         );
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, clippy::disallowed_methods)]
     pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
         let suffix = suffix.unwrap_or("dot");
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the

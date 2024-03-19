@@ -262,7 +262,7 @@ impl Func {
         Self::is_dynamic_for_name_string(&self.name)
     }
 
-    pub fn is_dynamic_for_name_string(name: &String) -> bool {
+    pub fn is_dynamic_for_name_string(name: &str) -> bool {
         if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(name) {
             ![
                 IntrinsicFunc::SetArray,
