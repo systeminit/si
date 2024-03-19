@@ -19,7 +19,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
@@ -38,7 +38,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
+    func::backend::js_action::ActionRunResult, pk, Action, ActionKind, ActionPrototype,
     ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
     Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
@@ -63,6 +63,8 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("action error: {0}")]
+    Action(String),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
@@ -72,7 +74,7 @@ pub enum ComponentError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
     #[error("component {0} has no attribute value for the root/si/color prop")]
@@ -125,6 +127,8 @@ pub enum ComponentError {
     PropIdNotAProp(PropId),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("ordering node not found for qualifications map {0} and component {1}")]
+    QualificationNoOrderingNode(AttributeValueId, ComponentId),
     #[error("root attribute value not found for component: {0}")]
     RootAttributeValueNotFound(ComponentId),
     #[error("schema variant error: {0}")]
@@ -406,6 +410,18 @@ impl Component {
             AttributeValue::update_from_prototype_function(ctx, *leaf_value_id).await?;
         }
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
+
+        // Find all create action prototypes for the variant and create actions for them.
+        for prototype in ActionPrototype::for_variant(ctx, schema_variant_id)
+            .await
+            .map_err(Box::new)?
+        {
+            if prototype.kind == ActionKind::Create {
+                Action::upsert(ctx, prototype.id, component.id())
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        }
 
         Ok(component)
     }

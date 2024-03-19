@@ -55,7 +55,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, ChangeSetPointerError, DalContext, HistoryActor, HistoryEventError, KeyPair, KeyPairError,
+    id, ChangeSetError, DalContext, HistoryActor, HistoryEventError, KeyPair, KeyPairError,
     SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
 };
 
@@ -78,8 +78,8 @@ pub use view::SecretViewResult;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
-    #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("error when decrypting crypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]

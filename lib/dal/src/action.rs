@@ -11,7 +11,7 @@ pub mod batch;
 pub mod prototype;
 pub mod runner;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::layer_db_types::ComponentContent;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -34,7 +34,7 @@ pub enum ActionError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("component not found for: {0}")]
@@ -294,6 +294,8 @@ impl Action {
         Ok(actions)
     }
 
+    /// A read-only method that assembles a flattened graph of [`Actions`] that will run when
+    /// the change set is applied to head.
     pub async fn build_graph(ctx: &DalContext) -> ActionResult<HashMap<ActionId, ActionBag>> {
         let mut actions_by_id: HashMap<ActionId, (Action, ComponentId)> = HashMap::new();
         let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();

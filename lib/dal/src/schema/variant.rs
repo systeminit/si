@@ -22,7 +22,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
@@ -74,7 +74,7 @@ pub enum SchemaVariantError {
     #[error("attribute argument prototype error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]

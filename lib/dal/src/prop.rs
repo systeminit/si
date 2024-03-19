@@ -14,7 +14,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
@@ -41,7 +41,7 @@ pub enum PropError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("child prop of {0:?} not found by name: {1}")]
     ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]

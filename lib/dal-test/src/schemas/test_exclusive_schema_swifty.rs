@@ -17,10 +17,10 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
 
     swifty_builder
         .name("swifty")
-        .version("2024-03-06")
-        .created_by("System Initiative");
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
 
-    let identity_func_spec = create_identity_func();
+    let identity_func_spec = create_identity_func()?;
 
     // Build Create Action Func
     let create_action_code = "async function main() {

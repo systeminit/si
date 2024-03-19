@@ -1,5 +1,6 @@
 mod batch;
 mod runner;
+mod with_secret;
 
 use dal::{Action, ActionKind, ActionPrototype, Component, DalContext, InputSocket, OutputSocket};
 use dal_test::test;

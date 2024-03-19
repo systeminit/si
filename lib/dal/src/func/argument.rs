@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -25,7 +25,7 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum FuncArgumentError {
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("history event error: {0}")]

@@ -15,7 +15,7 @@ use ulid::Ulid;
 
 use telemetry::prelude::*;
 
-use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
+use crate::change_set_pointer::{ChangeSetError, ChangeSetPointer};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
@@ -41,7 +41,7 @@ pub enum WorkspaceSnapshotGraphError {
     #[error("could not find category node used by node with index {0:?}")]
     CategoryNodeNotFound(NodeIndex),
     #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("Unable to retrieve content for ContentHash")]
     ContentMissingForContentHash,
     #[error("Action would create a graph cycle")]

@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::schema::variant::SchemaVariantResult;
@@ -43,7 +43,7 @@ pub enum FuncError {
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("chrono parse error: {0}")]
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]

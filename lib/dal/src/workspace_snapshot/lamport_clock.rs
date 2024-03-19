@@ -4,12 +4,12 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::workspace_snapshot::ChangeSetPointerError;
+use crate::workspace_snapshot::ChangeSetError;
 
 #[derive(Debug, Error)]
 pub enum LamportClockError {
     #[error("Change Set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
 }
 
 pub type LamportClockResult<T> = Result<T, LamportClockError>;

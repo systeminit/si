@@ -42,8 +42,7 @@ impl Component {
             curr_json = serde_json::to_string_pretty(&json!(null))?;
         }
 
-        let head_ctx = ctx.clone_with_head().await?;
-        if ctx.change_set_id() == head_ctx.get_workspace_default_change_set_id().await? {
+        if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
             // We are on HEAD and need to react as so!
             return Ok(ComponentDiff {
                 component_id,
@@ -51,6 +50,8 @@ impl Component {
                 diffs: vec![],
             });
         }
+
+        let head_ctx = ctx.clone_with_head().await?;
 
         let head_json: String;
         let mut is_new_comp = false;

@@ -21,7 +21,7 @@ use thiserror::Error;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -44,7 +44,7 @@ pub enum AttributePrototypeError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(String),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("layer db error: {0}")]

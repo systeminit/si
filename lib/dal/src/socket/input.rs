@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::FuncError;
 use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
@@ -30,7 +30,7 @@ pub enum InputSocketError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]

@@ -1,13 +1,16 @@
-use dal::func::argument::FuncArgumentKind;
-use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{pkg, prop::PropPath, ActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
-use si_pkg::SchemaSpecData;
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
-    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, PropSpecKind, PropSpecWidgetKind,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData,
+    SocketSpecKind,
+};
+use si_pkg::{SchemaSpecData, SocketSpecArity};
+
+use crate::schemas::schema_helpers::{
+    build_action_func, build_resource_payload_to_value_func, create_identity_func,
 };
 
 pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -15,28 +18,35 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
 
     fallout_builder
         .name("fallout")
-        .version("2023-05-23")
-        .created_by("System Initiative");
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
 
-    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+    let identity_func_spec = create_identity_func()?;
 
-    let fallout_create_action_code = "async function create() {
-                return { payload: { \"poop\": true }, status: \"ok\" };
-            }";
+    let code = "async function main() {
+        const authCheck = requestStorage.getItem('dummySecretString');
+        if (authCheck) {
+            if (authCheck === 'todd') {
+                return {
+                    status: 'ok',
+                    payload: {
+                        'poop': true
+                    }
+                };
+            }
+            return {
+                status: 'error',
+                message: 'cannot create: dummy secret string does not match expected value'
+            };
+        } else {
+            return {
+                status: 'error',
+                message: 'cannot create: dummy secret string is empty'
+            };
+        }
+    }";
     let fn_name = "test:createActionFallout";
-    let fallout_create_action_func = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(fallout_create_action_code)
-                .handler("create")
-                .backend_kind(FuncSpecBackendKind::JsAction)
-                .response_type(FuncSpecBackendResponseType::Action)
-                .build()?,
-        )
-        .build()?;
+    let fallout_create_action_func = build_action_func(code, fn_name).await?;
 
     let fallout_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
@@ -56,30 +66,10 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         )
         .build()?;
 
-    let fallout_resource_payload_to_value_func_code =
-        "async function translate(arg: Input): Promise<Output> {\
-            return arg.payload ?? {};
-        }";
-    let fn_name = "test:resourcePayloadToValue";
-    let fallout_resource_payload_to_value_func = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(fallout_resource_payload_to_value_func_code)
-                .handler("translate")
-                .backend_kind(FuncSpecBackendKind::JsAttribute)
-                .response_type(FuncSpecBackendResponseType::Json)
-                .build()?,
-        )
-        .argument(
-            FuncArgumentSpec::builder()
-                .name("payload")
-                .kind(FuncArgumentKind::Object)
-                .build()?,
-        )
-        .build()?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+
+    let (dummy_secret_input_scoket, dummy_secret_prop) =
+        assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
 
     let fallout_schema = SchemaSpec::builder()
         .name("fallout")
@@ -178,6 +168,8 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
                         )
                         .build()?,
                 )
+                .secret_prop(dummy_secret_prop)
+                .socket(dummy_secret_input_scoket)
                 .action_func(
                     ActionFuncSpec::builder()
                         .kind(&ActionKind::Create)
@@ -192,7 +184,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         .func(identity_func_spec)
         .func(fallout_create_action_func)
         .func(fallout_authoring_schema_func)
-        .func(fallout_resource_payload_to_value_func)
+        .func(resource_payload_to_value_func)
         .schema(fallout_schema)
         .build()?;
 
@@ -208,4 +200,52 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
     .await?;
 
     Ok(())
+}
+
+// Mimics functionality from "asset_builder.ts".
+fn assemble_dummy_secret_socket_and_prop(
+    identity_func_spec: &FuncSpec,
+) -> BuiltinsResult<(SocketSpec, PropSpec)> {
+    let secret_definition_name = "dummy";
+
+    // Create the input socket for the secret.
+    let secret_input_socket = SocketSpec::builder()
+        .name(secret_definition_name)
+        .data(
+            SocketSpecData::builder()
+                .name(secret_definition_name)
+                .connection_annotations(serde_json::to_string(&vec![
+                    secret_definition_name.to_lowercase()
+                ])?)
+                .kind(SocketSpecKind::Input)
+                .arity(SocketSpecArity::One)
+                .func_unique_id(&identity_func_spec.unique_id)
+                .build()?,
+        )
+        .build()?;
+
+    // Create the secret prop for the secret.
+    let secret_prop = PropSpec::builder()
+        .name(secret_definition_name)
+        .kind(PropSpecKind::String)
+        .widget_kind(PropSpecWidgetKind::Secret)
+        .func_unique_id(&identity_func_spec.unique_id)
+        .widget_options(serde_json::json![
+            [
+                {
+                    "label": "secretKind",
+                    "value": secret_definition_name
+                }
+            ]
+        ])
+        .input(
+            AttrFuncInputSpec::builder()
+                .name("identity")
+                .kind(AttrFuncInputSpecKind::InputSocket)
+                .socket_name(secret_definition_name)
+                .build()?,
+        )
+        .build()?;
+
+    Ok((secret_input_socket, secret_prop))
 }

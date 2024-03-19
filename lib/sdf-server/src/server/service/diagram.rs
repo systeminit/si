@@ -12,7 +12,7 @@ use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{
-    ActionError, ActionPrototypeError, ChangeSetPointerError, SchemaVariantId, StandardModelError,
+    ActionError, ActionPrototypeError, ChangeSetError, SchemaVariantId, StandardModelError,
     TransactionsError,
 };
 use thiserror::Error;
@@ -47,7 +47,7 @@ pub enum DiagramError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("changeset error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]
