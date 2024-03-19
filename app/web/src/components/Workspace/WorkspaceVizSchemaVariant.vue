@@ -114,7 +114,7 @@ let renderer: Sigma;
 function buildClickedNeighbors() {
   state.clickedNeighbors.clear();
   state.clickedNodes.forEach((c: string) => {
-    for (const n in graph.neighbors(c)) {
+    for (const n of graph.neighbors(c)) {
       state.clickedNeighbors.add(n);
     }
   });
@@ -155,7 +155,6 @@ onMounted(async () => {
     await vizStore.LOAD_DATA(schemaVariant.value);
     loading.value = false;
 
-    console.log("COMPONENT NODES", vizStore.nodes);
     if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
       return;
     }
