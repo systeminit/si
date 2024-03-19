@@ -2,14 +2,12 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use axum::{extract::Query, response::Response, routing::get, Json, Router};
 use dal::{
-    schema::variant::SchemaVariantError,
-    workspace_snapshot::{
+    schema::variant::SchemaVariantError, workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
         node_weight::{NodeWeight, NodeWeightDiscriminants},
         WorkspaceSnapshotError,
-    },
-    SchemaVariant, SchemaVariantId, TransactionsError, Visibility,
+    }, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError, Visibility
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -24,6 +22,8 @@ use crate::server::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum GraphVizError {
+    #[error(transparent)]
+    Component(#[from] ComponentError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("graph did not have a root node, although this is an unreachable state")]
@@ -82,7 +82,7 @@ pub struct GraphVizEdge {
 pub struct GraphVizResponse {
     pub nodes: Vec<GraphVizNode>,
     pub edges: Vec<GraphVizEdge>,
-    pub root_node_id: Ulid,
+    pub root_node_id: Option<Ulid>,
 }
 
 pub async fn schema_variant(
@@ -102,7 +102,7 @@ pub async fn schema_variant(
     let sv = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
     let workspace_snapshot = ctx.workspace_snapshot()?;
 
-    let sv_node = {
+    let sv_node: GraphVizNode = {
         let node_idx = workspace_snapshot
             .get_node_index_by_id(request.schema_variant_id)
             .await?;
@@ -283,8 +283,97 @@ pub async fn schema_variant(
     Ok(Json(GraphVizResponse {
         nodes,
         edges,
-        root_node_id,
+        root_node_id: Some(root_node_id),
     }))
+}
+
+pub async fn components(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Query(request): Query<GraphVizRequest>,
+) -> GraphVizResult<Json<GraphVizResponse>> {
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let workspace_snapshot = ctx.workspace_snapshot()?;
+
+    let mut func_nodes = vec![];
+    let mut nodes = vec![];
+    let mut edges = vec![];
+    let mut added_nodes = HashSet::new();
+    let mut added_edges = HashSet::new();
+
+    let components = Component::list(&ctx).await?;
+
+    for component in &components {
+        if !added_nodes.contains(&component.id()) {
+            added_nodes.insert(component.id());
+        } else {
+            continue;
+        }
+
+        let node_weight = workspace_snapshot.get_node_weight_by_id(component.id()).await?;
+        let node  = GraphVizNode {
+            id: node_weight.id(),
+            content_kind: node_weight.content_address_discriminants(),
+            node_kind: node_weight.into(),
+            name: Some(component.name(&ctx).await?.to_owned()),
+        };
+        nodes.push(node);
+
+
+        let mut work_queue: VecDeque<Ulid> = VecDeque::from([component.id().into()]);
+        while let Some(id) = work_queue.pop_front() {
+            for target in workspace_snapshot.all_outgoing_targets(id).await? {
+                work_queue.push_back(target.id());
+                if !added_edges.contains(&(id, target.id())) {
+                    added_edges.insert((id, target.id()));
+
+                    let rel_edges = workspace_snapshot
+                    .get_edges_between_nodes(id, target.id())
+                    .await?;
+                    rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                        edges.push(GraphVizEdge {
+                            from: id,
+                            to: target.id(),
+                            edge_weight_kind: edge.kind().into(),
+                            direction: Direction::Outgoing,
+                        });
+                    });
+                }
+
+                // TODO encapsulate this in node weight logic
+                let name = match &target {
+                    NodeWeight::Category(inner) => Some(inner.kind().to_string()),
+                    NodeWeight::Func(inner) => {
+                        func_nodes.push(inner.id());
+                        Some(inner.name().to_owned())
+                    }
+                    NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
+                    NodeWeight::Component(inner) => Some(Component::get_by_id(&ctx, inner.id().into()).await?.name(&ctx).await?),
+                    _ => None,
+                };
+
+                if !added_nodes.contains(&target.id().into()) {
+                    added_nodes.insert(target.id().into());
+                    nodes.push(GraphVizNode {
+                        id: target.id(),
+                        content_kind: target.content_address_discriminants(),
+                        node_kind: target.into(),
+                        name,
+                    })
+                }
+            }
+        }
+    }
+
+
+    let response = GraphVizResponse {
+        nodes,
+        edges,
+        root_node_id: None,
+    };
+
+    Ok(Json(response))
 }
 
 pub async fn nodes_edges(
@@ -352,10 +441,10 @@ pub async fn nodes_edges(
     let response = GraphVizResponse {
         nodes,
         edges,
-        root_node_id: node_idx_to_id
+        root_node_id: Some(node_idx_to_id
             .get(&root_node_idx)
             .copied()
-            .ok_or(GraphVizError::NoRootNode)?,
+            .ok_or(GraphVizError::NoRootNode)?),
     };
 
     Ok(Json(response))
@@ -367,4 +456,5 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/schema_variant", get(schema_variant))
         .route("/nodes_edges", get(nodes_edges))
+        .route("/components", get(components))
 }
