@@ -7,7 +7,7 @@
         type="dropdown"
         class="flex-1"
         :options="schemaVariantOptions"
-        placeholder="Entire Workspace"
+        placeholder="Dropped Components"
         placeholderSelectable
       />
       <VormInput
@@ -173,7 +173,11 @@ onMounted(async () => {
     }
 
     loading.value = true;
-    await vizStore.LOAD_DATA(schemaVariant.value);
+    if (schemaVariant.value) {
+      await vizStore.LOAD_VARIANTS(schemaVariant.value);
+    } else {
+      await vizStore.LOAD_COMPONENTS();
+    }
     loading.value = false;
 
     if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
