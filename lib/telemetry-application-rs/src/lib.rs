@@ -29,7 +29,7 @@ use opentelemetry_sdk::{
 };
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
-    opentelemetry::{global, trace::TraceError},
+    opentelemetry::{global, trace::TraceError, KeyValue},
     prelude::*,
     tracing::Subscriber,
     TelemetryCommand, TracingLevel, Verbosity,
@@ -406,9 +406,12 @@ fn telemetry_resource(config: &TelemetryConfig) -> Resource {
         ],
     )
     .merge(&Resource::new(vec![
-        resource::SERVICE_NAME.string(config.service_name.to_string()),
-        resource::SERVICE_VERSION.string(config.service_version.to_string()),
-        resource::SERVICE_NAMESPACE.string("si"),
+        KeyValue::new(resource::SERVICE_NAME, config.service_name.to_string()),
+        KeyValue::new(
+            resource::SERVICE_VERSION,
+            config.service_version.to_string(),
+        ),
+        KeyValue::new(resource::SERVICE_NAMESPACE, "si"),
     ]))
 }
 
