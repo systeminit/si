@@ -1,5 +1,6 @@
 //! The sequel to [`ChangeSets`](crate::ChangeSet). Coming to an SI instance near you!
 
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
@@ -9,12 +10,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
+use crate::action::ActionBag;
 use crate::context::RebaseRequest;
+use crate::job::definition::{ActionRunnerItem, ActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
-    id, ChangeSetStatus, DalContext, HistoryEvent, HistoryEventError, TransactionsError, Workspace,
-    WorkspacePk, WsEvent, WsEventError,
+    id, Action, ActionBatch, ActionId, ActionRunner, ActionRunnerId, ChangeSetStatus, Component,
+    DalContext, HistoryActor, HistoryEvent, HistoryEventError, TransactionsError, User, UserError,
+    UserPk, Workspace, WorkspacePk, WsEvent, WsEventError,
 };
 
 pub mod view;
@@ -22,8 +26,18 @@ pub mod view;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetPointerError {
-    #[error("change set not found")]
-    ChangeSetNotFound,
+    #[error("action error: {0}")]
+    Action(String),
+    #[error("action batch error: {0}")]
+    ActionBatch(String),
+    #[error("action prototype not found for id: {0}")]
+    ActionPrototypeNotFound(ActionId),
+    #[error("action runner error: {0}")]
+    ActionRunner(String),
+    #[error("change set not found by id: {0}")]
+    ChangeSetNotFound(ChangeSetId),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("could not find default change set: {0}")]
     DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
@@ -32,6 +46,10 @@ pub enum ChangeSetPointerError {
     EnumParse(#[from] strum::ParseError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("invalid user {0}")]
+    InvalidUser(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -50,6 +68,8 @@ pub enum ChangeSetPointerError {
     Transactions(#[from] TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace not found: {0}")]
@@ -311,7 +331,142 @@ impl ChangeSetPointer {
         Ok(result)
     }
 
+    /// Applies the current [`ChangeSetPointer`] in the provided [`DalContext`]. [`Actions`](Action)
+    /// are enqueued as needed.
     pub async fn apply_to_base_change_set(
+        ctx: &mut DalContext,
+    ) -> ChangeSetPointerResult<ChangeSetPointer> {
+        let actions = Action::build_graph(ctx)
+            .await
+            .map_err(|err| ChangeSetPointerError::Action(err.to_string()))?;
+        let mut prototype_by_action_id = HashMap::new();
+        dbg!(&actions);
+
+        let applying_to_head = ctx.parent_is_head().await?;
+        if applying_to_head {
+            for bag in actions.values() {
+                let prototype = bag
+                    .action
+                    .prototype(ctx)
+                    .await
+                    .map_err(|err| ChangeSetPointerError::Action(err.to_string()))?;
+                prototype_by_action_id.insert(bag.action.id, prototype.id);
+                bag.action
+                    .clone()
+                    .delete(ctx)
+                    .await
+                    .map_err(|err| ChangeSetPointerError::Action(err.to_string()))?;
+            }
+            dbg!(&actions);
+        }
+
+        ctx.blocking_commit().await?;
+
+        let mut change_set = ChangeSetPointer::find(ctx, ctx.change_set_id())
+            .await?
+            .ok_or(ChangeSetPointerError::ChangeSetNotFound(
+                ctx.change_set_id(),
+            ))?;
+        ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
+            .await?;
+        change_set.apply_to_base_change_set_inner(ctx).await?;
+
+        ctx.blocking_commit().await?;
+
+        // If head and there are actions to apply
+        if applying_to_head && !actions.is_empty() {
+            let base_change_set_id = change_set
+                .base_change_set_id
+                .ok_or(ChangeSetPointerError::NoBaseChangeSet(change_set.id))?;
+            let head = ChangeSetPointer::find(ctx, base_change_set_id)
+                .await?
+                .ok_or(ChangeSetPointerError::ChangeSetNotFound(base_change_set_id))?;
+            ctx.update_visibility_and_snapshot_to_visibility(head.id)
+                .await?;
+
+            let user = match ctx.history_actor() {
+                HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
+                    .await?
+                    .ok_or(ChangeSetPointerError::InvalidUser(*user_pk))?,
+                HistoryActor::SystemInit => {
+                    return Err(ChangeSetPointerError::InvalidUserSystemInit)
+                }
+            };
+
+            // TODO: restore actors of change-set concept
+            let actors_delimited_string = String::new();
+            let batch = ActionBatch::new(ctx, user.email(), &actors_delimited_string)
+                .await
+                .map_err(|err| ChangeSetPointerError::ActionBatch(err.to_string()))?;
+            let mut runners: HashMap<ActionRunnerId, ActionRunnerItem> = HashMap::new();
+            let mut runners_by_action: HashMap<ActionId, ActionRunnerId> = HashMap::new();
+
+            let mut values: Vec<ActionBag> = actions.values().cloned().collect();
+            values.sort_by_key(|a| a.action.id);
+
+            let mut values: VecDeque<ActionBag> = values.into_iter().collect();
+
+            // Runners have to be created in the order we want to display them in the actions history panel
+            // So we do extra work here to ensure the order is the execution order
+            'outer: while let Some(bag) = values.pop_front() {
+                let prototype_id = *prototype_by_action_id.get(&bag.action.id).ok_or(
+                    ChangeSetPointerError::ActionPrototypeNotFound(bag.action.id),
+                )?;
+
+                let mut parents = Vec::new();
+                for parent_id in bag.parents.clone() {
+                    if let Some(parent_id) = runners_by_action.get(&parent_id) {
+                        parents.push(*parent_id);
+                    } else {
+                        values.push_back(bag);
+                        continue 'outer;
+                    }
+                }
+
+                let component = Component::get_by_id(ctx, bag.component_id)
+                    .await
+                    .map_err(|err| ChangeSetPointerError::Component(err.to_string()))?;
+                let runner = ActionRunner::new(
+                    ctx,
+                    batch.id,
+                    bag.component_id,
+                    component
+                        .name(ctx)
+                        .await
+                        .map_err(|err| ChangeSetPointerError::Component(err.to_string()))?,
+                    prototype_id,
+                )
+                .await
+                .map_err(|err| ChangeSetPointerError::ActionRunner(err.to_string()))?;
+                runners_by_action.insert(bag.action.id, runner.id);
+
+                runners.insert(
+                    runner.id,
+                    ActionRunnerItem {
+                        id: runner.id,
+                        component_id: bag.component_id,
+                        action_prototype_id: prototype_id,
+                        parents,
+                    },
+                );
+            }
+
+            dbg!(&runners);
+
+            ctx.enqueue_actions(ActionsJob::new(ctx, runners, batch.id))
+                .await?;
+        }
+
+        Ok(change_set)
+    }
+
+    /// Applies the current [`ChangeSetPointer`] in the provided [`DalContext`] to its base
+    /// [`ChangeSetPointer`]. This involves performing a rebase request and updating the status
+    /// of the [`ChangeSetPointer`] accordingly.
+    ///
+    /// This function neither changes the visibility nor the snapshot after performing the
+    /// aforementioned actions.
+    async fn apply_to_base_change_set_inner(
         &mut self,
         ctx: &DalContext,
     ) -> ChangeSetPointerResult<()> {

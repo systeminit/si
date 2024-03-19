@@ -117,6 +117,8 @@ pub enum ComponentError {
     PropIdNotAProp(PropId),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("ordering node not found for qualifications map {0} and component {1}")]
+    QualificationNoOrderingNode(AttributeValueId, ComponentId),
     #[error("root attribute value not found for component: {0}")]
     RootAttributeValueNotFound(ComponentId),
     #[error("schema variant error: {0}")]

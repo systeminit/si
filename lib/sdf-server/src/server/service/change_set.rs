@@ -5,12 +5,12 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ActionBatchError, ActionError, ActionPrototypeError, ActionRunnerError, ChangeSetId,
+    ActionError, ActionPrototypeError,
     ChangeSetPointerError as DalChangeSetPointerError, ComponentError, FuncError,
-    StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk,
+    StandardModelError, TransactionsError,
     WsEventError,
 };
-use module_index_client::IndexClientError;
+
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -31,67 +31,25 @@ pub mod remove_action;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
-    #[error(transparent)]
+    #[error("action error: {0}")]
     Action(#[from] ActionError),
-    #[error(transparent)]
-    ActionBatch(#[from] ActionBatchError),
-    #[error(transparent)]
+    #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error(transparent)]
-    ActionRunner(#[from] ActionRunnerError),
-    // #[error("action {0} not found")]
-    // ActionNotFound(ActionId),
-    #[error("base change set not found for change set: {0}")]
-    BaseChangeSetNotFound(ChangeSetId),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    // #[error(transparent)]
-    // ChangeStatusError(#[from] ChangeStatusError),
-    // #[error(transparent)]
-    // Component(#[from] DalComponentError),
-    #[error(transparent)]
-    ContextError(#[from] TransactionsError),
     #[error("dal change set error: {0}")]
     DalChangeSet(#[from] DalChangeSetPointerError),
-    #[error("could not find default change set: {0}")]
-    DefaultChangeSetNotFound(ChangeSetId),
-    #[error("default change set {0} has no workspace snapshot pointer")]
-    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
-    #[error(transparent)]
+    #[error("func error: {0}")]
     Func(#[from] FuncError),
-    // #[error(transparent)]
-    // DalPkg(#[from] dal::pkg::PkgError),
-    // #[error(transparent)]
-    // Fix(#[from] FixError),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error(transparent)]
-    IndexClient(#[from] IndexClientError),
-    #[error("invalid user {0}")]
-    InvalidUser(UserPk),
-    #[error("invalid user system init")]
-    InvalidUserSystemInit,
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::NatsError),
-    #[error("no tenancy set in context")]
-    NoTenancySet,
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    // #[error(transparent)]
-    // PkgService(#[from] PkgError),
-    #[error(transparent)]
+    #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    UrlParse(#[from] url::ParseError),
-    #[error(transparent)]
-    User(#[from] UserError),
-    #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-    #[error("workspace not found: {0}")]
-    WorkspaceNotFound(WorkspacePk),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
 

@@ -6,6 +6,7 @@ use si_pkg::ActionFuncSpecKind;
 use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{AsRefStr, Display};
+use telemetry::prelude::info;
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointerError;
@@ -298,7 +299,7 @@ impl ActionPrototype {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.materialized_view(ctx).await?;
         let before = before_funcs_for_component(ctx, &component_id).await?;
-
+        dbg!("running prototype");
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::json!({ "properties" : component_view }),
@@ -321,6 +322,7 @@ impl ActionPrototype {
         Ok(match return_value.value() {
             Some(value) => {
                 let mut run_result: ActionRunResult = serde_json::from_value(value.clone())?;
+                dbg!(&run_result);
                 run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
 
                 let component = if component.to_delete() && run_result.payload.is_none() {

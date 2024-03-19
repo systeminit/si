@@ -593,21 +593,21 @@ impl DalContext {
         new
     }
 
-    pub async fn parent_is_head(&self) -> bool {
-        if let Some(workspace_pk) = self.tenancy.workspace_pk() {
+    pub async fn parent_is_head(&self) -> Result<bool, TransactionsError> {
+        let parent_is_head = if let Some(workspace_pk) = self.tenancy.workspace_pk() {
             let workspace = Workspace::get_by_pk(self, &workspace_pk)
                 .await
-                .unwrap()
-                .unwrap();
-            workspace.default_change_set_id()
-                == self
-                    .change_set_pointer()
-                    .unwrap()
-                    .base_change_set_id
-                    .unwrap()
+                .map_err(|err| TransactionsError::Workspace(err.to_string()))?
+                .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+            let change_set = self.change_set_pointer()?;
+            let base_change_set_id = change_set
+                .base_change_set_id
+                .ok_or(TransactionsError::BaseChangeSetNotFound(change_set.id))?;
+            workspace.default_change_set_id() == base_change_set_id
         } else {
             false
-        }
+        };
+        Ok(parent_is_head)
     }
 
     /// Updates this context with a new [`Tenancy`]
@@ -986,6 +986,8 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum TransactionsError {
+    #[error("base change set not found for change set: {0}")]
+    BaseChangeSetNotFound(ChangeSetId),
     #[error("change set error: {0}")]
     ChangeSet(String),
     #[error("change set pointer not found for change set id: {0}")]

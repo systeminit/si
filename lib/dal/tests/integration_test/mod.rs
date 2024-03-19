@@ -11,3 +11,4 @@ mod property_editor;
 mod rebaser;
 mod schema;
 mod secret;
+mod test_exclusive_schemas;

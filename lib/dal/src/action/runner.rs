@@ -276,6 +276,7 @@ impl ActionRunner {
 
     /// Executes the [`action runner`](Self). Returns true if some resource got updated, false if not
     pub async fn run(&mut self, ctx: &DalContext) -> ActionRunnerResult<Option<ActionRunResult>> {
+        dbg!("running");
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
 
@@ -336,6 +337,7 @@ impl ActionRunner {
         completion_message: Option<String>,
         resource: Option<ActionRunResult>,
     ) -> ActionRunnerResult<()> {
+        dbg!("stamping");
         if self.started_at.is_some() {
             self.set_finished_at(ctx).await?;
             self.set_completion_status(ctx, Some(completion_status))
@@ -377,6 +379,7 @@ impl ActionRunner {
         ctx: &DalContext,
         resource: Option<ActionRunResult>,
     ) -> ActionRunnerResult<()> {
+        dbg!("setting resource");
         self.resource = resource;
         self.update_content(ctx).await
     }

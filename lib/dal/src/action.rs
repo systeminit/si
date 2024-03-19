@@ -101,6 +101,7 @@ impl Action {
         prototype_id: ActionPrototypeId,
         component_id: ComponentId,
     ) -> ActionResult<Self> {
+        dbg!("upserting");
         for action in Self::for_component(ctx, component_id).await? {
             if action.prototype(ctx).await?.id == prototype_id {
                 return Ok(action);
@@ -263,6 +264,7 @@ impl Action {
                 EdgeWeightKindDiscriminants::Action,
             )
             .await?;
+        dbg!(&nodes);
         let mut node_weights = Vec::with_capacity(nodes.len());
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
@@ -298,6 +300,7 @@ impl Action {
         let mut actions_by_id: HashMap<ActionId, (Action, ComponentId)> = HashMap::new();
         let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();
         let graph = Component::build_graph(ctx).await?;
+        dbg!(&graph);
         let mut actions_graph: HashMap<ActionId, (ComponentId, ActionKind, Vec<ActionId>)> =
             HashMap::new();
 
@@ -315,6 +318,7 @@ impl Action {
             // }
 
             let actions = Self::for_component(ctx, id).await?;
+            dbg!(&actions);
             actions_by_component
                 .entry(id)
                 .or_default()

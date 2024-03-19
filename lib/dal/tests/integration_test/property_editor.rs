@@ -244,8 +244,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // Get the first item in the treasure map
     let treasure_first_item = AttributeValue::get_by_id(
         ctx,
-        *treasure_child_ids
-            .get(0)
+        *treasure_child_ids.first()
             .expect("get the first item in treasure"),
     )
     .await
