@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use base64::{engine::general_purpose, Engine as _};
 use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient};
 use si_data_pg::PgPool;
 use tokio::{
@@ -189,7 +188,7 @@ impl PersistEventTask {
         let nats = self.nats.clone();
         let mut nats_headers = HeaderMap::new();
         nats_headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
-        nats_headers.insert(NATS_HEADER_KEY, base64_encode(&*event.payload.key).as_str());
+        nats_headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
         nats_headers.insert(
             NATS_HEADER_INSTANCE_ID,
             self.instance_id.to_string().as_str(),
@@ -265,8 +264,4 @@ impl PersistEventTask {
             .await?;
         Ok(())
     }
-}
-
-fn base64_encode(input: impl AsRef<[u8]>) -> String {
-    general_purpose::STANDARD_NO_PAD.encode(input)
 }

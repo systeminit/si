@@ -83,7 +83,7 @@ impl FromStr for ChangeSetId {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Tenancy {
     pub change_set_id: ChangeSetId,
     pub workspace_pk: WorkspacePk,

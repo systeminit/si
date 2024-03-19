@@ -8,7 +8,7 @@ use si_events::{Actor, Tenancy, WebEvent};
 use strum::AsRefStr;
 use ulid::Ulid;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct LayeredEventMetadata {
     pub tenancy: Tenancy,
     pub actor: Actor,
@@ -16,7 +16,7 @@ pub struct LayeredEventMetadata {
 }
 
 impl LayeredEventMetadata {
-    fn new(tenancy: Tenancy, actor: Actor) -> Self {
+    pub fn new(tenancy: Tenancy, actor: Actor) -> Self {
         LayeredEventMetadata {
             tenancy,
             actor,
