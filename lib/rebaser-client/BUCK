@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/rebaser-core:rebaser-core",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",
         "//third-party/rust:remain",

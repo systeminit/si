@@ -58,6 +58,7 @@ impl std::str::FromStr for LayeredEventId {
 pub enum LayeredEventKind {
     CasInsertion,
     Raw,
+    SnapshotWrite,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

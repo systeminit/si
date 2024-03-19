@@ -110,6 +110,10 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     .await
     .expect("able to make a func");
 
+    Func::get_by_id(ctx, func.id)
+        .await
+        .expect("able to get func by id before commit");
+
     ctx.commit().await.expect("unable to commit");
 
     ctx.update_snapshot_to_visibility()
@@ -118,7 +122,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     Func::get_by_id(ctx, func.id)
         .await
-        .expect("able to get func by id");
+        .expect("able to get func by id after rebase");
 
     let new_code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is new code");
 

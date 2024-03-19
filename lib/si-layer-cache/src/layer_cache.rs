@@ -1,9 +1,7 @@
+use std::{collections::HashMap, fmt::Display, path::Path, sync::Arc};
+
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::path::Path;
-use std::sync::Arc;
 
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
@@ -28,7 +26,7 @@ where
     pub async fn new(name: &str, fast_disk: sled::Db, pg_pool: PgPool) -> LayerDbResult<Self> {
         let disk_cache = Arc::new(DiskCache::new(fast_disk, name.as_bytes())?);
 
-        let pg = PgLayer::new(pg_pool.clone(), "cas");
+        let pg = PgLayer::new(pg_pool.clone(), name);
 
         Ok(LayerCache {
             memory_cache: MemoryCache::new(),

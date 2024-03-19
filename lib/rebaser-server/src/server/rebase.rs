@@ -44,17 +44,18 @@ pub(crate) async fn perform_rebase(
             .ok_or(RebaseError::MissingChangeSetPointer(
                 message.to_rebase_change_set_id.into(),
             ))?;
-    let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
-        RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
-    )?;
+    let to_rebase_workspace_snapshot_address =
+        to_rebase_change_set.workspace_snapshot_address.ok_or(
+            RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
+        )?;
     info!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
-        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_id).await?;
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
     let onto_workspace_snapshot: WorkspaceSnapshot =
-        WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_id.into()).await?;
+        WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_address).await?;
     info!(
         "to_rebase_id: {}, onto_id: {}",
-        to_rebase_workspace_snapshot_id,
+        to_rebase_workspace_snapshot_address,
         onto_workspace_snapshot.id().await
     );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());

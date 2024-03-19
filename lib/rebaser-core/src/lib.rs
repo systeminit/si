@@ -31,6 +31,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
+use si_events::WorkspaceSnapshotAddress;
 use ulid::Ulid;
 
 mod messaging_config;
@@ -46,7 +47,7 @@ pub struct RequestRebaseMessage {
     pub to_rebase_change_set_id: Ulid,
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
     /// rebasing the "to rebase" workspace snapshot.
-    pub onto_workspace_snapshot_id: Ulid,
+    pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     /// Derived from the ephemeral or persisted change set that's either the base change set, the
     /// last change set before edits were made, or the change set that you are trying to rebase
     /// onto base.

@@ -8,3 +8,4 @@ publish = false
 serde = { workspace = true }
 serde_json = { workspace = true }
 ulid = { workspace = true }
+si-events = { path = "../../lib/si-events-rs" }

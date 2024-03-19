@@ -14,17 +14,20 @@ use crate::{
 use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use self::cas::{CasDb, CACHE_NAME};
+use self::{cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
 
 mod cache_updates;
 pub mod cas;
+pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue>
+pub struct LayerDb<CasValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
+    workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     sled: sled::Db,
     pg_pool: PgPool,
     nats_client: NatsClient,
@@ -35,9 +38,10 @@ where
     cancellation_token: CancellationToken,
 }
 
-impl<CasValue> LayerDb<CasValue>
+impl<CasValue, WorkspaceSnapshotValue> LayerDb<CasValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn new(
         disk_path: impl AsRef<Path>,
@@ -71,11 +75,59 @@ where
         });
 
         let cas_cache: LayerCache<Arc<CasValue>> =
-            LayerCache::new(CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+            LayerCache::new(cas::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
 
-        let mut cache_updates =
-            cache_updates::CacheUpdates::create(instance_id, &nats_client, cas_cache.clone())
-                .await?;
+        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
+            workspace_snapshot::CACHE_NAME,
+            sled.clone(),
+            pg_pool.clone(),
+        )
+        .await?;
+
+        Self::spawn_cache_updater(
+            tracker.clone(),
+            cas_cache.clone(),
+            snapshot_cache.clone(),
+            cancellation_token.clone(),
+            instance_id,
+            nats_client.clone(),
+        )
+        .await?;
+
+        let cas = CasDb::new(cas_cache, persister_client.clone());
+        let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
+        let activity_publisher = ActivityPublisher::new(&nats_client);
+
+        Ok(LayerDb {
+            activity_publisher,
+            cas,
+            workspace_snapshot,
+            sled,
+            pg_pool,
+            persister_client,
+            nats_client,
+            instance_id,
+            tracker,
+            cancellation_token,
+        })
+    }
+
+    pub async fn spawn_cache_updater(
+        tracker: TaskTracker,
+        cas_cache: LayerCache<Arc<CasValue>>,
+        snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+
+        cancellation_token: CancellationToken,
+        instance_id: Ulid,
+        nats_client: NatsClient,
+    ) -> LayerDbResult<()> {
+        let mut cache_updates = cache_updates::CacheUpdates::create(
+            instance_id,
+            &nats_client,
+            cas_cache,
+            snapshot_cache,
+        )
+        .await?;
         let cache_update_cancel = cancellation_token.clone();
         tracker.spawn(async move {
             tokio::select! {
@@ -88,21 +140,7 @@ where
             }
         });
 
-        let cas = CasDb::new(cas_cache, persister_client.clone());
-
-        let activity_publisher = ActivityPublisher::new(&nats_client);
-
-        Ok(LayerDb {
-            activity_publisher,
-            cas,
-            sled,
-            pg_pool,
-            persister_client,
-            nats_client,
-            instance_id,
-            tracker,
-            cancellation_token,
-        })
+        Ok(())
     }
 
     pub async fn shutdown(&self) {
@@ -129,6 +167,10 @@ where
 
     pub fn cas(&self) -> &CasDb<CasValue> {
         &self.cas
+    }
+
+    pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {
+        &self.workspace_snapshot
     }
 
     pub fn instance_id(&self) -> Ulid {

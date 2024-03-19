@@ -32,6 +32,7 @@ use rebaser_core::{RebaserMessagingConfig, RequestRebaseMessage, SubjectGenerato
 use si_data_nats::jetstream::{Context, JetstreamError};
 use si_data_nats::subject::ToSubject;
 use si_data_nats::NatsClient;
+use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::error;
 use thiserror::Error;
 use ulid::Ulid;
@@ -85,7 +86,7 @@ impl Client {
     pub async fn request_rebase(
         &self,
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_id: Ulid,
+        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
     ) -> ClientResult<ReplyRebaseMessage> {
         let subject = SubjectGenerator::request(
@@ -96,7 +97,7 @@ impl Client {
 
         let serialized_messaged = serde_json::to_vec(&RequestRebaseMessage {
             to_rebase_change_set_id,
-            onto_workspace_snapshot_id,
+            onto_workspace_snapshot_address,
             onto_vector_clock_id,
         })?;
 

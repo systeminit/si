@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 rebaser-core = { path = "../../lib/rebaser-core" }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 
 futures = { workspace = true }

@@ -30,16 +30,16 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use si_layer_cache::persister::PersistStatus;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use chrono::{DateTime, Utc};
 use petgraph::prelude::*;
-use si_data_pg::{PgError, PgRow};
+use si_data_pg::PgError;
 use si_events::ContentHash;
+use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::time::Instant;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
@@ -52,23 +52,23 @@ use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    pk,
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
-const FIND_FOR_CHANGE_SET: &str =
-    include_str!("queries/workspace_snapshot/find_for_change_set.sql");
-
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("change set pointer {0} has no workspace snapshot address")]
+    ChangeSetPointerMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("monotonic error: {0}")]
@@ -93,38 +93,69 @@ pub enum WorkspaceSnapshotError {
     UnexpectedNumberOfIncomingEdges(EdgeWeightKindDiscriminants, NodeWeightDiscriminants, Ulid),
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
-    #[error("workspace snapshot graph missing")]
-    WorkspaceSnapshotGraphMissing,
+    #[error("workspace snapshot graph missing at address: {0}")]
+    WorkspaceSnapshotGraphMissing(WorkspaceSnapshotAddress),
     #[error("no workspace snapshot was fetched for this dal context")]
     WorkspaceSnapshotNotFetched,
 }
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
-pk!(WorkspaceSnapshotId);
-
 #[derive(Debug, Clone)]
 pub struct WorkspaceSnapshot {
-    id: Arc<RwLock<WorkspaceSnapshotId>>,
-    created_at: Arc<RwLock<DateTime<Utc>>>,
-    working_copy: Arc<RwLock<WorkspaceSnapshotGraph>>,
+    address: Arc<RwLock<WorkspaceSnapshotAddress>>,
+    //    _created_at: Arc<RwLock<DateTime<Utc>>>,
+    /// When the snapshot is fetched from the layer cache (hopefully from memory), it comes back
+    /// wrapped in an Arc to prevent cloning the graph (which can get quite large). Graph
+    /// operations that never modify the graph will use this read-only copy *until* the graph is
+    /// modified.
+    read_only_graph: Arc<WorkspaceSnapshotGraph>,
+
+    /// Before the graph is modified, the read_only_graph is copied into this RwLock, and all
+    /// subsequent graph operations (both read and write) will need to acquire this lock in order
+    /// to read or write to the graph. See the SnapshotReadGuard and SnapshotWriteGuard
+    /// implemenations of Deref and DerefMut, and their construction in
+    /// working_copy()/working_copy_mut()
+    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraph>>>,
 }
 
-impl TryFrom<PgRow> for WorkspaceSnapshot {
-    type Error = WorkspaceSnapshotError;
+struct SnapshotReadGuard<'a> {
+    read_only_graph: Arc<WorkspaceSnapshotGraph>,
+    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraph>>,
+}
 
-    fn try_from(row: PgRow) -> Result<Self, Self::Error> {
-        let start = Instant::now();
-        let snapshot: Vec<u8> = row.try_get("snapshot")?;
-        info!("snapshot copy into vec: {:?}", start.elapsed());
-        let start = Instant::now();
-        let working_copy = Arc::new(RwLock::new(postcard::from_bytes(&snapshot)?));
-        info!("snapshot deserialize: {:?}", start.elapsed());
-        Ok(Self {
-            id: Arc::new(RwLock::new(row.try_get("id")?)),
-            created_at: Arc::new(RwLock::new(row.try_get("created_at")?)),
-            working_copy,
-        })
+struct SnapshotWriteGuard<'a> {
+    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraph>>,
+}
+
+impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
+    type Target = WorkspaceSnapshotGraph;
+
+    fn deref(&self) -> &Self::Target {
+        if self.working_copy_read_guard.is_some() {
+            let option = &*self.working_copy_read_guard;
+            option.as_ref().expect("we confirmed it was some above")
+        } else {
+            &self.read_only_graph
+        }
+    }
+}
+
+impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
+    type Target = WorkspaceSnapshotGraph;
+
+    fn deref(&self) -> &Self::Target {
+        let option = &*self.working_copy_write_guard;
+        option.as_ref().expect(
+            "attempted to deref snapshot without copying contents into the mutable working copy",
+        )
+    }
+}
+
+impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        let option = &mut *self.working_copy_write_guard;
+        &mut *option.as_mut().expect("attempted to DerefMut a snapshot without copying contents into the mutable working copy")
     }
 }
 
@@ -188,9 +219,9 @@ impl WorkspaceSnapshot {
         // We do not care about any field other than "working_copy" because "write" will populate
         // them using the assigned working copy.
         let initial = Self {
-            id: Arc::new(RwLock::new(WorkspaceSnapshotId::NONE)),
-            created_at: Arc::new(RwLock::new(Utc::now())),
-            working_copy: Arc::new(RwLock::new(graph)),
+            address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
+            read_only_graph: Arc::new(graph),
+            working_copy: Arc::new(RwLock::new(None)),
         };
 
         initial.write(ctx, change_set.vector_clock_id()).await?;
@@ -203,53 +234,68 @@ impl WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotId> {
+    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
         // Pull out the working copy and clean it up.
-        {
+        let new_address = {
             let mut working_copy = self.working_copy_mut().await;
             working_copy.cleanup();
 
             // Mark everything left as seen.
             working_copy.mark_graph_seen(vector_clock_id)?;
-        }
 
-        // Stamp the new workspace snapshot.
-        let serialized_snapshot = postcard::to_stdvec(&*self.working_copy().await)?;
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "INSERT INTO workspace_snapshots (snapshot) VALUES ($1) RETURNING *",
-                &[&serialized_snapshot],
-            )
-            .await?;
+            let (new_address, status_reader) = ctx
+                .layer_db()
+                .workspace_snapshot()
+                .write(
+                    Arc::new(working_copy.clone()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
-        let updated_snapshot = Self::try_from(row)?;
+            if let PersistStatus::Error(e) = status_reader.get_status().await? {
+                return Err(e)?;
+            }
 
-        let new_id = updated_snapshot.id().await;
-        *self.id.write().await = new_id;
-        *self.created_at.write().await = *updated_snapshot.created_at.read().await;
+            new_address
+        };
 
-        Ok(new_id)
+        // Note, we continue to use the working copy after this, even for reads, since otherwise
+        // we'd have to replace the read_only_graph, which would require another thread-safe
+        // interior mutability type to store the read only graph in.
+
+        *self.address.write().await = new_address;
+
+        Ok(new_address)
     }
 
-    pub async fn id(&self) -> WorkspaceSnapshotId {
-        *self.id.read().await
+    pub async fn id(&self) -> WorkspaceSnapshotAddress {
+        *self.address.read().await
     }
 
     pub async fn root(&self) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy.read().await.root())
+        Ok(self.working_copy().await.root())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn working_copy(&self) -> RwLockReadGuard<'_, WorkspaceSnapshotGraph> {
-        self.working_copy.read().await
+    async fn working_copy(&self) -> SnapshotReadGuard<'_> {
+        SnapshotReadGuard {
+            read_only_graph: self.read_only_graph.clone(),
+            working_copy_read_guard: self.working_copy.read().await,
+        }
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn working_copy_mut(&self) -> RwLockWriteGuard<'_, WorkspaceSnapshotGraph> {
-        self.working_copy.write().await
+    async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
+        if self.working_copy.read().await.is_none() {
+            // Make a copy of the read only graph as our new working copy
+            *self.working_copy.write().await = Some(self.read_only_graph.as_ref().clone());
+        }
+
+        SnapshotWriteGuard {
+            working_copy_write_guard: self.working_copy.write().await,
+        }
     }
 
     pub async fn add_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
@@ -475,20 +521,26 @@ impl WorkspaceSnapshot {
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
-        workspace_snapshot_id: WorkspaceSnapshotId,
+        workspace_snapshot_addr: WorkspaceSnapshotAddress,
     ) -> WorkspaceSnapshotResult<Self> {
         let start = tokio::time::Instant::now();
-        let row = ctx
-            .txns()
+
+        let snapshot = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .read(&workspace_snapshot_addr)
             .await?
-            .pg()
-            .query_one(
-                "SELECT * FROM workspace_snapshots WHERE id = $1",
-                &[&workspace_snapshot_id],
-            )
-            .await?;
-        info!("data fetch: {:?}", start.elapsed());
-        Self::try_from(row)
+            .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
+                workspace_snapshot_addr,
+            ))?;
+
+        info!("snapshot fetch took: {:?}", start.elapsed());
+
+        Ok(Self {
+            address: Arc::new(RwLock::new(workspace_snapshot_addr)),
+            read_only_graph: snapshot,
+            working_copy: Arc::new(RwLock::new(None)),
+        })
     }
 
     pub async fn find_for_change_set(
@@ -499,9 +551,20 @@ impl WorkspaceSnapshot {
             .txns()
             .await?
             .pg()
-            .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
-            .await?;
-        Self::try_from(row)
+            .query_opt(
+                "SELECT workspace_snapshot_address FROM change_set_pointers WHERE id = $1",
+                &[&change_set_pointer_id],
+            )
+            .await?
+            .ok_or(
+                WorkspaceSnapshotError::ChangeSetPointerMissingWorkspaceSnapshotAddress(
+                    change_set_pointer_id,
+                ),
+            )?;
+
+        let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
+
+        Self::find(ctx, address).await
     }
 
     #[instrument(level = "debug", skip_all)]

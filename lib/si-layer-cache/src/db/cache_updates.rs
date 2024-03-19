@@ -20,25 +20,30 @@ use crate::{
 #[strum(serialize_all = "snake_case")]
 enum CacheName {
     Cas,
+    WorkspaceSnapshots,
 }
 
-pub struct CacheUpdates<V>
+pub struct CacheUpdates<CasValue, WorkspaceSnapshotValue>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
     messages: ChunkedMessagesStream,
-    cas_cache: LayerCache<Arc<V>>,
+    cas_cache: LayerCache<Arc<CasValue>>,
+    snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
 }
 
-impl<V> CacheUpdates<V>
+impl<CasValue, WorkspaceSnapshotValue> CacheUpdates<CasValue, WorkspaceSnapshotValue>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn create(
         instance_id: Ulid,
         nats_client: &NatsClient,
-        cas_cache: LayerCache<Arc<V>>,
+        cas_cache: LayerCache<Arc<CasValue>>,
+        snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
     ) -> LayerDbResult<Self> {
         let context = jetstream::new(nats_client.as_inner().clone());
 
@@ -55,6 +60,7 @@ where
             instance_id,
             messages,
             cas_cache,
+            snapshot_cache,
         })
     }
 
@@ -62,8 +68,11 @@ where
         while let Some(result) = self.messages.next().await {
             match result {
                 Ok(msg) => {
-                    let cache_update_task =
-                        CacheUpdateTask::new(self.instance_id, self.cas_cache.clone());
+                    let cache_update_task = CacheUpdateTask::new(
+                        self.instance_id,
+                        self.cas_cache.clone(),
+                        self.snapshot_cache.clone(),
+                    );
                     // Turns out I think it's probably dangerous to do this spawned, since we want
                     // to make sure we insert things into the cache in the order we receive them.
                     // If we spawn, we could do more at once, but at the cost of being uncertain
@@ -94,22 +103,30 @@ where
     }
 }
 
-struct CacheUpdateTask<V>
+struct CacheUpdateTask<Q, R>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
-    cas_cache: LayerCache<Arc<V>>,
+    cas_cache: LayerCache<Arc<Q>>,
+    snapshot_cache: LayerCache<Arc<R>>,
 }
 
-impl<V> CacheUpdateTask<V>
+impl<Q, R> CacheUpdateTask<Q, R>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    fn new(instance_id: Ulid, cas_cache: LayerCache<Arc<V>>) -> CacheUpdateTask<V> {
+    fn new(
+        instance_id: Ulid,
+        cas_cache: LayerCache<Arc<Q>>,
+        snapshot_cache: LayerCache<Arc<R>>,
+    ) -> CacheUpdateTask<Q, R> {
         CacheUpdateTask {
             instance_id,
             cas_cache,
+            snapshot_cache,
         }
     }
 
@@ -142,6 +159,23 @@ where
                                     let serialized_value = Arc::try_unwrap(event.payload.value)
                                         .unwrap_or_else(|arc| (*arc).clone());
                                     self.cas_cache
+                                        .insert_from_cache_updates(
+                                            key.into(),
+                                            memory_value,
+                                            serialized_value,
+                                        )
+                                        .await?;
+                                }
+                            }
+                            CacheName::WorkspaceSnapshots => {
+                                if !self.snapshot_cache.contains(key) {
+                                    let event: LayeredEvent = postcard::from_bytes(&msg.payload)?;
+                                    let memory_value = self
+                                        .snapshot_cache
+                                        .deserialize_memory_value(&event.payload.value)?;
+                                    let serialized_value = Arc::try_unwrap(event.payload.value)
+                                        .unwrap_or_else(|arc| (*arc).clone());
+                                    self.snapshot_cache
                                         .insert_from_cache_updates(
                                             key.into(),
                                             memory_value,

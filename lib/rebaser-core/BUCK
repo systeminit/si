@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-core",
     deps = [
+        "//lib/si-events-rs:si-events",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:ulid",
