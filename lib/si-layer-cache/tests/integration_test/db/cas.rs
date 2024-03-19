@@ -6,10 +6,12 @@ use tokio::time::Instant;
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
 
+type TestLayerDb = LayerDb<CasValue, String>;
+
 #[tokio::test]
 async fn write_to_db() {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb = LayerDb::new(
+    let ldb: TestLayerDb = LayerDb::new(
         tempdir,
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
@@ -70,7 +72,7 @@ async fn write_to_db() {
 #[tokio::test]
 async fn write_and_read_many() {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb = LayerDb::new(
+    let ldb: TestLayerDb = LayerDb::new(
         tempdir,
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
@@ -119,7 +121,7 @@ async fn write_and_read_many() {
 #[tokio::test]
 async fn cold_read_from_db() {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb = LayerDb::new(
+    let ldb: TestLayerDb = LayerDb::new(
         tempdir,
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
@@ -211,7 +213,7 @@ async fn writes_are_gossiped() {
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash = LayerDb::new(
+    let ldb_slash: TestLayerDb = LayerDb::new(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
@@ -221,7 +223,7 @@ async fn writes_are_gossiped() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl = LayerDb::new(
+    let ldb_axl: TestLayerDb = LayerDb::new(
         tempdir_axl,
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,

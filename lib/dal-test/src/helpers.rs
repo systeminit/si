@@ -154,7 +154,7 @@ pub async fn create_change_set_and_update_ctx(
         .update_pointer(
             ctx,
             base_change_set
-                .workspace_snapshot_id
+                .workspace_snapshot_address
                 .expect("no workspace snapshot set on base change set"),
         )
         .await

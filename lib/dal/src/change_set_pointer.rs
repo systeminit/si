@@ -5,13 +5,13 @@ use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
+use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
 use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
     id, ChangeSetStatus, DalContext, HistoryEvent, HistoryEventError, TransactionsError, Workspace,
     WorkspacePk, WsEvent, WsEventError,
@@ -78,7 +78,7 @@ pub struct ChangeSetPointer {
     pub name: String,
     pub status: ChangeSetStatus,
     pub base_change_set_id: Option<ChangeSetId>,
-    pub workspace_snapshot_id: Option<WorkspaceSnapshotId>,
+    pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
     pub workspace_id: Option<WorkspacePk>,
 
     #[serde(skip)]
@@ -98,7 +98,7 @@ impl TryFrom<PgRow> for ChangeSetPointer {
             name: value.try_get("name")?,
             status,
             base_change_set_id: value.try_get("base_change_set_id")?,
-            workspace_snapshot_id: value.try_get("workspace_snapshot_id")?,
+            workspace_snapshot_address: value.try_get("workspace_snapshot_address")?,
             workspace_id: value.try_get("workspace_id")?,
             generator: Arc::new(Mutex::new(Default::default())),
         })
@@ -116,7 +116,7 @@ impl ChangeSetPointer {
             updated_at: Utc::now(),
             generator: Arc::new(Mutex::new(generator)),
             base_change_set_id: None,
-            workspace_snapshot_id: None,
+            workspace_snapshot_address: None,
             workspace_id: None,
             name: "".to_string(),
             status: ChangeSetStatus::Open,
@@ -126,7 +126,7 @@ impl ChangeSetPointer {
     pub fn editing_changeset(&self) -> ChangeSetPointerResult<Self> {
         let mut new_local = Self::new_local()?;
         new_local.base_change_set_id = self.base_change_set_id;
-        new_local.workspace_snapshot_id = self.workspace_snapshot_id;
+        new_local.workspace_snapshot_address = self.workspace_snapshot_address;
         new_local.workspace_id = self.workspace_id;
         new_local.name = self.name.to_owned();
         new_local.status = self.status.to_owned();
@@ -187,7 +187,7 @@ impl ChangeSetPointer {
         change_set_pointer
             .update_pointer(
                 ctx,
-                base_change_set_pointer.workspace_snapshot_id.ok_or(
+                base_change_set_pointer.workspace_snapshot_address.ok_or(
                     ChangeSetPointerError::DefaultChangeSetNoWorkspaceSnapshotPointer(
                         workspace.default_change_set_id(),
                     ),
@@ -233,18 +233,18 @@ impl ChangeSetPointer {
     pub async fn update_pointer(
         &mut self,
         ctx: &DalContext,
-        workspace_snapshot_id: WorkspaceSnapshotId,
+        workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetPointerResult<()> {
         ctx.txns()
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers SET workspace_snapshot_id = $2 WHERE id = $1",
-                &[&self.id, &workspace_snapshot_id],
+                "UPDATE change_set_pointers SET workspace_snapshot_address = $2 WHERE id = $1",
+                &[&self.id, &workspace_snapshot_address],
             )
             .await?;
 
-        self.workspace_snapshot_id = Some(workspace_snapshot_id);
+        self.workspace_snapshot_address = Some(workspace_snapshot_address);
 
         Ok(())
     }
@@ -318,11 +318,11 @@ impl ChangeSetPointer {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetPointerError::NoBaseChangeSet(self.id))?;
-        let onto_workspace_snapshot_id = self
-            .workspace_snapshot_id
+        let onto_workspace_snapshot_address = self
+            .workspace_snapshot_address
             .ok_or(ChangeSetPointerError::NoWorkspaceSnapshot(self.id))?;
         let rebase_request = RebaseRequest {
-            onto_workspace_snapshot_id,
+            onto_workspace_snapshot_address,
             onto_vector_clock_id: self.vector_clock_id(),
             to_rebase_change_set_id,
         };
@@ -366,8 +366,10 @@ impl std::fmt::Debug for ChangeSetPointer {
                 &self.base_change_set_id.map(|bcsid| bcsid.to_string()),
             )
             .field(
-                "workspace_snapshot_id",
-                &self.workspace_snapshot_id.map(|wsid| wsid.to_string()),
+                "workspace_snapshot_address",
+                &self
+                    .workspace_snapshot_address
+                    .map(|wsaddr| wsaddr.to_string()),
             )
             .finish()
     }

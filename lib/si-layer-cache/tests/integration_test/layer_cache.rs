@@ -8,7 +8,7 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
 
-    let layer_cache = LayerCache::new("test1", db, super::setup_pg_db(db_name).await)
+    let layer_cache = LayerCache::new("cas", db, super::setup_pg_db(db_name).await)
         .await
         .expect("cannot create layer cache");
     layer_cache.pg().migrate().await.expect("migrate");

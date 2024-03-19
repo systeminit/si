@@ -16,6 +16,8 @@ use ulid::Ulid;
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
 
+type TestLayerDb = LayerDb<Arc<String>, String>;
+
 #[tokio::test]
 async fn activities() {
     let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
@@ -23,7 +25,7 @@ async fn activities() {
     let db = setup_pg_db("activities").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash: LayerDb<Arc<String>> = LayerDb::new(
+    let ldb_slash: LayerDb<Arc<String>, String> = LayerDb::new(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
@@ -33,7 +35,7 @@ async fn activities() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl: LayerDb<Arc<String>> = LayerDb::new(
+    let ldb_axl: TestLayerDb = LayerDb::new(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
@@ -76,7 +78,7 @@ async fn activities_subscribe_partial() {
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash: LayerDb<Arc<String>> = LayerDb::new(
+    let ldb_slash: TestLayerDb = LayerDb::new(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
@@ -86,7 +88,7 @@ async fn activities_subscribe_partial() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl: LayerDb<Arc<String>> = LayerDb::new(
+    let ldb_axl: TestLayerDb = LayerDb::new(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,

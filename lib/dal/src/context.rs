@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::db::LayerDb;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -16,10 +17,9 @@ use tokio::time::Instant;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::layer_db_types::ContentTypes;
-use crate::workspace_snapshot::conflict::Conflict;
-use crate::workspace_snapshot::update::Update;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::workspace_snapshot::WorkspaceSnapshotId;
+use crate::workspace_snapshot::{
+    conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
+};
 use crate::Workspace;
 use crate::{
     change_set_pointer::{ChangeSetId, ChangeSetPointer},
@@ -34,7 +34,7 @@ use crate::{
     WorkspacePk, WorkspaceSnapshot,
 };
 
-pub type DalLayerDb = LayerDb<ContentTypes>;
+pub type DalLayerDb = LayerDb<ContentTypes, WorkspaceSnapshotGraph>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -207,17 +207,29 @@ impl ConnectionState {
         tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
-        match self {
-            Self::Connections(_) => {
-                trace!("no active transactions present when commit was called, taking no action");
-                Ok((self, None))
+        let (conns, nats_conn, rebaser_config) = match self {
+            Self::Connections(conns) => {
+                trace!("no active transactions present when commit was called");
+                let rebaser_config = conns.rebaser_config.clone();
+                let nats_conn = conns.nats_conn.clone();
+                Ok((Self::Connections(conns), nats_conn, rebaser_config))
             }
             Self::Transactions(txns) => {
-                let (conns, conflicts) = txns.commit_into_conns(tenancy, rebase_request).await?;
-                Ok((Self::Connections(conns), conflicts))
+                let conns = txns.commit_into_conns().await?;
+                let rebaser_config = conns.rebaser_config.clone();
+                let nats_conn = conns.nats_conn.clone();
+                Ok((Self::Connections(conns), nats_conn, rebaser_config))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
-        }
+        }?;
+
+        let conflicts = if let Some(rebase_request) = rebase_request {
+            rebase(tenancy, nats_conn, rebaser_config, rebase_request).await?
+        } else {
+            None
+        };
+
+        Ok((conns, conflicts))
     }
 
     async fn blocking_commit(
@@ -226,9 +238,24 @@ impl ConnectionState {
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
-            Self::Connections(_) => {
-                trace!("no active transactions present when commit was called, taking no action");
-                Ok((self, None))
+            Self::Connections(conns) => {
+                trace!("no active transactions present when commit was called, but we will still attempt rebase");
+
+                // Even if there are no open dal transactions, we may have written to the layer db
+                // and we need to perform a rebase if one is requested
+                let conflicts = if let Some(rebase_request) = rebase_request {
+                    rebase(
+                        tenancy,
+                        conns.nats_conn.clone(),
+                        conns.rebaser_config.clone(),
+                        rebase_request,
+                    )
+                    .await?
+                } else {
+                    None
+                };
+
+                Ok((Self::Connections(conns), conflicts))
             }
             Self::Transactions(txns) => {
                 let (conns, conflicts) = txns
@@ -345,7 +372,9 @@ impl DalContext {
         Ok(())
     }
 
-    pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotId>, TransactionsError> {
+    pub async fn write_snapshot(
+        &self,
+    ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
             let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
 
@@ -359,11 +388,11 @@ impl DalContext {
 
     fn get_rebase_request(
         &self,
-        onto_workspace_snapshot_id: WorkspaceSnapshotId,
+        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> Result<RebaseRequest, TransactionsError> {
         let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
         Ok(RebaseRequest {
-            onto_workspace_snapshot_id,
+            onto_workspace_snapshot_address,
             // the vector clock id of the current change set is just the id
             // of the current change set
             to_rebase_change_set_id: self.change_set_id(),
@@ -427,7 +456,9 @@ impl DalContext {
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
         let rebase_request = match self.write_snapshot().await? {
-            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            Some(workspace_snapshot_address) => {
+                Some(self.get_rebase_request(workspace_snapshot_address)?)
+            }
             None => None,
         };
 
@@ -510,9 +541,10 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
-        info!("blocking_commit");
         let rebase_request = match self.write_snapshot().await? {
-            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            Some(workspace_snapshot_address) => {
+                Some(self.get_rebase_request(workspace_snapshot_address)?)
+            }
             None => None,
         };
 
@@ -1001,7 +1033,7 @@ pub enum TransactionsError {
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error("rebase of snapshot {0} change set id {1} failed {2}")]
-    RebaseFailed(WorkspaceSnapshotId, ChangeSetId, String),
+    RebaseFailed(WorkspaceSnapshotAddress, ChangeSetId, String),
     #[error(transparent)]
     RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
@@ -1098,7 +1130,7 @@ pub struct Transactions {
 #[derive(Clone, Debug)]
 pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
-    pub onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub onto_vector_clock_id: VectorClockId,
 }
 
@@ -1127,7 +1159,7 @@ async fn rebase(
     let response = rebaser_client
         .request_rebase(
             rebase_request.to_rebase_change_set_id.into(),
-            rebase_request.onto_workspace_snapshot_id.into(),
+            rebase_request.onto_workspace_snapshot_address,
             rebase_request.onto_vector_clock_id.into(),
         )
         .await?;
@@ -1136,7 +1168,7 @@ async fn rebase(
     match response {
         ReplyRebaseMessage::Success { .. } => Ok(None),
         ReplyRebaseMessage::Error { message } => Err(TransactionsError::RebaseFailed(
-            rebase_request.onto_workspace_snapshot_id,
+            rebase_request.onto_workspace_snapshot_address,
             rebase_request.to_rebase_change_set_id,
             message,
         )),
@@ -1190,33 +1222,18 @@ impl Transactions {
         skip_all,
         fields()
     )]
-    pub async fn commit_into_conns(
-        self,
-        tenancy: &Tenancy,
-        rebase_request: Option<RebaseRequest>,
-    ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
+    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
-        let conflicts = if let Some(rebase_request) = rebase_request {
-            let start = Instant::now();
-            let conflicts = rebase(
-                tenancy,
-                nats_conn.clone(),
-                self.rebaser_config.clone(),
-                rebase_request,
-            )
-            .await?;
-            info!("rebase took: {:?}", start.elapsed());
-            conflicts
-        } else {
-            None
-        };
-
         self.job_processor.process_queue(self.job_queue).await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
-        Ok((conns, conflicts))
+        Ok(Connections::new(
+            pg_conn,
+            nats_conn,
+            self.job_processor,
+            self.rebaser_config,
+        ))
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
@@ -1236,7 +1253,6 @@ impl Transactions {
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         let conflicts = if let Some(rebase_request) = rebase_request {
-            info!("rebase request");
             rebase(
                 tenancy,
                 nats_conn.clone(),
