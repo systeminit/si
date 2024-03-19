@@ -15,8 +15,8 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
 
     starfield_builder
         .name("starfield")
-        .version("2023-05-23")
-        .created_by("System Initiative");
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
 
     let identity_func_spec = IntrinsicFunc::Identity
         .to_spec()

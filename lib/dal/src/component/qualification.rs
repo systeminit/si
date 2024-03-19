@@ -45,7 +45,12 @@ impl Component {
             .await?
         {
             Some(value_ids) => value_ids,
-            None => return Ok(vec![]), // should probably be an error
+            None => {
+                return Err(ComponentError::QualificationNoOrderingNode(
+                    qualification_map_value_id,
+                    component_id,
+                ))
+            }
         };
 
         for qualification_attribute_value_id in qualification_attribute_value_ids {

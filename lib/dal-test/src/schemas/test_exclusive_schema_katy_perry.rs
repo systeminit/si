@@ -16,10 +16,10 @@ pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> Built
 
     kp_builder
         .name("katy perry")
-        .version("2024-03-12")
-        .created_by("System Initiative");
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
 
-    let identity_func_spec = create_identity_func();
+    let identity_func_spec = create_identity_func()?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldKatyPerryAsset";

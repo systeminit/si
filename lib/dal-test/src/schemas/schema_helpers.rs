@@ -1,17 +1,15 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::BuiltinsError;
+use dal::{BuiltinsError, BuiltinsResult};
 use si_pkg::{
     FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData,
 };
 
-pub(crate) fn create_identity_func() -> FuncSpec {
-    IntrinsicFunc::Identity
-        .to_spec()
-        .expect("create identity func spec")
+pub(crate) fn create_identity_func() -> BuiltinsResult<FuncSpec> {
+    Ok(IntrinsicFunc::Identity.to_spec()?)
 }
 
-pub(crate) async fn build_resource_payload_to_value_func() -> Result<FuncSpec, BuiltinsError> {
+pub(crate) async fn build_resource_payload_to_value_func() -> BuiltinsResult<FuncSpec> {
     let resource_payload_to_value_func_code = "async function main(arg: Input): Promise<Output> {\
             return arg.payload ?? {};
         }";
@@ -60,10 +58,7 @@ pub(crate) async fn build_action_func(
     Ok(func)
 }
 
-pub(crate) async fn build_codegen_func(
-    code: &str,
-    fn_name: &str,
-) -> Result<FuncSpec, BuiltinsError> {
+pub(crate) async fn build_codegen_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> {
     let func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)
@@ -87,7 +82,7 @@ pub(crate) async fn build_codegen_func(
     Ok(func)
 }
 
-pub(crate) async fn build_asset_func(fn_name: &str) -> Result<FuncSpec, BuiltinsError> {
+pub(crate) async fn build_asset_func(fn_name: &str) -> BuiltinsResult<FuncSpec> {
     let scaffold_func = "function main() {\
                 return new AssetBuilder().build();
             }";

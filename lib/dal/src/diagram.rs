@@ -320,6 +320,10 @@ impl Diagram {
                 })?
             };
 
+            let foo = crate::Action::for_component(ctx, component.id()).await.unwrap();
+            let bar = crate::ActionPrototype::for_variant(ctx, schema_variant.id()).await.unwrap();
+            telemetry::prelude::info!(?foo, ?bar, "wtf");
+
             let component_view = SummaryDiagramComponent {
                 id: component.id(),
                 component_id: component.id(),

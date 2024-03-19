@@ -5,10 +5,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::schema::variant::SchemaVariantError;
-use crate::{
-    AttributeValue, Component, ComponentError, ComponentId, DalContext, EncryptedSecret, Func,
-    FuncId, Prop, PropId, SchemaVariant, SecretError, SecretId, StandardModel, StandardModelError,
-};
+use crate::{AttributeValue, Component, ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncId, Prop, PropId, SchemaVariant, SecretError, SecretId, StandardModel, StandardModelError, Visibility};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -64,7 +61,7 @@ pub async fn before_funcs_for_component(
             &secret_definition_path,
             &secret_path,
         )
-        .await?;
+            .await?;
 
         let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
         let mut maybe_secret_id = None;
@@ -149,7 +146,7 @@ async fn auth_funcs_for_secret_prop_id(
         }
 
         for auth_func_id in
-            SchemaVariant::list_auth_func_ids_for_schema_variant(ctx, secret_defining_sv_id).await?
+        SchemaVariant::list_auth_func_ids_for_schema_variant(ctx, secret_defining_sv_id).await?
         {
             auth_funcs.push(
                 Func::get_by_id(ctx, auth_func_id)

@@ -335,6 +335,8 @@ async fn action_task(
     parent_span: Span,
     should_blocking_commit: bool,
 ) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
+    dbg!("running action task");
+
     // Get the workflow for the action we need to run.
     let component = Component::get_by_id(&ctx, action_item.component_id).await?;
 

@@ -372,7 +372,7 @@ impl WsEvent {
                 change_set_id: ctx.change_set_id(),
             }),
         )
-        .await
+            .await
     }
 
     pub async fn secret_updated(ctx: &DalContext, secret_id: SecretId) -> WsEventResult<Self> {
@@ -383,7 +383,7 @@ impl WsEvent {
                 change_set_id: ctx.change_set_id(),
             }),
         )
-        .await
+            .await
     }
 }
 
@@ -569,6 +569,8 @@ impl EncryptedSecret {
             HistoryActor::User(user_pk) => Some(user_pk),
         };
 
+        let vis = Visibility::new(ctx.get_workspace_default_change_set_id().unwrap());
+
         let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(crypted);
         let row = ctx
             .txns()
@@ -578,7 +580,7 @@ impl EncryptedSecret {
                 "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
                 &[
                     ctx.tenancy(),
-                    ctx.visibility(),
+                    vis,
                     &name,
                     &definition,
                     &description,
@@ -610,7 +612,7 @@ impl EncryptedSecret {
                 description: object.description,
             },
         )
-        .await?;
+            .await?;
 
         Ok(referential_secret)
     }
@@ -635,7 +637,7 @@ impl EncryptedSecret {
             &base64_encode_bytes(double_crypted.as_slice()),
             TypeHint::Text,
         )
-        .await?;
+            .await?;
         standard_model::update(
             ctx,
             "encrypted_secrets",
@@ -644,7 +646,7 @@ impl EncryptedSecret {
             &base64_encode_bytes(nonce.as_ref()),
             TypeHint::Text,
         )
-        .await?;
+            .await?;
         standard_model::update(
             ctx,
             "encrypted_secrets",
@@ -653,7 +655,7 @@ impl EncryptedSecret {
             &key_hash.to_string(),
             TypeHint::Text,
         )
-        .await?;
+            .await?;
 
         let _history_event = HistoryEvent::new(
             ctx,
@@ -661,7 +663,7 @@ impl EncryptedSecret {
             Self::history_event_message("updated"),
             &serde_json::json!({"pk": self.pk, "field": "crypted", "value": "encrypted"}),
         )
-        .await?;
+            .await?;
         self.timestamp.updated_at = updated_at;
         self.crypted = value;
 
@@ -697,7 +699,7 @@ impl EncryptedSecret {
                     &sealedbox::open(&symmetric_decrypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
                 )
-                .map_err(SecretError::DeserializeMessage)?;
+                    .map_err(SecretError::DeserializeMessage)?;
 
                 Ok(DecryptedSecret {
                     name: self.name,
@@ -756,7 +758,7 @@ impl fmt::Debug for DecryptedSecret {
 /// The version of encryption used to encrypt a secret.
 #[remain::sorted]
 #[derive(
-    AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
+AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -774,7 +776,7 @@ impl Default for SecretVersion {
 /// The algorithm used to encrypt a secret.
 #[remain::sorted]
 #[derive(
-    AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
+AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -914,8 +916,8 @@ mod tests {
         }
 
         fn crypt<T>(value: &T, pkey: &PublicKey) -> Vec<u8>
-        where
-            T: ?Sized + Serialize,
+            where
+                T: ?Sized + Serialize,
         {
             sealedbox::seal(
                 &serde_json::to_vec(value).expect("failed to serialize value"),
