@@ -191,7 +191,7 @@ onMounted(async () => {
         }`,
         x: Math.floor(Math.random() * 1000),
         y: Math.floor(Math.random() * 1000),
-        size: size.value,
+        size: node.contentKind === "Root" ? size.value * 2 : size.value, // make Root stand out
         grouping:
           node.nodeKind === "Content" ? node.contentKind : node.contentKind,
       });
