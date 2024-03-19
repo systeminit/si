@@ -24,7 +24,7 @@
         >
       </div>
       <div>
-        <VButton @click="toggleLayout"
+        <VButton :disabled="loading" @click="toggleLayout"
           >{{ animate_layout ? "Stop" : "Start" }} Animation</VButton
         >
       </div>
@@ -209,6 +209,7 @@ onMounted(async () => {
     const sensibleSettings = forceAtlas2.inferSettings(graph);
     fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
     fa2Layout.start();
+    animate_layout.value = true; // override, since we're re-drawing the graph
 
     // Cheap trick: tilt the camera a bit to make labels more readable
     renderer.getCamera().setState({
