@@ -38,7 +38,8 @@ impl FuncDispatch for FuncBackendJsAction {
             execution_id: "ayrtonsennajscommand".to_string(),
             handler: handler.into(),
             code_base64: code_base64.into(),
-            args: serde_json::to_value(args).unwrap(),
+            args: serde_json::to_value(args)
+                .expect("should be impossible to fail serialization here"),
             before,
         };
 

@@ -27,10 +27,9 @@ impl IntrinsicFunc {
         let mut builder = PkgSpec::builder();
         builder.name("si-intrinsic-funcs");
         builder.version("2023-05-24");
-        builder.created_at(
-            DateTime::parse_from_rfc2822("Wed, 24 May 2023 00:00:00 PST")
-                .expect("able to parse default datetime"),
-        );
+        builder.created_at(DateTime::parse_from_rfc2822(
+            "Wed, 24 May 2023 00:00:00 PST",
+        )?);
         builder.created_by("System Initiative");
         for instrinsic in IntrinsicFunc::iter() {
             builder.func(instrinsic.to_spec()?);

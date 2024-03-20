@@ -183,6 +183,7 @@ impl ConnectionState {
         matches!(self, Self::Connections(_))
     }
 
+    #[allow(clippy::panic)]
     fn txns(&mut self) -> &mut Transactions {
         match self {
             Self::Transactions(txns) => txns,
@@ -625,20 +626,19 @@ impl DalContext {
         new
     }
 
-    pub async fn parent_is_head(&self) -> bool {
+    pub async fn parent_is_head(&self) -> Result<bool, TransactionsError> {
         if let Some(workspace_pk) = self.tenancy.workspace_pk() {
             let workspace = Workspace::get_by_pk(self, &workspace_pk)
                 .await
-                .unwrap()
-                .unwrap();
-            workspace.default_change_set_id()
-                == self
-                    .change_set_pointer()
-                    .unwrap()
-                    .base_change_set_id
-                    .unwrap()
+                .map_err(|err| TransactionsError::Workspace(err.to_string()))?
+                .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+            let change_set = self.change_set_pointer()?;
+            let base_change_set_id = change_set
+                .base_change_set_id
+                .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
+            Ok(workspace.default_change_set_id() == base_change_set_id)
         } else {
-            false
+            Ok(false)
         }
     }
 
@@ -1028,6 +1028,8 @@ pub enum TransactionsError {
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
     Nats(#[from] NatsError),
+    #[error("no base change set for change set: {0}")]
+    NoBaseChangeSet(ChangeSetId),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]

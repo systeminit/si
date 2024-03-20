@@ -39,7 +39,7 @@ pub async fn apply_change_set(
     let actions = Action::build_graph(&ctx).await?;
     let mut prototype_by_action_id = HashMap::new();
 
-    let applying_to_head = ctx.parent_is_head().await;
+    let applying_to_head = ctx.parent_is_head().await?;
     if applying_to_head {
         for bag in actions.values() {
             prototype_by_action_id.insert(bag.action.id, bag.action.prototype(&ctx).await?.id);

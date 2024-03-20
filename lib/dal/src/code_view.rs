@@ -88,13 +88,14 @@ impl CodeView {
         };
 
         let code_gen_entry: CodeGenerationEntry = serde_json::from_value(func_execution)?;
-        if code_gen_entry.code.is_none() || code_gen_entry.format.is_none() {
-            return Ok(None);
-        }
-
-        // Safe unwraps because of the above check
-        let format = code_gen_entry.format.as_ref().unwrap();
-        let code = code_gen_entry.code.as_ref().unwrap();
+        let format = match code_gen_entry.format {
+            Some(found) => found,
+            None => return Ok(None),
+        };
+        let code = match code_gen_entry.code {
+            Some(found) => found,
+            None => return Ok(None),
+        };
 
         let language = if format.is_empty() {
             CodeLanguage::Unknown

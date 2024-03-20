@@ -85,6 +85,8 @@ pub enum PkgError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("taking output socket as input for a prop is unsupported for name ({0}) and socket name ({1})")]
+    TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]

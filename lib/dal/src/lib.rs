@@ -1,5 +1,12 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
+#![warn(
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used
+)]
+
 use std::time::Duration;
 
 use rand::Rng;

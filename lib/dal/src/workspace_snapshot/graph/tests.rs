@@ -1,5 +1,6 @@
 mod rebase;
 
+#[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
     use petgraph::graph::NodeIndex;

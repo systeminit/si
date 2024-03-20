@@ -992,6 +992,7 @@ mod tests {
             );
         }
 
+        #[allow(clippy::panic)]
         #[test]
         fn deserialize_invalid() {
             if serde_json::from_str::<Object>(invalid()).is_ok() {
@@ -1046,6 +1047,7 @@ mod tests {
             );
         }
 
+        #[allow(clippy::panic)]
         #[test]
         fn deserialize_invalid() {
             if serde_json::from_str::<Object>(invalid()).is_ok() {
