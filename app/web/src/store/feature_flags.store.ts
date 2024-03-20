@@ -10,6 +10,7 @@ const FLAG_MAPPING = {
   INVITE_USER: "invite_user",
   MODULES_TAB: "modules_tab",
   INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
+  FEAT_GRAPHVIZ: "feat-graphviz",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

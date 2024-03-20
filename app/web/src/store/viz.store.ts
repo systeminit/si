@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { reactive } from "vue";
-import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
