@@ -1,0 +1,185 @@
+#[macro_export]
+macro_rules! content_address {
+    (
+        $(#[$($attrss:tt)*])*
+        $name:ident
+    ) => {
+        $(#[$($attrss)*])*
+        #[derive(Clone, Copy, Eq, PartialEq, std::hash::Hash)]
+        pub struct $name(::blake3::Hash);
+
+        impl $name {
+            pub fn new(input: &[u8]) -> Self {
+                Self(blake3::hash(input))
+            }
+
+            pub fn as_bytes(&self) -> &[u8] {
+                self.0.as_bytes()
+            }
+
+            pub fn nil() -> Self {
+                Self(blake3::Hash::from_bytes([0; 32]))
+            }
+        }
+
+        impl AsRef<[u8]> for $name {
+            fn as_ref(&self) -> &[u8] {
+                self.0.as_bytes()
+            }
+        }
+
+        impl From<&::serde_json::Value> for $name {
+            fn from(value: &::serde_json::Value) -> Self {
+                let input = value.to_string();
+                Self::new(input.as_bytes())
+            }
+        }
+
+        impl From<&str> for $name {
+            fn from(input: &str) -> Self {
+                Self::new(input.as_bytes())
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new("".as_bytes())
+            }
+        }
+
+        impl ::std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, std::concat!(stringify!($name), "({})"), self.0)
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                serializer.serialize_str(&self.to_string())
+            }
+        }
+
+        paste::paste! {
+            struct [<$name Visitor>];
+
+            impl<'de> ::serde::de::Visitor<'de> for [<$name Visitor>] {
+                type Value = $name;
+
+                fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    formatter.write_str("a blake3 hash string")
+                }
+
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    use ::std::str::FromStr;
+
+                    $name::from_str(v).map_err(|e| E::custom(e.to_string()))
+                }
+            }
+
+            impl<'de> ::serde::Deserialize<'de> for $name {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: ::serde::Deserializer<'de>,
+                {
+                    deserializer.deserialize_str([<$name Visitor>])
+                }
+            }
+
+            #[derive(Debug, ::thiserror::Error)]
+            #[error("failed to parse hash hex string")]
+            pub struct [<$name ParseError>](#[from] ::blake3::HexError);
+
+            impl ::std::str::FromStr for $name {
+                type Err = [<$name ParseError>];
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    Ok(Self(blake3::Hash::from_str(s)?))
+                }
+            }
+
+            impl $name {
+                /// Provide a [`hasher`](ContentHasher) to create [`hashes`](ContentHash).
+                pub fn hasher() -> [<$name Hasher>] {
+                    [<$name Hasher>]::new()
+                }
+            }
+
+            #[derive(Debug, Default)]
+            pub struct [<$name Hasher>](::blake3::Hasher);
+
+            impl [<$name Hasher>] {
+                pub fn new() -> Self {
+                    Self(::blake3::Hasher::new())
+                }
+
+                pub fn update(&mut self, input: &[u8]) {
+                    self.0.update(input);
+                }
+
+                pub fn finalize(&self) -> $name {
+                    $name(self.0.finalize())
+                }
+            }
+        }
+
+        impl ::postgres_types::ToSql for $name {
+            fn to_sql(
+                &self,
+                ty: &postgres_types::Type,
+                out: &mut ::bytes::BytesMut,
+            ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+            where
+                Self: Sized,
+            {
+                let self_string = self.to_string();
+
+                self_string.to_sql(ty, out)
+            }
+
+            fn accepts(ty: &postgres_types::Type) -> bool
+            where
+                Self: Sized,
+            {
+                String::accepts(ty)
+            }
+
+            fn to_sql_checked(
+                &self,
+                ty: &postgres_types::Type,
+                out: &mut ::bytes::BytesMut,
+            ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+                let self_string = self.to_string();
+                self_string.to_sql_checked(ty, out)
+            }
+        }
+
+        impl<'a> postgres_types::FromSql<'a> for $name {
+            fn from_sql(
+                ty: &postgres_types::Type,
+                raw: &'a [u8],
+            ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+                use ::std::str::FromStr;
+
+                let hash_string: String = postgres_types::FromSql::from_sql(ty, raw)?;
+                Ok(Self(blake3::Hash::from_str(&hash_string)?))
+            }
+
+            fn accepts(ty: &postgres_types::Type) -> bool {
+                ty == &postgres_types::Type::TEXT
+                    || ty.kind() == &postgres_types::Kind::Domain(postgres_types::Type::TEXT)
+            }
+        }
+    };
+}
