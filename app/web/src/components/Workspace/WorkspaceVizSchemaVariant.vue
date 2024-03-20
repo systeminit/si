@@ -1,6 +1,7 @@
 <template>
   <Stack class="h-full w-full my-4 mx-4">
     <Inline align="center" alignY="bottom">
+      <VButton size="sm" icon="refresh" @click="loadData"></VButton>
       <VormInput
         v-model="schemaVariant"
         label="Display"
@@ -159,10 +160,46 @@ function clearSelections() {
   state.clickedNeighbors.clear();
 }
 
+const size: Ref<number> = ref(3);
+
+async function loadData() {
+  loading.value = true;
+  if (schemaVariant.value) {
+    const variant = schemaVariant.value !== "all" ? schemaVariant.value : null;
+    await vizStore.LOAD_VARIANTS(variant);
+  } else {
+    await vizStore.LOAD_COMPONENTS();
+  }
+  loading.value = false;
+
+  if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
+    return;
+  }
+
+  // build graph nodes
+  graph = new DirectedGraph();
+
+  for (const node of vizStore.nodes) {
+    graph.addNode(node.id, {
+      color: getColor(node.nodeKind, node.contentKind),
+      label: `${node.contentKind ?? node.nodeKind}${
+        node.name ? `: ${node.name}` : ""
+      }`,
+      x: Math.floor(Math.random() * 1000),
+      y: Math.floor(Math.random() * 1000),
+      size: node.nodeKind === "Component" ? size.value * 2 : size.value, // make it stand out
+      grouping:
+        node.nodeKind === "Content" ? node.contentKind : node.contentKind,
+    });
+  }
+
+  for (const edge of vizStore.edges) {
+    graph.addEdge(edge.from, edge.to);
+  }
+}
+
 // we need DOM loaded
 onMounted(async () => {
-  const size: Ref<number> = ref(3);
-
   // whenever the schema variant changes, we need to re-load the graph
   // `Post` because we need the DOM loaded
   watchPostEffect(async (): Promise<void> => {
@@ -175,40 +212,7 @@ onMounted(async () => {
       size.value = 3; // large graph, smaller dots
     }
 
-    loading.value = true;
-    if (schemaVariant.value) {
-      const variant =
-        schemaVariant.value !== "all" ? schemaVariant.value : null;
-      await vizStore.LOAD_VARIANTS(variant);
-    } else {
-      await vizStore.LOAD_COMPONENTS();
-    }
-    loading.value = false;
-
-    if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
-      return;
-    }
-
-    // build graph nodes
-    graph = new DirectedGraph();
-
-    for (const node of vizStore.nodes) {
-      graph.addNode(node.id, {
-        color: getColor(node.nodeKind, node.contentKind),
-        label: `${node.contentKind ?? node.nodeKind}${
-          node.name ? `: ${node.name}` : ""
-        }`,
-        x: Math.floor(Math.random() * 1000),
-        y: Math.floor(Math.random() * 1000),
-        size: node.nodeKind === "Component" ? size.value * 2 : size.value, // make it stand out
-        grouping:
-          node.nodeKind === "Content" ? node.contentKind : node.contentKind,
-      });
-    }
-
-    for (const edge of vizStore.edges) {
-      graph.addEdge(edge.from, edge.to);
-    }
+    await loadData();
 
     const container = document.getElementById("vizDiv") as HTMLElement;
     renderer = new Sigma(graph, container, {
