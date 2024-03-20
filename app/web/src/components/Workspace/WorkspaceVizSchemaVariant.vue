@@ -7,7 +7,7 @@
         type="dropdown"
         class="flex-1"
         :options="schemaVariantOptions"
-        placeholder="Dropped Components"
+        placeholder="Only Diagram Components"
         placeholderSelectable
       />
       <VormInput
@@ -55,34 +55,38 @@ const componentStore = useComponentsStore();
 const loading: Ref<boolean> = ref(true);
 
 const schemaVariant = ref();
-const schemaVariantOptions = computed(() =>
-  componentStore.schemaVariants.map((sv) => ({
+const schemaVariantOptions = computed(() => {
+  const options = componentStore.schemaVariants.map((sv) => ({
     label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
     value: sv.id,
-  })),
-);
+  }));
+  options.unshift({ label: "Full Workspace", value: "all" });
+  return options;
+});
+
+const kindMap: { [key: string]: string } = {
+  Category: "#c200ff",
+  Func: "#F02",
+  Ordering: "#ABC",
+  Prop: "#0FF",
+  AttributePrototypeArgument: "#103016",
+  FuncArgument: "#40300c",
+};
+
+const contentKindMap: { [key: string]: string } = {
+  Root: "#F0F",
+  ActionPrototype: "#FFA",
+  AttributePrototype: "#00F",
+  InputSocket: "#07A",
+  OutputSocket: "#07A",
+  Schema: "#0F0",
+  FuncArg: "#777",
+};
 
 const getColor = (nodeKind: string, contentKind: string | null) => {
-  const kindMap: { [key: string]: string } = {
-    Category: "#c200ff",
-    Func: "#F02",
-    Ordering: "#ABC",
-    Prop: "#0FF",
-    AttributePrototypeArgument: "#103016",
-    FuncArgument: "#40300c",
-  };
-
-  const contentKindMap: { [key: string]: string } = {
-    Root: "#F0F",
-    ActionPrototype: "#FFA",
-    AttributePrototype: "#00F",
-    InputSocket: "#07A",
-    OutputSocket: "#07A",
-    Schema: "#0F0",
-    FuncArg: "#777",
-  };
-
-  if (nodeKind === "Content") {
+  if (nodeKind === "Component") {
+    return "#F0F";
+  } else if (nodeKind === "Content") {
     if (contentKind) {
       return contentKindMap[contentKind] ?? "#AF0";
     } else {
@@ -166,15 +170,16 @@ onMounted(async () => {
       renderer.kill(); // without this the graph draws new nodes on top of old nodes
     }
 
-    if (!schemaVariant.value) {
-      size.value = 3;
-    } else {
-      size.value = 6; // smaller graph, fewer nodes
+    size.value = 6;
+    if (schemaVariant.value === "all") {
+      size.value = 3; // large graph, smaller dots
     }
 
     loading.value = true;
     if (schemaVariant.value) {
-      await vizStore.LOAD_VARIANTS(schemaVariant.value);
+      const variant =
+        schemaVariant.value !== "all" ? schemaVariant.value : null;
+      await vizStore.LOAD_VARIANTS(variant);
     } else {
       await vizStore.LOAD_COMPONENTS();
     }
@@ -195,7 +200,7 @@ onMounted(async () => {
         }`,
         x: Math.floor(Math.random() * 1000),
         y: Math.floor(Math.random() * 1000),
-        size: node.contentKind === "Root" ? size.value * 2 : size.value, // make Root stand out
+        size: node.nodeKind === "Component" ? size.value * 2 : size.value, // make it stand out
         grouping:
           node.nodeKind === "Content" ? node.contentKind : node.contentKind,
       });

@@ -6,7 +6,13 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 
-export type NodeKind = "Category" | "Content" | "Func" | "Ordering" | "Prop";
+export type NodeKind =
+  | "Category"
+  | "Content"
+  | "Func"
+  | "Ordering"
+  | "Prop"
+  | "Component";
 
 export type ContentKind =
   | "Root"
