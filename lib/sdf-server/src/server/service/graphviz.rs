@@ -389,16 +389,18 @@ pub async fn nodes_edges(
 
     let root_node_idx = workspace_snapshot.root().await?;
 
-    let nodes = workspace_snapshot
+    let mut nodes = vec![];
+
+    for ( weight, idx ) in workspace_snapshot
         .nodes()
         .await?
-        .into_iter()
-        .map(|(weight, idx)| {
+        .into_iter() {
             node_idx_to_id.insert(idx, weight.id());
             let name = match &weight {
                 NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                 NodeWeight::Func(inner) => Some(inner.name().to_owned()),
                 NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
+                NodeWeight::Component(inner) => Some(Component::get_by_id(&ctx, inner.id().into()).await?.name(&ctx).await?),
                 NodeWeight::AttributePrototypeArgument(inner) => Some(format!(
                     "APA Targets: {}",
                     inner
@@ -412,14 +414,13 @@ pub async fn nodes_edges(
                 NodeWeight::FuncArgument(inner) => Some(inner.name().to_owned()),
                 _ => None,
             };
-            GraphVizNode {
+            nodes.push(GraphVizNode {
                 id: weight.id(),
                 content_kind: weight.content_address_discriminants(),
                 node_kind: weight.into(),
                 name,
-            }
-        })
-        .collect();
+            })
+        };
 
     let edges = workspace_snapshot
         .edges()
