@@ -156,6 +156,39 @@ def rust_binary(
         visibility = visibility,
     )
 
+
+def rust_library_integration_test(
+        name,
+        srcs,
+        deps,
+        crate_root = "src/lib.rs",
+        edition = "2021",
+        resources = [],
+        test_unit_deps = [],
+        test_unit_srcs = [],
+        test_unit_resources = {},
+        extra_test_targets = [],
+        proc_macro = False,
+        visibility = ["PUBLIC"],
+        **kwargs):
+
+    native.rust_library(
+        name = name,
+        edition = edition,
+        srcs = srcs,
+        deps = deps,
+        crate_root = crate_root,
+        resources = resources,
+        proc_macro = proc_macro,
+        visibility = visibility,
+        **kwargs
+    )
+
+    _alias(
+        name = "integration_test",
+        actual = ":{}".format(name),
+    )
+
 def rust_library(
         name,
         srcs,

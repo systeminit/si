@@ -337,7 +337,7 @@ impl FuncArgument {
     {
         let ulid: Ulid = id.into();
 
-        let (arg_node_idx, arg_nw) = {
+        let (_arg_node_idx, arg_nw) = {
             let workspace_snapshot = ctx.workspace_snapshot()?;
 
             let arg_node_idx = workspace_snapshot.get_node_index_by_id(ulid).await?;
@@ -376,7 +376,6 @@ impl FuncArgument {
             workspace_snapshot
                 .add_node(NodeWeight::FuncArgument(new_func_arg.clone()))
                 .await?;
-            workspace_snapshot.replace_references(arg_node_idx).await?;
             func_arg_node_weight = new_func_arg;
         }
 
