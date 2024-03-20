@@ -114,7 +114,7 @@ pub async fn schema_variant(
         GraphVizNode {
             id: sv_node_weight.id(),
             content_kind: sv_node_weight.content_address_discriminants(),
-            node_kind: sv_node_weight.into(),
+            node_kind: sv_node_weight.as_ref().into(),
             name: Some(sv.name().to_owned()),
         }
     };
@@ -141,7 +141,7 @@ pub async fn schema_variant(
                     });
                 });
             }
-            let name = match &target {
+            let name = match target.as_ref() {
                 NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                 NodeWeight::Func(inner) => {
                     func_nodes.push(inner.id());
@@ -156,7 +156,7 @@ pub async fn schema_variant(
                 nodes.push(GraphVizNode {
                     id: target.id(),
                     content_kind: target.content_address_discriminants(),
-                    node_kind: target.into(),
+                    node_kind: target.as_ref().into(),
                     name,
                 })
             }
@@ -189,7 +189,7 @@ pub async fn schema_variant(
                 });
             }
 
-            let name = match &source {
+            let name = match source.as_ref() {
                 NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                 NodeWeight::Func(inner) => Some(inner.name().to_owned()),
                 NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
@@ -201,7 +201,7 @@ pub async fn schema_variant(
                 nodes.push(GraphVizNode {
                     id: source.id(),
                     content_kind: source.content_address_discriminants(),
-                    node_kind: source.into(),
+                    node_kind: source.as_ref().into(),
                     name,
                 })
             }
@@ -219,7 +219,7 @@ pub async fn schema_variant(
                 .await?
                 .to_owned();
 
-            if let NodeWeight::Category(cat_inner) = &user_node {
+            if let NodeWeight::Category(cat_inner) = user_node.as_ref() {
                 let name = Some(cat_inner.kind().to_string());
                 if !added_edges.contains(&(func_id, cat_inner.id())) {
                     added_edges.insert((func_id, cat_inner.id()));
@@ -240,7 +240,7 @@ pub async fn schema_variant(
                     nodes.push(GraphVizNode {
                         id: cat_inner.id(),
                         content_kind: user_node.content_address_discriminants(),
-                        node_kind: user_node.to_owned().into(),
+                        node_kind: user_node.as_ref().into(),
                         name,
                     })
                 }
@@ -319,7 +319,7 @@ pub async fn components(
         let node = GraphVizNode {
             id: node_weight.id(),
             content_kind: node_weight.content_address_discriminants(),
-            node_kind: node_weight.into(),
+            node_kind: node_weight.as_ref().into(),
             name: Some(component.name(&ctx).await?.to_owned()),
         };
         nodes.push(node);
@@ -345,7 +345,7 @@ pub async fn components(
                 }
 
                 // TODO encapsulate this in node weight logic
-                let name = match &target {
+                let name = match target.as_ref() {
                     NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                     NodeWeight::Func(inner) => {
                         func_nodes.push(inner.id());
@@ -366,7 +366,7 @@ pub async fn components(
                     nodes.push(GraphVizNode {
                         id: target.id(),
                         content_kind: target.content_address_discriminants(),
-                        node_kind: target.into(),
+                        node_kind: target.as_ref().into(),
                         name,
                     })
                 }
@@ -400,7 +400,7 @@ pub async fn nodes_edges(
 
     for (weight, idx) in workspace_snapshot.nodes().await?.into_iter() {
         node_idx_to_id.insert(idx, weight.id());
-        let name = match &weight {
+        let name = match weight.as_ref() {
             NodeWeight::Category(inner) => Some(inner.kind().to_string()),
             NodeWeight::Func(inner) => Some(inner.name().to_owned()),
             NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
@@ -426,7 +426,7 @@ pub async fn nodes_edges(
         nodes.push(GraphVizNode {
             id: weight.id(),
             content_kind: weight.content_address_discriminants(),
-            node_kind: weight.into(),
+            node_kind: weight.as_ref().into(),
             name,
         })
     }

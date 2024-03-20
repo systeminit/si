@@ -134,7 +134,7 @@ impl AttributePrototypeArgument {
                 )
                 .await?
             {
-                match workspace_snapshot.get_node_weight(node_idx).await? {
+                match workspace_snapshot.get_node_weight(node_idx).await?.as_ref() {
                     NodeWeight::Content(inner) => {
                         let inner_addr_discrim: ContentAddressDiscriminants =
                             inner.content_address().into();
@@ -318,7 +318,7 @@ impl AttributePrototypeArgument {
             .into_iter()
             .next()
         {
-            match workspace_snapshot.get_node_weight(target).await? {
+            match workspace_snapshot.get_node_weight(target).await?.as_ref() {
                 NodeWeight::Prop(inner) => {
                     return Ok(Some(ValueSource::Prop(inner.id().into())));
                 }
@@ -513,7 +513,7 @@ impl AttributePrototypeArgument {
 
         for idx in apa_node_idxs {
             let node_weight = workspace_snapshot.get_node_weight(idx).await?;
-            if let NodeWeight::AttributePrototypeArgument(apa_weight) = &node_weight {
+            if let NodeWeight::AttributePrototypeArgument(apa_weight) = node_weight.as_ref() {
                 if let Some(ArgumentTargets {
                     destination_component_id,
                     ..

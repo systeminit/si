@@ -5,7 +5,7 @@ use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
-use telemetry::tracing::log::info;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
@@ -87,6 +87,7 @@ impl Schema {
         &self.name
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),

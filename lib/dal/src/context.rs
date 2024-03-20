@@ -17,6 +17,7 @@ use tokio::time::Instant;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::layer_db_types::ContentTypes;
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::{
     conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
 };
@@ -34,7 +35,7 @@ use crate::{
     WorkspacePk, WorkspaceSnapshot,
 };
 
-pub type DalLayerDb = LayerDb<ContentTypes, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, WorkspaceSnapshotGraph, NodeWeight>;
 
 /// A context type which contains handles to common core service dependencies.
 ///

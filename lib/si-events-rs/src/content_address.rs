@@ -22,6 +22,23 @@ macro_rules! content_address {
             }
         }
 
+        impl PartialOrd for $name {
+            fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        impl Ord for $name {
+            fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+                let mut other_bytes = [0u8; 32];
+                other_bytes.copy_from_slice(other.as_bytes());
+                let mut self_bytes = [0u8; 32];
+                self_bytes.copy_from_slice(self.as_bytes());
+
+                self_bytes.cmp(&other_bytes)
+            }
+        }
+
         impl AsRef<[u8]> for $name {
             fn as_ref(&self) -> &[u8] {
                 self.0.as_bytes()
@@ -131,6 +148,42 @@ macro_rules! content_address {
                 pub fn finalize(&self) -> $name {
                     $name(self.0.finalize())
                 }
+            }
+
+            struct [<$name BytesVisitor>];
+
+            impl<'de> ::serde::de::Visitor<'de> for [<$name BytesVisitor>] {
+                type Value = $name;
+
+                fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    formatter.write_str("a blake3 hash byte slice")
+                }
+
+                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    if v.len() != 32 {
+                        return Err(E::custom(std::concat!("deserializer received wrong sized byte slice when attempting to deserialize a ", stringify!($name))));
+                    }
+
+                    let mut hash_bytes = [0u8; 32];
+                    hash_bytes.copy_from_slice(v);
+
+                    Ok($name(::blake3::Hash::from_bytes(hash_bytes)))
+                }
+            }
+
+            pub fn [<deserialize_ $name:snake _as_bytes>]<'de, D>(d: D) -> Result<$name, D::Error>
+            where D: ::serde::de::Deserializer<'de>
+            {
+                d.deserialize_bytes([<$name BytesVisitor>])
+            }
+
+            pub fn [<serialize_ $name:snake _as_bytes>]<S>(value: &$name, serializer: S) -> Result<S::Ok, S::Error>
+            where S: ::serde::ser::Serializer,
+            {
+                serializer.serialize_bytes(value.as_bytes())
             }
         }
 

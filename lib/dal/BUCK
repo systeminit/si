@@ -86,6 +86,7 @@ rust_test(
         "//lib/rebaser-client:rebaser-client",
         "//lib/rebaser-core:rebaser-core",
         "//lib/rebaser-server:rebaser-server",
+        "//lib/si-events-rs:si-events",
         "//lib/si-pkg:si-pkg",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:base64",

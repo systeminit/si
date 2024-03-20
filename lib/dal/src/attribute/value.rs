@@ -922,8 +922,10 @@ impl AttributeValue {
             let workspace_snapshot = ctx.workspace_snapshot()?;
 
             let prop_node_index = workspace_snapshot.get_node_index_by_id(prop_id).await?;
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_node_index).await?
+            if let NodeWeight::Prop(prop_inner) = workspace_snapshot
+                .get_node_weight(prop_node_index)
+                .await?
+                .as_ref()
             {
                 prop_inner.kind()
             } else {
@@ -1251,6 +1253,7 @@ impl AttributeValue {
                     .workspace_snapshot()?
                     .get_node_weight(node_index)
                     .await?
+                    .as_ref()
                 {
                     prop_map.insert(
                         prop_inner.name().to_string(),
@@ -1348,6 +1351,7 @@ impl AttributeValue {
             match workspace_snapshot
                 .get_node_weight(element_prop_index)
                 .await?
+                .as_ref()
             {
                 NodeWeight::Prop(prop_inner) => (prop_inner.id(), prop_inner.kind()),
                 _ => {
@@ -1592,6 +1596,7 @@ impl AttributeValue {
             match workspace_snapshot
                 .get_node_weight(element_prop_index)
                 .await?
+                .as_ref()
             {
                 NodeWeight::Prop(prop_inner) => (prop_inner.id(), prop_inner.kind()),
                 _ => {
@@ -1793,7 +1798,7 @@ impl AttributeValue {
         view: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let (av_idx, av_node_weight) = {
+        let (_, av_node_weight) = {
             let av_idx = workspace_snapshot
                 .get_node_index_by_id(attribute_value_id)
                 .await?;
@@ -1838,7 +1843,6 @@ impl AttributeValue {
         workspace_snapshot
             .add_node(NodeWeight::AttributeValue(new_av_node_weight))
             .await?;
-        workspace_snapshot.replace_references(av_idx).await?;
 
         Ok(())
     }
@@ -1853,7 +1857,7 @@ impl AttributeValue {
         func_execution_pk: FuncExecutionPk,
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let (av_idx, av_node_weight) = {
+        let (_av_idx, av_node_weight) = {
             let av_idx = workspace_snapshot
                 .get_node_index_by_id(attribute_value_id)
                 .await?;
@@ -1914,7 +1918,6 @@ impl AttributeValue {
         workspace_snapshot
             .add_node(NodeWeight::AttributeValue(new_av_node_weight))
             .await?;
-        workspace_snapshot.replace_references(av_idx).await?;
 
         Ok(())
     }
@@ -1951,7 +1954,7 @@ impl AttributeValue {
             .await?
         {
             let target_node_weight = workspace_snapshot.get_node_weight(target).await?;
-            if let NodeWeight::Prop(prop_node_weight) = &target_node_weight {
+            if let NodeWeight::Prop(prop_node_weight) = target_node_weight.as_ref() {
                 maybe_prop_id = match maybe_prop_id {
                     Some(already_found_prop_id) => {
                         return Err(AttributeValueError::MultiplePropsFound(
@@ -2070,7 +2073,7 @@ impl AttributeValue {
             .pop()
         {
             let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
-            if let NodeWeight::Ordering(ordering_weight) = node_weight {
+            if let NodeWeight::Ordering(ordering_weight) = node_weight.as_ref() {
                 Ok(ordering_weight
                     .order()
                     .clone()

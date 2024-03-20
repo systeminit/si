@@ -12,3 +12,4 @@ pub use crate::{
 content_address!(ContentHash);
 content_address!(WorkspaceSnapshotAddress);
 content_address!(NodeWeightAddress);
+content_address!(MerkleTreeHash);
