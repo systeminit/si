@@ -305,7 +305,7 @@ impl Func {
         let name = name.as_ref();
         for func_index in func_indices {
             let node_weight = workspace_snapshot.get_node_weight(func_index).await?;
-            if let NodeWeight::Func(inner_weight) = node_weight {
+            if let NodeWeight::Func(inner_weight) = node_weight.as_ref() {
                 if inner_weight.name() == name {
                     return Ok(Some(inner_weight.id().into()));
                 }
@@ -401,7 +401,7 @@ impl Func {
         // have changed, this ends up updating the node for the function twice. This could be
         // optimized to do it only once.
         if func.name.as_str() != node_weight.name() {
-            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id).await?;
+            let _original_node_index = workspace_snapshot.get_node_index_by_id(func.id).await?;
 
             node_weight.set_name(func.name.as_str());
 
@@ -409,10 +409,6 @@ impl Func {
                 .add_node(NodeWeight::Func(
                     node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
                 ))
-                .await?;
-
-            workspace_snapshot
-                .replace_references(original_node_index)
                 .await?;
         }
         let updated = FuncContentV1::from(func.clone());
@@ -473,6 +469,7 @@ impl Func {
             .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
