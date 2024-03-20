@@ -2,12 +2,14 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use axum::{extract::Query, response::Response, routing::get, Json, Router};
 use dal::{
-    schema::variant::SchemaVariantError, workspace_snapshot::{
+    schema::variant::SchemaVariantError,
+    workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
         node_weight::{NodeWeight, NodeWeightDiscriminants},
         WorkspaceSnapshotError,
-    }, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError, Visibility
+    },
+    Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -311,15 +313,16 @@ pub async fn components(
             continue;
         }
 
-        let node_weight = workspace_snapshot.get_node_weight_by_id(component.id()).await?;
-        let node  = GraphVizNode {
+        let node_weight = workspace_snapshot
+            .get_node_weight_by_id(component.id())
+            .await?;
+        let node = GraphVizNode {
             id: node_weight.id(),
             content_kind: node_weight.content_address_discriminants(),
             node_kind: node_weight.into(),
             name: Some(component.name(&ctx).await?.to_owned()),
         };
         nodes.push(node);
-
 
         let mut work_queue: VecDeque<Ulid> = VecDeque::from([component.id().into()]);
         while let Some(id) = work_queue.pop_front() {
@@ -329,8 +332,8 @@ pub async fn components(
                     added_edges.insert((id, target.id()));
 
                     let rel_edges = workspace_snapshot
-                    .get_edges_between_nodes(id, target.id())
-                    .await?;
+                        .get_edges_between_nodes(id, target.id())
+                        .await?;
                     rel_edges.iter().enumerate().for_each(|(_, edge)| {
                         edges.push(GraphVizEdge {
                             from: id,
@@ -349,7 +352,12 @@ pub async fn components(
                         Some(inner.name().to_owned())
                     }
                     NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
-                    NodeWeight::Component(inner) => Some(Component::get_by_id(&ctx, inner.id().into()).await?.name(&ctx).await?),
+                    NodeWeight::Component(inner) => Some(
+                        Component::get_by_id(&ctx, inner.id().into())
+                            .await?
+                            .name(&ctx)
+                            .await?,
+                    ),
                     _ => None,
                 };
 
@@ -365,7 +373,6 @@ pub async fn components(
             }
         }
     }
-
 
     let response = GraphVizResponse {
         nodes,
@@ -391,36 +398,38 @@ pub async fn nodes_edges(
 
     let mut nodes = vec![];
 
-    for ( weight, idx ) in workspace_snapshot
-        .nodes()
-        .await?
-        .into_iter() {
-            node_idx_to_id.insert(idx, weight.id());
-            let name = match &weight {
-                NodeWeight::Category(inner) => Some(inner.kind().to_string()),
-                NodeWeight::Func(inner) => Some(inner.name().to_owned()),
-                NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
-                NodeWeight::Component(inner) => Some(Component::get_by_id(&ctx, inner.id().into()).await?.name(&ctx).await?),
-                NodeWeight::AttributePrototypeArgument(inner) => Some(format!(
-                    "APA Targets: {}",
-                    inner
-                        .targets()
-                        .map(|targets| format!(
-                            "\nsource: {}\nto: {}",
-                            targets.source_component_id, targets.destination_component_id
-                        ))
-                        .unwrap_or("".to_string())
-                )),
-                NodeWeight::FuncArgument(inner) => Some(inner.name().to_owned()),
-                _ => None,
-            };
-            nodes.push(GraphVizNode {
-                id: weight.id(),
-                content_kind: weight.content_address_discriminants(),
-                node_kind: weight.into(),
-                name,
-            })
+    for (weight, idx) in workspace_snapshot.nodes().await?.into_iter() {
+        node_idx_to_id.insert(idx, weight.id());
+        let name = match &weight {
+            NodeWeight::Category(inner) => Some(inner.kind().to_string()),
+            NodeWeight::Func(inner) => Some(inner.name().to_owned()),
+            NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
+            NodeWeight::Component(inner) => Some(
+                Component::get_by_id(&ctx, inner.id().into())
+                    .await?
+                    .name(&ctx)
+                    .await?,
+            ),
+            NodeWeight::AttributePrototypeArgument(inner) => Some(format!(
+                "APA Targets: {}",
+                inner
+                    .targets()
+                    .map(|targets| format!(
+                        "\nsource: {}\nto: {}",
+                        targets.source_component_id, targets.destination_component_id
+                    ))
+                    .unwrap_or("".to_string())
+            )),
+            NodeWeight::FuncArgument(inner) => Some(inner.name().to_owned()),
+            _ => None,
         };
+        nodes.push(GraphVizNode {
+            id: weight.id(),
+            content_kind: weight.content_address_discriminants(),
+            node_kind: weight.into(),
+            name,
+        })
+    }
 
     let edges = workspace_snapshot
         .edges()
@@ -442,10 +451,12 @@ pub async fn nodes_edges(
     let response = GraphVizResponse {
         nodes,
         edges,
-        root_node_id: Some(node_idx_to_id
-            .get(&root_node_idx)
-            .copied()
-            .ok_or(GraphVizError::NoRootNode)?),
+        root_node_id: Some(
+            node_idx_to_id
+                .get(&root_node_idx)
+                .copied()
+                .ok_or(GraphVizError::NoRootNode)?,
+        ),
     };
 
     Ok(Json(response))
