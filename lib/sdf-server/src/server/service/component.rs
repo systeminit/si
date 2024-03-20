@@ -158,7 +158,6 @@ pub fn routes() -> Router<AppState> {
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
         )
-        // .route("/list_resources", get(list_resources::list_resources))
         .route("/get_code", get(get_code::get_code))
         // .route("/get_diff", get(get_diff::get_diff))
         .route(
