@@ -5,6 +5,7 @@ load(
     "system_python_bootstrap_toolchain",
     "system_python_toolchain",
 )
+load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
@@ -57,6 +58,11 @@ build_context_toolchain(
 
 docker_toolchain(
     name = "docker",
+    visibility = ["PUBLIC"],
+)
+
+e2e_toolchain(
+    name = "e2e",
     visibility = ["PUBLIC"],
 )
 

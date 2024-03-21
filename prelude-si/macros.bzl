@@ -19,6 +19,12 @@ load(
 docker_image = _docker_image
 
 load(
+    "@prelude-si//macros:e2e.bzl",
+    _e2e = "e2e",
+)
+e2e = _e2e
+
+load(
     "@prelude-si//macros:rootfs.bzl",
     _rootfs = "rootfs",
 )
