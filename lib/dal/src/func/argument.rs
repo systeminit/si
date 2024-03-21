@@ -193,7 +193,7 @@ impl FuncArgument {
         workspace_snapshot
             .add_edge(
                 func_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                 id,
             )
             .await?;

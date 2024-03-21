@@ -178,7 +178,7 @@ impl Secret {
         workspace_snapshot
             .add_edge(
                 secret_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                 id,
             )
             .await?;

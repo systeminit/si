@@ -1,7 +1,7 @@
 //! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
-use petgraph::Direction;
+use petgraph::{Direction, Incoming};
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
@@ -180,7 +180,7 @@ impl SchemaVariant {
         workspace_snapshot
             .add_edge(
                 schema_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                 id,
             )
             .await?;
@@ -281,7 +281,7 @@ impl SchemaVariant {
             let schema_variant_node_indices = workspace_snapshot
                 .outgoing_targets_for_edge_weight_kind(
                     schema_id,
-                    EdgeWeightKindDiscriminants::Default,
+                    EdgeWeightKind::use_as_default().into(),
                 )
                 .await?;
 
@@ -322,7 +322,7 @@ impl SchemaVariant {
         let node_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
                 parent_index,
-                EdgeWeightKindDiscriminants::Use,
+                EdgeWeightKind::use_not_as_default().into(),
             )
             .await?;
 
@@ -523,7 +523,10 @@ impl SchemaVariant {
         ctx.workspace_snapshot()?
             .add_edge(
                 schema_variant_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
+                EdgeWeight::new(
+                    ctx.change_set_pointer()?,
+                    EdgeWeightKind::use_not_as_default(),
+                )?,
                 func_id,
             )
             .await?;
@@ -924,36 +927,29 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Schema> {
         let schema_id = {
             let workspace_snapshot = ctx.workspace_snapshot()?;
-            let mut maybe_schema_indices = workspace_snapshot
-                .incoming_sources_for_edge_weight_kind(
-                    schema_variant_id,
-                    EdgeWeightKindDiscriminants::Default,
-                )
+
+            let maybe_schema_indices = workspace_snapshot
+                .edges_directed(schema_variant_id, Incoming)
                 .await?;
-            let maybe_no_default_schema_indicies = workspace_snapshot
-                .incoming_sources_for_edge_weight_kind(
-                    schema_variant_id,
-                    EdgeWeightKindDiscriminants::Use,
-                )
-                .await?;
-            maybe_schema_indices.extend(maybe_no_default_schema_indicies);
 
             let mut schema_id: Option<SchemaId> = None;
-            for index in maybe_schema_indices {
-                if let NodeWeight::Content(content) =
-                    workspace_snapshot.get_node_weight(index).await?
-                {
-                    let content_hash_discriminants: ContentAddressDiscriminants =
-                        content.content_address().into();
-                    if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
-                        // TODO(nick): consider creating a new edge weight kind to make this easier.
-                        // We also should use a proper error here.
-                        schema_id = match schema_id {
-                            None => Some(content.id().into()),
-                            Some(_already_found_schema_id) => {
-                                panic!("already found a schema")
-                            }
-                        };
+            for (edge_weight, source_index, _) in maybe_schema_indices {
+                if *edge_weight.kind() == EdgeWeightKind::use_as_default() {
+                    if let NodeWeight::Content(content) =
+                        workspace_snapshot.get_node_weight(source_index).await?
+                    {
+                        let content_hash_discriminants: ContentAddressDiscriminants =
+                            content.content_address().into();
+                        if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
+                            // TODO(nick): consider creating a new edge weight kind to make this easier.
+                            // We also should use a proper error here.
+                            schema_id = match schema_id {
+                                None => Some(content.id().into()),
+                                Some(_already_found_schema_id) => {
+                                    panic!("already found a schema")
+                                }
+                            };
+                        }
                     }
                 }
             }

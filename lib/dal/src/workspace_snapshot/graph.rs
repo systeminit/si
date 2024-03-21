@@ -939,7 +939,6 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
-                    EdgeWeightKindDiscriminants::Default => "brown",
                 };
 
                 match edgeref.weight().kind() {
@@ -1985,8 +1984,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
                     | EdgeWeightKind::SocketValue
-                    | EdgeWeightKind::Default
-                    | EdgeWeightKind::Use => {}
+                    | EdgeWeightKind::Use { .. } => {}
                 }
             }
         }

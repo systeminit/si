@@ -187,7 +187,7 @@ impl AttributePrototypeArgument {
         workspace_snapshot
             .add_edge(
                 id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                 arg_id,
             )
             .await?;
@@ -249,7 +249,7 @@ impl AttributePrototypeArgument {
             workspace_snapshot
                 .add_edge(
                     prototype_arg.id(),
-                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                     func_arg_id,
                 )
                 .await?;

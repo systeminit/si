@@ -118,7 +118,7 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
                 id,
             )
             .await?;
@@ -132,22 +132,22 @@ impl Schema {
     ) -> SchemaResult<Option<SchemaVariantId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let default_schema_variant_node_index = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Default)
-            .await?
-            .first()
-            .copied();
+        let default_schema_variant_node_indicies =
+            workspace_snapshot.edges_directed(self.id, Outgoing).await?;
 
-        match default_schema_variant_node_index {
-            None => Ok(None),
-            Some(default_schema_variant_node_index) => Ok(Some(
-                workspace_snapshot
-                    .get_node_weight(default_schema_variant_node_index)
-                    .await?
-                    .id()
-                    .into(),
-            )),
+        for (edge_weight, _, target_index) in default_schema_variant_node_indicies {
+            if *edge_weight.kind() == EdgeWeightKind::use_as_default() {
+                return Ok(Some(
+                    workspace_snapshot
+                        .get_node_weight(target_index)
+                        .await?
+                        .id()
+                        .into(),
+                ));
+            }
         }
+
+        Ok(None)
     }
 
     pub async fn set_default_schema_variant(
@@ -176,7 +176,7 @@ impl Schema {
             .edges_directed_for_edge_weight_kind(
                 self.id,
                 Outgoing,
-                EdgeWeightKindDiscriminants::Default,
+                EdgeWeightKind::use_as_default().into(),
             )
             .await?
         {
@@ -194,7 +194,10 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
+                    EdgeWeight::new(
+                        ctx.change_set_pointer()?,
+                        EdgeWeightKind::use_not_as_default(),
+                    )?,
                     schema_variant_id,
                 )
                 .await?;
@@ -204,7 +207,7 @@ impl Schema {
             .edges_directed_for_edge_weight_kind(
                 self.id,
                 Outgoing,
-                EdgeWeightKindDiscriminants::Use,
+                EdgeWeightKind::use_not_as_default().into(),
             )
             .await?
         {
@@ -222,7 +225,7 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Default)?,
+                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::use_as_default())?,
                     schema_variant_id,
                 )
                 .await?;

@@ -18,7 +18,7 @@ pub enum EdgeWeightError {
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[remain::sorted]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize))]
 pub enum EdgeWeightKind {
     Action,
@@ -31,8 +31,6 @@ pub enum EdgeWeightKind {
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
     Contain(Option<String>),
-    /// Used to denote when something is a default. For example a default schema variant for a schema
-    Default,
     /// Used to indicate parentage within frames. It does not dictate data flow. That is provided via
     /// [`ComponentType`](crate::ComponentType).
     ///
@@ -69,8 +67,19 @@ pub enum EdgeWeightKind {
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules
     /// "use" functions, schemas, and eventually(?) components.
-    #[default]
-    Use,
+    Use {
+        is_default: bool,
+    },
+}
+
+impl EdgeWeightKind {
+    pub fn use_as_default() -> Self {
+        EdgeWeightKind::Use { is_default: true }
+    }
+
+    pub fn use_not_as_default() -> Self {
+        EdgeWeightKind::Use { is_default: false }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
