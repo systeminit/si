@@ -3,11 +3,19 @@ use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    Component, DalContext, EncryptedSecret, Func, FuncBackendKind, InputSocket, KeyPair,
-    OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret, SocketArity,
+    Component, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, InputSocket,
+    KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret, SocketArity,
     SocketKind, User, UserPk,
 };
 use names::{Generator, Name};
+
+pub async fn commit_and_update_snapshot(ctx: &mut DalContext) {
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+}
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
@@ -169,6 +177,48 @@ pub async fn create_component_for_schema_variant(
 //     .await
 //     .expect("cannot create func")
 // }
+
+pub async fn connect_components_with_socket_names(
+    ctx: &DalContext,
+    source_component_id: ComponentId,
+    output_socket_name: impl AsRef<str>,
+    destination_component_id: ComponentId,
+    input_socket_name: impl AsRef<str>,
+) {
+    let from_socket_id = {
+        let sv_id = Component::schema_variant_id(ctx, source_component_id)
+            .await
+            .expect("find schema variant for source component");
+
+        OutputSocket::find_with_name(ctx, output_socket_name, sv_id)
+            .await
+            .expect("perform find output socket")
+            .expect("find output socket")
+            .id()
+    };
+
+    let to_socket_id = {
+        let sv_id = Component::schema_variant_id(ctx, destination_component_id)
+            .await
+            .expect("find schema variant for destination component");
+
+        InputSocket::find_with_name(ctx, input_socket_name, sv_id)
+            .await
+            .expect("perform find input socket")
+            .expect("find input socket")
+            .id()
+    };
+
+    Component::connect(
+        ctx,
+        source_component_id,
+        from_socket_id,
+        destination_component_id,
+        to_socket_id,
+    )
+    .await
+    .expect("could not connect components");
+}
 
 pub async fn create_func_binding(
     ctx: &DalContext,
