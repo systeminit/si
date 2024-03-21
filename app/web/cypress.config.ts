@@ -18,8 +18,7 @@ export default defineConfig({
       })
     },
     
-    // Hotfix, needs amended
-    baseUrl: 'https://app.systeminit.com',
+    baseUrl: process.env.VITE_SI_WORKSPACE_URL || 'http://localhost:8080',
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
