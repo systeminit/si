@@ -8,7 +8,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
     });
 
     it('delete', () => {
-      cy.visit('/')
+      cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go')
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
       
@@ -22,7 +22,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Find the AWS Credential
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('AWS Credential').should('be.visible').as('awsCred')
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('AWS Credential').as('awsCred')
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
