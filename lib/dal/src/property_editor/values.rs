@@ -14,8 +14,8 @@ use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, InputSocketId,
-    Prop, PropId,
+    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
+    PropId,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,8 +65,7 @@ impl PropertyEditorValues {
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
                 is_controlled_by_dynamic_func: false,
-                controlling_func_id: FuncId::NONE,
-                controlling_attribute_value_id: root_property_editor_value_id.into(),
+                is_controlled_by_ancestor: false,
                 overridden: false,
             },
         );
@@ -143,9 +142,9 @@ impl PropertyEditorValues {
                     .any(|s| connected_sockets_on_component.contains(s));
 
                 let ControllingFuncData {
-                    func_id: this_controlling_func_id,
                     av_id: this_controlling_attribute_value_id,
                     is_dynamic_func: this_controlling_func_is_dynamic,
+                    ..
                 } = *controlling_ancestors_for_av_id
                     .get(&child_av_id)
                     .ok_or(AttributeValueError::MissingForId(child_av_id))?;
@@ -174,8 +173,7 @@ impl PropertyEditorValues {
                         .unwrap_or(Value::Null),
                     can_be_set_by_socket: !sockets_for_av.is_empty(),
                     is_from_external_source,
-                    controlling_func_id: this_controlling_func_id,
-                    controlling_attribute_value_id: this_controlling_attribute_value_id,
+                    is_controlled_by_ancestor: this_controlling_attribute_value_id != child_av_id,
                     is_controlled_by_dynamic_func: this_controlling_func_is_dynamic,
                     overridden,
                 };
@@ -273,8 +271,7 @@ pub struct PropertyEditorValue {
     pub value: Value,
     pub can_be_set_by_socket: bool, // true if this prop value is currently driven by a socket, even if the socket isn't in use
     pub is_from_external_source: bool, // true if this prop has a value provided by a socket
-    pub controlling_attribute_value_id: AttributeValueId, // if ancestor of prop is set by dynamic func, ID of ancestor that sets it
-    pub controlling_func_id: FuncId, // id of the func which controls this prop value
+    pub is_controlled_by_ancestor: bool, // if ancestor of prop is set by dynamic func, ID of ancestor that sets it
     pub is_controlled_by_dynamic_func: bool, // props driven by non-dynamic funcs have a statically set value
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
 }
