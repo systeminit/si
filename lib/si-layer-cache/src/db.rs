@@ -6,7 +6,7 @@ use telemetry::tracing::{info, warn};
 use ulid::Ulid;
 
 use crate::{
-    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivitySubscriber},
+    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream},
     error::LayerDbResult,
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterServer},
@@ -187,16 +187,25 @@ where
     }
 
     // Publish an activity
-    pub fn activity_publish(&self, activity: &Activity) -> LayerDbResult<()> {
-        self.activity_publisher.publish(activity)
+    pub async fn publish_activity(&self, activity: &Activity) -> LayerDbResult<()> {
+        self.activity_publisher.publish(activity).await
     }
 
     // Subscribe to all activities, or provide an optional array of activity kinds
     // to subscribe to.
-    pub async fn activity_subscribe(
+    pub async fn subscribe_activities(
         &self,
-        to_receive: Option<Vec<ActivityPayloadDiscriminants>>,
-    ) -> LayerDbResult<ActivitySubscriber> {
-        ActivitySubscriber::new(self.instance_id, &self.nats_client, to_receive).await
+        to_receive: impl IntoIterator<Item = ActivityPayloadDiscriminants>,
+    ) -> LayerDbResult<ActivityStream> {
+        ActivityStream::create(self.instance_id, &self.nats_client, Some(to_receive)).await
+    }
+
+    pub async fn subscribe_all_activities(&self) -> LayerDbResult<ActivityStream> {
+        ActivityStream::create(
+            self.instance_id,
+            &self.nats_client,
+            None::<std::vec::IntoIter<_>>,
+        )
+        .await
     }
 }

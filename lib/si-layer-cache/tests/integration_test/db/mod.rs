@@ -45,8 +45,8 @@ async fn activities() {
     ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     // Subscribe to all activities
-    let mut subscriber = ldb_axl
-        .activity_subscribe(None)
+    let mut activities = ldb_axl
+        .subscribe_all_activities()
         .await
         .expect("cannot subscribe to all activities");
 
@@ -57,17 +57,16 @@ async fn activities() {
     let activity = Activity::rebase(rebase_request, metadata);
     // Publish an activity
     ldb_slash
-        .activity_publish(&activity)
+        .publish_activity(&activity)
+        .await
         .expect("cannot publish activity");
 
-    let message = subscriber
-        .messages()
+    let (restored_activity, _acker) = activities
         .next()
         .await
         .expect("no message waiting")
-        .expect("error receiving message");
-    let restored_activity: Activity =
-        postcard::from_bytes(&message.payload).expect("not an activity");
+        .expect("error receiving message")
+        .into_parts();
     assert_eq!(activity, restored_activity);
 }
 
@@ -98,8 +97,8 @@ async fn activities_subscribe_partial() {
     ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     // Subscribe to only rebase finished activities
-    let mut subscriber = ldb_axl
-        .activity_subscribe(Some(vec![ActivityPayloadDiscriminants::RebaseFinished]))
+    let mut activities = ldb_axl
+        .subscribe_activities(vec![ActivityPayloadDiscriminants::RebaseFinished])
         .await
         .expect("cannot subscribe to all activities");
 
@@ -111,7 +110,8 @@ async fn activities_subscribe_partial() {
     let rebase_request_activity = Activity::rebase(rebase_request, metadata);
     // Publish an activity
     ldb_slash
-        .activity_publish(&rebase_request_activity)
+        .publish_activity(&rebase_request_activity)
+        .await
         .expect("cannot publish activity");
 
     // Send a rebase finished activity
@@ -128,19 +128,18 @@ async fn activities_subscribe_partial() {
     let rebase_finished_activity = Activity::rebase_finished(rebase_finished, metadata);
     // Publish an activity
     ldb_slash
-        .activity_publish(&rebase_finished_activity)
+        .publish_activity(&rebase_finished_activity)
+        .await
         .expect("cannot publish activity");
 
     // The nats publishing rules would require that the first activity (the rebase request) be
     // recieved before the second (the rebase finished event). So we can confirm we have subject
     // filtering working.
-    let message = subscriber
-        .messages()
+    let (restored_activity, _acker) = activities
         .next()
         .await
         .expect("no message waiting")
-        .expect("error receiving message");
-    let restored_activity: Activity =
-        postcard::from_bytes(&message.payload).expect("not an activity");
+        .expect("error receiving message")
+        .into_parts();
     assert_eq!(rebase_finished_activity, restored_activity);
 }

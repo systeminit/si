@@ -151,7 +151,7 @@ pub mod subject {
 
     pub fn for_activity_discriminate(
         prefix: Option<&str>,
-        activity_payload_discriminate: &ActivityPayloadDiscriminants,
+        activity_payload_discriminate: ActivityPayloadDiscriminants,
     ) -> Subject {
         // Cuts down on the amount of `String` allocations dealing with Ulids
         let _buf = [0; ulid::ULID_LEN];
