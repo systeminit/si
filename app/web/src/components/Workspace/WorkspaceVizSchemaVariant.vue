@@ -25,14 +25,17 @@
         >
       </div>
       <div>
-        <VButton :disabled="loading" @click="toggleLayout"
+        <VButton :disabled="reqData?.isPending" @click="toggleLayout"
           >{{ animate_layout ? "Stop" : "Start" }} Animation</VButton
         >
       </div>
     </Inline>
-    <h1 v-show="loading" align="center">Loading...</h1>
+    <h1 v-show="reqData?.isPending" align="center">Loading...</h1>
+    <h1 v-show="reqData?.isError" align="center" class="text-destructive-500">
+      Error Loading Data...
+    </h1>
     <section
-      v-show="!loading"
+      v-show="reqData?.isSuccess"
       id="vizDiv"
       class="h-full w-full m-0 p-0 overflow-hidden"
     ></section>
@@ -40,20 +43,27 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, computed, watchPostEffect, Ref, reactive } from "vue";
+import {
+  onMounted,
+  ref,
+  computed,
+  watchPostEffect,
+  Ref,
+  reactive,
+  ComputedRef,
+} from "vue";
 import { VormInput, Stack, Inline, VButton } from "@si/vue-lib/design-system";
 import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
 import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import { useComponentsStore } from "@/store/components.store";
 import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
 const componentStore = useComponentsStore();
-
-const loading: Ref<boolean> = ref(true);
 
 const schemaVariant = ref();
 const schemaVariantOptions = computed(() => {
@@ -162,17 +172,27 @@ function clearSelections() {
 
 const size: Ref<number> = ref(3);
 
+// alternate loading states
+const reqVariantData: ComputedRef<ApiRequestStatus> =
+  vizStore.getRequestStatus("LOAD_VARIANTS");
+const reqComponentData: ComputedRef<ApiRequestStatus> =
+  vizStore.getRequestStatus("LOAD_COMPONENTS");
+const reqData = computed(() => {
+  return reqComponentData.value || reqVariantData.value;
+});
+
 async function loadData() {
-  loading.value = true;
   if (schemaVariant.value) {
     const variant = schemaVariant.value !== "all" ? schemaVariant.value : null;
     await vizStore.LOAD_VARIANTS(variant);
   } else {
     await vizStore.LOAD_COMPONENTS();
   }
-  loading.value = false;
 
-  if (vizStore.edges.length === 0 && vizStore.nodes.length === 0) {
+  if (
+    reqData.value.isError ||
+    (vizStore.edges.length === 0 && vizStore.nodes.length === 0)
+  ) {
     return;
   }
 
@@ -213,6 +233,7 @@ onMounted(async () => {
     }
 
     await loadData();
+    if (!graph) return; // endpoint error case
 
     const container = document.getElementById("vizDiv") as HTMLElement;
     renderer = new Sigma(graph, container, {
