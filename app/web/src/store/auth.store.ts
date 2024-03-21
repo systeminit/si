@@ -150,6 +150,9 @@ export const useAuthStore = defineStore("auth", {
         if (errCode === "WORKSPACE_NOT_INITIALIZED") {
           // db is migrated, but workspace does not exist, probably because it has been reset
           const _reconnectReq = await this.AUTH_RECONNECT();
+          // WHAT HAD HAPPENED WAS...
+          // in a local scenario where prd auth portal has a workspace, and local does not, the first attempt this will hit an infinite loop trying to find the workspace, totally stuck
+          // on a second attempt, it appears, the workspace gets created and user exits the loop
           // TODO: react to failure here?
         } else if (
           // db is totally empty and needs migrations to run
