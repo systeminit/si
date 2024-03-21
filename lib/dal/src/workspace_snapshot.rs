@@ -775,6 +775,29 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
+    pub async fn get_edges_between_nodes(
+        &self,
+        from_node_id: Ulid,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotResult<Vec<EdgeWeight>> {
+        let from_node_index = self.get_node_index_by_id(from_node_id).await?;
+
+        let to_node_index = self.get_node_index_by_id(to_node_id).await?;
+        let edges = self
+            .edges()
+            .await?
+            .into_iter()
+            .filter_map(|(edge, node_from, node_to)| {
+                if node_from == from_node_index && node_to == to_node_index {
+                    Some(edge)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Ok(edges)
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_node_by_id(
         &self,
