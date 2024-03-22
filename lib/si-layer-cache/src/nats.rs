@@ -17,6 +17,8 @@ const NATS_EVENT_STREAM_SUBJECTS: &[&str] = &["si.layerdb.events.*.*.*.*"];
 const NATS_ACTIVITIES_STREAM_NAME: &str = "LAYERDB_ACTIVITIES";
 const NATS_ACTIVITIES_STREAM_SUBJECTS: &[&str] = &["si.layerdb.activities.>"];
 
+const NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME: &str = "REBASER_REQUESTS";
+
 /// Returns a Jetstream Stream and creates it if it doesn't yet exist.
 pub async fn layerdb_events_stream(
     context: &jetstream::Context,
@@ -61,6 +63,34 @@ pub async fn layerdb_activities_stream(
             discard: jetstream::stream::DiscardPolicy::Old,
             // TODO(fnichol): this likely needs tuning
             max_age: Duration::from_secs(60 * 60 * 6),
+            ..Default::default()
+        })
+        .await?;
+
+    Ok(stream)
+}
+
+pub async fn rebaser_requests_work_queue_stream(
+    context: &jetstream::Context,
+    prefix: Option<&str>,
+) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
+    let requests_subject = subject::for_activity_discriminate(
+        prefix,
+        crate::activities::ActivityPayloadDiscriminants::RebaseRequest,
+    );
+
+    let source = jetstream::stream::Source {
+        name: nats_stream_name(prefix, NATS_ACTIVITIES_STREAM_NAME),
+        filter_subject: Some(requests_subject.to_string()),
+        ..Default::default()
+    };
+
+    let stream = context
+        .get_or_create_stream(jetstream::stream::Config {
+            name: nats_stream_name(prefix, NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME),
+            description: Some("Rebaser requests work queue".to_owned()),
+            retention: jetstream::stream::RetentionPolicy::WorkQueue,
+            sources: Some(vec![source]),
             ..Default::default()
         })
         .await?;
