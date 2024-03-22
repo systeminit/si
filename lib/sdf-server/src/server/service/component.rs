@@ -32,6 +32,7 @@ pub mod list_qualifications;
 // pub mod resource_domain_diff;
 pub mod debug;
 pub mod get_code;
+pub mod restore_default_function;
 pub mod set_type;
 
 #[remain::sorted]
@@ -171,6 +172,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/delete_property_editor_value",
             post(delete_property_editor_value::delete_property_editor_value),
+        )
+        .route(
+            "/restore_default_function",
+            post(restore_default_function::restore_default_function),
         )
         .route("/set_type", post(set_type::set_type))
         // .route("/refresh", post(refresh::refresh))
