@@ -124,7 +124,7 @@ impl AttributePrototype {
         workspace_snapshot
             .add_edge(
                 id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 func_id,
             )
             .await?;
@@ -230,7 +230,7 @@ impl AttributePrototype {
             .edges_directed(attribute_prototype_id, Direction::Outgoing)
             .await?
             .iter()
-            .find(|(edge_weight, _, _)| edge_weight.kind() == &EdgeWeightKind::Use)
+            .find(|(edge_weight, _, _)| edge_weight.kind() == &EdgeWeightKind::new_use())
             .map(|(_, _, target_idx)| *target_idx)
             .ok_or(AttributePrototypeError::MissingFunction(
                 attribute_prototype_id,
@@ -249,7 +249,7 @@ impl AttributePrototype {
         workspace_snapshot
             .add_edge(
                 attribute_prototype_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 func_id,
             )
             .await?;

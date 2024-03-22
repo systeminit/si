@@ -18,7 +18,7 @@ pub enum EdgeWeightError {
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[remain::sorted]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize))]
 pub enum EdgeWeightKind {
     Action,
@@ -67,8 +67,23 @@ pub enum EdgeWeightKind {
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules
     /// "use" functions, schemas, and eventually(?) components.
-    #[default]
-    Use,
+    Use {
+        is_default: bool,
+    },
+}
+
+impl EdgeWeightKind {
+    /// Creates a new Use edge weight kind indicating that this is also the
+    /// "default" use edge
+    pub fn new_use_default() -> Self {
+        EdgeWeightKind::Use { is_default: true }
+    }
+
+    /// Creates a non-default use EdgeWeightKind. This is what you normally want
+    /// unless you know there should be a default/non-default difference
+    pub fn new_use() -> Self {
+        EdgeWeightKind::Use { is_default: false }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

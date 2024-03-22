@@ -397,9 +397,9 @@ async fn install_builtins(
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules: Vec<ModuleDetailsResponse> = module_list.modules;
-    //        .into_iter()
-    //        .filter(|m| m.name == "si-docker-image-builtin")
-    //        .collect();
+    // .into_iter()
+    // .filter(|m| m.name == "si-docker-image-builtin-20240130")
+    // .collect();
     let total = modules.len();
 
     let mut join_set = JoinSet::new();

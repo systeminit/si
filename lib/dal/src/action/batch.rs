@@ -168,7 +168,7 @@ impl ActionBatch {
         workspace_snapshot
             .add_edge(
                 category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;

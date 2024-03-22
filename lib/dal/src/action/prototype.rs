@@ -203,7 +203,7 @@ impl ActionPrototype {
         workspace_snapshot
             .add_edge(
                 id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 func_id,
             )
             .await?;

@@ -555,7 +555,7 @@ impl Prop {
                     .add_ordered_edge(
                         change_set,
                         ordered_prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                         id,
                     )
                     .await?;
@@ -564,7 +564,7 @@ impl Prop {
                 workspace_snapshot
                     .add_edge(
                         prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                         id,
                     )
                     .await?;
@@ -573,7 +573,7 @@ impl Prop {
                 workspace_snapshot
                     .add_edge(
                         schema_variant_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                         id,
                     )
                     .await?;
@@ -610,7 +610,7 @@ impl Prop {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         for maybe_elem_node_idx in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKind::new_use().into())
             .await?
         {
             if let NodeWeight::Prop(prop_inner) = workspace_snapshot

@@ -292,7 +292,7 @@ impl Component {
         workspace_snapshot
             .add_edge(
                 component_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -301,7 +301,7 @@ impl Component {
         workspace_snapshot
             .add_edge(
                 id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 schema_variant_id,
             )
             .await?;

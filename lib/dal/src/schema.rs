@@ -1,8 +1,11 @@
+use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
+use telemetry::tracing::log::info;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
@@ -115,12 +118,121 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
 
         Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn get_default_schema_variant(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaResult<Option<SchemaVariantId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let default_schema_variant_node_indicies =
+            workspace_snapshot.edges_directed(self.id, Outgoing).await?;
+
+        for (edge_weight, _, target_index) in default_schema_variant_node_indicies {
+            if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
+                return Ok(Some(
+                    workspace_snapshot
+                        .get_node_weight(target_index)
+                        .await?
+                        .id()
+                        .into(),
+                ));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub async fn set_default_schema_variant(
+        &self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        info!(
+            "Setting {} as the default schema variant for {}",
+            schema_variant_id.clone(),
+            self.id.clone()
+        );
+
+        // Our system will have edges as follows:
+        //
+        // Schema -> Use -> Schema Variant
+        //
+        // In order to make a schema variant the default for a schema, we need
+        // to update the correct edge from Use to the default variant of Use,
+        //
+        // Schema -> Use {is_default = true} -> Schema Variant
+        //
+        // Therefore, when we are setting a default schema variant we need to
+        // find any existing default Use edges and convert them back to uses AND we
+        // need to find the existing Use edge between our nodes and change that
+        // to be a default Use
+        for (edge_weight, source_index, target_index) in workspace_snapshot
+            .edges_directed_for_edge_weight_kind(
+                self.id,
+                Outgoing,
+                EdgeWeightKind::new_use_default().into(),
+            )
+            .await?
+        {
+            // We have found the existing Default edge between schema and schema variant
+            // we now need to update that edge to be a Use
+            workspace_snapshot
+                .remove_edge(
+                    ctx.change_set_pointer()?,
+                    source_index,
+                    target_index,
+                    edge_weight.kind().into(),
+                )
+                .await?;
+
+            workspace_snapshot
+                .add_edge(
+                    self.id,
+                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use())?,
+                    schema_variant_id,
+                )
+                .await?;
+        }
+
+        for (edge_weight, source_index, target_index) in workspace_snapshot
+            .edges_directed_for_edge_weight_kind(
+                self.id,
+                Outgoing,
+                EdgeWeightKind::new_use().into(),
+            )
+            .await?
+        {
+            // We have found the existing Use edge between schema and schema variant
+            // we now need to update that edge to be a Default
+            workspace_snapshot
+                .remove_edge(
+                    ctx.change_set_pointer()?,
+                    source_index,
+                    target_index,
+                    edge_weight.kind().into(),
+                )
+                .await?;
+
+            workspace_snapshot
+                .add_edge(
+                    self.id,
+                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use_default())?,
+                    schema_variant_id,
+                )
+                .await?;
+        }
+
+        Ok(())
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {

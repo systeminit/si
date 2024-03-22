@@ -1878,7 +1878,7 @@ async fn import_schema(
 
         let installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
-            let _variant = import_schema_variant(
+            let variant = import_schema_variant(
                 ctx,
                 change_set_id,
                 &mut schema,
@@ -1889,41 +1889,39 @@ async fn import_schema(
             )
             .await?;
 
-            // if let Some(variant) = variant {
-            //     installed_schema_variant_ids.push(*variant.id());
-            //
-            //     if let Some(variant_spec_data) = variant_spec.data() {
-            //         let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-            //
-            //         set_default_schema_variant_id(
-            //             ctx,
-            //             change_set_pk,
-            //             &mut schema,
-            //             schema_spec
-            //                 .data()
-            //                 .as_ref()
-            //                 .and_then(|data| data.default_schema_variant()),
-            //             variant_spec.unique_id(),
-            //             *variant.id(),
-            //         )
-            //         .await?;
-            //
-            //         if let Thing::Func(asset_func) =
-            //             thing_map
-            //                 .get(change_set_pk, &func_unique_id)
-            //                 .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-            //         {
-            //             create_schema_variant_definition(
-            //                 ctx,
-            //                 schema_spec.clone(),
-            //                 installed_pkg_id,
-            //                 *variant.id(),
-            //                 asset_func,
-            //             )
-            //             .await?;
-            //         }
-            //     }
-            // }
+            if let Some(variant) = variant {
+                if let Some(variant_spec_data) = variant_spec.data() {
+                    let _func_unique_id = variant_spec_data.func_unique_id().to_owned();
+
+                    set_default_schema_variant_id(
+                        ctx,
+                        change_set_id,
+                        &mut schema,
+                        schema_spec
+                            .data()
+                            .as_ref()
+                            .and_then(|data| data.default_schema_variant()),
+                        variant_spec.unique_id(),
+                        variant.id(),
+                    )
+                    .await?;
+
+                    // if let Thing::Func(asset_func) =
+                    //     thing_map
+                    //         .get(change_set_pk, &func_unique_id)
+                    //         .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                    // {
+                    //     create_schema_variant_definition(
+                    //         ctx,
+                    //         schema_spec.clone(),
+                    //         installed_pkg_id,
+                    //         *variant.id(),
+                    //         asset_func,
+                    //     )
+                    //     .await?;
+                    // }
+                }
+            }
         }
 
         Ok((Some(schema.id()), installed_schema_variant_ids))
@@ -1932,40 +1930,36 @@ async fn import_schema(
     }
 }
 
-// async fn set_default_schema_variant_id(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema: &mut Schema,
-//     spec_default_unique_id: Option<&str>,
-//     variant_unique_id: Option<&str>,
-//     variant_id: SchemaVariantId,
-// ) -> PkgResult<()> {
-//     match (change_set_pk, variant_unique_id, spec_default_unique_id) {
-//         (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
-//             if schema.default_schema_variant_id().is_none() {
-//                 schema
-//                     .set_default_schema_variant_id(ctx, Some(variant_id))
-//                     .await?;
-//             }
-//         }
-//         (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
-//             if variant_unique_id == spec_default_unique_id {
-//                 let current_default_variant_id = schema
-//                     .default_schema_variant_id()
-//                     .copied()
-//                     .unwrap_or(SchemaVariantId::NONE);
+async fn set_default_schema_variant_id(
+    ctx: &DalContext,
+    change_set_id: Option<ChangeSetId>,
+    schema: &mut Schema,
+    spec_default_unique_id: Option<&str>,
+    variant_unique_id: Option<&str>,
+    variant_id: SchemaVariantId,
+) -> PkgResult<()> {
+    match (change_set_id, variant_unique_id, spec_default_unique_id) {
+        (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
+            if schema.get_default_schema_variant(ctx).await?.is_none() {
+                schema.set_default_schema_variant(ctx, variant_id).await?;
+            }
+        }
+        (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
+            if variant_unique_id == spec_default_unique_id {
+                let current_default_variant_id = schema
+                    .get_default_schema_variant(ctx)
+                    .await?
+                    .unwrap_or(SchemaVariantId::NONE);
 
-//                 if variant_id != current_default_variant_id {
-//                     schema
-//                         .set_default_schema_variant_id(ctx, Some(variant_id))
-//                         .await?;
-//                 }
-//             }
-//         }
-//     }
+                if variant_id != current_default_variant_id {
+                    schema.set_default_schema_variant(ctx, variant_id).await?;
+                }
+            }
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn create_schema_variant_definition(
 //     ctx: &DalContext,
