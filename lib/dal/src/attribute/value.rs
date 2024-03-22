@@ -149,6 +149,8 @@ pub enum AttributeValueError {
     MissingPrototype(AttributeValueId),
     #[error("found multiple props ({0} and {1}, at minimum) for attribute value: {2}")]
     MultiplePropsFound(PropId, PropId, AttributeValueId),
+    #[error("no component prototype found for attribute value: {0}")]
+    NoComponentPrototype(AttributeValueId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
@@ -1652,6 +1654,31 @@ impl AttributeValue {
         Ok(())
     }
 
+    pub async fn use_default_prototype(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let prototype_id = AttributeValue::component_prototype_id(&ctx, attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::NoComponentPrototype(
+                attribute_value_id,
+            ))?;
+
+        ctx.workspace_snapshot()?
+            .remove_edge_for_ulids(
+                ctx.change_set_pointer()?,
+                attribute_value_id,
+                prototype_id,
+                EdgeWeightKindDiscriminants::Prototype,
+            )
+            .await?;
+
+        AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+            .await?;
+
+        Ok(())
+    }
     async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1681,14 +1708,7 @@ impl AttributeValue {
             if value.is_none() {
                 IntrinsicFunc::Unset
             } else {
-                match prop_node.kind() {
-                    PropKind::Array => IntrinsicFunc::SetArray,
-                    PropKind::Boolean => IntrinsicFunc::SetBoolean,
-                    PropKind::Integer => IntrinsicFunc::SetInteger,
-                    PropKind::Map => IntrinsicFunc::SetMap,
-                    PropKind::Object => IntrinsicFunc::SetObject,
-                    PropKind::String => IntrinsicFunc::SetString,
-                }
+                IntrinsicFunc::from(prop_node.kind())
             }
         };
 

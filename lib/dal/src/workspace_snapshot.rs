@@ -829,6 +829,26 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    #[instrument(level = "debug", skip_all)]
+    pub async fn remove_edge_for_ulids(
+        &self,
+        change_set: &ChangeSetPointer,
+        source_node_id: impl Into<Ulid>,
+        target_node_id: impl Into<Ulid>,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        let source_node_index = self
+            .working_copy()
+            .await
+            .get_node_index_by_id(source_node_id)?;
+        let target_node_index = self
+            .working_copy()
+            .await
+            .get_node_index_by_id(target_node_id)?;
+        self.remove_edge(change_set, source_node_index, target_node_index, edge_kind)
+            .await
+    }
+
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
     /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
     #[instrument(level = "debug", skip_all)]
