@@ -1,9 +1,9 @@
-use axum::{extract::OriginalUri, response::IntoResponse, Json};
+use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::{AttributeValue, AttributeValueId, ChangeSetPointer, Visibility};
 
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 use super::ComponentResult;
 

@@ -299,9 +299,10 @@ async fn array_map_manipulation(ctx: &DalContext) {
 }
 
 #[test]
-async fn override_value(ctx: &mut DalContext) {
-    let pirate_name = "Thomas Cavendish";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+async fn override_value_then_reset(ctx: &mut DalContext) {
+    let original_pirate_name = "Thomas Cavendish";
+    let pirate_component =
+        create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
     commit_and_update_snapshot(ctx).await;
 
     let name_path = &["root", "domain", "name"];
@@ -316,18 +317,17 @@ async fn override_value(ctx: &mut DalContext) {
         .await
         .expect("get prop_id for attribute value");
 
-    // domain/name gets populated from si/name, so isControlledByDynamicFunc = true
     assert_eq!(
         serde_json::json![{
           "id": av_id,
           "propId": prop_id,
           "key": null,
-          "value": pirate_name,
+          "value": original_pirate_name,
           "canBeSetBySocket": false,
           "isFromExternalSource": false,
           "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+          "isControlledByDynamicFunc": true, // domain/name gets populated from si/name
+          "overridden": false // value comes from the default prototype (schema variant context)
         }], // expected
         PropEditorView::for_component_id(ctx, pirate_component.id())
             .await
@@ -349,8 +349,30 @@ async fn override_value(ctx: &mut DalContext) {
           "canBeSetBySocket": false,
           "isFromExternalSource": false,
           "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": false,
-          "overridden": true
+          "isControlledByDynamicFunc": false, // Value now comes from a si:set* function
+          "overridden": true // prototype that points to function is directly for this av (component context)
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+
+    AttributeValue::use_default_prototype(ctx, av_id)
+        .await
+        .expect("revert back to default prototype");
+    commit_and_update_snapshot(ctx).await;
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": original_pirate_name,
+          "canBeSetBySocket": false,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false // value goes back to being controlled by the default function
         }], // expected
         PropEditorView::for_component_id(ctx, pirate_component.id())
             .await
