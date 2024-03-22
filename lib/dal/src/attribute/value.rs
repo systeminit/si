@@ -38,19 +38,23 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
+pub use dependent_value_graph::DependentValueGraph;
+
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::before::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -79,9 +83,6 @@ use super::prototype::argument::{
 
 pub mod dependent_value_graph;
 pub mod view;
-
-use crate::func::before::before_funcs_for_component;
-pub use dependent_value_graph::DependentValueGraph;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -140,6 +141,8 @@ pub enum AttributeValueError {
     InsertionForInvalidPropKind(PropKind),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("missing attribute value with id: {0}")]
+    MissingForId(AttributeValueId),
     #[error("attribute value {0} missing prop edge when one was expected")]
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
@@ -1913,7 +1916,7 @@ impl AttributeValue {
         Ok(node_weight.into())
     }
 
-    pub async fn prop(
+    pub async fn prop_id_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<PropId> {
@@ -2019,7 +2022,7 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id_for_id(ctx, parent_av_id).await?;
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
@@ -2061,7 +2064,8 @@ impl AttributeValue {
                 ))
             }
         } else {
-            Err(AttributeValueError::NoOrderingNodeForAttributeValue(id))
+            // Leaves don't have ordering nodes
+            Ok(vec![])
         }
     }
 
@@ -2080,5 +2084,25 @@ impl AttributeValue {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn list_input_sockets_sources_for_id(
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<InputSocketId>> {
+        let prototype_id = Self::prototype_id(ctx, av_id).await?;
+
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+
+        let mut input_socket_ids = Vec::<InputSocketId>::new();
+        for apa_id in apa_ids {
+            let maybe_value_source =
+                AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?;
+            if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {
+                input_socket_ids.push(socket_id);
+            }
+        }
+
+        Ok(input_socket_ids)
     }
 }

@@ -764,6 +764,7 @@ async fn migrate_local_builtins(
     schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;
     schemas::migrate_test_exclusive_schema_katy_perry(&ctx).await?;
     schemas::migrate_test_exclusive_schema_pirate(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_pet_shop(&ctx).await?;
 
     ctx.blocking_commit().await?;
 

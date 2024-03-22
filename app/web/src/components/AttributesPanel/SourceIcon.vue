@@ -20,7 +20,7 @@ const classes = computed(() => {
     return clsx(
       "border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer",
       props.overridden
-        ? " text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0"
+        ? "text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0"
         : "border-transparent",
     );
   } else {

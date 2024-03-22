@@ -92,6 +92,7 @@ rust_test(
         "//third-party/rust:itertools",
         "//third-party/rust:petgraph",
         "//third-party/rust:pretty_assertions_sorted",
+        "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:strum",
