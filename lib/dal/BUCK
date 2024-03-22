@@ -98,6 +98,7 @@ rust_test(
         "//third-party/rust:strum",
         "//third-party/rust:tempfile",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:ulid",
         ":dal",
     ],

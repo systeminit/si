@@ -57,7 +57,10 @@ async fn async_main() -> Result<()> {
 
     task_tracker.close();
 
-    Server::from_config(config).await?.run().await?;
+    Server::from_config(config, shutdown_token.clone(), task_tracker.clone())
+        .await?
+        .run()
+        .await?;
 
     // TODO(nick): see other TODOs from the other services with similar shutdown procedures.
     {

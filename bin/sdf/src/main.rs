@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+use std::future::IntoFuture;
 use std::path::PathBuf;
 
 use color_eyre::Result;
@@ -119,12 +120,14 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
-    let layer_db = LayerDb::new(
+    let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
         config.layer_cache_sled_path(),
         PgPool::new(config.layer_cache_pg_pool()).await?,
         nats_conn.clone(),
+        shutdown_token.clone(),
     )
     .await?;
+    task_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
     let services_context = ServicesContext::new(
         pg_pool,

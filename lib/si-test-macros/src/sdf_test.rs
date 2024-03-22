@@ -216,6 +216,8 @@ struct SdfTestFnSetupExpander {
     args: Punctuated<Expr, Comma>,
 
     test_context: Option<Rc<Ident>>,
+    cancellation_token: Option<Rc<Ident>>,
+    task_tracker: Option<Rc<Ident>>,
     nats_subject_prefix: Option<Rc<Ident>>,
     council_server: Option<Rc<Ident>>,
     start_council_server: Option<()>,
@@ -253,6 +255,8 @@ impl SdfTestFnSetupExpander {
             code: TokenStream::new(),
             args: Punctuated::new(),
             test_context: None,
+            cancellation_token: None,
+            task_tracker: None,
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
@@ -383,6 +387,10 @@ impl SdfTestFnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+        let task_tracker = self.setup_task_tracker();
+        let task_tracker = task_tracker.as_ref();
         let jwt_public_signing_key = self.setup_jwt_public_signing_key();
         let jwt_public_signing_key = jwt_public_signing_key.as_ref();
         let signup_secret = self.setup_signup_secret();
@@ -397,7 +405,12 @@ impl SdfTestFnSetupExpander {
         let var = Ident::new("router", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-                let s_ctx = #test_context.create_services_context().await;
+                let s_ctx = #test_context
+                    .create_services_context(
+                        #cancellation_token.clone(),
+                        #task_tracker.clone(),
+                    )
+                    .await;
                 let (service, _, _) = ::sdf_server::build_service_for_tests(
                     s_ctx,
                     #jwt_public_signing_key.clone(),
@@ -467,6 +480,22 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn test_context(&self) -> Option<&Rc<Ident>> {
         self.test_context.as_ref()
+    }
+
+    fn cancellation_token(&self) -> Option<&Rc<Ident>> {
+        self.cancellation_token.as_ref()
+    }
+
+    fn set_cancellation_token(&mut self, value: Option<Rc<Ident>>) {
+        self.cancellation_token = value;
+    }
+
+    fn task_tracker(&self) -> Option<&Rc<Ident>> {
+        self.task_tracker.as_ref()
+    }
+
+    fn set_task_tracker(&mut self, value: Option<Rc<Ident>>) {
+        self.task_tracker = value;
     }
 
     fn set_test_context(&mut self, value: Option<Rc<Ident>>) {

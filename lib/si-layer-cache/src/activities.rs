@@ -1,7 +1,17 @@
-use std::{fmt, str::FromStr, sync::Arc};
+use std::{
+    fmt, ops,
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
+use futures::{Future, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::{
+    async_nats::jetstream::{self, message::Acker},
+    NatsClient,
+};
 use strum::EnumDiscriminants;
 use ulid::{Ulid, ULID_LEN};
 
@@ -9,9 +19,12 @@ use crate::{
     error::LayerDbResult,
     event::LayeredEventMetadata,
     nats::{self, subject},
+    LayerDbError,
 };
 
 use self::rebase::{RebaseFinished, RebaseRequest};
+
+pub use si_data_nats::async_nats::jetstream::AckKind;
 
 pub mod rebase;
 
@@ -105,6 +118,59 @@ impl ActivityPayloadDiscriminants {
     }
 }
 
+#[derive(Clone)]
+pub struct AckActivity {
+    inner: Activity,
+    acker: Arc<Acker>,
+}
+
+impl AckActivity {
+    pub fn into_parts(self) -> (Activity, Arc<Acker>) {
+        (self.inner, self.acker)
+    }
+
+    pub fn as_activity(&self) -> &Activity {
+        &self.inner
+    }
+
+    pub async fn ack(&self) -> LayerDbResult<()> {
+        self.acker.ack().await.map_err(LayerDbError::NatsAck)
+    }
+
+    pub async fn ack_with(&self, kind: AckKind) -> LayerDbResult<()> {
+        self.acker
+            .ack_with(kind)
+            .await
+            .map_err(LayerDbError::NatsAck)
+    }
+
+    pub async fn double_ack(&self) -> LayerDbResult<()> {
+        self.acker.double_ack().await.map_err(LayerDbError::NatsAck)
+    }
+}
+
+impl fmt::Debug for AckActivity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AckActivity")
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for AckActivity {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl ops::Deref for AckActivity {
+    type Target = Activity;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ActivityPublisher {
     prefix: Option<Arc<str>>,
@@ -112,89 +178,108 @@ pub struct ActivityPublisher {
 }
 
 impl ActivityPublisher {
-    pub fn new(nats_client: &NatsClient) -> ActivityPublisher {
+    pub(crate) fn new(nats_client: &NatsClient) -> ActivityPublisher {
         let prefix = nats_client.metadata().subject_prefix().map(|s| s.into());
         let context = jetstream::new(nats_client.as_inner().clone());
         ActivityPublisher { context, prefix }
     }
 
-    pub fn prefix(&self) -> Option<&str> {
-        self.prefix.as_deref()
-    }
-
-    pub fn publish(&self, activity: &Activity) -> LayerDbResult<()> {
+    pub(crate) async fn publish(&self, activity: &Activity) -> LayerDbResult<()> {
         let nats_subject = subject::for_activity(self.prefix(), activity);
-        let nats = self.context.clone();
         let nats_payload = postcard::to_stdvec(&activity)?;
-        let _nats_join =
-            tokio::spawn(async move { nats.publish(nats_subject, nats_payload.into()).await });
+        // Publish message and await confirmation from server that it has been received
+        self.context
+            .publish(nats_subject, nats_payload.into())
+            .await?
+            .await?;
         Ok(())
     }
+
+    fn prefix(&self) -> Option<&str> {
+        self.prefix.as_deref()
+    }
 }
 
-#[allow(dead_code)]
-pub struct ActivitySubscriber {
-    instance_id: Ulid,
-    messages: jetstream::consumer::pull::Stream,
+pub struct ActivityStream {
+    inner: jetstream::consumer::pull::Stream,
 }
 
-impl ActivitySubscriber {
-    pub async fn new(
+impl ActivityStream {
+    pub(crate) async fn create(
         instance_id: Ulid,
         nats_client: &NatsClient,
-        to_receive: Option<Vec<ActivityPayloadDiscriminants>>,
-    ) -> LayerDbResult<ActivitySubscriber> {
+        filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
+    ) -> LayerDbResult<Self> {
         let context = jetstream::new(nats_client.as_inner().clone());
 
-        let activities =
+        let inner =
             nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
                 .await?
                 .create_consumer(Self::consumer_config(
                     nats_client.metadata().subject_prefix(),
                     instance_id,
-                    to_receive,
+                    filters,
                 ))
                 .await?
                 .messages()
                 .await?;
 
-        Ok(ActivitySubscriber {
-            instance_id,
-            messages: activities,
-        })
-    }
-
-    pub fn messages(&mut self) -> &mut jetstream::consumer::pull::Stream {
-        &mut self.messages
+        Ok(Self { inner })
     }
 
     #[inline]
     fn consumer_config(
         prefix: Option<&str>,
         instance_id: Ulid,
-        to_receive: Option<Vec<ActivityPayloadDiscriminants>>,
+        filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
     ) -> jetstream::consumer::pull::Config {
         let name = format!("activity-stream-{instance_id}");
         let description = format!("activity stream for [{name}]");
 
-        match to_receive {
-            Some(payload_types) => jetstream::consumer::pull::Config {
-                name: Some(name),
-                description: Some(description),
-                deliver_policy: jetstream::consumer::DeliverPolicy::New,
-                filter_subjects: payload_types
-                    .iter()
-                    .map(|t| nats::subject::for_activity_discriminate(prefix, t))
-                    .map(|s| s.to_string())
-                    .collect(),
-                ..Default::default()
-            },
-            None => jetstream::consumer::pull::Config {
-                name: Some(name),
-                description: Some(description),
-                deliver_policy: jetstream::consumer::DeliverPolicy::New,
-                ..Default::default()
-            },
+        let mut config = jetstream::consumer::pull::Config {
+            name: Some(name),
+            description: Some(description),
+            deliver_policy: jetstream::consumer::DeliverPolicy::New,
+            ..Default::default()
+        };
+
+        if let Some(payload_types) = filters {
+            config.filter_subjects = payload_types
+                .into_iter()
+                .map(|t| nats::subject::for_activity_discriminate(prefix, t))
+                .map(|s| s.to_string())
+                .collect();
+        }
+
+        config
+    }
+}
+
+impl Stream for ActivityStream {
+    type Item = LayerDbResult<AckActivity>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::new(&mut self.inner.next()).poll(cx) {
+            // Process the message
+            Poll::Ready(Some(Ok(msg))) => {
+                let (msg, acker) = msg.split();
+
+                match postcard::from_bytes::<Activity>(&msg.payload) {
+                    // Successfully deserialized into an activity
+                    Ok(inner) => Poll::Ready(Some(Ok(AckActivity {
+                        inner,
+                        acker: Arc::new(acker),
+                    }))),
+                    // Error deserializing message
+                    Err(err) => Poll::Ready(Some(Err(err.into()))),
+                }
+            }
+            // Upstream errors are propagated downstream
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
+            // If the upstream closes, then we do too
+            Poll::Ready(None) => Poll::Ready(None),
+            // Not ready, so...not ready!
+            Poll::Pending => Poll::Pending,
         }
     }
 }

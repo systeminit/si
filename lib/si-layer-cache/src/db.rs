@@ -1,20 +1,21 @@
+use std::{future::IntoFuture, io, path::Path, sync::Arc};
+
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
-use std::{path::Path, sync::Arc};
-use telemetry::tracing::{info, warn};
+use telemetry::prelude::*;
+use tokio::sync::mpsc;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
-    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivitySubscriber},
+    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream},
     error::LayerDbResult,
     layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterServer},
+    persister::{PersisterClient, PersisterTask},
 };
-use tokio::sync::mpsc;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use self::{cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
+use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
 
 mod cache_updates;
 pub mod cas;
@@ -34,8 +35,6 @@ where
     persister_client: PersisterClient,
     activity_publisher: ActivityPublisher,
     instance_id: Ulid,
-    tracker: TaskTracker,
-    cancellation_token: CancellationToken,
 }
 
 impl<CasValue, WorkspaceSnapshotValue> LayerDb<CasValue, WorkspaceSnapshotValue>
@@ -43,36 +42,21 @@ where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub async fn new(
+    pub async fn initialize(
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,
         nats_client: NatsClient,
-    ) -> LayerDbResult<Self> {
+        token: CancellationToken,
+    ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let instance_id = Ulid::new();
 
         let tracker = TaskTracker::new();
-        let cancellation_token = CancellationToken::new();
 
         let disk_path = disk_path.as_ref();
         let sled = sled::open(disk_path)?;
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
-
-        let persister =
-            PersisterServer::create(rx, sled.clone(), pg_pool.clone(), &nats_client, instance_id)
-                .await?;
-        let persister_cancel = cancellation_token.clone();
-        tracker.spawn(async move {
-            tokio::select! {
-                () = persister.run() => {
-                    warn!("Persister exited without being signalled");
-                },
-                () = persister_cancel.cancelled() => {
-                    info!("Persister exiting after being cancelled");
-                }
-            }
-        });
 
         let cas_cache: LayerCache<Arc<CasValue>> =
             LayerCache::new(cas::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
@@ -84,21 +68,34 @@ where
         )
         .await?;
 
-        Self::spawn_cache_updater(
-            tracker.clone(),
+        let cache_updates_task = CacheUpdatesTask::create(
+            instance_id,
+            &nats_client,
             cas_cache.clone(),
             snapshot_cache.clone(),
-            cancellation_token.clone(),
-            instance_id,
-            nats_client.clone(),
+            token.clone(),
         )
         .await?;
+        tracker.spawn(cache_updates_task.run());
+
+        let persister_task = PersisterTask::create(
+            rx,
+            sled.clone(),
+            pg_pool.clone(),
+            &nats_client,
+            instance_id,
+            token.clone(),
+        )
+        .await?;
+        tracker.spawn(persister_task.run());
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
         let activity_publisher = ActivityPublisher::new(&nats_client);
 
-        Ok(LayerDb {
+        let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
+
+        let layerdb = LayerDb {
             activity_publisher,
             cas,
             workspace_snapshot,
@@ -107,46 +104,9 @@ where
             persister_client,
             nats_client,
             instance_id,
-            tracker,
-            cancellation_token,
-        })
-    }
+        };
 
-    pub async fn spawn_cache_updater(
-        tracker: TaskTracker,
-        cas_cache: LayerCache<Arc<CasValue>>,
-        snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
-
-        cancellation_token: CancellationToken,
-        instance_id: Ulid,
-        nats_client: NatsClient,
-    ) -> LayerDbResult<()> {
-        let mut cache_updates = cache_updates::CacheUpdates::create(
-            instance_id,
-            &nats_client,
-            cas_cache,
-            snapshot_cache,
-        )
-        .await?;
-        let cache_update_cancel = cancellation_token.clone();
-        tracker.spawn(async move {
-            tokio::select! {
-                () = cache_updates.run() => {
-                    warn!("Cache updates exited without being signalled");
-                },
-                () = cache_update_cancel.cancelled() => {
-                    info!("Cache updates exiting after being cancelled");
-                }
-            }
-        });
-
-        Ok(())
-    }
-
-    pub async fn shutdown(&self) {
-        self.tracker.close();
-        self.cancellation_token.cancel();
-        self.tracker.wait().await;
+        Ok((layerdb, graceful_shutdown))
     }
 
     pub fn sled(&self) -> &sled::Db {
@@ -187,16 +147,83 @@ where
     }
 
     // Publish an activity
-    pub fn activity_publish(&self, activity: &Activity) -> LayerDbResult<()> {
-        self.activity_publisher.publish(activity)
+    pub async fn publish_activity(&self, activity: &Activity) -> LayerDbResult<()> {
+        self.activity_publisher.publish(activity).await
     }
 
     // Subscribe to all activities, or provide an optional array of activity kinds
     // to subscribe to.
-    pub async fn activity_subscribe(
+    pub async fn subscribe_activities(
         &self,
-        to_receive: Option<Vec<ActivityPayloadDiscriminants>>,
-    ) -> LayerDbResult<ActivitySubscriber> {
-        ActivitySubscriber::new(self.instance_id, &self.nats_client, to_receive).await
+        to_receive: impl IntoIterator<Item = ActivityPayloadDiscriminants>,
+    ) -> LayerDbResult<ActivityStream> {
+        ActivityStream::create(self.instance_id, &self.nats_client, Some(to_receive)).await
+    }
+
+    pub async fn subscribe_all_activities(&self) -> LayerDbResult<ActivityStream> {
+        ActivityStream::create(
+            self.instance_id,
+            &self.nats_client,
+            None::<std::vec::IntoIter<_>>,
+        )
+        .await
+    }
+}
+
+#[must_use = "graceful shutdown must be spawned on runtime"]
+#[derive(Debug, Clone)]
+pub struct LayerDbGracefulShutdown {
+    tracker: TaskTracker,
+    token: CancellationToken,
+}
+
+impl IntoFuture for LayerDbGracefulShutdown {
+    type Output = io::Result<()>;
+    type IntoFuture = private::GracefulShutdownFuture;
+
+    fn into_future(self) -> Self::IntoFuture {
+        let Self { token, tracker } = self;
+
+        private::GracefulShutdownFuture(Box::pin(async move {
+            // Wait until token is cancelled--this is our graceful shutdown signal
+            token.cancelled().await;
+
+            // Close the tracker so no further tasks are spawned
+            tracker.close();
+            trace!("received graceful shutdown signal, waiting for tasks to shutdown");
+            // Wait for all outstanding tasks to complete
+            tracker.wait().await;
+
+            Ok(())
+        }))
+    }
+}
+
+mod private {
+    use std::{
+        fmt,
+        future::Future,
+        io,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    pub struct GracefulShutdownFuture(
+        pub(super) futures::future::BoxFuture<'static, io::Result<()>>,
+    );
+
+    impl Future for GracefulShutdownFuture {
+        type Output = io::Result<()>;
+
+        #[inline]
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            self.0.as_mut().poll(cx)
+        }
+    }
+
+    impl fmt::Debug for GracefulShutdownFuture {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("ShutdownFuture").finish_non_exhaustive()
+        }
     }
 }

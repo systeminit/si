@@ -24,6 +24,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-stream",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:ulid",
     ],
     srcs = glob([

@@ -205,6 +205,8 @@ struct DalTestFnSetupExpander {
     args: Punctuated<Expr, Comma>,
 
     test_context: Option<Rc<Ident>>,
+    cancellation_token: Option<Rc<Ident>>,
+    task_tracker: Option<Rc<Ident>>,
     nats_subject_prefix: Option<Rc<Ident>>,
     council_server: Option<Rc<Ident>>,
     start_council_server: Option<()>,
@@ -234,6 +236,8 @@ impl DalTestFnSetupExpander {
             code: TokenStream::new(),
             args: Punctuated::new(),
             test_context: None,
+            cancellation_token: None,
+            task_tracker: None,
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
@@ -286,6 +290,22 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_test_context(&mut self, value: Option<Rc<Ident>>) {
         self.test_context = value;
+    }
+
+    fn cancellation_token(&self) -> Option<&Rc<Ident>> {
+        self.cancellation_token.as_ref()
+    }
+
+    fn set_cancellation_token(&mut self, value: Option<Rc<Ident>>) {
+        self.cancellation_token = value;
+    }
+
+    fn task_tracker(&self) -> Option<&Rc<Ident>> {
+        self.task_tracker.as_ref()
+    }
+
+    fn set_task_tracker(&mut self, value: Option<Rc<Ident>>) {
+        self.task_tracker = value;
     }
 
     fn nats_subject_prefix(&self) -> Option<&Rc<Ident>> {

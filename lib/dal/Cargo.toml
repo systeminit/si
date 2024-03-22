@@ -69,3 +69,4 @@ pretty_assertions_sorted = { workspace = true }
 rebaser-core = { path = "../../lib/rebaser-core" }
 rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }
+tokio-util = { workspace = true }

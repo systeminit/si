@@ -3,6 +3,7 @@
 use std::{
     borrow::Cow,
     env,
+    future::IntoFuture,
     path::{Path, PathBuf},
     sync::{Arc, Once},
 };
@@ -24,6 +25,7 @@ use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 use veritech_client::CycloneEncryptionKey;
 use veritech_server::StandardConfig;
@@ -285,16 +287,22 @@ impl TestContext {
     }
 
     /// Creates a new [`ServicesContext`].
-    pub async fn create_services_context(&self) -> ServicesContext {
+    pub async fn create_services_context(
+        &self,
+        token: CancellationToken,
+        tracker: TaskTracker,
+    ) -> ServicesContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
-        let layer_db = DalLayerDb::new(
+        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
             self.layer_db_sled_path.clone(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
+            token,
         )
         .await
         .expect("could not create layer db in test context");
+        tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         ServicesContext::new(
             self.pg_pool.clone(),
@@ -587,8 +595,13 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     debug!("initializing crypto");
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
 
+    let token = CancellationToken::new();
+    let traker = TaskTracker::new();
+
     // Create a `ServicesContext`
-    let services_ctx = test_context.create_services_context().await;
+    let services_ctx = test_context
+        .create_services_context(token.clone(), traker.clone())
+        .await;
 
     // Create a dedicated Council server with a unique subject prefix for each test
     let council_server = council_server(test_context.config.nats.clone()).await?;
@@ -606,19 +619,21 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("starting Pinga server for initial migrations");
     let pinga_server = pinga_server(&services_ctx)?;
     let pinga_server_handle = pinga_server.shutdown_handle();
-    tokio::spawn(pinga_server.run());
+    traker.spawn(pinga_server.run());
 
     // Start up a Rebaser server for migrations
     info!("starting Rebaser server for initial migrations");
     let rebaser_server = rebaser_server(&services_ctx)?;
     let rebaser_server_handle = rebaser_server.shutdown_handle();
-    tokio::spawn(rebaser_server.run());
+    traker.spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
     let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
-    tokio::spawn(veritech_server.run());
+    traker.spawn(veritech_server.run());
+
+    traker.close();
 
     info!("creating client with pg pool for global Content Store test database");
 
@@ -711,8 +726,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("shutting down initial migrations Council server");
     council_shutdown_request_tx.send(())?;
 
-    // Shutdown the layerdb
-    services_ctx.layer_db().shutdown().await;
+    // Cancel and wait for all outstanding tasks to complete
+    token.cancel();
+    traker.wait().await;
 
     info!("global test setup complete");
     Ok(())

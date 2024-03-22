@@ -31,6 +31,8 @@ pub enum LayerDbError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("missing internal buffer entry when expected; this is an internal bug")]
     MissingInternalBuffer,
+    #[error("ack error: {0}")]
+    NatsAck(#[source] si_data_nats::async_nats::Error),
     #[error("stream consumer error: {0}")]
     NatsConsumer(#[from] jetstream::stream::ConsumerError),
     #[error("error while fetching or creating a nats jetsream: {0}")]

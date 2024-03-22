@@ -1,3 +1,5 @@
+use std::{future::IntoFuture, io, path::Path, sync::Arc};
+
 use dal::{DalLayerDb, InitializationError, JobQueueProcessor, NatsProcessor};
 use rebaser_core::RebaserMessagingConfig;
 use si_crypto::SymmetricCryptoServiceConfig;
@@ -5,7 +7,6 @@ use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_layer_cache::error::LayerDbError;
-use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -15,6 +16,8 @@ use tokio::{
         oneshot, watch,
     },
 };
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::server::core_loop::CoreLoopSetupError;
@@ -80,7 +83,11 @@ pub struct Server {
 impl Server {
     /// Build a [`Server`] from a given [`Config`].
     #[instrument(name = "rebaser.init.from_config", skip_all)]
-    pub async fn from_config(config: Config) -> ServerResult<Self> {
+    pub async fn from_config(
+        config: Config,
+        token: CancellationToken,
+        tracker: TaskTracker,
+    ) -> ServerResult<Self> {
         dal::init()?;
 
         let encryption_key =
@@ -93,12 +100,14 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let messaging_config = config.messaging_config();
 
-        let layer_db = DalLayerDb::new(
+        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
             config.layer_cache_sled_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
+            token,
         )
         .await?;
+        tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         Self::from_services(
             encryption_key,

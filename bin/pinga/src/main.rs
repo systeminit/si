@@ -56,7 +56,10 @@ async fn async_main() -> Result<()> {
 
     task_tracker.close();
 
-    Server::from_config(config).await?.run().await?;
+    Server::from_config(config, shutdown_token.clone(), task_tracker.clone())
+        .await?
+        .run()
+        .await?;
 
     // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
     // sdf's case, this is embedded in server library code which is incorrect. At this moment in

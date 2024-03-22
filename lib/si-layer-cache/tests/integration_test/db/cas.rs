@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
+use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
 
@@ -10,11 +11,14 @@ type TestLayerDb = LayerDb<CasValue, String>;
 
 #[tokio::test]
 async fn write_to_db() {
+    let token = CancellationToken::new();
+
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb: TestLayerDb = LayerDb::new(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir,
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
+        token,
     )
     .await
     .expect("cannot create layerdb");
@@ -71,11 +75,14 @@ async fn write_to_db() {
 
 #[tokio::test]
 async fn write_and_read_many() {
+    let token = CancellationToken::new();
+
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb: TestLayerDb = LayerDb::new(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir,
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
+        token,
     )
     .await
     .expect("cannot create layerdb");
@@ -120,11 +127,14 @@ async fn write_and_read_many() {
 
 #[tokio::test]
 async fn cold_read_from_db() {
+    let token = CancellationToken::new();
+
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let ldb: TestLayerDb = LayerDb::new(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir,
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
+        token,
     )
     .await
     .expect("cannot create layerdb");
@@ -208,25 +218,29 @@ async fn cold_read_from_db() {
 
 #[tokio::test]
 async fn writes_are_gossiped() {
+    let token = CancellationToken::new();
+
     let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash: TestLayerDb = LayerDb::new(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
+        token.clone(),
     )
     .await
     .expect("cannot create layerdb");
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl: TestLayerDb = LayerDb::new(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_axl,
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
+        token,
     )
     .await
     .expect("cannot create layerdb");

@@ -26,5 +26,6 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
 ulid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }

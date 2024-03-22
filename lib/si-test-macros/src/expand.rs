@@ -168,6 +168,12 @@ pub(crate) trait FnSetupExpander {
     fn test_context(&self) -> Option<&Rc<Ident>>;
     fn set_test_context(&mut self, value: Option<Rc<Ident>>);
 
+    fn cancellation_token(&self) -> Option<&Rc<Ident>>;
+    fn set_cancellation_token(&mut self, value: Option<Rc<Ident>>);
+
+    fn task_tracker(&self) -> Option<&Rc<Ident>>;
+    fn set_task_tracker(&mut self, value: Option<Rc<Ident>>);
+
     fn nats_subject_prefix(&self) -> Option<&Rc<Ident>>;
     fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>);
 
@@ -246,6 +252,34 @@ pub(crate) trait FnSetupExpander {
         self.set_test_context(Some(Rc::new(var)));
 
         self.test_context().unwrap().clone()
+    }
+
+    fn setup_cancellation_token(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.cancellation_token() {
+            return ident.clone();
+        }
+
+        let var = Ident::new("cancellation_token", Span::call_site());
+        self.code_extend(quote! {
+            let cancellation_token = ::tokio_util::sync::CancellationToken::new();
+        });
+        self.set_cancellation_token(Some(Rc::new(var)));
+
+        self.cancellation_token().unwrap().clone()
+    }
+
+    fn setup_task_tracker(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.task_tracker() {
+            return ident.clone();
+        }
+
+        let var = Ident::new("task_tracker", Span::call_site());
+        self.code_extend(quote! {
+            let task_tracker = ::tokio_util::task::TaskTracker::new();
+        });
+        self.set_task_tracker(Some(Rc::new(var)));
+
+        self.task_tracker().unwrap().clone()
     }
 
     fn setup_nats_subject_prefix(&mut self) -> Rc<Ident> {
@@ -457,9 +491,17 @@ pub(crate) trait FnSetupExpander {
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
 
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
+        let task_tracker = self.setup_task_tracker();
+        let task_tracker = task_tracker.as_ref();
+
         let var = Ident::new("services_context", Span::call_site());
         self.code_extend(quote! {
-            let #var = #test_context.create_services_context().await;
+            let #var = #test_context
+                .create_services_context(#cancellation_token.clone(), #task_tracker.clone())
+                .await;
         });
         self.set_services_context(Some(Rc::new(var)));
 
