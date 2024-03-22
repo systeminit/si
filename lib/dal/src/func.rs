@@ -258,6 +258,28 @@ impl Func {
         })
     }
 
+    pub fn is_dynamic(&self) -> bool {
+        Self::is_dynamic_for_name_string(&self.name)
+    }
+
+    pub fn is_dynamic_for_name_string(name: &str) -> bool {
+        if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(name) {
+            ![
+                IntrinsicFunc::SetArray,
+                IntrinsicFunc::SetArray,
+                IntrinsicFunc::SetBoolean,
+                IntrinsicFunc::SetInteger,
+                IntrinsicFunc::SetMap,
+                IntrinsicFunc::SetObject,
+                IntrinsicFunc::SetString,
+                IntrinsicFunc::Unset,
+            ]
+            .contains(&intrinsic)
+        } else {
+            true
+        }
+    }
+
     pub async fn modify_by_id<L>(ctx: &DalContext, id: FuncId, lambda: L) -> FuncResult<Func>
     where
         L: FnOnce(&mut Func) -> FuncResult<()>,

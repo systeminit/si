@@ -1,6 +1,5 @@
 <template>
   <div
-    class="attributes-panel-item"
     :class="{
       '--section': canHaveChildren,
       '--input': !canHaveChildren,
@@ -10,20 +9,21 @@
       '--open': canHaveChildren && isOpen,
       '--collapsed': canHaveChildren && !isOpen,
     }"
+    class="attributes-panel-item"
   >
     <!-- SECTION -->
     <div
       v-if="canHaveChildren"
-      @mouseover.stop="onSectionHoverStart"
       @mouseleave="onSectionHoverEnd"
+      @mouseover.stop="onSectionHoverStart"
     >
       <!-- HEADER -->
       <div
-        class="attributes-panel-item__section-header-wrap"
         :style="{
           top: topPx,
           zIndex: headerZIndex,
         }"
+        class="attributes-panel-item__section-header-wrap"
       >
         <div
           :class="
@@ -47,8 +47,8 @@
         </div>
 
         <div
-          class="attributes-panel-item__section-header"
           :style="{ marginLeft: indentPx }"
+          class="attributes-panel-item__section-header"
           @click="toggleOpen(true)"
         >
           <Icon
@@ -58,8 +58,8 @@
             size="none"
           />
           <Icon
-            class="attributes-panel-item__type-icon"
             :name="icon"
+            class="attributes-panel-item__type-icon"
             size="none"
           />
           <div class="attributes-panel-item__section-header-label">
@@ -130,8 +130,8 @@
               <template v-for="source in sourceKinds" :key="source">
                 <DropdownMenuItem
                   v-if="source === 'manually' || propSource === source"
-                  :label="source"
                   :checked="propSource === source"
+                  :label="source"
                   @click="setSource(source)"
                 />
               </template>
@@ -143,8 +143,8 @@
       <!-- LEFT BORDER LINE -->
       <div
         v-show="isOpen && headerHasContent"
-        class="attributes-panel-item__left-border"
         :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
+        class="attributes-panel-item__left-border"
       />
 
       <!-- CHILDREN -->
@@ -172,8 +172,8 @@
 
         <template v-if="(isArray || isMap) && propManual">
           <div
-            class="attributes-panel-item__add-child-row"
             :style="{ marginLeft: indentPx }"
+            class="attributes-panel-item__add-child-row"
           >
             <Icon
               class="attributes-panel-item__nested-arrow-icon"
@@ -184,8 +184,6 @@
             <input
               v-if="isMap"
               v-model="newMapChildKey"
-              type="text"
-              placeholder="key"
               :class="
                 clsx(
                   'attributes-panel-item__new-child-key-input',
@@ -193,6 +191,8 @@
                     'attributes-panel-item__new-child-key-input__error',
                 )
               "
+              placeholder="key"
+              type="text"
               @blur="clearKeyError"
               @keyup.enter="addChildHandler"
             />
@@ -220,16 +220,16 @@
     <!-- INDIVIDUAL PROP INSIDE A SECTION -->
     <div
       v-else
-      class="attributes-panel-item__item-inner"
       :style="{ paddingLeft: indentPx }"
+      class="attributes-panel-item__item-inner"
     >
       <div class="attributes-panel-item__item-label">
         <Icon
           v-if="validation && validation.status !== 'Success'"
           :name="showValidationDetails ? 'chevron--down' : 'chevron--right'"
+          class="cursor-pointer"
           size="sm"
           tone="error"
-          class="cursor-pointer"
           @click="showValidationDetails = !showValidationDetails"
         />
 
@@ -240,8 +240,8 @@
           size="none"
         />
         <div
-          class="attributes-panel-item__item-label-text"
           :title="`${propLabelParts[0]}${propLabelParts[1]}`"
+          class="attributes-panel-item__item-label-text"
         >
           <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
           <template v-else-if="isChildOfArray">
@@ -279,8 +279,8 @@
 
           <a
             v-if="fullPropDef.docLink"
-            class="attributes-panel-item__docs-icon hover:scale-125"
             :href="fullPropDef.docLink"
+            class="attributes-panel-item__docs-icon hover:scale-125"
             target="_blank"
             title="show docs"
           >
@@ -290,21 +290,21 @@
       </div>
 
       <div
-        class="attributes-panel-item__input-wrap"
         :class="{
           'force-border-red-400': validation && validation.status !== 'Success',
           'my-1': validation && validation.status !== 'Success',
         }"
-        @mouseover="onHoverStart"
+        class="attributes-panel-item__input-wrap"
         @mouseleave="onHoverEnd"
+        @mouseover="onHoverStart"
       >
         <Icon
           v-if="
             noValue && !iconShouldBeHidden && !isFocus && !propPopulatedBySocket
           "
           :name="icon"
-          size="sm"
           class="attributes-panel-item__type-icon"
+          size="sm"
         />
         <Icon
           v-if="
@@ -312,27 +312,27 @@
             !propPopulatedBySocket &&
             !propControlledByParent
           "
-          name="x-circle"
           class="attributes-panel-item__unset-button"
+          name="x-circle"
           @click="unsetHandler"
         />
         <template v-if="propKind === 'integer'">
           <input
             v-model="newValueNumber"
-            type="number"
             spellcheck="false"
-            @focus="onFocus"
+            type="number"
             @blur="onBlur"
+            @focus="onFocus"
             @keyup.enter="updateValue"
           />
         </template>
         <template v-else-if="widgetKind === 'text'">
           <input
             v-model="newValueString"
-            type="text"
             spellcheck="false"
-            @focus="onFocus"
+            type="text"
             @blur="onBlur"
+            @focus="onFocus"
             @keyup.enter="updateValue"
           />
         </template>
@@ -341,8 +341,8 @@
           <input
             v-model="newValueString"
             type="password"
-            @focus="onFocus"
             @blur="onBlur"
+            @focus="onFocus"
             @keyup.enter="updateValue"
           />
         </template>
@@ -352,21 +352,21 @@
           <textarea
             v-model="newValueString"
             spellcheck="false"
-            @focus="onFocus"
             @blur="onBlur"
+            @focus="onFocus"
             @keydown.enter="(e) => e.metaKey && updateValue()"
           />
           <Icon
             v-if="propControlledByParent"
-            name="external-link"
             class="attributes-panel-item__popout-view-button"
+            name="external-link"
             title="View in popup"
             @click="viewModalRef?.open()"
           />
           <Icon
             v-else
-            name="external-link"
             class="attributes-panel-item__popout-edit-button"
+            name="external-link"
             title="Edit in popup"
             @click="editModalRef?.open()"
           />
@@ -379,17 +379,17 @@
         <template v-else-if="widgetKind === 'checkbox'">
           <input
             :checked="newValueBoolean"
-            type="checkbox"
             class="attributes-panel-item__hidden-input"
-            @input="(e) => newValueBoolean = (e.target as HTMLInputElement)?.checked"
-            @focus="onFocus"
+            type="checkbox"
             @blur="onBlur"
             @change="updateValue"
+            @focus="onFocus"
+            @input="(e) => newValueBoolean = (e.target as HTMLInputElement)?.checked"
           />
           <div class="attributes-panel-item__input-value">
             <Icon
-              class="attributes-panel-item__checkbox-icon"
               :name="newValueBoolean === true ? 'check-square' : 'empty-square'"
+              class="attributes-panel-item__checkbox-icon"
             />
             {{ newValueBoolean ? "TRUE" : "FALSE" }}
           </div>
@@ -400,9 +400,9 @@
           <select
             v-model="newValueString"
             class="attributes-panel-item__hidden-input"
-            @focus="onFocus"
             @blur="onBlur"
             @change="updateValue"
+            @focus="onFocus"
           >
             <option v-for="o in widgetOptions" :key="o.value" :value="o.value">
               {{ o.label }}
@@ -412,8 +412,8 @@
             {{ currentValue }}
           </div>
           <Icon
-            name="input-type-select"
             class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+            name="input-type-select"
             size="sm"
           />
         </template>
@@ -466,11 +466,11 @@
 
       <Icon
         v-if="validation?.status === 'Success'"
+        class="mr-2"
         name="check"
         tone="success"
-        class="mr-2"
       />
-      <Icon v-else-if="validation" name="x" tone="error" class="mr-2" />
+      <Icon v-else-if="validation" class="mr-2" name="x" tone="error" />
     </div>
 
     <!-- VALIDATION DETAILS -->
@@ -494,9 +494,9 @@
     <Modal
       v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
       ref="editModalRef"
-      size="4xl"
       :title="`Edit value - ${propLabel}`"
       class="attributes-panel-item__edit-value-modal"
+      size="4xl"
       @close="updateValue"
     >
       <div class="attributes-panel-item__edit-value-modal-code-wrap">
@@ -517,9 +517,9 @@
     <Modal
       v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
       ref="viewModalRef"
-      size="4xl"
       :title="`View value - ${propLabel}`"
       class="attributes-panel-item__view-value-modal"
+      size="4xl"
     >
       <div class="pb-xs text-destructive-500 font-bold">
         This value cannot currently be edited because
@@ -562,19 +562,19 @@
       </div>
       <div class="flex gap-sm">
         <VButton
+          :class="propControlledByParent ? 'flex-grow' : ''"
           icon="x"
           tone="shade"
           variant="ghost"
-          :class="propControlledByParent ? 'flex-grow' : ''"
           @click="closeConfirmEditModal"
         >
           Cancel
         </VButton>
         <VButton
           v-if="!propControlledByParent"
+          class="flex-grow"
           icon="edit"
           tone="action"
-          class="flex-grow"
           @click="confirmEdit"
         >
           Confirm
@@ -584,7 +584,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
@@ -753,7 +753,7 @@ const propHasSocket = computed(
 );
 const propSetByFunc = computed(
   () =>
-    !props.attributeDef.value?.isControlledByIntrinsicFunc &&
+    props.attributeDef.value?.isControlledByDynamicFunc &&
     !propHasSocket.value &&
     !propPopulatedBySocket.value,
 );
@@ -803,9 +803,7 @@ const sourceTooltip = computed(() => {
 });
 
 const propControlledByParent = computed(
-  () =>
-    props.attributeDef.value?.id !==
-    props.attributeDef.value?.controllingAttributeValueId,
+  () => props.attributeDef.value?.isControlledByAncestor,
 );
 
 function resetNewValueToCurrentValue() {

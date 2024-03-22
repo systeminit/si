@@ -17,6 +17,7 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::code_view::CodeViewError;
@@ -38,10 +39,10 @@ use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, No
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
-    ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetId, DalContext, InputSocket,
-    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
+    DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
+    Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
+    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -67,6 +68,8 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 pub enum ComponentError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -87,6 +90,8 @@ pub enum ComponentError {
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
@@ -175,6 +180,13 @@ impl From<Component> for ComponentContentV1 {
             height: value.height,
         }
     }
+}
+
+#[derive(Copy, Clone)]
+pub struct ControllingFuncData {
+    pub func_id: FuncId,
+    pub av_id: AttributeValueId,
+    pub is_dynamic_func: bool,
 }
 
 impl Component {
@@ -1073,16 +1085,110 @@ impl Component {
         for component in components {
             components_map.insert(component.id, HashSet::new());
 
-            for incomming_connection in component.incoming_connections(ctx).await? {
+            for incoming_connection in component.incoming_connections(ctx).await? {
                 components_map
                     .entry(component.id)
                     .or_default()
-                    .insert(incomming_connection.from_component_id);
+                    .insert(incoming_connection.from_component_id);
             }
         }
 
         debug!("build graph took {:?}", total_start.elapsed());
         Ok(components_map)
+    }
+
+    pub async fn list_av_controlling_func_ids_for_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<AttributeValueId, ControllingFuncData>> {
+        let root_av_id: AttributeValueId =
+            Component::root_attribute_value_id(ctx, component_id).await?;
+
+        let mut av_queue = VecDeque::from([(root_av_id, None)]);
+        let mut result: HashMap<AttributeValueId, ControllingFuncData> = HashMap::new();
+
+        while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
+            let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
+            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
+
+            let this_tuple = ControllingFuncData {
+                func_id,
+                av_id,
+                is_dynamic_func: func.is_dynamic(),
+            };
+
+            // if av has a parent and parent is controlled by dynamic func, that's the controller
+            // else av controls itself
+            let controlling_tuple = if let Some(parent_av_id) = maybe_parent_av_id {
+                // We can unwrap because if we're on the child, we've added the parent to result
+                let parent_controlling_data = *result.get(&parent_av_id).unwrap();
+
+                if parent_controlling_data.is_dynamic_func {
+                    parent_controlling_data
+                } else {
+                    this_tuple
+                }
+            } else {
+                this_tuple
+            };
+
+            // {
+            //     let prop_id = AttributeValue::prop_id_for_id(ctx, av_id).await?;
+            //     let this_prop = Prop::get_by_id(ctx, prop_id).await?;
+            //
+            //     let controlling_prop = {
+            //         let prop_id =
+            //             AttributeValue::prop_id_for_id(ctx, controlling_tuple.av_id).await?;
+            //         Prop::get_by_id(ctx, prop_id).await?
+            //     };
+            //     let controlling_func = Func::get_by_id(ctx, controlling_tuple.func_id).await?;
+            //
+            //     let controlled_by_ancestor = controlling_tuple.av_id != this_tuple.av_id;
+            //     println!("===========================");
+            //
+            //     println!(
+            //         "Prop {} is controlled by {}, through func {}({}dynamic){}",
+            //         this_prop.name,
+            //         if controlled_by_ancestor {
+            //             controlling_prop.name
+            //         } else {
+            //             "itself".to_string()
+            //         },
+            //         controlling_func.name,
+            //         if controlling_tuple.is_dynamic_func {
+            //             ""
+            //         } else {
+            //             "non-"
+            //         },
+            //         if controlled_by_ancestor {
+            //             format!(
+            //                 " - controlled. original func {}({}dynamic)",
+            //                 func.name,
+            //                 if this_tuple.is_dynamic_func {
+            //                     ""
+            //                 } else {
+            //                     "non-"
+            //                 }
+            //             )
+            //         } else {
+            //             "".to_string()
+            //         }
+            //     );
+            // }
+
+            result.insert(av_id, controlling_tuple);
+
+            av_queue.extend(
+                AttributeValue::get_child_av_ids_for_ordered_parent(ctx, av_id)
+                    .await?
+                    .into_iter()
+                    .map(|child_av_id| (child_av_id, Some(av_id)))
+                    .collect::<VecDeque<_>>(),
+            );
+        }
+
+        Ok(result)
     }
 
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>

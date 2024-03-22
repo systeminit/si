@@ -135,7 +135,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               value.ancestorManual = ancestorManual;
               const isAncestorManual =
                 ancestorManual &&
-                value.isControlledByIntrinsicFunc &&
+                !value.isControlledByDynamicFunc &&
                 !(value.canBeSetBySocket || value.isFromExternalSource);
 
               return {

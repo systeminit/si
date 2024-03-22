@@ -2,13 +2,12 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 use crate::ActionKind;
-
-use strum::EnumDiscriminants;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -43,8 +42,8 @@ pub enum EdgeWeightKind {
     Ordinal,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
-    /// An edge from a [`socket`](crate::socket) to an
-    /// [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
+    /// An edge from a [`socket`](crate::socket) or an [`AttributeValue`](`crate::AttributeValue`)
+    /// to an [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
     /// maps, arrays and relevant container types to indicate which element the prototype is for.
     Prototype(Option<String>),
     /// An edge from an [`AttributePrototype`][crate::AttributePrototype] to an
