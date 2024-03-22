@@ -42,26 +42,27 @@ Cypress.Commands.add("getBySelLike", (selector, ...args) => {
 
 // Define the custom Cypress command in your Cypress support/commands.ts file
 // commands.ts
-Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string) => {
-  cy.get(sourceElement).then(() => {
+Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, offsetX?: number, offsetY?: number) => {
+  cy.get(sourceElement).then(($sourceElement) => {
     cy.get(targetElement).then(($targetElement) => {
       const targetOffset = $targetElement.offset();
       const targetWidth = $targetElement.width();
       const targetHeight = $targetElement.height();
 
       // Calculate the coordinates to move to the center of the target element
-      const clientX = targetOffset.left + targetWidth / 2;
-      const clientY = targetOffset.top + targetHeight / 2;
+      let clientX = targetOffset.left + targetWidth / 2;
+      let clientY = targetOffset.top + targetHeight / 2;
+
+      if (offsetX) clientX += offsetX;
+      if (offsetY) clientY += offsetY;
 
       // Trigger a drag and drop action
-      cy.get(sourceElement)
-        .trigger('mousedown', { button: 0 }) // Simulate mouse down event
-        .trigger('mousemove', { clientX: clientX, clientY: clientY }) // Move the object to a new position
-        .trigger('mouseup') // Simulate mouse up event
+      const sourceOffset = $sourceElement.offset();
+      const drag = cy.get(sourceElement)
+        .trigger('mousemove', { clientX: sourceOffset?.left, clientY: sourceOffset?.top, force: true })
+        .trigger('mousedown', { button: 0, force: true }) // Simulate mouse down event
+        .trigger('mousemove', { clientX: clientX, clientY: clientY, force: true }) // Move the object to a new position
+        .trigger('mouseup', { button: 0 }) // Simulate mouse up event
     })
   })
 });
-
-
-
-
