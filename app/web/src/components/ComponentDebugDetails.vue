@@ -12,36 +12,36 @@
       <div class="border border-neutral-500 m-xs">
         <!-- Component -->
         <Collapsible
-          label="Component"
           defaultOpen
-          textSize="lg"
           extraBorderAtBottomOfContent
+          label="Component"
+          textSize="lg"
         >
           <dl class="border-l-2 p-xs flex flex-col gap-xs">
-            <DebugViewItem title="Id" :data="componentId" />
+            <DebugViewItem :data="componentId" title="Id" />
             <DebugViewItem
-              title="Variant Id"
               :data="debugData.schemaVariantId"
+              title="Variant Id"
             />
           </dl>
         </Collapsible>
 
         <!-- Attributes -->
         <Collapsible
-          label="Attributes"
           :defaultOpen="false"
           contentAs="ul"
+          label="Attributes - Not Reimplemented"
           textSize="lg"
         >
           <Collapsible
             v-for="attribute in debugData.attributes"
             :key="attribute.path"
-            :label="attribute.path"
             :defaultOpen="false"
+            :label="attribute.path"
             as="li"
-            xPadding="double"
             contentClasses="px-sm"
             extraBorderAtBottomOfContent
+            xPadding="double"
           >
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
@@ -49,20 +49,20 @@
 
         <!-- Input Sockets -->
         <Collapsible
-          label="Input Sockets"
           :defaultOpen="false"
           contentAs="ul"
+          label="Input Sockets - Not Reimplemented"
           textSize="lg"
         >
           <Collapsible
             v-for="attribute in debugData.inputSockets"
             :key="attribute.name"
-            xPadding="double"
+            :defaultOpen="false"
+            :label="attribute.name"
+            as="li"
             contentClasses="px-sm"
             extraBorderAtBottomOfContent
-            :label="attribute.name"
-            :defaultOpen="false"
-            as="li"
+            xPadding="double"
           >
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
@@ -70,20 +70,20 @@
 
         <!-- Output Sockets -->
         <Collapsible
-          label="Output Sockets"
           :defaultOpen="false"
           contentAs="ul"
+          label="Output Sockets - Not Reimplemented"
           textSize="lg"
         >
           <Collapsible
             v-for="attribute in debugData.outputSockets"
             :key="attribute.name"
-            xPadding="double"
+            :defaultOpen="false"
+            :label="attribute.name"
+            as="li"
             contentClasses="px-sm"
             extraBorderAtBottomOfContent
-            :label="attribute.name"
-            :defaultOpen="false"
-            as="li"
+            xPadding="double"
           >
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
@@ -93,7 +93,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
   Collapsible,
   ErrorMessage,
