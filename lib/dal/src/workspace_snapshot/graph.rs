@@ -1036,7 +1036,7 @@ impl WorkspaceSnapshotGraph {
                 )
             },
         );
-        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix)
+        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
 
         let home_str = std::env::var("HOME").unwrap();
         let home = std::path::Path::new(&home_str);
@@ -1964,6 +1964,10 @@ impl WorkspaceSnapshotGraph {
                         hasher.update(kind.to_string().as_bytes())
                     }
 
+                    EdgeWeightKind::Use { is_default } => {
+                        hasher.update(is_default.to_string().as_bytes())
+                    }
+
                     // This is the key representing an element in a container type corresponding
                     // to an AttributePrototype
                     EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
@@ -1983,8 +1987,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
-                    | EdgeWeightKind::SocketValue
-                    | EdgeWeightKind::Use { .. } => {}
+                    | EdgeWeightKind::SocketValue => {}
                 }
             }
         }

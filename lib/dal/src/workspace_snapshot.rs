@@ -192,27 +192,27 @@ impl WorkspaceSnapshot {
         // Connect them to root.
         graph.add_edge(
             graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             action_batch_node_index,
         )?;
         graph.add_edge(
             graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             component_node_index,
         )?;
         graph.add_edge(
             graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             func_node_index,
         )?;
         graph.add_edge(
             graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             schema_node_index,
         )?;
         graph.add_edge(
             graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             secret_node_index,
         )?;
 

@@ -247,7 +247,7 @@ impl ActionRunner {
         workspace_snapshot
             .add_edge(
                 action_batch_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;

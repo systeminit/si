@@ -73,11 +73,15 @@ pub enum EdgeWeightKind {
 }
 
 impl EdgeWeightKind {
-    pub fn use_as_default() -> Self {
+    /// Creates a new Use edge weight kind indicating that this is also the
+    /// "default" use edge
+    pub fn new_use_default() -> Self {
         EdgeWeightKind::Use { is_default: true }
     }
 
-    pub fn use_not_as_default() -> Self {
+    /// Creates a non-default use EdgeWeightKind. This is what you normally want
+    /// unless you know there should be a default/non-default difference
+    pub fn new_use() -> Self {
         EdgeWeightKind::Use { is_default: false }
     }
 }

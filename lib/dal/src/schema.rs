@@ -118,7 +118,7 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -136,7 +136,7 @@ impl Schema {
             workspace_snapshot.edges_directed(self.id, Outgoing).await?;
 
         for (edge_weight, _, target_index) in default_schema_variant_node_indicies {
-            if *edge_weight.kind() == EdgeWeightKind::use_as_default() {
+            if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
                 return Ok(Some(
                     workspace_snapshot
                         .get_node_weight(target_index)
@@ -164,19 +164,23 @@ impl Schema {
         );
 
         // Our system will have edges as follows:
-        // Schema -> Uses -> Schema Variant
-        // In order to make a schema variant the default for a schema, we need to update the
-        // correct edge from Use to Default:
-        // Schema -> Default -> Schema Variant
-        // Therefore, when we are setting a default schema variant we need to find any existing
-        // Default edges and convert them back to uses AND we need to find the existing Use edge
-        // between our nodes and change that to be a Default
-
+        //
+        // Schema -> Use -> Schema Variant
+        //
+        // In order to make a schema variant the default for a schema, we need
+        // to update the correct edge from Use to the default variant of Use,
+        //
+        // Schema -> Use {is_default = true} -> Schema Variant
+        //
+        // Therefore, when we are setting a default schema variant we need to
+        // find any existing default Use edges and convert them back to uses AND we
+        // need to find the existing Use edge between our nodes and change that
+        // to be a default Use
         for (edge_weight, source_index, target_index) in workspace_snapshot
             .edges_directed_for_edge_weight_kind(
                 self.id,
                 Outgoing,
-                EdgeWeightKind::use_as_default().into(),
+                EdgeWeightKind::new_use_default().into(),
             )
             .await?
         {
@@ -194,10 +198,7 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(
-                        ctx.change_set_pointer()?,
-                        EdgeWeightKind::use_not_as_default(),
-                    )?,
+                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use())?,
                     schema_variant_id,
                 )
                 .await?;
@@ -207,7 +208,7 @@ impl Schema {
             .edges_directed_for_edge_weight_kind(
                 self.id,
                 Outgoing,
-                EdgeWeightKind::use_not_as_default().into(),
+                EdgeWeightKind::new_use().into(),
             )
             .await?
         {
@@ -225,7 +226,7 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::use_as_default())?,
+                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use_default())?,
                     schema_variant_id,
                 )
                 .await?;

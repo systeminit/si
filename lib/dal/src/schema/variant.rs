@@ -180,7 +180,7 @@ impl SchemaVariant {
         workspace_snapshot
             .add_edge(
                 schema_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -281,7 +281,7 @@ impl SchemaVariant {
             let schema_variant_node_indices = workspace_snapshot
                 .outgoing_targets_for_edge_weight_kind(
                     schema_id,
-                    EdgeWeightKind::use_as_default().into(),
+                    EdgeWeightKind::new_use_default().into(),
                 )
                 .await?;
 
@@ -322,7 +322,7 @@ impl SchemaVariant {
         let node_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
                 parent_index,
-                EdgeWeightKind::use_not_as_default().into(),
+                EdgeWeightKind::new_use().into(),
             )
             .await?;
 
@@ -523,10 +523,7 @@ impl SchemaVariant {
         ctx.workspace_snapshot()?
             .add_edge(
                 schema_variant_id,
-                EdgeWeight::new(
-                    ctx.change_set_pointer()?,
-                    EdgeWeightKind::use_not_as_default(),
-                )?,
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use())?,
                 func_id,
             )
             .await?;
@@ -934,7 +931,7 @@ impl SchemaVariant {
 
             let mut schema_id: Option<SchemaId> = None;
             for (edge_weight, source_index, _) in maybe_schema_indices {
-                if *edge_weight.kind() == EdgeWeightKind::use_as_default() {
+                if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
                     if let NodeWeight::Content(content) =
                         workspace_snapshot.get_node_weight(source_index).await?
                     {

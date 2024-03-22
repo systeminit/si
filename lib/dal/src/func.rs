@@ -196,7 +196,7 @@ impl Func {
         workspace_snapshot
             .add_edge(
                 func_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::use_not_as_default())?,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -234,7 +234,7 @@ impl Func {
         let func_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 func_category_id,
-                EdgeWeightKind::use_not_as_default().into(),
+                EdgeWeightKind::new_use().into(),
             )
             .await?;
         let name = name.as_ref();
@@ -384,7 +384,7 @@ impl Func {
         let arg_node_idx = workspace_snapshot.get_node_index_by_id(id).await?;
 
         let users = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::use_not_as_default().into())
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::new_use().into())
             .await?;
 
         let change_set = ctx.change_set_pointer()?;
@@ -394,7 +394,7 @@ impl Func {
                     change_set,
                     user,
                     arg_node_idx,
-                    EdgeWeightKind::use_not_as_default().into(),
+                    EdgeWeightKind::new_use().into(),
                 )
                 .await?;
         }
