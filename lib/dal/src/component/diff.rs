@@ -98,4 +98,19 @@ impl Component {
             diffs,
         })
     }
+
+    pub async fn get_json_representation(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<ComponentProperties> {
+        let component = Self::get_by_id(ctx, component_id).await?;
+        let materialized_view = component.materialized_view(ctx).await?;
+
+        if let Some(view) = materialized_view {
+            let properties = ComponentProperties::try_from(view)?;
+            return Ok(properties);
+        }
+
+        Ok(ComponentProperties::default())
+    }
 }

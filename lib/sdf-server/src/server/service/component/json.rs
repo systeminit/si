@@ -1,5 +1,6 @@
 use axum::{extract::Query, Json};
-use dal::{ComponentId, ComponentView, ComponentViewProperties, Visibility};
+use dal::component::properties::ComponentProperties;
+use dal::{Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -16,7 +17,7 @@ pub struct JsonRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonResponse {
-    pub json: ComponentViewProperties,
+    pub json: ComponentProperties,
 }
 
 pub async fn json(
@@ -26,14 +27,7 @@ pub async fn json(
 ) -> ComponentResult<Json<JsonResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let curr_component_view = ComponentView::new(&ctx, request.component_id).await?;
-    if curr_component_view.properties.is_null() {
-        return Ok(Json(JsonResponse {
-            json: ComponentViewProperties::default(),
-        }));
-    }
-
-    let json = ComponentViewProperties::try_from(curr_component_view)?;
+    let json = Component::get_json_representation(&ctx, request.component_id).await?;
 
     Ok(Json(JsonResponse { json }))
 }
