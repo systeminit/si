@@ -31,6 +31,7 @@ pub mod list_qualifications;
 // pub mod list_resources;
 // pub mod refresh;
 // pub mod resource_domain_diff;
+pub mod debug;
 pub mod get_code;
 pub mod set_type;
 
@@ -173,8 +174,8 @@ pub fn routes() -> Router<AppState> {
             post(delete_property_editor_value::delete_property_editor_value),
         )
         .route("/set_type", post(set_type::set_type))
-    // .route("/refresh", post(refresh::refresh))
-    // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
-    // .route("/debug", get(debug::debug_component))
+        // .route("/refresh", post(refresh::refresh))
+        // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
+        .route("/debug", get(debug::debug_component))
     // .route("/json", get(json::json))
 }
