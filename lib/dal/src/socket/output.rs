@@ -6,6 +6,7 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
@@ -14,7 +15,7 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributePrototype, DalContext, FuncId, InputSocket, Timestamp, TransactionsError,
@@ -180,6 +181,39 @@ impl OutputSocket {
         Ok(Self::assemble(id.into(), content))
     }
 
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+    ) -> OutputSocketResult<Self> {
+        let (_, content) = Self::get_node_weight_and_content(ctx, output_socket_id).await?;
+
+        Ok(Self::assemble(output_socket_id, content))
+    }
+
+    async fn get_node_weight_and_content(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+    ) -> OutputSocketResult<(ContentNodeWeight, OutputSocketContentV1)> {
+        let weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(output_socket_id)
+            .await?
+            .get_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)?;
+        let content: OutputSocketContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                output_socket_id.into(),
+            ))?;
+
+        // Do inner content "upgrading" here when there becomes a need for a V2 storage format.
+        let OutputSocketContent::V1(inner) = content;
+
+        Ok((weight, inner))
+    }
+
     pub async fn attribute_values_for_output_socket_id(
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
@@ -322,5 +356,30 @@ impl OutputSocket {
         }
 
         false
+    }
+
+    // `AttributePrototypeArguemnts` that use this `OutputSocket` as their source of data.
+    pub async fn prototype_arguments_using(
+        &self,
+        ctx: &DalContext,
+    ) -> OutputSocketResult<Vec<AttributePrototypeArgumentId>> {
+        let mut results = Vec::new();
+        for (_edge_weight, tail_idx, _head_idx) in ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                self.id(),
+                petgraph::Direction::Incoming,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )
+            .await?
+        {
+            if let NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_weight) =
+                ctx.workspace_snapshot()?.get_node_weight(tail_idx).await?
+            {
+                results.push(attribute_prototype_argument_weight.id().into());
+            }
+        }
+
+        Ok(results)
     }
 }
