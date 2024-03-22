@@ -1,6 +1,6 @@
 use axum::{extract::Query, Json};
 use dal::component::diff::ComponentDiff;
-use dal::{ComponentId, Visibility};
+use dal::{Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -27,7 +27,7 @@ pub async fn get_diff(
 ) -> ComponentResult<Json<GetDiffResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component_diff = ComponentDiff::new(&ctx, request.component_id).await?;
+    let component_diff = Component::get_diff(&ctx, request.component_id).await?;
 
     Ok(Json(GetDiffResponse { component_diff }))
 }

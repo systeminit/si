@@ -110,11 +110,25 @@ impl CodeView {
 
         let message = code_gen_entry.message.clone();
 
-        Ok(Some(CodeView {
+        Ok(Some(CodeView::assemble(
             language,
             code,
             message,
-            func: Some(code_view_name),
-        }))
+            Some(code_view_name),
+        )))
+    }
+
+    pub fn assemble(
+        language: CodeLanguage,
+        code: Option<String>,
+        message: Option<String>,
+        func: Option<String>,
+    ) -> CodeView {
+        CodeView {
+            language,
+            code,
+            message,
+            func,
+        }
     }
 }

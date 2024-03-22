@@ -1,9 +1,10 @@
-use super::{ComponentError, ComponentResult};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::{
     code_view::CodeView, schema::variant::root_prop::RootPropChild, AttributeValueId, Component,
     ComponentId, DalContext,
 };
+
+use super::{ComponentError, ComponentResult};
 
 impl Component {
     /// List all [`CodeViews`](crate::CodeView) for based on the "code generation"
