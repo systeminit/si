@@ -1,5 +1,3 @@
-mod cas;
-
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -12,33 +10,40 @@ use si_layer_cache::{
     event::LayeredEventMetadata,
     LayerDb,
 };
+use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
+
+mod cas;
 
 type TestLayerDb = LayerDb<Arc<String>, String>;
 
 #[tokio::test]
 async fn activities() {
+    let token = CancellationToken::new();
+
     let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let db = setup_pg_db("activities").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash: LayerDb<Arc<String>, String> = LayerDb::new(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
+        token.clone(),
     )
     .await
     .expect("cannot create layerdb");
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl: TestLayerDb = LayerDb::new(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
+        token.clone(),
     )
     .await
     .expect("cannot create layerdb");
@@ -72,25 +77,29 @@ async fn activities() {
 
 #[tokio::test]
 async fn activities_subscribe_partial() {
+    let token = CancellationToken::new();
+
     let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     // First, we need a layerdb for slash
-    let ldb_slash: TestLayerDb = LayerDb::new(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        token.clone(),
     )
     .await
     .expect("cannot create layerdb");
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let ldb_axl: TestLayerDb = LayerDb::new(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        token.clone(),
     )
     .await
     .expect("cannot create layerdb");

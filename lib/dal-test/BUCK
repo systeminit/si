@@ -35,6 +35,7 @@ rust_library(
         "//third-party/rust:tempfile",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:tracing-opentelemetry",
         "//third-party/rust:tracing-subscriber",
         "//third-party/rust:uuid",

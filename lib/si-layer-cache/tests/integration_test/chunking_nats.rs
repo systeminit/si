@@ -3,12 +3,15 @@ use std::env;
 use futures::TryStreamExt;
 use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient, NatsConfig};
 use si_layer_cache::chunking_nats::ChunkingNats;
+use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::integration_test::ENV_VAR_NATS_URL;
 
 #[tokio::test]
 async fn chunky_nats() {
+    let token = CancellationToken::new();
+
     let prefix = Ulid::new().to_string();
 
     let mut nats_config = NatsConfig {
@@ -55,6 +58,7 @@ async fn chunky_nats() {
             .messages()
             .await
             .expect("failed to get messages stream"),
+        token,
     );
 
     let mut headers = HeaderMap::new();

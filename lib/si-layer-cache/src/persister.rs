@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient};
 use si_data_pg::PgPool;
+use telemetry::prelude::*;
 use tokio::{
     join,
     sync::{mpsc, oneshot},
 };
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
@@ -22,7 +24,6 @@ use crate::{
 #[derive(Debug)]
 pub enum PersistMessage {
     Write((LayeredEvent, PersisterStatusWriter)),
-    Shutdown,
 }
 
 #[derive(Debug)]
@@ -88,22 +89,29 @@ impl PersisterClient {
 }
 
 #[derive(Debug)]
-pub struct PersisterServer {
+pub struct PersisterTask {
     messages: mpsc::UnboundedReceiver<PersistMessage>,
     sled: sled::Db,
     pg_pool: PgPool,
     nats: ChunkingNats,
     instance_id: Ulid,
+    tracker: TaskTracker,
+    shutdown_token: CancellationToken,
 }
 
-impl PersisterServer {
+impl PersisterTask {
+    const NAME: &'static str = "LayerDB::PersisterTask";
+
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
         sled: sled::Db,
         pg_pool: PgPool,
         nats_client: &NatsClient,
         instance_id: Ulid,
+        shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
+        let tracker = TaskTracker::new();
+
         let context = jetstream::new(nats_client.as_inner().clone());
         // Ensure the Jetstream is created
         let _stream =
@@ -122,10 +130,38 @@ impl PersisterServer {
             pg_pool,
             nats,
             instance_id,
+            tracker,
+            shutdown_token,
         })
     }
 
     pub async fn run(mut self) {
+        let shutdown_token = self.shutdown_token.clone();
+
+        loop {
+            tokio::select! {
+                _ = self.process_messages() => {
+                    // When no messages remain, channel is fully drained and we are done
+                    break;
+                }
+                _ = shutdown_token.cancelled() => {
+                    debug!(task = Self::NAME, "received cancellation");
+                    // Close receiver channel to ensure to further values can be received and
+                    // continue to process remaining values until channel is fully drained
+                    self.messages.close();
+                }
+            }
+        }
+
+        // All remaining work has been dispatched (i.e. spawned) so no more tasks will be spawned
+        self.tracker.close();
+        // Wait for all in-flight writes work to complete
+        self.tracker.wait().await;
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+
+    async fn process_messages(&mut self) {
         while let Some(msg) = self.messages.recv().await {
             match msg {
                 PersistMessage::Write((event, status_tx)) => {
@@ -135,9 +171,8 @@ impl PersisterServer {
                         self.nats.clone(),
                         self.instance_id,
                     );
-                    tokio::spawn(task.write_layers(event, status_tx));
+                    self.tracker.spawn(task.write_layers(event, status_tx));
                 }
-                PersistMessage::Shutdown => break,
             }
         }
     }

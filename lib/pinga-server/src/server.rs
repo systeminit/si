@@ -1,4 +1,4 @@
-use std::{io, sync::Arc};
+use std::{future::IntoFuture, io, sync::Arc};
 
 use dal::{
     job::{
@@ -30,6 +30,7 @@ use tokio::{
     task,
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
@@ -104,7 +105,11 @@ pub struct Server {
 
 impl Server {
     #[instrument(name = "pinga.init.from_config", level = "info", skip_all)]
-    pub async fn from_config(config: Config) -> Result<Self> {
+    pub async fn from_config(
+        config: Config,
+        token: CancellationToken,
+        tracker: TaskTracker,
+    ) -> Result<Self> {
         dal::init()?;
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
@@ -116,12 +121,14 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let rebaser_config = RebaserClientConfig::default();
 
-        let layer_db = LayerDb::new(
+        let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
             config.layer_cache_sled_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
+            token,
         )
         .await?;
+        tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         let services_context = ServicesContext::new(
             pg_pool,

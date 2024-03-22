@@ -5,6 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::{async_nats::jetstream, NatsClient};
 use strum::{AsRefStr, EnumString};
 use telemetry::prelude::*;
+use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::{
@@ -23,7 +24,7 @@ enum CacheName {
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdates<CasValue, WorkspaceSnapshotValue>
+pub struct CacheUpdatesTask<CasValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
@@ -34,16 +35,19 @@ where
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
 }
 
-impl<CasValue, WorkspaceSnapshotValue> CacheUpdates<CasValue, WorkspaceSnapshotValue>
+impl<CasValue, WorkspaceSnapshotValue> CacheUpdatesTask<CasValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
+    const NAME: &'static str = "LayerDB::CacheUpdatesTask";
+
     pub async fn create(
         instance_id: Ulid,
         nats_client: &NatsClient,
         cas_cache: LayerCache<Arc<CasValue>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+        shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
         let context = jetstream::new(nats_client.as_inner().clone());
 
@@ -54,7 +58,7 @@ where
                 .await?
                 .messages()
                 .await?;
-        let messages = ChunkingNats::chunking_messages(messages_stream);
+        let messages = ChunkingNats::chunking_messages(messages_stream, shutdown_token);
 
         Ok(Self {
             instance_id,
@@ -64,7 +68,7 @@ where
         })
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) {
         while let Some(result) = self.messages.next().await {
             match result {
                 Ok(msg) => {
@@ -88,6 +92,8 @@ where
                 }
             }
         }
+
+        debug!(task = Self::NAME, "shutdown complete");
     }
 
     #[inline]

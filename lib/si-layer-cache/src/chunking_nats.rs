@@ -19,6 +19,8 @@ use futures::{Future, Stream, StreamExt};
 use si_data_nats::{
     async_nats::jetstream, subject::ToSubject, HeaderMap, InnerError, InnerMessage,
 };
+use telemetry::prelude::*;
+use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::error::{LayerDbError, LayerDbResult};
@@ -99,10 +101,14 @@ impl ChunkingNats {
         Ok(())
     }
 
-    pub fn chunking_messages(messages: jetstream::consumer::pull::Stream) -> ChunkedMessagesStream {
+    pub fn chunking_messages(
+        messages: jetstream::consumer::pull::Stream,
+        token: CancellationToken,
+    ) -> ChunkedMessagesStream {
         ChunkedMessagesStream {
             inner: messages,
             buffers: HashMap::new(),
+            token,
         }
     }
 
@@ -114,6 +120,7 @@ impl ChunkingNats {
 pub struct ChunkedMessagesStream {
     inner: jetstream::consumer::pull::Stream,
     buffers: HashMap<String, (BytesMut, Vec<jetstream::message::Acker>)>,
+    token: CancellationToken,
 }
 
 impl ChunkedMessagesStream {
@@ -259,6 +266,12 @@ impl Stream for ChunkedMessagesStream {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
+            if self.token.is_cancelled() {
+                // Cancellation token is set to cancelled, so we close our stream
+                debug!("chunked messages stream received cancellation");
+                return Poll::Ready(None);
+            }
+
             let poll = Pin::new(&mut self.inner.next()).poll(cx);
 
             match poll {
