@@ -14,18 +14,16 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
+pub mod delete_property_editor_value;
+pub mod get_diff;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod update_property_editor_value;
-
-// pub mod debug;
-pub mod delete_property_editor_value;
-pub mod get_diff;
 // pub mod get_resource;
-pub mod insert_property_editor_value;
-// pub mod json;
 pub mod get_actions;
+pub mod insert_property_editor_value;
+pub mod json;
 pub mod list_qualifications;
 // pub mod list_resources;
 // pub mod refresh;
@@ -176,5 +174,5 @@ pub fn routes() -> Router<AppState> {
         // .route("/refresh", post(refresh::refresh))
         // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
         .route("/debug", get(debug::debug_component))
-    // .route("/json", get(json::json))
+        .route("/json", get(json::json))
 }
