@@ -4,5 +4,5 @@ load(
 )
 
 export_file(
-    name = "e2e_test.sh",
+    name = "e2e_test.py",
 )

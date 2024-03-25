@@ -1,62 +1,21 @@
-
-load(
-    "@prelude//python:toolchain.bzl",
-    "PythonToolchainInfo",
-)
-load(
-    "//build_context:toolchain.bzl",
-    "BuildContextToolchainInfo",
-)
-load(
-    "//git:toolchain.bzl",
-    "GitToolchainInfo",
-)
-load(
-    "//nix:toolchain.bzl",
-    "NixToolchainInfo",
-)
+#load(
+#    "//build_context:toolchain.bzl",
+#    "BuildContextToolchainInfo",
+#)
 load(
     "//e2e:toolchain.bzl",
     "E2eToolchainInfo",
 )
-load(
-    "//build_context.bzl",
-    "BuildContext",
-    _build_context = "build_context",
-)
-load(
-    "//git.bzl",
-    "GitInfo",
-    _git_info = "git_info",
-)
-load(
-    "//artifact.bzl",
-    "ArtifactInfo",
-)
+#load(
+#    "//build_context.bzl",
+#    "BuildContext",
+#    _build_context = "build_context",
+#)
+
 
 E2eTestInfo = provider(fields = {
     "name": provider_field(typing.Any, default = None),
 })
-
-def nix_flake_lock_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
-    out = ctx.actions.declare_output("flake.lock")
-
-    output = ctx.actions.copy_file(out, ctx.attrs.src)
-
-    return [DefaultInfo(default_output = out)]
-
-nix_flake_lock = rule(
-    impl = nix_flake_lock_impl,
-    attrs = {
-        "src": attrs.source(
-            doc = """flake.lock source.""",
-        ),
-        "nix_flake": attrs.dep(
-            default = "//:flake.nix",
-            doc = """Nix flake dependency.""",
-        ),
-    },
-)
 
 def e2e_test_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
@@ -67,24 +26,29 @@ def e2e_test_impl(ctx: AnalysisContext) -> list[[
     else:
         name = ctx.attrs.name
 
-    test_report = ctx.actions.declare_output("{}.html".format(name))
+    test_report_dir = ctx.actions.declare_output("{}".format(name))
 
     e2e_toolchain = ctx.attrs._e2e_toolchain[E2eToolchainInfo]
-
+    #build_context = _build_context(ctx, [ctx.attrs.build_dep], ctx.attrs.srcs)
+    
     cmd = cmd_args(
-        "/bin/bash",
+        "python3",
         e2e_toolchain.e2e_test[DefaultInfo].default_outputs,
-        test_report.as_output(),
+        "--output",
+        test_report_dir.as_output(),
+        #"--build-context-dir",
+        #"johns-directory"
+        #build_context.root,
     )
 
     ctx.actions.run(cmd, category = "e2e_test")
 
     return [
         DefaultInfo(
-            default_output = test_report,
+            default_output = test_report_dir,
         ),
         E2eTestInfo(
-            name = test_report
+            name = test_report_dir
         ),
     ]
 
@@ -96,6 +60,13 @@ e2e_test = rule(
             default = None,
             doc = """package name (default: 'attrs.name').""",
         ),
+        #"build_dep": attrs.dep(
+        #    doc = """Buck2 target placeholder that might not be used.""",
+        #),
+        #"_build_context_toolchain": attrs.toolchain_dep(
+        #    default = "toolchains//:build_context",
+        #    providers = [BuildContextToolchainInfo],
+        #),
         "_e2e_toolchain": attrs.toolchain_dep(
             default = "toolchains//:e2e",
             providers = [E2eToolchainInfo],

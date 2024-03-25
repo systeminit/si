@@ -17,7 +17,7 @@ e2e_toolchain = rule(
     impl = e2e_toolchain_impl,
     attrs = {
         "_e2e_test": attrs.dep(
-            default = "prelude-si//e2e:e2e_test.sh",
+            default = "prelude-si//e2e:e2e_test.py",
         ),
     },
     is_toolchain_rule = True,
