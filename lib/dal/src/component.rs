@@ -46,6 +46,7 @@ use crate::{
 };
 
 pub mod code;
+pub mod debug;
 pub mod diff;
 pub mod frame;
 pub mod properties;

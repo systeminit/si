@@ -59,7 +59,7 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
-use crate::prop::PropError;
+use crate::prop::{PropError, PropPath};
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -81,6 +81,7 @@ use super::prototype::argument::{
     AttributePrototypeArgumentId,
 };
 
+pub mod debug;
 pub mod dependent_value_graph;
 pub mod view;
 
@@ -161,6 +162,8 @@ pub enum AttributeValueError {
     NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
     OrphanedAttributeValue(AttributeValueId),
+    #[error("parent prop of map or array not found: {0}")]
+    ParentAttributeValueMissing(AttributeValueId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("array or map prop missing element prop: {0}")]
@@ -2124,5 +2127,109 @@ impl AttributeValue {
         }
 
         Ok(input_socket_ids)
+    }
+    #[instrument(level = "info", skip_all)]
+    /// Get the morale equivalent of the prop path for a given attribute value id.
+    /// This includes the key/index in the path, unlike the path for a Prop which doesn't
+    /// include the key/index
+    pub async fn get_path_for_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<String>> {
+        let mut parts = VecDeque::new();
+        let mut work_queue = VecDeque::from([attribute_value_id]);
+
+        while let Some(mut attribute_value_id) = work_queue.pop_front() {
+            let prop_name = match AttributeValue::prop_id_for_id(ctx, attribute_value_id).await {
+                Ok(prop) => Prop::get_by_id(ctx, prop).await?.name,
+                Err(_) => {
+                    // This means it's an input or output socket, which has no path and should just be empty string
+                    continue;
+                }
+            };
+
+            // get the parent to see if it's a Map or Array so we can add the necessary key/index to the prop path
+            if let Some(parent_attribute_value_id) =
+                AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?
+            {
+                let parent_prop_id =
+                    AttributeValue::prop_id_for_id(ctx, parent_attribute_value_id).await?;
+                match Some(Prop::get_by_id(ctx, parent_prop_id).await?.kind) {
+                    Some(PropKind::Array) => {
+                        let order_of_thing_node = ctx
+                            .workspace_snapshot()?
+                            .incoming_sources_for_edge_weight_kind(
+                                attribute_value_id,
+                                EdgeWeightKindDiscriminants::Ordinal,
+                            )
+                            .await?
+                            .pop()
+                            .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(
+                                attribute_value_id,
+                            ))?;
+
+                        let order_node_weight = ctx
+                            .workspace_snapshot()?
+                            .get_node_weight(order_of_thing_node)
+                            .await?
+                            .get_ordering_node_weight()?;
+
+                        let order = order_node_weight.order();
+
+                        // Find the index of the item in the array to add to path
+                        let index = order
+                            .iter()
+                            .position(|&id| id == attribute_value_id.into())
+                            .ok_or(AttributeValueError::ParentAttributeValueMissing(
+                                attribute_value_id,
+                            ))?;
+                        let name = format!("{0}[{1}]", prop_name, &index.to_string());
+                        parts.push_front(name.to_owned());
+                    }
+                    Some(PropKind::Map) => {
+                        match {
+                            let edge_weight = ctx
+                                .workspace_snapshot()?
+                                .edges_directed_for_edge_weight_kind(
+                                    attribute_value_id,
+                                    Direction::Incoming,
+                                    EdgeWeightKindDiscriminants::Contain,
+                                )
+                                .await?
+                                .pop()
+                                .ok_or(AttributeValueError::ParentAttributeValueMissing(
+                                    attribute_value_id,
+                                ))?;
+                            if let EdgeWeightKind::Contain(contain_key) = edge_weight.0.kind() {
+                                contain_key.to_owned()
+                            } else {
+                                None
+                            }
+                        } {
+                            Some(key) => {
+                                let name = format!("{0}[{1}]", prop_name, &key.to_owned());
+                                //let name = prop_name + &key.to_owned();
+                                parts.push_front(name.to_owned());
+                            }
+                            None => {
+                                parts.push_front(prop_name.to_owned());
+                            }
+                        }
+                    }
+                    Some(_) => parts.push_front(prop_name.to_owned()),
+                    None => continue,
+                }
+                attribute_value_id = parent_attribute_value_id;
+                work_queue.push_back(attribute_value_id);
+            } else {
+                // no more parents, need to add the prop_name to the parts because now we're at the root!
+                parts.push_front(prop_name);
+            }
+        }
+        if !parts.is_empty() {
+            Ok(Some(PropPath::new(parts).with_replaced_sep("/")))
+        } else {
+            Ok(None)
+        }
     }
 }

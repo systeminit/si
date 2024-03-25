@@ -8,10 +8,10 @@ use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
 
+mod debug;
 mod get_code;
 mod get_diff;
 mod set_type;
-
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;

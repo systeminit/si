@@ -30,7 +30,7 @@
         <Collapsible
           :defaultOpen="false"
           contentAs="ul"
-          label="Attributes - Not Reimplemented"
+          label="Attributes"
           textSize="lg"
         >
           <Collapsible
