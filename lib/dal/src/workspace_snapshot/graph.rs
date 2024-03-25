@@ -899,7 +899,9 @@ impl WorkspaceSnapshotGraph {
         // ```
         // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
         // ```
-        let current_root_weight = self.get_node_weight(self.root_index).unwrap();
+        let current_root_weight = self
+            .get_node_weight(self.root_index)
+            .expect("this should be impossible and this code should only be used for debugging");
         println!(
             "Root Node Weight: {current_root_weight:?}\n{:?}",
             petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
@@ -1038,7 +1040,7 @@ impl WorkspaceSnapshotGraph {
         );
         let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
 
-        let home_str = std::env::var("HOME").unwrap();
+        let home_str = std::env::var("HOME").expect("could not find home directory via env");
         let home = std::path::Path::new(&home_str);
 
         let mut file = File::create(home.join(format!("{filename_no_extension}.txt")))

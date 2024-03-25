@@ -85,6 +85,8 @@ pub enum SchemaVariantError {
     LeafFunctionMustBeJsAttribute(FuncId),
     #[error("Leaf map prop not found for item prop {0}")]
     LeafMapPropNotFound(PropId),
+    #[error("more than one schema found for schema variant: {0}")]
+    MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("output socket error: {0}")]
@@ -943,7 +945,9 @@ impl SchemaVariant {
                             schema_id = match schema_id {
                                 None => Some(content.id().into()),
                                 Some(_already_found_schema_id) => {
-                                    panic!("already found a schema")
+                                    return Err(SchemaVariantError::MoreThanOneSchemaFound(
+                                        schema_variant_id,
+                                    ));
                                 }
                             };
                         }

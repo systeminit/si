@@ -32,6 +32,8 @@ pub enum FuncError {
     Base64Decode(#[from] base64::DecodeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("chrono parse error: {0}")]
+    ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("cannot find intrinsic func {0}")]

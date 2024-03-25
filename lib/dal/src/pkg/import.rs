@@ -3069,9 +3069,13 @@ async fn create_attr_proto_arg(
                 .await?;
             apa_id
         }
-        _ => {
-            // xxx: make this an error
-            panic!("unsupported taking output socket as input for prop");
+        SiPkgAttrFuncInputView::OutputSocket {
+            name, socket_name, ..
+        } => {
+            return Err(PkgError::TakingOutputSocketAsInputForPropUnsupported(
+                name.to_owned(),
+                socket_name.to_owned(),
+            ));
         }
     })
 }

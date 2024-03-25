@@ -97,10 +97,14 @@ pub enum ComponentError {
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("component {0} missing attribute value for code")]
     MissingCodeValue(ComponentId),
+    #[error("missing controlling func data for parent attribute value id: {0}")]
+    MissingControllingFuncDataForParentAttributeValue(AttributeValueId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
     #[error("component {0} missing attribute value for root")]
     MissingRootProp(ComponentId),
+    #[error("more than one schema variant found for component: {0}")]
+    MoreThanOneSchemaVariantFound(ComponentId),
     #[error("found multiple parents for component: {0}")]
     MultipleParentsForComponent(ComponentId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
@@ -607,12 +611,12 @@ impl Component {
                 let content_hash_discriminants: ContentAddressDiscriminants =
                     content.content_address().into();
                 if let ContentAddressDiscriminants::SchemaVariant = content_hash_discriminants {
-                    // TODO(nick): consider creating a new edge weight kind to make this easier.
-                    // We also should use a proper error here.
                     schema_variant_id = match schema_variant_id {
                         None => Some(content.id().into()),
                         Some(_already_found_schema_variant_id) => {
-                            panic!("already found a schema variant")
+                            return Err(ComponentError::MoreThanOneSchemaVariantFound(
+                                component_id,
+                            ));
                         }
                     };
                 }
@@ -1120,8 +1124,9 @@ impl Component {
             // if av has a parent and parent is controlled by dynamic func, that's the controller
             // else av controls itself
             let controlling_tuple = if let Some(parent_av_id) = maybe_parent_av_id {
-                // We can unwrap because if we're on the child, we've added the parent to result
-                let parent_controlling_data = *result.get(&parent_av_id).unwrap();
+                let parent_controlling_data = *result.get(&parent_av_id).ok_or(
+                    ComponentError::MissingControllingFuncDataForParentAttributeValue(parent_av_id),
+                )?;
 
                 if parent_controlling_data.is_dynamic_func {
                     parent_controlling_data

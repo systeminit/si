@@ -1,3 +1,4 @@
+#[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
     use pretty_assertions_sorted::assert_eq;
