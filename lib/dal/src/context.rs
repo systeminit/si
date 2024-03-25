@@ -207,27 +207,27 @@ impl ConnectionState {
         tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
-        let (conns, nats_conn, rebaser_config) = match self {
+        let (conns, conflicts) = match self {
             Self::Connections(conns) => {
+                let (nats_conn, rebaser_config) =
+                    (conns.nats_conn().clone(), conns.rebaser_config.clone());
+                // We need to rebase and wait for the rebaser to update the change set
+                // pointer, even if we are not in a "transactions" state
+                let conflicts = if let Some(rebase_request) = rebase_request {
+                    rebase(tenancy, nats_conn, rebaser_config, rebase_request).await?
+                } else {
+                    None
+                };
+
                 trace!("no active transactions present when commit was called");
-                let rebaser_config = conns.rebaser_config.clone();
-                let nats_conn = conns.nats_conn.clone();
-                Ok((Self::Connections(conns), nats_conn, rebaser_config))
+                Ok((Self::Connections(conns), conflicts))
             }
             Self::Transactions(txns) => {
-                let conns = txns.commit_into_conns().await?;
-                let rebaser_config = conns.rebaser_config.clone();
-                let nats_conn = conns.nats_conn.clone();
-                Ok((Self::Connections(conns), nats_conn, rebaser_config))
+                let (conns, conflicts) = txns.commit_into_conns(tenancy, rebase_request).await?;
+                Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
         }?;
-
-        let conflicts = if let Some(rebase_request) = rebase_request {
-            rebase(tenancy, nats_conn, rebaser_config, rebase_request).await?
-        } else {
-            None
-        };
 
         Ok((conns, conflicts))
     }
@@ -1222,17 +1222,36 @@ impl Transactions {
         skip_all,
         fields()
     )]
-    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
+    pub async fn commit_into_conns(
+        self,
+        tenancy: &Tenancy,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
+        // We need to send a rebase request *after* committing any transactions,
+        // but before starting any jobs in pinga, since those transactions may
+        // have updated the changeset pointer to point to the current snapshot,
+        // and that will be the snapshot we expect the dependent values update
+        // (for example) to access.
+        let conflicts = if let Some(rebase_request) = rebase_request {
+            rebase(
+                tenancy,
+                nats_conn.clone(),
+                self.rebaser_config.clone(),
+                rebase_request,
+            )
+            .await?
+        } else {
+            None
+        };
+
         self.job_processor.process_queue(self.job_queue).await?;
 
-        Ok(Connections::new(
-            pg_conn,
-            nats_conn,
-            self.job_processor,
-            self.rebaser_config,
+        Ok((
+            Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config),
+            conflicts,
         ))
     }
 

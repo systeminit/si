@@ -3,13 +3,14 @@ use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use tokio::{fs::File, io::AsyncWriteExt};
 use ulid::Ulid;
 
+use crate::component::ControllingFuncData;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
         value::ValueIsFor,
     },
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, DalContext, Prop,
+    Component, ComponentId, DalContext, Prop,
 };
 
 use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
@@ -44,12 +45,50 @@ impl DependentValueGraph {
         ctx: &DalContext,
         values: Vec<AttributeValueId>,
     ) -> AttributeValueResult<Self> {
+        let mut controlling_funcs_for_component: HashMap<
+            ComponentId,
+            HashMap<AttributeValueId, ControllingFuncData>,
+        > = HashMap::new();
         let mut dependent_value_graph = Self::new();
 
         let mut work_queue = VecDeque::from_iter(values);
         while let Some(current_attribute_value_id) = work_queue.pop_front() {
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value_id).await?;
+
+            // We should NOT add "controlled" avs to the dependency graph, since they should
+            // be considered only side effects of the av that is controlling them
+            let maybe_controlling_func_data = match controlling_funcs_for_component
+                .entry(current_component_id)
+            {
+                Entry::Occupied(entry) => entry.get().get(&current_attribute_value_id).copied(),
+                Entry::Vacant(entry) => {
+                    let controlling_func_data =
+                        Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
+                            .await
+                            .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    let data = controlling_func_data
+                        .get(&current_attribute_value_id)
+                        .copied();
+
+                    entry.insert(controlling_func_data);
+
+                    data
+                }
+            };
+
+            // None is okay, because the av would refer to an input or output socket,
+            // and neither of these have parents or children
+            if let Some(ControllingFuncData {
+                av_id: controlling_av_id,
+                ..
+            }) = maybe_controlling_func_data
+            {
+                if current_attribute_value_id != controlling_av_id {
+                    continue;
+                }
+            }
+
             let data_source_id: Ulid = AttributeValue::is_for(ctx, current_attribute_value_id)
                 .await?
                 .into();
@@ -125,6 +164,7 @@ impl DependentValueGraph {
                     };
                     let component_id =
                         AttributeValue::component_id(ctx, attribute_value_id).await?;
+
                     if component_id == filter_component_id {
                         work_queue.push_back(attribute_value_id);
                         dependent_value_graph

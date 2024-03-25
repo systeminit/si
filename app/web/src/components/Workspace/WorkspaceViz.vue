@@ -1,33 +1,22 @@
 <template>
-  <Stack class="h-full w-full">
-    <VormInput
-      v-model="selectedSchemaVariant"
-      label="Schema Variants"
-      type="dropdown"
-      class="flex-1"
-      :options="schemaVariantOptions"
-    />
-
-    <WorkspaceVizSchemaVariant
-      :key="selectedSchemaVariant"
-      :schemaVariantId="selectedSchemaVariant"
-    />
-  </Stack>
+  <WorkspaceVizSchemaVariant />
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
-import { VormInput, Stack } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
+import { useRouter } from "vue-router";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import WorkspaceVizSchemaVariant from "./WorkspaceVizSchemaVariant.vue";
 
-const componentStore = useComponentsStore();
+const featureFlagsStore = useFeatureFlagsStore();
+const workspacesStore = useWorkspacesStore();
+const workspacePk = workspacesStore.getAutoSelectedWorkspacePk();
 
-const selectedSchemaVariant = ref();
-const schemaVariantOptions = computed(() =>
-  componentStore.schemaVariants.map((sv) => ({
-    label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
-    value: sv.id,
-  })),
-);
+const router = useRouter();
+if (!featureFlagsStore.FEAT_GRAPHVIZ) {
+  router.replace({
+    name: "workspace-single",
+    params: { workspacePk },
+  });
+}
 </script>

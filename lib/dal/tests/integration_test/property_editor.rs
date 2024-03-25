@@ -1,8 +1,18 @@
-use dal::property_editor::schema::PropertyEditorSchema;
-use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
+use dal::property_editor::schema::{
+    PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
+};
+use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
+use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
+use dal::{AttributeValue, Component, ComponentId, DalContext, Schema, SchemaVariant};
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
+use dal_test::test_harness::{
+    commit_and_update_snapshot, connect_components_with_socket_names,
+    create_component_for_schema_name,
+};
+use itertools::enumerate;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
 
 #[test]
 async fn assemble(ctx: &DalContext) {
@@ -36,11 +46,7 @@ async fn assemble(ctx: &DalContext) {
 
 #[test]
 async fn array_map_manipulation(ctx: &DalContext) {
-    // Create a component using the testing schema
     let component = create_component_for_schema_name(ctx, "pirate", "ss poopcanoe").await;
-    // let variant_id = Component::schema_variant_id(ctx, component.id())
-    //     .await
-    //     .expect("find variant id for component");
 
     let parrot_names_value_id = component
         .attribute_values_for_prop(ctx, &["root", "domain", "parrot_names"])
@@ -245,7 +251,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     let treasure_first_item = AttributeValue::get_by_id(
         ctx,
         *treasure_child_ids
-            .get(0)
+            .first()
             .expect("get the first item in treasure"),
     )
     .await
@@ -290,4 +296,372 @@ async fn array_map_manipulation(ctx: &DalContext) {
 
     // Check that the key of the second map item is "nyc"
     assert_eq!(treasure_second_item_key, Some("nyc".to_string()));
+}
+
+#[test]
+async fn override_value(ctx: &mut DalContext) {
+    let pirate_name = "Thomas Cavendish";
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+    commit_and_update_snapshot(ctx).await;
+
+    let name_path = &["root", "domain", "name"];
+    let av_id = pirate_component
+        .attribute_values_for_prop(ctx, name_path)
+        .await
+        .expect("find value ids for the prop treasure")
+        .pop()
+        .expect("there should only be one value id");
+
+    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+        .await
+        .expect("get prop_id for attribute value");
+
+    // domain/name gets populated from si/name, so isControlledByDynamicFunc = true
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": pirate_name,
+          "canBeSetBySocket": false,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+
+    // if we set a value directly on domain/name, overridden becomes true
+    let new_pirate_name = "Rock Brasiliano";
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_pirate_name)))
+        .await
+        .expect("override domain/name attribute value");
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": new_pirate_name,
+          "canBeSetBySocket": false,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": false,
+          "overridden": true
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+}
+
+#[test]
+async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
+    let pirate_name = "Blackbeard";
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+
+    let parrots_path = &["root", "domain", "parrot_names"];
+
+    // Check that pirate parrots can be set by socket
+    let av_id = pirate_component
+        .attribute_values_for_prop(ctx, parrots_path)
+        .await
+        .expect("find value ids for the prop treasure")
+        .pop()
+        .expect("there should only be one value id");
+
+    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+        .await
+        .expect("get prop_id for attribute value");
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": null,
+          "canBeSetBySocket": true, // prop can be set by socket
+          "isFromExternalSource": false, // prop is not getting value through that socket
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(parrots_path)
+    );
+
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+
+    connect_components_with_socket_names(
+        ctx,
+        pet_shop_component.id(),
+        "parrot_names",
+        pirate_component.id(),
+        "parrot_names",
+    )
+    .await;
+
+    commit_and_update_snapshot(ctx).await;
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": null,
+          "canBeSetBySocket": true, // prop can be set by socket
+          "isFromExternalSource": true, // now that we have a connection, this is true
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(parrots_path)
+    );
+}
+
+#[test]
+async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
+    let pirate_name = "Long John Silver";
+    let parrot_name = "Captain Flint";
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+
+    let parrots_path = &["root", "domain", "parrot_names"];
+    let parrot_entry_path = &["root", "domain", "parrot_names", "parrot_name"];
+
+    let parrots_av_id = pirate_component
+        .attribute_values_for_prop(ctx, parrots_path)
+        .await
+        .expect("find value ids for prop parrot_names")
+        .pop()
+        .expect("there should only be one value id");
+
+    let parrots_prop_id = AttributeValue::prop_id_for_id(ctx, parrots_av_id)
+        .await
+        .expect("get prop_id for attribute value");
+
+    assert_eq!(
+        serde_json::json![{
+          "id": parrots_av_id,
+          "propId": parrots_prop_id,
+          "key": null,
+          "value": null,
+          "canBeSetBySocket": true,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(parrots_path)
+    );
+
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+
+    // set value on source component
+    {
+        let pet_shop_parrot_av_id = pet_shop_component
+            .attribute_values_for_prop(ctx, parrots_path)
+            .await
+            .expect("find value ids for prop parrot_names")
+            .pop()
+            .expect("there should only be one value id");
+
+        AttributeValue::insert(ctx, pet_shop_parrot_av_id, Some(parrot_name.into()), None)
+            .await
+            .expect("insert value in pet_shop parrot_names array");
+    }
+
+    connect_components_with_socket_names(
+        ctx,
+        pet_shop_component.id(),
+        "parrot_names",
+        pirate_component.id(),
+        "parrot_names",
+    )
+    .await;
+
+    commit_and_update_snapshot(ctx).await;
+
+    // av for array should only change isFromExternalSource, because of the connection
+    assert_eq!(
+        serde_json::json![{
+          "id": parrots_av_id,
+          "propId": parrots_prop_id,
+          "key": null,
+          "value": [],
+          "canBeSetBySocket": true, // prop can be set by socket
+          "isFromExternalSource": true, // prop gets value through that socket
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(parrots_path)
+    );
+
+    // av for entry is controlled by ancestor
+    {
+        let mut parrot_entry_avs = pirate_component
+            .attribute_values_for_prop(ctx, parrot_entry_path)
+            .await
+            .expect("find value ids for prop parrot_name");
+
+        assert_eq!(parrot_entry_avs.len(), 1);
+
+        let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
+
+        let parrot_entry_prop_id = AttributeValue::prop_id_for_id(ctx, parrot_entry_av_id)
+            .await
+            .expect("get prop_id for attribute value");
+
+        assert_eq!(
+            serde_json::json![{
+              "id": parrot_entry_av_id,
+              "propId": parrot_entry_prop_id,
+              "key": null,
+              "value": parrot_name,
+              "canBeSetBySocket": false,
+              "isFromExternalSource": false,
+              "isControlledByAncestor": true, // this entry in the array comes from the parents function
+              "isControlledByDynamicFunc": true,
+              "overridden": false
+            }], // expected
+            PropEditorView::for_component_id(ctx, pirate_component.id())
+                .await
+                .get_value(&["root", "domain", "parrot_names", "0"])
+        );
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PropEditorView {
+    pub prop: PropertyEditorProp,
+    pub value: PropertyEditorValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<HashMap<String, PropEditorView>>,
+}
+#[allow(dead_code)]
+impl PropEditorView {
+    fn get_view(&self, prop_path: &[&str]) -> Value {
+        let mut value = serde_json::to_value(self).expect("convert UnifiedViewItem to json Value");
+
+        // "root" is necessary for compatibility with other prop apis, but we skip it here
+        for &prop_name in prop_path.iter().skip(1) {
+            value = value
+                .get("children")
+                .expect("get children entry of PropEditorView")
+                .get(prop_name)
+                .expect("get child entry of PropEditorView")
+                .clone();
+        }
+
+        value
+    }
+
+    fn get_prop(&self, prop_path: &[&str]) -> Value {
+        let view = self.get_view(prop_path);
+        view.get("prop").expect("get prop field of view").clone()
+    }
+    fn get_value(&self, prop_path: &[&str]) -> Value {
+        let view = self.get_view(prop_path);
+        view.get("value").expect("get prop field of view").clone()
+    }
+
+    async fn for_component_id(ctx: &DalContext, component_id: ComponentId) -> Self {
+        let sv_id = Component::schema_variant_id(ctx, component_id)
+            .await
+            .expect("get schema variant from component");
+
+        let PropertyEditorValues {
+            root_value_id,
+            values,
+            child_values,
+        } = PropertyEditorValues::assemble(ctx, component_id)
+            .await
+            .expect("assemble property editor values");
+
+        let PropertyEditorSchema { props, .. } = PropertyEditorSchema::assemble(ctx, sv_id)
+            .await
+            .expect("assemble property editor schema");
+
+        let root_view = {
+            let value = values
+                .get(&root_value_id)
+                .expect("get property editor root value")
+                .clone();
+
+            let prop = props.get(&value.prop_id).expect("get property editor prop");
+
+            PropEditorView {
+                prop: prop.clone(),
+                value,
+                children: Self::property_editor_compile_children(
+                    root_value_id,
+                    &prop.kind,
+                    &values,
+                    &child_values,
+                    &props,
+                ),
+            }
+        };
+
+        root_view
+    }
+
+    fn property_editor_compile_children(
+        parent_value_id: PropertyEditorValueId,
+        parent_prop_kind: &PropertyEditorPropKind,
+        values: &HashMap<PropertyEditorValueId, PropertyEditorValue>,
+        child_values: &HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
+        props: &HashMap<PropertyEditorPropId, PropertyEditorProp>,
+    ) -> Option<HashMap<String, PropEditorView>> {
+        let mut children = HashMap::new();
+
+        for (index, child_id) in enumerate(
+            child_values
+                .get(&parent_value_id)
+                .expect("get prop editor value children"),
+        ) {
+            let value = values
+                .get(child_id)
+                .expect("get property editor root value")
+                .clone();
+
+            let prop = props.get(&value.prop_id).expect("get property editor prop");
+
+            let key = match parent_prop_kind {
+                PropertyEditorPropKind::Array => index.to_string(),
+                PropertyEditorPropKind::Map => value.key.clone().unwrap_or("ERROR".to_string()),
+                _ => prop.name.clone(),
+            };
+
+            let child = PropEditorView {
+                prop: prop.clone(),
+                value,
+                children: Self::property_editor_compile_children(
+                    *child_id,
+                    &prop.kind,
+                    values,
+                    child_values,
+                    props,
+                ),
+            };
+
+            children.insert(key, child);
+        }
+
+        if children.is_empty() {
+            None
+        } else {
+            Some(children)
+        }
+    }
 }
