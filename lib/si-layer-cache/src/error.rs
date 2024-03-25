@@ -63,6 +63,8 @@ pub enum LayerDbError {
     SledError(#[from] sled::Error),
     #[error("tokio oneshot recv error: {0}")]
     TokioOneShotRecv(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("unexpected activity variant; expected={0}, actual={1}")]
+    UnexpectedActivityVariant(String, String),
 }
 
 impl LayerDbError {

@@ -283,3 +283,107 @@ impl Stream for ActivityStream {
         }
     }
 }
+
+#[derive(Clone)]
+pub struct AckRebaseRequest {
+    pub id: ActivityId,
+    pub payload: RebaseRequest,
+    pub metadata: LayeredEventMetadata,
+    acker: Arc<Acker>,
+}
+
+impl AckRebaseRequest {
+    pub async fn ack(&self) -> LayerDbResult<()> {
+        self.acker.ack().await.map_err(LayerDbError::NatsAck)
+    }
+
+    pub async fn ack_with(&self, kind: AckKind) -> LayerDbResult<()> {
+        self.acker
+            .ack_with(kind)
+            .await
+            .map_err(LayerDbError::NatsAck)
+    }
+
+    pub async fn double_ack(&self) -> LayerDbResult<()> {
+        self.acker.double_ack().await.map_err(LayerDbError::NatsAck)
+    }
+}
+
+pub struct RebaserRequestsWorkQueueStream {
+    inner: jetstream::consumer::pull::Stream,
+}
+
+impl RebaserRequestsWorkQueueStream {
+    const CONSUMER_NAME: &'static str = "rebaser-requests";
+
+    pub(crate) async fn create(nats_client: &NatsClient) -> LayerDbResult<Self> {
+        let context = jetstream::new(nats_client.as_inner().clone());
+
+        // Ensure the sourced stream is created
+        let _activities =
+            nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
+                .await?;
+
+        let inner = nats::rebaser_requests_work_queue_stream(
+            &context,
+            nats_client.metadata().subject_prefix(),
+        )
+        .await?
+        .create_consumer(Self::consumer_config())
+        .await?
+        .messages()
+        .await?;
+
+        Ok(Self { inner })
+    }
+
+    #[inline]
+    fn consumer_config() -> jetstream::consumer::pull::Config {
+        jetstream::consumer::pull::Config {
+            durable_name: Some(Self::CONSUMER_NAME.to_string()),
+            description: Some("rebaser requests consumer".to_string()),
+            ..Default::default()
+        }
+    }
+}
+
+impl Stream for RebaserRequestsWorkQueueStream {
+    type Item = LayerDbResult<AckRebaseRequest>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::new(&mut self.inner.next()).poll(cx) {
+            // Process the message
+            Poll::Ready(Some(Ok(msg))) => {
+                let (msg, acker) = msg.split();
+
+                match postcard::from_bytes::<Activity>(&msg.payload) {
+                    // Successfully deserialized into an activity
+                    Ok(activity) => match activity.payload {
+                        // Correct variant, convert to work-specific type
+                        ActivityPayload::RebaseRequest(req) => {
+                            Poll::Ready(Some(Ok(AckRebaseRequest {
+                                id: activity.id,
+                                payload: req,
+                                metadata: activity.metadata,
+                                acker: Arc::new(acker),
+                            })))
+                        }
+                        // Unexpected variant, message is invalid
+                        _ => Poll::Ready(Some(Err(LayerDbError::UnexpectedActivityVariant(
+                            ActivityPayloadDiscriminants::RebaseRequest.to_subject(),
+                            ActivityPayloadDiscriminants::from(activity.payload).to_subject(),
+                        )))),
+                    },
+                    // Error deserializing message
+                    Err(err) => Poll::Ready(Some(Err(err.into()))),
+                }
+            }
+            // Upstream errors are propagated downstream
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
+            // If the upstream closes, then we do too
+            Poll::Ready(None) => Poll::Ready(None),
+            // Not ready, so...not ready!
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}

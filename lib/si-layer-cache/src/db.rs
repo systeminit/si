@@ -9,7 +9,10 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
-    activities::{Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream},
+    activities::{
+        Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream,
+        RebaserRequestsWorkQueueStream,
+    },
     error::LayerDbResult,
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterTask},
@@ -167,6 +170,12 @@ where
             None::<std::vec::IntoIter<_>>,
         )
         .await
+    }
+
+    pub async fn subscribe_rebaser_requests_work_queue(
+        &self,
+    ) -> LayerDbResult<RebaserRequestsWorkQueueStream> {
+        RebaserRequestsWorkQueueStream::create(&self.nats_client).await
     }
 }
 
