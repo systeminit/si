@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
@@ -54,6 +56,10 @@ pub enum NodeWeightError {
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
+    #[error("Missing Key for Child Entry {0}")]
+    MissingKeytForChildEntry(Ulid),
+    #[error("try from int error: {0}")]
+    TryFromIntError(#[from] TryFromIntError),
     #[error("Unexpected content address variant: {1} expected {0}")]
     UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
     #[error("Unexpected node weight variant. Got {1} but expected {0}")]

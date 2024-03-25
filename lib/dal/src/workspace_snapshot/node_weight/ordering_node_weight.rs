@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use ulid::Ulid;
 
+use super::NodeWeightError;
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
@@ -172,6 +173,15 @@ impl OrderingNodeWeight {
         } else {
             Ok(false)
         }
+    }
+    pub fn get_index_for_id(&self, id: Ulid) -> NodeWeightResult<i64> {
+        let order = self.order.to_owned();
+        let index = order
+            .iter()
+            .position(|&key| key == id)
+            .ok_or(NodeWeightError::MissingKeytForChildEntry(id))?;
+        let ret: i64 = index.try_into().map_err(NodeWeightError::TryFromIntError)?;
+        Ok(ret)
     }
 }
 

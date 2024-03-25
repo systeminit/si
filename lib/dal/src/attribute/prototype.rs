@@ -37,6 +37,7 @@ use crate::{
 };
 
 pub mod argument;
+pub mod debug;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -205,6 +206,33 @@ impl AttributePrototype {
 
         if let Some(prototype_idx) = workspace_snapshot
             .edges_directed(output_socket_id, Direction::Outgoing)
+            .await?
+            .iter()
+            .find(|(edge_weight, _, _)| {
+                EdgeWeightKindDiscriminants::Prototype == edge_weight.kind().into()
+            })
+            .map(|(_, _, target_idx)| target_idx)
+        {
+            let node_weight = workspace_snapshot.get_node_weight(*prototype_idx).await?;
+
+            if matches!(
+                node_weight.content_address_discriminants(),
+                Some(ContentAddressDiscriminants::AttributePrototype)
+            ) {
+                return Ok(Some(node_weight.id().into()));
+            }
+        }
+
+        Ok(None)
+    }
+    pub async fn find_for_input_socket(
+        ctx: &DalContext,
+        input_socket_id: InputSocketId,
+    ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        if let Some(prototype_idx) = workspace_snapshot
+            .edges_directed(input_socket_id, Direction::Outgoing)
             .await?
             .iter()
             .find(|(edge_weight, _, _)| {

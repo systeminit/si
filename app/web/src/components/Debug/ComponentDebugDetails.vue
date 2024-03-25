@@ -30,7 +30,7 @@
         <Collapsible
           :defaultOpen="false"
           contentAs="ul"
-          label="Attributes - Not Reimplemented"
+          label="Attributes"
           textSize="lg"
         >
           <Collapsible
@@ -43,7 +43,7 @@
             extraBorderAtBottomOfContent
             xPadding="double"
           >
-            <AttributeDebugView :data="attribute.debugData" />
+            <AttributeDebugView :data="attribute" />
           </Collapsible>
         </Collapsible>
 
@@ -51,7 +51,7 @@
         <Collapsible
           :defaultOpen="false"
           contentAs="ul"
-          label="Input Sockets - Not Reimplemented"
+          label="Input Sockets"
           textSize="lg"
         >
           <Collapsible
@@ -64,7 +64,7 @@
             extraBorderAtBottomOfContent
             xPadding="double"
           >
-            <AttributeDebugView :data="attribute.debugData" />
+            <SocketDebugView :data="attribute" />
           </Collapsible>
         </Collapsible>
 
@@ -72,7 +72,7 @@
         <Collapsible
           :defaultOpen="false"
           contentAs="ul"
-          label="Output Sockets - Not Reimplemented"
+          label="Output Sockets"
           textSize="lg"
         >
           <Collapsible
@@ -85,7 +85,7 @@
             extraBorderAtBottomOfContent
             xPadding="double"
           >
-            <AttributeDebugView :data="attribute.debugData" />
+            <SocketDebugView :data="attribute" />
           </Collapsible>
         </Collapsible>
       </div>
@@ -102,6 +102,7 @@ import {
 import { PropType, computed, onMounted } from "vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import AttributeDebugView from "./AttributeDebugView.vue";
+import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";
 
 const componentsStore = useComponentsStore();
