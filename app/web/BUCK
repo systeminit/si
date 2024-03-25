@@ -171,7 +171,6 @@ pnpm_task_test(
 
 e2e_test(
     name = "e2e-test",
-    # build_dep = "//dev:up",
     # TODO(johnrwatson): here we basically need to set the input as buck2 run dev:up I think, or 
     # create another variant of the buck2 target specifically for this e2e test to consume as a dep
 )

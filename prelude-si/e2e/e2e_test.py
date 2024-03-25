@@ -7,7 +7,7 @@ import os
 import sys
 from enum import Enum, EnumMeta
 from typing import Any, Dict, List, Union
-
+import subprocess
 
 # A slightly more Rust-y feeling enum
 # Thanks to: https://stackoverflow.com/a/65225753
@@ -44,26 +44,49 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         required=True,
-        help="Output directory for results",
+        help="Output log for results",
     )
 
     return parser.parse_args()
 
+def print_last_50_lines(file_path):
+    # Open the file for reading
+    with open(file_path, "r") as file:
+        # Read the last 50 lines using file.readlines() and slicing
+        lines = file.readlines()[-50:]
+
+        # Print the last 50 lines
+        for line in lines:
+            print(line, end="")  # Print each line without adding extra newline
+
+def run_cypress_tests(directory_path, tests, output_file):
+
+    # Get the absolute path of the output file
+    output_file_path = os.path.abspath(os.path.join(os.getcwd(), output_file))
+    
+    # Ensure the directory of the output file exists, create if necessary
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+
+    # Run the Cypress tests using subprocess and redirect output to the specified file
+    with open(output_file_path, "a") as output:
+        command = f"cd app/web && npx cypress run --spec {tests}"
+        process = subprocess.run(command, shell=True, stdout=output, stderr=subprocess.PIPE)
+
+        # Check the exit code
+        if process.returncode != 0:
+            print_last_50_lines(output_file)
+            exit(1)
 
 def main() -> int:
     args = parse_args()
 
-    file = open(args.output, 'a')
-    #Append content to the file
-    file.write('\n Bananas')
-
-    # Close the file
-    file.close()
-
-    return 0
-
     architecture = detect_architecture()
     os = detect_os()
+
+    directory_path = "app/web"
+    tests = "cypress/e2e/modelling-functionality/create-component.cy.ts"
+
+    run_cypress_tests(directory_path, tests, args.output)
 
     # optionally add a check that the stack is running
     # optionally add a check that cypress is installed + available in app/web

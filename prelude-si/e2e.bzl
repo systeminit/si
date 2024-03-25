@@ -26,7 +26,7 @@ def e2e_test_impl(ctx: AnalysisContext) -> list[[
     else:
         name = ctx.attrs.name
 
-    test_report_dir = ctx.actions.declare_output("{}".format(name))
+    test_report = ctx.actions.declare_output("{}".format(name))
 
     e2e_toolchain = ctx.attrs._e2e_toolchain[E2eToolchainInfo]
     #build_context = _build_context(ctx, [ctx.attrs.build_dep], ctx.attrs.srcs)
@@ -35,7 +35,7 @@ def e2e_test_impl(ctx: AnalysisContext) -> list[[
         "python3",
         e2e_toolchain.e2e_test[DefaultInfo].default_outputs,
         "--output",
-        test_report_dir.as_output(),
+        test_report.as_output(),
         #"--build-context-dir",
         #"johns-directory"
         #build_context.root,
@@ -45,10 +45,10 @@ def e2e_test_impl(ctx: AnalysisContext) -> list[[
 
     return [
         DefaultInfo(
-            default_output = test_report_dir,
+            default_output = test_report,
         ),
         E2eTestInfo(
-            name = test_report_dir
+            name = test_report
         ),
     ]
 
