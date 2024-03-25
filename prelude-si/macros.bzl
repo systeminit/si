@@ -19,12 +19,6 @@ load(
 docker_image = _docker_image
 
 load(
-    "@prelude-si//macros:e2e.bzl",
-    _e2e = "e2e",
-)
-e2e = _e2e
-
-load(
     "@prelude-si//macros:rootfs.bzl",
     _rootfs = "rootfs",
 )
@@ -37,6 +31,12 @@ load(
 )
 nix_flake_lock = _nix_flake_lock
 nix_omnibus_pkg = _nix_omnibus_pkg
+
+load(
+    "@prelude-si//macros:e2e.bzl",
+    _e2e_test = "e2e_test",
+)
+e2e_test = _e2e_test
 
 load(
     "@prelude-si//macros:pnpm.bzl",

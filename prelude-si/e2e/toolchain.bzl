@@ -9,7 +9,7 @@ def e2e_toolchain_impl(ctx) -> list[[DefaultInfo, E2eToolchainInfo]]:
     return [
         DefaultInfo(),
         E2eToolchainInfo(
-            e2e_test = ctx.attrs._rootfs_build,
+            e2e_test = ctx.attrs._e2e_test,
         ),
     ]
 

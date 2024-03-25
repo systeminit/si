@@ -11,6 +11,7 @@ output_file=$1  # i.e. output the file ./e2e_test_result.html
 
 echo "-------------------------------------"
 echo "Info: Initiating e2e test"
-echo "Artifact Version: $(./${git_helper} | jq -r '.artifact_ver')"
 echo "Output File: $output_file"
 echo "-------------------------------------"
+
+echo "bananas" > $output_file

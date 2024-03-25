@@ -2,7 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "eslint",
-    "e2e",
+    "e2e_test",
     "export_file",
     "package_node_modules",
     "shellcheck",
@@ -169,11 +169,8 @@ pnpm_task_test(
     visibility = ["PUBLIC"],
 )
 
-e2e(
+e2e_test(
     name = "e2e-test",
-    #build_deps = [
-    #    :web
-    #],
     #path = "app/web",
     #visibility = ["PUBLIC"],
     # TODO(johnrwatson): here we basically need to set the input as buck2 run dev:up I think, or 
