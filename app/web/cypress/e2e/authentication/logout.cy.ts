@@ -8,7 +8,8 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
     it("log_out", () => {
       cy.visit("/");
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
-      cy.contains('Create change set', { timeout: 10000 }).should('be.visible').click();
+      cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
+      cy.get('.modal-close-button').should('exist').click();
       cy.get('[aria-label="Profile"]').should('exist').click();
       cy.get('#dropdown-menu-item-1').should('exist').should('be.visible').click({ force: true });
 

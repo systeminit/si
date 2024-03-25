@@ -31,6 +31,8 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       // drag to the canvas
       cy.dragTo('@awsCred', '@konvaStage');
 
+      cy.wait(5000);
+
       //check to make sure a component has been added to the outliner
       cy.get('[class="component-outline-node"]', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible');
 
