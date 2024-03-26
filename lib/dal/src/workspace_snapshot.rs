@@ -495,16 +495,22 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotResult<()> {
         let from_node_index = self
             .working_copy()
             .await
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
-        Ok(self
-            .working_copy_mut()
+
+        let new_from_node_index = self.copy_node_by_index(from_node_index).await?;
+
+        self.working_copy_mut()
             .await
-            .add_edge(from_node_index, edge_weight, to_node_index)?)
+            .add_edge(new_from_node_index, edge_weight, to_node_index)?;
+
+        self.replace_references(from_node_index).await?;
+
+        Ok(())
     }
 
     // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
@@ -527,12 +533,12 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotResult<()> {
         let from_node_id = from_node_id.into();
         let to_node_id = to_node_id.into();
 
         let start = Instant::now();
-        let new_edge_index = self.add_edge(from_node_id, edge_weight, to_node_id).await?;
+        self.add_edge(from_node_id, edge_weight, to_node_id).await?;
         info!("add edge took {:?}", start.elapsed());
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
@@ -565,7 +571,7 @@ impl WorkspaceSnapshot {
             );
         };
 
-        Ok(new_edge_index)
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2023,6 +2029,13 @@ impl WorkspaceSnapshot {
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
+        let source_node_index = self
+            .working_copy()
+            .await
+            .get_latest_node_idx(source_node_index)?;
+
+        self.copy_node_by_index(source_node_index).await?;
+        self.replace_references(source_node_index).await?;
         let source_node_index = self
             .working_copy()
             .await
