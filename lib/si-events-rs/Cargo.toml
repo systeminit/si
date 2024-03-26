@@ -6,6 +6,8 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+si-hash = { path = "../../lib/si-hash" }
+
 bytes = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

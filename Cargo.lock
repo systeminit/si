@@ -5550,6 +5550,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-hash",
  "thiserror",
  "ulid",
 ]

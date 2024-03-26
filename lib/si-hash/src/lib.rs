@@ -57,6 +57,12 @@ impl Hash {
     }
 }
 
+impl From<blake3::Hash> for Hash {
+    fn from(value: blake3::Hash) -> Self {
+        Self(value)
+    }
+}
+
 impl Default for Hash {
     fn default() -> Self {
         Hash::new("".as_bytes())

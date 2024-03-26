@@ -17,7 +17,7 @@ use crate::integration_test::{setup_nats_client, setup_pg_db};
 
 mod cas;
 
-type TestLayerDb = LayerDb<Arc<String>, String>;
+type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 
 #[tokio::test]
 async fn activities() {

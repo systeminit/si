@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
+use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::{
     activities::{
         Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream,
@@ -22,15 +23,18 @@ use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::Work
 
 mod cache_updates;
 pub mod cas;
+pub mod encrypted_secret;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
+    encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     sled: sled::Db,
     pg_pool: PgPool,
@@ -40,9 +44,11 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, WorkspaceSnapshotValue> LayerDb<CasValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn initialize(
@@ -64,6 +70,9 @@ where
         let cas_cache: LayerCache<Arc<CasValue>> =
             LayerCache::new(cas::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
 
+        let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
+            LayerCache::new(encrypted_secret::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             sled.clone(),
@@ -75,6 +84,7 @@ where
             instance_id,
             &nats_client,
             cas_cache.clone(),
+            encrypted_secret_cache.clone(),
             snapshot_cache.clone(),
             token.clone(),
         )
@@ -93,14 +103,17 @@ where
         tracker.spawn(persister_task.run());
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
+        let encrypted_secret =
+            EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
-        let activity_publisher = ActivityPublisher::new(&nats_client);
 
+        let activity_publisher = ActivityPublisher::new(&nats_client);
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
 
         let layerdb = LayerDb {
             activity_publisher,
             cas,
+            encrypted_secret,
             workspace_snapshot,
             sled,
             pg_pool,
@@ -130,6 +143,10 @@ where
 
     pub fn cas(&self) -> &CasDb<CasValue> {
         &self.cas
+    }
+
+    pub fn encrypted_secret(&self) -> &EncryptedSecretDb<EncryptedSecretValue> {
+        &self.encrypted_secret
     }
 
     pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {

@@ -3,9 +3,8 @@ use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    Component, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, InputSocket,
-    KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret, SocketArity,
-    SocketKind, User, UserPk,
+    Component, ComponentId, DalContext, Func, FuncBackendKind, InputSocket, KeyPair, OutputSocket,
+    Schema, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, SocketKind, User, UserPk,
 };
 use names::{Generator, Name};
 
@@ -245,40 +244,4 @@ pub async fn encrypt_message(
         public_key.public_key(),
     );
     crypted
-}
-
-pub async fn create_secret(ctx: &DalContext, key_pair_pk: KeyPairPk) -> Secret {
-    let name = generate_fake_name();
-    EncryptedSecret::new(
-        ctx,
-        &name,
-        "Mock".to_owned(),
-        Some("Description".to_owned()),
-        &encrypt_message(ctx, key_pair_pk, &serde_json::json!({ "name": name })).await,
-        key_pair_pk,
-        Default::default(),
-        Default::default(),
-    )
-    .await
-    .expect("cannot create secret")
-}
-
-pub async fn create_secret_with_message(
-    ctx: &DalContext,
-    key_pair_pk: KeyPairPk,
-    message: &serde_json::Value,
-) -> Secret {
-    let name = generate_fake_name();
-    EncryptedSecret::new(
-        ctx,
-        &name,
-        "Mock".to_owned(),
-        Some("Description".to_owned()),
-        &encrypt_message(ctx, key_pair_pk, message).await,
-        key_pair_pk,
-        Default::default(),
-        Default::default(),
-    )
-    .await
-    .expect("cannot create secret")
 }

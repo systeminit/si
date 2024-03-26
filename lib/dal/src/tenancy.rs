@@ -46,6 +46,11 @@ impl Tenancy {
     pub fn workspace_pk(&self) -> Option<WorkspacePk> {
         self.workspace_pk
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let workspace_pk = self.workspace_pk.unwrap_or(WorkspacePk::NONE);
+        workspace_pk.to_string().as_bytes().to_vec()
+    }
 }
 
 impl postgres_types::ToSql for Tenancy {

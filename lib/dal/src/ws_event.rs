@@ -7,7 +7,6 @@ use ulid::Ulid;
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
-use crate::secret::{SecretCreatedPayload, SecretUpdatedPayload};
 use crate::user::OnlinePayload;
 use crate::{
     action::prototype::ResourceRefreshedPayload,
@@ -20,6 +19,7 @@ use crate::{
     user::CursorPayload,
     ChangeSetId, DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
+use crate::{SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

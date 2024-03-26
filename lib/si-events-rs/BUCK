@@ -8,6 +8,7 @@ alias(
 rust_library(
     name = "si-events",
     deps = [
+        "//lib/si-hash:si-hash",
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",
         "//third-party/rust:postgres-types",
