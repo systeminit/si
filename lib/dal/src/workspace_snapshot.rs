@@ -143,12 +143,12 @@ pub struct WorkspaceSnapshot {
     events_tenancy: si_events::Tenancy,
 }
 
-struct SnapshotReadGuard<'a> {
+pub struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
     working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
 
-struct SnapshotWriteGuard<'a> {
+pub struct SnapshotWriteGuard<'a> {
     working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
 
@@ -298,7 +298,7 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             node_weight_db: self.node_weight_db.clone(),
             events_actor: self.events_actor.clone(),
-            events_tenancy: self.events_tenancy.clone(),
+            events_tenancy: self.events_tenancy,
         }
     }
 
@@ -398,6 +398,10 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.root())
     }
 
+    pub async fn root_id(&self) -> WorkspaceSnapshotResult<Ulid> {
+        Ok(self.get_node_weight(self.root().await?).await?.id())
+    }
+
     async fn working_copy(&self) -> SnapshotReadGuard<'_> {
         SnapshotReadGuard {
             read_only_graph: self.read_only_graph.clone(),
@@ -405,7 +409,7 @@ impl WorkspaceSnapshot {
         }
     }
 
-    async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
+    pub async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
         if self.working_copy.read().await.is_none() {
             // Make a copy of the read only graph as our new working copy
             *self.working_copy.write().await = Some(self.read_only_graph.as_ref().clone());

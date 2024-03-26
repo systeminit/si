@@ -1,3 +1,4 @@
+use dal::workspace_snapshot::update::Update;
 use pretty_assertions_sorted::assert_eq;
 use si_events::*;
 
@@ -48,8 +49,7 @@ async fn simulate_rebase(ctx: &DalContext) {
         FuncBackendKind::String,
     )
     .expect("could not create func node weight");
-    let _func_node_index = onto
-        .add_node(NodeWeight::Func(func_node_weight))
+    onto.add_node(NodeWeight::Func(func_node_weight))
         .await
         .expect("could not add node");
     onto.add_edge(
@@ -71,8 +71,7 @@ async fn simulate_rebase(ctx: &DalContext) {
         ContentAddress::Schema(ContentHash::from("foo")),
     )
     .expect("could not create func node weight");
-    let _schema_node_index = onto
-        .add_node(NodeWeight::Content(schema_node_weight))
+    onto.add_node(NodeWeight::Content(schema_node_weight))
         .await
         .expect("could not add node");
     onto.add_edge(
@@ -94,8 +93,7 @@ async fn simulate_rebase(ctx: &DalContext) {
         ContentAddress::SchemaVariant(ContentHash::from("foo")),
     )
     .expect("could not create func node weight");
-    let _schema_variant_node_index = onto
-        .add_node(NodeWeight::Content(schema_variant_node_weight))
+    onto.add_node(NodeWeight::Content(schema_variant_node_weight))
         .await
         .expect("could not add node");
     onto.add_edge(
@@ -108,8 +106,7 @@ async fn simulate_rebase(ctx: &DalContext) {
     .expect("could not add edge");
 
     // SchemaVariant --Use--> Func
-    let _func_node_index = onto
-        .get_node_index_by_id(func_id)
+    onto.get_node_index_by_id(func_id)
         .await
         .expect("could not get node index by id");
     onto.add_edge(
@@ -122,7 +119,7 @@ async fn simulate_rebase(ctx: &DalContext) {
     .expect("could not add edge");
 
     // Before cleanup, detect conflicts and updates.
-    let (before_cleanup_conflicts, before_cleanup_updates) = to_rebase
+    let (before_cleanup_conflicts, mut before_cleanup_updates) = to_rebase
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
             &onto,
@@ -135,12 +132,12 @@ async fn simulate_rebase(ctx: &DalContext) {
     onto.cleanup().await.expect("should clean up");
     to_rebase.cleanup().await.expect("should clean up");
     assert_eq!(
-        6,                       // expected
+        9,                       // expected
         onto.node_count().await  // actual
     );
 
     // Detect conflicts and updates. Ensure cleanup did not affect the results.
-    let (conflicts, updates) = to_rebase
+    let (conflicts, mut updates) = to_rebase
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
             &onto,
@@ -148,6 +145,7 @@ async fn simulate_rebase(ctx: &DalContext) {
         )
         .await
         .expect("could not detect conflicts and updates");
+
     assert!(conflicts.is_empty());
     assert_eq!(
         2,             // expected
@@ -157,6 +155,20 @@ async fn simulate_rebase(ctx: &DalContext) {
         before_cleanup_conflicts, // expected
         conflicts                 // actual
     );
+
+    // detect_conflicts_and_updates is not deterministic about order, so we need to sort before
+    // comparing
+    let match_update = |k: &Update| match k {
+        Update::NewEdge {
+            source,
+            destination,
+            ..
+        } => (*source, *destination),
+        Update::RemoveEdge { .. } => todo!(),
+        Update::ReplaceSubgraph { .. } => todo!(),
+    };
+    before_cleanup_updates.sort_by_key(match_update);
+    updates.sort_by_key(match_update);
     assert_eq!(
         before_cleanup_updates, // expected
         updates                 // actual

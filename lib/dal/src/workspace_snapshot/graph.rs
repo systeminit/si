@@ -6,9 +6,8 @@ use si_events::{
     serialize_merkle_tree_hash_as_bytes, serialize_node_weight_address_as_bytes, MerkleTreeHash,
     NodeWeightAddress,
 };
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
-use tokio::time::Instant;
 
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -723,7 +722,7 @@ impl WorkspaceSnapshotGraph {
     }
 
     #[allow(dead_code)]
-    fn is_acyclic_directed(&self) -> bool {
+    pub fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
     }

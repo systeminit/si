@@ -63,6 +63,7 @@ pub struct ImportOptions {
 const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 #[instrument(level = "info", skip_all)]
 async fn import_change_set(
     ctx: &DalContext,
