@@ -52,7 +52,13 @@ import {
   reactive,
   ComputedRef,
 } from "vue";
-import { VormInput, Stack, Inline, VButton } from "@si/vue-lib/design-system";
+import {
+  VormInput,
+  Stack,
+  Inline,
+  VButton,
+  useTheme,
+} from "@si/vue-lib/design-system";
 import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
 import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
@@ -64,6 +70,7 @@ import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
 const componentStore = useComponentsStore();
+const { theme } = useTheme();
 
 const schemaVariant = ref();
 const schemaVariantOptions = computed(() => {
@@ -238,6 +245,7 @@ onMounted(async () => {
     const container = document.getElementById("vizDiv") as HTMLElement;
     renderer = new Sigma(graph, container, {
       allowInvalidContainer: true,
+      labelColor: { color: theme.value === "dark" ? "#fff" : "#000" },
     });
 
     const sensibleSettings = forceAtlas2.inferSettings(graph);
