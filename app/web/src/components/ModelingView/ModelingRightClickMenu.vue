@@ -85,7 +85,7 @@ const rightClickMenuItems = computed(() => {
     });
 
     // single selected component
-    if (selectedComponent.value.changeStatus === "deleted") {
+    if (selectedComponent.value.toDelete) {
       items.push({
         label: `Restore ${typeDisplayName()} "${
           selectedComponent.value.displayName
