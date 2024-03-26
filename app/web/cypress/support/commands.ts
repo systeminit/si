@@ -61,7 +61,9 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
       const drag = cy.get(sourceElement)
         .trigger('mousemove', { clientX: sourceOffset?.left, clientY: sourceOffset?.top, force: true })
         .trigger('mousedown', { button: 0, force: true }) // Simulate mouse down event
+        .wait(10)
         .trigger('mousemove', { clientX: clientX, clientY: clientY, force: true }) // Move the object to a new position
+        .wait(10)
         .trigger('mouseup', { button: 0 }) // Simulate mouse up event
     })
   })
