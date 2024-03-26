@@ -51,6 +51,8 @@ pub enum AttributePrototypeError {
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
     MissingFunction(AttributePrototypeId),
+    #[error("No attribute values for: {0}")]
+    NoAttributeValues(AttributePrototypeId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("Attribute Prototype not found: {0}")]

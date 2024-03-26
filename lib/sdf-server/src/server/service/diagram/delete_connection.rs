@@ -1,19 +1,20 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::edge::EdgeId;
-use dal::{ChangeSet, Component, Connection, Edge, Socket, Visibility};
+use dal::attribute::prototype::argument::{AttributePrototypeArgumentId, AttributePrototypeArgument };
+use dal::{AttributePrototype, ChangeSetPointer, Visibility, AttributeValue};
+use dal::attribute::prototype::AttributePrototypeError;
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::diagram::DiagramError;
-use dal::standard_model::StandardModel;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+
 pub struct DeleteConnectionRequest {
-    pub edge_id: EdgeId,
+    pub edge_id: AttributePrototypeArgumentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -29,34 +30,15 @@ pub async fn delete_connection(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
-    let edge = Edge::get_by_id(&ctx, &request.edge_id)
-        .await?
-        .ok_or(DiagramError::EdgeNotFound)?;
 
-    let conn = Connection::from_edge(&edge);
-    let from_component_schema = Component::get_by_id(&ctx, &conn.source.component_id)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?
-        .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
+    let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(&ctx, request.edge_id).await?;
+    let targets = attribute_prototype_argument.targets();
+    let source = attribute_prototype_argument.value_source(&ctx).await?;
+    let prototype_id = attribute_prototype_argument.prototype_id(&ctx).await?;
+    let value_id = AttributePrototype::attribute_value_ids(&ctx, prototype_id).await?.first().copied().ok_or(AttributePrototypeError::NoAttributeValues(prototype_id))?;
+    let destination = AttributeValue::is_for(&ctx, value_id).await?;
 
-    let from_socket = Socket::get_by_id(&ctx, &conn.source.socket_id)
-        .await?
-        .ok_or(DiagramError::SocketNotFound)?;
-
-    let to_component_schema = Component::get_by_id(&ctx, &conn.destination.component_id)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?
-        .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
-
-    let to_socket = Socket::get_by_id(&ctx, &conn.destination.socket_id)
-        .await?
-        .ok_or(DiagramError::SocketNotFound)?;
-
-    Connection::delete_for_edge(&ctx, request.edge_id).await?;
+    //attribute_prototype_argument.delete(&ctx).await?;
 
     track(
         &posthog_client,
@@ -64,11 +46,11 @@ pub async fn delete_connection(
         &original_uri,
         "delete_connection",
         serde_json::json!({
-            "from_component_id": conn.source.component_id,
+            "from_component_id": targets.source_component_id,
             "from_component_schema_name": from_component_schema.name(),
             "from_socket_id": conn.source.socket_id,
             "from_socket_name": &from_socket.name(),
-            "to_component_id": conn.destination.component_id,
+            "to_component_id": targets.destination_component_id,
             "to_component_schema_name": to_component_schema.name(),
             "to_socket_id": conn.destination.socket_id,
             "to_socket_name":  &to_socket.name(),
