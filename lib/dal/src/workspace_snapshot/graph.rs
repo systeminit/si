@@ -1379,8 +1379,8 @@ impl WorkspaceSnapshotGraph {
             unique_edges
         };
 
-        info!("only to rebase edges: {:?}", &only_to_rebase_edges);
-        info!("only onto edges: {:?}", &only_onto_edges);
+        debug!("only to rebase edges: {:?}", &only_to_rebase_edges);
+        debug!("only onto edges: {:?}", &only_onto_edges);
 
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
