@@ -23,27 +23,29 @@ pub mod update_secret;
 pub enum SecretError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
-    #[error(transparent)]
+    #[error("context transactions error: {0}")]
     ContextTransactions(#[from] TransactionsError),
-    // #[error(transparent)]
-    // Diagram(#[from] DiagramError),
-    #[error("Hyper error: {0}")]
+    #[error("dal secret error: {0}")]
+    DalSecret(#[from] dal::SecretError),
+    #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error(transparent)]
-    KeyPairError(#[from] KeyPairError),
-    #[error(transparent)]
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] KeyPairError),
+    #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    Secret(#[from] dal::SecretError),
+    #[error("secret definition view error: {0}")]
+    SecretDefinitionView(#[from] dal::SecretDefinitionViewError),
+    #[error("secret view error: {0}")]
+    SecretView(#[from] dal::SecretViewError),
     #[error("definition not found for secret: {0}")]
     SecretWithInvalidDefinition(SecretId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
+    #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
@@ -56,7 +58,6 @@ pub type SecretResult<T> = Result<T, SecretError>;
 impl IntoResponse for SecretError {
     fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-        //SecretError::SecretNotFound => (StatusCode::NOT_FOUND, self.to_string()),
 
         let body = Json(serde_json::json!({
             "error": {

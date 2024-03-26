@@ -22,7 +22,6 @@ use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::{
     conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
 };
-use crate::Workspace;
 use crate::{
     change_set_pointer::{ChangeSetId, ChangeSetPointer},
     job::{
@@ -35,8 +34,9 @@ use crate::{
     AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
     WorkspacePk, WorkspaceSnapshot,
 };
+use crate::{EncryptedSecret, Workspace};
 
-pub type DalLayerDb = LayerDb<ContentTypes, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
 
 /// A context type which contains handles to common core service dependencies.
 ///

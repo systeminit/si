@@ -20,27 +20,33 @@ use crate::{
     LayerDbError,
 };
 
+#[remain::sorted]
 #[derive(Copy, Clone, Debug, EnumString, AsRefStr)]
 #[strum(serialize_all = "snake_case")]
 enum CacheName {
     Cas,
+    EncryptedSecret,
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdatesTask<CasValue, WorkspaceSnapshotValue>
+pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
     messages: ChunkedMessagesStream,
     cas_cache: LayerCache<Arc<CasValue>>,
+    encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
 }
 
-impl<CasValue, WorkspaceSnapshotValue> CacheUpdatesTask<CasValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
@@ -49,6 +55,7 @@ where
         instance_id: Ulid,
         nats_client: &NatsClient,
         cas_cache: LayerCache<Arc<CasValue>>,
+        encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
@@ -67,6 +74,7 @@ where
             instance_id,
             messages,
             cas_cache,
+            encrypted_secret_cache,
             snapshot_cache,
         })
     }
@@ -81,6 +89,7 @@ where
                     let cache_update_task = CacheUpdateTask::new(
                         self.instance_id,
                         self.cas_cache.clone(),
+                        self.encrypted_secret_cache.clone(),
                         self.snapshot_cache.clone(),
                     );
                     // Turns out I think it's probably dangerous to do this spawned, since we want
@@ -116,29 +125,34 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R>
+struct CacheUpdateTask<Q, R, S>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
     cas_cache: LayerCache<Arc<Q>>,
-    snapshot_cache: LayerCache<Arc<R>>,
+    encrypted_secret_cache: LayerCache<Arc<R>>,
+    snapshot_cache: LayerCache<Arc<S>>,
 }
 
-impl<Q, R> CacheUpdateTask<Q, R>
+impl<Q, R, S> CacheUpdateTask<Q, R, S>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     fn new(
         instance_id: Ulid,
         cas_cache: LayerCache<Arc<Q>>,
-        snapshot_cache: LayerCache<Arc<R>>,
-    ) -> CacheUpdateTask<Q, R> {
+        encrypted_secret_cache: LayerCache<Arc<R>>,
+        snapshot_cache: LayerCache<Arc<S>>,
+    ) -> CacheUpdateTask<Q, R, S> {
         CacheUpdateTask {
             instance_id,
             cas_cache,
+            encrypted_secret_cache,
             snapshot_cache,
         }
     }
@@ -172,6 +186,23 @@ where
                                     let serialized_value = Arc::try_unwrap(event.payload.value)
                                         .unwrap_or_else(|arc| (*arc).clone());
                                     self.cas_cache
+                                        .insert_from_cache_updates(
+                                            key.into(),
+                                            memory_value,
+                                            serialized_value,
+                                        )
+                                        .await?;
+                                }
+                            }
+                            CacheName::EncryptedSecret => {
+                                if !self.encrypted_secret_cache.contains(key) {
+                                    let event: LayeredEvent = postcard::from_bytes(&msg.payload)?;
+                                    let memory_value = self
+                                        .encrypted_secret_cache
+                                        .deserialize_memory_value(&event.payload.value)?;
+                                    let serialized_value = Arc::try_unwrap(event.payload.value)
+                                        .unwrap_or_else(|arc| (*arc).clone());
+                                    self.encrypted_secret_cache
                                         .insert_from_cache_updates(
                                             key.into(),
                                             memory_value,

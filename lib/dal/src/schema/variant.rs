@@ -1016,8 +1016,6 @@ impl SchemaVariant {
                         let content_hash_discriminants: ContentAddressDiscriminants =
                             content.content_address().into();
                         if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
-                            // TODO(nick): consider creating a new edge weight kind to make this easier.
-                            // We also should use a proper error here.
                             schema_id = match schema_id {
                                 None => Some(content.id().into()),
                                 Some(_already_found_schema_id) => {

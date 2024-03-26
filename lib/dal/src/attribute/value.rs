@@ -54,7 +54,7 @@ pub use dependent_value_graph::DependentValueGraph;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::before::before_funcs_for_component;
+use crate::func::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -606,7 +606,7 @@ impl AttributeValue {
                 _ => {
                     return Err(
                         AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(arg_name),
-                    )
+                    );
                 }
             }
         }

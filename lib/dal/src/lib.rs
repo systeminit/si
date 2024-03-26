@@ -108,11 +108,19 @@ pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::{
     variant::SchemaVariantError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
 };
+pub use secret::EncryptedSecret;
 pub use secret::Secret;
+pub use secret::SecretAlgorithm;
+pub use secret::SecretCreatedPayload;
+pub use secret::SecretDefinitionView;
+pub use secret::SecretDefinitionViewError;
 pub use secret::SecretError;
 pub use secret::SecretId;
+pub use secret::SecretResult;
+pub use secret::SecretUpdatedPayload;
+pub use secret::SecretVersion;
 pub use secret::SecretView;
-pub use secret::{EncryptedSecret, SecretAlgorithm, SecretVersion};
+pub use secret::SecretViewError;
 pub use socket::input::{InputSocket, InputSocketId};
 pub use socket::output::{OutputSocket, OutputSocketId};
 pub use socket::SocketArity;
