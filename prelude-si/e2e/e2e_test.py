@@ -8,6 +8,9 @@ import sys
 from enum import Enum, EnumMeta
 from typing import Any, Dict, List, Union
 import subprocess
+import urllib.request
+import time
+import shutil
 
 # A slightly more Rust-y feeling enum
 # Thanks to: https://stackoverflow.com/a/65225753
@@ -36,18 +39,37 @@ class PlatformOS(BaseEnum):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    #parser.add_argument(
-    #    "--build-context-dir",
-    #    required=True,
-    #    help="Path to build context directory",
-    #)
     parser.add_argument(
         "--output",
         required=True,
-        help="Output log for results",
+        help="Output for results/logs/recordings",
+    )
+    parser.add_argument(
+        "--tests",
+        help="Path to tests, default is 'cypress/e2e/**'",
+        action="store",
+    )
+    parser.add_argument(
+        "--web-endpoint",
+        help="Endpoint (<scheme><hostname><path>:<port> to test against, defaults to http://localhost:8080",
+        default="http://localhost:8080",
+        action="store",
     )
 
     return parser.parse_args()
+
+def clear_directory(directory):
+    try:
+        for root, dirs, files in os.walk(directory, topdown=False):
+            for name in files:
+                file_path = os.path.join(root, name)
+                os.remove(file_path)
+            for name in dirs:
+                dir_path = os.path.join(root, name)
+                os.rmdir(dir_path)
+        print(f"All files and subdirectories in '{directory}' cleared successfully.")
+    except Exception as e:
+        print(f"Error occurred while clearing directory '{directory}': {e}")
 
 def print_last_50_lines(file_path):
     # Open the file for reading
@@ -64,12 +86,17 @@ def run_cypress_tests(directory_path, tests, output_file):
     # Get the absolute path of the output file
     output_file_path = os.path.abspath(os.path.join(os.getcwd(), output_file))
     
+    clear_directory(output_file_path.rsplit('/', 1)[0])
+
     # Ensure the directory of the output file exists, create if necessary
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
+    command = f"ls {output_file_path.rsplit('/', 1)[0]}"
+    process = subprocess.run(command, shell=True)
+
     # Run the Cypress tests using subprocess and redirect output to the specified file
     with open(output_file_path, "a") as output:
-        command = f"cd app/web && npx cypress run --spec {tests}"
+        command = f"cd app/web && npx cypress run --spec {tests} --config videosFolder={output_file_path.rsplit('/', 1)[0]}\/videos"
         process = subprocess.run(command, shell=True, stdout=output, stderr=subprocess.PIPE)
 
         # Check the exit code
@@ -77,21 +104,63 @@ def run_cypress_tests(directory_path, tests, output_file):
             print_last_50_lines(output_file)
             exit(1)
 
+def validate_cypress_install(output_file):
+
+    # Get the absolute path of the output file
+    output_file_path = os.path.abspath(os.path.join(os.getcwd(), output_file))
+    
+    # Ensure the directory of the output file exists, create if necessary
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+
+    # Clear the output file if it already exists
+    if os.path.exists(output_file_path):
+        open(output_file_path, 'w').close()
+
+    # Run the Cypress tests using subprocess and redirect output to the specified file
+    with open(output_file_path, "a") as output:
+        command = f"cd app/web && npx cypress verify"
+        process = subprocess.run(command, shell=True, stdout=output, stderr=subprocess.PIPE)
+
+        # Check the exit code
+        if process.returncode != 0:
+            print_last_50_lines(output_file)
+            exit(1)
+
+def health_check(endpoint, timeout):
+    start_time = time.time()
+    while True:
+        try:
+            response = urllib.request.urlopen(endpoint)
+            if response.getcode() == 200:
+                print("Endpoint is healthy:", endpoint)
+                return 0  # Exit code 0 indicates success
+        except urllib.error.URLError as e:
+            print(f"Error occurred: {e}")
+        
+        if time.time() - start_time >= timeout:
+            print("Timeout reached. Endpoint is not healthy:", endpoint)
+            return 1  # Exit code 1 indicates failure
+        
+        print("Endpoint not yet healthy. Retrying in 5 seconds...")
+        time.sleep(5)
+
 def main() -> int:
     args = parse_args()
 
-    architecture = detect_architecture()
-    os = detect_os()
+    detect_architecture()
+    detect_os()
+    validate_cypress_install(args.output)
 
     directory_path = "app/web"
-    tests = "cypress/e2e/modelling-functionality/create-component.cy.ts"
+    tests = args.tests
+
+    health_check(args.web_endpoint, 60)
+
+    print(args)
 
     run_cypress_tests(directory_path, tests, args.output)
 
-    # optionally add a check that the stack is running
-    # optionally add a check that cypress is installed + available in app/web
     # optionally add a check that the secrets are inside the .env or os.env
-    # optionally(add arg for specific tests to run) for invocation like `buck2 run app/web:e2e-test -- modelling-functionality/create-component.cy.ts`
     # optionally add the videos or similar as an output target into the directory
     # optionally only build/deploy the stuff that has changed (how? I have no idea - JW)
 
@@ -114,7 +183,6 @@ def detect_architecture() -> PlatformArchitecture:
             file=sys.stderr,
         )
         sys.exit(1)
-
 
 # Possible machine operating system detection comes from reading the Rustup shell
 # script installer--thank you for your service!
