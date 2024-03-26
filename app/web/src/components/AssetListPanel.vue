@@ -55,7 +55,7 @@
       title="Contribute Assets"
       label="Contribute to System Initiative"
       :loadingText="_.sample(contributeLoadingTexts)"
-      :preSelectedSchemaVariantId="assetStore.selectedAsset?.schemaVariantId"
+      :preSelectedSchemaVariantId="assetStore.selectedAsset?.id"
       @export-success="onExport"
     />
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
@@ -130,7 +130,7 @@ const categorizedAssets = computed(() =>
       if (searchString.value.length) {
         return (
           asset.name.toLocaleLowerCase().includes(searchString.value) ||
-          asset.menuName?.toLocaleLowerCase().includes(searchString.value)
+          asset.displayName?.toLocaleLowerCase().includes(searchString.value)
         );
       }
 

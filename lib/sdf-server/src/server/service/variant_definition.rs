@@ -15,7 +15,7 @@ pub mod list_variant_defs;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum SchemaVariantDefinitionError {
+pub enum SchemaVariantError {
     //     #[error(transparent)]
     //     ActionPrototype(#[from] ActionPrototypeError),
     //     #[error(transparent)]
@@ -91,7 +91,7 @@ pub enum SchemaVariantDefinitionError {
     //     #[error(transparent)]
     //     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
-    SchemaVariantDefinition(#[from] dal::schema::variant::definition::SchemaVariantDefinitionError),
+    SchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     //     #[error("could not find schema variant {0} connected to variant definition {1}")]
     //     SchemaVariantNotFound(SchemaVariantId, SchemaVariantDefinitionId),
     //     #[error(transparent)]
@@ -122,9 +122,9 @@ pub enum SchemaVariantDefinitionError {
     Transactions(#[from] TransactionsError),
 }
 
-pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
+pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
-impl IntoResponse for SchemaVariantDefinitionError {
+impl IntoResponse for SchemaVariantError {
     fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 

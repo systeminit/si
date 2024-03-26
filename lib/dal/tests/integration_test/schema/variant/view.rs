@@ -1,7 +1,7 @@
-use dal::schema::variant::definition::SchemaVariantDefinitionView;
 use dal::{DalContext, SchemaVariant};
 use dal_test::test;
 
+use dal::schema::variant::SchemaVariantMetadataView;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -12,7 +12,7 @@ async fn list_schema_variant_definition_views(ctx: &DalContext) {
 
     // We are going to ensure that we get a default schema variant
     // for each schema variant
-    let views = SchemaVariantDefinitionView::list(ctx)
+    let views = SchemaVariantMetadataView::list(ctx)
         .await
         .expect("could not list schema variant views");
 

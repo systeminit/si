@@ -1,11 +1,8 @@
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    Component, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, InputSocket,
-    KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret, SocketArity,
-    SocketKind, User, UserPk,
+    Component, ComponentId, DalContext, EncryptedSecret, FuncBackendKind, InputSocket, KeyPair,
+    OutputSocket, Schema, SchemaVariant, SchemaVariantId, Secret, User, UserPk,
 };
 use names::{Generator, Name};
 
@@ -53,50 +50,50 @@ pub async fn create_schema(ctx: &DalContext) -> Schema {
     Schema::new(ctx, &name).await.expect("cannot create schema")
 }
 
-pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> SchemaVariant {
-    create_schema_variant_with_root(ctx, schema_id).await.0
-}
+// pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> SchemaVariant {
+//     create_schema_variant_with_root(ctx, schema_id).await.0
+// }
 
-pub async fn create_schema_variant_with_root(
-    ctx: &DalContext,
-    schema_id: SchemaId,
-) -> (SchemaVariant, RootProp) {
-    let name = generate_fake_name();
-    let (variant, root) = SchemaVariant::new(ctx, schema_id, &name, &name)
-        .await
-        .expect("cannot create schema variant");
-
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-        .await
-        .expect("could not find identity func");
-
-    InputSocket::new(
-        ctx,
-        variant.id(),
-        "input",
-        identity_func_id,
-        SocketArity::Many,
-        SocketKind::Standard,
-        None,
-    )
-    .await
-    .expect("unable to create socket");
-
-    OutputSocket::new(
-        ctx,
-        variant.id(),
-        "output",
-        None,
-        identity_func_id,
-        SocketArity::Many,
-        SocketKind::Standard,
-        None,
-    )
-    .await
-    .expect("unable to create socket");
-
-    (variant, root)
-}
+// pub async fn create_schema_variant_with_root(
+//     ctx: &DalContext,
+//     schema_id: SchemaId,
+// ) -> (SchemaVariant, RootProp) {
+//     let name = generate_fake_name();
+//     let (variant, root) = SchemaVariant::new(ctx, schema_id, &name, &name)
+//         .await
+//         .expect("cannot create schema variant");
+//
+//     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+//         .await
+//         .expect("could not find identity func");
+//
+//     InputSocket::new(
+//         ctx,
+//         variant.id(),
+//         "input",
+//         identity_func_id,
+//         SocketArity::Many,
+//         SocketKind::Standard,
+//         None,
+//     )
+//     .await
+//     .expect("unable to create socket");
+//
+//     OutputSocket::new(
+//         ctx,
+//         variant.id(),
+//         "output",
+//         None,
+//         identity_func_id,
+//         SocketArity::Many,
+//         SocketKind::Standard,
+//         None,
+//     )
+//     .await
+//     .expect("unable to create socket");
+//
+//     (variant, root)
+// }
 
 // pub async fn create_prop_without_ui_optionals(
 //     ctx: &DalContext,

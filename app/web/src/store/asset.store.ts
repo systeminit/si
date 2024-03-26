@@ -73,7 +73,7 @@ export interface DetachedValidationPrototype {
 export interface ListedVariantDef {
   id: AssetId;
   name: string;
-  menuName?: string;
+  displayName?: string;
   category: string;
   componentType: ComponentType;
   color: string;
@@ -85,7 +85,6 @@ export interface ListedVariantDef {
 
 export interface VariantDef extends ListedVariantDef {
   link?: string;
-  schemaVariantId?: string;
   code: string;
   types?: string;
   hasComponents: boolean;
@@ -104,7 +103,7 @@ export type AssetCloneRequest = Visibility & { id: AssetId };
 const LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY = "si-open-asset-id";
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
-  (asset.menuName ?? "").length === 0 ? asset.name : asset.menuName;
+  (asset.displayName ?? "").length === 0 ? asset.name : asset.displayName;
 
 export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
@@ -170,7 +169,7 @@ export const useAssetStore = () => {
         assetBySchemaVariantId(): Record<string, Asset> {
           const assetsWithSchemaVariantId = _.filter(
             this.assets,
-            (a) => a.schemaVariantId !== undefined,
+            (a) => a.id !== undefined,
           ) as (VariantDef & {
             schemaVariantId: string;
           })[];
@@ -182,7 +181,7 @@ export const useAssetStore = () => {
         setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
           const asset = this.assetsById[assetId];
           if (asset) {
-            asset.schemaVariantId = schemaVariantId;
+            asset.id = schemaVariantId;
             this.assetsById[assetId] = asset;
           }
         },
@@ -254,7 +253,6 @@ export const useAssetStore = () => {
             funcs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            schemaVariantId: undefined,
             hasComponents: false,
           };
         },
@@ -274,7 +272,6 @@ export const useAssetStore = () => {
               ...visibility,
               ..._.omit(asset, [
                 "id",
-                "schemaVariantId",
                 "hasComponents",
                 "createdAt",
                 "updatedAt",
@@ -347,12 +344,7 @@ export const useAssetStore = () => {
             },
             params: {
               ...visibility,
-              ..._.omit(asset, [
-                "schemaVariantId",
-                "hasComponents",
-                "createdAt",
-                "updatedAt",
-              ]),
+              ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
             },
           });
         },
@@ -409,12 +401,7 @@ export const useAssetStore = () => {
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
-              ..._.omit(asset, [
-                "schemaVariantId",
-                "hasComponents",
-                "createdAt",
-                "updatedAt",
-              ]),
+              ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
             },
             onSuccess: (response) => {
               this.executeAssetTaskId = response.taskId;

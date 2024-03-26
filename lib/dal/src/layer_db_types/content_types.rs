@@ -7,8 +7,8 @@ use crate::{
     func::argument::FuncArgumentKind, key_pair::KeyPairPk, prop::WidgetOptions,
     property_editor::schema::WidgetKind, secret::SecretPk,
     socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
-    ActionPrototypeId, ComponentId, FuncBackendResponseType, FuncId, PropId, PropKind, SocketArity,
-    SocketKind, Timestamp, UserPk,
+    ActionPrototypeId, ComponentId, ComponentType, FuncBackendResponseType, FuncId, PropId,
+    PropKind, SocketArity, SocketKind, Timestamp, UserPk,
 };
 
 /// This type gathers up all the kinds of things we will store in the
@@ -328,12 +328,13 @@ pub struct SchemaVariantContentV1 {
     pub timestamp: Timestamp,
     pub ui_hidden: bool,
     pub name: String,
-    // The [`RootProp`](crate::RootProp) for [`self`](Self).
-    // pub root_prop_id: Option<PropId>,
-    // pub schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
-    pub link: Option<String>,
-    pub finalized_once: bool,
+    pub display_name: Option<String>,
     pub category: String,
+    pub color: String,
+    pub component_type: ComponentType,
+    pub link: Option<String>,
+    pub description: Option<String>,
+    pub finalized_once: bool,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

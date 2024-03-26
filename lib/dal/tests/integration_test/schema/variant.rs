@@ -3,7 +3,7 @@ mod view;
 use dal::schema::variant::root_prop::RootPropChild;
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    DalContext, Prop,
+    ComponentType, DalContext, Prop,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -12,18 +12,38 @@ use pretty_assertions_sorted::assert_eq;
 async fn new(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
 
-    let (variant, _) = SchemaVariant::new(ctx, schema.id(), "ringo", "beatles")
-        .await
-        .expect("cannot create schema variant");
-    assert_eq!(variant.name(), "ringo");
+    let (variant, _) = SchemaVariant::new(
+        ctx,
+        schema.id(),
+        "ringo starr",
+        Some("ringo".to_string()),
+        "beatles",
+        "#FFFFFF",
+        ComponentType::Component,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create schema variant");
+    assert_eq!(variant.name(), "ringo starr");
 }
 
 #[test]
 async fn find_code_item_prop(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
-    let (schema_variant, root_prop) = SchemaVariant::new(ctx, schema.id(), "v0", "v0")
-        .await
-        .expect("cannot create schema variant");
+    let (schema_variant, root_prop) = SchemaVariant::new(
+        ctx,
+        schema.id(),
+        "v0",
+        Some("v0_display_name".to_string()),
+        "demo",
+        "#000000",
+        ComponentType::Component,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create schema variant");
 
     // Check that our query works to find "/root/code/codeItem".
     let found_code_item_prop_id =
@@ -42,9 +62,19 @@ async fn find_code_item_prop(ctx: &DalContext) {
 #[test]
 async fn list_root_si_child_props(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
-    let (schema_variant, root_prop) = SchemaVariant::new(ctx, schema.id(), "v0", "v0")
-        .await
-        .expect("cannot create schema variant");
+    let (schema_variant, root_prop) = SchemaVariant::new(
+        ctx,
+        schema.id(),
+        "v0",
+        Some("v0_display_name".to_string()),
+        "demo",
+        "#000000",
+        ComponentType::Component,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create schema variant");
 
     // Gather all children of "/root/si".
     let expected_si_child_prop_ids = Prop::direct_child_prop_ids(ctx, root_prop.si_prop_id)
