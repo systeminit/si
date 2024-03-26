@@ -287,12 +287,31 @@ impl WorkspaceSnapshot {
         Ok(initial)
     }
 
+    /// The workspace snapshot is made of up Arc wrapped concurrency types, so
+    /// `clone` does not duplicate the snapshot, but instead just increments the
+    /// ref count. This will produce an actual clone of the data.
+    pub async fn real_clone(&self) -> Self {
+        let working_copy_clone = self.working_copy().await.clone();
+        Self {
+            address: Arc::new(RwLock::new(self.id().await)),
+            read_only_graph: Arc::new(working_copy_clone),
+            working_copy: Arc::new(RwLock::new(None)),
+            node_weight_db: self.node_weight_db.clone(),
+            events_actor: self.events_actor.clone(),
+            events_tenancy: self.events_tenancy.clone(),
+        }
+    }
+
     pub fn events_actor(&self) -> si_events::Actor {
         self.events_actor.clone()
     }
 
     pub fn events_tenancy(&self) -> si_events::Tenancy {
         self.events_tenancy
+    }
+
+    pub async fn node_count(&self) -> usize {
+        self.working_copy().await.node_count()
     }
 
     pub async fn mark_graph_seen(

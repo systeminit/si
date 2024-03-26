@@ -34,7 +34,7 @@ async fn simulate_rebase(ctx: &DalContext) {
     // Create the onto graph from the to rebase graph.
     let onto_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
     let onto_change_set = &onto_change_set;
-    let onto = to_rebase.clone();
+    let onto = to_rebase.real_clone().await;
 
     // FuncCategory --Use--> Func
     let func_id = onto_change_set
@@ -134,10 +134,10 @@ async fn simulate_rebase(ctx: &DalContext) {
     // Cleanup and check node count.
     onto.cleanup().await.expect("should clean up");
     to_rebase.cleanup().await.expect("should clean up");
-    // assert_eq!(
-    //     6,                 // expected
-    //     onto.node_count()  // actual
-    // );
+    assert_eq!(
+        6,                       // expected
+        onto.node_count().await  // actual
+    );
 
     // Detect conflicts and updates. Ensure cleanup did not affect the results.
     let (conflicts, updates) = to_rebase
