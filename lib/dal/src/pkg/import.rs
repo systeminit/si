@@ -1891,22 +1891,18 @@ async fn import_schema(
             .await?;
 
             if let Some(variant) = variant {
-                if let Some(variant_spec_data) = variant_spec.data() {
-                    let _func_unique_id = variant_spec_data.func_unique_id().to_owned();
-
-                    set_default_schema_variant_id(
-                        ctx,
-                        change_set_id,
-                        &mut schema,
-                        schema_spec
-                            .data()
-                            .as_ref()
-                            .and_then(|data| data.default_schema_variant()),
-                        variant_spec.unique_id(),
-                        variant.id(),
-                    )
-                    .await?;
-                }
+                set_default_schema_variant_id(
+                    ctx,
+                    change_set_id,
+                    &mut schema,
+                    schema_spec
+                        .data()
+                        .as_ref()
+                        .and_then(|data| data.default_schema_variant()),
+                    variant_spec.unique_id(),
+                    variant.id(),
+                )
+                .await?;
             }
         }
 
@@ -2452,6 +2448,17 @@ async fn import_schema_variant(
                 None => {
                     let spec = schema_spec.to_spec().await?;
                     let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
+
+                    let mut asset_func_id: Option<FuncId> = None;
+                    if let Some(variant_spec_data) = variant_spec.data() {
+                        let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+                        if let Thing::Func(asset_func) = thing_map
+                            .get(change_set_id, &func_unique_id)
+                            .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                        {
+                            asset_func_id = Some(asset_func.id)
+                        }
+                    }
                     (
                         SchemaVariant::new(
                             ctx,
@@ -2463,6 +2470,7 @@ async fn import_schema_variant(
                             metadata.component_type,
                             metadata.link,
                             metadata.description,
+                            asset_func_id,
                         )
                         .await?
                         .0,

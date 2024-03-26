@@ -110,6 +110,7 @@ pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> Built
         .func(resource_payload_to_value_func)
         .func(yaml_code_gen_func)
         .func(string_code_gen_func)
+        .func(kp_authoring_schema_func)
         .schema(kp_schema)
         .build()?;
 

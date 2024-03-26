@@ -166,6 +166,7 @@ impl SchemaVariant {
         component_type: impl Into<ComponentType>,
         link: impl Into<Option<String>>,
         description: impl Into<Option<String>>,
+        asset_func_id: Option<FuncId>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -208,6 +209,17 @@ impl SchemaVariant {
                 id,
             )
             .await?;
+
+        if let Some(asset_func) = asset_func_id {
+            // SchemaVariant --Use -> Func (Asset Func)
+            workspace_snapshot
+                .add_edge(
+                    id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    asset_func,
+                )
+                .await?;
+        }
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;

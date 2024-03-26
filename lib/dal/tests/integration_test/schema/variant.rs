@@ -22,6 +22,7 @@ async fn new(ctx: &DalContext) {
         ComponentType::Component,
         None,
         None,
+        None,
     )
     .await
     .expect("cannot create schema variant");
@@ -39,6 +40,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
         "demo",
         "#000000",
         ComponentType::Component,
+        None,
         None,
         None,
     )
@@ -70,6 +72,7 @@ async fn list_root_si_child_props(ctx: &DalContext) {
         "demo",
         "#000000",
         ComponentType::Component,
+        None,
         None,
         None,
     )
