@@ -1,26 +1,32 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
-Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VITE_SI_CYPRESS_MULTIPLIER : 1, () => {
+const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+const SI_WORKSPACE_URL = Cypress.env('VITE_SI_WORKSPACE_URL') || import.meta.env.VITE_SI_WORKSPACE_URL;
+const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe('component', () => {
     beforeEach(function () {
-      cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
+      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
     });
 
     it('value_propagation', () => {
-
-      console.log(import.meta.env.VITE_UUID);
-      cy.log(import.meta.env.VITE_UUID);
+      console.log(UUID);
+      cy.log(UUID);
 
       // Go to the Synthetic Workspace
-      cy.visit(import.meta.env.VITE_SI_WORKSPACE_URL + '/w/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/head');
-      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
-
+      cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
+      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
       
-      cy.get('#vorm-input-3').clear().type(import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.get('#vorm-input-3').clear().type(UUID);
 
-      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);
 
       cy.contains('Create change set', { timeout: 30000 }).click();
 
@@ -28,13 +34,13 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Find the AWS Credential
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('awsRegion')
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('awsRegion');
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentA');
-      let componentIDA: string, componentIDB: string, bearertoken: string;
+      let componentIDA, componentIDB, bearertoken;
 
       // drag to the canvas
       cy.dragTo('@awsRegion', '@konvaStage');
@@ -44,13 +50,13 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
 
       cy.wait(5000);
 
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2')
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentB');
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
 
       cy.wait('@componentB', {timeout: 60000}).then(async (interception) => {
-        bearertoken = interception.request.headers.authorization as string;
+        bearertoken = interception.request.headers.authorization;
         componentIDB = interception.response?.body.componentId;
       });
 
@@ -68,7 +74,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
             childId: componentIDB,
             parentId: componentIDA,
             visibility_change_set_pk: changeset,
-            workspaceId: import.meta.env.VITE_SI_WORKSPACE_ID
+            workspaceId: SI_WORKSPACE_ID
           }),
           headers: { Authorization: bearertoken, "Content-Type": 'application/json' }
         });
@@ -84,7 +90,6 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
         newUrl.searchParams.set('t', 'attributes');
       
         // Visit the new URL
-        //http://localhost:8080/w/01HPJ42ZWGR798MTWH49JCP1XZ/01HSKWVX0VJXAKC4NC0RF1E0H4/c?s=c_01HSKWW3QXBZ5H8EAESDQ6533K&t=attributes
         console.log(newUrl.href);
         cy.visit(newUrl.href);
       });
@@ -113,7 +118,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       // Wait for the values to propagate
       cy.wait(1000);
 
-      // Validate that the value has propogated through the system
+      // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')
       .should('have.value', 'us-east-1');
 
@@ -129,6 +134,6 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')
       .click();
 
-    })
-  })
+    });
+  });
 });

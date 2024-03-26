@@ -99,10 +99,11 @@ def run_cypress_tests(directory_path, tests, output_file):
         command = f"cd app/web && npx cypress run --spec {tests} --config videosFolder={output_file_path.rsplit('/', 1)[0]}\/videos"
         process = subprocess.run(command, shell=True, stdout=output, stderr=subprocess.PIPE)
 
-        # Check the exit code
-        if process.returncode != 0:
-            print_last_50_lines(output_file)
-            exit(1)
+    print_last_50_lines(output_file)
+
+    # Check the exit code
+    if process.returncode != 0:
+        exit(1)
 
 def validate_cypress_install(output_file):
 
@@ -121,10 +122,10 @@ def validate_cypress_install(output_file):
         command = f"cd app/web && npx cypress verify"
         process = subprocess.run(command, shell=True, stdout=output, stderr=subprocess.PIPE)
 
-        # Check the exit code
-        if process.returncode != 0:
-            print_last_50_lines(output_file)
-            exit(1)
+    # Check the exit code
+    if process.returncode != 0:
+        print_last_50_lines(output_file)
+        exit(1)
 
 def health_check(endpoint, timeout):
     start_time = time.time()
@@ -155,14 +156,7 @@ def main() -> int:
     tests = args.tests
 
     health_check(args.web_endpoint, 60)
-
-    print(args)
-
     run_cypress_tests(directory_path, tests, args.output)
-
-    # optionally add a check that the secrets are inside the .env or os.env
-    # optionally add the videos or similar as an output target into the directory
-    # optionally only build/deploy the stuff that has changed (how? I have no idea - JW)
 
     return 0
 

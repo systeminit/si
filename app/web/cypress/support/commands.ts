@@ -68,3 +68,19 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
     })
   })
 });
+
+//Cypress.Commands.add('setupVariables', () => {
+//  const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+//  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+//  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+//  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+//  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+//  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+//
+//  Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
+//  Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
+//  Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
+//  Cypress.env('AUTH_API_URL', AUTH_API_URL);
+//  Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
+//  Cypress.env('UUID', UUID);
+//});

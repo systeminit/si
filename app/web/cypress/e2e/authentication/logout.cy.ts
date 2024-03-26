@@ -1,13 +1,19 @@
-Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VITE_SI_CYPRESS_MULTIPLIER : 1, () => {
+const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
+const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe("logout", () => {
     beforeEach(() => {
       cy.visit("/");
-      cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
+      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
     });
 
     it("log_out", () => {
       cy.visit("/");
-      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
       cy.get('[aria-label="Profile"]').should('exist').click();
@@ -15,8 +21,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
 
       // There is a bug currently where you log out of the product & it just logs you out to the dashboard page
       // of the UI in auth portal
-      cy.url().should("contain", import.meta.env.VITE_AUTH_PORTAL_URL + '/dashboard');
-
+      cy.url().should("contain", AUTH_PORTAL_URL + '/dashboard');
     });
   });
 });
