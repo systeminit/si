@@ -42,26 +42,45 @@ Cypress.Commands.add("getBySelLike", (selector, ...args) => {
 
 // Define the custom Cypress command in your Cypress support/commands.ts file
 // commands.ts
-Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string) => {
-  cy.get(sourceElement).then(() => {
+Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, offsetX?: number, offsetY?: number) => {
+  cy.get(sourceElement).then(($sourceElement) => {
     cy.get(targetElement).then(($targetElement) => {
       const targetOffset = $targetElement.offset();
       const targetWidth = $targetElement.width();
       const targetHeight = $targetElement.height();
 
       // Calculate the coordinates to move to the center of the target element
-      const clientX = targetOffset.left + targetWidth / 2;
-      const clientY = targetOffset.top + targetHeight / 2;
+      let clientX = targetOffset.left + targetWidth / 2;
+      let clientY = targetOffset.top + targetHeight / 2;
+
+      if (offsetX) clientX += offsetX;
+      if (offsetY) clientY += offsetY;
 
       // Trigger a drag and drop action
-      cy.get(sourceElement)
-        .trigger('mousedown', { button: 0 }) // Simulate mouse down event
-        .trigger('mousemove', { clientX: clientX, clientY: clientY }) // Move the object to a new position
-        .trigger('mouseup') // Simulate mouse up event
+      const sourceOffset = $sourceElement.offset();
+      const drag = cy.get(sourceElement)
+        .trigger('mousemove', { clientX: sourceOffset?.left, clientY: sourceOffset?.top, force: true })
+        .trigger('mousedown', { button: 0, force: true }) // Simulate mouse down event
+        .wait(10)
+        .trigger('mousemove', { clientX: clientX, clientY: clientY, force: true }) // Move the object to a new position
+        .wait(10)
+        .trigger('mouseup', { button: 0 }) // Simulate mouse up event
     })
   })
 });
 
-
-
-
+//Cypress.Commands.add('setupVariables', () => {
+//  const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+//  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+//  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+//  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+//  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+//  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+//
+//  Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
+//  Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
+//  Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
+//  Cypress.env('AUTH_API_URL', AUTH_API_URL);
+//  Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
+//  Cypress.env('UUID', UUID);
+//});

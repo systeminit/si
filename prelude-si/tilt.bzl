@@ -71,7 +71,7 @@ tilt_docker_compose_pull = rule(
     attrs = {
         "docker_compose_file": attrs.string(
             default = "docker-compose.yml",
-            doc = """The Tiltfile to run.""",
+            doc = """The Docker Compose to run.""",
         ),
         "services": attrs.list(
             attrs.string(),
@@ -108,7 +108,7 @@ tilt_docker_compose_stop = rule(
     attrs = {
         "docker_compose_file": attrs.string(
             default = "docker-compose.yml",
-            doc = """The Tiltfile to run.""",
+            doc = """The Docker Compose to run.""",
         ),
         "services": attrs.list(
             attrs.string(),

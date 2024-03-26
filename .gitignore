@@ -14,6 +14,7 @@ vendor/automerge
 /support/dev/k8s/**/web-htpasswd
 /tmp/
 deploy/docker-compose.env.yml
+app/web/cypress/downloads/
 app/web/cypress/screenshots/
 app/web/cypress/videos/
 bin/si/src/version.txt

@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "eslint",
+    "e2e_test",
     "export_file",
     "package_node_modules",
     "shellcheck",
@@ -166,4 +167,8 @@ pnpm_task_test(
     ],
     path = "app/web",
     visibility = ["PUBLIC"],
+)
+
+e2e_test(
+    name = "e2e-test",
 )

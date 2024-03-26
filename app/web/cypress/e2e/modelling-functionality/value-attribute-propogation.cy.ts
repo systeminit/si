@@ -1,56 +1,107 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
-Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VITE_SI_CYPRESS_MULTIPLIER : 1, () => {
+const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+const SI_WORKSPACE_URL = Cypress.env('VITE_SI_WORKSPACE_URL') || import.meta.env.VITE_SI_WORKSPACE_URL;
+const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe('component', () => {
     beforeEach(function () {
-      cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
+      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
     });
 
     it('value_propagation', () => {
-
-      console.log(import.meta.env.VITE_UUID);
-      cy.log(import.meta.env.VITE_UUID);
+      console.log(UUID);
+      cy.log(UUID);
 
       // Go to the Synthetic Workspace
-      cy.visit(import.meta.env.VITE_SI_WORKSPACE_URL + '/w/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/head')
-      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
-
+      cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
+      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
       
-      cy.get('#vorm-input-3').clear().type(import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.get('#vorm-input-3').clear().type(UUID);
 
-      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);
 
       cy.contains('Create change set', { timeout: 30000 }).click();
 
       // Give time to redirect onto the new changeset
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
+      // Find the AWS Credential
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('awsRegion');
+
+      // Find the canvas to get a location to drag to
+      cy.get('canvas').first().as('konvaStage');
+
+      cy.intercept('POST', '/api/diagram/create_component').as('componentA');
+      let componentIDA, componentIDB, bearertoken;
+
+      // drag to the canvas
+      cy.dragTo('@awsRegion', '@konvaStage');
+      cy.wait('@componentA', {timeout: 60000}).then(async (interception) => {
+        componentIDA = interception.response?.body.componentId;
+      });
+
+      cy.wait(5000);
+
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
+
+      cy.intercept('POST', '/api/diagram/create_component').as('componentB');
+      cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
+
+      cy.wait('@componentB', {timeout: 60000}).then(async (interception) => {
+        bearertoken = interception.request.headers.authorization;
+        componentIDB = interception.response?.body.componentId;
+      });
+
+      // WE CANNOT FORCE A HOVER STATE INSIDE CANVAS
+      // SO THE "PARENT" IS NOT SET DESPITE COMPONENT B BEING INSIDE THE FRAME
+      // HACK
+      cy.url().then(currentUrl => {
+        const parts = currentUrl.split('/');
+        parts.pop(); // c
+        const changeset = parts.pop();
+        cy.request({
+          method: 'POST',
+          url: '/api/diagram/connect_component_to_frame',
+          body: JSON.stringify({
+            childId: componentIDB,
+            parentId: componentIDA,
+            visibility_change_set_pk: changeset,
+            workspaceId: SI_WORKSPACE_ID
+          }),
+          headers: { Authorization: bearertoken, "Content-Type": 'application/json' }
+        });
+      });
+
+      cy.wait(2000);
+
       cy.url().then(currentUrl => {
         // Construct a new URL with desired query parameters for selecting 
         // the attribute panel for a known component
         let newUrl = new URL(currentUrl);
-        newUrl.searchParams.set('s', import.meta.env.VITE_SI_PROPAGATION_COMPONENT_A);
+        newUrl.searchParams.set('s', 'c_'+componentIDA);
         newUrl.searchParams.set('t', 'attributes');
       
         // Visit the new URL
+        console.log(newUrl.href);
         cy.visit(newUrl.href);
       });
 
       // Give the page a few seconds to load
       cy.wait(2000);
 
-      // Generate a random number between 1 and 100 to insert into the 
-      // attribute value for Integer
-      const randomNumber = Math.floor(Math.random() * 100) + 1;
-
       cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
 
       // Find the attribute for the Integer Input
-      cy.get('.attributes-panel-item__input-wrap input[type="number"]')
-      .clear()
-      .type(randomNumber.toString() + '{enter}') // type the new value
+      cy.get('.attributes-panel-item__input-wrap select:first')
+      .select('us-east-1');
 
       // Intercept the API call and alias it
       cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
@@ -59,17 +110,17 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
         // Construct a new URL with desired query parameters for selecting 
         // the attribute panel for a known connected component
         let newUrl = new URL(currentUrl);
-        newUrl.searchParams.set('s', import.meta.env.VITE_SI_PROPAGATION_COMPONENT_B);
+        newUrl.searchParams.set('s', 'c_'+componentIDB);
         newUrl.searchParams.set('t', 'attributes');
         cy.visit(newUrl.href);
       });
 
       // Wait for the values to propagate
-      cy.wait(60000);
+      cy.wait(1000);
 
-      // Validate that the value has propogated through the system
-      cy.get('.attributes-panel-item__input-wrap input[type="number"]', { timeout: 30000 })
-      .should('have.value', randomNumber.toString(), { timeout: 30000 });
+      // Validate that the value has propagated through the system
+      cy.get('.attributes-panel-item__input-wrap input.region')
+      .should('have.value', 'us-east-1');
 
       // Click the button to destroy changeset
       cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')
@@ -83,6 +134,6 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')
       .click();
 
-    })
-  })
+    });
+  });
 });
