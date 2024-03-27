@@ -93,82 +93,87 @@ impl DependentValueGraph {
                 .await?
                 .into();
 
-            // Gather the Attribute Prototype Arguments that take the thing the
-            // current value is for (prop, or socket) as an input
-            let relevant_apas = {
-                let workspace_snapshot = ctx.workspace_snapshot()?;
+            // Gather dependents from prototype arguments
+            {
+                // Gather the Attribute Prototype Arguments that take the thing the
+                // current value is for (prop, or socket) as an input
+                let relevant_apas = {
+                    let workspace_snapshot = ctx.workspace_snapshot()?;
 
-                let attribute_prototype_argument_idxs = workspace_snapshot
-                    .incoming_sources_for_edge_weight_kind(
-                        data_source_id,
-                        EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-                    )
-                    .await?;
+                    let attribute_prototype_argument_idxs = workspace_snapshot
+                        .incoming_sources_for_edge_weight_kind(
+                            data_source_id,
+                            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+                        )
+                        .await?;
 
-                let mut relevant_apas = vec![];
-                for apa_idx in attribute_prototype_argument_idxs {
-                    let apa = workspace_snapshot
-                        .get_node_weight(apa_idx)
-                        .await?
-                        .get_attribute_prototype_argument_node_weight()?;
+                    let mut relevant_apas = vec![];
+                    for apa_idx in attribute_prototype_argument_idxs {
+                        let apa = workspace_snapshot
+                            .get_node_weight(apa_idx)
+                            .await?
+                            .get_attribute_prototype_argument_node_weight()?;
 
-                    match apa.targets() {
-                        // If there are no targets, this is a schema-level attribute prototype argument
-                        None => relevant_apas.push(apa),
-                        Some(targets) => {
-                            if targets.source_component_id == current_component_id {
-                                let source_component =
-                                    Component::get_by_id(ctx, targets.source_component_id)
-                                        .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
-                                let destination_component =
-                                    Component::get_by_id(ctx, targets.destination_component_id)
-                                        .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
+                        match apa.targets() {
+                            // If there are no targets, this is a schema-level attribute prototype argument
+                            None => relevant_apas.push(apa),
+                            Some(targets) => {
+                                if targets.source_component_id == current_component_id {
+                                    let source_component =
+                                        Component::get_by_id(ctx, targets.source_component_id)
+                                            .await
+                                            .map_err(|e| {
+                                                AttributeValueError::Component(e.to_string())
+                                            })?;
+                                    let destination_component =
+                                        Component::get_by_id(ctx, targets.destination_component_id)
+                                            .await
+                                            .map_err(|e| {
+                                                AttributeValueError::Component(e.to_string())
+                                            })?;
 
-                                // Both "deleted" and not deleted Components can feed data into
-                                // "deleted" Components. **ONLY** not deleted Components can feed
-                                // data into not deleted Components.
-                                if destination_component.to_delete()
-                                    || (!destination_component.to_delete()
-                                        && !source_component.to_delete())
-                                {
-                                    relevant_apas.push(apa)
+                                    // Both "deleted" and not deleted Components can feed data into
+                                    // "deleted" Components. **ONLY** not deleted Components can feed
+                                    // data into not deleted Components.
+                                    if destination_component.to_delete()
+                                        || (!destination_component.to_delete()
+                                            && !source_component.to_delete())
+                                    {
+                                        relevant_apas.push(apa)
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                relevant_apas
-            };
+                    relevant_apas
+                };
 
-            // Find the values that are set by the prototype for the relevant
-            // AttributePrototypeArguments, and declare that these values depend
-            // on the value of the current value
-            for apa in relevant_apas {
-                let prototype_id =
-                    AttributePrototypeArgument::prototype_id_for_argument_id(ctx, apa.id().into())
-                        .await?;
+                // Find the values that are set by the prototype for the relevant
+                // AttributePrototypeArguments, and declare that these values depend
+                // on the value of the current value
+                for apa in relevant_apas {
+                    let prototype_id = AttributePrototypeArgument::prototype_id_for_argument_id(
+                        ctx,
+                        apa.id().into(),
+                    )
+                    .await?;
 
-                let attribute_value_ids =
-                    AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
+                    let attribute_value_ids =
+                        AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
 
-                for attribute_value_id in attribute_value_ids {
-                    let filter_component_id = match apa.targets() {
-                        None => current_component_id,
-                        Some(targets) => targets.destination_component_id,
-                    };
-                    let component_id =
-                        AttributeValue::component_id(ctx, attribute_value_id).await?;
+                    for attribute_value_id in attribute_value_ids {
+                        let filter_component_id = match apa.targets() {
+                            None => current_component_id,
+                            Some(targets) => targets.destination_component_id,
+                        };
+                        let component_id =
+                            AttributeValue::component_id(ctx, attribute_value_id).await?;
 
-                    if component_id == filter_component_id {
-                        work_queue.push_back(attribute_value_id);
-                        dependent_value_graph
-                            .value_depends_on(attribute_value_id, current_attribute_value_id);
+                        if component_id == filter_component_id {
+                            work_queue.push_back(attribute_value_id);
+                            dependent_value_graph
+                                .value_depends_on(attribute_value_id, current_attribute_value_id);
+                        }
                     }
                 }
             }

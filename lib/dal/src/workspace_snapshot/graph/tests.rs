@@ -1358,6 +1358,201 @@ mod test {
         assert_eq!(Vec::<Update>::new(), updates);
     }
 
+    // Write a test that creates a graph that includes an ordered container with a new unordered child, make sure that it appear as an update
+    #[test]
+    fn detect_conflicts_and_updates_add_unordered_child_to_ordered_container() {
+        let base_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &base_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(active_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+        let active_graph = &mut base_graph;
+
+        // Create SV node
+        let schema_variant_index = {
+            let schema_variant_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let schema_variant_index = active_graph
+                .add_node(
+                    NodeWeight::new_content(
+                        active_change_set,
+                        schema_variant_id,
+                        ContentAddress::SchemaVariant(ContentHash::new(
+                            SchemaVariantId::generate().to_string().as_bytes(),
+                        )),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add schema variant");
+
+            active_graph
+                .add_edge(
+                    active_graph.root_index,
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create EdgeWeight"),
+                    schema_variant_index,
+                )
+                .expect("Unable to add root -> schema variant edge");
+
+            schema_variant_index
+        };
+
+        // Create base prop node
+        let base_prop_id = {
+            let prop_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let prop_index = active_graph
+                .add_ordered_node(
+                    active_change_set,
+                    NodeWeight::new_content(
+                        active_change_set,
+                        prop_id,
+                        ContentAddress::Prop(ContentHash::new(prop_id.to_string().as_bytes())),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add prop");
+
+            active_graph
+                .add_edge(
+                    schema_variant_index,
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create EdgeWeight"),
+                    prop_index,
+                )
+                .expect("Unable to add sv -> prop edge");
+
+            prop_id
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        // Create two prop nodes children of base prop
+        let ordered_prop_1_index = {
+            let ordered_prop_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let ordered_prop_index = active_graph
+                .add_node(
+                    NodeWeight::new_content(
+                        active_change_set,
+                        ordered_prop_id,
+                        ContentAddress::Prop(ContentHash::new(
+                            ordered_prop_id.to_string().as_bytes(),
+                        )),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add ordered prop");
+            active_graph
+                .add_ordered_edge(
+                    active_change_set,
+                    active_graph
+                        .get_node_index_by_id(base_prop_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create uses edge weight"),
+                    ordered_prop_index,
+                )
+                .expect("Unable to add prop -> ordered_prop_1 edge");
+
+            ordered_prop_index
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        let attribute_prototype_id = {
+            let node_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let node_index = active_graph
+                .add_node(
+                    NodeWeight::new_content(
+                        active_change_set,
+                        node_id,
+                        ContentAddress::AttributePrototype(ContentHash::new(
+                            node_id.to_string().as_bytes(),
+                        )),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add attribute prototype");
+
+            active_graph
+                .add_edge(
+                    active_graph.root_index,
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create EdgeWeight"),
+                    node_index,
+                )
+                .expect("Unable to add root -> prototype edge");
+
+            node_id
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        // Get new graph
+        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &new_change_set;
+        let mut new_graph = base_graph.clone();
+        let active_graph = &mut new_graph;
+
+        // Connect Prototype to Prop
+        active_graph
+            .add_edge(
+                active_graph
+                    .get_node_index_by_id(base_prop_id)
+                    .expect("Unable to get prop NodeIndex"),
+                EdgeWeight::new(active_change_set, EdgeWeightKind::Prototype(None))
+                    .expect("Unable to create EdgeWeight"),
+                active_graph
+                    .get_node_index_by_id(attribute_prototype_id)
+                    .expect("Unable to get prop NodeIndex"),
+            )
+            .expect("Unable to add sv -> prop edge");
+        active_graph.cleanup();
+        active_graph.dot();
+
+        // Assert that the new edge to the prototype gets created
+        let (conflicts, updates) = base_graph
+            .detect_conflicts_and_updates(
+                active_change_set.vector_clock_id(),
+                &new_graph,
+                new_change_set.vector_clock_id(),
+            )
+            .expect("Unable to detect conflicts and updates");
+
+        assert!(conflicts.is_empty());
+
+        match updates.as_slice() {
+            [Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            }] => {
+                assert_eq!(
+                    base_graph
+                        .get_node_index_by_id(base_prop_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    *source
+                );
+                assert_eq!(
+                    base_graph
+                        .get_node_index_by_id(attribute_prototype_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    *destination
+                );
+                assert_eq!(&EdgeWeightKind::Prototype(None), edge_weight.kind());
+            }
+            other => panic!("Unexpected updates: {:?}", other),
+        }
+    }
+
     #[test]
     fn detect_conflicts_and_updates_complex() {
         let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");

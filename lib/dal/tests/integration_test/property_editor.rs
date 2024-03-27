@@ -3,7 +3,7 @@ use dal::property_editor::schema::{
 };
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use dal::{AttributeValue, Component, ComponentId, DalContext, Schema, SchemaVariant};
+use dal::{AttributeValue, Component, ComponentId, DalContext, Func, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::{
     commit_and_update_snapshot, connect_components_with_socket_names,
@@ -339,6 +339,7 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_pirate_name)))
         .await
         .expect("override domain/name attribute value");
+    commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
         serde_json::json![{
@@ -369,6 +370,87 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
           "key": null,
           "value": original_pirate_name,
           "canBeSetBySocket": false,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false // value goes back to being controlled by the default function
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+}
+
+#[test]
+async fn override_array_then_reset(ctx: &mut DalContext) {
+    let original_pirate_name = "Thomas Cavendish";
+    let pirate_component =
+        create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
+    commit_and_update_snapshot(ctx).await;
+
+    let name_path = &["root", "domain", "parrot_names"];
+    let av_id = pirate_component
+        .attribute_values_for_prop(ctx, name_path)
+        .await
+        .expect("find value ids for the prop")
+        .pop()
+        .expect("there should only be one value id");
+
+    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+        .await
+        .expect("get prop_id for attribute value");
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": null,
+          "canBeSetBySocket": true,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": true,
+          "overridden": false
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!([])))
+        .await
+        .expect("override domain/parrot_names attribute value");
+    commit_and_update_snapshot(ctx).await;
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": [],
+          "canBeSetBySocket": false,
+          "isFromExternalSource": false,
+          "isControlledByAncestor": false,
+          "isControlledByDynamicFunc": false,
+          "overridden": true
+        }], // expected
+        PropEditorView::for_component_id(ctx, pirate_component.id())
+            .await
+            .get_value(name_path)
+    );
+
+    AttributeValue::use_default_prototype(ctx, av_id)
+        .await
+        .expect("revert back to default prototype");
+    commit_and_update_snapshot(ctx).await;
+
+    assert_eq!(
+        serde_json::json![{
+          "id": av_id,
+          "propId": prop_id,
+          "key": null,
+          "value": null,
+          "canBeSetBySocket": true,
           "isFromExternalSource": false,
           "isControlledByAncestor": false,
           "isControlledByDynamicFunc": true,

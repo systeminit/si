@@ -24,12 +24,12 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::AttributeValueId;
 use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, AttributePrototype,
     AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId, SchemaVariantId,
     Timestamp, TransactionsError,
 };
+use crate::{AttributeValueId, InputSocketId};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -760,6 +760,11 @@ impl Prop {
             .await?
             .id()
             .into())
+    }
+
+    pub async fn input_socket_sources(&self, ctx: &DalContext) -> PropResult<Vec<InputSocketId>> {
+        let prototype_id = Self::prototype_id(ctx, self.id).await?;
+        Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
     pub async fn set_default_value<T: Serialize>(
