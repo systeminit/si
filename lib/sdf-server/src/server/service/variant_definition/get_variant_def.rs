@@ -66,7 +66,7 @@ pub async fn get_variant_def(
         has_components: false,
     };
 
-    if let Some(authoring_func) = variant_def.get_authoring_func(&ctx).await? {
+    if let Some(authoring_func) = variant_def.asset_func_id() {
         let asset_func = Func::get_by_id(&ctx, authoring_func).await?;
 
         response.code = asset_func

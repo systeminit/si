@@ -2547,8 +2547,12 @@ async fn import_schema_variant(
             }
 
             if let Some(data) = variant_spec.data() {
-                let current_color = schema_variant.get_color(ctx).await?;
-                schema_variant.set_color(ctx, current_color).await?;
+                if let Some(color) = data.color() {
+                    let current_color = schema_variant.get_color(ctx).await?;
+                    if current_color != color {
+                        schema_variant.set_color(ctx, color).await?
+                    }
+                }
 
                 schema_variant
                     .set_type(ctx, data.component_type().to_string())

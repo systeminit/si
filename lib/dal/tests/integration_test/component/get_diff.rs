@@ -23,14 +23,14 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
 
     assert_eq!(starfield_component.id(), diff.component_id);
     assert_eq!(
-        Some("{\n  \"si\": {\n    \"color\": \"#00b0bc\",\n    \"name\": \"this is a new component\",\n    \"type\": \"component\"\n  },\n  \"domain\": {\n    \"name\": \"this is a new component\",\n    \"possible_world_a\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {}\n        }\n      }\n    },\n    \"possible_world_b\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {\n            \"naming_and_necessity\": \"not hesperus\"\n          }\n        }\n      }\n    },\n    \"universe\": {\n      \"galaxies\": []\n    }\n  }\n}".to_string()),
+        Some("{\n  \"si\": {\n    \"color\": \"#ffffff\",\n    \"name\": \"this is a new component\",\n    \"type\": \"component\"\n  },\n  \"domain\": {\n    \"name\": \"this is a new component\",\n    \"possible_world_a\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {}\n        }\n      }\n    },\n    \"possible_world_b\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {\n            \"naming_and_necessity\": \"not hesperus\"\n          }\n        }\n      }\n    },\n    \"universe\": {\n      \"galaxies\": []\n    }\n  }\n}".to_string()),
         diff.current.code
     );
     assert_eq!(CodeLanguage::Json, diff.current.language);
     assert_eq!(1, diff.diffs.len());
     let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
     assert_eq!(CodeLanguage::Diff, first_diff.language);
-    assert_eq!(Some("+{\n+  \"si\": {\n+    \"color\": \"#00b0bc\",\n+    \"name\": \"this is a new component\",\n+    \"type\": \"component\"\n+  },\n+  \"domain\": {\n+    \"name\": \"this is a new component\",\n+    \"possible_world_a\": {\n+      \"wormhole_1\": {\n+        \"wormhole_2\": {\n+          \"wormhole_3\": {}\n+        }\n+      }\n+    },\n+    \"possible_world_b\": {\n+      \"wormhole_1\": {\n+        \"wormhole_2\": {\n+          \"wormhole_3\": {\n+            \"naming_and_necessity\": \"not hesperus\"\n+          }\n+        }\n+      }\n+    },\n+    \"universe\": {\n+      \"galaxies\": []\n+    }\n+  }\n+}".to_string()),
+    assert_eq!(Some("+{\n+  \"si\": {\n+    \"color\": \"#ffffff\",\n+    \"name\": \"this is a new component\",\n+    \"type\": \"component\"\n+  },\n+  \"domain\": {\n+    \"name\": \"this is a new component\",\n+    \"possible_world_a\": {\n+      \"wormhole_1\": {\n+        \"wormhole_2\": {\n+          \"wormhole_3\": {}\n+        }\n+      }\n+    },\n+    \"possible_world_b\": {\n+      \"wormhole_1\": {\n+        \"wormhole_2\": {\n+          \"wormhole_3\": {\n+            \"naming_and_necessity\": \"not hesperus\"\n+          }\n+        }\n+      }\n+    },\n+    \"universe\": {\n+      \"galaxies\": []\n+    }\n+  }\n+}".to_string()),
                first_diff.code);
 }
 
@@ -69,7 +69,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
     assert_eq!(CodeLanguage::Diff, first_diff.language);
     // We expect there to be no marked diffs as the component is the same on HEAD
-    assert_eq!(Some(" {\n   \"si\": {\n     \"color\": \"#00b0bc\",\n     \"name\": \"this is a new component\",\n     \"type\": \"component\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_a\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {}\n         }\n       }\n     },\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string()),
+    assert_eq!(Some(" {\n   \"si\": {\n     \"color\": \"#ffffff\",\n     \"name\": \"this is a new component\",\n     \"type\": \"component\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_a\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {}\n         }\n       }\n     },\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string()),
                first_diff.code);
 }
 
@@ -124,6 +124,6 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
     assert_eq!(CodeLanguage::Diff, first_diff.language);
     // We there to be a diff as we have changed the componentType on this changeset but HEAD is a component
-    assert_eq!(Some(" {\n   \"si\": {\n     \"color\": \"#00b0bc\",\n     \"name\": \"this is a new component\",\n-    \"type\": \"component\"\n+    \"type\": \"configurationFrameDown\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_a\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {}\n         }\n       }\n     },\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string()),
+    assert_eq!(Some(" {\n   \"si\": {\n     \"color\": \"#ffffff\",\n     \"name\": \"this is a new component\",\n-    \"type\": \"component\"\n+    \"type\": \"configurationFrameDown\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_a\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {}\n         }\n       }\n     },\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string()),
                first_diff.code);
 }

@@ -334,6 +334,7 @@ pub struct SchemaVariantContentV1 {
     pub component_type: ComponentType,
     pub link: Option<String>,
     pub description: Option<String>,
+    pub asset_func_id: Option<FuncId>,
     pub finalized_once: bool,
 }
 

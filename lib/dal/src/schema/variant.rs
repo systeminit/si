@@ -135,6 +135,7 @@ pub struct SchemaVariant {
     component_type: ComponentType,
     link: Option<String>,
     description: Option<String>,
+    asset_func_id: Option<FuncId>,
     finalized_once: bool,
 }
 
@@ -150,6 +151,7 @@ impl SchemaVariant {
             component_type: inner.component_type,
             link: inner.link,
             description: inner.description,
+            asset_func_id: inner.asset_func_id,
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
         }
@@ -182,6 +184,7 @@ impl SchemaVariant {
             display_name: display_name.into(),
             component_type: component_type.into(),
             description: description.into(),
+            asset_func_id: asset_func_id.into(),
         };
 
         let (hash, _) = ctx
@@ -209,17 +212,6 @@ impl SchemaVariant {
                 id,
             )
             .await?;
-
-        if let Some(asset_func) = asset_func_id {
-            // SchemaVariant --Use -> Func (Asset Func)
-            workspace_snapshot
-                .add_edge(
-                    id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                    asset_func,
-                )
-                .await?;
-        }
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
@@ -460,6 +452,10 @@ impl SchemaVariant {
 
     pub fn component_type(&self) -> ComponentType {
         self.component_type
+    }
+
+    pub fn asset_func_id(&self) -> Option<FuncId> {
+        self.asset_func_id.clone()
     }
 
     pub async fn get_root_prop_id(
@@ -1038,6 +1034,46 @@ impl SchemaVariant {
         };
 
         Ok(Schema::get_by_id(ctx, schema_id).await?)
+    }
+
+    pub async fn all_funcs(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let mut all_funcs = vec![];
+        // auth funcs
+        for func_id in Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await? {
+            let func = Func::get_by_id(ctx, func_id).await?;
+            all_funcs.push(func);
+        }
+        // attribute funcs
+        for func_id in
+            Self::list_attribute_func_ids_for_schema_variant(ctx, schema_variant_id).await?
+        {
+            let func = Func::get_by_id(ctx, func_id).await?;
+            all_funcs.push(func);
+        }
+        // qualification funcs
+        for func_id in
+            Self::list_qualification_func_ids_for_schema_variant(ctx, schema_variant_id).await?
+        {
+            let func = Func::get_by_id(ctx, func_id).await?;
+            all_funcs.push(func);
+        }
+        // action funcs
+        for func_id in Self::list_action_func_ids_for_schema_variant(ctx, schema_variant_id).await?
+        {
+            let func = Func::get_by_id(ctx, func_id).await?;
+            all_funcs.push(func);
+        }
+        //code gen
+        for func_id in
+            Self::list_code_gen_func_ids_for_schema_variant(ctx, schema_variant_id).await?
+        {
+            let func = Func::get_by_id(ctx, func_id).await?;
+            all_funcs.push(func);
+        }
+        Ok(all_funcs)
     }
 
     pub async fn list_auth_func_ids_for_schema_variant(
