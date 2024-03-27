@@ -24,6 +24,6 @@ declare namespace Cypress {
     */
     sendPosthogEvent(event: string, eventKey: string, eventData: string): Chainable<any>;
 
-    dragTo(sourceElement: string, targetElement: string): void;
+    dragTo(sourceElement: string, targetElement: string, offsetX? :number, offsetY?: number): void;
   }
 }

@@ -331,6 +331,7 @@
           <input
             v-model="newValueString"
             spellcheck="false"
+            :class="`${propLabelParts[0]}${propLabelParts[1]}`"
             type="text"
             @blur="onBlur"
             @focus="onFocus"
