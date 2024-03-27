@@ -32,7 +32,7 @@ impl PropertyEditorSchema {
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
         let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
-        let root_property_editor_prop = PropertyEditorProp::new(root_prop);
+        let root_property_editor_prop = PropertyEditorProp::new(ctx, root_prop).await?;
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
@@ -72,7 +72,7 @@ impl PropertyEditorSchema {
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
                 let child_prop = Prop::get_by_id(ctx, child_prop_id).await?;
-                let child_property_editor_prop = PropertyEditorProp::new(child_prop);
+                let child_property_editor_prop = PropertyEditorProp::new(ctx, child_prop).await?;
 
                 // Load the work queue with the child prop.
                 work_queue.push_back((child_prop_id, child_property_editor_prop.id));
@@ -104,11 +104,14 @@ pub struct PropertyEditorProp {
     pub doc_link: Option<String>,
     pub documentation: Option<String>,
     pub validation_format: Option<String>,
+    pub default_can_be_set_by_socket: bool,
 }
 
 impl PropertyEditorProp {
-    pub fn new(prop: Prop) -> PropertyEditorProp {
-        PropertyEditorProp {
+    pub async fn new(ctx: &DalContext, prop: Prop) -> PropertyEditorResult<PropertyEditorProp> {
+        let default_can_be_set_by_socket = !prop.input_socket_sources(ctx).await?.is_empty();
+
+        Ok(PropertyEditorProp {
             id: prop.id.into(),
             name: prop.name,
             kind: prop.kind.into(),
@@ -119,7 +122,8 @@ impl PropertyEditorProp {
             doc_link: prop.doc_link.map(Into::into),
             documentation: prop.documentation.map(Into::into),
             validation_format: prop.validation_format.map(Into::into),
-        }
+            default_can_be_set_by_socket,
+        })
     }
 }
 

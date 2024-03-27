@@ -135,7 +135,7 @@ impl PropertyEditorValues {
                 let child_property_editor_value_id = PropertyEditorValueId::from(child_av_id);
 
                 let sockets_for_av =
-                    AttributeValue::list_input_sockets_sources_for_id(ctx, child_av_id).await?;
+                    AttributeValue::list_input_socket_sources_for_id(ctx, child_av_id).await?;
 
                 let is_from_external_source = sockets_for_av
                     .iter()

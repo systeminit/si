@@ -37,6 +37,28 @@ mod test {
         assert!(graph.is_acyclic_directed());
     }
 
+    // Previously, WorkspaceSnapshotGraph::new would not populate its node_index_by_id, so this test
+    // would fail, in addition to any functionality that depended on getting the root node index
+    // on a fresh graph (like add_ordered_node)
+    #[test]
+    fn get_root_index_by_root_id_on_fresh_graph() {
+        let base_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &base_change_set;
+        let graph = WorkspaceSnapshotGraph::new(active_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let root_id = graph
+            .get_node_weight(graph.root_index)
+            .expect("get root weight")
+            .id();
+
+        let root_node_idx = graph
+            .get_node_index_by_id(root_id)
+            .expect("get root node index from ULID");
+
+        assert_eq!(graph.root_index, root_node_idx);
+    }
+
     #[test]
     fn multiply_parented_nodes() {
         // All edges are outgoing from top to bottom except e to u
@@ -1359,6 +1381,182 @@ mod test {
     }
 
     #[test]
+    fn detect_conflicts_and_updates_add_unordered_child_to_ordered_container() {
+        let base_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &base_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(active_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+        let active_graph = &mut base_graph;
+
+        // Create base prop node
+        let base_prop_id = {
+            let prop_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let prop_index = active_graph
+                .add_ordered_node(
+                    active_change_set,
+                    NodeWeight::new_content(
+                        active_change_set,
+                        prop_id,
+                        ContentAddress::Prop(ContentHash::new(prop_id.to_string().as_bytes())),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add prop");
+
+            active_graph
+                .add_edge(
+                    active_graph.root_index,
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create EdgeWeight"),
+                    prop_index,
+                )
+                .expect("Unable to add sv -> prop edge");
+
+            prop_id
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        // Create two prop nodes children of base prop
+        let ordered_prop_1_index = {
+            let ordered_prop_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let ordered_prop_index = active_graph
+                .add_node(
+                    NodeWeight::new_content(
+                        active_change_set,
+                        ordered_prop_id,
+                        ContentAddress::Prop(ContentHash::new(
+                            ordered_prop_id.to_string().as_bytes(),
+                        )),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add ordered prop");
+            active_graph
+                .add_ordered_edge(
+                    active_change_set,
+                    active_graph
+                        .get_node_index_by_id(base_prop_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create uses edge weight"),
+                    ordered_prop_index,
+                )
+                .expect("Unable to add prop -> ordered_prop_1 edge");
+
+            ordered_prop_index
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        let attribute_prototype_id = {
+            let node_id = active_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let node_index = active_graph
+                .add_node(
+                    NodeWeight::new_content(
+                        active_change_set,
+                        node_id,
+                        ContentAddress::AttributePrototype(ContentHash::new(
+                            node_id.to_string().as_bytes(),
+                        )),
+                    )
+                    .expect("Unable to create NodeWeight"),
+                )
+                .expect("Unable to add attribute prototype");
+
+            active_graph
+                .add_edge(
+                    active_graph.root_index,
+                    EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                        .expect("Unable to create EdgeWeight"),
+                    node_index,
+                )
+                .expect("Unable to add root -> prototype edge");
+
+            node_id
+        };
+
+        active_graph.cleanup();
+        active_graph.dot();
+
+        // Get new graph
+        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &new_change_set;
+        let mut new_graph = base_graph.clone();
+        let active_graph = &mut new_graph;
+
+        // Connect Prototype to Prop
+        active_graph
+            .add_edge(
+                active_graph
+                    .get_node_index_by_id(base_prop_id)
+                    .expect("Unable to get prop NodeIndex"),
+                EdgeWeight::new(active_change_set, EdgeWeightKind::Prototype(None))
+                    .expect("Unable to create EdgeWeight"),
+                active_graph
+                    .get_node_index_by_id(attribute_prototype_id)
+                    .expect("Unable to get prop NodeIndex"),
+            )
+            .expect("Unable to add sv -> prop edge");
+        active_graph.cleanup();
+        active_graph.dot();
+
+        assert_eq!(
+            vec![ordered_prop_1_index,],
+            new_graph
+                .ordered_children_for_node(
+                    new_graph
+                        .get_node_index_by_id(base_prop_id)
+                        .expect("Unable to get base prop NodeIndex")
+                )
+                .expect("Unable to find ordered children for node")
+                .expect("Node is not an ordered node")
+        );
+
+        // Assert that the new edge to the prototype gets created
+        let (conflicts, updates) = base_graph
+            .detect_conflicts_and_updates(
+                active_change_set.vector_clock_id(),
+                &new_graph,
+                new_change_set.vector_clock_id(),
+            )
+            .expect("Unable to detect conflicts and updates");
+
+        assert!(conflicts.is_empty());
+
+        match updates.as_slice() {
+            [Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            }] => {
+                assert_eq!(
+                    base_graph
+                        .get_node_index_by_id(base_prop_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    *source
+                );
+                assert_eq!(
+                    base_graph
+                        .get_node_index_by_id(attribute_prototype_id)
+                        .expect("Unable to get prop NodeIndex"),
+                    *destination
+                );
+                assert_eq!(&EdgeWeightKind::Prototype(None), edge_weight.kind());
+            }
+            other => panic!("Unexpected updates: {:?}", other),
+        }
+    }
+
+    #[test]
     fn detect_conflicts_and_updates_complex() {
         let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
@@ -1862,6 +2060,51 @@ mod test {
                 ordered_prop_2_index,
                 ordered_prop_3_index,
             ],
+            graph
+                .ordered_children_for_node(
+                    graph
+                        .get_node_index_by_id(prop_id)
+                        .expect("Unable to get prop NodeIndex")
+                )
+                .expect("Unable to find ordered children for node")
+                .expect("Node is not an ordered node")
+        );
+    }
+
+    #[test]
+    fn add_ordered_node_below_root() {
+        let base_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let active_change_set = &base_change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(active_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let prop_id = active_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let prop_index = graph
+            .add_ordered_node(
+                active_change_set,
+                NodeWeight::new_content(
+                    active_change_set,
+                    prop_id,
+                    ContentAddress::Prop(ContentHash::new(prop_id.to_string().as_bytes())),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add prop");
+
+        graph
+            .add_edge(
+                graph.root_index,
+                EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
+                    .expect("Unable to create EdgeWeight"),
+                prop_index,
+            )
+            .expect("Unable to add root -> prop edge");
+
+        graph.cleanup();
+        assert_eq!(
+            Vec::<NodeIndex>::new(),
             graph
                 .ordered_children_for_node(
                     graph

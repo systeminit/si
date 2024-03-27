@@ -621,7 +621,7 @@ impl SchemaVariant {
     /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
     /// for the /root/si/color [`Prop`](crate::Prop). If a prototype already
     /// exists pointing to a function other than
-    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// [`IntrinsicFunc::SetString`](crate::func::intrinsics::IntrinsicFunc::SetString)
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
     pub async fn set_color(
@@ -642,7 +642,7 @@ impl SchemaVariant {
     /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
     /// for the /root/si/type [`Prop`](crate::Prop). If a prototype already
     /// exists pointing to a function other than
-    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// [`IntrinsicFunc::SetString`](crate::func::intrinsics::IntrinsicFunc::SetString)
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
     pub async fn set_type(
@@ -663,7 +663,7 @@ impl SchemaVariant {
     /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
     /// for the /root/si/type [`Prop`](crate::Prop). If a prototype already
     /// exists pointing to a function other than
-    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// [`IntrinsicFunc::SetString`](crate::func::intrinsics::IntrinsicFunc::SetString)
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
     pub async fn get_type(&self, ctx: &DalContext) -> SchemaVariantResult<Option<ComponentType>> {

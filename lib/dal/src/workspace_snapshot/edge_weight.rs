@@ -42,7 +42,7 @@ pub enum EdgeWeightKind {
     Ordinal,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
-    /// An edge from a [`socket`](crate::socket) or an [`AttributeValue`](`crate::AttributeValue`)
+    /// An edge from a [`socket`](crate::socket), [`AttributeValue`](crate::AttributeValue) or [`Prop`](crate::Prop)
     /// to an [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
     /// maps, arrays and relevant container types to indicate which element the prototype is for.
     Prototype(Option<String>),

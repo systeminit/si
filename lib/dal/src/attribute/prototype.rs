@@ -18,6 +18,8 @@ use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::value_source::ValueSource;
+use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -29,7 +31,8 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, DalContext, FuncId, OutputSocketId, PropId, Timestamp, TransactionsError,
+    pk, AttributeValueId, DalContext, FuncId, InputSocketId, OutputSocketId, PropId, Timestamp,
+    TransactionsError,
 };
 
 pub mod argument;
@@ -37,6 +40,8 @@ pub mod argument;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -377,5 +382,26 @@ impl AttributePrototype {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn list_input_socket_sources_for_id(
+        ctx: &DalContext,
+        ap_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Vec<InputSocketId>> {
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, ap_id)
+            .await
+            .map_err(|e| AttributePrototypeError::AttributePrototypeArgument(e.to_string()))?;
+
+        let mut input_socket_ids = Vec::<InputSocketId>::new();
+        for apa_id in apa_ids {
+            let maybe_value_source = AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
+                .await
+                .map_err(|e| AttributePrototypeError::AttributePrototypeArgument(e.to_string()))?;
+            if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {
+                input_socket_ids.push(socket_id);
+            }
+        }
+
+        Ok(input_socket_ids)
     }
 }

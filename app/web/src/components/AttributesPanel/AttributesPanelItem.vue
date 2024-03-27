@@ -308,6 +308,7 @@
         />
         <Icon
           v-if="
+            sourceOverridden &&
             currentValue !== null &&
             !propPopulatedBySocket &&
             !propControlledByParent
@@ -445,7 +446,7 @@
           v-if="
             propControlledByParent ||
             (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              propPopulatedBySocket &&
+              propSetByDynamicFunc &&
               !editOverride)
           "
           v-tooltip="
@@ -556,8 +557,8 @@
           function from an ancestor prop.
         </template>
         <template v-else>
-          Editing the prop "{{ propName }}" directly will override the socket
-          which is currently setting its value.
+          Editing the prop "{{ propName }}" directly will override the value
+          that is set by a dynamic function.
         </template>
       </div>
       <div class="flex gap-sm">
@@ -751,7 +752,7 @@ const propPopulatedBySocket = computed(
 const propHasSocket = computed(
   () => props.attributeDef.value?.canBeSetBySocket,
 );
-const propSetByFunc = computed(
+const propSetByDynamicFunc = computed(
   () =>
     props.attributeDef.value?.isControlledByDynamicFunc &&
     !propHasSocket.value &&
@@ -762,18 +763,18 @@ const propManual = computed(
     !(
       propPopulatedBySocket.value ||
       propHasSocket.value ||
-      propSetByFunc.value
+      propSetByDynamicFunc.value
     ),
 );
 const propSource = computed<SourceKind>(() => {
   if (propHasSocket.value || propPopulatedBySocket.value) return "via socket";
-  else if (propSetByFunc.value) return "via attribute func";
+  else if (propSetByDynamicFunc.value) return "via attribute func";
   else return "manually";
 });
 
 const sourceIcon = computed(() => {
   if (propPopulatedBySocket.value) return "circle-full";
-  else if (propSetByFunc.value) return "func";
+  else if (propSetByDynamicFunc.value) return "func";
   else if (propHasSocket.value) return "circle-empty";
   else return "cursor";
 });
@@ -784,7 +785,7 @@ const sourceTooltip = computed(() => {
   if (sourceOverridden.value) {
     if (propPopulatedBySocket.value) {
       return `${propName.value} has been overriden to be set via a populated socket`;
-    } else if (propSetByFunc.value) {
+    } else if (propSetByDynamicFunc.value) {
       return `${propName.value} has been overriden to be set by a dynamic function`;
     } else if (propHasSocket.value) {
       return `${propName.value} has been overriden to be set via an empty socket`;
@@ -793,7 +794,7 @@ const sourceTooltip = computed(() => {
   } else {
     if (propPopulatedBySocket.value) {
       return `${propName.value} is set via a populated socket`;
-    } else if (propSetByFunc.value) {
+    } else if (propSetByDynamicFunc.value) {
       return `${propName.value} is set by a dynamic function`;
     } else if (propHasSocket.value) {
       return `${propName.value} is set via an empty socket`;
@@ -876,17 +877,6 @@ function unsetHandler() {
   newValueBoolean.value = false;
   newValueString.value = "";
 
-  // TODO(Wendy) - OLD CODE, REMOVE ONCE RESET_PROPERTY_VALUE IS WIRED UP TO THE BACKEND
-  // attributesStore.UPDATE_PROPERTY_VALUE({
-  //   update: {
-  //     attributeValueId: props.attributeDef.valueId,
-  //     parentAttributeValueId: props.attributeDef.parentValueId,
-  //     propId: props.attributeDef.propId,
-  //     componentId,
-  //     value: null,
-  //   },
-  // });
-
   attributesStore.RESET_PROPERTY_VALUE({
     attributeValueId: props.attributeDef.valueId,
   });
@@ -911,7 +901,7 @@ function updateValue() {
     if (newVal === "" && !currentValue.value) skipUpdate = true;
   }
 
-  // dont trigger an update if the value has not changed
+  // don't trigger an update if the value has not changed
   // (and some special cases handled for specific types)
   if (skipUpdate || newVal === currentValue.value) {
     return;
@@ -970,7 +960,7 @@ const secret = computed(
 const secretDefinitionId = computed(() => {
   if (props.attributeDef.propDef.widgetKind.kind !== "secret") return;
   const widgetOptions = props.attributeDef.propDef.widgetKind.options;
-  // WHAT? this setup doesn't really make sense...
+  // A widget of kind=secret has a single option that points to its secret definition
   const secretKind = _.find(
     widgetOptions,
     (o) => o.label === "secretKind",

@@ -2106,23 +2106,11 @@ impl AttributeValue {
         Ok(())
     }
 
-    pub async fn list_input_sockets_sources_for_id(
+    pub async fn list_input_socket_sources_for_id(
         ctx: &DalContext,
         av_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<InputSocketId>> {
         let prototype_id = Self::prototype_id(ctx, av_id).await?;
-
-        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-
-        let mut input_socket_ids = Vec::<InputSocketId>::new();
-        for apa_id in apa_ids {
-            let maybe_value_source =
-                AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?;
-            if let Some(ValueSource::InputSocket(socket_id)) = maybe_value_source {
-                input_socket_ids.push(socket_id);
-            }
-        }
-
-        Ok(input_socket_ids)
+        Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 }
