@@ -721,11 +721,6 @@ impl WorkspaceSnapshotGraph {
                     // }
                 }
 
-                // We'll lazily populate these, since we don't know if we'll need it at all, and
-                // we definitely don't want to be re-fetching this information inside the loop
-                // below, as it will be identical every time.
-                let mut onto_ordering_node_index = None;
-
                 // If everything with the same `lineage_id` is identical, then we can prune the
                 // graph traversal, and avoid unnecessary lookups/comparisons.
                 let mut any_content_with_lineage_has_changed = false;
@@ -781,21 +776,47 @@ impl WorkspaceSnapshotGraph {
                             // There may also be other conflicts in the outgoing
                             // relationships, the downstream nodes, or both.
 
-                            // If the nodes in question are ordering nodes, the
-                            // conflict we care about is the ChildOrder
-                            // conflict, and will have already been detected.
-                            // The content on the ordering node is just the
-                            // ordering of the edges, so what matters if there
-                            // is a conflict in order, not if the hashes differ
-                            // because there is an extra edge (but the rest of
-                            // the edges are ordered the same)
-                            if !matches!(
-                                (onto_node_weight, to_rebase_node_weight),
-                                (
-                                    NodeWeight::Ordering(OrderingNodeWeight { .. }),
-                                    NodeWeight::Ordering(OrderingNodeWeight { .. })
-                                )
-                            ) {
+                            if let (
+                                NodeWeight::Ordering(onto_ordering),
+                                NodeWeight::Ordering(to_rebase_ordering),
+                            ) = (onto_node_weight, to_rebase_node_weight)
+                            {
+                                // TODO Checking if two ordering arrays are non conflicting
+                                // (if the common elements between two ordering have the same relative positions)
+                                // is logic that could be extracted into its own thing. The following code does that
+
+                                // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
+                                // need to find out what the changes are to see what needs to be updated, and what
+                                // conflicts.
+                                let onto_ordering_set: HashSet<Ulid> =
+                                    onto_ordering.order().iter().copied().collect();
+                                let to_rebase_ordering_set: HashSet<Ulid> =
+                                    to_rebase_ordering.order().iter().copied().collect();
+
+                                // Make sure that both `onto` and `to_rebase` have the same relative ordering for the
+                                // nodes they have in common. If they don't, then that means that the order changed on
+                                // at least one of them.
+                                let common_items: HashSet<Ulid> = onto_ordering_set
+                                    .intersection(&to_rebase_ordering_set)
+                                    .copied()
+                                    .collect();
+                                let common_onto_items = {
+                                    let mut items = onto_ordering.order().clone();
+                                    items.retain(|i| common_items.contains(i));
+                                    items
+                                };
+                                let common_to_rebase_items = {
+                                    let mut items = to_rebase_ordering.order().clone();
+                                    items.retain(|i| common_items.contains(i));
+                                    items
+                                };
+                                if common_onto_items != common_to_rebase_items {
+                                    conflicts.push(Conflict::ChildOrder {
+                                        to_rebase: to_rebase_node_index,
+                                        onto: onto_node_index,
+                                    });
+                                }
+                            } else {
                                 conflicts.push(Conflict::NodeContent {
                                     to_rebase: to_rebase_node_index,
                                     onto: onto_node_index,
@@ -804,84 +825,23 @@ impl WorkspaceSnapshotGraph {
                         }
                     }
 
-                    if onto_ordering_node_index.is_none() {
-                        onto_ordering_node_index = onto
-                            .ordering_node_index_for_container(onto_node_index)
-                            .map_err(|_| event)?;
-                    }
-                    let to_rebase_ordering_node_index = self
-                        .ordering_node_index_for_container(to_rebase_node_index)
-                        .map_err(|_| event)?;
+                    let (container_conflicts, container_updates) = self
+                        .find_container_membership_conflicts_and_updates(
+                            to_rebase_vector_clock_id,
+                            to_rebase_node_index,
+                            &[],
+                            onto,
+                            onto_vector_clock_id,
+                            onto_node_index,
+                            &[],
+                        )
+                        .map_err(|err| {
+                            error!("Unable to find container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
+                            event
+                        })?;
 
-                    match (to_rebase_ordering_node_index, onto_ordering_node_index) {
-                        (None, None) => {
-                            // Neither is ordered. The potential conflict could be because one
-                            // or more elements changed, because elements were added/removed,
-                            // or a combination of these.
-                            //
-                            // We need to check for all of these using the outgoing edges from
-                            // the containers, since we can't rely on an ordering child to
-                            // contain all the information to determine ordering/addition/removal.
-                            //
-                            // Eventually, this will only happen on the root node itself, since
-                            // Objects, Maps, and Arrays should all have an ordering, for at
-                            // least display purposes.
-                            debug!(
-                                "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
-                                onto_node_index, to_rebase_node_index,
-                            );
-                            debug!(
-                                "Comparing unordered containers: {:?}, {:?}",
-                                onto_node_index, to_rebase_node_index
-                            );
-
-                            let (container_conflicts, container_updates) = self
-                                .find_unordered_container_membership_conflicts_and_updates(
-                                    to_rebase_vector_clock_id,
-                                    to_rebase_node_index,
-                                    &[],
-                                    onto,
-                                    onto_vector_clock_id,
-                                    onto_node_index,
-                                    &[],
-                                )
-                                .map_err(|err| {
-                                    error!("Unable to find unordered container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
-                                    event
-                                })?;
-
-                            updates.extend(container_updates);
-                            conflicts.extend(container_conflicts);
-                        }
-                        (None, Some(_)) | (Some(_), None) => {
-                            // We're trying to compare an ordered container with an unordered one,
-                            // which isn't something that logically makes sense, so we've likely
-                            // started comparing incompatible things.
-                            warn!(
-                                "Attempting to compare an ordered, and an unordered container: onto {:?}, to_rebase {:?}",
-                                onto_node_index, to_rebase_node_index,
-                            );
-                            return Err(event);
-                        }
-                        (Some(to_rebase_ordering_node_index), Some(onto_ordering_node_index)) => {
-                            let (container_conflicts, container_updates) = self
-                                .find_ordered_container_membership_conflicts_and_updates(
-                                    to_rebase_vector_clock_id,
-                                    to_rebase_node_index,
-                                    to_rebase_ordering_node_index,
-                                    onto,
-                                    onto_vector_clock_id,
-                                    onto_node_index,
-                                    onto_ordering_node_index,
-                                )
-                                .map_err(|_| event)?;
-
-                            updates.extend(container_updates);
-                            conflicts.extend(container_conflicts);
-
-                            return Ok(petgraph::visit::Control::Continue);
-                        }
-                    }
+                    updates.extend(container_updates);
+                    conflicts.extend(container_conflicts);
                 }
 
                 if any_content_with_lineage_has_changed {
@@ -1065,274 +1025,7 @@ impl WorkspaceSnapshotGraph {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn find_ordered_container_membership_conflicts_and_updates(
-        &self,
-        to_rebase_vector_clock_id: VectorClockId,
-        to_rebase_container_index: NodeIndex,
-        to_rebase_ordering_index: NodeIndex,
-        onto: &WorkspaceSnapshotGraph,
-        onto_vector_clock_id: VectorClockId,
-        onto_container_index: NodeIndex,
-        onto_ordering_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
-        let mut updates = Vec::new();
-        let mut conflicts = Vec::new();
-
-        let onto_ordering = match onto.get_node_weight(onto_ordering_index)? {
-            NodeWeight::Ordering(ordering) => ordering,
-            _ => return Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes),
-        };
-        let to_rebase_ordering = match self.get_node_weight(to_rebase_ordering_index)? {
-            NodeWeight::Ordering(ordering) => ordering,
-            _ => return Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes),
-        };
-
-        if onto_ordering.order() != to_rebase_ordering.order() {
-            if onto_ordering
-                .vector_clock_write()
-                .is_newer_than(to_rebase_ordering.vector_clock_write())
-            {
-                let onto_ordering_set: HashSet<Ulid> =
-                    onto_ordering.order().iter().copied().collect();
-                let to_rebase_ordering_set: HashSet<Ulid> =
-                    to_rebase_ordering.order().iter().copied().collect();
-                let new_items: HashSet<Ulid> = onto_ordering_set
-                    .difference(&to_rebase_ordering_set)
-                    .copied()
-                    .collect();
-                let removed_items: HashSet<Ulid> = to_rebase_ordering_set
-                    .difference(&onto_ordering_set)
-                    .copied()
-                    .collect();
-
-                // Find which `other` container items have the new ordering IDs so we can add edges
-                // from the `to_rebase` container to them (and create them in `to_rebase` if they don't
-                // already exist).
-                for onto_container_item_index in onto
-                    .graph
-                    .neighbors_directed(onto_container_index, Outgoing)
-                {
-                    let onto_container_item_weight =
-                        onto.get_node_weight(onto_container_item_index)?;
-                    if new_items.contains(&onto_container_item_weight.id()) {
-                        for edge in onto
-                            .graph
-                            .edges_connecting(onto_container_index, onto_container_item_index)
-                        {
-                            updates.push(Update::NewEdge {
-                                source: to_rebase_container_index,
-                                destination: onto_container_item_index,
-                                edge_weight: edge.weight().clone(),
-                            });
-                        }
-                    }
-                }
-
-                // Remove the edges from the `to_rebase` container to the items removed in `onto`. We
-                // don't need to worry about removing the items themselves as they will be garbage
-                // collected when we drop all items that are not reachable from `to_rebase.root_index`
-                // if they are no longer referenced by anything.
-                for to_rebase_container_item_index in self
-                    .graph
-                    .neighbors_directed(to_rebase_container_index, Outgoing)
-                {
-                    let to_rebase_container_item_weight =
-                        self.get_node_weight(to_rebase_container_item_index)?;
-                    if removed_items.contains(&to_rebase_container_item_weight.id()) {
-                        for edgeref in self.graph.edges_connecting(
-                            to_rebase_container_index,
-                            to_rebase_container_item_index,
-                        ) {
-                            updates.push(Update::RemoveEdge {
-                                source: edgeref.source(),
-                                destination: edgeref.target(),
-                                edge_kind: edgeref.weight().kind().into(),
-                            });
-                        }
-                    }
-                }
-            } else if to_rebase_ordering
-                .vector_clock_write()
-                .is_newer_than(onto_ordering.vector_clock_write())
-            {
-                // We already have everything in `onto` as part of `to_rebase`. Nothing needs
-                // updating, and there are no conflicts.
-            } else {
-                // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
-                // need to find out what the changes are to see what needs to be updated, and what
-                // conflicts.
-                let onto_ordering_set: HashSet<Ulid> =
-                    onto_ordering.order().iter().copied().collect();
-                let to_rebase_ordering_set: HashSet<Ulid> =
-                    to_rebase_ordering.order().iter().copied().collect();
-
-                // Make sure that both `onto` and `to_rebase` have the same relative ordering for the
-                // nodes they have in common. If they don't, then that means that the order changed on
-                // at least one of them.
-                let common_items: HashSet<Ulid> = onto_ordering_set
-                    .intersection(&to_rebase_ordering_set)
-                    .copied()
-                    .collect();
-                let common_onto_items = {
-                    let mut items = onto_ordering.order().clone();
-                    items.retain(|i| common_items.contains(i));
-                    items
-                };
-                let common_to_rebase_items = {
-                    let mut items = to_rebase_ordering.order().clone();
-                    items.retain(|i| common_items.contains(i));
-                    items
-                };
-                if common_onto_items != common_to_rebase_items {
-                    conflicts.push(Conflict::ChildOrder {
-                        onto: onto_ordering_index,
-                        to_rebase: to_rebase_ordering_index,
-                    });
-                }
-
-                let only_onto_items: HashSet<Ulid> = onto_ordering_set
-                    .difference(&to_rebase_ordering_set)
-                    .copied()
-                    .collect();
-                let only_to_rebase_items: HashSet<Ulid> = to_rebase_ordering_set
-                    .difference(&onto_ordering_set)
-                    .copied()
-                    .collect();
-
-                let mut only_to_rebase_item_indexes = HashMap::new();
-                for to_rebase_edgeref in self
-                    .graph
-                    .edges_directed(to_rebase_container_index, Outgoing)
-                {
-                    let dest_node_weight = self.get_node_weight(to_rebase_edgeref.target())?;
-                    if only_to_rebase_items.contains(&dest_node_weight.id()) {
-                        only_to_rebase_item_indexes
-                            .insert(dest_node_weight.id(), to_rebase_edgeref.target());
-                    }
-                }
-
-                for only_to_rebase_item in only_to_rebase_items {
-                    let only_to_rebase_item_index = *only_to_rebase_item_indexes
-                        .get(&only_to_rebase_item)
-                        .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(
-                            only_to_rebase_item,
-                        ))?;
-                    for to_rebase_edgeref in self
-                        .graph
-                        .edges_connecting(to_rebase_container_index, only_to_rebase_item_index)
-                    {
-                        if to_rebase_edgeref
-                            .weight()
-                            .vector_clock_first_seen()
-                            .entry_for(onto_vector_clock_id)
-                            .is_none()
-                        {
-                            // `only_to_rebase_item` is new: Edge in `to_rebase` does not have a "First Seen" for `onto`.
-                        } else if self
-                            .get_node_weight(only_to_rebase_item_index)?
-                            .vector_clock_write()
-                            .entry_for(to_rebase_vector_clock_id)
-                            .is_some()
-                        {
-                            // Entry was deleted in `onto`. If we have also modified the entry, then
-                            // there's a conflict.
-                            conflicts.push(Conflict::ModifyRemovedItem(only_to_rebase_item_index));
-                        } else {
-                            // Entry was deleted in `onto`, and has not been modified in `to_rebase`:
-                            // Remove the edge.
-                            updates.push(Update::RemoveEdge {
-                                source: to_rebase_edgeref.source(),
-                                destination: to_rebase_edgeref.target(),
-                                edge_kind: to_rebase_edgeref.weight().kind().into(),
-                            });
-                        }
-                    }
-                }
-
-                let mut only_onto_item_indexes = HashMap::new();
-                for onto_edgeref in onto.graph.edges_directed(onto_container_index, Outgoing) {
-                    let dest_node_weight = onto.get_node_weight(onto_edgeref.target())?;
-                    if only_onto_items.contains(&dest_node_weight.id()) {
-                        only_onto_item_indexes.insert(dest_node_weight.id(), onto_edgeref.target());
-                    }
-                }
-
-                let onto_root_seen_as_of = self
-                    .get_node_weight(self.root_index)?
-                    .vector_clock_recently_seen()
-                    .entry_for(onto_vector_clock_id);
-                for only_onto_item in only_onto_items {
-                    let only_onto_item_index = *only_onto_item_indexes.get(&only_onto_item).ok_or(
-                        WorkspaceSnapshotGraphError::NodeWithIdNotFound(only_onto_item),
-                    )?;
-                    for onto_edgeref in onto
-                        .graph
-                        .edges_connecting(onto_container_index, only_onto_item_index)
-                    {
-                        // `only_onto_item` is new:
-                        //   - "First seen" of edge for `onto` > "Seen As Of" on root for `onto` in
-                        //     `to_rebase`.
-                        if let Some(onto_first_seen) = onto_edgeref
-                            .weight()
-                            .vector_clock_first_seen()
-                            .entry_for(onto_vector_clock_id)
-                        {
-                            if let Some(root_seen_as_of) = onto_root_seen_as_of {
-                                if onto_first_seen > root_seen_as_of {
-                                    // The edge for the item was created more recently than the last
-                                    // state we knew of from `onto`, which means that the item is
-                                    // "new". We can't have removed something that we didn't know
-                                    // existed in the first place.
-                                    updates.push(Update::NewEdge {
-                                        source: to_rebase_container_index,
-                                        destination: onto_edgeref.target(),
-                                        edge_weight: onto_edgeref.weight().clone(),
-                                    });
-                                }
-                            }
-                        } else if let Ok(onto_item_node_weight) =
-                            onto.get_node_weight(only_onto_item_index)
-                        {
-                            if let Some(root_seen_as_of) = onto_root_seen_as_of {
-                                if onto_item_node_weight
-                                    .vector_clock_write()
-                                    .has_entries_newer_than(root_seen_as_of)
-                                {
-                                    // The item removed in `to_rebase` has been modified in `onto`
-                                    // since we last knew the state of `onto`: This is a conflict, as
-                                    // we don't know if the removal is still intended given the new
-                                    // state of the item.
-                                    conflicts.push(Conflict::RemoveModifiedItem {
-                                        container: to_rebase_container_index,
-                                        removed_item: only_onto_item_index,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let (unordered_conflicts, unordered_updates) = self
-            .find_unordered_container_membership_conflicts_and_updates(
-                to_rebase_vector_clock_id,
-                to_rebase_container_index,
-                to_rebase_ordering.order(),
-                onto,
-                onto_vector_clock_id,
-                onto_container_index,
-                onto_ordering.order(),
-            )?;
-
-        conflicts.extend(unordered_conflicts);
-        updates.extend(unordered_updates);
-
-        Ok((conflicts, updates))
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn find_unordered_container_membership_conflicts_and_updates(
+    fn find_container_membership_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
         to_rebase_container_index: NodeIndex,
