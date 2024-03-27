@@ -33,24 +33,25 @@ pub mod vector_clock;
 use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
 use chrono::Utc;
 use futures::executor;
+use petgraph::prelude::*;
 use petgraph::visit::DfsEvent;
+use si_data_pg::PgError;
+use si_events::ContentHash;
 use si_events::NodeWeightAddress;
+use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::db::node_weight::NodeWeightDb;
 use si_layer_cache::persister::PersistStatus;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::sync::Arc;
+use strum::IntoEnumIterator;
+use telemetry::prelude::*;
+use thiserror::Error;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 use tokio::time::Instant;
 
-use petgraph::prelude::*;
-use si_data_pg::PgError;
-use si_events::ContentHash;
-use si_events::WorkspaceSnapshotAddress;
-use telemetry::prelude::*;
-use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
@@ -143,12 +144,12 @@ pub struct WorkspaceSnapshot {
     events_tenancy: si_events::Tenancy,
 }
 
-pub struct SnapshotReadGuard<'a> {
+struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
     working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
 
-pub struct SnapshotWriteGuard<'a> {
+struct SnapshotWriteGuard<'a> {
     working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
 
@@ -197,8 +198,9 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
 }
 
 impl WorkspaceSnapshot {
-    #[instrument(level = "debug", skip_all)]
-    pub async fn initial(
+    /// Generates a snapshot with only a root node, without persisting it. In
+    /// most cases what you want is [`WorkspaceSnapshot::initial`].
+    pub async fn empty(
         ctx: &DalContext,
         change_set: &ChangeSetPointer,
     ) -> WorkspaceSnapshotResult<Self> {
@@ -207,7 +209,6 @@ impl WorkspaceSnapshot {
             change_set.generate_ulid()?,
             content_address::ContentAddress::Root,
         )?);
-        let root_id = root_node.id();
         let (node_address, _) = ctx
             .layer_db()
             .node_weight()
@@ -221,67 +222,38 @@ impl WorkspaceSnapshot {
 
         let graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(root_node, node_address)?;
 
-        let initial = Self {
+        Ok(Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
             read_only_graph: Arc::new(graph),
             working_copy: Arc::new(RwLock::new(None)),
             node_weight_db: ctx.layer_db().node_weight().clone(),
             events_actor: ctx.events_actor(),
             events_tenancy: ctx.events_tenancy(),
-        };
+        })
+    }
+
+    /// Generates a snapshot with the initial category nodes attached to the
+    /// root node and writes it out.
+    #[instrument(level = "debug", skip_all)]
+    pub async fn initial(
+        ctx: &DalContext,
+        change_set: &ChangeSetPointer,
+    ) -> WorkspaceSnapshotResult<Self> {
+        let initial = Self::empty(ctx, change_set).await?;
+        let root_id = initial.root_id().await?;
 
         // Create the category nodes under root.
-        let component_node_id = initial
-            .add_category_node(change_set, CategoryNodeKind::Component)
-            .await?;
-        let func_node_id = initial
-            .add_category_node(change_set, CategoryNodeKind::Func)
-            .await?;
-        let action_batch_node_id = initial
-            .add_category_node(change_set, CategoryNodeKind::ActionBatch)
-            .await?;
-        let schema_node_id = initial
-            .add_category_node(change_set, CategoryNodeKind::Schema)
-            .await?;
-        let secret_node_id = initial
-            .add_category_node(change_set, CategoryNodeKind::Secret)
-            .await?;
-        // Connect them to root.
-        initial
-            .add_edge(
-                root_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                action_batch_node_id,
-            )
-            .await?;
-        initial
-            .add_edge(
-                root_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                component_node_id,
-            )
-            .await?;
-        initial
-            .add_edge(
-                root_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_node_id,
-            )
-            .await?;
-        initial
-            .add_edge(
-                root_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                schema_node_id,
-            )
-            .await?;
-        initial
-            .add_edge(
-                root_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                secret_node_id,
-            )
-            .await?;
+        for category_kind in CategoryNodeKind::iter() {
+            let category_node_id = initial.add_category_node(change_set, category_kind).await?;
+            initial
+                .add_edge(
+                    root_id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    category_node_id,
+                )
+                .await?;
+        }
+
         initial.write(ctx, change_set.vector_clock_id()).await?;
 
         Ok(initial)
@@ -312,6 +284,10 @@ impl WorkspaceSnapshot {
 
     pub async fn node_count(&self) -> usize {
         self.working_copy().await.node_count()
+    }
+
+    pub async fn is_acyclic_directed(&self) -> bool {
+        self.working_copy().await.is_acyclic_directed()
     }
 
     pub async fn mark_graph_seen(
@@ -409,7 +385,7 @@ impl WorkspaceSnapshot {
         }
     }
 
-    pub async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
+    async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
         if self.working_copy.read().await.is_none() {
             // Make a copy of the read only graph as our new working copy
             *self.working_copy.write().await = Some(self.read_only_graph.as_ref().clone());
