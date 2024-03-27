@@ -339,85 +339,32 @@ async fn cyclic_failure(ctx: DalContext) {
             .expect("Unable to create NodeWeight"),
         )
         .await
-        .expect("Unable to add schema");
-    let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-    graph
-        .add_node(
-            NodeWeight::new_content(
-                change_set,
-                schema_variant_id,
-                ContentAddress::SchemaVariant(ContentHash::new(
-                    SchemaVariantId::generate().to_string().as_bytes(),
-                )),
-            )
-            .expect("Unable to create NodeWeight"),
-        )
-        .await
-        .expect("Unable to add schema variant");
-    let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-    graph
-        .add_node(
-            NodeWeight::new_content(
-                change_set,
-                component_id,
-                ContentAddress::Component(ContentHash::new(
-                    ComponentId::generate().to_string().as_bytes(),
-                )),
-            )
-            .expect("Unable to create NodeWeight"),
-        )
-        .await
-        .expect("Unable to add component");
+        .expect("Unable to add node");
 
     graph
         .add_edge(
             root_id,
             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
                 .expect("Unable to create EdgeWeight"),
-            component_id,
+            schema_id,
         )
         .await
         .expect("Unable to add root -> component edge");
-    graph
-        .add_edge(
-            root_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            schema_variant_id,
-        )
-        .await
-        .expect("Unable to add root -> schema edge");
+
+    let pre_cycle_root_index = root_id;
+
+    println!("before cycle check");
+    // This should cause a cycle.
     graph
         .add_edge(
             schema_id,
             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
                 .expect("Unable to create EdgeWeight"),
-            schema_variant_id,
-        )
-        .await
-        .expect("Unable to add schema -> schema variant edge");
-    graph
-        .add_edge(
-            component_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            schema_variant_id,
-        )
-        .await
-        .expect("Unable to add component -> schema variant edge");
-
-    let pre_cycle_root_index = root_id;
-
-    // This should cause a cycle.
-    graph
-        .add_edge(
-            schema_variant_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            component_id,
+            root_id,
         )
         .await
         .expect_err("Created a cycle");
+    println!("after cycle check");
 
     let current_root_id = graph.root_id().await.expect("should get root id");
 
@@ -1263,216 +1210,72 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
     assert_eq!(Vec::<Update>::new(), updates);
 }
 
-#[test]
-fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
-    let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-    let base_change_set = &empty_change_set;
-    let base_graph = WorkspaceSnapshot::empty(&ctx, base_change_set)
-        .await
-        .expect("should create snapshot");
-    let base_root_id = base_graph.root_id().await.expect("should get root id");
-    let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
-        .expect("Unable to create WorkspaceSnapshotGraph");
-
-    let schema_id = base_change_set
-        .generate_ulid()
-        .expect("Unable to generate Ulid");
-    let schema_index = base_graph
-        .add_node(
-            NodeWeight::new_content(
-                base_change_set,
-                schema_id,
-                ContentAddress::Schema(ContentHash::from("Schema A")),
-            )
-            .expect("Unable to create NodeWeight"),
-        )
-        .expect("Unable to add Schema A");
-    let schema_variant_id = base_change_set
-        .generate_ulid()
-        .expect("Unable to generate Ulid");
-    let schema_variant_index = base_graph
-        .add_node(
-            NodeWeight::new_content(
-                base_change_set,
-                schema_variant_id,
-                ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
-            )
-            .expect("Unable to create NodeWeight"),
-        )
-        .expect("Unable to add Schema Variant A");
-
-    base_graph
-        .add_edge(
-            base_root_id,
-            EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            schema_index,
-        )
-        .expect("Unable to add root -> schema edge");
-    base_graph
-        .add_edge(
-            base_graph
-                .get_node_index_by_id(schema_id)
-                .expect("Unable to get NodeIndex"),
-            EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            schema_variant_index,
-        )
-        .expect("Unable to add schema -> schema variant edge");
-
-    let component_id = base_change_set
-        .generate_ulid()
-        .expect("Unable to generate Ulid");
-    let component_index = base_graph
-        .add_node(
-            NodeWeight::new_content(
-                base_change_set,
-                component_id,
-                ContentAddress::Component(ContentHash::from("Component A")),
-            )
-            .expect("Unable to create NodeWeight"),
-        )
-        .expect("Unable to add Component A");
-    base_graph
-        .add_edge(
-            base_root_id,
-            EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            component_index,
-        )
-        .expect("Unable to add root -> component edge");
-    base_graph
-        .add_edge(
-            base_graph
-                .get_node_index_by_id(component_id)
-                .expect("Unable to get NodeIndex"),
-            EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-                .expect("Unable to create EdgeWeight"),
-            base_graph
-                .get_node_index_by_id(schema_variant_id)
-                .expect("Unable to get NodeIndex"),
-        )
-        .expect("Unable to add component -> schema variant edge");
-
-    base_graph.cleanup().await.expect("should clean up");
-    println!("Initial base graph (Root {:?}):", base_graph.root_index);
-    base_graph.dot();
-
-    let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-    let new_change_set = &new_change_set;
-    let mut new_graph = base_graph.clone();
-
-    base_graph
-        .remove_edge(
-            base_change_set,
-            base_root_id,
-            base_graph
-                .get_node_index_by_id(component_id)
-                .expect("Unable to get NodeIndex"),
-            EdgeWeightKindDiscriminants::new_use(),
-        )
-        .expect("Unable to remove Component A");
-
-    base_graph.cleanup().await.expect("should clean up");
-    println!("Updated base graph (Root: {:?}):", base_graph.root_index);
-    base_graph.dot();
-
-    new_graph
-        .update_content(
-            new_change_set,
-            component_id,
-            ContentHash::from("Updated Component A"),
-        )
-        .expect("Unable to update Component A");
-
-    new_graph.cleanup().await.expect("should clean up");
-    println!("new graph (Root {:?}):", new_graph.root_index);
-    new_graph.dot();
-
-    let (conflicts, updates) = new_graph
-        .detect_conflicts_and_updates(
-            new_change_set.vector_clock_id(),
-            &base_graph,
-            base_change_set.vector_clock_id(),
-        )
-        .expect("Unable to detect conflicts and updates");
-
-    assert_eq!(
-        vec![Conflict::ModifyRemovedItem(
-            new_graph
-                .get_node_index_by_id(component_id)
-                .expect("Unable to get NodeIndex")
-        )],
-        conflicts
-    );
-    assert_eq!(Vec::<Update>::new(), updates);
-}
-
 // #[test]
-// fn detect_conflicts_and_updates_complex() {
+// fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
 //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
 //     let base_change_set = &empty_change_set;
+//     let base_graph = WorkspaceSnapshot::empty(&ctx, base_change_set)
+//         .await
+//         .expect("should create snapshot");
+//     let base_root_id = base_graph.root_id().await.expect("should get root id");
 //     let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
 //         .expect("Unable to create WorkspaceSnapshotGraph");
 //
-//     // Docker Image Schema
-//     let docker_image_schema_id = base_change_set
+//     let schema_id = base_change_set
 //         .generate_ulid()
 //         .expect("Unable to generate Ulid");
-//     let docker_image_schema_index = base_graph
+//     let schema_index = base_graph
 //         .add_node(
 //             NodeWeight::new_content(
 //                 base_change_set,
-//                 docker_image_schema_id,
-//                 ContentAddress::Schema(ContentHash::from("first")),
+//                 schema_id,
+//                 ContentAddress::Schema(ContentHash::from("Schema A")),
 //             )
 //             .expect("Unable to create NodeWeight"),
 //         )
 //         .expect("Unable to add Schema A");
+//     let schema_variant_id = base_change_set
+//         .generate_ulid()
+//         .expect("Unable to generate Ulid");
+//     let schema_variant_index = base_graph
+//         .add_node(
+//             NodeWeight::new_content(
+//                 base_change_set,
+//                 schema_variant_id,
+//                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
+//             )
+//             .expect("Unable to create NodeWeight"),
+//         )
+//         .expect("Unable to add Schema Variant A");
+//
 //     base_graph
 //         .add_edge(
 //             base_root_id,
 //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
 //                 .expect("Unable to create EdgeWeight"),
-//             docker_image_schema_index,
+//             schema_index,
 //         )
 //         .expect("Unable to add root -> schema edge");
-//
-//     // Docker Image Schema Variant
-//     let docker_image_schema_variant_id = base_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let docker_image_schema_variant_index = base_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 base_change_set,
-//                 docker_image_schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("first")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
 //     base_graph
 //         .add_edge(
 //             base_graph
-//                 .get_node_index_by_id(docker_image_schema_id)
+//                 .get_node_index_by_id(schema_id)
 //                 .expect("Unable to get NodeIndex"),
 //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
 //                 .expect("Unable to create EdgeWeight"),
-//             docker_image_schema_variant_index,
+//             schema_variant_index,
 //         )
 //         .expect("Unable to add schema -> schema variant edge");
 //
-//     // Nginx Docker Image Component
-//     let nginx_docker_image_component_id = base_change_set
+//     let component_id = base_change_set
 //         .generate_ulid()
 //         .expect("Unable to generate Ulid");
-//     let nginx_docker_image_component_index = base_graph
+//     let component_index = base_graph
 //         .add_node(
 //             NodeWeight::new_content(
 //                 base_change_set,
-//                 nginx_docker_image_component_id,
-//                 ContentAddress::Component(ContentHash::from("first")),
+//                 component_id,
+//                 ContentAddress::Component(ContentHash::from("Component A")),
 //             )
 //             .expect("Unable to create NodeWeight"),
 //         )
@@ -1482,136 +1285,18 @@ fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
 //             base_root_id,
 //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
 //                 .expect("Unable to create EdgeWeight"),
-//             nginx_docker_image_component_index,
+//             component_index,
 //         )
 //         .expect("Unable to add root -> component edge");
 //     base_graph
 //         .add_edge(
 //             base_graph
-//                 .get_node_index_by_id(nginx_docker_image_component_id)
+//                 .get_node_index_by_id(component_id)
 //                 .expect("Unable to get NodeIndex"),
 //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
 //                 .expect("Unable to create EdgeWeight"),
 //             base_graph
-//                 .get_node_index_by_id(docker_image_schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//         )
-//         .expect("Unable to add component -> schema variant edge");
-//
-//     // Alpine Component
-//     let alpine_component_id = base_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let alpine_component_index = base_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 base_change_set,
-//                 alpine_component_id,
-//                 ContentAddress::Component(ContentHash::from("first")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Component A");
-//     base_graph
-//         .add_edge(
-//             base_root_id,
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             alpine_component_index,
-//         )
-//         .expect("Unable to add root -> component edge");
-//     base_graph
-//         .add_edge(
-//             base_graph
-//                 .get_node_index_by_id(alpine_component_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             base_graph
-//                 .get_node_index_by_id(docker_image_schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//         )
-//         .expect("Unable to add component -> schema variant edge");
-//
-//     // Butane Schema
-//     let butane_schema_id = base_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let butane_schema_index = base_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 base_change_set,
-//                 butane_schema_id,
-//                 ContentAddress::Schema(ContentHash::from("first")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema A");
-//     base_graph
-//         .add_edge(
-//             base_root_id,
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             butane_schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//
-//     // Butane Schema Variant
-//     let butane_schema_variant_id = base_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let butane_schema_variant_index = base_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 base_change_set,
-//                 butane_schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("first")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//     base_graph
-//         .add_edge(
-//             base_graph
-//                 .get_node_index_by_id(butane_schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             butane_schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     // Nginx Butane Component
-//     let nginx_butane_component_id = base_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let nginx_butane_node_index = base_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 base_change_set,
-//                 nginx_butane_component_id,
-//                 ContentAddress::Component(ContentHash::from("first")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//     base_graph
-//         .add_edge(
-//             base_root_id,
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             nginx_butane_node_index,
-//         )
-//         .expect("Unable to add root -> component edge");
-//     base_graph
-//         .add_edge(
-//             base_graph
-//                 .get_node_index_by_id(nginx_butane_component_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             base_graph
-//                 .get_node_index_by_id(butane_schema_variant_id)
+//                 .get_node_index_by_id(schema_variant_id)
 //                 .expect("Unable to get NodeIndex"),
 //         )
 //         .expect("Unable to add component -> schema variant edge");
@@ -1620,54 +1305,36 @@ fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
 //     println!("Initial base graph (Root {:?}):", base_graph.root_index);
 //     base_graph.dot();
 //
-//     // Create a new change set to cause some problems!
 //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
 //     let new_change_set = &new_change_set;
 //     let mut new_graph = base_graph.clone();
 //
-//     // Create a modify removed item conflict.
 //     base_graph
 //         .remove_edge(
 //             base_change_set,
 //             base_root_id,
 //             base_graph
-//                 .get_node_index_by_id(nginx_butane_component_id)
+//                 .get_node_index_by_id(component_id)
 //                 .expect("Unable to get NodeIndex"),
 //             EdgeWeightKindDiscriminants::new_use(),
 //         )
-//         .expect("Unable to update the component");
+//         .expect("Unable to remove Component A");
+//
+//     base_graph.cleanup().await.expect("should clean up");
+//     println!("Updated base graph (Root: {:?}):", base_graph.root_index);
+//     base_graph.dot();
+//
 //     new_graph
 //         .update_content(
 //             new_change_set,
-//             nginx_butane_component_id,
-//             ContentHash::from("second"),
+//             component_id,
+//             ContentHash::from("Updated Component A"),
 //         )
-//         .expect("Unable to update the component");
+//         .expect("Unable to update Component A");
 //
-//     // Create a node content conflict.
-//     base_graph
-//         .update_content(
-//             base_change_set,
-//             docker_image_schema_variant_id,
-//             ContentHash::from("oopsie"),
-//         )
-//         .expect("Unable to update the component");
-//     new_graph
-//         .update_content(
-//             new_change_set,
-//             docker_image_schema_variant_id,
-//             ContentHash::from("poopsie"),
-//         )
-//         .expect("Unable to update the component");
-//
-//     // Create a pure update.
-//     base_graph
-//         .update_content(
-//             base_change_set,
-//             docker_image_schema_id,
-//             ContentHash::from("bg3"),
-//         )
-//         .expect("Unable to update the schema");
+//     new_graph.cleanup().await.expect("should clean up");
+//     println!("new graph (Root {:?}):", new_graph.root_index);
+//     new_graph.dot();
 //
 //     let (conflicts, updates) = new_graph
 //         .detect_conflicts_and_updates(
@@ -1677,2112 +1344,2392 @@ fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
 //         )
 //         .expect("Unable to detect conflicts and updates");
 //
-//     println!("base graph current root: {:?}", base_graph.root_index);
-//     base_graph.dot();
-//     println!("new graph current root: {:?}", new_graph.root_index);
-//     new_graph.dot();
-//
-//     let expected_conflicts = vec![
-//         Conflict::ModifyRemovedItem(
+//     assert_eq!(
+//         vec![Conflict::ModifyRemovedItem(
 //             new_graph
-//                 .get_node_index_by_id(nginx_butane_component_id)
-//                 .expect("Unable to get component NodeIndex"),
-//         ),
-//         Conflict::NodeContent {
-//             onto: base_graph
-//                 .get_node_index_by_id(docker_image_schema_variant_id)
-//                 .expect("Unable to get component NodeIndex"),
-//             to_rebase: new_graph
-//                 .get_node_index_by_id(docker_image_schema_variant_id)
-//                 .expect("Unable to get component NodeIndex"),
-//         },
-//     ];
-//     let expected_updates = vec![Update::ReplaceSubgraph {
-//         onto: base_graph
-//             .get_node_index_by_id(docker_image_schema_id)
-//             .expect("Unable to get NodeIndex"),
-//         to_rebase: new_graph
-//             .get_node_index_by_id(docker_image_schema_id)
-//             .expect("Unable to get NodeIndex"),
-//     }];
-//
-//     assert_eq!(
-//         ConflictsAndUpdates {
-//             conflicts: expected_conflicts,
-//             updates: expected_updates,
-//         },
-//         ConflictsAndUpdates { conflicts, updates },
+//                 .get_node_index_by_id(component_id)
+//                 .expect("Unable to get NodeIndex")
+//         )],
+//         conflicts
 //     );
-// }
-//
-// #[test]
-// fn add_ordered_node() {
-//     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let change_set = &change_set;
-//     let mut graph =
-//         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::new(
-//                     SchemaId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema");
-//     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_variant_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let func_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 func_id,
-//                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add func");
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             func_index,
-//         )
-//         .expect("Unable to add root -> func edge");
-//
-//     let prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let prop_index = graph
-//         .add_ordered_node(
-//             change_set,
-//             NodeWeight::new_content(
-//                 change_set,
-//                 prop_id,
-//                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add prop");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             prop_index,
-//         )
-//         .expect("Unable to add schema variant -> prop edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             graph
-//                 .get_node_index_by_id(func_id)
-//                 .expect("Unable to get NodeIndex"),
-//         )
-//         .expect("Unable to add prop -> func edge");
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_1 edge");
-//
-//     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_2 edge");
-//
-//     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_3 edge");
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     assert_eq!(
-//         vec![
-//             ordered_prop_1_index,
-//             ordered_prop_2_index,
-//             ordered_prop_3_index,
-//         ],
-//         graph
-//             .ordered_children_for_node(
-//                 graph
-//                     .get_node_index_by_id(prop_id)
-//                     .expect("Unable to get prop NodeIndex")
-//             )
-//             .expect("Unable to find ordered children for node")
-//             .expect("Node is not an ordered node")
-//     );
-// }
-//
-// #[test]
-// fn reorder_ordered_node() {
-//     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let change_set = &change_set;
-//     let mut graph =
-//         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::new(
-//                     SchemaId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema");
-//     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_variant_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let func_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 func_id,
-//                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add func");
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             func_index,
-//         )
-//         .expect("Unable to add root -> func edge");
-//
-//     let prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let prop_index = graph
-//         .add_ordered_node(
-//             change_set,
-//             NodeWeight::new_content(
-//                 change_set,
-//                 prop_id,
-//                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add prop");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             prop_index,
-//         )
-//         .expect("Unable to add schema variant -> prop edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             graph
-//                 .get_node_index_by_id(func_id)
-//                 .expect("Unable to get NodeIndex"),
-//         )
-//         .expect("Unable to add prop -> func edge");
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_1 edge");
-//
-//     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_2 edge");
-//
-//     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_3 edge");
-//
-//     let ordered_prop_4_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_4 edge");
-//
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     assert_eq!(
-//         vec![
-//             ordered_prop_1_index,
-//             ordered_prop_2_index,
-//             ordered_prop_3_index,
-//             ordered_prop_4_index,
-//         ],
-//         graph
-//             .ordered_children_for_node(
-//                 graph
-//                     .get_node_index_by_id(prop_id)
-//                     .expect("Unable to get prop NodeIndex")
-//             )
-//             .expect("Unable to find ordered children for node")
-//             .expect("Node is not an ordered node")
-//     );
-//
-//     let new_order = vec![
-//         ordered_prop_2_id,
-//         ordered_prop_1_id,
-//         ordered_prop_4_id,
-//         ordered_prop_3_id,
-//     ];
-//
-//     graph
-//         .update_order(change_set, prop_id, new_order)
-//         .expect("Unable to update order of prop's children");
-//
-//     assert_eq!(
-//         vec![
-//             ordered_prop_2_index,
-//             ordered_prop_1_index,
-//             ordered_prop_4_index,
-//             ordered_prop_3_index,
-//         ],
-//         graph
-//             .ordered_children_for_node(
-//                 graph
-//                     .get_node_index_by_id(prop_id)
-//                     .expect("Unable to get prop NodeIndex")
-//             )
-//             .expect("Unable to find ordered children for node")
-//             .expect("Node is not an ordered node")
-//     );
-// }
-//
-// #[test]
-// fn remove_unordered_node_and_detect_edge_removal() {
-//     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let empty_change_set = &initial_change_set;
-//     let mut graph = WorkspaceSnapshotGraph::new(empty_change_set)
-//         .expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::new(
-//                     SchemaId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema");
-//     let schema_variant_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let schema_variant_2_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_2_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_2_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_2_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
-//
-//     let existing_edges: HashSet<NodeIndex> = graph
-//         .edges_directed(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             Outgoing,
-//         )
-//         .map(|edge_ref| edge_ref.target())
-//         .collect();
-//
-//     assert_eq!(
-//         expected_edges, existing_edges,
-//         "confirm edges are there before deleting"
-//     );
-//
-//     graph
-//         .mark_graph_seen(empty_change_set.vector_clock_id())
-//         .expect("Unable to mark empty graph as seen");
-//
-//     let mut graph_with_deleted_edge = graph.clone();
-//     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let new_change_set = &new_change_set;
-//
-//     graph_with_deleted_edge.dot();
-//
-//     graph_with_deleted_edge
-//         .remove_edge(
-//             new_change_set,
-//             graph_with_deleted_edge
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             schema_variant_2_index,
-//             EdgeWeightKindDiscriminants::new_use(),
-//         )
-//         .expect("Edge removal failed");
-//
-//     graph_with_deleted_edge.dot();
-//
-//     let existing_edges: Vec<NodeIndex> = graph_with_deleted_edge
-//         .edges_directed(
-//             graph_with_deleted_edge
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             Outgoing,
-//         )
-//         .map(|edge_ref| edge_ref.target())
-//         .collect();
-//
-//     assert_eq!(
-//         vec![schema_variant_index],
-//         existing_edges,
-//         "confirm edges after deletion"
-//     );
-//
-//     graph_with_deleted_edge
-//         .mark_graph_seen(new_change_set.vector_clock_id())
-//         .expect("Unable to mark new graph as seen");
-//
-//     let (conflicts, updates) = graph
-//         .detect_conflicts_and_updates(
-//             empty_change_set.vector_clock_id(),
-//             &graph_with_deleted_edge,
-//             new_change_set.vector_clock_id(),
-//         )
-//         .expect("Failed to detect conflicts and updates");
-//
-//     assert!(conflicts.is_empty());
-//     dbg!(&updates);
-//     assert_eq!(1, updates.len());
-//
-//     assert!(matches!(
-//         updates.first().expect("should be there"),
-//         Update::RemoveEdge { .. }
-//     ));
-// }
-//
-// #[test]
-// fn remove_unordered_node() {
-//     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let change_set = &change_set;
-//     let mut graph =
-//         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::new(
-//                     SchemaId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema");
-//     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_variant_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let schema_variant_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_variant_2_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_variant_2_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_variant_2_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
-//
-//     let existing_edges: HashSet<NodeIndex> = graph
-//         .edges_directed(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             Outgoing,
-//         )
-//         .map(|edge_ref| edge_ref.target())
-//         .collect();
-//
-//     assert_eq!(
-//         expected_edges, existing_edges,
-//         "confirm edges are there before deleting"
-//     );
-//
-//     graph
-//         .remove_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             schema_variant_2_index,
-//             EdgeWeightKindDiscriminants::new_use(),
-//         )
-//         .expect("Edge removal failed");
-//
-//     let existing_edges: Vec<NodeIndex> = graph
-//         .edges_directed(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex for schema"),
-//             Outgoing,
-//         )
-//         .map(|edge_ref| edge_ref.target())
-//         .collect();
-//
-//     assert_eq!(
-//         vec![schema_variant_index],
-//         existing_edges,
-//         "confirm edges after deletion"
-//     );
-// }
-//
-// #[test]
-// fn remove_ordered_node() {
-//     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let change_set = &change_set;
-//     let mut graph =
-//         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::new(
-//                     SchemaId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema");
-//     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let schema_variant_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::new(
-//                     SchemaVariantId::generate().to_string().as_bytes(),
-//                 )),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add schema variant");
-//
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let func_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 func_id,
-//                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add func");
-//     graph
-//         .add_edge(
-//             root_id,
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             func_index,
-//         )
-//         .expect("Unable to add root -> func edge");
-//
-//     let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let root_prop_index = graph
-//         .add_ordered_node(
-//             change_set,
-//             NodeWeight::new_content(
-//                 change_set,
-//                 root_prop_id,
-//                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add prop");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             root_prop_index,
-//         )
-//         .expect("Unable to add schema variant -> prop edge");
-//     graph
-//         .add_edge(
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
-//             graph
-//                 .get_node_index_by_id(func_id)
-//                 .expect("Unable to get NodeIndex"),
-//         )
-//         .expect("Unable to add prop -> func edge");
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_1 edge");
-//
-//     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_2 edge");
-//
-//     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_3 edge");
-//
-//     let ordered_prop_4_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop");
-//     graph
-//         .add_ordered_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeWeight for prop"),
-//             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create uses edge weight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add prop -> ordered_prop_4 edge");
-//
-//     graph.cleanup().await.expect("should clean up");
-//     graph.dot();
-//
-//     assert_eq!(
-//         vec![
-//             ordered_prop_1_index,
-//             ordered_prop_2_index,
-//             ordered_prop_3_index,
-//             ordered_prop_4_index,
-//         ],
-//         graph
-//             .ordered_children_for_node(
-//                 graph
-//                     .get_node_index_by_id(root_prop_id)
-//                     .expect("Unable to get prop NodeIndex")
-//             )
-//             .expect("Unable to find ordered children for node")
-//             .expect("Node is not an ordered node")
-//     );
-//
-//     graph
-//         .remove_edge(
-//             change_set,
-//             graph
-//                 .get_node_index_by_id(root_prop_id)
-//                 .expect("Unable to get NodeIndex for prop"),
-//             ordered_prop_2_index,
-//             EdgeWeightKindDiscriminants::new_use(),
-//         )
-//         .expect("Unable to remove prop -> ordered_prop_2 edge");
-//
-//     assert_eq!(
-//         vec![
-//             ordered_prop_1_index,
-//             ordered_prop_3_index,
-//             ordered_prop_4_index,
-//         ],
-//         graph
-//             .ordered_children_for_node(
-//                 graph
-//                     .get_node_index_by_id(root_prop_id)
-//                     .expect("Unable to get prop NodeIndex")
-//             )
-//             .expect("Unable to find ordered children for node")
-//             .expect("Node is not an ordered node")
-//     );
-//     if let NodeWeight::Ordering(ordering_weight) = graph
-//         .get_node_weight(
-//             graph
-//                 .ordering_node_index_for_container(
-//                     graph
-//                         .get_node_index_by_id(root_prop_id)
-//                         .expect("Unable to find ordering node for prop"),
-//                 )
-//                 .expect("Error getting ordering NodeIndex for prop")
-//                 .expect("Unable to find ordering NodeIndex"),
-//         )
-//         .expect("Unable to get ordering NodeWeight for ordering node")
-//     {
-//         assert_eq!(
-//             &vec![ordered_prop_1_id, ordered_prop_3_id, ordered_prop_4_id],
-//             ordering_weight.order()
-//         );
-//     } else {
-//         panic!("Unable to destructure ordering node weight");
-//     }
-// }
-//
-// #[test]
-// fn detect_conflicts_and_updates_simple_ordering_no_conflicts_no_updates_in_base() {
-//     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let empty_change_set = &initial_change_set;
-//     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
-//         .expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::from("Schema A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema A");
-//     let schema_variant_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//
-//     empty_graph
-//         .add_edge(
-//             empty_root_id,
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let container_prop_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let container_prop_index = empty_graph
-//         .add_ordered_node(
-//             empty_change_set,
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 container_prop_id,
-//                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add container prop");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             container_prop_index,
-//         )
-//         .expect("Unable to add schema variant -> container prop edge");
-//
-//     let ordered_prop_1_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 1");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 1 edge");
-//
-//     let ordered_prop_2_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 2");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 2 edge");
-//
-//     let ordered_prop_3_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 3");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 3 edge");
-//
-//     let ordered_prop_4_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 4");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 4 edge");
-//
-//     empty_graph.cleanup().await.expect("should clean up");
-//     empty_graph.dot();
-//
-//     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let new_change_set = &new_change_set;
-//     let mut new_graph = empty_graph.clone();
-//
-//     let ordered_prop_5_id = new_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_5_index = new_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 new_change_set,
-//                 ordered_prop_5_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 5");
-//     new_graph
-//         .add_ordered_edge(
-//             new_change_set,
-//             new_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(new_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_5_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 5 edge");
-//
-//     new_graph.cleanup().await.expect("should clean up");
-//     new_graph.dot();
-//
-//     let (conflicts, updates) = new_graph
-//         .detect_conflicts_and_updates(
-//             new_change_set.vector_clock_id(),
-//             &empty_graph,
-//             empty_change_set.vector_clock_id(),
-//         )
-//         .expect("Unable to detect conflicts and updates");
-//
-//     assert_eq!(Vec::<Conflict>::new(), conflicts);
 //     assert_eq!(Vec::<Update>::new(), updates);
 // }
 //
-// #[test]
-// fn detect_conflicts_and_updates_simple_ordering_no_conflicts_with_updates_in_base() {
-//     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let empty_change_set = &initial_change_set;
-//     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
-//         .expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::from("Schema A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema A");
-//     let schema_variant_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//
-//     empty_graph
-//         .add_edge(
-//             empty_root_id,
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let container_prop_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let container_prop_index = empty_graph
-//         .add_ordered_node(
-//             empty_change_set,
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 container_prop_id,
-//                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add container prop");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             container_prop_index,
-//         )
-//         .expect("Unable to add schema variant -> container prop edge");
-//
-//     let ordered_prop_1_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 1");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 1 edge");
-//
-//     let ordered_prop_2_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 2");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 2 edge");
-//
-//     let ordered_prop_3_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 3");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 3 edge");
-//
-//     let ordered_prop_4_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 4");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 4 edge");
-//
-//     empty_graph.dot();
-//
-//     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let new_change_set = &new_change_set;
-//     let new_graph = empty_graph.clone();
-//
-//     let ordered_prop_5_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_5_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_5_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 5");
-//     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//         .expect("Unable to create EdgeWeight");
-//     let (_, maybe_ordinal_edge_information) = empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             new_edge_weight.clone(),
-//             ordered_prop_5_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 5 edge");
-//     let (
-//         ordinal_edge_index,
-//         source_node_index_for_ordinal_edge,
-//         destination_node_index_for_ordinal_edge,
-//     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
-//     let ordinal_edge_weight = empty_graph
-//         .get_edge_weight_opt(ordinal_edge_index)
-//         .expect("should not error when getting edge")
-//         .expect("could not get edge weight for index")
-//         .to_owned();
-//     let source_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(source_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//     let destination_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(destination_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//
-//     new_graph.dot();
-//
-//     let (conflicts, updates) = new_graph
-//         .detect_conflicts_and_updates(
-//             new_change_set.vector_clock_id(),
-//             &empty_graph,
-//             empty_change_set.vector_clock_id(),
-//         )
-//         .expect("Unable to detect conflicts and updates");
-//
-//     assert_eq!(Vec::<Conflict>::new(), conflicts);
-//     assert_eq!(
-//         vec![
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(container_prop_id)
-//                     .expect("Unable to get NodeIndex"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(ordered_prop_5_id)
-//                     .expect("Unable to get NodeIndex"),
-//                 edge_weight: new_edge_weight,
-//             },
-//             Update::ReplaceSubgraph {
-//                 onto: empty_graph
-//                     .ordering_node_index_for_container(
-//                         empty_graph
-//                             .get_node_index_by_id(container_prop_id)
-//                             .expect("Unable to get container NodeIndex")
-//                     )
-//                     .expect("Unable to get new ordering NodeIndex")
-//                     .expect("Ordering NodeIndex not found"),
-//                 to_rebase: new_graph
-//                     .ordering_node_index_for_container(
-//                         new_graph
-//                             .get_node_index_by_id(container_prop_id)
-//                             .expect("Unable to get container NodeIndex")
-//                     )
-//                     .expect("Unable to get old ordering NodeIndex")
-//                     .expect("Ordering NodeIndex not found"),
-//             },
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 edge_weight: ordinal_edge_weight,
-//             }
-//         ],
-//         updates
-//     );
-// }
-//
-// #[test]
-// fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_updates() {
-//     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let empty_change_set = &initial_change_set;
-//     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
-//         .expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::from("Schema A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema A");
-//     let schema_variant_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//
-//     empty_graph
-//         .add_edge(
-//             empty_root_id,
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let container_prop_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let container_prop_index = empty_graph
-//         .add_ordered_node(
-//             empty_change_set,
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 container_prop_id,
-//                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add container prop");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             container_prop_index,
-//         )
-//         .expect("Unable to add schema variant -> container prop edge");
-//
-//     let ordered_prop_1_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 1");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 1 edge");
-//
-//     let ordered_prop_2_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 2");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 2 edge");
-//
-//     let ordered_prop_3_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 3");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 3 edge");
-//
-//     let ordered_prop_4_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 4");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 4 edge");
-//
-//     empty_graph.dot();
-//
-//     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let new_change_set = &new_change_set;
-//     let mut new_graph = empty_graph.clone();
-//
-//     let new_order = vec![
-//         ordered_prop_2_id,
-//         ordered_prop_1_id,
-//         ordered_prop_4_id,
-//         ordered_prop_3_id,
-//     ];
-//     new_graph
-//         .update_order(new_change_set, container_prop_id, new_order)
-//         .expect("Unable to update order of container prop's children");
-//
-//     let ordered_prop_5_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_5_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_5_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 5");
-//     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//         .expect("Unable to create EdgeWeight");
-//     let (_, maybe_ordinal_edge_information) = empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             new_edge_weight.clone(),
-//             ordered_prop_5_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 5 edge");
-//     let (
-//         ordinal_edge_index,
-//         source_node_index_for_ordinal_edge,
-//         destination_node_index_for_ordinal_edge,
-//     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
-//     let ordinal_edge_weight = empty_graph
-//         .get_edge_weight_opt(ordinal_edge_index)
-//         .expect("should not error when getting edge")
-//         .expect("could not get edge weight for index")
-//         .to_owned();
-//     let source_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(source_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//     let destination_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(destination_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//
-//     new_graph.dot();
-//
-//     let (conflicts, updates) = new_graph
-//         .detect_conflicts_and_updates(
-//             new_change_set.vector_clock_id(),
-//             &empty_graph,
-//             empty_change_set.vector_clock_id(),
-//         )
-//         .expect("Unable to detect conflicts and updates");
-//
-//     assert_eq!(
-//         vec![Conflict::ChildOrder {
-//             onto: empty_graph
-//                 .ordering_node_index_for_container(
-//                     empty_graph
-//                         .get_node_index_by_id(container_prop_id)
-//                         .expect("Unable to get container NodeIndex")
-//                 )
-//                 .expect("Unable to get ordering NodeIndex")
-//                 .expect("Ordering NodeIndex not found"),
-//             to_rebase: new_graph
-//                 .ordering_node_index_for_container(
-//                     new_graph
-//                         .get_node_index_by_id(container_prop_id)
-//                         .expect("Unable to get container NodeIndex")
-//                 )
-//                 .expect("Unable to get ordering NodeIndex")
-//                 .expect("Ordering NodeIndex not found"),
-//         }],
-//         conflicts
-//     );
-//     assert_eq!(
-//         vec![
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(container_prop_id)
-//                     .expect("Unable to get new_graph container NodeIndex"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(ordered_prop_5_id)
-//                     .expect("Unable to get ordered prop 5 NodeIndex"),
-//                 edge_weight: new_edge_weight,
-//             },
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 edge_weight: ordinal_edge_weight,
-//             }
-//         ],
-//         updates
-//     );
-// }
-//
-// #[test]
-// fn detect_conflicts_and_updates_simple_ordering_with_no_conflicts_add_in_onto_remove_in_to_rebase()
-// {
-//     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let empty_change_set = &initial_change_set;
-//     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
-//         .expect("Unable to create WorkspaceSnapshotGraph");
-//
-//     let schema_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_id,
-//                 ContentAddress::Schema(ContentHash::from("Schema A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema A");
-//     let schema_variant_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let schema_variant_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 schema_variant_id,
-//                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add Schema Variant A");
-//
-//     empty_graph
-//         .add_edge(
-//             empty_root_id,
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_index,
-//         )
-//         .expect("Unable to add root -> schema edge");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             schema_variant_index,
-//         )
-//         .expect("Unable to add schema -> schema variant edge");
-//
-//     let container_prop_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let container_prop_index = empty_graph
-//         .add_ordered_node(
-//             empty_change_set,
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 container_prop_id,
-//                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add container prop");
-//     empty_graph
-//         .add_edge(
-//             empty_graph
-//                 .get_node_index_by_id(schema_variant_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             container_prop_index,
-//         )
-//         .expect("Unable to add schema variant -> container prop edge");
-//
-//     let ordered_prop_1_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_1_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_1_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 1");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_1_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 1 edge");
-//
-//     let ordered_prop_2_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_2_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_2_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 2");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_2_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 2 edge");
-//
-//     let ordered_prop_3_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_3_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_3_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 3");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_3_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 3 edge");
-//
-//     let ordered_prop_4_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_4_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_4_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 4");
-//     empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//                 .expect("Unable to create EdgeWeight"),
-//             ordered_prop_4_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 4 edge");
-//
-//     empty_graph.cleanup().await.expect("should clean up");
-//     empty_graph
-//         .mark_graph_seen(empty_change_set.vector_clock_id())
-//         .expect("Unable to update recently seen information");
-//     // empty_graph.dot();
-//
-//     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
-//     let new_change_set = &new_change_set;
-//     let mut new_graph = empty_graph.clone();
-//
-//     new_graph
-//         .remove_edge(
-//             new_change_set,
-//             new_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get container NodeIndex"),
-//             ordered_prop_2_index,
-//             EdgeWeightKindDiscriminants::new_use(),
-//         )
-//         .expect("Unable to remove container prop -> prop 2 edge");
-//
-//     let ordered_prop_5_id = empty_change_set
-//         .generate_ulid()
-//         .expect("Unable to generate Ulid");
-//     let ordered_prop_5_index = empty_graph
-//         .add_node(
-//             NodeWeight::new_content(
-//                 empty_change_set,
-//                 ordered_prop_5_id,
-//                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
-//             )
-//             .expect("Unable to create NodeWeight"),
-//         )
-//         .expect("Unable to add ordered prop 5");
-//
-//     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
-//         .expect("Unable to create EdgeWeight");
-//     let (_, maybe_ordinal_edge_information) = empty_graph
-//         .add_ordered_edge(
-//             empty_change_set,
-//             empty_graph
-//                 .get_node_index_by_id(container_prop_id)
-//                 .expect("Unable to get NodeIndex"),
-//             new_edge_weight.clone(),
-//             ordered_prop_5_index,
-//         )
-//         .expect("Unable to add container prop -> ordered prop 5 edge");
-//     let (
-//         ordinal_edge_index,
-//         source_node_index_for_ordinal_edge,
-//         destination_node_index_for_ordinal_edge,
-//     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
-//     let ordinal_edge_weight = empty_graph
-//         .get_edge_weight_opt(ordinal_edge_index)
-//         .expect("should not error when getting edge")
-//         .expect("could not get edge weight for index")
-//         .to_owned();
-//     let source_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(source_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//     let destination_node_id_for_ordinal_edge = empty_graph
-//         .get_node_weight(destination_node_index_for_ordinal_edge)
-//         .expect("could not get node weight")
-//         .id();
-//
-//     empty_graph.cleanup().await.expect("should clean up");
-//     empty_graph.dot();
-//
-//     new_graph.cleanup().await.expect("should clean up");
-//     new_graph.dot();
-//
-//     let (conflicts, updates) = new_graph
-//         .detect_conflicts_and_updates(
-//             new_change_set.vector_clock_id(),
-//             &empty_graph,
-//             empty_change_set.vector_clock_id(),
-//         )
-//         .expect("Unable to detect conflicts and updates");
-//
-//     assert_eq!(Vec::<Conflict>::new(), conflicts);
-//     assert_eq!(
-//         vec![
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(container_prop_id)
-//                     .expect("Unable to get new_graph container NodeIndex"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(ordered_prop_5_id)
-//                     .expect("Unable to get ordered prop 5 NodeIndex"),
-//                 edge_weight: new_edge_weight,
-//             },
-//             Update::NewEdge {
-//                 source: new_graph
-//                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 destination: empty_graph
-//                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-//                     .expect("could not get node index by id"),
-//                 edge_weight: ordinal_edge_weight,
-//             }
-//         ],
-//         updates
-//     );
-// }
+// // #[test]
+// // fn detect_conflicts_and_updates_complex() {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let base_change_set = &empty_change_set;
+// //     let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     // Docker Image Schema
+// //     let docker_image_schema_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let docker_image_schema_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 docker_image_schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     base_graph
+// //         .add_edge(
+// //             base_root_id,
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             docker_image_schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //
+// //     // Docker Image Schema Variant
+// //     let docker_image_schema_variant_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let docker_image_schema_variant_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 docker_image_schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //     base_graph
+// //         .add_edge(
+// //             base_graph
+// //                 .get_node_index_by_id(docker_image_schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             docker_image_schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     // Nginx Docker Image Component
+// //     let nginx_docker_image_component_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let nginx_docker_image_component_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 nginx_docker_image_component_id,
+// //                 ContentAddress::Component(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Component A");
+// //     base_graph
+// //         .add_edge(
+// //             base_root_id,
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             nginx_docker_image_component_index,
+// //         )
+// //         .expect("Unable to add root -> component edge");
+// //     base_graph
+// //         .add_edge(
+// //             base_graph
+// //                 .get_node_index_by_id(nginx_docker_image_component_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             base_graph
+// //                 .get_node_index_by_id(docker_image_schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add component -> schema variant edge");
+// //
+// //     // Alpine Component
+// //     let alpine_component_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let alpine_component_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 alpine_component_id,
+// //                 ContentAddress::Component(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Component A");
+// //     base_graph
+// //         .add_edge(
+// //             base_root_id,
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             alpine_component_index,
+// //         )
+// //         .expect("Unable to add root -> component edge");
+// //     base_graph
+// //         .add_edge(
+// //             base_graph
+// //                 .get_node_index_by_id(alpine_component_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             base_graph
+// //                 .get_node_index_by_id(docker_image_schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add component -> schema variant edge");
+// //
+// //     // Butane Schema
+// //     let butane_schema_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let butane_schema_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 butane_schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     base_graph
+// //         .add_edge(
+// //             base_root_id,
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             butane_schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //
+// //     // Butane Schema Variant
+// //     let butane_schema_variant_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let butane_schema_variant_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 butane_schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //     base_graph
+// //         .add_edge(
+// //             base_graph
+// //                 .get_node_index_by_id(butane_schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             butane_schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     // Nginx Butane Component
+// //     let nginx_butane_component_id = base_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let nginx_butane_node_index = base_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 base_change_set,
+// //                 nginx_butane_component_id,
+// //                 ContentAddress::Component(ContentHash::from("first")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //     base_graph
+// //         .add_edge(
+// //             base_root_id,
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             nginx_butane_node_index,
+// //         )
+// //         .expect("Unable to add root -> component edge");
+// //     base_graph
+// //         .add_edge(
+// //             base_graph
+// //                 .get_node_index_by_id(nginx_butane_component_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             base_graph
+// //                 .get_node_index_by_id(butane_schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add component -> schema variant edge");
+// //
+// //     base_graph.cleanup().await.expect("should clean up");
+// //     println!("Initial base graph (Root {:?}):", base_graph.root_index);
+// //     base_graph.dot();
+// //
+// //     // Create a new change set to cause some problems!
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //     let mut new_graph = base_graph.clone();
+// //
+// //     // Create a modify removed item conflict.
+// //     base_graph
+// //         .remove_edge(
+// //             base_change_set,
+// //             base_root_id,
+// //             base_graph
+// //                 .get_node_index_by_id(nginx_butane_component_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeightKindDiscriminants::new_use(),
+// //         )
+// //         .expect("Unable to update the component");
+// //     new_graph
+// //         .update_content(
+// //             new_change_set,
+// //             nginx_butane_component_id,
+// //             ContentHash::from("second"),
+// //         )
+// //         .expect("Unable to update the component");
+// //
+// //     // Create a node content conflict.
+// //     base_graph
+// //         .update_content(
+// //             base_change_set,
+// //             docker_image_schema_variant_id,
+// //             ContentHash::from("oopsie"),
+// //         )
+// //         .expect("Unable to update the component");
+// //     new_graph
+// //         .update_content(
+// //             new_change_set,
+// //             docker_image_schema_variant_id,
+// //             ContentHash::from("poopsie"),
+// //         )
+// //         .expect("Unable to update the component");
+// //
+// //     // Create a pure update.
+// //     base_graph
+// //         .update_content(
+// //             base_change_set,
+// //             docker_image_schema_id,
+// //             ContentHash::from("bg3"),
+// //         )
+// //         .expect("Unable to update the schema");
+// //
+// //     let (conflicts, updates) = new_graph
+// //         .detect_conflicts_and_updates(
+// //             new_change_set.vector_clock_id(),
+// //             &base_graph,
+// //             base_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Unable to detect conflicts and updates");
+// //
+// //     println!("base graph current root: {:?}", base_graph.root_index);
+// //     base_graph.dot();
+// //     println!("new graph current root: {:?}", new_graph.root_index);
+// //     new_graph.dot();
+// //
+// //     let expected_conflicts = vec![
+// //         Conflict::ModifyRemovedItem(
+// //             new_graph
+// //                 .get_node_index_by_id(nginx_butane_component_id)
+// //                 .expect("Unable to get component NodeIndex"),
+// //         ),
+// //         Conflict::NodeContent {
+// //             onto: base_graph
+// //                 .get_node_index_by_id(docker_image_schema_variant_id)
+// //                 .expect("Unable to get component NodeIndex"),
+// //             to_rebase: new_graph
+// //                 .get_node_index_by_id(docker_image_schema_variant_id)
+// //                 .expect("Unable to get component NodeIndex"),
+// //         },
+// //     ];
+// //     let expected_updates = vec![Update::ReplaceSubgraph {
+// //         onto: base_graph
+// //             .get_node_index_by_id(docker_image_schema_id)
+// //             .expect("Unable to get NodeIndex"),
+// //         to_rebase: new_graph
+// //             .get_node_index_by_id(docker_image_schema_id)
+// //             .expect("Unable to get NodeIndex"),
+// //     }];
+// //
+// //     assert_eq!(
+// //         ConflictsAndUpdates {
+// //             conflicts: expected_conflicts,
+// //             updates: expected_updates,
+// //         },
+// //         ConflictsAndUpdates { conflicts, updates },
+// //     );
+// // }
+// //
+// // #[test]
+// // fn add_ordered_node() {
+// //     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let change_set = &change_set;
+// //     let mut graph =
+// //         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::new(
+// //                     SchemaId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema");
+// //     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_variant_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let func_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 func_id,
+// //                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add func");
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             func_index,
+// //         )
+// //         .expect("Unable to add root -> func edge");
+// //
+// //     let prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let prop_index = graph
+// //         .add_ordered_node(
+// //             change_set,
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add prop");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> prop edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             graph
+// //                 .get_node_index_by_id(func_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add prop -> func edge");
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_1 edge");
+// //
+// //     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_2 edge");
+// //
+// //     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_3 edge");
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     assert_eq!(
+// //         vec![
+// //             ordered_prop_1_index,
+// //             ordered_prop_2_index,
+// //             ordered_prop_3_index,
+// //         ],
+// //         graph
+// //             .ordered_children_for_node(
+// //                 graph
+// //                     .get_node_index_by_id(prop_id)
+// //                     .expect("Unable to get prop NodeIndex")
+// //             )
+// //             .expect("Unable to find ordered children for node")
+// //             .expect("Node is not an ordered node")
+// //     );
+// // }
+// //
+// // #[test]
+// // fn reorder_ordered_node() {
+// //     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let change_set = &change_set;
+// //     let mut graph =
+// //         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::new(
+// //                     SchemaId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema");
+// //     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_variant_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let func_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 func_id,
+// //                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add func");
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             func_index,
+// //         )
+// //         .expect("Unable to add root -> func edge");
+// //
+// //     let prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let prop_index = graph
+// //         .add_ordered_node(
+// //             change_set,
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add prop");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> prop edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             graph
+// //                 .get_node_index_by_id(func_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add prop -> func edge");
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_1 edge");
+// //
+// //     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_2 edge");
+// //
+// //     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_3 edge");
+// //
+// //     let ordered_prop_4_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_4 edge");
+// //
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     assert_eq!(
+// //         vec![
+// //             ordered_prop_1_index,
+// //             ordered_prop_2_index,
+// //             ordered_prop_3_index,
+// //             ordered_prop_4_index,
+// //         ],
+// //         graph
+// //             .ordered_children_for_node(
+// //                 graph
+// //                     .get_node_index_by_id(prop_id)
+// //                     .expect("Unable to get prop NodeIndex")
+// //             )
+// //             .expect("Unable to find ordered children for node")
+// //             .expect("Node is not an ordered node")
+// //     );
+// //
+// //     let new_order = vec![
+// //         ordered_prop_2_id,
+// //         ordered_prop_1_id,
+// //         ordered_prop_4_id,
+// //         ordered_prop_3_id,
+// //     ];
+// //
+// //     graph
+// //         .update_order(change_set, prop_id, new_order)
+// //         .expect("Unable to update order of prop's children");
+// //
+// //     assert_eq!(
+// //         vec![
+// //             ordered_prop_2_index,
+// //             ordered_prop_1_index,
+// //             ordered_prop_4_index,
+// //             ordered_prop_3_index,
+// //         ],
+// //         graph
+// //             .ordered_children_for_node(
+// //                 graph
+// //                     .get_node_index_by_id(prop_id)
+// //                     .expect("Unable to get prop NodeIndex")
+// //             )
+// //             .expect("Unable to find ordered children for node")
+// //             .expect("Node is not an ordered node")
+// //     );
+// // }
+// //
+// // #[test]
+// // fn remove_unordered_node_and_detect_edge_removal() {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let empty_change_set = &initial_change_set;
+// //     let mut graph = WorkspaceSnapshotGraph::new(empty_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::new(
+// //                     SchemaId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema");
+// //     let schema_variant_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let schema_variant_2_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_2_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_2_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_2_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
+// //
+// //     let existing_edges: HashSet<NodeIndex> = graph
+// //         .edges_directed(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             Outgoing,
+// //         )
+// //         .map(|edge_ref| edge_ref.target())
+// //         .collect();
+// //
+// //     assert_eq!(
+// //         expected_edges, existing_edges,
+// //         "confirm edges are there before deleting"
+// //     );
+// //
+// //     graph
+// //         .mark_graph_seen(empty_change_set.vector_clock_id())
+// //         .expect("Unable to mark empty graph as seen");
+// //
+// //     let mut graph_with_deleted_edge = graph.clone();
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //
+// //     graph_with_deleted_edge.dot();
+// //
+// //     graph_with_deleted_edge
+// //         .remove_edge(
+// //             new_change_set,
+// //             graph_with_deleted_edge
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             schema_variant_2_index,
+// //             EdgeWeightKindDiscriminants::new_use(),
+// //         )
+// //         .expect("Edge removal failed");
+// //
+// //     graph_with_deleted_edge.dot();
+// //
+// //     let existing_edges: Vec<NodeIndex> = graph_with_deleted_edge
+// //         .edges_directed(
+// //             graph_with_deleted_edge
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             Outgoing,
+// //         )
+// //         .map(|edge_ref| edge_ref.target())
+// //         .collect();
+// //
+// //     assert_eq!(
+// //         vec![schema_variant_index],
+// //         existing_edges,
+// //         "confirm edges after deletion"
+// //     );
+// //
+// //     graph_with_deleted_edge
+// //         .mark_graph_seen(new_change_set.vector_clock_id())
+// //         .expect("Unable to mark new graph as seen");
+// //
+// //     let (conflicts, updates) = graph
+// //         .detect_conflicts_and_updates(
+// //             empty_change_set.vector_clock_id(),
+// //             &graph_with_deleted_edge,
+// //             new_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Failed to detect conflicts and updates");
+// //
+// //     assert!(conflicts.is_empty());
+// //     dbg!(&updates);
+// //     assert_eq!(1, updates.len());
+// //
+// //     assert!(matches!(
+// //         updates.first().expect("should be there"),
+// //         Update::RemoveEdge { .. }
+// //     ));
+// // }
+// //
+// // #[test]
+// // fn remove_unordered_node() {
+// //     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let change_set = &change_set;
+// //     let mut graph =
+// //         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::new(
+// //                     SchemaId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema");
+// //     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_variant_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let schema_variant_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_variant_2_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_variant_2_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_variant_2_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
+// //
+// //     let existing_edges: HashSet<NodeIndex> = graph
+// //         .edges_directed(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             Outgoing,
+// //         )
+// //         .map(|edge_ref| edge_ref.target())
+// //         .collect();
+// //
+// //     assert_eq!(
+// //         expected_edges, existing_edges,
+// //         "confirm edges are there before deleting"
+// //     );
+// //
+// //     graph
+// //         .remove_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             schema_variant_2_index,
+// //             EdgeWeightKindDiscriminants::new_use(),
+// //         )
+// //         .expect("Edge removal failed");
+// //
+// //     let existing_edges: Vec<NodeIndex> = graph
+// //         .edges_directed(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex for schema"),
+// //             Outgoing,
+// //         )
+// //         .map(|edge_ref| edge_ref.target())
+// //         .collect();
+// //
+// //     assert_eq!(
+// //         vec![schema_variant_index],
+// //         existing_edges,
+// //         "confirm edges after deletion"
+// //     );
+// // }
+// //
+// // #[test]
+// // fn remove_ordered_node() {
+// //     let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let change_set = &change_set;
+// //     let mut graph =
+// //         WorkspaceSnapshotGraph::new(change_set).expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::new(
+// //                     SchemaId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema");
+// //     let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let schema_variant_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::new(
+// //                     SchemaVariantId::generate().to_string().as_bytes(),
+// //                 )),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add schema variant");
+// //
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let func_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let func_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 func_id,
+// //                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add func");
+// //     graph
+// //         .add_edge(
+// //             root_id,
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             func_index,
+// //         )
+// //         .expect("Unable to add root -> func edge");
+// //
+// //     let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let root_prop_index = graph
+// //         .add_ordered_node(
+// //             change_set,
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 root_prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add prop");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             root_prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> prop edge");
+// //     graph
+// //         .add_edge(
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("Unable to create EdgeWeight"),
+// //             graph
+// //                 .get_node_index_by_id(func_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //         )
+// //         .expect("Unable to add prop -> func edge");
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_1 edge");
+// //
+// //     let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_2 edge");
+// //
+// //     let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_3 edge");
+// //
+// //     let ordered_prop_4_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop");
+// //     graph
+// //         .add_ordered_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeWeight for prop"),
+// //             EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create uses edge weight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add prop -> ordered_prop_4 edge");
+// //
+// //     graph.cleanup().await.expect("should clean up");
+// //     graph.dot();
+// //
+// //     assert_eq!(
+// //         vec![
+// //             ordered_prop_1_index,
+// //             ordered_prop_2_index,
+// //             ordered_prop_3_index,
+// //             ordered_prop_4_index,
+// //         ],
+// //         graph
+// //             .ordered_children_for_node(
+// //                 graph
+// //                     .get_node_index_by_id(root_prop_id)
+// //                     .expect("Unable to get prop NodeIndex")
+// //             )
+// //             .expect("Unable to find ordered children for node")
+// //             .expect("Node is not an ordered node")
+// //     );
+// //
+// //     graph
+// //         .remove_edge(
+// //             change_set,
+// //             graph
+// //                 .get_node_index_by_id(root_prop_id)
+// //                 .expect("Unable to get NodeIndex for prop"),
+// //             ordered_prop_2_index,
+// //             EdgeWeightKindDiscriminants::new_use(),
+// //         )
+// //         .expect("Unable to remove prop -> ordered_prop_2 edge");
+// //
+// //     assert_eq!(
+// //         vec![
+// //             ordered_prop_1_index,
+// //             ordered_prop_3_index,
+// //             ordered_prop_4_index,
+// //         ],
+// //         graph
+// //             .ordered_children_for_node(
+// //                 graph
+// //                     .get_node_index_by_id(root_prop_id)
+// //                     .expect("Unable to get prop NodeIndex")
+// //             )
+// //             .expect("Unable to find ordered children for node")
+// //             .expect("Node is not an ordered node")
+// //     );
+// //     if let NodeWeight::Ordering(ordering_weight) = graph
+// //         .get_node_weight(
+// //             graph
+// //                 .ordering_node_index_for_container(
+// //                     graph
+// //                         .get_node_index_by_id(root_prop_id)
+// //                         .expect("Unable to find ordering node for prop"),
+// //                 )
+// //                 .expect("Error getting ordering NodeIndex for prop")
+// //                 .expect("Unable to find ordering NodeIndex"),
+// //         )
+// //         .expect("Unable to get ordering NodeWeight for ordering node")
+// //     {
+// //         assert_eq!(
+// //             &vec![ordered_prop_1_id, ordered_prop_3_id, ordered_prop_4_id],
+// //             ordering_weight.order()
+// //         );
+// //     } else {
+// //         panic!("Unable to destructure ordering node weight");
+// //     }
+// // }
+// //
+// // #[test]
+// // fn detect_conflicts_and_updates_simple_ordering_no_conflicts_no_updates_in_base() {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let empty_change_set = &initial_change_set;
+// //     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("Schema A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     let schema_variant_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //
+// //     empty_graph
+// //         .add_edge(
+// //             empty_root_id,
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let container_prop_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let container_prop_index = empty_graph
+// //         .add_ordered_node(
+// //             empty_change_set,
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 container_prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add container prop");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             container_prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> container prop edge");
+// //
+// //     let ordered_prop_1_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 1");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 1 edge");
+// //
+// //     let ordered_prop_2_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 2");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 2 edge");
+// //
+// //     let ordered_prop_3_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 3");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 3 edge");
+// //
+// //     let ordered_prop_4_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 4");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 4 edge");
+// //
+// //     empty_graph.cleanup().await.expect("should clean up");
+// //     empty_graph.dot();
+// //
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //     let mut new_graph = empty_graph.clone();
+// //
+// //     let ordered_prop_5_id = new_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_5_index = new_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 new_change_set,
+// //                 ordered_prop_5_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 5");
+// //     new_graph
+// //         .add_ordered_edge(
+// //             new_change_set,
+// //             new_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(new_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_5_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 5 edge");
+// //
+// //     new_graph.cleanup().await.expect("should clean up");
+// //     new_graph.dot();
+// //
+// //     let (conflicts, updates) = new_graph
+// //         .detect_conflicts_and_updates(
+// //             new_change_set.vector_clock_id(),
+// //             &empty_graph,
+// //             empty_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Unable to detect conflicts and updates");
+// //
+// //     assert_eq!(Vec::<Conflict>::new(), conflicts);
+// //     assert_eq!(Vec::<Update>::new(), updates);
+// // }
+// //
+// // #[test]
+// // fn detect_conflicts_and_updates_simple_ordering_no_conflicts_with_updates_in_base() {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let empty_change_set = &initial_change_set;
+// //     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("Schema A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     let schema_variant_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //
+// //     empty_graph
+// //         .add_edge(
+// //             empty_root_id,
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let container_prop_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let container_prop_index = empty_graph
+// //         .add_ordered_node(
+// //             empty_change_set,
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 container_prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add container prop");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             container_prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> container prop edge");
+// //
+// //     let ordered_prop_1_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 1");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 1 edge");
+// //
+// //     let ordered_prop_2_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 2");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 2 edge");
+// //
+// //     let ordered_prop_3_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 3");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 3 edge");
+// //
+// //     let ordered_prop_4_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 4");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 4 edge");
+// //
+// //     empty_graph.dot();
+// //
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //     let new_graph = empty_graph.clone();
+// //
+// //     let ordered_prop_5_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_5_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_5_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 5");
+// //     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //         .expect("Unable to create EdgeWeight");
+// //     let (_, maybe_ordinal_edge_information) = empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             new_edge_weight.clone(),
+// //             ordered_prop_5_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 5 edge");
+// //     let (
+// //         ordinal_edge_index,
+// //         source_node_index_for_ordinal_edge,
+// //         destination_node_index_for_ordinal_edge,
+// //     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+// //     let ordinal_edge_weight = empty_graph
+// //         .get_edge_weight_opt(ordinal_edge_index)
+// //         .expect("should not error when getting edge")
+// //         .expect("could not get edge weight for index")
+// //         .to_owned();
+// //     let source_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(source_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //     let destination_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(destination_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //
+// //     new_graph.dot();
+// //
+// //     let (conflicts, updates) = new_graph
+// //         .detect_conflicts_and_updates(
+// //             new_change_set.vector_clock_id(),
+// //             &empty_graph,
+// //             empty_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Unable to detect conflicts and updates");
+// //
+// //     assert_eq!(Vec::<Conflict>::new(), conflicts);
+// //     assert_eq!(
+// //         vec![
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(container_prop_id)
+// //                     .expect("Unable to get NodeIndex"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(ordered_prop_5_id)
+// //                     .expect("Unable to get NodeIndex"),
+// //                 edge_weight: new_edge_weight,
+// //             },
+// //             Update::ReplaceSubgraph {
+// //                 onto: empty_graph
+// //                     .ordering_node_index_for_container(
+// //                         empty_graph
+// //                             .get_node_index_by_id(container_prop_id)
+// //                             .expect("Unable to get container NodeIndex")
+// //                     )
+// //                     .expect("Unable to get new ordering NodeIndex")
+// //                     .expect("Ordering NodeIndex not found"),
+// //                 to_rebase: new_graph
+// //                     .ordering_node_index_for_container(
+// //                         new_graph
+// //                             .get_node_index_by_id(container_prop_id)
+// //                             .expect("Unable to get container NodeIndex")
+// //                     )
+// //                     .expect("Unable to get old ordering NodeIndex")
+// //                     .expect("Ordering NodeIndex not found"),
+// //             },
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 edge_weight: ordinal_edge_weight,
+// //             }
+// //         ],
+// //         updates
+// //     );
+// // }
+// //
+// // #[test]
+// // fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_updates() {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let empty_change_set = &initial_change_set;
+// //     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("Schema A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     let schema_variant_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //
+// //     empty_graph
+// //         .add_edge(
+// //             empty_root_id,
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let container_prop_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let container_prop_index = empty_graph
+// //         .add_ordered_node(
+// //             empty_change_set,
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 container_prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add container prop");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             container_prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> container prop edge");
+// //
+// //     let ordered_prop_1_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 1");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 1 edge");
+// //
+// //     let ordered_prop_2_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 2");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 2 edge");
+// //
+// //     let ordered_prop_3_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 3");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 3 edge");
+// //
+// //     let ordered_prop_4_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 4");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 4 edge");
+// //
+// //     empty_graph.dot();
+// //
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //     let mut new_graph = empty_graph.clone();
+// //
+// //     let new_order = vec![
+// //         ordered_prop_2_id,
+// //         ordered_prop_1_id,
+// //         ordered_prop_4_id,
+// //         ordered_prop_3_id,
+// //     ];
+// //     new_graph
+// //         .update_order(new_change_set, container_prop_id, new_order)
+// //         .expect("Unable to update order of container prop's children");
+// //
+// //     let ordered_prop_5_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_5_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_5_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 5");
+// //     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //         .expect("Unable to create EdgeWeight");
+// //     let (_, maybe_ordinal_edge_information) = empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             new_edge_weight.clone(),
+// //             ordered_prop_5_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 5 edge");
+// //     let (
+// //         ordinal_edge_index,
+// //         source_node_index_for_ordinal_edge,
+// //         destination_node_index_for_ordinal_edge,
+// //     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+// //     let ordinal_edge_weight = empty_graph
+// //         .get_edge_weight_opt(ordinal_edge_index)
+// //         .expect("should not error when getting edge")
+// //         .expect("could not get edge weight for index")
+// //         .to_owned();
+// //     let source_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(source_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //     let destination_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(destination_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //
+// //     new_graph.dot();
+// //
+// //     let (conflicts, updates) = new_graph
+// //         .detect_conflicts_and_updates(
+// //             new_change_set.vector_clock_id(),
+// //             &empty_graph,
+// //             empty_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Unable to detect conflicts and updates");
+// //
+// //     assert_eq!(
+// //         vec![Conflict::ChildOrder {
+// //             onto: empty_graph
+// //                 .ordering_node_index_for_container(
+// //                     empty_graph
+// //                         .get_node_index_by_id(container_prop_id)
+// //                         .expect("Unable to get container NodeIndex")
+// //                 )
+// //                 .expect("Unable to get ordering NodeIndex")
+// //                 .expect("Ordering NodeIndex not found"),
+// //             to_rebase: new_graph
+// //                 .ordering_node_index_for_container(
+// //                     new_graph
+// //                         .get_node_index_by_id(container_prop_id)
+// //                         .expect("Unable to get container NodeIndex")
+// //                 )
+// //                 .expect("Unable to get ordering NodeIndex")
+// //                 .expect("Ordering NodeIndex not found"),
+// //         }],
+// //         conflicts
+// //     );
+// //     assert_eq!(
+// //         vec![
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(container_prop_id)
+// //                     .expect("Unable to get new_graph container NodeIndex"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(ordered_prop_5_id)
+// //                     .expect("Unable to get ordered prop 5 NodeIndex"),
+// //                 edge_weight: new_edge_weight,
+// //             },
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 edge_weight: ordinal_edge_weight,
+// //             }
+// //         ],
+// //         updates
+// //     );
+// // }
+// //
+// // #[test]
+// // fn detect_conflicts_and_updates_simple_ordering_with_no_conflicts_add_in_onto_remove_in_to_rebase()
+// // {
+// //     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let empty_change_set = &initial_change_set;
+// //     let mut empty_graph = WorkspaceSnapshotGraph::new(initial_change_set)
+// //         .expect("Unable to create WorkspaceSnapshotGraph");
+// //
+// //     let schema_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_id,
+// //                 ContentAddress::Schema(ContentHash::from("Schema A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema A");
+// //     let schema_variant_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let schema_variant_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 schema_variant_id,
+// //                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add Schema Variant A");
+// //
+// //     empty_graph
+// //         .add_edge(
+// //             empty_root_id,
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_index,
+// //         )
+// //         .expect("Unable to add root -> schema edge");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             schema_variant_index,
+// //         )
+// //         .expect("Unable to add schema -> schema variant edge");
+// //
+// //     let container_prop_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let container_prop_index = empty_graph
+// //         .add_ordered_node(
+// //             empty_change_set,
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 container_prop_id,
+// //                 ContentAddress::Prop(ContentHash::new(container_prop_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add container prop");
+// //     empty_graph
+// //         .add_edge(
+// //             empty_graph
+// //                 .get_node_index_by_id(schema_variant_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             container_prop_index,
+// //         )
+// //         .expect("Unable to add schema variant -> container prop edge");
+// //
+// //     let ordered_prop_1_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_1_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_1_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 1");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_1_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 1 edge");
+// //
+// //     let ordered_prop_2_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_2_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_2_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 2");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_2_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 2 edge");
+// //
+// //     let ordered_prop_3_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_3_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_3_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 3");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_3_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 3 edge");
+// //
+// //     let ordered_prop_4_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_4_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_4_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 4");
+// //     empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //                 .expect("Unable to create EdgeWeight"),
+// //             ordered_prop_4_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 4 edge");
+// //
+// //     empty_graph.cleanup().await.expect("should clean up");
+// //     empty_graph
+// //         .mark_graph_seen(empty_change_set.vector_clock_id())
+// //         .expect("Unable to update recently seen information");
+// //     // empty_graph.dot();
+// //
+// //     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+// //     let new_change_set = &new_change_set;
+// //     let mut new_graph = empty_graph.clone();
+// //
+// //     new_graph
+// //         .remove_edge(
+// //             new_change_set,
+// //             new_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get container NodeIndex"),
+// //             ordered_prop_2_index,
+// //             EdgeWeightKindDiscriminants::new_use(),
+// //         )
+// //         .expect("Unable to remove container prop -> prop 2 edge");
+// //
+// //     let ordered_prop_5_id = empty_change_set
+// //         .generate_ulid()
+// //         .expect("Unable to generate Ulid");
+// //     let ordered_prop_5_index = empty_graph
+// //         .add_node(
+// //             NodeWeight::new_content(
+// //                 empty_change_set,
+// //                 ordered_prop_5_id,
+// //                 ContentAddress::Prop(ContentHash::new(ordered_prop_5_id.to_string().as_bytes())),
+// //             )
+// //             .expect("Unable to create NodeWeight"),
+// //         )
+// //         .expect("Unable to add ordered prop 5");
+// //
+// //     let new_edge_weight = EdgeWeight::new(empty_change_set, EdgeWeightKind::new_use())
+// //         .expect("Unable to create EdgeWeight");
+// //     let (_, maybe_ordinal_edge_information) = empty_graph
+// //         .add_ordered_edge(
+// //             empty_change_set,
+// //             empty_graph
+// //                 .get_node_index_by_id(container_prop_id)
+// //                 .expect("Unable to get NodeIndex"),
+// //             new_edge_weight.clone(),
+// //             ordered_prop_5_index,
+// //         )
+// //         .expect("Unable to add container prop -> ordered prop 5 edge");
+// //     let (
+// //         ordinal_edge_index,
+// //         source_node_index_for_ordinal_edge,
+// //         destination_node_index_for_ordinal_edge,
+// //     ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+// //     let ordinal_edge_weight = empty_graph
+// //         .get_edge_weight_opt(ordinal_edge_index)
+// //         .expect("should not error when getting edge")
+// //         .expect("could not get edge weight for index")
+// //         .to_owned();
+// //     let source_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(source_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //     let destination_node_id_for_ordinal_edge = empty_graph
+// //         .get_node_weight(destination_node_index_for_ordinal_edge)
+// //         .expect("could not get node weight")
+// //         .id();
+// //
+// //     empty_graph.cleanup().await.expect("should clean up");
+// //     empty_graph.dot();
+// //
+// //     new_graph.cleanup().await.expect("should clean up");
+// //     new_graph.dot();
+// //
+// //     let (conflicts, updates) = new_graph
+// //         .detect_conflicts_and_updates(
+// //             new_change_set.vector_clock_id(),
+// //             &empty_graph,
+// //             empty_change_set.vector_clock_id(),
+// //         )
+// //         .expect("Unable to detect conflicts and updates");
+// //
+// //     assert_eq!(Vec::<Conflict>::new(), conflicts);
+// //     assert_eq!(
+// //         vec![
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(container_prop_id)
+// //                     .expect("Unable to get new_graph container NodeIndex"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(ordered_prop_5_id)
+// //                     .expect("Unable to get ordered prop 5 NodeIndex"),
+// //                 edge_weight: new_edge_weight,
+// //             },
+// //             Update::NewEdge {
+// //                 source: new_graph
+// //                     .get_node_index_by_id(source_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 destination: empty_graph
+// //                     .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+// //                     .expect("could not get node index by id"),
+// //                 edge_weight: ordinal_edge_weight,
+// //             }
+// //         ],
+// //         updates
+// //     );
+// // }

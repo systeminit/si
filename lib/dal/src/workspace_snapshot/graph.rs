@@ -230,21 +230,6 @@ impl WorkspaceSnapshotGraph {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
-        // Temporarily add the edge to the existing tree to see if it would create a cycle.
-        // Configured to run only in tests because it has a major perf impact otherwise
-        #[cfg(test)]
-        {
-            let temp_edge =
-                self.graph
-                    .update_edge(from_node_index, to_node_index, edge_weight.clone());
-
-            let would_create_a_cycle = !self.is_acyclic_directed();
-            self.graph.remove_edge(temp_edge);
-            if would_create_a_cycle {
-                return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
-            }
-        }
-
         // Add the new edge to the new version of the "from" node.
         let new_edge_index = self
             .graph

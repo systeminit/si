@@ -481,13 +481,29 @@ impl WorkspaceSnapshot {
             .await
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
+        // Temporarily add the edge to the existing tree to see if it would create a cycle.
+        // Configured to run only in tests because it has a major perf impact otherwise
+        // #[cfg(any(test, integration_test))]
+        {
+            println!("in config test");
+            let temp_edge = self.working_copy_mut().await.graph_mut().update_edge(
+                from_node_index,
+                to_node_index,
+                edge_weight.clone(),
+            );
+
+            let would_create_a_cycle = !self.is_acyclic_directed();
+            self.graph.remove_edge(temp_edge);
+            if would_create_a_cycle {
+                return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
+            }
+        }
 
         let new_from_node_index = self.copy_node_by_index(from_node_index).await?;
 
         self.working_copy_mut()
             .await
             .add_edge(new_from_node_index, edge_weight, to_node_index)?;
-
         self.replace_references(from_node_index).await?;
 
         Ok(())
