@@ -1,7 +1,6 @@
 use std::{future::IntoFuture, io, path::Path, sync::Arc};
 
 use dal::{DalLayerDb, InitializationError, JobQueueProcessor, NatsProcessor};
-use rebaser_core::RebaserMessagingConfig;
 use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
@@ -74,8 +73,6 @@ pub struct Server {
     /// An internal graceful shutdown receiver handle which the server's main thread uses to stop
     /// accepting work when a shutdown event is in progress.
     graceful_shutdown_rx: oneshot::Receiver<()>,
-    /// The messaging configuration
-    messaging_config: RebaserMessagingConfig,
     /// The layer db
     layer_db: DalLayerDb,
 }
@@ -98,7 +95,6 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
-        let messaging_config = config.messaging_config();
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
             config.layer_cache_sled_path(),
@@ -116,7 +112,6 @@ impl Server {
             veritech,
             job_processor,
             symmetric_crypto_service,
-            messaging_config.to_owned(),
             layer_db,
         )
     }
@@ -131,7 +126,6 @@ impl Server {
         veritech: VeritechClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         symmetric_crypto_service: SymmetricCryptoService,
-        messaging_config: RebaserMessagingConfig,
         layer_db: DalLayerDb,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
@@ -156,7 +150,6 @@ impl Server {
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
-            messaging_config,
             layer_db,
         })
     }
@@ -172,7 +165,6 @@ impl Server {
             self.symmetric_crypto_service,
             self.encryption_key,
             self.shutdown_watch_rx,
-            self.messaging_config,
             self.layer_db,
         )
         .await?;

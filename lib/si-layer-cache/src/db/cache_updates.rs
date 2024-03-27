@@ -2,7 +2,10 @@ use std::{str::FromStr, sync::Arc};
 
 use futures::StreamExt;
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::{
+    async_nats::jetstream::{self, consumer::DeliverPolicy},
+    NatsClient,
+};
 use strum::{AsRefStr, EnumString};
 use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
@@ -72,6 +75,9 @@ where
         while let Some(result) = self.messages.next().await {
             match result {
                 Ok(msg) => {
+                    if let Err(e) = msg.ack().await {
+                        warn!(error = ?e, "error acknowledging message from stream");
+                    }
                     let cache_update_task = CacheUpdateTask::new(
                         self.instance_id,
                         self.cas_cache.clone(),
@@ -104,6 +110,7 @@ where
         jetstream::consumer::pull::Config {
             name: Some(name),
             description: Some(description),
+            deliver_policy: DeliverPolicy::New,
             ..Default::default()
         }
     }
@@ -220,6 +227,10 @@ where
     }
 
     async fn run(&self, msg: chunking_nats::Message) {
+        error!(
+            subject = msg.subject.as_str(),
+            "processing message for layerdb event"
+        );
         match self.process_message(msg).await {
             Ok(()) => {}
             Err(e) => {

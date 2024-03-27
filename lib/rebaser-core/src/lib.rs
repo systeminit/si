@@ -1,7 +1,3 @@
-//! This library exists to ensure that crate "rebaser-client" crate does not depend on the "rebaser-server" crate and
-//! vice versa. Keeping the dependency chain intact is important because "rebaser-server" depends on the
-//! dal. The dal, and any crate other than "rebaser-server" and this crate, must be able to use the "rebaser-client".
-
 #![warn(
     bad_style,
     clippy::missing_panics_doc,
@@ -12,7 +8,6 @@
     dead_code,
     improper_ctypes,
     missing_debug_implementations,
-    missing_docs,
     no_mangle_generic_items,
     non_shorthand_field_patterns,
     overflowing_literals,

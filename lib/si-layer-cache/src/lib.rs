@@ -24,6 +24,7 @@
 //!
 
 pub mod activities;
+mod activity_client;
 pub mod chunking_nats;
 pub mod db;
 pub mod disk_cache;

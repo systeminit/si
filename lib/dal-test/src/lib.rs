@@ -16,7 +16,6 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
-use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
 };
@@ -109,8 +108,6 @@ pub struct Config {
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
     // TODO(nick): determine why this is unused.
     #[allow(dead_code)]
-    #[builder(default)]
-    rebaser_config: RebaserClientConfig,
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 }
@@ -219,8 +216,6 @@ pub struct TestContext {
     layer_db_pg_pool: PgPool,
     /// The sled path for the layer db
     layer_db_sled_path: String,
-    /// The configuration for the rebaser client used in tests
-    rebaser_config: RebaserClientConfig,
 }
 
 impl TestContext {
@@ -313,7 +308,6 @@ impl TestContext {
             self.config.pkgs_path.to_owned(),
             None,
             self.symmetric_crypto_service.clone(),
-            self.rebaser_config.clone(),
             layer_db,
         )
     }
@@ -396,9 +390,6 @@ impl TestContextBuilder {
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
 
-        let mut rebaser_config = RebaserClientConfig::default();
-        rebaser_config.set_subject_prefix(universal_prefix);
-
         Ok(TestContext {
             config,
             pg_pool,
@@ -406,7 +397,6 @@ impl TestContextBuilder {
             job_processor,
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
-            rebaser_config,
             layer_db_pg_pool,
             layer_db_sled_path: si_layer_cache::disk_cache::default_sled_path()?.to_string(),
         })
@@ -540,15 +530,6 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_server::Server> {
-    let _config: rebaser_server::Config = {
-        let mut config_file = rebaser_server::ConfigFile::default();
-        rebaser_server::detect_and_configure_development(&mut config_file)
-            .wrap_err("failed to detect and configure Rebaser ConfigFile")?;
-        config_file
-            .try_into()
-            .wrap_err("failed to build Rebaser server config")?
-    };
-
     let server = rebaser_server::Server::from_services(
         services_context.encryption_key(),
         services_context.nats_conn().clone(),
@@ -556,7 +537,6 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.veritech().clone(),
         services_context.job_processor(),
         services_context.symmetric_crypto_service().clone(),
-        services_context.rebaser_config().clone(),
         services_context.layer_db().clone(),
     )
     .wrap_err("failed to create Rebaser server")?;
@@ -702,7 +682,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .expect("no pkgs path configured"),
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
-        services_ctx.rebaser_config().clone(),
         services_ctx.layer_db().clone(),
     )
     .await
@@ -745,7 +724,6 @@ async fn migrate_local_builtins(
     pkgs_path: PathBuf,
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
-    rebaser_config: RebaserClientConfig,
     layer_db: DalLayerDb,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
@@ -757,7 +735,6 @@ async fn migrate_local_builtins(
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service.clone(),
-        rebaser_config,
         layer_db.clone(),
     );
     let dal_context = services_context.into_builder(true);

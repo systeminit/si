@@ -5,7 +5,8 @@ use dal::{
     DalContext, Tenancy, TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshot, WsEvent,
     WsEventError,
 };
-use rebaser_core::{ReplyRebaseMessage, RequestRebaseMessage};
+use si_layer_cache::activities::rebase::RebaseStatus;
+use si_layer_cache::activities::AckRebaseRequest;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -34,15 +35,15 @@ type RebaseResult<T> = Result<T, RebaseError>;
 
 pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
-    message: RequestRebaseMessage,
-) -> RebaseResult<ReplyRebaseMessage> {
+    message: &AckRebaseRequest,
+) -> RebaseResult<RebaseStatus> {
     let start = Instant::now();
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set =
-        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into())
+        ChangeSetPointer::find(ctx, message.payload.to_rebase_change_set_id.into())
             .await?
             .ok_or(RebaseError::MissingChangeSetPointer(
-                message.to_rebase_change_set_id.into(),
+                message.payload.to_rebase_change_set_id.into(),
             ))?;
     let to_rebase_workspace_snapshot_address =
         to_rebase_change_set.workspace_snapshot_address.ok_or(
@@ -52,7 +53,7 @@ pub(crate) async fn perform_rebase(
     let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
     let onto_workspace_snapshot: WorkspaceSnapshot =
-        WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_address).await?;
+        WorkspaceSnapshot::find(ctx, message.payload.onto_workspace_snapshot_address).await?;
     info!(
         "to_rebase_id: {}, onto_id: {}",
         to_rebase_workspace_snapshot_address,
@@ -60,8 +61,13 @@ pub(crate) async fn perform_rebase(
     );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());
 
+    // Let NATS know we are still working
+    let _ = message
+        .ack_with(si_layer_cache::activities::AckKind::Progress)
+        .await;
+
     // Perform the conflicts and updates detection.
-    let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
+    let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
@@ -78,7 +84,7 @@ pub(crate) async fn perform_rebase(
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
-    let message: ReplyRebaseMessage = if conflicts.is_empty() {
+    let message: RebaseStatus = if conflicts.is_empty() {
         // TODO(nick): store the offset with the change set.
         to_rebase_workspace_snapshot
             .perform_updates(
@@ -102,13 +108,13 @@ pub(crate) async fn perform_rebase(
             info!("pointer updated: {:?}", start.elapsed());
         }
 
-        ReplyRebaseMessage::Success {
-            updates_performed: serde_json::to_value(updates)?,
+        RebaseStatus::Success {
+            updates_performed: serde_json::to_value(updates)?.to_string(),
         }
     } else {
-        ReplyRebaseMessage::ConflictsFound {
-            conflicts_found: serde_json::to_value(conflicts)?,
-            updates_found_and_skipped: serde_json::to_value(updates)?,
+        RebaseStatus::ConflictsFound {
+            conflicts_found: serde_json::to_value(conflicts)?.to_string(),
+            updates_found_and_skipped: serde_json::to_value(updates)?.to_string(),
         }
     };
 

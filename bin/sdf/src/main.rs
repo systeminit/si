@@ -13,8 +13,6 @@ use sdf_server::{
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use rebaser_client::Config as RebaserClientConfig;
-
 mod args;
 
 type JobProcessor = sdf_server::NatsProcessor;
@@ -111,10 +109,6 @@ async fn async_main() -> Result<()> {
 
     let module_index_url = config.module_index_url().to_string();
 
-    // TODO: accept command line arguments and or environment variables to configure the rebaser
-    // client
-    let rebaser_config = RebaserClientConfig::default();
-
     let (ws_multiplexer, ws_multiplexer_client) =
         Multiplexer::new(&nats_conn, WS_MULTIPLEXER_SUBJECT).await?;
     let (crdt_multiplexer, crdt_multiplexer_client) =
@@ -138,7 +132,6 @@ async fn async_main() -> Result<()> {
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service,
-        rebaser_config,
         layer_db,
     );
 
