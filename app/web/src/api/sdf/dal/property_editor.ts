@@ -95,6 +95,7 @@ export interface PropertyEditorProp {
   isReadonly: boolean;
   documentation?: string;
   validationFormat?: string;
+  defaultCanBeSetBySocket: boolean;
 }
 
 export interface PropertyEditorSchema {

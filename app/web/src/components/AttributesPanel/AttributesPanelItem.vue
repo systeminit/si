@@ -105,11 +105,9 @@
             header
           />
           <!-- DROPDOWN MENU FOR SELECT SOURCE -->
-          <!-- TODO(Wendy) - currently we hide this menu if the prop is set manually since you can't select another option yet -->
           <template
             v-if="
-              propSource !== 'manually' &&
-              attributeDef.value?.ancestorManual &&
+              validAttributeValueSources.length > 1 &&
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET
             "
           >
@@ -125,11 +123,13 @@
                 <Icon name="chevron--down" size="sm" />
               </div>
             </div>
+
             <DropdownMenu ref="sourceSelectMenuRef">
-              <!-- TODO(Wendy) - Currently you can't switch to anything but manually -->
-              <template v-for="source in sourceKinds" :key="source">
+              <template
+                v-for="source in validAttributeValueSources"
+                :key="source"
+              >
                 <DropdownMenuItem
-                  v-if="source === 'manually' || propSource === source"
                   :checked="propSource === source"
                   :label="source"
                   @click="setSource(source)"
@@ -330,8 +330,8 @@
         <template v-else-if="widgetKind === 'text'">
           <input
             v-model="newValueString"
-            spellcheck="false"
             :class="`${propLabelParts[0]}${propLabelParts[1]}`"
+            spellcheck="false"
             type="text"
             @blur="onBlur"
             @focus="onFocus"
@@ -614,9 +614,6 @@ import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 
-const sourceKinds = ["manually", "via socket", "via attribute func"] as const;
-export type SourceKind = (typeof sourceKinds)[number];
-
 const props = defineProps({
   parentPath: { type: String },
   attributeDef: { type: Object as PropType<AttributeTreeItem>, required: true },
@@ -767,11 +764,59 @@ const propManual = computed(
       propSetByDynamicFunc.value
     ),
 );
-const propSource = computed<SourceKind>(() => {
-  if (propHasSocket.value || propPopulatedBySocket.value) return "via socket";
-  else if (propSetByDynamicFunc.value) return "via attribute func";
-  else return "manually";
+
+enum AttributeValueSource {
+  Manual = "manually",
+  Socket = "via socket",
+  NonSocketAttributeFunc = "via attribute func",
+}
+
+const validAttributeValueSources = computed(() => {
+  const sources = [];
+
+  // TODO(victor): Get if default function is dynamic from the api to show NonSocketAttributeFunc option on the dropdown
+
+  if (props.attributeDef.propDef.defaultCanBeSetBySocket) {
+    sources.push(AttributeValueSource.Socket);
+  }
+
+  if (props.attributeDef.value?.isControlledByAncestor === false) {
+    sources.push(AttributeValueSource.Manual);
+  }
+  if (!sources.includes(propSource.value)) {
+    sources.push(propSource.value);
+  }
+
+  return sources;
 });
+
+const propSource = computed<AttributeValueSource>(() => {
+  if (propHasSocket.value || propPopulatedBySocket.value)
+    return AttributeValueSource.Socket;
+  else if (propSetByDynamicFunc.value)
+    return AttributeValueSource.NonSocketAttributeFunc;
+  else return AttributeValueSource.Manual;
+});
+
+const setSource = (source: AttributeValueSource) => {
+  if (source === AttributeValueSource.Manual) {
+    const value = props.attributeDef.value?.value ?? null;
+
+    attributesStore.UPDATE_PROPERTY_VALUE({
+      update: {
+        attributeValueId: props.attributeDef.valueId,
+        parentAttributeValueId: props.attributeDef.parentValueId,
+        propId: props.attributeDef.propId,
+        componentId,
+        value,
+      },
+    });
+  } else {
+    attributesStore.RESET_PROPERTY_VALUE({
+      attributeValueId: props.attributeDef.valueId,
+    });
+  }
+};
 
 const sourceIcon = computed(() => {
   if (propPopulatedBySocket.value) return "circle-full";
@@ -997,28 +1042,6 @@ const confirmEdit = () => {
 const editOverride = ref(false);
 
 const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-const setSource = (source: SourceKind) => {
-  if (source === "manually") {
-    const value = props.attributeDef.value?.value ?? null;
-
-    // console.log(value);
-
-    attributesStore.UPDATE_PROPERTY_VALUE({
-      update: {
-        attributeValueId: props.attributeDef.valueId,
-        parentAttributeValueId: props.attributeDef.parentValueId,
-        propId: props.attributeDef.propId,
-        componentId,
-        value,
-      },
-    });
-  } else if (source === "via socket") {
-    // TODO(Wendy) - Here's where we can put logic for selecting a socket to connect to this prop
-  } else {
-    // TODO(Wendy) - Here's where we can put logic for selecting an attribute function to populate this prop
-  }
-};
 </script>
 
 <style lang="less">
