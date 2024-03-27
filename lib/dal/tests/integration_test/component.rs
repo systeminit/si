@@ -374,7 +374,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json!({
-                "si": { "name": name, "color": "#ffffff", "type": "component" },
+                "si": { "name": name, "color": "#00b0bc", "type": "component" },
                 "resource": {},
                 "resource_value": {},
                 "domain": {

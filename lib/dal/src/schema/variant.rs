@@ -41,9 +41,9 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, ComponentType, DalContext, Func, FuncId,
-    InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError,
-    SchemaId, SocketArity, Timestamp, TransactionsError,
+    AttributePrototype, AttributePrototypeId, ComponentId, ComponentType, DalContext, Func,
+    FuncBackendKind, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -57,7 +57,7 @@ pub mod root_prop;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
-pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "00b0bc";
+pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "#00b0bc";
 pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
     SchemaVariantContentDiscriminants::V1;
 
@@ -295,6 +295,32 @@ impl SchemaVariant {
         Ok(Self::assemble(id, inner))
     }
 
+    pub async fn get_authoring_func(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Option<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        // There's only ever 1 outgoing edge from a schema variant
+        // that edge is to a FuncId
+        let asset_authoring_func_node_indicies = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        for asset_authoring_func_node_index in asset_authoring_func_node_indicies {
+            let node_weight = workspace_snapshot
+                .get_node_weight(asset_authoring_func_node_index)
+                .await?;
+
+            let func_node_weight = node_weight.get_func_node_weight()?;
+            if func_node_weight.backend_kind() == FuncBackendKind::JsSchemaVariantDefinition {
+                return Ok(Some(func_node_weight.id().into()));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub async fn find_root_child_prop_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -414,6 +440,26 @@ impl SchemaVariant {
 
     pub fn category(&self) -> &str {
         &self.category
+    }
+
+    pub fn timestamp(&self) -> Timestamp {
+        self.timestamp
+    }
+
+    pub fn display_name(&self) -> Option<String> {
+        self.display_name.clone()
+    }
+
+    pub fn link(&self) -> Option<String> {
+        self.link.clone()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.description.clone()
+    }
+
+    pub fn component_type(&self) -> ComponentType {
+        self.component_type
     }
 
     pub async fn get_root_prop_id(
@@ -627,7 +673,7 @@ impl SchemaVariant {
         Ok(())
     }
 
-    pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
+    pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<String> {
         let color_prop_id =
             Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))
                 .await?;
@@ -638,14 +684,14 @@ impl SchemaVariant {
             .await?
             .first()
         {
-            None => Ok(None),
+            None => Ok(DEFAULT_SCHEMA_VARIANT_COLOR.to_string()),
             Some(apa_id) => {
                 match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await? {
                     Some(static_value) => {
                         let color: String = serde_json::from_value(static_value.value)?;
-                        Ok(Some(color))
+                        Ok(color)
                     }
-                    None => Ok(None),
+                    None => Ok(DEFAULT_SCHEMA_VARIANT_COLOR.to_string()),
                 }
             }
         }
@@ -1305,10 +1351,7 @@ impl SchemaVariantMetadataView {
                 id: default_schema_variant.id,
                 name: schema.name.to_owned(),
                 category: default_schema_variant.category.to_owned(),
-                color: default_schema_variant
-                    .get_color(ctx)
-                    .await?
-                    .unwrap_or("#0F0F0F".into()),
+                color: default_schema_variant.get_color(ctx).await?,
                 timestamp: default_schema_variant.timestamp.to_owned(),
                 component_type: default_schema_variant
                     .get_type(ctx)

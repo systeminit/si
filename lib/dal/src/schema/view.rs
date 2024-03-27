@@ -60,11 +60,7 @@ impl SchemaView {
                     // FIXME(nick): use the real value here
                     builtin: true,
                     name: schema_variant.name().to_owned(),
-                    // TODO(nick): we should probably centralize and standardize this color logic.
-                    color: schema_variant
-                        .get_color(ctx)
-                        .await?
-                        .unwrap_or("#0F0F0F".into()),
+                    color: schema_variant.get_color(ctx).await?,
                     category: schema_variant.category().to_owned(),
                     input_sockets: input_sockets
                         .iter()

@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{routing::get, Json, Router};
-use dal::TransactionsError;
+use dal::{FuncError, FuncId, SchemaVariantId, TransactionsError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -9,7 +9,7 @@ use crate::server::state::AppState;
 // pub mod clone_variant_def;
 // pub mod create_variant_def;
 // pub mod exec_variant_def;
-// pub mod get_variant_def;
+pub mod get_variant_def;
 pub mod list_variant_defs;
 // pub mod save_variant_def;
 
@@ -40,8 +40,8 @@ pub enum SchemaVariantError {
     //     ExternalProvider(#[from] ExternalProviderError),
     //     #[error("external provider not found for socket: {0}")]
     //     ExternalProviderNotFoundForSocket(SocketId),
-    //     #[error("func error: {0}")]
-    //     Func(#[from] FuncError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     //     #[error(transparent)]
     //     FuncArgument(#[from] FuncArgumentError),
     //     #[error("func argument not found: {0}")]
@@ -54,10 +54,10 @@ pub enum SchemaVariantError {
     //     FuncExecutionFailure(String),
     //     #[error("func has no handler: {0}")]
     //     FuncHasNoHandler(FuncId),
-    //     #[error("func is empty: {0}")]
-    //     FuncIsEmpty(FuncId),
-    //     #[error("Func {0} not found")]
-    //     FuncNotFound(FuncId),
+    #[error("func is empty: {0}")]
+    FuncIsEmpty(FuncId),
+    #[error("Func {0} not found")]
+    FuncNotFound(FuncId),
     //     #[error(transparent)]
     //     Hyper(#[from] hyper::http::Error),
     //     #[error(transparent)]
@@ -112,14 +112,14 @@ pub enum SchemaVariantError {
     //     Tenancy(#[from] TenancyError),
     //     #[error("transparent")]
     //     User(#[from] UserError),
-    //     #[error("Schema Variant Definition {0} not found")]
-    //     VariantDefinitionNotFound(SchemaVariantDefinitionId),
     //     #[error("Cannot update asset structure while in use by components, attribute functions, or validations")]
     //     VariantInUse,
     //     #[error("could not publish websocket event: {0}")]
     //     WsEvent(#[from] WsEventError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("Schema Variant {0} not found")]
+    VariantNotFound(SchemaVariantId),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -698,11 +698,12 @@ impl IntoResponse for SchemaVariantError {
 // }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route(
-        "/list_variant_defs",
-        get(list_variant_defs::list_variant_defs),
-    )
-    // .route("/get_variant_def", get(get_variant_def::get_variant_def))
+    Router::new()
+        .route(
+            "/list_variant_defs",
+            get(list_variant_defs::list_variant_defs),
+        )
+        .route("/get_variant_def", get(get_variant_def::get_variant_def))
     // .route(
     //     "/save_variant_def",
     //     post(save_variant_def::save_variant_def),
