@@ -3,7 +3,7 @@ use dal::property_editor::schema::{
 };
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use dal::{AttributeValue, Component, ComponentId, DalContext, Func, Schema, SchemaVariant};
+use dal::{AttributeValue, Component, ComponentId, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::{
     commit_and_update_snapshot, connect_components_with_socket_names,

@@ -101,17 +101,25 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
 impl WorkspaceSnapshotGraph {
     pub fn new(change_set: &ChangeSetPointer) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
-        let root_index = graph.add_node(NodeWeight::new_content(
+        let root_node = NodeWeight::new_content(
             change_set,
             change_set.generate_ulid()?,
             ContentAddress::Root,
-        )?);
+        )?;
 
-        Ok(Self {
+        let node_id = root_node.id();
+        let lineage_id = root_node.lineage_id();
+        let root_index = graph.add_node(root_node);
+
+        let mut result = Self {
             root_index,
             graph,
             ..Default::default()
-        })
+        };
+
+        result.add_node_finalize(node_id, lineage_id, root_index)?;
+
+        Ok(result)
     }
 
     pub fn root(&self) -> NodeIndex {
@@ -180,23 +188,31 @@ impl WorkspaceSnapshotGraph {
         self.node_index_by_id.remove(&id.into());
     }
 
-    pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        // Cache the node id and the lineage id;
-        let node_id = node.id();
-        let lineage_id = node.lineage_id();
-
-        // Create the node and cache the index.
-        let new_node_index = self.graph.add_node(node);
-
+    fn add_node_finalize(
+        &mut self,
+        node_id: Ulid,
+        lineage_id: Ulid,
+        node_idx: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
         // Update the accessor maps using the new index.
-        self.node_index_by_id.insert(node_id, new_node_index);
+        self.node_index_by_id.insert(node_id, node_idx);
         self.node_indices_by_lineage_id
             .entry(lineage_id)
             .and_modify(|set| {
-                set.insert(new_node_index);
+                set.insert(node_idx);
             })
-            .or_insert_with(|| HashSet::from([new_node_index]));
-        self.update_merkle_tree_hash(new_node_index)?;
+            .or_insert_with(|| HashSet::from([node_idx]));
+        self.update_merkle_tree_hash(node_idx)?;
+
+        Ok(())
+    }
+
+    pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let node_id = node.id();
+        let lineage_id = node.lineage_id();
+        let new_node_index = self.graph.add_node(node);
+
+        self.add_node_finalize(node_id, lineage_id, new_node_index)?;
 
         Ok(new_node_index)
     }
@@ -1315,6 +1331,7 @@ impl WorkspaceSnapshotGraph {
         Ok((conflicts, updates))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn find_unordered_container_membership_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
