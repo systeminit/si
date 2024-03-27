@@ -21,7 +21,6 @@ async fn remove_single_delete_intent(
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<()> {
-
     let comp = Component::get_by_id(ctx, component_id).await?;
 
     let comp_schema = comp.schema(ctx).await?;
@@ -40,7 +39,6 @@ async fn remove_single_delete_intent(
 
     Ok(())
 }
-
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

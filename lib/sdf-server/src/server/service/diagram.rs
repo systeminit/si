@@ -3,9 +3,12 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
+use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
+use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentError;
 use dal::socket::input::InputSocketError;
+use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{
@@ -25,7 +28,7 @@ pub mod set_component_position;
 
 // mod connect_component_to_frame;
 pub mod delete_component;
-//pub mod delete_connection;
+pub mod delete_connection;
 // pub mod paste_component;
 pub mod remove_delete_intent;
 // pub mod restore_connection;
@@ -37,8 +40,12 @@ pub enum DiagramError {
     Action(#[from] ActionError),
     #[error("action: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("prototype error: {0}")]
+    #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("change set not found")]
@@ -73,6 +80,8 @@ pub enum DiagramError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("not authorized")]
     NotAuthorized,
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("paste failed")]
     PasteError,
     #[error(transparent)]
@@ -112,10 +121,10 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // .route(
-        //     "/delete_connection",
-        //     post(delete_connection::delete_connection),
-        // )
+        .route(
+            "/delete_connection",
+            post(delete_connection::delete_connection),
+        )
         // .route(
         //     "/restore_connection",
         //     post(restore_connection::restore_connection),

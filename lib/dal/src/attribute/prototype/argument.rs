@@ -3,6 +3,8 @@
 //! value. It defines source of the value for the function argument in the
 //! context of the prototype.
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -22,8 +24,8 @@ use crate::{
         },
         WorkspaceSnapshotError,
     },
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, OutputSocketId, PropId,
-    Timestamp, TransactionsError,
+    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext,
+    OutputSocketId, PropId, Timestamp, TransactionsError,
 };
 
 use self::{
@@ -45,6 +47,8 @@ pk!(AttributePrototypeArgumentId);
 pub enum AttributePrototypeArgumentError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -59,8 +63,12 @@ pub enum AttributePrototypeArgumentError {
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("attribute prototype argument {0} has no func argument")]
     MissingFuncArgument(AttributePrototypeArgumentId),
+    #[error("attribute prototype argument {0} has no value source")]
+    MissingSource(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("no targets for prototype argument: {0}")]
+    NoTargets(AttributePrototypeArgumentId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -525,9 +533,37 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<()> {
+        let apa = Self::get_by_id(ctx, apa_id).await?;
+        let prototype_id = apa.prototype_id(ctx).await?;
+        // Find all of the "destination" attribute values.
+        let mut avs_to_update = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
+        // If the argument has targets, then we only care about AVs that are for the same
+        // destination component.
+        if let Some(targets) = apa.targets() {
+            let mut av_ids_to_keep = HashSet::new();
+            for av_id in &avs_to_update {
+                let component_id = AttributeValue::component_id(ctx, *av_id)
+                    .await
+                    .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
+                if component_id == targets.destination_component_id {
+                    av_ids_to_keep.insert(*av_id);
+                }
+            }
+            avs_to_update.retain(|av_id| av_ids_to_keep.contains(av_id));
+        }
+
+        // Remove the argument
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set_pointer()?, apa_id)
             .await?;
+        // Update the destination attribute values
+        for av_id_to_update in &avs_to_update {
+            AttributeValue::update_from_prototype_function(ctx, *av_id_to_update)
+                .await
+                .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
+        }
+        // Enqueue a dependent values update with the destination attribute values
+        ctx.enqueue_dependent_values_update(avs_to_update).await?;
 
         Ok(())
     }
