@@ -3,8 +3,12 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
+use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
+use dal::attribute::prototype::AttributePrototypeError;
+use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentError;
 use dal::socket::input::InputSocketError;
+use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{
@@ -24,9 +28,9 @@ pub mod set_component_position;
 
 // mod connect_component_to_frame;
 pub mod delete_component;
-// pub mod delete_connection;
+pub mod delete_connection;
 // pub mod paste_component;
-// mod restore_component;
+pub mod remove_delete_intent;
 // pub mod restore_connection;
 
 #[remain::sorted]
@@ -36,6 +40,12 @@ pub enum DiagramError {
     Action(#[from] ActionError),
     #[error("action: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("change set not found")]
@@ -70,6 +80,8 @@ pub enum DiagramError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("not authorized")]
     NotAuthorized,
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("paste failed")]
     PasteError,
     #[error(transparent)]
@@ -109,10 +121,10 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // .route(
-        //     "/delete_connection",
-        //     post(delete_connection::delete_connection),
-        // )
+        .route(
+            "/delete_connection",
+            post(delete_connection::delete_connection),
+        )
         // .route(
         //     "/restore_connection",
         //     post(restore_connection::restore_connection),
@@ -121,14 +133,10 @@ pub fn routes() -> Router<AppState> {
             "/delete_components",
             post(delete_component::delete_components),
         )
-        // .route(
-        //     "/restore_component",
-        //     post(restore_component::restore_component),
-        // )
-        // .route(
-        //     "/restore_components",
-        //     post(restore_component::restore_components),
-        // )
+        .route(
+            "/remove_delete_intent",
+            post(remove_delete_intent::remove_delete_intent),
+        )
         .route(
             "/connect_component_to_frame",
             post(connect_component_to_frame::connect_component_to_frame),

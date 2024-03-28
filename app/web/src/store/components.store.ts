@@ -1096,25 +1096,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          async RESTORE_COMPONENT(componentId: ComponentId) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest({
-              method: "post",
-              url: "diagram/restore_component",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                // this.componentDiffsById[componentId] = response.componentDiff;
-              },
-            });
-          },
 
           async PASTE_COMPONENTS(
             componentIds: ComponentId[],
@@ -1214,7 +1195,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest({
               method: "post",
-              url: "diagram/restore_components",
+              url: "diagram/remove_delete_intent",
               keyRequestStatusBy: componentIds,
               params: {
                 componentIds,

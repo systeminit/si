@@ -1199,30 +1199,33 @@ impl Component {
     where
         L: FnOnce(&mut Self) -> ComponentResult<()>,
     {
+        let original_component = self.clone();
         let mut component = self;
 
         let before = ComponentContentV1::from(component.clone());
         lambda(&mut component)?;
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let component_idx = workspace_snapshot
-            .get_node_index_by_id(component.id())
-            .await?;
-        let component_node_weight = workspace_snapshot
-            .get_node_weight(component_idx)
-            .await?
-            .get_component_node_weight()?;
-
         // The `to_delete` lives on the node itself, not in the content, so we need to be a little
         // more manual when updating that field.
-        if component.to_delete != component_node_weight.to_delete() {
+        if component.to_delete != original_component.to_delete {
+            let component_idx = ctx
+                .workspace_snapshot()?
+                .get_node_index_by_id(original_component.id)
+                .await?;
+            let component_node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(component_idx)
+                .await?
+                .get_component_node_weight()?;
             let mut new_component_node_weight = component_node_weight
                 .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
             new_component_node_weight.set_to_delete(component.to_delete);
-            workspace_snapshot
+            ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))
                 .await?;
-            workspace_snapshot.replace_references(component_idx).await?;
+            ctx.workspace_snapshot()?
+                .replace_references(component_idx)
+                .await?;
         }
 
         let updated = ComponentContentV1::from(component.clone());
@@ -1237,31 +1240,105 @@ impl Component {
                     ctx.events_actor(),
                 )
                 .await?;
-            workspace_snapshot
+            ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, component.id.into(), hash)
                 .await?;
         }
+
+        let component_node_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(original_component.id)
+            .await?
+            .get_component_node_weight()?;
 
         Ok(Component::assemble(&component_node_weight, updated))
     }
 
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Self> {
-        self.modify(ctx, |component| {
-            component.to_delete = true;
-            Ok(())
-        })
-        .await
-
-        // TODO: Trigger DependentValuesUpdate for all Components that get data from this
-        // Component.
+        self.set_to_delete(ctx, true).await
     }
 
     pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
-        self.modify(ctx, |component| {
-            component.to_delete = to_delete;
-            Ok(())
-        })
-        .await
+        let modified = self
+            .modify(ctx, |component| {
+                component.to_delete = to_delete;
+                Ok(())
+            })
+            .await?;
+
+        // If we're clearing the `to_delete` flag, we need to make sure our inputs are updated
+        // appropriately, as we may have an input connected to a still `to_delete` component, and
+        // we should not be using it for input as long as it's still marked `to_delete`.
+        //
+        // If we're setting the `to_delete` flag, then we may need to pick up inputs from other
+        // `to_delete` Components that we were ignoring before.
+        //
+        // This will update more than is strictly necessary, but it will ensure that everything is
+        // correct.
+        let input_av_ids: Vec<AttributeValueId> = modified
+            .input_socket_attribute_values(ctx)
+            .await?
+            .values()
+            .copied()
+            .collect();
+        for av_id in &input_av_ids {
+            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
+        }
+        ctx.enqueue_dependent_values_update(input_av_ids).await?;
+
+        // We always want to make sure that everything "downstream" of us reacts appropriately
+        // regardless of whether we're setting, or clearing the `to_delete` flag.
+        //
+        // We can't use self.output_socket_attribute_values here, and just enqueue a dependent
+        // values update for those IDs, as the DVU explicitly *does not* update a not-to_delete AV,
+        // using a source from a to_delete AV, and we want the not-to_delete AVs to be updated to
+        // reflect that they're not getting data from this to_delete Component any more.
+        let downstream_av_ids = modified.downstream_attribute_value_ids(ctx).await?;
+        for av_id in &downstream_av_ids {
+            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
+        }
+        ctx.enqueue_dependent_values_update(downstream_av_ids)
+            .await?;
+
+        Ok(modified)
+    }
+
+    /// `AttributeValueId`s of all input sockets connected to any output socket of this component.
+    async fn downstream_attribute_value_ids(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        let mut results = Vec::new();
+
+        let output_sockets: Vec<OutputSocketId> = self
+            .output_socket_attribute_values(ctx)
+            .await?
+            .keys()
+            .copied()
+            .collect();
+        for output_socket_id in output_sockets {
+            let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+            for argument_using_id in output_socket.prototype_arguments_using(ctx).await? {
+                let argument_using =
+                    AttributePrototypeArgument::get_by_id(ctx, argument_using_id).await?;
+                if let Some(targets) = argument_using.targets() {
+                    if targets.source_component_id == self.id() {
+                        let prototype_id = argument_using.prototype_id(ctx).await?;
+                        for maybe_downstream_av_id in
+                            AttributePrototype::attribute_value_ids(ctx, prototype_id).await?
+                        {
+                            if AttributeValue::component_id(ctx, maybe_downstream_av_id).await?
+                                == targets.destination_component_id
+                            {
+                                results.push(maybe_downstream_av_id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(results)
     }
 }
 

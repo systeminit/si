@@ -1,19 +1,27 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::edge::EdgeId;
-use dal::{ChangeSet, Component, Connection, Edge, Socket, Visibility};
+use dal::attribute::prototype::argument::value_source::ValueSource;
+use dal::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
+use dal::attribute::prototype::AttributePrototypeError;
+use dal::attribute::value::ValueIsFor;
+use dal::workspace_snapshot::node_weight::NodeWeightDiscriminants;
+use dal::{
+    AttributePrototype, AttributeValue, ChangeSetPointer, Component, InputSocket, OutputSocket,
+    Visibility,
+};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::diagram::DiagramError;
-use dal::standard_model::StandardModel;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+
 pub struct DeleteConnectionRequest {
-    pub edge_id: EdgeId,
+    pub edge_id: AttributePrototypeArgumentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -29,34 +37,76 @@ pub async fn delete_connection(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
-    let edge = Edge::get_by_id(&ctx, &request.edge_id)
-        .await?
-        .ok_or(DiagramError::EdgeNotFound)?;
 
-    let conn = Connection::from_edge(&edge);
-    let from_component_schema = Component::get_by_id(&ctx, &conn.source.component_id)
+    let attribute_prototype_argument =
+        AttributePrototypeArgument::get_by_id(&ctx, request.edge_id).await?;
+    let targets = attribute_prototype_argument.targets().ok_or(
+        AttributePrototypeArgumentError::NoTargets(attribute_prototype_argument.id()),
+    )?;
+    let output_socket_id = match attribute_prototype_argument
+        .value_source(&ctx)
         .await?
-        .ok_or(DiagramError::ComponentNotFound)?
+        .ok_or(AttributePrototypeArgumentError::MissingSource(
+            attribute_prototype_argument.id(),
+        ))? {
+        ValueSource::OutputSocket(source_id) => source_id,
+
+        // Any other source should be considered an error, as connections on the diagram
+        // are only from output sockets to input sockets.
+        ValueSource::Prop(_) => {
+            return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                attribute_prototype_argument.id(),
+                NodeWeightDiscriminants::Prop,
+            )
+            .into());
+        }
+        ValueSource::InputSocket(_) | ValueSource::StaticArgumentValue(_) => {
+            return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                attribute_prototype_argument.id(),
+                NodeWeightDiscriminants::Content,
+            )
+            .into());
+        }
+    };
+    let prototype_id = attribute_prototype_argument.prototype_id(&ctx).await?;
+    let value_id = AttributePrototype::attribute_value_ids(&ctx, prototype_id)
+        .await?
+        .first()
+        .copied()
+        .ok_or(AttributePrototypeError::NoAttributeValues(prototype_id))?;
+    let input_socket_id = match AttributeValue::is_for(&ctx, value_id).await? {
+        ValueIsFor::InputSocket(socket_id) => socket_id,
+
+        // Any other destination should be considered an error, as connections on the diagram
+        // are only from output sockets to input sockets.
+        ValueIsFor::Prop(_) => {
+            return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                attribute_prototype_argument.id(),
+                NodeWeightDiscriminants::Prop,
+            )
+            .into());
+        }
+        ValueIsFor::OutputSocket(_) => {
+            return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                attribute_prototype_argument.id(),
+                NodeWeightDiscriminants::Content,
+            )
+            .into());
+        }
+    };
+
+    let from_component_schema = Component::get_by_id(&ctx, targets.source_component_id)
+        .await?
         .schema(&ctx)
+        .await?;
+    let to_component_schema = Component::get_by_id(&ctx, targets.destination_component_id)
         .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
-
-    let from_socket = Socket::get_by_id(&ctx, &conn.source.socket_id)
-        .await?
-        .ok_or(DiagramError::SocketNotFound)?;
-
-    let to_component_schema = Component::get_by_id(&ctx, &conn.destination.component_id)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?
         .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
+        .await?;
+    let output_socket = OutputSocket::get_by_id(&ctx, output_socket_id).await?;
+    let input_socket = InputSocket::get_by_id(&ctx, input_socket_id).await?;
 
-    let to_socket = Socket::get_by_id(&ctx, &conn.destination.socket_id)
-        .await?
-        .ok_or(DiagramError::SocketNotFound)?;
-
-    Connection::delete_for_edge(&ctx, request.edge_id).await?;
+    AttributePrototypeArgument::remove(&ctx, attribute_prototype_argument.id()).await?;
 
     track(
         &posthog_client,
@@ -64,14 +114,14 @@ pub async fn delete_connection(
         &original_uri,
         "delete_connection",
         serde_json::json!({
-            "from_component_id": conn.source.component_id,
+            "from_component_id": targets.source_component_id,
             "from_component_schema_name": from_component_schema.name(),
-            "from_socket_id": conn.source.socket_id,
-            "from_socket_name": &from_socket.name(),
-            "to_component_id": conn.destination.component_id,
+            "from_socket_id": output_socket_id,
+            "from_socket_name": &output_socket.name(),
+            "to_component_id": targets.destination_component_id,
             "to_component_schema_name": to_component_schema.name(),
-            "to_socket_id": conn.destination.socket_id,
-            "to_socket_name":  &to_socket.name(),
+            "to_socket_id": input_socket_id,
+            "to_socket_name":  &input_socket.name(),
         }),
     );
 

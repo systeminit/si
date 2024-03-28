@@ -3,7 +3,7 @@ use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, AttributeValueId};
+use dal::{AttributeValue, AttributeValueId, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -483,4 +483,426 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .expect("has a view");
 
     assert_eq!(universe_json, materialized_view);
+}
+
+#[test]
+async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
+    // Get the source schema variant id.
+    let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
+        .await
+        .expect("could not perform find by name")
+        .expect("no schema found");
+    let mut docker_image_schema_variants =
+        SchemaVariant::list_for_schema(ctx, docker_image_schema.id())
+            .await
+            .expect("could not list schema variants for schema");
+    let docker_image_schema_variant = docker_image_schema_variants
+        .pop()
+        .expect("schema variants are empty");
+    let docker_image_schema_variant_id = docker_image_schema_variant.id();
+
+    // Get the destination schema variant id.
+    let butane_schema = Schema::find_by_name(ctx, "Butane")
+        .await
+        .expect("could not perform find by name")
+        .expect("no schema found");
+    let mut butane_schema_variants = SchemaVariant::list_for_schema(ctx, butane_schema.id())
+        .await
+        .expect("could not list schema variants for schema");
+    let butane_schema_variant = butane_schema_variants
+        .pop()
+        .expect("schema variants are empty");
+    let butane_schema_variant_id = butane_schema_variant.id();
+
+    // Find the sockets we want to use.
+    let output_socket =
+        OutputSocket::find_with_name(ctx, "Container Image", docker_image_schema_variant_id)
+            .await
+            .expect("could not perform find output socket")
+            .expect("output socket not found");
+    let input_socket =
+        InputSocket::find_with_name(ctx, "Container Image", butane_schema_variant_id)
+            .await
+            .expect("could not perform find input socket")
+            .expect("input socket not found");
+
+    // Create a component for both the source and the destination
+    let oysters_component =
+        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Create a second component for a second source
+    let lunch_component =
+        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component 2 creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
+        .await
+        .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after butane component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Connect the components!
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
+        ctx,
+        oysters_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Connect component 2
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
+        ctx,
+        lunch_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
+
+    // Verify data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+
+    // Delete component.
+    let oysters_component = oysters_component
+        .delete(ctx)
+        .await
+        .expect("Unable to delete oysters component");
+    dbg!(oysters_component);
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Verify post-update data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+}
+
+#[test]
+async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
+    // Get the source schema variant id.
+    let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
+        .await
+        .expect("could not perform find by name")
+        .expect("no schema found");
+    let mut docker_image_schema_variants =
+        SchemaVariant::list_for_schema(ctx, docker_image_schema.id())
+            .await
+            .expect("could not list schema variants for schema");
+    let docker_image_schema_variant = docker_image_schema_variants
+        .pop()
+        .expect("schema variants are empty");
+    let docker_image_schema_variant_id = docker_image_schema_variant.id();
+
+    // Get the destination schema variant id.
+    let butane_schema = Schema::find_by_name(ctx, "Butane")
+        .await
+        .expect("could not perform find by name")
+        .expect("no schema found");
+    let mut butane_schema_variants = SchemaVariant::list_for_schema(ctx, butane_schema.id())
+        .await
+        .expect("could not list schema variants for schema");
+    let butane_schema_variant = butane_schema_variants
+        .pop()
+        .expect("schema variants are empty");
+    let butane_schema_variant_id = butane_schema_variant.id();
+
+    // Find the sockets we want to use.
+    let output_socket =
+        OutputSocket::find_with_name(ctx, "Container Image", docker_image_schema_variant_id)
+            .await
+            .expect("could not perform find output socket")
+            .expect("output socket not found");
+    let input_socket =
+        InputSocket::find_with_name(ctx, "Container Image", butane_schema_variant_id)
+            .await
+            .expect("could not perform find input socket")
+            .expect("input socket not found");
+
+    // Create a component for both the source and the destination
+    let oysters_component =
+        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Create a second component for a second source
+    let lunch_component =
+        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component 2 creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
+        .await
+        .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after butane component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Connect the components!
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
+        ctx,
+        oysters_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Connect component 2
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
+        ctx,
+        lunch_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
+
+    // Verify data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+
+    // Delete component.
+    let oysters_component = oysters_component
+        .delete(ctx)
+        .await
+        .expect("Unable to delete oysters component");
+    dbg!(oysters_component);
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Verify post-update data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+
+    // Delete the destination component, so it pulls data from both the deleted & not deleted
+    // components.
+    let royel_component = royel_component
+        .delete(ctx)
+        .await
+        .expect("Unable to delete royel component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("Unable to blocking_commit");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("Unable to update_snapshot_to_visibility");
+
+    // Verify post-delete data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+
+    let royel_component = royel_component
+        .set_to_delete(ctx, false)
+        .await
+        .expect("Unable to clear to_delete");
+
+    ctx.blocking_commit()
+        .await
+        .expect("Unable to blocking_commit");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("Unable to update_snapshot_to_visibility");
+
+    // Verify post clear to_delete data.
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .first()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+    let units_json_string =
+        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+    dbg!(materialized_view);
+    assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
+    assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }

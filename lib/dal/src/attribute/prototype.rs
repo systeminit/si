@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 
+use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
@@ -27,7 +28,7 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
-    NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -50,8 +51,12 @@ pub enum AttributePrototypeError {
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
     MissingFunction(AttributePrototypeId),
+    #[error("No attribute values for: {0}")]
+    NoAttributeValues(AttributePrototypeId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("Attribute Prototype not found: {0}")]
+    NotFound(AttributePrototypeId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -218,6 +223,40 @@ impl AttributePrototype {
         }
 
         Ok(None)
+    }
+
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Option<Self>> {
+        let (_node_weight, content) = Self::get_node_weight_and_content(ctx, prototype_id).await?;
+        Ok(Some(Self::assemble(prototype_id, &content)))
+    }
+
+    async fn get_node_weight_and_content(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<(ContentNodeWeight, AttributePrototypeContentV1)> {
+        let content_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(prototype_id)
+            .await?;
+        let prototype_node_weight = content_weight
+            .get_content_node_weight_of_kind(ContentAddressDiscriminants::AttributePrototype)?;
+
+        let content: AttributePrototypeContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&prototype_node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                prototype_id.into(),
+            ))?;
+
+        // Do "upgrading" of the storage format from old versions to the latest here.
+        let AttributePrototypeContent::V1(inner) = content;
+
+        Ok((prototype_node_weight, inner))
     }
 
     pub async fn update_func_by_id(
