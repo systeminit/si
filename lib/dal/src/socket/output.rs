@@ -375,8 +375,11 @@ impl OutputSocket {
             )
             .await?
         {
-            if let NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_weight) =
-                ctx.workspace_snapshot()?.get_node_weight(tail_idx).await?
+            if let NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_weight) = ctx
+                .workspace_snapshot()?
+                .get_node_weight(tail_idx)
+                .await?
+                .as_ref()
             {
                 results.push(attribute_prototype_argument_weight.id().into());
             }
