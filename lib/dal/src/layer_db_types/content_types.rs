@@ -1,11 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{CasValue, ContentHash};
+use si_events::{CasValue, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 
 use crate::{
-    func::argument::FuncArgumentKind, key_pair::KeyPairPk, prop::WidgetOptions,
-    property_editor::schema::WidgetKind, secret::SecretPk,
+    func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
     socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
     ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
     FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
@@ -346,12 +345,12 @@ pub enum SecretContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SecretContentV1 {
+    pub key: EncryptedSecretKey,
+
     pub timestamp: Timestamp,
     pub created_by: Option<UserPk>,
     pub updated_by: Option<UserPk>,
 
-    pub pk: SecretPk,
-    pub key_pair_pk: KeyPairPk,
     pub name: String,
     pub definition: String,
     pub description: Option<String>,

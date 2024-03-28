@@ -7,7 +7,7 @@ use crate::schema::variant::root_prop::RootPropChild;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     AttributeValue, Component, ComponentError, ComponentId, DalContext, EncryptedSecret, Func,
-    FuncId, Prop, PropId, SchemaVariant, SecretError, SecretId, StandardModel, StandardModelError,
+    FuncId, Prop, PropId, SchemaVariant, Secret, SecretError, SecretId, StandardModelError,
 };
 
 #[remain::sorted]
@@ -39,7 +39,7 @@ pub enum BeforeFuncError {
     StandardModel(#[from] StandardModelError),
 }
 
-pub type BeforeFuncResult<T> = Result<T, BeforeFuncError>;
+type BeforeFuncResult<T> = Result<T, BeforeFuncError>;
 
 pub async fn before_funcs_for_component(
     ctx: &DalContext,
@@ -89,12 +89,14 @@ pub async fn before_funcs_for_component(
     let mut results = vec![];
 
     for (secret_id, funcs) in funcs_and_secrets {
-        let encrypted_secret = EncryptedSecret::get_by_id(ctx, &secret_id)
+        let secret = Secret::get_by_id_or_error(ctx, secret_id).await?;
+        let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.key())
             .await?
-            .ok_or(SecretError::SecretNotFound(secret_id))?;
+            .ok_or(SecretError::EncryptedSecretNotFound(secret_id))?;
 
         // Decrypt message from EncryptedSecret
         let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
+
         // Re-encrypt raw Value for transmission to Cyclone via Veritech
         encrypt_value_tree(&mut arg, ctx.encryption_key())?;
 

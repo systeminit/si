@@ -1,8 +1,6 @@
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::{
-    key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
-};
+use dal::{key_pair::KeyPairPk, Secret, SecretAlgorithm, SecretVersion, Visibility, WsEvent};
 use dal::{ChangeSetPointer, SecretView};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +33,7 @@ pub async fn create_secret(
 
     let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
-    let secret = EncryptedSecret::new(
+    let secret = Secret::new(
         &ctx,
         request.name,
         request.definition,

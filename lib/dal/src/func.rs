@@ -23,6 +23,18 @@ use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
+pub mod argument;
+pub mod backend;
+pub mod binding;
+pub mod binding_return_value;
+pub mod execution;
+pub mod intrinsics;
+
+mod before;
+
+pub use before::before_funcs_for_component;
+pub use before::BeforeFuncError;
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
@@ -57,16 +69,6 @@ pub enum FuncError {
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
-
-pub mod argument;
-pub mod backend;
-// pub before;
-pub mod binding;
-pub mod binding_return_value;
-pub mod execution;
-// pub mod identity;
-pub mod before;
-pub mod intrinsics;
 
 impl From<Func> for FuncContentV1 {
     fn from(value: Func) -> Self {

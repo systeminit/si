@@ -5,6 +5,7 @@ macro_rules! id {
         $name:ident
     ) => {
         $(#[$($attrss)*])*
+        #[allow(missing_docs)]
         #[derive(
             Eq,
             PartialEq,
