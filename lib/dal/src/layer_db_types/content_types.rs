@@ -7,8 +7,8 @@ use crate::{
     func::argument::FuncArgumentKind, key_pair::KeyPairPk, prop::WidgetOptions,
     property_editor::schema::WidgetKind, secret::SecretPk,
     socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
-    ActionPrototypeId, ComponentId, ComponentType, FuncBackendResponseType, FuncId, PropId,
-    PropKind, SocketArity, SocketKind, Timestamp, UserPk,
+    ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
+    FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
 };
 
 /// This type gathers up all the kinds of things we will store in the
@@ -219,6 +219,7 @@ pub struct FuncContentV1 {
     pub hidden: bool,
     pub builtin: bool,
     pub backend_response_type: FuncBackendResponseType,
+    pub backend_kind: FuncBackendKind,
     pub handler: Option<String>,
     pub code_base64: Option<String>,
     /// A hash of the code above

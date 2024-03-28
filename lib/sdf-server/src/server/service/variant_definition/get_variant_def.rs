@@ -81,25 +81,25 @@ pub async fn get_variant_def(
     // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
     // response.has_components = has_components;
 
-    // BRIT TO BRING THIS PART BACK!!
-    // response.funcs = SchemaVariant::all_funcs(&ctx, request.id)
-    //     .await?
-    //     .iter()
-    //     .filter_map(|func| match func.try_into() {
-    //         Ok(func_variant) => Some(ListedFuncView {
-    //             id: func.id().to_owned(),
-    //             handler: func.handler().map(|handler| handler.to_owned()),
-    //             variant: func_variant,
-    //             name: func.name().into(),
-    //             display_name: func
-    //                 .display_name()
-    //                 .map(Into::into)
-    //                 .or_else(|| Some(func.name().to_string())),
-    //             is_builtin: func.builtin(),
-    //         }),
-    //         Err(_) => None,
-    //     })
-    //     .collect();
+    response.funcs = SchemaVariant::all_funcs(&ctx, request.id)
+        .await?
+        .iter()
+        .filter_map(|func| match func.try_into() {
+            Ok(func_variant) => Some(ListedFuncView {
+                id: func.id,
+                handler: func.handler.clone().map(|handler| handler.to_owned()),
+                variant: func_variant,
+                name: (*func.name).to_string(),
+                display_name: func
+                    .display_name
+                    .as_ref()
+                    .map(Into::into)
+                    .or_else(|| Some(func.name.to_string())),
+                is_builtin: func.builtin,
+            }),
+            Err(_) => None,
+        })
+        .collect();
 
     // track(
     //     &posthog_client,

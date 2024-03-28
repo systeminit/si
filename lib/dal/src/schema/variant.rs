@@ -1,7 +1,7 @@
 //! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
-use petgraph::{Direction, Incoming};
+use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_events::ContentHash;
@@ -20,7 +20,7 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncError;
+use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
     InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentDiscriminants, SchemaVariantContentV1,
@@ -41,15 +41,13 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, ComponentType, DalContext, Func,
-    FuncBackendKind, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
-    Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
+    ActionPrototype, ActionPrototypeError, AttributePrototype, AttributePrototypeId, ComponentId,
+    ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
+    PropId, PropKind, Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
-
-// use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
 pub mod definition;
 pub mod leaves;
@@ -64,6 +62,8 @@ pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(String),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute argument prototype error: {0}")]
@@ -305,7 +305,7 @@ impl SchemaVariant {
                 .await?;
 
             let func_node_weight = node_weight.get_func_node_weight()?;
-            if func_node_weight.backend_kind() == FuncBackendKind::JsSchemaVariantDefinition {
+            if func_node_weight.func_kind() == FuncKind::SchemaVariantDefinition {
                 return Ok(Some(func_node_weight.id().into()));
             }
         }
@@ -1040,39 +1040,81 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<Func>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut all_funcs = vec![];
-        // auth funcs
-        for func_id in Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await? {
-            let func = Func::get_by_id(ctx, func_id).await?;
+
+        let sv = Self::get_by_id(ctx, schema_variant_id).await?;
+
+        let prop_list = sv.dump_props_as_list(ctx).await?;
+        for prop_path in prop_list {
+            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await?;
+            // Let's get the Attribute funcs now
+            if let Some(ap_id) = AttributePrototype::find_for_prop(ctx, prop_id, &None).await? {
+                let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
+
+                let node_weight = workspace_snapshot
+                    .get_node_weight_by_id(func_id)
+                    .await?
+                    .get_func_node_weight()?;
+
+                match node_weight.func_kind() {
+                    FuncKind::Attribute => {
+                        let func = Func::get_by_id(ctx, func_id).await?;
+                        all_funcs.push(func);
+                    }
+
+                    _ => {}
+                }
+            }
+
+            // Now let's get all of the outgoing edges for the Prop
+            for (edge_weight, _source, _target) in
+                workspace_snapshot.edges_directed(prop_id, Outgoing).await?
+            {
+                if let EdgeWeightKind::Prototype(Some(key)) = edge_weight.kind() {
+                    if let Some(func_id) = Func::find_by_name(ctx, key).await? {
+                        let func = Func::get_by_id(ctx, func_id).await?;
+                        all_funcs.push(func);
+                    }
+                }
+            }
+        }
+
+        // Let's get all of the Authentication funcs
+        let auth_func_ids =
+            Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await?;
+        for auth_func_id in auth_func_ids {
+            let auth_func = Func::get_by_id(ctx, auth_func_id).await?;
+            // We may not need this - the list_auth_func_ids_for_schema_variant returns multiple
+            // of the same type
+            if !all_funcs.contains(&auth_func) {
+                all_funcs.push(auth_func);
+            }
+        }
+
+        let action_prototype_nodes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )
+            .await?;
+        for action_prototype_node in action_prototype_nodes {
+            let weight = workspace_snapshot
+                .get_node_weight(action_prototype_node)
+                .await?;
+            let ap = ActionPrototype::get_by_id(ctx, weight.id().into())
+                .await
+                .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?;
+            let func = Func::get_by_id(
+                ctx,
+                ap.func_id(ctx)
+                    .await
+                    .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?,
+            )
+            .await?;
             all_funcs.push(func);
         }
-        // attribute funcs
-        for func_id in
-            Self::list_attribute_func_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let func = Func::get_by_id(ctx, func_id).await?;
-            all_funcs.push(func);
-        }
-        // qualification funcs
-        for func_id in
-            Self::list_qualification_func_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let func = Func::get_by_id(ctx, func_id).await?;
-            all_funcs.push(func);
-        }
-        // action funcs
-        for func_id in Self::list_action_func_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let func = Func::get_by_id(ctx, func_id).await?;
-            all_funcs.push(func);
-        }
-        //code gen
-        for func_id in
-            Self::list_code_gen_func_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let func = Func::get_by_id(ctx, func_id).await?;
-            all_funcs.push(func);
-        }
+
         Ok(all_funcs)
     }
 
