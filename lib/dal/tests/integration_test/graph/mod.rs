@@ -11,6 +11,7 @@ use dal::WorkspaceSnapshot;
 use petgraph::Outgoing;
 use si_events::ContentHash;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use dal::change_set_pointer::ChangeSetPointer;
 use dal::workspace_snapshot::conflict::Conflict;
@@ -19,6 +20,7 @@ use dal::workspace_snapshot::node_weight::NodeWeight;
 use dal::workspace_snapshot::update::Update;
 use dal::PropKind;
 use dal_test::test;
+use si_events::{MerkleTreeHash, NodeWeightAddress};
 
 #[derive(Debug, PartialEq)]
 struct ConflictsAndUpdates {
@@ -455,15 +457,14 @@ async fn update_content(ctx: DalContext) {
         .expect("Unable to add component -> schema variant edge");
 
     // Ensure that the root node merkle tree hash looks as we expect before the update.
-    let pre_update_root_node_merkle_tree_hash: ContentHash =
-        serde_json::from_value(serde_json::json![
-            "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
-        ])
-        .expect("could not deserialize");
+    let pre_update_root_node_merkle_tree_hash = MerkleTreeHash::from_str(
+        "6b3b0374a25049046f34d6c7e98f890387a963249aaace3d66bb47ce70399033",
+    )
+    .expect("could not make merkle tree hash from hex bytes");
     assert_eq!(
         pre_update_root_node_merkle_tree_hash, // expected
         graph
-            .get_node_weight(graph.root().await.expect("get root"))
+            .get_graph_local_node_weight(graph.root_id().await.expect("get root"))
             .await
             .expect("could not get node weight")
             .merkle_tree_hash(), // actual
@@ -475,15 +476,14 @@ async fn update_content(ctx: DalContext) {
         .await
         .expect("Unable to update Component content hash");
 
-    let post_update_root_node_merkle_tree_hash: ContentHash =
-        serde_json::from_value(serde_json::json![
-            "0b9b79be9c1b4107bd32dc9fb7accde544dc10171e37847e53c4d16a9efd2da1"
-        ])
-        .expect("could not deserialize");
+    let post_update_root_node_merkle_tree_hash = MerkleTreeHash::from_str(
+        "46babffabf1567fd20594c7038cfea58991b394b8eb6cc1f81167d2314617e35",
+    )
+    .expect("merkle hash from str");
     assert_eq!(
         post_update_root_node_merkle_tree_hash, // expected
         graph
-            .get_node_weight(graph.root().await.expect("get root"))
+            .get_graph_local_node_weight(graph.root_id().await.expect("get root"))
             .await
             .expect("could not get node weight")
             .merkle_tree_hash(), // actual
@@ -511,7 +511,7 @@ async fn update_content(ctx: DalContext) {
     assert_eq!(
         post_update_root_node_merkle_tree_hash, // expected
         graph
-            .get_node_weight(graph.root().await.expect("get root"))
+            .get_graph_local_node_weight(graph.root_id().await.expect("get root"))
             .await
             .expect("could not get node weight")
             .merkle_tree_hash()
@@ -1168,7 +1168,6 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
         .expect("Unable to update Component A");
 
     new_graph.cleanup().await.expect("should clean up");
-    println!("new graph (Root {:?}):", new_root_id);
     // new_graph.dot();
 
     base_graph
@@ -1179,11 +1178,41 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
         )
         .await
         .expect("Unable to update Component A");
+    // new_graph.dot();
 
     base_graph.cleanup().await.expect("should clean up");
     let base_root_id = base_graph.root_id().await.expect("should get root id");
+    println!("==========================");
     println!("Updated base graph (Root: {:?}):", base_root_id);
-    // base_graph.dot();
+    dbg!(base_graph
+        .get_node_weight(base_graph.root().await.expect("..."))
+        .await
+        .expect("get root"));
+    dbg!(
+        new_root_id,
+        base_graph
+            .get_graph_local_node_weight(new_root_id)
+            .await
+            .expect("get graph local node weight"),
+        base_graph
+            .get_node_index_by_id(new_root_id)
+            .await
+            .expect(".."),
+    );
+    dbg!(
+        new_root_id,
+        new_graph
+            .get_graph_local_node_weight(new_root_id)
+            .await
+            .expect("get graph local node weight"),
+        new_graph
+            .get_node_index_by_id(new_root_id)
+            .await
+            .expect(".."),
+    );
+
+    base_graph.tiny_dot_to_file(Some("base_graph")).await;
+    new_graph.tiny_dot_to_file(Some("new_graph")).await;
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(

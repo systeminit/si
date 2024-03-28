@@ -113,10 +113,6 @@ rust_test(
         "RUSTC_BOOTSTRAP": "1",
         "CI": "buildkite",
     },
-    # set to ensure that we only run the add_edge cyclic check during integration tests
-    rustc_flags = [
-        "--cfg=integration_test",
-    ],
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",

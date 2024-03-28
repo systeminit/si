@@ -3,10 +3,10 @@ use petgraph::{algo, prelude::*};
 use serde::{Deserialize, Serialize};
 use si_events::{
     deserialize_merkle_tree_hash_as_bytes, deserialize_node_weight_address_as_bytes,
-    serialize_merkle_tree_hash_as_bytes, serialize_node_weight_address_as_bytes, MerkleTreeHash,
-    NodeWeightAddress,
+    serialize_merkle_tree_hash_as_bytes, serialize_node_weight_address_as_bytes, ContentHash,
+    MerkleTreeHash, NodeWeightAddress,
 };
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use telemetry::prelude::*;
@@ -234,7 +234,6 @@ impl WorkspaceSnapshotGraph {
         let new_edge_index = self
             .graph
             .update_edge(from_node_index, to_node_index, edge_weight);
-        self.update_merkle_tree_hash(from_node_index)?;
 
         Ok(new_edge_index)
     }
@@ -255,7 +254,6 @@ impl WorkspaceSnapshotGraph {
 
         // Update the accessor maps using the new index.
         self.insert_into_maps(node, new_node_index, node_address);
-        self.update_merkle_tree_hash(new_node_index)?;
 
         Ok(new_node_index)
     }
@@ -468,6 +466,9 @@ impl WorkspaceSnapshotGraph {
     //     Ok(view)
     // }
 
+    // local graph: address, merkle tree hash
+    // remote graph: node_hash (hash of the content, but not the vector clocks)
+
     pub fn find_equivalent_node(
         &self,
         id: Ulid,
@@ -488,157 +489,19 @@ impl WorkspaceSnapshotGraph {
         Ok(maybe_equivalent_node)
     }
 
-    // #[allow(dead_code)]
-    // pub fn dot(&self) {
-    //     // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
-    //     // process and open a new tab in your browser.
-    //     // ```
-    //     // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
-    //     // ```
-    //     let current_root_weight = self.get_node_weight(self.root_index).unwrap();
-    //     println!(
-    //         "Root Node Weight: {current_root_weight:?}\n{:?}",
-    //         petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
-    //     );
-    // }
-
-    // #[allow(dead_code)]
-    // pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
-    //     let suffix = suffix.unwrap_or("dot");
-    //     // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
-    //     // process and open a new tab in your browser.
-    //     // ```
-    //     // GRAPHFILE=<filename-without-extension>; cat $GRAPHFILE.txt | dot -Tsvg -o processed-$GRAPHFILE.svg; open processed-$GRAPHFILE.svg
-    //     // ```
-    //     let dot = petgraph::dot::Dot::with_attr_getters(
-    //         &self.graph,
-    //         &[
-    //             petgraph::dot::Config::NodeNoLabel,
-    //             petgraph::dot::Config::EdgeNoLabel,
-    //         ],
-    //         &|_, edgeref| {
-    //             let discrim: EdgeWeightKindDiscriminants = edgeref.weight().kind().into();
-    //             let color = match discrim {
-    //                 EdgeWeightKindDiscriminants::Action => "black",
-    //                 EdgeWeightKindDiscriminants::ActionPrototype => "black",
-    //                 EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
-    //                 EdgeWeightKindDiscriminants::Contain => "blue",
-    //                 EdgeWeightKindDiscriminants::FrameContains => "black",
-    //                 EdgeWeightKindDiscriminants::Ordering => "gray",
-    //                 EdgeWeightKindDiscriminants::Ordinal => "gray",
-    //                 EdgeWeightKindDiscriminants::Prop => "orange",
-    //                 EdgeWeightKindDiscriminants::Prototype => "green",
-    //                 EdgeWeightKindDiscriminants::PrototypeArgument => "green",
-    //                 EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
-    //                 EdgeWeightKindDiscriminants::Socket => "red",
-    //                 EdgeWeightKindDiscriminants::SocketValue => "purple",
-    //                 EdgeWeightKindDiscriminants::Proxy => "gray",
-    //                 EdgeWeightKindDiscriminants::Root => "black",
-    //                 EdgeWeightKindDiscriminants::Use => "black",
-    //             };
-
-    //             match edgeref.weight().kind() {
-    //                 EdgeWeightKind::Contain(key) => {
-    //                     let key = key
-    //                         .as_deref()
-    //                         .map(|key| format!(" ({key}"))
-    //                         .unwrap_or("".into());
-    //                     format!(
-    //                         "label = \"{discrim:?}{key}\"\nfontcolor = {color}\ncolor = {color}"
-    //                     )
-    //                 }
-    //                 _ => format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}"),
-    //             }
-    //         },
-    //         &|_, (node_index, node_weight)| {
-    //             let (label, color) = match node_weight {
-    //                 NodeWeight::Content(weight) => {
-    //                     let discrim = ContentAddressDiscriminants::from(weight.content_address());
-    //                     let color = match discrim {
-    //                         // Some of these should never happen as they have their own top-level
-    //                         // NodeWeight variant.
-    //                         ContentAddressDiscriminants::Action => "green",
-    //                         ContentAddressDiscriminants::ActionBatch => "green",
-    //                         ContentAddressDiscriminants::ActionRunner => "green",
-    //                         ContentAddressDiscriminants::ActionPrototype => "green",
-    //                         ContentAddressDiscriminants::AttributePrototype => "green",
-    //                         ContentAddressDiscriminants::Component => "black",
-    //                         ContentAddressDiscriminants::OutputSocket => "red",
-    //                         ContentAddressDiscriminants::Func => "black",
-    //                         ContentAddressDiscriminants::FuncArg => "black",
-    //                         ContentAddressDiscriminants::InputSocket => "red",
-    //                         ContentAddressDiscriminants::JsonValue => "fuchsia",
-    //                         ContentAddressDiscriminants::Prop => "orange",
-    //                         ContentAddressDiscriminants::Root => "black",
-    //                         ContentAddressDiscriminants::Schema => "black",
-    //                         ContentAddressDiscriminants::SchemaVariant => "black",
-    //                         ContentAddressDiscriminants::Secret => "black",
-    //                         ContentAddressDiscriminants::StaticArgumentValue => "green",
-    //                         ContentAddressDiscriminants::ValidationPrototype => "black",
-    //                     };
-    //                     (discrim.to_string(), color)
-    //                 }
-    //                 NodeWeight::AttributePrototypeArgument(apa) => (
-    //                     format!(
-    //                         "Attribute Prototype Argument{}",
-    //                         apa.targets()
-    //                             .map(|targets| format!(
-    //                                 "\nsource: {}\nto: {}",
-    //                                 targets.source_component_id, targets.destination_component_id
-    //                             ))
-    //                             .unwrap_or("".to_string())
-    //                     ),
-    //                     "green",
-    //                 ),
-    //                 NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
-    //                 NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
-    //                 {
-    //                     CategoryNodeKind::Component => {
-    //                         ("Components (Category)".to_string(), "black")
-    //                     }
-    //                     CategoryNodeKind::ActionBatch => {
-    //                         ("Action Batches (Category)".to_string(), "black")
-    //                     }
-    //                     CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
-    //                     CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
-    //                     CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
-    //                 },
-    //                 NodeWeight::Component(component) => (
-    //                     "Component".to_string(),
-    //                     if component.to_delete() {
-    //                         "gray"
-    //                     } else {
-    //                         "black"
-    //                     },
-    //                 ),
-    //                 NodeWeight::Func(func_node_weight) => {
-    //                     (format!("Func\n{}", func_node_weight.name()), "black")
-    //                 }
-    //                 NodeWeight::FuncArgument(func_arg_node_weight) => (
-    //                     format!("Func Arg\n{}", func_arg_node_weight.name()),
-    //                     "black",
-    //                 ),
-    //                 NodeWeight::Ordering(_) => {
-    //                     (NodeWeightDiscriminants::Ordering.to_string(), "gray")
-    //                 }
-    //                 NodeWeight::Prop(prop_node_weight) => {
-    //                     (format!("Prop\n{}", prop_node_weight.name()), "orange")
-    //                 }
-    //             };
-    //             let color = color.to_string();
-    //             let id = node_weight.id();
-    //             format!(
-    //                 "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n\"\nfontcolor = {color}\ncolor = {color}",
-    //             )
-    //         },
-    //     );
-    //     let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
-    //     let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
-    //         .expect("could not create file");
-    //     file.write_all(format!("{dot:?}").as_bytes())
-    //         .expect("could not write file");
-    //     println!("dot output stored in file (filename without extension: {filename_no_extension})");
-    // }
+    #[allow(dead_code)]
+    pub fn dot(&self) {
+        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
+        // process and open a new tab in your browser.
+        // ```
+        // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
+        // ```
+        let current_root_weight = self.get_node_weight(self.root_index).unwrap();
+        println!(
+            "Root Node Weight: {current_root_weight:?}\n{:?}",
+            petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
+        );
+    }
 
     #[inline(always)]
     pub(crate) fn get_node_index_by_id(
@@ -761,95 +624,41 @@ impl WorkspaceSnapshotGraph {
         Ok((source, destination))
     }
 
-    pub(crate) fn update_root_index(&mut self) -> WorkspaceSnapshotGraphResult<()> {
+    pub(crate) fn update_root_index(&mut self) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         self.root_index = self.get_latest_node_idx(self.root_index)?;
-        Ok(())
+        Ok(self.root_index)
     }
 
-    pub(crate) fn update_merkle_tree_hash(
-        &mut self,
-        node_index_to_update: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut hasher = MerkleTreeHash::hasher();
-        hasher.update(
-            self.get_node_weight(node_index_to_update)?
-                .address()
-                .as_bytes(),
-        );
+    // #[allow(dead_code)]
+    // pub fn update_merkle_tree_hash_to_root(
+    //     &mut self,
+    //     start_idx: NodeIndex,
+    // ) -> WorkspaceSnapshotGraphResult<()> {
+    //     info!("update merkle tree hash to root");
+    //     let mut work_queue = VecDeque::from([start_idx]);
+    //     let mut seen_list = HashSet::new();
 
-        let mut outgoing_neighbors = vec![];
-        for out_neighbor_index in self
-            .graph
-            .neighbors_directed(node_index_to_update, Outgoing)
-        {
-            outgoing_neighbors.push((
-                self.get_node_weight(out_neighbor_index)?,
-                out_neighbor_index,
-            ));
-        }
+    //     while let Some(node_idx) = work_queue.pop_front() {
+    //         let mut parents = 0;
+    //         for parent_idx in self.graph.neighbors_directed(node_idx, Incoming) {
+    //             parents += 1;
+    //             if !seen_list.contains(&parent_idx) {
+    //                 work_queue.push_back(parent_idx);
+    //                 seen_list.insert(parent_idx);
+    //             }
+    //         }
 
-        // Ensure all outgoing children are stably sorted so that we always
-        // compute the same merkle tree hash for a node that has the same
-        // outgoing children. There is no need to worry about the ordering
-        // node's order since the ordering node will have a new address if it
-        // has an updated order
-        outgoing_neighbors.sort_by_key(|(weight, _)| weight.address);
+    //         if parents == 0 {
+    //             info!("root index!");
+    //         }
 
-        for (neighbor_node, neighbor_node_index) in outgoing_neighbors {
-            hasher.update(neighbor_node.merkle_tree_hash().as_bytes());
+    //         info!("updating merkle tree hash for {:?}", node_idx);
 
-            // The edge(s) between `node_index_to_update`, and `neighbor_node` potentially encode
-            // important information related to the "identity" of `node_index_to_update`.
-            for connecting_edgeref in self
-                .graph
-                .edges_connecting(node_index_to_update, neighbor_node_index)
-            {
-                match connecting_edgeref.weight().kind() {
-                    // This is the key for an entry in a map.
-                    EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
+    //         self.update_merkle_tree_hash(node_idx)?;
+    //     }
 
-                    // This is the kind of the action.
-                    EdgeWeightKind::ActionPrototype(kind) => {
-                        hasher.update(kind.to_string().as_bytes())
-                    }
-
-                    EdgeWeightKind::Use { is_default } => {
-                        hasher.update(is_default.to_string().as_bytes())
-                    }
-
-                    // This is the key representing an element in a container type corresponding
-                    // to an AttributePrototype
-                    EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
-
-                    // Nothing to do, as these EdgeWeightKind do not encode extra information
-                    // in the edge itself.
-                    EdgeWeightKind::AuthenticationPrototype
-                    | EdgeWeightKind::Action
-                    | EdgeWeightKind::Contain(None)
-                    | EdgeWeightKind::FrameContains
-                    | EdgeWeightKind::PrototypeArgument
-                    | EdgeWeightKind::PrototypeArgumentValue
-                    | EdgeWeightKind::Socket
-                    | EdgeWeightKind::Ordering
-                    | EdgeWeightKind::Ordinal
-                    | EdgeWeightKind::Prop
-                    | EdgeWeightKind::Prototype(None)
-                    | EdgeWeightKind::Proxy
-                    | EdgeWeightKind::Root
-                    | EdgeWeightKind::SocketValue => {}
-                }
-            }
-        }
-
-        let new_node_weight = self
-            .graph
-            .node_weight_mut(node_index_to_update)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-
-        new_node_weight.set_merkle_tree_hash(hasher.finalize());
-
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub(crate) fn update_node_weight_address(
         &mut self,

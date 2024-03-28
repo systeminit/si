@@ -30,6 +30,7 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
 use chrono::Utc;
 use futures::executor;
@@ -48,6 +49,8 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 use tokio::time::Instant;
@@ -68,6 +71,7 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
+use self::graph::GraphLocalNodeWeight;
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 #[remain::sorted]
@@ -410,7 +414,8 @@ impl WorkspaceSnapshot {
             .await?;
 
         let maybe_existing_node_index = self.get_node_index_by_id_opt(node_id).await;
-        self.working_copy_mut().await.add_node(node_arc, hash)?;
+        let new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
+        self.update_merkle_tree_hash(new_node_index).await?;
 
         // If we are replacing an existing node, we need to replace all references to it
         if let Some(existing_node_index) = maybe_existing_node_index {
@@ -467,7 +472,26 @@ impl WorkspaceSnapshot {
 
         self.add_node(node_weight).await?;
 
+        let current_index = self.get_node_index_by_id(id).await?;
+        info!("{:?} = {:?}?", current_index, node_weight_index);
+        let old_local_weight = self
+            .working_copy()
+            .await
+            .get_node_weight(node_weight_index)?;
+        let new_local_weight = self.working_copy().await.get_node_weight(current_index);
+
+        info!("old: {:?}", old_local_weight);
+        info!("new: {:?}", new_local_weight);
+
         Ok(())
+    }
+
+    pub async fn get_graph_local_node_weight(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<GraphLocalNodeWeight> {
+        let node_idx = self.get_node_index_by_id(id).await?;
+        Ok(self.working_copy().await.get_node_weight(node_idx)?)
     }
 
     pub async fn add_edge(
@@ -483,19 +507,22 @@ impl WorkspaceSnapshot {
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
         // Configured to run only in tests because it has a major perf impact otherwise
-        // #[cfg(any(test, integration_test))]
+        //#[cfg(integration_test)]
         {
-            println!("in config test");
             let temp_edge = self.working_copy_mut().await.graph_mut().update_edge(
                 from_node_index,
                 to_node_index,
                 edge_weight.clone(),
             );
 
-            let would_create_a_cycle = !self.is_acyclic_directed();
-            self.graph.remove_edge(temp_edge);
+            let would_create_a_cycle = !self.is_acyclic_directed().await;
+            self.working_copy_mut()
+                .await
+                .graph_mut()
+                .remove_edge(temp_edge);
+
             if would_create_a_cycle {
-                return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
+                return Err(WorkspaceSnapshotGraphError::CreateGraphCycle)?;
             }
         }
 
@@ -504,6 +531,7 @@ impl WorkspaceSnapshot {
         self.working_copy_mut()
             .await
             .add_edge(new_from_node_index, edge_weight, to_node_index)?;
+        self.update_merkle_tree_hash(new_from_node_index).await?;
         self.replace_references(from_node_index).await?;
 
         Ok(())
@@ -517,10 +545,13 @@ impl WorkspaceSnapshot {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        Ok(self
-            .working_copy_mut()
-            .await
-            .add_edge(from_node_index, edge_weight, to_node_index)?)
+        let edge_index =
+            self.working_copy_mut()
+                .await
+                .add_edge(from_node_index, edge_weight, to_node_index)?;
+        self.update_merkle_tree_hash(from_node_index).await?;
+
+        Ok(edge_index)
     }
 
     pub async fn add_ordered_edge(
@@ -706,7 +737,7 @@ impl WorkspaceSnapshot {
 
                 for to_rebase_node_index in to_rebase_node_indexes {
                     let to_rebase_local_node_weight= executor::block_on(self.working_copy()).get_node_weight(to_rebase_node_index).map_err(
-                        |err| {
+                        |err: WorkspaceSnapshotGraphError| {
                             error!("Unable to get graph local node weight for NodeIndex {:?} on self, {}", to_rebase_node_index, err);
                             event
                         })?;
@@ -727,10 +758,12 @@ impl WorkspaceSnapshot {
                     {
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
-                        debug!(
-                            "onto {} and to rebase {} merkle tree hashes are the same",
-                            onto_node_weight.merkle_tree_hash(),
-                            to_rebase_node_weight.merkle_tree_hash(),
+                        println!(
+                            "onto {}, {:?} and to rebase {}, {:?} merkle tree hashes are the same",
+                            onto_local_node_weight.merkle_tree_hash(),
+                            onto_node_index,
+                            to_rebase_local_node_weight.merkle_tree_hash(),
+                            to_rebase_node_index
                         );
                         continue;
                     }
@@ -738,7 +771,7 @@ impl WorkspaceSnapshot {
 
                     // Check if there's a difference in the node itself (and whether it is a
                     // conflict if there is a difference).
-                    if onto_local_node_weight.address() != onto_local_node_weight.address() {
+                    if onto_local_node_weight.address() != to_rebase_local_node_weight.address() {
                         if to_rebase_node_weight
                             .vector_clock_write()
                             .is_newer_than(onto_node_weight.vector_clock_write())
@@ -1366,6 +1399,16 @@ impl WorkspaceSnapshot {
         // sibling node that we encounter as we walk up to root.
         let mut outer_queue = VecDeque::from([original_node_index]);
 
+        let root_idx = self.root().await?;
+        info!("root index: {:?}", root_idx);
+        info!(
+            "root index merkle: {:?}",
+            self.working_copy()
+                .await
+                .get_node_weight(root_idx)?
+                .address()
+        );
+
         while let Some(old_node_index) = outer_queue.pop_front() {
             let mut work_queue = VecDeque::from([old_node_index]);
 
@@ -1434,15 +1477,132 @@ impl WorkspaceSnapshot {
                     );
                 }
 
-                self.working_copy_mut()
-                    .await
-                    .update_merkle_tree_hash(new_node_idx)?;
+                self.update_merkle_tree_hash(new_node_idx).await?;
             }
         }
 
-        self.working_copy_mut().await.update_root_index()?;
+        let new_root_idx = self.working_copy_mut().await.update_root_index()?;
+        info!("updated root index: {:?}", new_root_idx);
+        let new_node_idx = self.get_latest_node_index(original_node_index).await?;
+
+        // self.working_copy_mut()
+        //     .await
+        //     .update_merkle_tree_hash_to_root(new_node_idx)?;
+
+        info!(
+            "root index merkle: {:?}",
+            self.working_copy()
+                .await
+                .get_node_weight(new_root_idx)?
+                .address()
+        );
 
         info!("replace references took: {:?}", start.elapsed(),);
+
+        Ok(())
+    }
+
+    async fn update_merkle_tree_hash(
+        &self,
+        node_index_to_update: NodeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        let remote_node_weight = self.get_node_weight(node_index_to_update).await?;
+        let node_id_to_update = remote_node_weight.id();
+
+        let mut hasher = si_events::MerkleTreeHash::hasher();
+        hasher.update(remote_node_weight.node_hash().as_bytes());
+
+        // Need to make sure that ordered containers have their ordered children in the
+        // order specified by the ordering graph node.
+        let explicitly_ordered_children = self
+            .ordered_children_for_node(node_id_to_update)
+            .await?
+            .unwrap_or_default();
+
+        // Need to make sure the unordered neighbors are added to the hash in a stable order to
+        // ensure the merkle tree hash is identical for identical trees.
+        let mut unordered_neighbors = Vec::new();
+        for neighbor_index in self
+            .working_copy()
+            .await
+            .graph()
+            .neighbors_directed(node_index_to_update, Outgoing)
+        {
+            let neighbor_id = self.get_node_weight(neighbor_index).await?.id();
+            // Only add the neighbor if it's not one of the ones with an explicit ordering.
+            if !explicitly_ordered_children.contains(&neighbor_id) {
+                unordered_neighbors.push((neighbor_id, neighbor_index));
+            }
+        }
+
+        // We'll sort the neighbors by the ID in the NodeWeight, as that will result in more stable
+        // results than if we sorted by the NodeIndex itself.
+        unordered_neighbors.sort_by_cached_key(|(id, _index)| *id);
+        // It's not important whether the explicitly ordered children are first or last, as long as
+        // they are always in that position, and are always in the sequence specified by the
+        // container's Ordering node.
+        let mut ordered_neighbors =
+            Vec::with_capacity(explicitly_ordered_children.len() + unordered_neighbors.len());
+        ordered_neighbors.extend(explicitly_ordered_children);
+        ordered_neighbors
+            .extend::<Vec<Ulid>>(unordered_neighbors.iter().map(|(id, _index)| *id).collect());
+
+        for neighbor_id in ordered_neighbors {
+            let graph_local_node_weight = self.get_graph_local_node_weight(neighbor_id).await?;
+            let neighbor_node_index = self.get_node_index_by_id(neighbor_id).await?;
+            hasher.update(graph_local_node_weight.merkle_tree_hash().as_bytes());
+
+            // The edge(s) between `node_index_to_update`, and `neighbor_node` potentially encode
+            // important information related to the "identity" of `node_index_to_update`.
+            for connecting_edgeref in self
+                .working_copy()
+                .await
+                .graph()
+                .edges_connecting(node_index_to_update, neighbor_node_index)
+            {
+                match connecting_edgeref.weight().kind() {
+                    // This is the key for an entry in a map.
+                    EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
+
+                    // This is the kind of the action.
+                    EdgeWeightKind::ActionPrototype(kind) => {
+                        hasher.update(kind.to_string().as_bytes())
+                    }
+
+                    EdgeWeightKind::Use { is_default } => {
+                        hasher.update(is_default.to_string().as_bytes())
+                    }
+
+                    // This is the key representing an element in a container type corresponding
+                    // to an AttributePrototype
+                    EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
+
+                    // Nothing to do, as these EdgeWeightKind do not encode extra information
+                    // in the edge itself.
+                    EdgeWeightKind::AuthenticationPrototype
+                    | EdgeWeightKind::Action
+                    | EdgeWeightKind::Contain(None)
+                    | EdgeWeightKind::FrameContains
+                    | EdgeWeightKind::PrototypeArgument
+                    | EdgeWeightKind::PrototypeArgumentValue
+                    | EdgeWeightKind::Socket
+                    | EdgeWeightKind::Ordering
+                    | EdgeWeightKind::Ordinal
+                    | EdgeWeightKind::Prop
+                    | EdgeWeightKind::Prototype(None)
+                    | EdgeWeightKind::Proxy
+                    | EdgeWeightKind::Root
+                    | EdgeWeightKind::SocketValue => {}
+                }
+            }
+        }
+
+        self.working_copy_mut()
+            .await
+            .graph_mut()
+            .node_weight_mut(node_index_to_update)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+            .set_merkle_tree_hash(hasher.finalize());
 
         Ok(())
     }
@@ -1453,10 +1613,13 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<NodeIndex> {
         let remote_node_weight = self.get_node_weight(node_index).await?;
         let local_weight = self.working_copy().await.get_node_weight(node_index)?;
-        Ok(self
+        let node_index = self
             .working_copy_mut()
             .await
-            .add_node(remote_node_weight, local_weight.address())?)
+            .add_node(remote_node_weight, local_weight.address())?;
+        self.update_merkle_tree_hash(node_index).await?;
+
+        Ok(node_index)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1671,13 +1834,158 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    // pub async fn dot(&self) {
-    //     self.working_copy().await.dot();
-    // }
+    #[allow(dead_code)]
+    pub async fn tiny_dot_to_file(&self, suffix: Option<&str>) {
+        let suffix = suffix.unwrap_or("dot");
+        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
+        // process and open a new tab in your browser.
+        // ```
+        // GRAPHFILE=<filename-without-extension>; cat $GRAPHFILE.txt | dot -Tsvg -o processed-$GRAPHFILE.svg; open processed-$GRAPHFILE.svg
+        // ```
 
-    // pub async fn tiny_dot_to_file(&self, suffix: Option<&str>) {
-    //     self.working_copy().await.tiny_dot_to_file(suffix);
-    // }
+        let self_clone = self.clone();
+
+        let dot = tokio::task::spawn_blocking(move || {
+            let graph_clone = executor::block_on(self_clone.working_copy()).graph().clone();
+
+            let get_node_attributes_fn = |_, (node_index, node_weight): (NodeIndex, &GraphLocalNodeWeight)| {
+                let remote_node_weight = executor::block_on(self_clone.get_node_weight(node_index)).expect("unable to get node weight");
+                let (label, color) = match remote_node_weight.as_ref() {
+                    NodeWeight::Content(weight) => {
+                        let discrim = ContentAddressDiscriminants::from(weight.content_address());
+                        let color = match discrim {
+                            // Some of these should never happen as they have their own top-level
+                            // NodeWeight variant.
+                            ContentAddressDiscriminants::Action => "green",
+                            ContentAddressDiscriminants::ActionBatch => "green",
+                            ContentAddressDiscriminants::ActionRunner => "green",
+                            ContentAddressDiscriminants::ActionPrototype => "green",
+                            ContentAddressDiscriminants::AttributePrototype => "green",
+                            ContentAddressDiscriminants::Component => "black",
+                            ContentAddressDiscriminants::OutputSocket => "red",
+                            ContentAddressDiscriminants::Func => "black",
+                            ContentAddressDiscriminants::FuncArg => "black",
+                            ContentAddressDiscriminants::InputSocket => "red",
+                            ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::Prop => "orange",
+                            ContentAddressDiscriminants::Root => "black",
+                            ContentAddressDiscriminants::Schema => "black",
+                            ContentAddressDiscriminants::SchemaVariant => "black",
+                            ContentAddressDiscriminants::Secret => "black",
+                            ContentAddressDiscriminants::StaticArgumentValue => "green",
+                            ContentAddressDiscriminants::ValidationPrototype => "black",
+                        };
+                        (discrim.to_string(), color)
+                    }
+                    NodeWeight::AttributePrototypeArgument(apa) => (
+                        format!(
+                            "Attribute Prototype Argument{}",
+                            apa.targets()
+                                .map(|targets| format!(
+                                    "\nsource: {}\nto: {}",
+                                    targets.source_component_id, targets.destination_component_id
+                                ))
+                                .unwrap_or("".to_string())
+                        ),
+                        "green",
+                    ),
+                    NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
+                    NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
+                    {
+                        CategoryNodeKind::Component => {
+                            ("Components (Category)".to_string(), "black")
+                        }
+                        CategoryNodeKind::ActionBatch => {
+                            ("Action Batches (Category)".to_string(), "black")
+                        }
+                        CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
+                        CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
+                        CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
+                    },
+                    NodeWeight::Component(component) => (
+                        "Component".to_string(),
+                        if component.to_delete() {
+                            "gray"
+                        } else {
+                            "black"
+                        },
+                    ),
+                    NodeWeight::Func(func_node_weight) => {
+                        (format!("Func\n{}", func_node_weight.name()), "black")
+                    }
+                    NodeWeight::FuncArgument(func_arg_node_weight) => (
+                        format!("Func Arg\n{}", func_arg_node_weight.name()),
+                        "black",
+                    ),
+                    NodeWeight::Ordering(_) => {
+                        (NodeWeightDiscriminants::Ordering.to_string(), "gray")
+                    }
+                    NodeWeight::Prop(prop_node_weight) => {
+                        (format!("Prop\n{}", prop_node_weight.name()), "orange")
+                    }
+                };
+                let color = color.to_string();
+                let id = remote_node_weight.id();
+                format!(
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n\n{:?}\"\nfontcolor = {color}\ncolor = {color}",
+                    node_weight.address(),
+                    node_weight.merkle_tree_hash(),
+                )
+            };
+
+            let dot = petgraph::dot::Dot::with_attr_getters(
+            &graph_clone,
+            &[
+                petgraph::dot::Config::NodeNoLabel,
+                petgraph::dot::Config::EdgeNoLabel,
+            ],
+            &|_, edgeref| {
+                let discrim: EdgeWeightKindDiscriminants = edgeref.weight().kind().into();
+                let color = match discrim {
+                    EdgeWeightKindDiscriminants::Action => "black",
+                    EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
+                    EdgeWeightKindDiscriminants::Contain => "blue",
+                    EdgeWeightKindDiscriminants::FrameContains => "black",
+                    EdgeWeightKindDiscriminants::Ordering => "gray",
+                    EdgeWeightKindDiscriminants::Ordinal => "gray",
+                    EdgeWeightKindDiscriminants::Prop => "orange",
+                    EdgeWeightKindDiscriminants::Prototype => "green",
+                    EdgeWeightKindDiscriminants::PrototypeArgument => "green",
+                    EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
+                    EdgeWeightKindDiscriminants::Socket => "red",
+                    EdgeWeightKindDiscriminants::SocketValue => "purple",
+                    EdgeWeightKindDiscriminants::Proxy => "gray",
+                    EdgeWeightKindDiscriminants::Root => "black",
+                    EdgeWeightKindDiscriminants::Use => "black",
+                };
+
+                match edgeref.weight().kind() {
+                    EdgeWeightKind::Contain(key) => {
+                        let key = key
+                            .as_deref()
+                            .map(|key| format!(" ({key}"))
+                            .unwrap_or("".into());
+                        format!(
+                            "label = \"{discrim:?}{key}\"\nfontcolor = {color}\ncolor = {color}"
+                        )
+                    }
+                    _ => format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}"),
+                }
+            },
+            &get_node_attributes_fn);
+
+             Box::new(format!("{dot:?}"))
+        }).await.expect("should generate dot");
+        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
+        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
+            .await
+            .expect("could not create file");
+        file.write_all(dot.as_bytes())
+            .await
+            .expect("could not write file");
+        println!("dot output stored in file (filename without extension: {filename_no_extension})");
+    }
 
     pub async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         self.working_copy().await.get_node_index_by_id_opt(id)
@@ -2073,12 +2381,13 @@ impl WorkspaceSnapshot {
         let mut work_queue = VecDeque::from([source_node_index]);
 
         while let Some(node_index) = work_queue.pop_front() {
-            self.working_copy_mut().await.update_merkle_tree_hash(
+            self.update_merkle_tree_hash(
                 // If we updated the ordering node, that means we've invalidated the container's
                 // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
                 // to update the container's merkle tree hash.
                 node_index,
-            )?;
+            )
+            .await?;
 
             for edge_ref in self
                 .working_copy()
