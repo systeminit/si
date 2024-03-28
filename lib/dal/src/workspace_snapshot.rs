@@ -2593,7 +2593,7 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn update_order(
-        &mut self,
+        &self,
         change_set: &ChangeSetPointer,
         container_id: Ulid,
         new_order: Vec<Ulid>,
