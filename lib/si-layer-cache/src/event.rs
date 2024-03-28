@@ -57,6 +57,7 @@ impl std::str::FromStr for LayeredEventId {
 #[strum(serialize_all = "snake_case")]
 pub enum LayeredEventKind {
     CasInsertion,
+    NodeWeightWrite,
     Raw,
     SnapshotWrite,
 }

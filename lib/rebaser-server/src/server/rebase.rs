@@ -73,7 +73,7 @@ pub(crate) async fn perform_rebase(
         "count: conflicts ({}) and updates ({}), {:?}",
         conflicts.len(),
         updates.len(),
-        start.elapsed()
+        updates,
     );
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.

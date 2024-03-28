@@ -68,5 +68,6 @@ itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
 rebaser-core = { path = "../../lib/rebaser-core" }
 rebaser-server = { path = "../../lib/rebaser-server" }
+si-events = { path = "../../lib/si-events-rs" }
 tempfile = { workspace = true }
 tokio-util = { workspace = true }

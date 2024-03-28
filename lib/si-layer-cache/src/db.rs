@@ -18,20 +18,26 @@ use crate::{
     persister::{PersisterClient, PersisterTask},
 };
 
-use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
+use self::{
+    cache_updates::CacheUpdatesTask, cas::CasDb, node_weight::NodeWeightDb,
+    workspace_snapshot::WorkspaceSnapshotDb,
+};
 
 mod cache_updates;
 pub mod cas;
+pub mod node_weight;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
+    node_weight: NodeWeightDb<NodeWeightValue>,
     sled: sled::Db,
     pg_pool: PgPool,
     nats_client: NatsClient,
@@ -40,10 +46,12 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, WorkspaceSnapshotValue> LayerDb<CasValue, WorkspaceSnapshotValue>
+impl<CasValue, WorkspaceSnapshotValue, NodeWeightValue>
+    LayerDb<CasValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn initialize(
         disk_path: impl AsRef<Path>,
@@ -71,11 +79,15 @@ where
         )
         .await?;
 
+        let node_weight_cache: LayerCache<Arc<NodeWeightValue>> =
+            LayerCache::new(node_weight::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
             &nats_client,
             cas_cache.clone(),
             snapshot_cache.clone(),
+            node_weight_cache.clone(),
             token.clone(),
         )
         .await?;
@@ -94,6 +106,7 @@ where
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
+        let node_weight = NodeWeightDb::new(node_weight_cache, persister_client.clone());
         let activity_publisher = ActivityPublisher::new(&nats_client);
 
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
@@ -102,6 +115,7 @@ where
             activity_publisher,
             cas,
             workspace_snapshot,
+            node_weight,
             sled,
             pg_pool,
             persister_client,
@@ -136,6 +150,9 @@ where
         &self.workspace_snapshot
     }
 
+    pub fn node_weight(&self) -> &NodeWeightDb<NodeWeightValue> {
+        &self.node_weight
+    }
     pub fn instance_id(&self) -> Ulid {
         self.instance_id
     }
