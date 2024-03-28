@@ -33,6 +33,12 @@ RUN set -eux; \
         docker-buildx-plugin \
         docker-compose-plugin \
         xvfb \
+        libgtk2.0-0 \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libgtk-3-0 \
+        libgdm-dev \
+        libasound2 \
     ; \
     rm -rf /var/lib/apt/lists/*
 
