@@ -4,8 +4,9 @@ use axum::extract::Query;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::secret::{SecretDefinitionView, SecretView};
-use dal::{Secret, Visibility};
+use dal::SecretDefinitionView;
+use dal::Visibility;
+use dal::{Secret, SecretView};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::secret::SecretError;

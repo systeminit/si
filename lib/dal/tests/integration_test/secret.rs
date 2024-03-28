@@ -1,15 +1,15 @@
-use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion, StandardModel};
-use dal_test::{
-    test,
-    test_harness::{create_secret, generate_fake_name},
-    WorkspaceSignup,
-};
+use dal::secret::DecryptedSecret;
+use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion};
+use dal_test::{test, test_harness::generate_fake_name, WorkspaceSignup};
+use pretty_assertions_sorted::assert_eq;
+use serde_json::Value;
 
 #[test]
-async fn new_encrypted_secret(ctx: &DalContext, nw: &WorkspaceSignup) {
+async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     let name = generate_fake_name();
 
-    let secret = EncryptedSecret::new(
+    // Ensure that secret creation works.
+    let secret = Secret::new(
         ctx,
         &name,
         "Mock".to_owned(),
@@ -21,73 +21,42 @@ async fn new_encrypted_secret(ctx: &DalContext, nw: &WorkspaceSignup) {
     )
     .await
     .expect("failed to create secret");
+    assert_eq!(name, secret.name());
+    assert_eq!("Mock", secret.definition());
+    assert_eq!(Some("Description"), secret.description().as_deref());
 
-    assert_eq!(secret.name(), name);
-    assert_eq!(secret.definition(), "Mock");
-    assert_eq!(secret.description().as_deref(), Some("Description"));
-
-    let key_pair = secret
+    // Ensure that the underlying encrypted secret was created and that we can fetch its key pair.
+    let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.key())
+        .await
+        .expect("failed to perform get by key for encrypted secret")
+        .expect("no encrypted secret found");
+    let key_pair = encrypted_secret
         .key_pair(ctx)
         .await
         .expect("failed to fetch key pair");
-    assert_eq!(key_pair.pk(), nw.key_pair.pk());
-}
+    assert_eq!(nw.key_pair.pk(), key_pair.pk());
 
-#[test]
-async fn secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
-    let og_secret = create_secret(ctx, nw.key_pair.pk()).await;
-
-    let secret = Secret::get_by_id(ctx, og_secret.id())
+    // Fetch the secret by id too.
+    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
         .await
-        .expect("failed to get secret");
-    assert_eq!(secret, og_secret);
+        .expect("could not perform get by id or secret not found");
+    assert_eq!(secret, found_secret);
 }
-
-#[test]
-async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
-    let secret = create_secret(ctx, nw.key_pair.pk()).await;
-
-    let encrypted_secret = EncryptedSecret::get_by_id(ctx, &secret.id())
-        .await
-        .expect("failed to get encrypted secret")
-        .expect("failed to find encrypted secret in current tenancy and visibility");
-    assert_eq!(secret.id(), *encrypted_secret.id());
-    assert_eq!(secret.pk(), *encrypted_secret.pk());
-    assert_eq!(secret.name(), encrypted_secret.name());
-    assert_eq!(
-        secret.description().as_deref(),
-        encrypted_secret.description()
-    );
-    assert_eq!(secret.definition(), encrypted_secret.definition());
-}
-
-// TODO(nick): this is unused in sdf.
-// #[test]
-// async fn secret_update_name(ctx: &DalContext, nw: &WorkspaceSignup) {
-//     let mut secret = create_secret(ctx, nw.key_pair.pk()).await;
-//
-//     let original_name = secret.name().to_string();
-//     secret
-//         .set_name(ctx, "even-more-secret")
-//         .await
-//         .expect("failed to set name");
-//
-//     assert_ne!(secret.name(), original_name);
-//     assert_eq!(secret.name(), "even-more-secret");
-// }
 
 #[test]
 async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     let pkey = nw.key_pair.public_key();
     let name = generate_fake_name();
 
+    // Create an encrypted message.
     let message = serde_json::json!({"song": "Bar Round Here"});
     let crypted = sodiumoxide::crypto::sealedbox::seal(
-        &serde_json::to_vec(&message).expect("failed to serilaze message"),
+        &serde_json::to_vec(&message).expect("failed to serialize message"),
         pkey,
     );
 
-    let secret = EncryptedSecret::new(
+    // Create a secret with the encrypted message.
+    let secret = Secret::new(
         ctx,
         &name,
         "imasecret".to_owned(),
@@ -100,20 +69,177 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     .await
     .expect("failed to create encrypted secret");
 
-    let decrypted = EncryptedSecret::get_by_id(ctx, &secret.id())
+    // Ensure that the fetched secret looks as we expected.
+    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
         .await
-        .expect("failed to fetch encrypted secret")
-        .expect("failed to find encrypted secret for tenancy and/or visibility")
+        .expect("could not perform get by id or secret not found");
+    assert_eq!(secret.name(), found_secret.name());
+    assert_eq!(secret.description(), found_secret.description());
+    assert_eq!(secret.definition(), found_secret.definition());
+    assert_eq!(secret.key(), found_secret.key());
+
+    // Ensure that the decrypted contents match our messag.e
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+        .await
+        .expect("failed to perform get by key for encrypted secret")
+        .expect("no encrypted secret found")
         .decrypt(ctx)
         .await
         .expect("failed to decrypt encrypted secret");
-    assert_eq!(decrypted.name(), secret.name());
-    assert_eq!(decrypted.definition(), secret.definition());
+    let actual_message = prepare_decrypted_secret_for_assertions(&decrypted);
+    assert_eq!(message, actual_message);
+}
 
+#[test]
+async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let pkey = nw.key_pair.public_key();
+    let key_pair_pk = nw.key_pair.pk();
+    let version = SecretVersion::default();
+    let algorithm = SecretAlgorithm::default();
+    let name = generate_fake_name();
+
+    // Create a message to encrypt and use for the secret.
+    let message = serde_json::json!({"song": "Smile", "artist": "midwxst"});
+    let crypted = sodiumoxide::crypto::sealedbox::seal(
+        &serde_json::to_vec(&message).expect("failed to serialize message"),
+        pkey,
+    );
+
+    // Create the secret.
+    let secret = Secret::new(
+        ctx,
+        &name,
+        "my flight might be delayed, but I'm writing this test, so it's all good",
+        None,
+        &crypted,
+        key_pair_pk,
+        version,
+        algorithm,
+    )
+    .await
+    .expect("failed to create encrypted secret");
+
+    // Ensure that the fetched secret looks as we expect.
+    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+        .await
+        .expect("could not perform get by id or secret not found");
+    assert_eq!(secret.name(), found_secret.name());
+    assert_eq!(secret.description(), found_secret.description());
+    assert_eq!(secret.definition(), found_secret.definition());
+    assert_eq!(secret.key(), found_secret.key());
+
+    // Ensure that the decrypted message matches the original message.
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+        .await
+        .expect("failed to perform get by key for encrypted secret")
+        .expect("no encrypted secret found")
+        .decrypt(ctx)
+        .await
+        .expect("failed to decrypt encrypted secret");
+    let actual_message = prepare_decrypted_secret_for_assertions(&decrypted);
+    assert_eq!(message, actual_message);
+
+    // Update the encrypted contents and the secret.
+    let updated_message =
+        serde_json::json!({"song": "Smile", "artist": "midwxst", "featuredArtists": ["glaive"]});
+    let updated_crypted = sodiumoxide::crypto::sealedbox::seal(
+        &serde_json::to_vec(&updated_message).expect("failed to serialize message"),
+        pkey,
+    );
+    let original_key = secret.key();
+    let updated_secret = secret
+        .update_encrypted_contents(
+            ctx,
+            updated_crypted.as_slice(),
+            key_pair_pk,
+            version,
+            algorithm,
+        )
+        .await
+        .expect("could not update encrypted contents");
+    let found_updated_secret = Secret::get_by_id_or_error(ctx, updated_secret.id())
+        .await
+        .expect("could not perform get by id or secret not found");
+
+    // Check that the key has changed.
+    assert_ne!(original_key, updated_secret.key());
+    assert_eq!(found_updated_secret.key(), updated_secret.key());
+
+    // Check that the decrypted contents match.
+    let updated_decrypted = EncryptedSecret::get_by_key(ctx, found_updated_secret.key())
+        .await
+        .expect("failed to perform get by key for encrypted secret")
+        .expect("no encrypted secret found")
+        .decrypt(ctx)
+        .await
+        .expect("failed to decrypt encrypted secret");
+    let actual_updated_message = prepare_decrypted_secret_for_assertions(&updated_decrypted);
+    assert_eq!(updated_message, actual_updated_message);
+
+    // Ensure the metadata has not changed
+    assert_eq!(found_secret.name(), updated_secret.name());
+    assert_eq!(found_secret.definition(), updated_secret.definition());
+    assert_eq!(found_updated_secret.name(), updated_secret.name());
+    assert_eq!(
+        found_updated_secret.definition(),
+        updated_secret.definition()
+    );
+
+    // Now, update the metadata.
+    let double_updated_secret = updated_secret.update_metadata(ctx, name, Some("alright, so now we are in the air and I am writing this test offline, which is awesome!".to_string())).await.expect("could not update metadata");
+    let found_double_updated_secret = Secret::get_by_id_or_error(ctx, double_updated_secret.id())
+        .await
+        .expect("could not perform get by id or secret not found");
+
+    // Ensure the description has changed.
+    assert_eq!(
+        double_updated_secret.description(),
+        found_double_updated_secret.description()
+    );
+    assert_ne!(
+        double_updated_secret.description(),
+        found_updated_secret.description()
+    );
+
+    // Ensure the key has not changed.
+    assert_eq!(
+        double_updated_secret.key(),
+        found_double_updated_secret.key()
+    );
+    assert_eq!(double_updated_secret.key(), found_updated_secret.key());
+
+    // Ensure the definition has not changed.
+    assert_eq!(
+        double_updated_secret.definition(),
+        found_double_updated_secret.definition()
+    );
+    assert_eq!(
+        double_updated_secret.definition(),
+        found_updated_secret.definition()
+    );
+
+    // Check that the decrypted contents have not changed.
+    let updated_decrypted_should_not_have_changed =
+        EncryptedSecret::get_by_key(ctx, found_double_updated_secret.key())
+            .await
+            .expect("failed to perform get by key for encrypted secret")
+            .expect("no encrypted secret found")
+            .decrypt(ctx)
+            .await
+            .expect("failed to decrypt encrypted secret");
+    let actual_updated_message_should_not_have_changed =
+        prepare_decrypted_secret_for_assertions(&updated_decrypted_should_not_have_changed);
+    assert_eq!(
+        updated_message,
+        actual_updated_message_should_not_have_changed
+    );
+}
+
+fn prepare_decrypted_secret_for_assertions(decrypted_secret: &DecryptedSecret) -> Value {
     // We don't provide a direct getter for the raw decrypted message (higher effort should mean
     // less chance of developer error when handling `DecryptedSecret` types), so we'll serialize to
     // a `Value` to compare messages
     let decrypted_value =
-        serde_json::to_value(&decrypted).expect("failed to serial decrypted into Value");
-    assert_eq!(decrypted_value["message"], message);
+        serde_json::to_value(decrypted_secret).expect("failed to serialize decrypted contents");
+    decrypted_value["message"].to_owned()
 }

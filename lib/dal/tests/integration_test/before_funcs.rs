@@ -1,6 +1,7 @@
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop};
+use dal::qualification::QualificationSubCheckStatus;
+use dal::{AttributeValue, Component, DalContext, OutputSocket, Prop, Secret};
 use dal_test::test_harness::create_component_for_schema_name;
 use dal_test::test_harness::encrypt_message;
 use dal_test::{test, WorkspaceSignup};
@@ -55,7 +56,7 @@ async fn secret_definition_works_with_dummy_qualification(
             &serde_json::json![{"value": "howard"}],
         )
         .await;
-        let secret_that_will_fail_the_qualification = EncryptedSecret::new(
+        let secret_that_will_fail_the_qualification = Secret::new(
             ctx,
             "secret that will fail the qualification",
             secret_definition_name.to_string(),
@@ -119,18 +120,19 @@ async fn secret_definition_works_with_dummy_qualification(
                 .expect("no value found");
         assert_eq!(fail_value, output_socket_attribute_value);
 
-        // TODO(nick): restore the qualification check.
-        // // Check that the qualification fails.
-        // let mut qualifications =
-        //     Component::list_qualifications(ctx, secret_definition_component_id)
-        //         .await
-        //         .expect("could not list qualifications");
-        // let qualification = qualifications.pop().expect("no qualifications found");
-        // assert!(qualifications.is_empty());
-        // assert_eq!(
-        //     QualificationSubCheckStatus::Failure, // expected
-        //     qualification.result.expect("no result found").status  // actual
-        // );
+        // Check that the qualification fails.
+        let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .iter()
+            .find(|q| q.qualification_name == "test:qualificationFakeSecretStringIsTodd")
+            .expect("qualification not found")
+            .to_owned();
+        assert_eq!(
+            QualificationSubCheckStatus::Failure, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
     }
 
     // Second scenario: create and use a secret that will pass the qualification.
@@ -138,7 +140,7 @@ async fn secret_definition_works_with_dummy_qualification(
         // Create a secret with a value that will pass the qualification.
         let encrypted_message_that_will_pass_the_qualification =
             encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await;
-        let secret_that_will_pass_the_qualification = EncryptedSecret::new(
+        let secret_that_will_pass_the_qualification = Secret::new(
             ctx,
             "secret that will pass the qualification",
             secret_definition_name.to_string(),
@@ -202,17 +204,18 @@ async fn secret_definition_works_with_dummy_qualification(
                 .expect("no value found");
         assert_eq!(success_value, output_socket_attribute_value);
 
-        // TODO(nick): restore the qualification check.
-        // // Check that the qualification passes.
-        // let mut qualifications =
-        //     Component::list_qualifications(ctx, secret_definition_component_id)
-        //         .await
-        //         .expect("could not list qualifications");
-        // let qualification = qualifications.pop().expect("no qualifications found");
-        // assert!(qualifications.is_empty());
-        // assert_eq!(
-        //     QualificationSubCheckStatus::Success, // expected
-        //     qualification.result.expect("no result found").status  // actual
-        // );
+        // Check that the qualification passes.
+        let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .iter()
+            .find(|q| q.qualification_name == "test:qualificationFakeSecretStringIsTodd")
+            .expect("no qualifications found")
+            .to_owned();
+        assert_eq!(
+            QualificationSubCheckStatus::Success, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
     }
 }

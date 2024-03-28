@@ -1,8 +1,9 @@
 use axum::Json;
 use dal::PublicKey;
 
-use super::SecretResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
+
+use super::SecretResult;
 
 pub type GetPublicKeyResponse = PublicKey;
 

@@ -52,11 +52,13 @@ impl std::str::FromStr for LayeredEventId {
     }
 }
 
+#[remain::sorted]
 #[derive(AsRefStr, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum LayeredEventKind {
     CasInsertion,
+    EncryptedSecretInsertion,
     Raw,
     SnapshotWrite,
 }

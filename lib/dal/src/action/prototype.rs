@@ -18,9 +18,9 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::ActionRunResult,
-    func::before::{before_funcs_for_component, BeforeFuncError},
     func::binding::{FuncBinding, FuncBindingError},
     func::binding_return_value::FuncBindingReturnValueError,
+    func::{before_funcs_for_component, BeforeFuncError},
     layer_db_types::{ActionPrototypeContent, ActionPrototypeContentV1},
     pk, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
     SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventError,
