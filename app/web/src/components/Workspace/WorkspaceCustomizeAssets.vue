@@ -49,7 +49,7 @@
         <FuncDetails
           v-if="assetStore.selectedFuncId"
           :funcId="assetStore.selectedFuncId"
-          :schemaVariantId="assetStore.selectedAsset?.schemaVariantId"
+          :schemaVariantId="assetStore.selectedAsset?.id"
           singleModelScreen
           testPanelEnabled
           @detached="onDetach"

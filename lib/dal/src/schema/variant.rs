@@ -1,10 +1,12 @@
 //! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
-use petgraph::{Direction, Incoming};
+use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
+use si_pkg::{SchemaSpec, SchemaSpecData, SchemaVariantSpecData, SiPropFuncSpecKind};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use telemetry::prelude::*;
@@ -18,7 +20,7 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncError;
+use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
     InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentDiscriminants, SchemaVariantContentV1,
@@ -33,20 +35,19 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::graph::NodeIndex;
 
+use crate::property_editor::schema::WidgetKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, ComponentType, DalContext, Func, FuncId,
-    InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError,
-    SchemaId, Timestamp, TransactionsError,
+    ActionPrototype, AttributePrototype, AttributePrototypeId, ComponentId, ComponentType,
+    DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
-
-// use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
 pub mod definition;
 pub mod leaves;
@@ -54,13 +55,15 @@ pub mod root_prop;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
-pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "00b0bc";
+pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "#00b0bc";
 pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
     SchemaVariantContentDiscriminants::V1;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(String),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute argument prototype error: {0}")]
@@ -69,6 +72,8 @@ pub enum SchemaVariantError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
+    #[error("default variant not found: {0}")]
+    DefaultVariantNotFound(String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -89,6 +94,8 @@ pub enum SchemaVariantError {
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema spec has no variants")]
+    NoVariants,
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
@@ -122,12 +129,14 @@ pub struct SchemaVariant {
     timestamp: Timestamp,
     ui_hidden: bool,
     name: String,
-    // The [`RootProp`](crate::RootProp) for [`self`](Self).
-    //root_prop_id: Option<PropId>,
-    // schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
-    link: Option<String>,
-    finalized_once: bool,
+    display_name: Option<String>,
     category: String,
+    color: String,
+    component_type: ComponentType,
+    link: Option<String>,
+    description: Option<String>,
+    asset_func_id: Option<FuncId>,
+    finalized_once: bool,
 }
 
 impl SchemaVariant {
@@ -136,18 +145,30 @@ impl SchemaVariant {
             id,
             timestamp: inner.timestamp,
             name: inner.name,
+            display_name: inner.display_name,
+            category: inner.category,
+            color: inner.color,
+            component_type: inner.component_type,
             link: inner.link,
+            description: inner.description,
+            asset_func_id: inner.asset_func_id,
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
-            category: inner.category,
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         schema_id: SchemaId,
         name: impl Into<String>,
+        display_name: impl Into<Option<String>>,
         category: impl Into<String>,
+        color: impl Into<String>,
+        component_type: impl Into<ComponentType>,
+        link: impl Into<Option<String>>,
+        description: impl Into<Option<String>>,
+        asset_func_id: Option<FuncId>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -155,10 +176,15 @@ impl SchemaVariant {
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
-            link: None,
+            link: link.into(),
             ui_hidden: false,
             finalized_once: false,
             category: category.into(),
+            color: color.into(),
+            display_name: display_name.into(),
+            component_type: component_type.into(),
+            description: description.into(),
+            asset_func_id,
         };
 
         let (hash, _) = ctx
@@ -259,6 +285,32 @@ impl SchemaVariant {
         let SchemaVariantContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn get_authoring_func(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Option<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        // There's only ever 1 outgoing edge from a schema variant
+        // that edge is to a FuncId
+        let asset_authoring_func_node_indicies = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        for asset_authoring_func_node_index in asset_authoring_func_node_indicies {
+            let node_weight = workspace_snapshot
+                .get_node_weight(asset_authoring_func_node_index)
+                .await?;
+
+            let func_node_weight = node_weight.get_func_node_weight()?;
+            if func_node_weight.func_kind() == FuncKind::SchemaVariantDefinition {
+                return Ok(Some(func_node_weight.id().into()));
+            }
+        }
+
+        Ok(None)
     }
 
     pub async fn find_root_child_prop_id(
@@ -380,6 +432,30 @@ impl SchemaVariant {
 
     pub fn category(&self) -> &str {
         &self.category
+    }
+
+    pub fn timestamp(&self) -> Timestamp {
+        self.timestamp
+    }
+
+    pub fn display_name(&self) -> Option<String> {
+        self.display_name.clone()
+    }
+
+    pub fn link(&self) -> Option<String> {
+        self.link.clone()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.description.clone()
+    }
+
+    pub fn component_type(&self) -> ComponentType {
+        self.component_type
+    }
+
+    pub fn asset_func_id(&self) -> Option<FuncId> {
+        self.asset_func_id
     }
 
     pub async fn get_root_prop_id(
@@ -593,7 +669,7 @@ impl SchemaVariant {
         Ok(())
     }
 
-    pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
+    pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<String> {
         let color_prop_id =
             Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))
                 .await?;
@@ -604,14 +680,14 @@ impl SchemaVariant {
             .await?
             .first()
         {
-            None => Ok(None),
+            None => Ok(DEFAULT_SCHEMA_VARIANT_COLOR.to_string()),
             Some(apa_id) => {
                 match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await? {
                     Some(static_value) => {
                         let color: String = serde_json::from_value(static_value.value)?;
-                        Ok(Some(color))
+                        Ok(color)
                     }
-                    None => Ok(None),
+                    None => Ok(DEFAULT_SCHEMA_VARIANT_COLOR.to_string()),
                 }
             }
         }
@@ -960,6 +1036,84 @@ impl SchemaVariant {
         Ok(Schema::get_by_id(ctx, schema_id).await?)
     }
 
+    pub async fn all_funcs(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut all_funcs = vec![];
+
+        let sv = Self::get_by_id(ctx, schema_variant_id).await?;
+
+        let prop_list = sv.dump_props_as_list(ctx).await?;
+        for prop_path in prop_list {
+            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await?;
+            // Let's get the Attribute funcs now
+            if let Some(ap_id) = AttributePrototype::find_for_prop(ctx, prop_id, &None).await? {
+                let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
+
+                let node_weight = workspace_snapshot
+                    .get_node_weight_by_id(func_id)
+                    .await?
+                    .get_func_node_weight()?;
+
+                if node_weight.func_kind() == FuncKind::Attribute {
+                    let func = Func::get_by_id(ctx, func_id).await?;
+                    all_funcs.push(func);
+                }
+            }
+
+            // Now let's get all of the outgoing edges for the Prop
+            for (edge_weight, _source, _target) in
+                workspace_snapshot.edges_directed(prop_id, Outgoing).await?
+            {
+                if let EdgeWeightKind::Prototype(Some(key)) = edge_weight.kind() {
+                    if let Some(func_id) = Func::find_by_name(ctx, key).await? {
+                        let func = Func::get_by_id(ctx, func_id).await?;
+                        all_funcs.push(func);
+                    }
+                }
+            }
+        }
+
+        // Let's get all of the Authentication funcs
+        let auth_func_ids =
+            Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await?;
+        for auth_func_id in auth_func_ids {
+            let auth_func = Func::get_by_id(ctx, auth_func_id).await?;
+            // We may not need this - the list_auth_func_ids_for_schema_variant returns multiple
+            // of the same type
+            if !all_funcs.contains(&auth_func) {
+                all_funcs.push(auth_func);
+            }
+        }
+
+        let action_prototype_nodes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )
+            .await?;
+        for action_prototype_node in action_prototype_nodes {
+            let weight = workspace_snapshot
+                .get_node_weight(action_prototype_node)
+                .await?;
+            let ap = ActionPrototype::get_by_id(ctx, weight.id().into())
+                .await
+                .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?;
+            let func = Func::get_by_id(
+                ctx,
+                ap.func_id(ctx)
+                    .await
+                    .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?,
+            )
+            .await?;
+            all_funcs.push(func);
+        }
+
+        Ok(all_funcs)
+    }
+
     pub async fn list_auth_func_ids_for_schema_variant(
         ctx: &DalContext,
         variant_id: SchemaVariantId,
@@ -985,5 +1139,304 @@ impl SchemaVariant {
         }
 
         Ok(auth_funcs)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantMetadataJson {
+    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
+    /// punting on the issue of multiple variants for the moment.
+    pub name: String,
+    /// Override for the UI name for this schema
+    #[serde(alias = "menu_name")]
+    pub menu_name: Option<String>,
+    /// The category this schema variant belongs to
+    pub category: String,
+    /// The color for the component on the component diagram as a hex string
+    pub color: String,
+    #[serde(alias = "component_type")]
+    pub component_type: ComponentType,
+    pub link: Option<String>,
+    pub description: Option<String>,
+}
+
+/// The json definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
+/// more in the future).
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantJson {
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
+    #[serde(default)]
+    pub props: Vec<PropDefinition>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/secrets".
+    #[serde(default)]
+    pub secret_props: Vec<PropDefinition>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/secretsDefinition".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secret_definition: Option<Vec<PropDefinition>>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/resource_value".
+    #[serde(default)]
+    pub resource_props: Vec<PropDefinition>,
+    /// Identity relationships for [`Props`](crate::Prop) underneath "/root/si".
+    #[serde(default)]
+    pub si_prop_value_froms: Vec<SiPropValueFrom>,
+
+    /// The input [`Sockets`](crate::Socket) and created for the [`variant`](crate::SchemaVariant).
+    #[serde(default)]
+    pub input_sockets: Vec<SocketDefinition>,
+    /// The output [`Sockets`](crate::Socket) and created for the [`variant`](crate::SchemaVariant).
+    #[serde(default)]
+    pub output_sockets: Vec<SocketDefinition>,
+    /// A map of documentation links to reference. To reference links (values) specify the key via
+    /// the "doc_link_ref" field for a [`PropDefinition`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_links: Option<HashMap<String, String>>,
+}
+
+impl SchemaVariantJson {
+    //     pub fn to_spec(
+    //         &self,
+    //         metadata: SchemaVariantDefinitionMetadataJson,
+    //         identity_func_unique_id: &str,
+    //         asset_func_spec_unique_id: &str,
+    //     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
+    //         let mut builder = SchemaVariantSpec::builder();
+    //         let name = "v0";
+    //         builder.name(name);
+    //
+    //         let mut data_builder = SchemaVariantSpecData::builder();
+    //
+    //         data_builder.name(name);
+    //         data_builder.color(metadata.color);
+    //         data_builder.component_type(metadata.component_type);
+    //         if let Some(link) = metadata.link {
+    //             data_builder.try_link(link.as_str())?;
+    //         }
+    //
+    //         data_builder.func_unique_id(asset_func_spec_unique_id);
+    //         builder.data(data_builder.build()?);
+    //
+    //         for si_prop_value_from in &self.si_prop_value_froms {
+    //             builder.si_prop_func(si_prop_value_from.to_spec(identity_func_unique_id));
+    //         }
+    //         for prop in &self.props {
+    //             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
+    //         }
+    //         for prop in &self.secret_props {
+    //             builder.secret_prop(prop.to_spec(identity_func_unique_id)?);
+    //         }
+    //         if let Some(props) = &self.secret_definition {
+    //             for prop in props {
+    //                 builder.secret_definition_prop(prop.to_spec(identity_func_unique_id)?);
+    //             }
+    //         }
+    //         for resource_prop in &self.resource_props {
+    //             builder.resource_value_prop(resource_prop.to_spec(identity_func_unique_id)?);
+    //         }
+    //         for input_socket in &self.input_sockets {
+    //             builder.socket(input_socket.to_spec(true, identity_func_unique_id)?);
+    //         }
+    //         for output_socket in &self.output_sockets {
+    //             builder.socket(output_socket.to_spec(false, identity_func_unique_id)?);
+    //         }
+    //
+    //         Ok(builder.build()?)
+    //     }
+
+    pub fn metadata_from_spec(
+        schema_spec: SchemaSpec,
+    ) -> SchemaVariantResult<SchemaVariantMetadataJson> {
+        let schema_data = schema_spec.data.unwrap_or(SchemaSpecData {
+            name: schema_spec.name.to_owned(),
+            default_schema_variant: None,
+            category: "".into(),
+            category_name: None,
+            ui_hidden: false,
+        });
+
+        let default_variant_spec = match schema_data.default_schema_variant {
+            Some(default_variant_unique_id) => schema_spec
+                .variants
+                .iter()
+                .find(|variant| variant.unique_id.as_deref() == Some(&default_variant_unique_id))
+                .ok_or(SchemaVariantError::DefaultVariantNotFound(
+                    default_variant_unique_id,
+                ))?,
+            None => schema_spec
+                .variants
+                .last()
+                .ok_or(SchemaVariantError::NoVariants)?,
+        };
+
+        let variant_spec_data =
+            default_variant_spec
+                .data
+                .to_owned()
+                .unwrap_or(SchemaVariantSpecData {
+                    name: "v0".into(),
+                    color: None,
+                    link: None,
+                    component_type: si_pkg::SchemaVariantSpecComponentType::Component,
+                    func_unique_id: "0".into(),
+                });
+
+        let metadata = SchemaVariantMetadataJson {
+            name: schema_spec.name,
+            menu_name: schema_data.category_name,
+            category: schema_data.category,
+            color: variant_spec_data
+                .color
+                .to_owned()
+                .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
+            component_type: variant_spec_data.component_type.into(),
+            link: variant_spec_data.link.as_ref().map(|l| l.to_string()),
+            description: None, // XXX - does this exist?
+        };
+
+        Ok(metadata)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropWidgetDefinition {
+    /// The [`kind`](crate::property_editor::schema::WidgetKind) of the [`Prop`](crate::Prop) to be created.
+    kind: WidgetKind,
+    /// The `Option<Value>` of the [`kind`](crate::property_editor::schema::WidgetKind) to be created.
+    #[serde(default)]
+    options: Option<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapKeyFunc {
+    pub key: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_from: Option<ValueFrom>,
+}
+
+/// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropDefinition {
+    /// The name of the [`Prop`](crate::Prop) to be created.
+    pub name: String,
+    /// The [`kind`](crate::PropKind) of the [`Prop`](crate::Prop) to be created.
+    pub kind: PropKind,
+    /// An optional reference to a documentation link in the "doc_links" field for the
+    /// [`SchemaVariantJson`] for the [`Prop`](crate::Prop) to be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_link_ref: Option<String>,
+    /// An optional documentation link for the [`Prop`](crate::Prop) to be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_link: Option<String>,
+    /// An optional set of inline documentation for the [`Prop`](crate::Prop) to be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub documentation: Option<String>,
+    /// If our [`kind`](crate::PropKind) is [`Object`](crate::PropKind::Object), specify the
+    /// child definition(s).
+    #[serde(default)]
+    pub children: Vec<PropDefinition>,
+    /// If our [`kind`](crate::PropKind) is [`Array`](crate::PropKind::Array), specify the entry
+    /// definition.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry: Option<Box<PropDefinition>>,
+    /// The [`WidgetDefinition`](crate::schema::variant::definition::PropWidgetDefinition) of the
+    /// [`Prop`](crate::Prop) to be created.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub widget: Option<PropWidgetDefinition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    // The source of the information for the prop
+    pub value_from: Option<ValueFrom>,
+    // Whether the prop is hidden from the UI
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_key_funcs: Option<Vec<MapKeyFunc>>,
+}
+
+/// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocketDefinition {
+    /// The name of the [`Socket`](crate::Socket) to be created.
+    pub name: String,
+    /// The type identifier of the [`Socket`](crate::Socket) to be created.
+    pub connection_annotations: String,
+    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
+    /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arity: Option<SocketArity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_hidden: Option<bool>,
+    // The source of the information for the socket
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_from: Option<ValueFrom>,
+}
+
+/// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ValueFrom {
+    InputSocket { socket_name: String },
+    OutputSocket { socket_name: String },
+    Prop { prop_path: Vec<String> },
+}
+
+/// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SiPropValueFrom {
+    kind: SiPropFuncSpecKind,
+    value_from: ValueFrom,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantMetadataView {
+    id: SchemaVariantId,
+    name: String,
+    category: String,
+    #[serde(alias = "display_name")]
+    display_name: Option<String>,
+    color: String,
+    component_type: ComponentType,
+    link: Option<String>,
+    description: Option<String>,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+}
+
+impl SchemaVariantMetadataView {
+    pub async fn list(ctx: &DalContext) -> SchemaVariantResult<Vec<Self>> {
+        let mut views = Vec::new();
+
+        let schemas = Schema::list(ctx).await?;
+        for schema in schemas {
+            let default_schema_variant =
+                SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+            views.push(SchemaVariantMetadataView {
+                id: default_schema_variant.id,
+                name: schema.name.to_owned(),
+                category: default_schema_variant.category.to_owned(),
+                color: default_schema_variant.get_color(ctx).await?,
+                timestamp: default_schema_variant.timestamp.to_owned(),
+                component_type: default_schema_variant
+                    .get_type(ctx)
+                    .await?
+                    .unwrap_or(ComponentType::Component),
+                link: default_schema_variant.link.to_owned(),
+                description: default_schema_variant.description,
+                display_name: default_schema_variant.display_name,
+            })
+        }
+
+        Ok(views)
     }
 }

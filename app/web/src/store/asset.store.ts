@@ -23,8 +23,8 @@ import { useRouterStore } from "./router.store";
 
 export type AssetId = string;
 
-export interface ListVariantDefsResponse {
-  variantDefs: ListedVariantDef[];
+export interface ListVariantsResponse {
+  variants: ListedVariant[];
 }
 
 export interface InstalledPkgAssetView {
@@ -70,10 +70,10 @@ export interface DetachedValidationPrototype {
   propKind: PropKind;
 }
 
-export interface ListedVariantDef {
+export interface ListedVariant {
   id: AssetId;
   name: string;
-  menuName?: string;
+  displayName?: string;
   category: string;
   componentType: ComponentType;
   color: string;
@@ -83,16 +83,15 @@ export interface ListedVariantDef {
   updatedAt: IsoDateString;
 }
 
-export interface VariantDef extends ListedVariantDef {
+export interface Variant extends ListedVariant {
   link?: string;
-  schemaVariantId?: string;
   code: string;
   types?: string;
   hasComponents: boolean;
 }
 
-export type Asset = VariantDef;
-export type AssetListEntry = ListedVariantDef;
+export type Asset = Variant;
+export type AssetListEntry = ListedVariant;
 export type AssetSaveRequest = Visibility &
   Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
@@ -104,7 +103,7 @@ export type AssetCloneRequest = Visibility & { id: AssetId };
 const LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY = "si-open-asset-id";
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
-  (asset.menuName ?? "").length === 0 ? asset.name : asset.menuName;
+  (asset.displayName ?? "").length === 0 ? asset.name : asset.displayName;
 
 export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
@@ -170,8 +169,8 @@ export const useAssetStore = () => {
         assetBySchemaVariantId(): Record<string, Asset> {
           const assetsWithSchemaVariantId = _.filter(
             this.assets,
-            (a) => a.schemaVariantId !== undefined,
-          ) as (VariantDef & {
+            (a) => a.id !== undefined,
+          ) as (Variant & {
             schemaVariantId: string;
           })[];
 
@@ -182,7 +181,7 @@ export const useAssetStore = () => {
         setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
           const asset = this.assetsById[assetId];
           if (asset) {
-            asset.schemaVariantId = schemaVariantId;
+            asset.id = schemaVariantId;
             this.assetsById[assetId] = asset;
           }
         },
@@ -254,7 +253,6 @@ export const useAssetStore = () => {
             funcs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            schemaVariantId: undefined,
             hasComponents: false,
           };
         },
@@ -269,12 +267,11 @@ export const useAssetStore = () => {
             AssetCreateRequest
           >({
             method: "post",
-            url: "/variant_def/create_variant_def",
+            url: "/variant/create_variant",
             params: {
               ...visibility,
               ..._.omit(asset, [
                 "id",
-                "schemaVariantId",
                 "hasComponents",
                 "createdAt",
                 "updatedAt",
@@ -295,7 +292,7 @@ export const useAssetStore = () => {
           >({
             method: "post",
             keyRequestStatusBy: assetId,
-            url: "/variant_def/clone_variant_def",
+            url: "/variant/clone_variant",
             params: {
               ...visibility,
               id: assetId,
@@ -331,7 +328,7 @@ export const useAssetStore = () => {
           return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
             method: "post",
             keyRequestStatusBy: asset.id,
-            url: "/variant_def/save_variant_def",
+            url: "/variant/save_variant",
             optimistic: () => {
               if (isHead) return () => {};
 
@@ -347,12 +344,7 @@ export const useAssetStore = () => {
             },
             params: {
               ...visibility,
-              ..._.omit(asset, [
-                "schemaVariantId",
-                "hasComponents",
-                "createdAt",
-                "updatedAt",
-              ]),
+              ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
             },
           });
         },
@@ -364,7 +356,7 @@ export const useAssetStore = () => {
               id: AssetId;
             }
           >({
-            url: "/variant_def/get_variant_def",
+            url: "/variant/get_variant",
             keyRequestStatusBy: assetId,
             params: {
               id: assetId,
@@ -377,11 +369,11 @@ export const useAssetStore = () => {
         },
 
         async LOAD_ASSET_LIST() {
-          return new ApiRequest<ListVariantDefsResponse, Visibility>({
-            url: "/variant_def/list_variant_defs",
+          return new ApiRequest<ListVariantsResponse, Visibility>({
+            url: "/variant/list_variants",
             params: { ...visibility },
             onSuccess: (response) => {
-              this.assetList = response.variantDefs;
+              this.assetList = response.variants;
             },
           });
         },
@@ -405,16 +397,11 @@ export const useAssetStore = () => {
             AssetSaveRequest
           >({
             method: "post",
-            url: "/variant_def/exec_variant_def",
+            url: "/variant/exec_variant",
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
-              ..._.omit(asset, [
-                "schemaVariantId",
-                "hasComponents",
-                "createdAt",
-                "updatedAt",
-              ]),
+              ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
             },
             onSuccess: (response) => {
               this.executeAssetTaskId = response.taskId;
@@ -433,21 +420,21 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantDefinitionCreated",
+            eventType: "SchemaVariantCreated",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
-            eventType: "SchemaVariantDefinitionCloned",
+            eventType: "SchemaVariantCloned",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
-            eventType: "SchemaVariantDefinitionSaved",
+            eventType: "SchemaVariantSaved",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
@@ -491,7 +478,7 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantDefinitionFinished",
+            eventType: "SchemaVariantFinished",
             callback: async ({
               taskId,
               schemaVariantId,

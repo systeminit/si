@@ -280,7 +280,7 @@ const dryRunConfig = computed(() => {
 
 const components = computed(() => {
   return componentsStore.allComponents.filter(
-    (c) => c.schemaVariantId === asset.value?.schemaVariantId,
+    (c) => c.schemaVariantId === asset.value?.id,
   );
 });
 

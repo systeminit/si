@@ -220,21 +220,21 @@ export type WsEventPayloadMap = {
     secretId: SecretId;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantDefinitionCreated: {
-    schemaVariantDefinitionId: string;
+  SchemaVariantCreated: {
+    schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantDefinitionCloned: {
-    schemaVariantDefinitionId: string;
+  SchemaVariantCloned: {
+    schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantDefinitionFinished: {
+  SchemaVariantFinished: {
     taskId: string;
     schemaVariantId: string;
     detachedAttributePrototypes: DetachedAttributePrototype[];
   };
-  SchemaVariantDefinitionSaved: {
-    schemaVariantDefinitionId: string;
+  SchemaVariantSaved: {
+    schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
   FuncCreated: {

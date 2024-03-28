@@ -7,7 +7,6 @@ use ulid::Ulid;
 
 use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::FuncBackendKind;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
     workspace_snapshot::{
@@ -17,6 +16,7 @@ use crate::{
     PropKind,
 };
 
+use crate::func::FuncKind;
 pub use attribute_prototype_argument_node_weight::ArgumentTargets;
 pub use attribute_prototype_argument_node_weight::AttributePrototypeArgumentNodeWeight;
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
@@ -576,7 +576,7 @@ impl NodeWeight {
         change_set: &ChangeSetPointer,
         func_id: Ulid,
         name: impl AsRef<str>,
-        backend_kind: FuncBackendKind,
+        func_kind: FuncKind,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Func(FuncNodeWeight::new(
@@ -584,7 +584,7 @@ impl NodeWeight {
             func_id,
             ContentAddress::Func(content_hash),
             name.as_ref().to_string(),
-            backend_kind,
+            func_kind,
         )?))
     }
 
