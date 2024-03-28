@@ -489,12 +489,12 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
     };
     //
     //     let is_revertible = is_func_revertible(ctx, func).await?;
-    //     let types = [
-    //         compile_return_types(*func.backend_response_type(), *func.backend_kind()),
-    //         &input_type,
-    //         langjs_types(),
-    //     ]
-    //     .join("\n");
+    let types = [
+        compile_return_types(func.backend_response_type, func.backend_kind),
+        &input_type,
+        langjs_types(),
+    ]
+    .join("\n");
 
     Ok(GetFuncResponse {
         id: func.id.to_owned(),
@@ -506,7 +506,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         is_builtin: func.builtin,
         is_revertible: false,
         associations,
-        types: input_type,
+        types,
     })
 }
 
@@ -572,6 +572,48 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
             "type Output = any;"
         ),
     }
+}
+
+// TODO: stop duplicating definition
+// TODO: use execa types instead of any
+// TODO: add os, fs and path types (possibly fetch but I think it comes with DOM)
+fn langjs_types() -> &'static str {
+    "declare namespace YAML {
+    function stringify(obj: unknown): string;
+}
+
+    declare namespace zlib {
+        function gzip(inputstr: string, callback: any);
+    }
+
+    declare namespace requestStorage {
+        function getEnv(key: string): string;
+        function getItem(key: string): any;
+        function getEnvKeys(): string[];
+        function getKeys(): string[];
+    }
+
+    declare namespace siExec {
+
+    interface WatchArgs {
+        cmd: string,
+        args?: readonly string[],
+        execaOptions?: Options<string>,
+        retryMs?: number,
+        maxRetryCount?: number,
+        callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
+    }
+
+    interface WatchResult {
+        result: SiExecResult,
+        failed?: 'deadlineExceeded' | 'commandFailed',
+    }
+
+    type SiExecResult = ExecaReturnValue<string>;
+
+    async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
+    async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
+}"
 }
 
 pub fn routes() -> Router<AppState> {
