@@ -9,10 +9,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
-    activities::{
-        Activity, ActivityPayloadDiscriminants, ActivityPublisher, ActivityStream,
-        RebaserRequestsWorkQueueStream,
-    },
+    activity_client::ActivityClient,
     error::LayerDbResult,
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterTask},
@@ -36,7 +33,7 @@ where
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
-    activity_publisher: ActivityPublisher,
+    activity: ActivityClient,
     instance_id: Ulid,
 }
 
@@ -94,12 +91,12 @@ where
 
         let cas = CasDb::new(cas_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
-        let activity_publisher = ActivityPublisher::new(&nats_client);
+        let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
 
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
 
         let layerdb = LayerDb {
-            activity_publisher,
+            activity,
             cas,
             workspace_snapshot,
             sled,
@@ -140,6 +137,10 @@ where
         self.instance_id
     }
 
+    pub fn activity(&self) -> &ActivityClient {
+        &self.activity
+    }
+
     /// Run all migrations
     pub async fn pg_migrate(&self) -> LayerDbResult<()> {
         // This will do all migrations, not just "cas" migrations. We might want
@@ -147,35 +148,6 @@ where
         self.cas.cache.pg().migrate().await?;
 
         Ok(())
-    }
-
-    // Publish an activity
-    pub async fn publish_activity(&self, activity: &Activity) -> LayerDbResult<()> {
-        self.activity_publisher.publish(activity).await
-    }
-
-    // Subscribe to all activities, or provide an optional array of activity kinds
-    // to subscribe to.
-    pub async fn subscribe_activities(
-        &self,
-        to_receive: impl IntoIterator<Item = ActivityPayloadDiscriminants>,
-    ) -> LayerDbResult<ActivityStream> {
-        ActivityStream::create(self.instance_id, &self.nats_client, Some(to_receive)).await
-    }
-
-    pub async fn subscribe_all_activities(&self) -> LayerDbResult<ActivityStream> {
-        ActivityStream::create(
-            self.instance_id,
-            &self.nats_client,
-            None::<std::vec::IntoIter<_>>,
-        )
-        .await
-    }
-
-    pub async fn subscribe_rebaser_requests_work_queue(
-        &self,
-    ) -> LayerDbResult<RebaserRequestsWorkQueueStream> {
-        RebaserRequestsWorkQueueStream::create(&self.nats_client).await
     }
 }
 

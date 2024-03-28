@@ -18,7 +18,6 @@ names = { workspace = true }
 opentelemetry-otlp = { workspace = true }
 opentelemetry_sdk = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
-rebaser-client = { path = "../../lib/rebaser-client"}
 rebaser-server = { path = "../../lib/rebaser-server" }
 remain = { workspace = true }
 serde = { workspace = true }

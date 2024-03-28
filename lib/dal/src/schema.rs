@@ -5,7 +5,7 @@ use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
-use telemetry::tracing::log::info;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 

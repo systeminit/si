@@ -33,7 +33,6 @@ petgraph = { workspace = true }
 postcard = { version = "1.0.8", features = ["alloc"] }
 postgres-types = { workspace = true }
 rand = { workspace = true }
-rebaser-client = { path = "../../lib/rebaser-client" }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }

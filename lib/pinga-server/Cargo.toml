@@ -14,7 +14,6 @@ nats-subscriber = { path = "../../lib/nats-subscriber" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-rebaser-client = { path = "../../lib/rebaser-client" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }

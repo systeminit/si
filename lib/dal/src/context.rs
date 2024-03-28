@@ -1,15 +1,17 @@
 use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
-use rebaser_client::ClientError as RebaserClientError;
-use rebaser_client::Config as RebaserClientConfig;
-use rebaser_client::ReplyRebaseMessage;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::WorkspaceSnapshotAddress;
+use si_layer_cache::activities::rebase::RebaseStatus;
+use si_layer_cache::activities::ActivityPayload;
+use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
+use si_layer_cache::event::LayeredEventMetadata;
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
@@ -58,8 +60,6 @@ pub struct ServicesContext {
     module_index_url: Option<String>,
     /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
-    /// Config for the the rebaser service
-    rebaser_config: RebaserClientConfig,
     /// The layer db (moka-rs, sled and postgres)
     layer_db: DalLayerDb,
 }
@@ -76,7 +76,6 @@ impl ServicesContext {
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
-        rebaser_config: RebaserClientConfig,
         layer_db: DalLayerDb,
     ) -> Self {
         Self {
@@ -88,7 +87,6 @@ impl ServicesContext {
             pkgs_path,
             module_index_url,
             symmetric_crypto_service,
-            rebaser_config,
             layer_db,
         }
     }
@@ -136,11 +134,6 @@ impl ServicesContext {
         &self.symmetric_crypto_service
     }
 
-    /// Gets a reference to the rebaser client configuration
-    pub fn rebaser_config(&self) -> &RebaserClientConfig {
-        &self.rebaser_config
-    }
-
     /// Gets a reference to the Layer Db
     pub fn layer_db(&self) -> &DalLayerDb {
         &self.layer_db
@@ -151,14 +144,8 @@ impl ServicesContext {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
         let job_processor = self.job_processor.clone();
-        let rebaser_config = self.rebaser_config.clone();
 
-        Ok(Connections::new(
-            pg_conn,
-            nats_conn,
-            job_processor,
-            rebaser_config,
-        ))
+        Ok(Connections::new(pg_conn, nats_conn, job_processor))
     }
 }
 
@@ -206,16 +193,15 @@ impl ConnectionState {
     async fn commit(
         self,
         tenancy: &Tenancy,
+        layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         let (conns, conflicts) = match self {
             Self::Connections(conns) => {
-                let (nats_conn, rebaser_config) =
-                    (conns.nats_conn().clone(), conns.rebaser_config.clone());
                 // We need to rebase and wait for the rebaser to update the change set
                 // pointer, even if we are not in a "transactions" state
                 let conflicts = if let Some(rebase_request) = rebase_request {
-                    rebase(tenancy, nats_conn, rebaser_config, rebase_request).await?
+                    rebase(tenancy, layer_db, rebase_request).await?
                 } else {
                     None
                 };
@@ -224,7 +210,9 @@ impl ConnectionState {
                 Ok((Self::Connections(conns), conflicts))
             }
             Self::Transactions(txns) => {
-                let (conns, conflicts) = txns.commit_into_conns(tenancy, rebase_request).await?;
+                let (conns, conflicts) = txns
+                    .commit_into_conns(tenancy, layer_db, rebase_request)
+                    .await?;
                 Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -236,6 +224,7 @@ impl ConnectionState {
     async fn blocking_commit(
         self,
         tenancy: &Tenancy,
+        layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
@@ -245,13 +234,7 @@ impl ConnectionState {
                 // Even if there are no open dal transactions, we may have written to the layer db
                 // and we need to perform a rebase if one is requested
                 let conflicts = if let Some(rebase_request) = rebase_request {
-                    rebase(
-                        tenancy,
-                        conns.nats_conn.clone(),
-                        conns.rebaser_config.clone(),
-                        rebase_request,
-                    )
-                    .await?
+                    rebase(tenancy, layer_db, rebase_request).await?
                 } else {
                     None
                 };
@@ -260,7 +243,7 @@ impl ConnectionState {
             }
             Self::Transactions(txns) => {
                 let (conns, conflicts) = txns
-                    .blocking_commit_into_conns(tenancy, rebase_request)
+                    .blocking_commit_into_conns(tenancy, layer_db, rebase_request)
                     .await?;
                 Ok((Self::Connections(conns), conflicts))
             }
@@ -405,13 +388,7 @@ impl DalContext {
         &self,
         rebase_request: RebaseRequest,
     ) -> Result<Option<Conflicts>, TransactionsError> {
-        rebase(
-            &self.tenancy,
-            self.services_context.nats_conn.clone(),
-            self.services_context().rebaser_config.clone(),
-            rebase_request,
-        )
-        .await
+        rebase(&self.tenancy, &self.layer_db(), rebase_request).await
     }
 
     async fn commit_internal(
@@ -422,7 +399,10 @@ impl DalContext {
             self.blocking_commit_internal(rebase_request).await?
         } else {
             let mut guard = self.conns_state.lock().await;
-            let (new_guard, conflicts) = guard.take().commit(&self.tenancy, rebase_request).await?;
+            let (new_guard, conflicts) = guard
+                .take()
+                .commit(&self.tenancy, &self.layer_db(), rebase_request)
+                .await?;
             *guard = new_guard;
 
             conflicts
@@ -439,7 +419,7 @@ impl DalContext {
 
         let (new_guard, conflicts) = guard
             .take()
-            .blocking_commit(&self.tenancy, rebase_request)
+            .blocking_commit(&self.tenancy, &self.layer_db(), rebase_request)
             .await?;
         *guard = new_guard;
 
@@ -1018,6 +998,8 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum TransactionsError {
+    #[error("expected a {0:?} activity, but received a {1:?}")]
+    BadActivity(ActivityPayloadDiscriminants, ActivityPayloadDiscriminants),
     #[error("change set error: {0}")]
     ChangeSet(String),
     #[error("change set pointer not found for change set id: {0}")]
@@ -1026,6 +1008,8 @@ pub enum TransactionsError {
     ChangeSetPointerNotSet,
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
+    #[error(transparent)]
+    LayerDb(#[from] LayerDbError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("no base change set for change set: {0}")]
@@ -1036,8 +1020,6 @@ pub enum TransactionsError {
     PgPool(#[from] PgPoolError),
     #[error("rebase of snapshot {0} change set id {1} failed {2}")]
     RebaseFailed(WorkspaceSnapshotAddress, ChangeSetId, String),
-    #[error(transparent)]
-    RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -1063,7 +1045,6 @@ pub enum TransactionsError {
 pub struct Connections {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
-    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
@@ -1074,12 +1055,10 @@ impl Connections {
         pg_conn: InstrumentedClient,
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_conn,
             nats_conn,
-            rebaser_config,
             job_processor,
         }
     }
@@ -1089,14 +1068,8 @@ impl Connections {
         let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
         let job_processor = self.job_processor;
-        let rebaser_config = self.rebaser_config;
 
-        Ok(Transactions::new(
-            pg_txn,
-            nats_txn,
-            job_processor,
-            rebaser_config,
-        ))
+        Ok(Transactions::new(pg_txn, nats_txn, job_processor))
     }
 
     /// Gets a reference to a PostgreSQL connection.
@@ -1120,8 +1093,6 @@ pub struct Transactions {
     pg_txn: PgTxn,
     /// A NATS transaction.
     nats_txn: NatsTxn,
-    /// Rebaser client
-    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
     #[allow(clippy::type_complexity)]
@@ -1147,44 +1118,56 @@ pub struct Conflicts {
 // not want it long term.
 async fn rebase(
     tenancy: &Tenancy,
-    nats: NatsClient,
-    rebaser_config: RebaserClientConfig,
+    layer_db: &DalLayerDb,
     rebase_request: RebaseRequest,
 ) -> Result<Option<Conflicts>, TransactionsError> {
     let start = Instant::now();
 
-    // TODO(nick): make this cleaner.
-    let workspace_id = tenancy.workspace_pk().unwrap_or(WorkspacePk::NONE).into();
-    let rebaser_client = rebaser_client::Client::new(nats, rebaser_config, workspace_id);
+    let metadata = LayeredEventMetadata::new(
+        si_events::Tenancy::new(
+            tenancy.workspace_pk().unwrap_or(WorkspacePk::NONE).into(),
+            rebase_request.to_rebase_change_set_id.into(),
+        ),
+        si_events::Actor::System,
+    );
 
-    info!("got client and requesting rebase: {:?}", start.elapsed());
-    let response = rebaser_client
-        .request_rebase(
+    info!("requesting rebase: {:?}", start.elapsed());
+    let rebase_finished_activity = layer_db
+        .activity()
+        .rebase()
+        .rebase_and_wait(
             rebase_request.to_rebase_change_set_id.into(),
             rebase_request.onto_workspace_snapshot_address,
             rebase_request.onto_vector_clock_id.into(),
+            metadata,
         )
         .await?;
     info!("got response from rebaser: {:?}", start.elapsed());
 
-    match response {
-        ReplyRebaseMessage::Success { .. } => Ok(None),
-        ReplyRebaseMessage::Error { message } => Err(TransactionsError::RebaseFailed(
-            rebase_request.onto_workspace_snapshot_address,
-            rebase_request.to_rebase_change_set_id,
-            message,
-        )),
-        ReplyRebaseMessage::ConflictsFound {
-            conflicts_found,
-            updates_found_and_skipped,
-        } => {
-            let conflicts = Conflicts {
-                conflicts_found: serde_json::from_value(conflicts_found)?,
-                updates_found_and_skipped: serde_json::from_value(updates_found_and_skipped)?,
-            };
+    match rebase_finished_activity.payload {
+        ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
+            RebaseStatus::Success { .. } => Ok(None),
+            RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
+                rebase_request.onto_workspace_snapshot_address,
+                rebase_request.to_rebase_change_set_id,
+                message.to_string(),
+            )),
+            RebaseStatus::ConflictsFound {
+                conflicts_found,
+                updates_found_and_skipped,
+            } => {
+                let conflicts = Conflicts {
+                    conflicts_found: serde_json::from_str(conflicts_found)?,
+                    updates_found_and_skipped: serde_json::from_str(updates_found_and_skipped)?,
+                };
 
-            Ok(Some(conflicts))
-        }
+                Ok(Some(conflicts))
+            }
+        },
+        p => Err(TransactionsError::BadActivity(
+            ActivityPayloadDiscriminants::RebaseFinished,
+            p.into(),
+        )),
     }
 }
 
@@ -1194,12 +1177,10 @@ impl Transactions {
         pg_txn: PgTxn,
         nats_txn: NatsTxn,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_txn,
             nats_txn,
-            rebaser_config,
             job_processor,
             job_queue: JobQueue::new(),
             dependencies_update_component: Default::default(),
@@ -1227,6 +1208,7 @@ impl Transactions {
     pub async fn commit_into_conns(
         self,
         tenancy: &Tenancy,
+        layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
@@ -1238,13 +1220,7 @@ impl Transactions {
         // and that will be the snapshot we expect the dependent values update
         // (for example) to access.
         let conflicts = if let Some(rebase_request) = rebase_request {
-            rebase(
-                tenancy,
-                nats_conn.clone(),
-                self.rebaser_config.clone(),
-                rebase_request,
-            )
-            .await?
+            rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
         };
@@ -1252,7 +1228,7 @@ impl Transactions {
         self.job_processor.process_queue(self.job_queue).await?;
 
         Ok((
-            Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config),
+            Connections::new(pg_conn, nats_conn, self.job_processor),
             conflicts,
         ))
     }
@@ -1268,19 +1244,14 @@ impl Transactions {
     pub async fn blocking_commit_into_conns(
         self,
         tenancy: &Tenancy,
+        layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         let conflicts = if let Some(rebase_request) = rebase_request {
-            rebase(
-                tenancy,
-                nats_conn.clone(),
-                self.rebaser_config.clone(),
-                rebase_request,
-            )
-            .await?
+            rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
         };
@@ -1288,7 +1259,7 @@ impl Transactions {
         self.job_processor
             .blocking_process_queue(self.job_queue)
             .await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok((conns, conflicts))
     }
@@ -1301,7 +1272,7 @@ impl Transactions {
     pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.rollback_into_conn().await?;
         let nats_conn = self.nats_txn.rollback_into_conn().await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
     }

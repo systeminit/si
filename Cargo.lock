@@ -1504,7 +1504,6 @@ dependencies = [
  "postgres-types",
  "pretty_assertions_sorted",
  "rand 0.8.5",
- "rebaser-client",
  "rebaser-core",
  "rebaser-server",
  "refinery",
@@ -1554,7 +1553,6 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "pinga-server",
- "rebaser-client",
  "rebaser-server",
  "remain",
  "serde",
@@ -3967,7 +3965,6 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
- "rebaser-client",
  "remain",
  "serde",
  "serde_json",
@@ -4447,22 +4444,6 @@ dependencies = [
  "telemetry-application",
  "tokio",
  "tokio-util",
-]
-
-[[package]]
-name = "rebaser-client"
-version = "0.1.0"
-dependencies = [
- "futures",
- "rebaser-core",
- "remain",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-events",
- "telemetry",
- "thiserror",
- "ulid",
 ]
 
 [[package]]
@@ -4985,7 +4966,6 @@ dependencies = [
  "clap 4.5.3",
  "color-eyre",
  "nats-multiplexer",
- "rebaser-client",
  "sdf-server",
  "si-std",
  "telemetry-application",
@@ -5592,6 +5572,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-util",
  "ulid",
 ]

@@ -1,5 +1,7 @@
 use std::{
-    fmt, ops,
+    collections::HashMap,
+    fmt::{self, Debug},
+    ops,
     pin::Pin,
     str::FromStr,
     sync::Arc,
@@ -13,6 +15,8 @@ use si_data_nats::{
     NatsClient,
 };
 use strum::EnumDiscriminants;
+use tokio::sync::{broadcast, RwLock};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::{Ulid, ULID_LEN};
 
 use crate::{
@@ -22,11 +26,17 @@ use crate::{
     LayerDbError,
 };
 
-use self::rebase::{RebaseFinished, RebaseRequest};
+use self::{
+    rebase::{RebaseFinished, RebaseRequest},
+    test::{IntegrationTest, IntegrationTestAlt},
+};
+
+use telemetry::prelude::*;
 
 pub use si_data_nats::async_nats::jetstream::AckKind;
 
 pub mod rebase;
+pub mod test;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ActivityId(Ulid);
@@ -67,7 +77,7 @@ impl From<ulid::Ulid> for ActivityId {
 
 impl fmt::Display for ActivityId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+        std::fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -76,23 +86,37 @@ pub struct Activity {
     pub id: ActivityId,
     pub payload: ActivityPayload,
     pub metadata: LayeredEventMetadata,
+    pub parent_activity_id: Option<ActivityId>,
 }
 
 impl Activity {
-    pub fn new(payload: ActivityPayload, metadata: LayeredEventMetadata) -> Activity {
+    pub fn new(
+        payload: ActivityPayload,
+        metadata: LayeredEventMetadata,
+        parent_activity_id: Option<ActivityId>,
+    ) -> Activity {
         Activity {
             id: ActivityId::new(),
             payload,
             metadata,
+            parent_activity_id,
         }
     }
 
     pub fn rebase(request: RebaseRequest, metadata: LayeredEventMetadata) -> Activity {
-        Activity::new(ActivityPayload::RebaseRequest(request), metadata)
+        Activity::new(ActivityPayload::RebaseRequest(request), metadata, None)
     }
 
-    pub fn rebase_finished(request: RebaseFinished, metadata: LayeredEventMetadata) -> Activity {
-        Activity::new(ActivityPayload::RebaseFinished(request), metadata)
+    pub fn rebase_finished(
+        request: RebaseFinished,
+        metadata: LayeredEventMetadata,
+        from_rebase_activity_id: ActivityId,
+    ) -> Activity {
+        Activity::new(
+            ActivityPayload::RebaseFinished(request),
+            metadata,
+            Some(from_rebase_activity_id),
+        )
     }
 }
 
@@ -100,6 +124,8 @@ impl Activity {
 pub enum ActivityPayload {
     RebaseRequest(RebaseRequest),
     RebaseFinished(RebaseFinished),
+    IntegrationTest(IntegrationTest),
+    IntegrationTestAlt(IntegrationTestAlt),
 }
 
 impl ActivityPayload {
@@ -114,6 +140,8 @@ impl ActivityPayloadDiscriminants {
         match self {
             ActivityPayloadDiscriminants::RebaseRequest => "rebase.request".to_string(),
             ActivityPayloadDiscriminants::RebaseFinished => "rebase.finished".to_string(),
+            ActivityPayloadDiscriminants::IntegrationTest => "integration_test.test".to_string(),
+            ActivityPayloadDiscriminants::IntegrationTestAlt => "integration_test.alt".to_string(),
         }
     }
 }
@@ -200,6 +228,118 @@ impl ActivityPublisher {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ActivityMultiplexer {
+    instance_id: Ulid,
+    nats_client: NatsClient,
+    tracker: TaskTracker,
+    shutdown_token: CancellationToken,
+    channels: Arc<RwLock<HashMap<String, broadcast::Sender<Activity>>>>,
+}
+
+impl ActivityMultiplexer {
+    pub fn new(
+        instance_id: Ulid,
+        nats_client: NatsClient,
+
+        shutdown_token: CancellationToken,
+    ) -> Self {
+        let tracker = TaskTracker::new();
+        Self {
+            tracker,
+            instance_id,
+            nats_client,
+            shutdown_token,
+            channels: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn subscribe(
+        &self,
+        filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
+    ) -> LayerDbResult<broadcast::Receiver<Activity>> {
+        let (multiplex_key, has_filter_array) = if let Some(filters) = filters {
+            let filter_array: Vec<ActivityPayloadDiscriminants> = filters.into_iter().collect();
+            (
+                filter_array
+                    .iter()
+                    .map(|d| d.to_subject())
+                    .collect::<Vec<String>>()
+                    .join("."),
+                Some(filter_array),
+            )
+        } else {
+            ("everything".to_string(), None)
+        };
+        {
+            let reader = self.channels.read().await;
+            if let Some(sender) = reader.get(&multiplex_key) {
+                return Ok(sender.subscribe());
+            }
+        }
+        let activity_stream =
+            ActivityStream::create(self.instance_id, &self.nats_client, has_filter_array).await?;
+        let (tx, rx) = broadcast::channel(1000); // the 1000 here is the depth the channel will
+                                                 // keep if a reader is slow
+        let mut amx_task = ActivityMultiplexerTask::new(activity_stream, tx.clone());
+        let amx_shutdown_token = self.shutdown_token.clone();
+        self.tracker
+            .spawn(async move { amx_task.run(amx_shutdown_token).await });
+        {
+            let mut writer = self.channels.write().await;
+            writer.insert(multiplex_key, tx);
+        }
+        Ok(rx)
+    }
+}
+
+pub struct ActivityMultiplexerTask {
+    activity_stream: ActivityStream,
+    tx: broadcast::Sender<Activity>,
+}
+
+impl ActivityMultiplexerTask {
+    pub fn new(activity_stream: ActivityStream, tx: broadcast::Sender<Activity>) -> Self {
+        Self {
+            activity_stream,
+            tx,
+        }
+    }
+
+    pub async fn run(&mut self, token: CancellationToken) -> LayerDbResult<()> {
+        tokio::select! {
+            () = self.process() => {
+                debug!("activity multiplexer task has ended; likely a bug");
+            },
+            () = token.cancelled() => {
+                debug!("activity multiplexer has been cancelled; shutting down");
+            },
+        }
+        Ok(())
+    }
+
+    pub async fn process(&mut self) {
+        while let Some(ack_activity_result) = self.activity_stream.next().await {
+            match ack_activity_result {
+                Ok(ack_activity) => match ack_activity.ack().await {
+                    Ok(_) => {
+                        if let Err(e) = self.tx.send(ack_activity.inner) {
+                            trace!(
+                                ?e,
+                                "activity multiplexer skipping message; no receivers listening. this can be totally normal!"
+                            );
+                        }
+                    }
+                    Err(e) => warn!(?e, "Failed to ack an activity stream message; bug!"),
+                },
+                Err(e) => {
+                    warn!(?e, "Activity stream message had an error; bug!");
+                }
+            }
+        }
+    }
+}
+
 pub struct ActivityStream {
     inner: jetstream::consumer::pull::Stream,
 }
@@ -271,7 +411,10 @@ impl Stream for ActivityStream {
                         acker: Arc::new(acker),
                     }))),
                     // Error deserializing message
-                    Err(err) => Poll::Ready(Some(Err(err.into()))),
+                    Err(err) => {
+                        error!(?msg, "failure to deserialize message in activity stream");
+                        Poll::Ready(Some(Err(err.into())))
+                    }
                 }
             }
             // Upstream errors are propagated downstream
@@ -290,6 +433,16 @@ pub struct AckRebaseRequest {
     pub payload: RebaseRequest,
     pub metadata: LayeredEventMetadata,
     acker: Arc<Acker>,
+}
+
+impl Debug for AckRebaseRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "AckRebaseRequest {{ id: {:?}, payload: {:?}, metadata: {:?} }}",
+            self.id, self.payload, self.metadata
+        )
+    }
 }
 
 impl AckRebaseRequest {
@@ -361,6 +514,7 @@ impl Stream for RebaserRequestsWorkQueueStream {
                     Ok(activity) => match activity.payload {
                         // Correct variant, convert to work-specific type
                         ActivityPayload::RebaseRequest(req) => {
+                            warn!(?req, "received rebase request over pull channel");
                             Poll::Ready(Some(Ok(AckRebaseRequest {
                                 id: activity.id,
                                 payload: req,
@@ -375,7 +529,10 @@ impl Stream for RebaserRequestsWorkQueueStream {
                         )))),
                     },
                     // Error deserializing message
-                    Err(err) => Poll::Ready(Some(Err(err.into()))),
+                    Err(err) => {
+                        warn!(?msg, "failed to deserialize message");
+                        Poll::Ready(Some(Err(err.into())))
+                    }
                 }
             }
             // Upstream errors are propagated downstream
