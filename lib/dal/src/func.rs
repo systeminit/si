@@ -239,21 +239,18 @@ impl Func {
         func_backend_response_type: FuncBackendResponseType,
     ) -> FuncResult<FuncKind> {
         match func_backend_kind {
-            FuncBackendKind::JsAttribute => {
-                return match func_backend_response_type {
-                    FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
-                    FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
-                    FuncBackendResponseType::SchemaVariantDefinition => {
-                        dbg!("THIS IS FUCKED!");
-                        Ok(FuncKind::SchemaVariantDefinition)
-                    }
-                    _ => Ok(FuncKind::Attribute),
-                }
-            }
-            FuncBackendKind::JsAction => return Ok(FuncKind::Action),
-            FuncBackendKind::JsAuthentication => return Ok(FuncKind::Authentication),
-            FuncBackendKind::JsSchemaVariantDefinition => {
-                return Ok(FuncKind::SchemaVariantDefinition)
+            FuncBackendKind::JsAttribute => match func_backend_response_type {
+                FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
+                FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
+                _ => Ok(FuncKind::Attribute),
+            },
+            FuncBackendKind::JsAction => Ok(FuncKind::Action),
+            FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
+            FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
+            FuncBackendKind::JsValidation => {
+                dbg!("Old func kind identifed so marked as unknown");
+                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
+                Ok(FuncKind::Unknown)
             }
             FuncBackendKind::Array
             | FuncBackendKind::Boolean
@@ -264,7 +261,7 @@ impl Func {
             | FuncBackendKind::Object
             | FuncBackendKind::String
             | FuncBackendKind::Unset
-            | FuncBackendKind::Validation => return Ok(FuncKind::Intrinsic),
+            | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
             _ => {
                 dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
                 Err(FuncError::UnknownFunctionType)

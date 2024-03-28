@@ -23,8 +23,8 @@ import { useRouterStore } from "./router.store";
 
 export type AssetId = string;
 
-export interface ListVariantDefsResponse {
-  variantDefs: ListedVariantDef[];
+export interface ListVariantsResponse {
+  variants: ListedVariant[];
 }
 
 export interface InstalledPkgAssetView {
@@ -70,7 +70,7 @@ export interface DetachedValidationPrototype {
   propKind: PropKind;
 }
 
-export interface ListedVariantDef {
+export interface ListedVariant {
   id: AssetId;
   name: string;
   displayName?: string;
@@ -83,15 +83,15 @@ export interface ListedVariantDef {
   updatedAt: IsoDateString;
 }
 
-export interface VariantDef extends ListedVariantDef {
+export interface Variant extends ListedVariant {
   link?: string;
   code: string;
   types?: string;
   hasComponents: boolean;
 }
 
-export type Asset = VariantDef;
-export type AssetListEntry = ListedVariantDef;
+export type Asset = Variant;
+export type AssetListEntry = ListedVariant;
 export type AssetSaveRequest = Visibility &
   Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
@@ -170,7 +170,7 @@ export const useAssetStore = () => {
           const assetsWithSchemaVariantId = _.filter(
             this.assets,
             (a) => a.id !== undefined,
-          ) as (VariantDef & {
+          ) as (Variant & {
             schemaVariantId: string;
           })[];
 
@@ -267,7 +267,7 @@ export const useAssetStore = () => {
             AssetCreateRequest
           >({
             method: "post",
-            url: "/variant_def/create_variant_def",
+            url: "/variant/create_variant",
             params: {
               ...visibility,
               ..._.omit(asset, [
@@ -292,7 +292,7 @@ export const useAssetStore = () => {
           >({
             method: "post",
             keyRequestStatusBy: assetId,
-            url: "/variant_def/clone_variant_def",
+            url: "/variant/clone_variant",
             params: {
               ...visibility,
               id: assetId,
@@ -328,7 +328,7 @@ export const useAssetStore = () => {
           return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
             method: "post",
             keyRequestStatusBy: asset.id,
-            url: "/variant_def/save_variant_def",
+            url: "/variant/save_variant",
             optimistic: () => {
               if (isHead) return () => {};
 
@@ -356,7 +356,7 @@ export const useAssetStore = () => {
               id: AssetId;
             }
           >({
-            url: "/variant_def/get_variant_def",
+            url: "/variant/get_variant",
             keyRequestStatusBy: assetId,
             params: {
               id: assetId,
@@ -369,11 +369,11 @@ export const useAssetStore = () => {
         },
 
         async LOAD_ASSET_LIST() {
-          return new ApiRequest<ListVariantDefsResponse, Visibility>({
-            url: "/variant_def/list_variant_defs",
+          return new ApiRequest<ListVariantsResponse, Visibility>({
+            url: "/variant/list_variants",
             params: { ...visibility },
             onSuccess: (response) => {
-              this.assetList = response.variantDefs;
+              this.assetList = response.variants;
             },
           });
         },
@@ -397,7 +397,7 @@ export const useAssetStore = () => {
             AssetSaveRequest
           >({
             method: "post",
-            url: "/variant_def/exec_variant_def",
+            url: "/variant/exec_variant",
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
@@ -420,21 +420,21 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantDefinitionCreated",
+            eventType: "SchemaVariantCreated",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
-            eventType: "SchemaVariantDefinitionCloned",
+            eventType: "SchemaVariantCloned",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
             },
           },
           {
-            eventType: "SchemaVariantDefinitionSaved",
+            eventType: "SchemaVariantSaved",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
@@ -478,7 +478,7 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantDefinitionFinished",
+            eventType: "SchemaVariantFinished",
             callback: async ({
               taskId,
               schemaVariantId,

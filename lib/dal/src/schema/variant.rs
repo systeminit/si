@@ -41,9 +41,9 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototype, ActionPrototypeError, AttributePrototype, AttributePrototypeId, ComponentId,
-    ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
+    ActionPrototype, AttributePrototype, AttributePrototypeId, ComponentId, ComponentType,
+    DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -184,7 +184,7 @@ impl SchemaVariant {
             display_name: display_name.into(),
             component_type: component_type.into(),
             description: description.into(),
-            asset_func_id: asset_func_id.into(),
+            asset_func_id,
         };
 
         let (hash, _) = ctx
@@ -455,7 +455,7 @@ impl SchemaVariant {
     }
 
     pub fn asset_func_id(&self) -> Option<FuncId> {
-        self.asset_func_id.clone()
+        self.asset_func_id
     }
 
     pub async fn get_root_prop_id(
@@ -1057,13 +1057,9 @@ impl SchemaVariant {
                     .await?
                     .get_func_node_weight()?;
 
-                match node_weight.func_kind() {
-                    FuncKind::Attribute => {
-                        let func = Func::get_by_id(ctx, func_id).await?;
-                        all_funcs.push(func);
-                    }
-
-                    _ => {}
+                if node_weight.func_kind() == FuncKind::Attribute {
+                    let func = Func::get_by_id(ctx, func_id).await?;
+                    all_funcs.push(func);
                 }
             }
 

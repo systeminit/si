@@ -9,8 +9,8 @@ use crate::server::state::AppState;
 // pub mod clone_variant_def;
 // pub mod create_variant_def;
 // pub mod exec_variant_def;
-pub mod get_variant_def;
-pub mod list_variant_defs;
+pub mod get_variant;
+pub mod list_variants;
 // pub mod save_variant_def;
 
 #[remain::sorted]
@@ -699,11 +699,8 @@ impl IntoResponse for SchemaVariantError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/list_variant_defs",
-            get(list_variant_defs::list_variant_defs),
-        )
-        .route("/get_variant_def", get(get_variant_def::get_variant_def))
+        .route("/list_variants", get(list_variants::list_variants))
+        .route("/get_variant", get(get_variant::get_variant))
     // .route(
     //     "/save_variant_def",
     //     post(save_variant_def::save_variant_def),

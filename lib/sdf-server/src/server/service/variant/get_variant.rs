@@ -8,11 +8,11 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 // use crate::server::tracking::track;
 use crate::service::func::compile_return_types;
 use crate::service::func::list_funcs::ListedFuncView;
-use crate::service::variant_definition::{SchemaVariantError, SchemaVariantResult};
+use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct GetVariantDefRequest {
+pub struct GetVariantRequest {
     pub id: SchemaVariantId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -20,7 +20,7 @@ pub struct GetVariantDefRequest {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetVariantDefResponse {
+pub struct GetVariantResponse {
     pub id: SchemaVariantId,
     pub name: String,
     pub menu_name: Option<String>,
@@ -37,28 +37,28 @@ pub struct GetVariantDefResponse {
     pub timestamp: Timestamp,
 }
 
-pub async fn get_variant_def(
+pub async fn get_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
-    Query(request): Query<GetVariantDefRequest>,
-) -> SchemaVariantResult<Json<GetVariantDefResponse>> {
+    Query(request): Query<GetVariantRequest>,
+) -> SchemaVariantResult<Json<GetVariantResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let variant_def = SchemaVariant::get_by_id(&ctx, request.id).await?;
-    let schema = variant_def.schema(&ctx).await?;
+    let variant = SchemaVariant::get_by_id(&ctx, request.id).await?;
+    let schema = variant.schema(&ctx).await?;
 
-    let mut response: GetVariantDefResponse = GetVariantDefResponse {
+    let mut response: GetVariantResponse = GetVariantResponse {
         id: request.id,
         name: schema.name().into(),
-        menu_name: variant_def.display_name(),
-        category: variant_def.category().into(),
-        color: variant_def.get_color(&ctx).await?,
-        link: variant_def.link(),
-        description: variant_def.description(),
-        component_type: variant_def.component_type(),
-        timestamp: variant_def.timestamp(),
+        menu_name: variant.display_name(),
+        category: variant.category().into(),
+        color: variant.get_color(&ctx).await?,
+        link: variant.link(),
+        description: variant.description(),
+        component_type: variant.component_type(),
+        timestamp: variant.timestamp(),
         // Will be set elsewhere
         code: "".to_string(),
         funcs: vec![],
@@ -66,7 +66,7 @@ pub async fn get_variant_def(
         has_components: false,
     };
 
-    if let Some(authoring_func) = variant_def.asset_func_id() {
+    if let Some(authoring_func) = variant.asset_func_id() {
         let asset_func = Func::get_by_id(&ctx, authoring_func).await?;
 
         response.code = asset_func
@@ -105,13 +105,13 @@ pub async fn get_variant_def(
     //     &posthog_client,
     //     &ctx,
     //     &original_uri,
-    //     "get_variant_def",
+    //     "get_variant",
     //     serde_json::json!({
-    //                 "variant_def_name": variant_def.name(),
-    //                 "variant_def_category": variant_def.category(),
-    //                 "variant_def_menu_name": variant_def.menu_name(),
-    //                 "variant_def_id": variant_def.id(),
-    //                 "variant_def_component_type": variant_def.component_type(),
+    //                 "variant_name": variant.name(),
+    //                 "variant_category": variant.category(),
+    //                 "variant_menu_name": variant.menu_name(),
+    //                 "variant_id": variant.id(),
+    //                 "variant_component_type": variant.component_type(),
     //     }),
     // );
 
