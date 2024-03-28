@@ -120,7 +120,7 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-    /// A serialized validation format JSON object for the prop.  TODO: useTODO: use
+    /// A serialized validation format JSON object for the prop.  
     pub validation_format: Option<String>,
 }
 
@@ -137,6 +137,7 @@ impl From<Prop> for PropContentV1 {
             hidden: value.hidden,
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
+            validation_format: value.validation_format,
         }
     }
 }
@@ -331,7 +332,7 @@ impl Prop {
             hidden: inner.hidden,
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
-            validation_format: None,
+            validation_format: inner.validation_format,
         }
     }
 
@@ -482,7 +483,17 @@ impl Prop {
         kind: PropKind,
         prop_parent: PropParent,
     ) -> PropResult<Self> {
-        Self::new(ctx, name.as_ref(), kind, false, None, None, prop_parent).await
+        Self::new(
+            ctx,
+            name.as_ref(),
+            kind,
+            false,
+            None,
+            None,
+            None,
+            prop_parent,
+        )
+        .await
     }
 
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
@@ -495,6 +506,7 @@ impl Prop {
         hidden: bool,
         doc_link: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        validation_format: Option<String>,
         prop_parent: PropParent,
     ) -> PropResult<Self> {
         let ordered = kind.ordered();
@@ -524,6 +536,7 @@ impl Prop {
             hidden,
             refers_to_prop_id: None,
             diff_func_id: None,
+            validation_format,
         };
 
         let (hash, _) = ctx

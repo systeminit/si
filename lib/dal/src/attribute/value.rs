@@ -62,6 +62,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
+use crate::validation::{Validation, ValidationError};
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -189,6 +190,8 @@ pub enum AttributeValueError {
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
     UnexpectedGraphLayout(&'static str),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
     ValueSource(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
@@ -1876,6 +1879,15 @@ impl AttributeValue {
         unprocessed_value: Option<serde_json::Value>,
         func_execution_pk: FuncExecutionPk,
     ) -> AttributeValueResult<()> {
+        let maybe_validation =
+            Validation::compute_for_attribute_value(ctx, attribute_value_id, value.clone()).await?;
+
+        if let Some(validation) = maybe_validation {
+            // TODO store the validation result in the attribute value contents
+            dbg!(&value);
+            dbg!(&validation);
+        }
+
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let (av_idx, av_node_weight) = {
             let av_idx = workspace_snapshot
@@ -1963,7 +1975,7 @@ impl AttributeValue {
     pub async fn prop_id_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<PropId> {
+    ) -> AttributeValueResult<Option<PropId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut maybe_prop_id = None;
@@ -1989,7 +2001,16 @@ impl AttributeValue {
             }
         }
 
-        maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+        Ok(maybe_prop_id)
+    }
+
+    pub async fn prop_id_for_id_or_error(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        Self::prop_id_for_id(ctx, attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 
     async fn fetch_value_from_store(
@@ -2066,7 +2087,7 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop_id_for_id(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
@@ -2138,7 +2159,7 @@ impl AttributeValue {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
-    /// Get the morale equivalent of the [`PropPath`]for a given [`AttributeValueId`].
+    /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
     #[instrument(level = "info", skip_all)]

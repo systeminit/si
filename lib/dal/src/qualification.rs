@@ -8,12 +8,11 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::qualification::QualificationEntry;
 use crate::func::FuncError;
 use crate::prop::PropError;
-use crate::validation::resolver::{ValidationResolver, ValidationResolverError, ValidationStatus};
+use crate::validation::{Validation, ValidationError, ValidationStatus};
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentError, ComponentId, DalContext, Prop, StandardModel, StandardModelError,
-    WsEventResult,
+    Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
 };
 use crate::{AttributeValue, AttributeValueId, Func};
 
@@ -129,7 +128,7 @@ pub enum QualificationError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
-    ValidationResolver(#[from] ValidationResolverError),
+    ValidationResolver(#[from] ValidationError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
@@ -248,18 +247,22 @@ impl QualificationView {
         let mut status = QualificationSubCheckStatus::Success;
 
         let mut fail_counter = 0;
-        for resolver in ValidationResolver::find_by_attr(ctx, "component_id", &component_id).await?
-        {
-            let value = resolver.value()?;
+        for resolver in Validation::list_for_component(ctx, &component_id).await? {
+            let value = resolver.value();
             if value.status != ValidationStatus::Success {
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
 
                 let prop = Prop::get_by_id(ctx, resolver.prop_id()).await?;
+
                 output.push(QualificationOutputStreamView {
                     stream: "stdout".to_owned(),
                     level: "log".to_owned(),
-                    line: format!("{}: {}", prop.name, value.message),
+                    line: format!(
+                        "{}: {}",
+                        prop.name,
+                        value.message.clone().unwrap_or("".to_string())
+                    ),
                 });
             }
         }

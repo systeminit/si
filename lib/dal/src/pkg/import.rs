@@ -2613,13 +2613,10 @@ async fn import_schema_variant(
                     Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))
                         .await?;
 
-                let secret_definition_prop = Prop::new(
+                let secret_definition_prop = Prop::new_without_ui_optionals(
                     ctx,
                     "secret_definition",
                     PropKind::Object,
-                    false,
-                    None,
-                    None,
                     PropParent::OrderedProp(root_prop_id),
                 )
                 .await?;
@@ -3188,6 +3185,7 @@ async fn create_dal_prop(
         data.hidden,
         data.doc_link.as_ref().map(|l| l.to_string()),
         Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+        data.validation_format.clone(),
         prop_parent,
     )
     .await

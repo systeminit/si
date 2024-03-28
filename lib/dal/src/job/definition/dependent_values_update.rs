@@ -24,10 +24,7 @@ use crate::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
     job::producer::{JobProducer, JobProducerResult},
-    AccessBuilder, AttributeValue, AttributeValueId, DalContext,
-    /*WsEvent*/
-    TransactionsError, /*StatusUpdater,*/
-    Visibility,
+    AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
 };
 
 #[remain::sorted]

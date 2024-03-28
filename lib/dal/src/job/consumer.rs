@@ -8,7 +8,6 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::prop::PropError;
-use crate::validation::resolver::ValidationResolverError;
 use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
@@ -73,8 +72,6 @@ pub enum JobConsumerError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
-    #[error(transparent)]
-    ValidationResolver(#[from] ValidationResolverError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }

@@ -49,7 +49,8 @@ impl PropertyEditorValues {
         // Get the root attribute value and load it into the work queue.
         let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
         let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
-        let root_prop_id = AttributeValue::prop_id_for_id(ctx, root_attribute_value_id).await?;
+        let root_prop_id =
+            AttributeValue::prop_id_for_id_or_error(ctx, root_attribute_value_id).await?;
         let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
 
         values.insert(
@@ -131,7 +132,7 @@ impl PropertyEditorValues {
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
                 let child_attribute_value = AttributeValue::get_by_id(ctx, child_av_id).await?;
                 let prop_id_for_child_attribute_value =
-                    AttributeValue::prop_id_for_id(ctx, child_av_id).await?;
+                    AttributeValue::prop_id_for_id_or_error(ctx, child_av_id).await?;
                 let child_property_editor_value_id = PropertyEditorValueId::from(child_av_id);
 
                 let sockets_for_av =

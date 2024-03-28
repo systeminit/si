@@ -313,7 +313,7 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -396,7 +396,7 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -477,7 +477,7 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -545,7 +545,7 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let parrots_prop_id = AttributeValue::prop_id_for_id(ctx, parrots_av_id)
+    let parrots_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrots_av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -622,7 +622,7 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
 
         let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
 
-        let parrot_entry_prop_id = AttributeValue::prop_id_for_id(ctx, parrot_entry_av_id)
+        let parrot_entry_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrot_entry_av_id)
             .await
             .expect("get prop_id for attribute value");
 

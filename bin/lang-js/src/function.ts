@@ -4,7 +4,10 @@ import { base64ToJs } from "./base64";
 import { createNodeVm } from "./vm";
 import { createSandbox } from "./sandbox";
 import { ctxFromRequest, Request, RequestCtx } from "./request";
-import validation, { ValidationFunc } from "./function_kinds/validation";
+import joi_validation, {
+  JoiValidationFunc,
+  JoiValidationResult,
+} from "./function_kinds/joi_validation";
 import reconciliation, {
   ReconciliationFunc,
 } from "./function_kinds/reconciliation";
@@ -150,7 +153,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
       );
       break;
     case FunctionKind.Validation:
-      result = await executor(ctx, request as ValidationFunc, kind, validation);
+      result = await executor(ctx, request as JoiValidationFunc, kind, joi_validation);
       break;
     case FunctionKind.SchemaVariantDefinition:
       result = await executor(
@@ -167,7 +170,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
   console.log(JSON.stringify(result));
 }
 
-export async function executor<F extends Func, Result>(
+export async function executor<F extends Func | ActionRunFunc, Result>(
   ctx: RequestCtx,
   func: F,
   kind: FunctionKind,
@@ -183,10 +186,13 @@ export async function executor<F extends Func, Result>(
       ctx: RequestCtx,
       func: F,
       code: string
-    ) => Promise<Result>;
+    ) => Promise<JoiValidationResult | Result>;
   },
 ) {
-  const originalCode = base64ToJs(func.codeBase64);
+  let originalCode = "";
+  if (!_.isEmpty(func.codeBase64)) {
+    originalCode = base64ToJs(func.codeBase64);
+  }
 
   const code = wrapCode(originalCode, func.handler);
 

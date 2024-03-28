@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 pub struct ValidationRequest {
     pub execution_id: String,
     pub handler: String,
-    pub value: serde_json::Value,
     pub code_base64: String,
+    pub value: Option<serde_json::Value>,
+    pub validation_format: String,
     pub before: Vec<BeforeFunction>,
 }
 
@@ -15,6 +16,5 @@ pub struct ValidationRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ValidationResultSuccess {
     pub execution_id: String,
-    pub valid: bool,
-    pub message: Option<String>,
+    pub error: Option<String>,
 }

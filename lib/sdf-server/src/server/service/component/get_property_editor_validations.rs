@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::validation::resolver::{ValidationOutput, ValidationResolver};
-use dal::{ComponentId, PropId, StandardModel, Visibility};
+use dal::validation::{Validation, ValidationOutput};
+use dal::{ComponentId, PropId, Visibility};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,9 +28,8 @@ pub async fn get_property_editor_validations(
 
     let mut validations: GetPropertyEditorValidationsResponse = HashMap::new();
 
-    for resolver in
-        ValidationResolver::find_by_attr(&ctx, "component_id", &request.component_id).await?
-    {
+    // TODO Move this to the attribute value itself. There's no reason for this to be a separate call
+    for resolver in Validation::list_for_component(&ctx, &request.component_id).await? {
         validations
             .entry(resolver.prop_id())
             .or_default()

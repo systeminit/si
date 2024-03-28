@@ -322,6 +322,8 @@ pub struct PropContentV1 {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
+    /// A serialized validation format JSON object for the prop.  
+    pub validation_format: Option<String>,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

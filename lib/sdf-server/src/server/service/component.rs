@@ -5,9 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::property_editor::PropertyEditorError;
-use dal::validation::resolver::ValidationResolverError;
 use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
+use dal::validation::ValidationError;
 use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
 use thiserror::Error;
@@ -119,7 +119,7 @@ pub enum ComponentError {
     // #[error("ws event error: {0}")]
     // WsEvent(#[from] WsEventError),
     #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
+    ValidationResolver(#[from] ValidationError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
@@ -151,10 +151,10 @@ pub fn routes() -> Router<AppState> {
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
         )
-        //.route(
-        //            "/get_property_editor_validations",
-        //            get(get_property_editor_validations::get_property_editor_validations),
-        //        )
+        .route(
+            "/get_property_editor_validations",
+            get(get_property_editor_validations::get_property_editor_validations),
+        )
         .route(
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
