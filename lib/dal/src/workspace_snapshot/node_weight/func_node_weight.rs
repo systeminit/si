@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use ulid::Ulid;
 
+use crate::func::FuncKind;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::FuncBackendKind;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
@@ -26,7 +26,7 @@ pub struct FuncNodeWeight {
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
     name: String,
-    backend_kind: FuncBackendKind,
+    func_kind: FuncKind,
 }
 
 impl FuncNodeWeight {
@@ -35,7 +35,7 @@ impl FuncNodeWeight {
         id: Ulid,
         content_address: ContentAddress,
         name: String,
-        backend_kind: FuncBackendKind,
+        func_kind: FuncKind,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -43,7 +43,7 @@ impl FuncNodeWeight {
             content_address,
             merkle_tree_hash: ContentHash::default(),
             name,
-            backend_kind,
+            func_kind,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -120,12 +120,12 @@ impl FuncNodeWeight {
         self
     }
 
-    pub fn backend_kind(&self) -> FuncBackendKind {
-        self.backend_kind
+    pub fn func_kind(&self) -> FuncKind {
+        self.func_kind
     }
 
-    pub fn set_backend_kind(&mut self, backend_kind: FuncBackendKind) -> &mut Self {
-        self.backend_kind = backend_kind;
+    pub fn set_func_kind(&mut self, func_kind: FuncKind) -> &mut Self {
+        self.func_kind = func_kind;
         self
     }
 
@@ -159,7 +159,7 @@ impl FuncNodeWeight {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "name": self.name,
-            "backend_kind": self.backend_kind,
+            "func_kind": self.func_kind,
         }])
     }
 
@@ -195,7 +195,7 @@ impl std::fmt::Debug for FuncNodeWeight {
             .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
             .field("name", &self.name)
-            .field("backend_kind", &self.backend_kind)
+            .field("func_kind", &self.func_kind)
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)

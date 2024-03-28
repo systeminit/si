@@ -4,7 +4,7 @@ use si_events::ContentHash;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
-use strum::IntoEnumIterator;
+use strum::{AsRefStr, Display, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -48,6 +48,8 @@ pub enum FuncError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("unable to determine the function type")]
+    UnknownFunctionType,
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]
@@ -76,6 +78,7 @@ impl From<Func> for FuncContentV1 {
             hidden: value.hidden,
             builtin: value.builtin,
             backend_response_type: value.backend_response_type,
+            backend_kind: value.backend_kind,
             handler: value.handler,
             code_base64: value.code_base64,
             code_blake3: value.code_blake3,
@@ -95,6 +98,22 @@ pub fn is_intrinsic(name: &str) -> bool {
 }
 
 pk!(FuncId);
+
+/// Describes what kind of [`Func`] this is.
+#[remain::sorted]
+#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum FuncKind {
+    Action,
+    Attribute,
+    Authentication,
+    CodeGeneration,
+    Intrinsic,
+    Qualification,
+    SchemaVariantDefinition,
+    Unknown,
+}
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).
@@ -132,7 +151,7 @@ impl Func {
             link: content.link,
             hidden: content.hidden,
             builtin: content.builtin,
-            backend_kind: node_weight.backend_kind(),
+            backend_kind: content.backend_kind,
             backend_response_type: content.backend_response_type,
             handler: content.handler,
             code_base64: content.code_base64,
@@ -143,7 +162,7 @@ impl Func {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
-        name: impl Into<String>,
+        name: impl Into<String> + Clone,
         display_name: Option<impl Into<String>>,
         description: Option<impl Into<String>>,
         link: Option<impl Into<String>>,
@@ -169,6 +188,7 @@ impl Func {
             hidden,
             builtin,
             backend_response_type,
+            backend_kind,
             handler: handler.map(Into::into),
             code_base64,
             code_blake3,
@@ -185,9 +205,14 @@ impl Func {
             )
             .await?;
 
+        let func_kind =
+            Self::determine_func_kind(name.clone().into(), backend_kind, backend_response_type)
+                .await?;
+
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
+        let node_weight =
+            NodeWeight::new_func(change_set, id, name.clone().into(), func_kind, hash)?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight.clone()).await?;
@@ -206,6 +231,42 @@ impl Func {
         let func_node_weight = node_weight.get_func_node_weight()?;
 
         Ok(Self::assemble(&func_node_weight, &content))
+    }
+
+    pub async fn determine_func_kind(
+        func_name: String,
+        func_backend_kind: FuncBackendKind,
+        func_backend_response_type: FuncBackendResponseType,
+    ) -> FuncResult<FuncKind> {
+        match func_backend_kind {
+            FuncBackendKind::JsAttribute => match func_backend_response_type {
+                FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
+                FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
+                _ => Ok(FuncKind::Attribute),
+            },
+            FuncBackendKind::JsAction => Ok(FuncKind::Action),
+            FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
+            FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
+            FuncBackendKind::JsValidation => {
+                dbg!("Old func kind identifed so marked as unknown");
+                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
+                Ok(FuncKind::Unknown)
+            }
+            FuncBackendKind::Array
+            | FuncBackendKind::Boolean
+            | FuncBackendKind::Diff
+            | FuncBackendKind::Identity
+            | FuncBackendKind::Integer
+            | FuncBackendKind::Map
+            | FuncBackendKind::Object
+            | FuncBackendKind::String
+            | FuncBackendKind::Unset
+            | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
+            _ => {
+                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
+                Err(FuncError::UnknownFunctionType)
+            }
+        }
     }
 
     pub fn metadata_view(&self) -> FuncMetadataView {
@@ -334,17 +395,13 @@ impl Func {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        // If both either the name or backend_kind have changed, *and* parts of the FuncContent
+        // If the name HAS changed, *and* parts of the FuncContent
         // have changed, this ends up updating the node for the function twice. This could be
         // optimized to do it only once.
-        if func.name.as_str() != node_weight.name()
-            || func.backend_kind != node_weight.backend_kind()
-        {
+        if func.name.as_str() != node_weight.name() {
             let original_node_index = workspace_snapshot.get_node_index_by_id(func.id).await?;
 
-            node_weight
-                .set_name(func.name.as_str())
-                .set_backend_kind(func.backend_kind);
+            node_weight.set_name(func.name.as_str());
 
             workspace_snapshot
                 .add_node(NodeWeight::Func(

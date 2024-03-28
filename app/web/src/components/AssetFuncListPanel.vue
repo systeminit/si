@@ -9,7 +9,7 @@
         <SidebarSubpanelTitle label="Asset Functions">
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedAssetId"
-            :disabled="!assetStore.selectedAsset?.schemaVariantId"
+            :disabled="!assetStore.selectedAsset?.id"
             label="Attach"
             @selected-attach-type="openAttachFuncModal"
           />
@@ -97,9 +97,7 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 const assetSchemaVariantId = computed(() =>
-  props.assetId
-    ? assetStore.assetsById[props.assetId]?.schemaVariantId
-    : undefined,
+  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
 );
 
 const openAttachFuncModal = (type: "new" | "existing") => {

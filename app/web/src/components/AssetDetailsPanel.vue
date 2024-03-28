@@ -12,13 +12,9 @@
           <VButton
             :loading="executeAssetTaskRunning"
             :loadingText="
-              editingAsset.schemaVariantId
-                ? 'Updating Asset...'
-                : 'Creating Asset...'
+              editingAsset.id ? 'Updating Asset...' : 'Creating Asset...'
             "
-            :label="
-              editingAsset.schemaVariantId ? 'Update Asset' : 'Create Asset'
-            "
+            :label="editingAsset.id ? 'Update Asset' : 'Create Asset'"
             :disabled="disabled"
             tone="action"
             icon="bolt"
@@ -83,7 +79,7 @@
         />
         <VormInput
           id="menuName"
-          v-model="editingAsset.menuName"
+          v-model="editingAsset.displayName"
           type="text"
           :disabled="disabled"
           label="Display name"
@@ -150,14 +146,12 @@
       ref="executeAssetModalRef"
       size="sm"
       :title="
-        editingAsset && editingAsset.schemaVariantId
-          ? 'Asset Updated'
-          : 'New Asset Created'
+        editingAsset && editingAsset.id ? 'Asset Updated' : 'New Asset Created'
       "
       @closeComplete="closeHandler"
     >
       {{
-        editingAsset && editingAsset.schemaVariantId
+        editingAsset && editingAsset.id
           ? "The asset you just updated will be available to use from the Assets Panel"
           : "The asset you just created will now appear in the Assets Panel."
       }}
@@ -222,9 +216,7 @@ const componentTypeOptions = [
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 const assetSchemaVariantId = computed(() =>
-  props.assetId
-    ? assetStore.assetsById[props.assetId]?.schemaVariantId
-    : undefined,
+  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
 );
 
 const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
