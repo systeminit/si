@@ -6,6 +6,7 @@ use std::path::Path;
 
 use crate::TEST_PG_DBNAME;
 
+mod activities;
 mod chunking_nats;
 mod db;
 mod disk_cache;

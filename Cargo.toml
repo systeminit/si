@@ -32,7 +32,6 @@ members = [
     "lib/naxum",
     "lib/object-tree",
     "lib/pinga-server",
-    "lib/rebaser-client",
     "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",

@@ -5,12 +5,22 @@ use si_data_pg::{PgError, PgPoolError};
 use si_events::content_hash::ContentHashParseError;
 use si_std::CanonicalFileError;
 use thiserror::Error;
+use tokio_stream::Elapsed;
 
-use crate::persister::{PersistMessage, PersisterTaskError};
+use crate::{
+    activities::ActivityId,
+    persister::{PersistMessage, PersisterTaskError},
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum LayerDbError {
+    #[error("While waiting for an activity id {0}, all senders have closed. The activity will never arrive.")]
+    ActivityWaitClosed(ActivityId),
+    #[error("While waiting for an activity id {0}, the receiving stream has lagged. Cancelling.")]
+    ActivityWaitLagged(ActivityId),
+    #[error("Timed out waiting for activity id {0} after {1}")]
+    ActivityWaitTimeout(ActivityId, Elapsed),
     #[error("cache update message with bad headers: {0}")]
     CacheUpdateBadHeaders(String),
     #[error("cache update message had no headers")]

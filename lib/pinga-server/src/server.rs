@@ -11,7 +11,6 @@ use dal::{
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
-use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{
     CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
 };
@@ -119,7 +118,6 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
-        let rebaser_config = RebaserClientConfig::default();
 
         let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
             config.layer_cache_sled_path(),
@@ -139,7 +137,6 @@ impl Server {
             None,
             None,
             symmetric_crypto_service,
-            rebaser_config,
             layer_db,
         );
 
