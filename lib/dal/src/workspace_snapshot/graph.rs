@@ -3,10 +3,10 @@ use petgraph::{algo, prelude::*};
 use serde::{Deserialize, Serialize};
 use si_events::{
     deserialize_merkle_tree_hash_as_bytes, deserialize_node_weight_address_as_bytes,
-    serialize_merkle_tree_hash_as_bytes, serialize_node_weight_address_as_bytes, ContentHash,
-    MerkleTreeHash, NodeWeightAddress,
+    serialize_merkle_tree_hash_as_bytes, serialize_node_weight_address_as_bytes, MerkleTreeHash,
+    NodeWeightAddress,
 };
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 use telemetry::prelude::*;
@@ -14,7 +14,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::{
-    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKindDiscriminants},
     node_weight::NodeWeightError,
 };
 

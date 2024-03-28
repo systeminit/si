@@ -15,7 +15,6 @@ use tokio_postgres_rustls::MakeRustlsConnect;
 
 use base64::{engine::general_purpose, Engine};
 use std::{
-    cmp,
     fmt::{self, Debug},
     net::ToSocketAddrs,
     path::Path,

@@ -24,7 +24,7 @@ use dal::workspace_snapshot::node_weight::NodeWeight;
 use dal::workspace_snapshot::update::Update;
 use dal::PropKind;
 use dal_test::test;
-use si_events::{MerkleTreeHash, NodeWeightAddress};
+use si_events::MerkleTreeHash;
 
 #[derive(Debug, PartialEq)]
 struct ConflictsAndUpdates {
@@ -1271,7 +1271,7 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
 async fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict(ctx: &DalContext) {
     let empty_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
     let base_change_set = &empty_change_set;
-    let base_graph = WorkspaceSnapshot::empty(&ctx, base_change_set)
+    let base_graph = WorkspaceSnapshot::empty(ctx, base_change_set)
         .await
         .expect("should create snapshot");
     let base_root_id = base_graph.root_id().await.expect("should get root id");
@@ -1448,7 +1448,7 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
     let docker_image_schema_variant_id = base_change_set
         .generate_ulid()
         .expect("Unable to generate Ulid");
-    let docker_image_schema_variant_index = base_graph
+    base_graph
         .add_node(
             NodeWeight::new_content(
                 base_change_set,
@@ -1507,7 +1507,7 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
     let alpine_component_id = base_change_set
         .generate_ulid()
         .expect("Unable to generate Ulid");
-    let alpine_component_index = base_graph
+    base_graph
         .add_node(
             NodeWeight::new_content(
                 base_change_set,
@@ -1566,7 +1566,7 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
     let butane_schema_variant_id = base_change_set
         .generate_ulid()
         .expect("Unable to generate Ulid");
-    let butane_schema_variant_index = base_graph
+    base_graph
         .add_node(
             NodeWeight::new_content(
                 base_change_set,
@@ -3427,7 +3427,7 @@ async fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_
 
     let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
     let new_change_set = &new_change_set;
-    let mut new_graph = empty_graph.real_clone().await;
+    let new_graph = empty_graph.real_clone().await;
 
     let new_order = vec![
         ordered_prop_2_id,
@@ -3845,7 +3845,7 @@ async fn add_ordered_node_below_root(ctx: &DalContext) {
     let prop_id = active_change_set
         .generate_ulid()
         .expect("Unable to generate Ulid");
-    let prop_index = graph
+    graph
         .add_ordered_node(
             active_change_set,
             NodeWeight::new_content(
