@@ -136,7 +136,7 @@ const qualificationStatusToIconMap: Record<
 };
 
 export interface AttributeDebugData {
-  valueId: string;
+  attributeValueId: string;
   proxyFor?: string | null;
   funcName: string;
   funcId: string;
@@ -148,23 +148,8 @@ export interface AttributeDebugData {
   };
   value: object | string | number | boolean | null;
   prototypeId: string;
-  prototypeContext: {
-    prop_id: string;
-    internal_provider_id: string;
-    external_provider_id: string;
-    component_id: string;
-  };
   kind: string;
-  prototypeInChangeSet: boolean;
-  valueInChangeSet: boolean;
-  implicitValue?: object | string | number | boolean | null;
-  implicitValueContext?: {
-    prop_id: string;
-    internal_provider_id: string;
-    external_provider_id: string;
-    component_id: string;
-  };
-  implicitFuncName?: string;
+  materializedView?: string;
 }
 
 export interface AttributeDebugView {

@@ -37,6 +37,7 @@ use crate::{
 };
 
 pub mod argument;
+pub mod debug;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

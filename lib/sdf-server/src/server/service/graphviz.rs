@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use axum::{extract::Query, response::Response, routing::get, Json, Router};
 use dal::{
+    attribute::value::AttributeValueError,
     schema::variant::SchemaVariantError,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -9,7 +10,8 @@ use dal::{
         node_weight::{NodeWeight, NodeWeightDiscriminants},
         WorkspaceSnapshotError,
     },
-    Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError, Visibility,
+    AttributeValue, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError,
+    Visibility,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -25,6 +27,8 @@ use crate::server::{
 #[derive(Error, Debug)]
 pub enum GraphVizError {
     #[error(transparent)]
+    AttributeValueError(#[from] AttributeValueError),
+    #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
@@ -32,6 +36,8 @@ pub enum GraphVizError {
     NoRootNode,
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("serde json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("workspace snapshot error")]
@@ -358,6 +364,9 @@ pub async fn components(
                             .name(&ctx)
                             .await?,
                     ),
+                    NodeWeight::AttributeValue(inner) => {
+                        AttributeValue::get_path_for_id(&ctx, inner.id().into()).await?
+                    }
                     _ => None,
                 };
 
