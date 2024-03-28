@@ -12,7 +12,7 @@ pub mod ws;
 
 // pub mod pkg;
 // pub mod status;
-pub mod variant_definition;
+pub mod variant;
 
 /// A module containing dev routes for local development only.
 #[cfg(debug_assertions)]

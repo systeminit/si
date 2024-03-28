@@ -489,12 +489,12 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
     };
     //
     //     let is_revertible = is_func_revertible(ctx, func).await?;
-    //     let types = [
-    //         compile_return_types(*func.backend_response_type(), *func.backend_kind()),
-    //         &input_type,
-    //         langjs_types(),
-    //     ]
-    //     .join("\n");
+    let types = [
+        compile_return_types(func.backend_response_type, func.backend_kind),
+        &input_type,
+        langjs_types(),
+    ]
+    .join("\n");
 
     Ok(GetFuncResponse {
         id: func.id.to_owned(),
@@ -506,8 +506,114 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         is_builtin: func.builtin,
         is_revertible: false,
         associations,
-        types: input_type,
+        types,
     })
+}
+
+pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
+    if matches!(kind, FuncBackendKind::JsAttribute)
+        && !matches!(
+            ty,
+            FuncBackendResponseType::CodeGeneration | FuncBackendResponseType::Qualification
+        )
+    {
+        return ""; // attribute functions have their output compiled dynamically
+    }
+
+    match ty {
+        FuncBackendResponseType::Boolean => "type Output = boolean | null;",
+        FuncBackendResponseType::String => "type Output = string | null;",
+        FuncBackendResponseType::Integer => "type Output = number | null;",
+        FuncBackendResponseType::Qualification => {
+            "type Output {
+  result: 'success' | 'warning' | 'failure';
+  message?: string | null;
+}"
+        }
+        FuncBackendResponseType::CodeGeneration => {
+            "type Output {
+  format: string;
+  code: string;
+}"
+        }
+        FuncBackendResponseType::Validation => {
+            "type Output {
+  valid: boolean;
+  message: string;
+}"
+        }
+        FuncBackendResponseType::Reconciliation => {
+            "type Output {
+  updates: { [key: string]: unknown };
+  actions: string[];
+  message: string | null;
+}"
+        }
+        FuncBackendResponseType::Action => {
+            "type Output {
+    status: 'ok' | 'warning' | 'error';
+    payload?: { [key: string]: unknown } | null;
+    message?: string | null;
+}"
+        }
+        FuncBackendResponseType::Json => "type Output = any;",
+        // Note: there is no ts function returning those
+        FuncBackendResponseType::Identity => "interface Output extends Input {}",
+        FuncBackendResponseType::Array => "type Output = any[];",
+        FuncBackendResponseType::Map => "type Output = Record<string, any>;",
+        FuncBackendResponseType::Object => "type Output = any;",
+        FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::Void => "type Output = void;",
+        FuncBackendResponseType::SchemaVariantDefinition => concat!(
+            include_str!("./ts_types/asset_types_with_secrets.d.ts"),
+            "\n",
+            include_str!("./ts_types/joi.d.ts"),
+            "\n",
+            "type Output = any;"
+        ),
+    }
+}
+
+// TODO: stop duplicating definition
+// TODO: use execa types instead of any
+// TODO: add os, fs and path types (possibly fetch but I think it comes with DOM)
+fn langjs_types() -> &'static str {
+    "declare namespace YAML {
+    function stringify(obj: unknown): string;
+}
+
+    declare namespace zlib {
+        function gzip(inputstr: string, callback: any);
+    }
+
+    declare namespace requestStorage {
+        function getEnv(key: string): string;
+        function getItem(key: string): any;
+        function getEnvKeys(): string[];
+        function getKeys(): string[];
+    }
+
+    declare namespace siExec {
+
+    interface WatchArgs {
+        cmd: string,
+        args?: readonly string[],
+        execaOptions?: Options<string>,
+        retryMs?: number,
+        maxRetryCount?: number,
+        callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
+    }
+
+    interface WatchResult {
+        result: SiExecResult,
+        failed?: 'deadlineExceeded' | 'commandFailed',
+    }
+
+    type SiExecResult = ExecaReturnValue<string>;
+
+    async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
+    async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
+}"
 }
 
 pub fn routes() -> Router<AppState> {

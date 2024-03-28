@@ -5,12 +5,12 @@ mod test {
     use si_events::ContentHash;
 
     use crate::change_set_pointer::ChangeSetPointer;
+    use crate::func::FuncKind;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
-    use crate::FuncBackendKind;
     use crate::WorkspaceSnapshotGraph;
 
     #[test]
@@ -59,7 +59,7 @@ mod test {
             func_id,
             ContentAddress::Func(ContentHash::from("foo")),
             "foo".to_string(),
-            FuncBackendKind::String,
+            FuncKind::Intrinsic,
         )
         .expect("could not create func node weight");
         let func_node_index = onto

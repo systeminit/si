@@ -1,34 +1,35 @@
-use super::SchemaVariantDefinitionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::variant::SchemaVariantResult;
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
-use dal::{schema::variant::definition::SchemaVariantDefinitionView, Visibility};
+use dal::schema::variant::SchemaVariantMetadataView;
+use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListVariantDefsRequest {
+pub struct ListVariantsRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListVariantDefsResponse {
-    pub variant_defs: Vec<SchemaVariantDefinitionView>,
+pub struct ListVariantsResponse {
+    pub variants: Vec<SchemaVariantMetadataView>,
 }
 
-pub async fn list_variant_defs(
+pub async fn list_variants(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Query(request): Query<ListVariantDefsRequest>,
-) -> SchemaVariantDefinitionResult<Json<ListVariantDefsResponse>> {
+    Query(request): Query<ListVariantsRequest>,
+) -> SchemaVariantResult<Json<ListVariantsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let schema_variant_definition_views = SchemaVariantDefinitionView::list(&ctx).await?;
+    let schema_variant_metadata_views = SchemaVariantMetadataView::list(&ctx).await?;
 
     track(
         &posthog_client,
@@ -38,7 +39,7 @@ pub async fn list_variant_defs(
         serde_json::json!({}),
     );
 
-    Ok(Json(ListVariantDefsResponse {
-        variant_defs: schema_variant_definition_views,
+    Ok(Json(ListVariantsResponse {
+        variants: schema_variant_metadata_views,
     }))
 }
