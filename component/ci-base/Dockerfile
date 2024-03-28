@@ -32,6 +32,7 @@ RUN set -eux; \
         containerd.io \
         docker-buildx-plugin \
         docker-compose-plugin \
+        xvfb \
     ; \
     rm -rf /var/lib/apt/lists/*
 
