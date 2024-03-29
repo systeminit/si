@@ -2,9 +2,14 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{routing::get, Json, Router};
+use chrono::Utc;
+use convert_case::{Case, Casing};
+use dal::func::binding::FuncBindingError;
+use dal::pkg::PkgError;
 use dal::{
     ChangeSetPointerError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
 };
+use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -51,12 +56,12 @@ pub enum SchemaVariantError {
     //     FuncArgument(#[from] FuncArgumentError),
     //     #[error("func argument not found: {0}")]
     //     FuncArgumentNotFound(FuncArgumentId),
-    //     #[error(transparent)]
-    //     FuncBinding(#[from] FuncBindingError),
-    //     #[error("func execution error: {0}")]
-    //     FuncExecution(FuncId),
-    //     #[error("func execution failure error: {0}")]
-    //     FuncExecutionFailure(String),
+    #[error(transparent)]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("func execution error: {0}")]
+    FuncExecution(FuncId),
+    #[error("func execution failure error: {0}")]
+    FuncExecutionFailure(String),
     //     #[error("func has no handler: {0}")]
     //     FuncHasNoHandler(FuncId),
     #[error("func is empty: {0}")]
@@ -73,14 +78,14 @@ pub enum SchemaVariantError {
     //     InternalProviderNotFoundForSocket(SocketId),
     //     #[error("updating the schema variant found an invalid state: {0}")]
     //     InvalidState(String),
-    //     #[error("No new asset was created")]
-    //     NoAssetCreated,
+    #[error("No new asset was created")]
+    NoAssetCreated,
     //     #[error(transparent)]
     //     Pg(#[from] si_data_pg::PgError),
     //     #[error(transparent)]
     //     PgPool(#[from] si_data_pg::PgPoolError),
-    //     #[error(transparent)]
-    //     Pkg(#[from] PkgError),
+    #[error(transparent)]
+    Pkg(#[from] PkgError),
     //     #[error("constructed package has no schema node")]
     //     PkgMissingSchema,
     //     #[error("constructed package has no schema variant node")]
@@ -101,12 +106,12 @@ pub enum SchemaVariantError {
     //     SdfFunc(#[from] SdfFuncError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    //     #[error(transparent)]
-    //     SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
     //     #[error(transparent)]
     //     Socket(#[from] SocketError),
-    //     #[error(transparent)]
-    //     Spec(#[from] SpecError),
+    #[error(transparent)]
+    Spec(#[from] SpecError),
     //     #[error(transparent)]
     //     StandardModel(#[from] StandardModelError),
     //     #[error("summary diagram error: {0}")]
@@ -699,6 +704,12 @@ impl IntoResponse for SchemaVariantError {
 //         attribute_prototypes,
 //     ))
 // }
+
+pub fn generate_scaffold_func_name(name: String) -> String {
+    let version = Utc::now().format("%Y%m%d%H%M").to_string();
+    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
+    generated_name
+}
 
 pub fn routes() -> Router<AppState> {
     Router::new()

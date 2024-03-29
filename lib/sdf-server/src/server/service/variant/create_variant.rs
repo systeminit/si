@@ -1,15 +1,28 @@
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-// use crate::server::tracking::track;
-use crate::service::variant::SchemaVariantResult;
+use std::collections::HashMap;
+
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
-use dal::{
-    ChangeSetPointer, ComponentType, Func, FuncBackendKind, FuncBackendResponseType, Schema,
-    SchemaVariant, SchemaVariantId, Visibility,
-};
 use serde::{Deserialize, Serialize};
+
+use dal::func::binding::FuncBinding;
+use dal::func::intrinsics::IntrinsicFunc;
+use dal::pkg::import_pkg_from_pkg;
+use dal::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
+use dal::{
+    ChangeSetPointer, ComponentType, Func, FuncBackendKind, FuncBackendResponseType,
+    SchemaVariantId, Visibility,
+};
+use si_pkg::{
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
+};
+
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+// use crate::server::tracking::track;
+use crate::service::variant::{
+    generate_scaffold_func_name, SchemaVariantError, SchemaVariantResult,
+};
 
 const DEFAULT_ASSET_CODE: &str = r#"function main() {
   return new AssetBuilder().build()
@@ -49,7 +62,7 @@ pub async fn create_variant(
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode(DEFAULT_ASSET_CODE);
     let asset_func = Func::new(
         &ctx,
-        request.name.clone(),
+        generate_scaffold_func_name(request.name.clone()),
         request.display_name.clone(),
         request.description.clone(),
         request.link.clone(),
@@ -62,24 +75,103 @@ pub async fn create_variant(
     )
     .await?;
 
-    let schema = Schema::new(&ctx, request.name.clone()).await?;
-    let (variant, _) = SchemaVariant::new(
+    let mut asset_func_spec_builder = FuncSpec::builder();
+    asset_func_spec_builder.name(asset_func.name.clone());
+    asset_func_spec_builder.unique_id(asset_func.id.to_string());
+    let mut func_spec_data_builder = FuncSpecData::builder();
+    func_spec_data_builder
+        .name(asset_func.name.clone())
+        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .hidden(asset_func.hidden);
+    if let Some(code) = asset_func.code_plaintext()? {
+        func_spec_data_builder.code_plaintext(code);
+    }
+    if let Some(handler) = asset_func.handler.clone() {
+        func_spec_data_builder.handler(handler);
+    }
+    if let Some(description) = asset_func.description.clone() {
+        func_spec_data_builder.description(description);
+    }
+    if let Some(display_name) = asset_func.display_name.clone() {
+        func_spec_data_builder.display_name(display_name);
+    }
+    let asset_func_spec = asset_func_spec_builder
+        .data(func_spec_data_builder.build()?)
+        .build()?;
+
+    let (_, return_value) =
+        FuncBinding::create_and_execute(&ctx, serde_json::Value::Null, asset_func.id, vec![])
+            .await?;
+
+    if let Some(error) = return_value
+        .value()
+        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
+        .as_object()
+        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
+        .get("error")
+        .and_then(|e| e.as_str())
+    {
+        return Err(SchemaVariantError::FuncExecutionFailure(error.to_owned()));
+    }
+
+    let func_resp = return_value
+        .value()
+        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
+        .as_object()
+        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
+        .get("definition")
+        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?;
+
+    let definition = serde_json::from_value::<SchemaVariantJson>(func_resp.to_owned())?;
+    let metadata = SchemaVariantMetadataJson {
+        name: request.name.clone(),
+        menu_name: request.display_name.clone(),
+        category: request.category,
+        color: request.color,
+        component_type: ComponentType::Component,
+        link: request.link.clone(),
+        description: request.description.clone(),
+    };
+
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+    let variant_spec = definition.to_spec(
+        metadata.clone(),
+        &identity_func_spec.unique_id,
+        &asset_func_spec.unique_id,
+    )?;
+    let schema_spec = metadata.to_spec(variant_spec)?;
+    let pkg_spec = PkgSpec::builder()
+        .name(metadata.clone().name)
+        //TODO @stack72 - figure out how we get the current user in this!
+        .created_by("sally@systeminit.com".to_string())
+        .func(identity_func_spec)
+        .func(asset_func_spec.clone())
+        .schema(schema_spec)
+        .version("0.0.1")
+        .build()?;
+
+    let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
+
+    let (_, schema_variant_ids, _) = import_pkg_from_pkg(
         &ctx,
-        schema.id(),
-        request.name.clone(),
-        request.display_name.clone(),
-        request.category,
-        request.color,
-        ComponentType::Component,
-        request.link.clone(),
-        request.description.clone(),
-        Some(asset_func.id),
+        &pkg,
+        Some(dal::pkg::ImportOptions {
+            schemas: None,
+            skip_import_funcs: Some(HashMap::from_iter([(
+                asset_func_spec.unique_id.to_owned(),
+                asset_func.clone(),
+            )])),
+            no_record: true,
+            is_builtin: false,
+        }),
     )
     .await?;
 
-    schema
-        .set_default_schema_variant(&ctx, variant.id())
-        .await?;
+    let schema_variant_id = schema_variant_ids
+        .get(0)
+        .copied()
+        .ok_or(SchemaVariantError::NoAssetCreated)?;
 
     // track(
     //     &posthog_client,
@@ -108,7 +200,7 @@ pub async fn create_variant(
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
     Ok(response.body(serde_json::to_string(&CreateVariantResponse {
-        id: variant.id(),
+        id: schema_variant_id,
         success: true,
     })?)?)
 }

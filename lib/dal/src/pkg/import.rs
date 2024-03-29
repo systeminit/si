@@ -1406,6 +1406,8 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
+            dbg!("Finished import", &installed_schema_variant_ids);
+
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
         SiPkgKind::WorkspaceBackup => {
@@ -1797,7 +1799,7 @@ async fn import_schema(
 
             // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
             // to pull it off here, even if we find an existing schema.
-            let category = data.category.clone();
+            let category = dbg!(data.category.clone());
 
             let schema = match existing_schema {
                 None => create_schema(ctx, data).await?,
@@ -1877,8 +1879,9 @@ async fn import_schema(
             );
         }
 
-        let installed_schema_variant_ids = vec![];
+        let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
+            dbg!("Installing variant", &variant_spec);
             let variant = import_schema_variant(
                 ctx,
                 change_set_id,
@@ -1891,6 +1894,8 @@ async fn import_schema(
             .await?;
 
             if let Some(variant) = variant {
+                installed_schema_variant_ids.push(variant.id());
+
                 set_default_schema_variant_id(
                     ctx,
                     change_set_id,
