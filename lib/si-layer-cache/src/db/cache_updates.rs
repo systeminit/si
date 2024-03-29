@@ -258,10 +258,6 @@ where
     }
 
     async fn run(&self, msg: chunking_nats::Message) {
-        error!(
-            subject = msg.subject.as_str(),
-            "processing message for layerdb event"
-        );
         match self.process_message(msg).await {
             Ok(()) => {}
             Err(e) => {
