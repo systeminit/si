@@ -1,13 +1,16 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum::routing::post;
 use axum::{routing::get, Json, Router};
-use dal::{FuncError, FuncId, SchemaVariantId, TransactionsError};
+use dal::{
+    ChangeSetPointerError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+};
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
 // pub mod clone_variant_def;
-// pub mod create_variant_def;
+pub mod create_variant;
 // pub mod exec_variant_def;
 pub mod get_variant;
 pub mod list_variants;
@@ -30,6 +33,8 @@ pub enum SchemaVariantError {
     //     AttributeValue(#[from] AttributeValueError),
     //     #[error(transparent)]
     //     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
     //     #[error(transparent)]
     //     ContextTransaction(#[from] TransactionsError),
     //     #[error("error creating schema variant from definition: {0}")]
@@ -58,8 +63,8 @@ pub enum SchemaVariantError {
     FuncIsEmpty(FuncId),
     #[error("Func {0} not found")]
     FuncNotFound(FuncId),
-    //     #[error(transparent)]
-    //     Hyper(#[from] hyper::http::Error),
+    #[error(transparent)]
+    Hyper(#[from] hyper::http::Error),
     //     #[error(transparent)]
     //     InstalledPkg(#[from] InstalledPkgError),
     //     #[error(transparent)]
@@ -82,22 +87,20 @@ pub enum SchemaVariantError {
     //     PkgMissingSchemaVariant,
     //     #[error(transparent)]
     //     Prop(#[from] PropError),
-    //     #[error(transparent)]
-    //     Schema(#[from] SchemaError),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
     //     #[error("could not find schema connected to variant definition {0}")]
     //     SchemaNotFound(SchemaVariantDefinitionId),
     //     #[error("could not find schema connected to variant {0}")]
     //     SchemaNotFoundForVariant(SchemaVariantId),
-    //     #[error(transparent)]
-    //     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
     SchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     //     #[error("could not find schema variant {0} connected to variant definition {1}")]
     //     SchemaVariantNotFound(SchemaVariantId, SchemaVariantDefinitionId),
     //     #[error(transparent)]
     //     SdfFunc(#[from] SdfFuncError),
-    //     #[error("json serialization error: {0}")]
-    //     SerdeJson(#[from] serde_json::Error),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     //     #[error(transparent)]
     //     SiPkg(#[from] SiPkgError),
     //     #[error(transparent)]
@@ -701,14 +704,11 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_variants", get(list_variants::list_variants))
         .route("/get_variant", get(get_variant::get_variant))
-    // .route(
-    //     "/save_variant_def",
-    //     post(save_variant_def::save_variant_def),
-    // )
-    // .route(
-    //     "/create_variant_def",
-    //     post(create_variant_def::create_variant_def),
-    // )
+        // .route(
+        //     "/save_variant_def",
+        //     post(save_variant_def::save_variant_def),
+        // )
+        .route("/create_variant", post(create_variant::create_variant))
     // .route(
     //     "/exec_variant_def",
     //     post(exec_variant_def::exec_variant_def),
