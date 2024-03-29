@@ -6,12 +6,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
-use si_pkg::{SchemaSpec, SchemaSpecData, SchemaVariantSpecData, SiPropFuncSpecKind};
+use si_pkg::{
+    AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
+    SchemaVariantSpecData, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
+    SocketSpecData, SocketSpecKind, SpecError,
+};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
+use url::ParseError;
 
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
@@ -110,10 +115,14 @@ pub enum SchemaVariantError {
     SchemaNotFound(SchemaVariantId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("spec error: {0}")]
+    Spec(#[from] SpecError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("url parse error: {0}")]
+    Url(#[from] ParseError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -1159,6 +1168,23 @@ pub struct SchemaVariantMetadataJson {
     pub description: Option<String>,
 }
 
+impl SchemaVariantMetadataJson {
+    pub fn to_spec(&self, variant: SchemaVariantSpec) -> SchemaVariantResult<SchemaSpec> {
+        let mut builder = SchemaSpec::builder();
+        builder.name(&self.name);
+        let mut data_builder = SchemaSpecData::builder();
+        data_builder.name(&self.name);
+        data_builder.category(&self.category);
+        if let Some(menu_name) = &self.menu_name {
+            data_builder.category_name(menu_name.as_str());
+        }
+        builder.data(data_builder.build()?);
+        builder.variant(variant);
+
+        Ok(builder.build()?)
+    }
+}
+
 /// The json definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
 /// more in the future).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -1193,54 +1219,54 @@ pub struct SchemaVariantJson {
 }
 
 impl SchemaVariantJson {
-    //     pub fn to_spec(
-    //         &self,
-    //         metadata: SchemaVariantDefinitionMetadataJson,
-    //         identity_func_unique_id: &str,
-    //         asset_func_spec_unique_id: &str,
-    //     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
-    //         let mut builder = SchemaVariantSpec::builder();
-    //         let name = "v0";
-    //         builder.name(name);
-    //
-    //         let mut data_builder = SchemaVariantSpecData::builder();
-    //
-    //         data_builder.name(name);
-    //         data_builder.color(metadata.color);
-    //         data_builder.component_type(metadata.component_type);
-    //         if let Some(link) = metadata.link {
-    //             data_builder.try_link(link.as_str())?;
-    //         }
-    //
-    //         data_builder.func_unique_id(asset_func_spec_unique_id);
-    //         builder.data(data_builder.build()?);
-    //
-    //         for si_prop_value_from in &self.si_prop_value_froms {
-    //             builder.si_prop_func(si_prop_value_from.to_spec(identity_func_unique_id));
-    //         }
-    //         for prop in &self.props {
-    //             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
-    //         }
-    //         for prop in &self.secret_props {
-    //             builder.secret_prop(prop.to_spec(identity_func_unique_id)?);
-    //         }
-    //         if let Some(props) = &self.secret_definition {
-    //             for prop in props {
-    //                 builder.secret_definition_prop(prop.to_spec(identity_func_unique_id)?);
-    //             }
-    //         }
-    //         for resource_prop in &self.resource_props {
-    //             builder.resource_value_prop(resource_prop.to_spec(identity_func_unique_id)?);
-    //         }
-    //         for input_socket in &self.input_sockets {
-    //             builder.socket(input_socket.to_spec(true, identity_func_unique_id)?);
-    //         }
-    //         for output_socket in &self.output_sockets {
-    //             builder.socket(output_socket.to_spec(false, identity_func_unique_id)?);
-    //         }
-    //
-    //         Ok(builder.build()?)
-    //     }
+    pub fn to_spec(
+        &self,
+        metadata: SchemaVariantMetadataJson,
+        identity_func_unique_id: &str,
+        asset_func_spec_unique_id: &str,
+    ) -> SchemaVariantResult<SchemaVariantSpec> {
+        let mut builder = SchemaVariantSpec::builder();
+        let name = "v0";
+        builder.name(name);
+
+        let mut data_builder = SchemaVariantSpecData::builder();
+
+        data_builder.name(name);
+        data_builder.color(metadata.color);
+        data_builder.component_type(metadata.component_type);
+        if let Some(link) = metadata.link {
+            data_builder.try_link(link.as_str())?;
+        }
+
+        data_builder.func_unique_id(asset_func_spec_unique_id);
+        builder.data(data_builder.build()?);
+
+        for si_prop_value_from in &self.si_prop_value_froms {
+            builder.si_prop_func(si_prop_value_from.to_spec(identity_func_unique_id));
+        }
+        for prop in &self.props {
+            builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        for prop in &self.secret_props {
+            builder.secret_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        if let Some(props) = &self.secret_definition {
+            for prop in props {
+                builder.secret_definition_prop(prop.to_spec(identity_func_unique_id)?);
+            }
+        }
+        for resource_prop in &self.resource_props {
+            builder.resource_value_prop(resource_prop.to_spec(identity_func_unique_id)?);
+        }
+        for input_socket in &self.input_sockets {
+            builder.socket(input_socket.to_spec(true, identity_func_unique_id)?);
+        }
+        for output_socket in &self.output_sockets {
+            builder.socket(output_socket.to_spec(false, identity_func_unique_id)?);
+        }
+
+        Ok(builder.build()?)
+    }
 
     pub fn metadata_from_spec(
         schema_spec: SchemaSpec,
@@ -1315,6 +1341,18 @@ pub struct MapKeyFunc {
     pub value_from: Option<ValueFrom>,
 }
 
+impl MapKeyFunc {
+    pub fn to_spec(&self, identity_func_unique_id: &str) -> SchemaVariantResult<MapKeyFuncSpec> {
+        let mut builder = MapKeyFuncSpec::builder();
+        builder.func_unique_id(identity_func_unique_id);
+        builder.key(&self.key);
+        if let Some(value_from) = &self.value_from {
+            builder.input(value_from.to_spec());
+        };
+        Ok(builder.build()?)
+    }
+}
+
 /// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1359,6 +1397,57 @@ pub struct PropDefinition {
     pub map_key_funcs: Option<Vec<MapKeyFunc>>,
 }
 
+impl PropDefinition {
+    pub fn to_spec(&self, identity_func_unique_id: &str) -> SchemaVariantResult<PropSpec> {
+        let mut builder = PropSpec::builder();
+        builder.name(&self.name);
+        builder.kind(self.kind);
+        builder.has_data(true);
+        if let Some(doc_url) = &self.doc_link {
+            builder.try_doc_link(doc_url.as_str())?;
+        }
+        if let Some(docs) = &self.documentation {
+            builder.documentation(docs);
+        }
+        if let Some(default_value) = &self.default_value {
+            builder.default_value(default_value.to_owned());
+        }
+        match self.kind {
+            PropKind::Array | PropKind::Map => {
+                if let Some(entry) = &self.entry {
+                    builder.type_prop(entry.to_spec(identity_func_unique_id)?);
+                }
+            }
+            PropKind::Object => {
+                for child in &self.children {
+                    builder.entry(child.to_spec(identity_func_unique_id)?);
+                }
+            }
+            _ => {}
+        }
+        if let Some(widget) = &self.widget {
+            builder.widget_kind(widget.kind);
+            if let Some(widget_options) = &widget.options {
+                builder.widget_options(widget_options.to_owned());
+            }
+        }
+        if let Some(value_from) = &self.value_from {
+            builder.func_unique_id(identity_func_unique_id);
+            builder.input(value_from.to_spec());
+        }
+        if let Some(hidden) = self.hidden {
+            builder.hidden(hidden);
+        }
+        if let Some(map_key_funcs) = &self.map_key_funcs {
+            for map_key_func in map_key_funcs {
+                builder.map_key_func(map_key_func.to_spec(identity_func_unique_id)?);
+            }
+        }
+
+        Ok(builder.build()?)
+    }
+}
+
 /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1378,6 +1467,43 @@ pub struct SocketDefinition {
     pub value_from: Option<ValueFrom>,
 }
 
+impl SocketDefinition {
+    pub fn to_spec(
+        &self,
+        is_input: bool,
+        identity_func_unique_id: &str,
+    ) -> SchemaVariantResult<SocketSpec> {
+        let mut builder = SocketSpec::builder();
+        let mut data_builder = SocketSpecData::builder();
+        builder.name(&self.name);
+        data_builder.name(&self.name);
+        data_builder.connection_annotations(&self.connection_annotations);
+        if is_input {
+            data_builder.kind(SocketSpecKind::Input);
+        } else {
+            data_builder.kind(SocketSpecKind::Output);
+        }
+
+        if let Some(arity) = &self.arity {
+            data_builder.arity(arity);
+        } else {
+            data_builder.arity(SocketSpecArity::Many);
+        }
+        if let Some(hidden) = &self.ui_hidden {
+            data_builder.ui_hidden(*hidden);
+        } else {
+            data_builder.ui_hidden(false);
+        }
+        if let Some(value_from) = &self.value_from {
+            data_builder.func_unique_id(identity_func_unique_id);
+            builder.input(value_from.to_spec());
+        }
+        builder.data(data_builder.build()?);
+
+        Ok(builder.build()?)
+    }
+}
+
 /// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -1387,12 +1513,49 @@ pub enum ValueFrom {
     Prop { prop_path: Vec<String> },
 }
 
+impl ValueFrom {
+    fn to_spec(&self) -> AttrFuncInputSpec {
+        match self {
+            ValueFrom::InputSocket { socket_name } => AttrFuncInputSpec::InputSocket {
+                name: "identity".to_string(),
+                socket_name: socket_name.to_owned(),
+                unique_id: None,
+                deleted: false,
+            },
+            ValueFrom::Prop { prop_path } => AttrFuncInputSpec::Prop {
+                name: "identity".to_string(),
+                prop_path: PropPath::new(prop_path).into(),
+                unique_id: None,
+                deleted: false,
+            },
+            ValueFrom::OutputSocket { socket_name } => AttrFuncInputSpec::OutputSocket {
+                name: "identity".to_string(),
+                socket_name: socket_name.to_owned(),
+                unique_id: None,
+                deleted: false,
+            },
+        }
+    }
+}
+
 /// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SiPropValueFrom {
     kind: SiPropFuncSpecKind,
     value_from: ValueFrom,
+}
+
+impl SiPropValueFrom {
+    fn to_spec(&self, identity_func_unique_id: &str) -> SiPropFuncSpec {
+        SiPropFuncSpec {
+            kind: self.kind,
+            func_unique_id: identity_func_unique_id.to_owned(),
+            inputs: vec![self.value_from.to_spec()],
+            unique_id: None,
+            deleted: false,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]

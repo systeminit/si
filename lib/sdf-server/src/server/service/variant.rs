@@ -1,13 +1,21 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum::routing::post;
 use axum::{routing::get, Json, Router};
-use dal::{FuncError, FuncId, SchemaVariantId, TransactionsError};
+use chrono::Utc;
+use convert_case::{Case, Casing};
+use dal::func::binding::FuncBindingError;
+use dal::pkg::PkgError;
+use dal::{
+    ChangeSetPointerError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+};
+use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
 // pub mod clone_variant_def;
-// pub mod create_variant_def;
+pub mod create_variant;
 // pub mod exec_variant_def;
 pub mod get_variant;
 pub mod list_variants;
@@ -30,6 +38,8 @@ pub enum SchemaVariantError {
     //     AttributeValue(#[from] AttributeValueError),
     //     #[error(transparent)]
     //     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
     //     #[error(transparent)]
     //     ContextTransaction(#[from] TransactionsError),
     //     #[error("error creating schema variant from definition: {0}")]
@@ -46,20 +56,20 @@ pub enum SchemaVariantError {
     //     FuncArgument(#[from] FuncArgumentError),
     //     #[error("func argument not found: {0}")]
     //     FuncArgumentNotFound(FuncArgumentId),
-    //     #[error(transparent)]
-    //     FuncBinding(#[from] FuncBindingError),
-    //     #[error("func execution error: {0}")]
-    //     FuncExecution(FuncId),
-    //     #[error("func execution failure error: {0}")]
-    //     FuncExecutionFailure(String),
+    #[error(transparent)]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("func execution error: {0}")]
+    FuncExecution(FuncId),
+    #[error("func execution failure error: {0}")]
+    FuncExecutionFailure(String),
     //     #[error("func has no handler: {0}")]
     //     FuncHasNoHandler(FuncId),
     #[error("func is empty: {0}")]
     FuncIsEmpty(FuncId),
     #[error("Func {0} not found")]
     FuncNotFound(FuncId),
-    //     #[error(transparent)]
-    //     Hyper(#[from] hyper::http::Error),
+    #[error(transparent)]
+    Hyper(#[from] hyper::http::Error),
     //     #[error(transparent)]
     //     InstalledPkg(#[from] InstalledPkgError),
     //     #[error(transparent)]
@@ -68,42 +78,40 @@ pub enum SchemaVariantError {
     //     InternalProviderNotFoundForSocket(SocketId),
     //     #[error("updating the schema variant found an invalid state: {0}")]
     //     InvalidState(String),
-    //     #[error("No new asset was created")]
-    //     NoAssetCreated,
+    #[error("No new asset was created")]
+    NoAssetCreated,
     //     #[error(transparent)]
     //     Pg(#[from] si_data_pg::PgError),
     //     #[error(transparent)]
     //     PgPool(#[from] si_data_pg::PgPoolError),
-    //     #[error(transparent)]
-    //     Pkg(#[from] PkgError),
+    #[error(transparent)]
+    Pkg(#[from] PkgError),
     //     #[error("constructed package has no schema node")]
     //     PkgMissingSchema,
     //     #[error("constructed package has no schema variant node")]
     //     PkgMissingSchemaVariant,
     //     #[error(transparent)]
     //     Prop(#[from] PropError),
-    //     #[error(transparent)]
-    //     Schema(#[from] SchemaError),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
     //     #[error("could not find schema connected to variant definition {0}")]
     //     SchemaNotFound(SchemaVariantDefinitionId),
     //     #[error("could not find schema connected to variant {0}")]
     //     SchemaNotFoundForVariant(SchemaVariantId),
-    //     #[error(transparent)]
-    //     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
     SchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     //     #[error("could not find schema variant {0} connected to variant definition {1}")]
     //     SchemaVariantNotFound(SchemaVariantId, SchemaVariantDefinitionId),
     //     #[error(transparent)]
     //     SdfFunc(#[from] SdfFuncError),
-    //     #[error("json serialization error: {0}")]
-    //     SerdeJson(#[from] serde_json::Error),
-    //     #[error(transparent)]
-    //     SiPkg(#[from] SiPkgError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
     //     #[error(transparent)]
     //     Socket(#[from] SocketError),
-    //     #[error(transparent)]
-    //     Spec(#[from] SpecError),
+    #[error(transparent)]
+    Spec(#[from] SpecError),
     //     #[error(transparent)]
     //     StandardModel(#[from] StandardModelError),
     //     #[error("summary diagram error: {0}")]
@@ -697,18 +705,21 @@ impl IntoResponse for SchemaVariantError {
 //     ))
 // }
 
+pub fn generate_scaffold_func_name(name: String) -> String {
+    let version = Utc::now().format("%Y%m%d%H%M").to_string();
+    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
+    generated_name
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_variants", get(list_variants::list_variants))
         .route("/get_variant", get(get_variant::get_variant))
-    // .route(
-    //     "/save_variant_def",
-    //     post(save_variant_def::save_variant_def),
-    // )
-    // .route(
-    //     "/create_variant_def",
-    //     post(create_variant_def::create_variant_def),
-    // )
+        // .route(
+        //     "/save_variant_def",
+        //     post(save_variant_def::save_variant_def),
+        // )
+        .route("/create_variant", post(create_variant::create_variant))
     // .route(
     //     "/exec_variant_def",
     //     post(exec_variant_def::exec_variant_def),

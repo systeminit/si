@@ -135,9 +135,7 @@ async fn execute_asset_func(
 
     if let Some(error) = return_value
         .value()
-        .ok_or(SchemaVariantDefinitionError::FuncExecution(
-            *asset_func.id(),
-        ))?
+        .ok_or(SchemaVariantError::FuncExecution(*asset_func.id()))?
         .as_object()
         .ok_or(SchemaVariantDefinitionError::FuncExecution(
             *asset_func.id(),

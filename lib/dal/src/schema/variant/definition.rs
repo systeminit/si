@@ -47,8 +47,8 @@
 //     SchemaVariant(#[from] SchemaVariantError),
 //     //     #[error("error serializing/deserializing json: {0}")]
 //     //     SerdeJson(#[from] serde_json::Error),
-//     //     #[error("spec error: {0}")]
-//     //     Spec(#[from] SpecError),
+//     #[error("spec error: {0}")]
+//     Spec(#[from] SpecError),
 //     //     #[error("standard model error: {0}")]
 //     //     StandardModelError(#[from] StandardModelError),
 //     #[error("transactions error: {0}")]
@@ -266,23 +266,6 @@
 // }
 //
 
-// impl SchemaVariantDefinitionMetadataJson {
-//     pub fn to_spec(&self, variant: SchemaVariantSpec) -> SchemaVariantDefinitionResult<SchemaSpec> {
-//         let mut builder = SchemaSpec::builder();
-//         builder.name(&self.name);
-//         let mut data_builder = SchemaSpecData::builder();
-//         data_builder.name(&self.name);
-//         data_builder.category(&self.category);
-//         if let Some(menu_name) = &self.menu_name {
-//             data_builder.category_name(menu_name.as_str());
-//         }
-//         builder.data(data_builder.build()?);
-//         builder.variant(variant);
-
-//         Ok(builder.build()?)
-//     }
-// }
-
 // impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
 //     fn from(value: SchemaVariantDefinition) -> Self {
 //         SchemaVariantDefinitionMetadataJson {
@@ -364,151 +347,4 @@
 // }
 //
 
-// impl MapKeyFunc {
-//     pub fn to_spec(
-//         &self,
-//         identity_func_unique_id: &str,
-//     ) -> SchemaVariantDefinitionResult<MapKeyFuncSpec> {
-//         let mut builder = MapKeyFuncSpec::builder();
-//         builder.func_unique_id(identity_func_unique_id);
-//         builder.key(&self.key);
-//         if let Some(value_from) = &self.value_from {
-//             builder.input(value_from.to_spec());
-//         };
-//         Ok(builder.build()?)
-//     }
-// }
 //
-
-// impl PropDefinition {
-//     pub fn to_spec(
-//         &self,
-//         identity_func_unique_id: &str,
-//     ) -> SchemaVariantDefinitionResult<PropSpec> {
-//         let mut builder = PropSpec::builder();
-//         builder.name(&self.name);
-//         builder.kind(self.kind);
-//         builder.has_data(true);
-//         if let Some(doc_url) = &self.doc_link {
-//             builder.try_doc_link(doc_url.as_str())?;
-//         }
-//         if let Some(docs) = &self.documentation {
-//             builder.documentation(docs);
-//         }
-//         if let Some(default_value) = &self.default_value {
-//             builder.default_value(default_value.to_owned());
-//         }
-//         if let Some(validations) = &self.validations {
-//             for validation in validations {
-//                 builder.validation(validation.to_owned());
-//             }
-//         }
-//         match self.kind {
-//             PropKind::Array | PropKind::Map => {
-//                 if let Some(entry) = &self.entry {
-//                     builder.type_prop(entry.to_spec(identity_func_unique_id)?);
-//                 }
-//             }
-//             PropKind::Object => {
-//                 for child in &self.children {
-//                     builder.entry(child.to_spec(identity_func_unique_id)?);
-//                 }
-//             }
-//             _ => {}
-//         }
-//         if let Some(widget) = &self.widget {
-//             builder.widget_kind(widget.kind);
-//             if let Some(widget_options) = &widget.options {
-//                 builder.widget_options(widget_options.to_owned());
-//             }
-//         }
-//         if let Some(value_from) = &self.value_from {
-//             builder.func_unique_id(identity_func_unique_id);
-//             builder.input(value_from.to_spec());
-//         }
-//         if let Some(hidden) = self.hidden {
-//             builder.hidden(hidden);
-//         }
-//         if let Some(map_key_funcs) = &self.map_key_funcs {
-//             for map_key_func in map_key_funcs {
-//                 builder.map_key_func(map_key_func.to_spec(identity_func_unique_id)?);
-//             }
-//         }
-
-//         Ok(builder.build()?)
-//     }
-// }
-
-// impl SocketDefinition {
-//     pub fn to_spec(
-//         &self,
-//         is_input: bool,
-//         identity_func_unique_id: &str,
-//     ) -> SchemaVariantDefinitionResult<SocketSpec> {
-//         let mut builder = SocketSpec::builder();
-//         let mut data_builder = SocketSpecData::builder();
-//         builder.name(&self.name);
-//         data_builder.name(&self.name);
-//         data_builder.connection_annotations(&self.connection_annotations);
-//         if is_input {
-//             data_builder.kind(SocketSpecKind::Input);
-//         } else {
-//             data_builder.kind(SocketSpecKind::Output);
-//         }
-
-//         if let Some(arity) = &self.arity {
-//             data_builder.arity(arity);
-//         } else {
-//             data_builder.arity(SocketSpecArity::Many);
-//         }
-//         if let Some(hidden) = &self.ui_hidden {
-//             data_builder.ui_hidden(*hidden);
-//         } else {
-//             data_builder.ui_hidden(false);
-//         }
-//         if let Some(value_from) = &self.value_from {
-//             data_builder.func_unique_id(identity_func_unique_id);
-//             builder.input(value_from.to_spec());
-//         }
-//         builder.data(data_builder.build()?);
-
-//         Ok(builder.build()?)
-//     }
-// }
-
-// impl ValueFrom {
-//     fn to_spec(&self) -> AttrFuncInputSpec {
-//         match self {
-//             ValueFrom::InputSocket { socket_name } => AttrFuncInputSpec::InputSocket {
-//                 name: "identity".to_string(),
-//                 socket_name: socket_name.to_owned(),
-//                 unique_id: None,
-//                 deleted: false,
-//             },
-//             ValueFrom::Prop { prop_path } => AttrFuncInputSpec::Prop {
-//                 name: "identity".to_string(),
-//                 prop_path: PropPath::new(prop_path).into(),
-//                 unique_id: None,
-//                 deleted: false,
-//             },
-//             ValueFrom::OutputSocket { socket_name } => AttrFuncInputSpec::OutputSocket {
-//                 name: "identity".to_string(),
-//                 socket_name: socket_name.to_owned(),
-//                 unique_id: None,
-//                 deleted: false,
-//             },
-//         }
-//     }
-// }
-
-// impl SiPropValueFrom {
-//     fn to_spec(&self, identity_func_unique_id: &str) -> SiPropFuncSpec {
-//         SiPropFuncSpec {
-//             kind: self.kind,
-//             func_unique_id: identity_func_unique_id.to_owned(),
-//             inputs: vec![self.value_from.to_spec()],
-//             unique_id: None,
-//             deleted: false,
-//         }
-//     }
-// }
