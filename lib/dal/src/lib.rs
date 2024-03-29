@@ -13,7 +13,7 @@ use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPool, PgPoolError};
-use strum::{Display, EnumString, EnumVariantNames};
+use strum::{Display, EnumString, VariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
@@ -242,7 +242,7 @@ pub fn generate_name() -> String {
     DeserializeFromStr,
     Display,
     EnumString,
-    EnumVariantNames,
+    VariantNames,
     Eq,
     PartialEq,
     SerializeDisplay,

@@ -9,6 +9,6 @@ publish = false
 # amongst a potential large number of component crates
 [dependencies]
 remain = { workspace = true }
-serde = { version = "1.0.123", features = ["derive"] }
+serde = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
