@@ -101,6 +101,16 @@ pub enum WorkspaceSnapshotError {
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
+/// The workspace graph. The concurrency types used here to give us interior
+/// mutability in the tokio run time are *not* sufficient to prevent data races
+/// when operating on the same graph on different threads, since our graph
+/// operations are not "atomic" and the graph *WILL* end up being read from
+/// different threads while a write operation is still in progress if it is
+/// shared between threads for modification. For example after a node is added
+/// but *before* the edges necessary to place that node in the right spot in the
+/// graph have been added. We need a more general solution here, but for now an
+/// example of synchronization when accessing a snapshot across threads can be
+/// found in [`crate::job::definition::DependentValuesUpdate`].
 #[derive(Debug, Clone)]
 pub struct WorkspaceSnapshot {
     address: Arc<RwLock<WorkspaceSnapshotAddress>>,

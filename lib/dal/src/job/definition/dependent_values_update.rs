@@ -1,13 +1,17 @@
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
+    sync::Arc,
 };
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::task::{JoinError, JoinSet};
+use tokio::{
+    sync::RwLock,
+    task::{JoinError, JoinSet},
+};
 use ulid::Ulid;
 
 //use crate::tasks::StatusReceiverClient;
@@ -58,6 +62,8 @@ pub struct DependentValuesUpdate {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
+    #[serde(skip)]
+    set_value_lock: Arc<RwLock<()>>,
 }
 
 impl DependentValuesUpdate {
@@ -71,6 +77,7 @@ impl DependentValuesUpdate {
             access_builder,
             visibility,
             job: None,
+            set_value_lock: Arc::new(RwLock::new(())),
         })
     }
 }
@@ -149,6 +156,7 @@ impl DependentValuesUpdate {
                         id,
                         ctx.clone(),
                         attribute_value_id,
+                        self.set_value_lock.clone(),
                     ));
                     task_id_to_av_id.insert(id, attribute_value_id);
                     seen_ids.insert(attribute_value_id);
@@ -161,6 +169,12 @@ impl DependentValuesUpdate {
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
                         Ok(execution_values) => {
+                            // Lock the graph for writing inside this job. The
+                            // lock will be released when this guard is dropped
+                            // at the end of the scope.
+                            #[allow(unused_variables)]
+                            let write_guard = self.set_value_lock.write().await;
+
                             match AttributeValue::set_values_from_execution_result(
                                 ctx,
                                 finished_value_id,
@@ -216,10 +230,12 @@ async fn values_from_prototype_function_execution(
     task_id: Ulid,
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
+    set_value_lock: Arc<RwLock<()>>,
 ) -> (Ulid, DependentValueUpdateResult<PrototypeExecutionResult>) {
-    let result = AttributeValue::execute_prototype_function(&ctx, attribute_value_id)
-        .await
-        .map_err(Into::into);
+    let result =
+        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
+            .await
+            .map_err(Into::into);
 
     (task_id, result)
 }
@@ -234,6 +250,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             access_builder: job.access_builder,
             visibility: job.visibility,
             job: Some(job),
+            set_value_lock: Arc::new(RwLock::new(())),
         })
     }
 }

@@ -46,7 +46,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::TryLockError;
+use tokio::sync::{RwLock, TryLockError};
 use ulid::Ulid;
 
 pub use dependent_value_graph::DependentValueGraph;
@@ -497,7 +497,17 @@ impl AttributeValue {
     pub async fn execute_prototype_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
+        read_lock: Arc<RwLock<()>>,
     ) -> AttributeValueResult<PrototypeExecutionResult> {
+        // When functions are being executed in the dependent values update job,
+        // we need to ensure we are not reading our input sources from a graph
+        // that is in the process of being mutated on another thread, since it
+        // will be incomplete (some nodes will not have all their edges added
+        // yet, for example, or a reference replacement may still be in
+        // progress). To handle this here, we grab a read lock, which will be
+        // locked for writing in the dependent values update job while the
+        // execution result is being written to the graph.
+        let read_guard = read_lock.read().await;
         let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         let destination_component_id =
@@ -619,6 +629,10 @@ impl AttributeValue {
             .await
             .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
 
+        // We have gathered up all our inputs and so no longer need a lock on
+        // the graph. Be sure not to add graph walk operations below this drop
+        drop(read_guard);
+
         let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
             prepared_func_binding_args.clone(),
@@ -721,8 +735,10 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
+        // this lock is never locked for writing so is effectively a no-op here
+        let read_lock = Arc::new(RwLock::new(()));
         let execution_result =
-            AttributeValue::execute_prototype_function(ctx, attribute_value_id).await?;
+            AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
         AttributeValue::set_values_from_execution_result(ctx, attribute_value_id, execution_result)
             .await?;
