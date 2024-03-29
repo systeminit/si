@@ -1,6 +1,6 @@
 use clap::{builder::PossibleValuesParser, Parser, Subcommand};
 use std::str::FromStr;
-use strum::{Display, EnumString, EnumVariantNames};
+use strum::{Display, EnumString, VariantNames};
 
 const NAME: &str = "si";
 
@@ -192,13 +192,13 @@ impl Args {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames)]
+#[derive(Clone, Copy, Debug, Display, EnumString, VariantNames)]
 pub enum Mode {
     #[strum(serialize = "local")]
     Local,
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, EnumString, VariantNames, PartialEq)]
 pub enum Engine {
     #[strum(serialize = "docker")]
     Docker,

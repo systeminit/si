@@ -36,11 +36,13 @@ pathdiff = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
-serde_toml = { package = "toml", version = "0.8.8", optional = true }
 serde_yaml = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
+
+# FIXME(nick): we should move directly onto the "toml" crate and use the workspace's version.
+serde_toml = { package = "toml", version = "0.8.12", optional = true }
 
 [dev-dependencies]
 serde = { workspace = true }

@@ -7,6 +7,22 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+council-server = { path = "../../lib/council-server" }
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+object-tree = { path = "../../lib/object-tree" }
+si-cbor = { path = "../../lib/si-cbor" }
+si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-events = { path = "../../lib/si-events-rs" }
+si-hash = { path = "../../lib/si-hash" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
@@ -14,7 +30,6 @@ blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
 convert_case = { workspace = true }
-council-server = { path = "../../lib/council-server" }
 derive_more = { workspace = true }
 diff = { workspace = true }
 dyn-clone = { workspace = true }
@@ -23,14 +38,11 @@ hex = { workspace = true }
 iftree = { workspace = true }
 itertools = { workspace = true }
 jwt-simple = { workspace = true }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
 lazy_static = { workspace = true }
-nats-subscriber = { path = "../../lib/nats-subscriber" }
-object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }
 paste = { workspace = true }
 petgraph = { workspace = true }
-postcard = { version = "1.0.8", features = ["alloc"] }
+postcard = { workspace = true }
 postgres-types = { workspace = true }
 rand = { workspace = true }
 refinery = { workspace = true }
@@ -40,32 +52,23 @@ serde = { workspace = true }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-si-cbor = { path = "../../lib/si-cbor" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-events = { path = "../../lib/si-events-rs" }
-si-hash = { path = "../../lib/si-hash" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-std = { path = "../../lib/si-std" }
 sled = { workspace = true }
 sodiumoxide = { workspace = true }
 strum = { workspace = true }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
-veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal-test = { path = "../../lib/dal-test" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
-rebaser-core = { path = "../../lib/rebaser-core" }
-rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }
 tokio-util = { workspace = true }
