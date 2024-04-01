@@ -6,9 +6,7 @@ use chrono::Utc;
 use convert_case::{Case, Casing};
 use dal::func::binding::FuncBindingError;
 use dal::pkg::PkgError;
-use dal::{
-    ChangeSetPointerError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
-};
+use dal::{ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError};
 use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
@@ -39,7 +37,7 @@ pub enum SchemaVariantError {
     //     #[error(transparent)]
     //     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     //     #[error(transparent)]
     //     ContextTransaction(#[from] TransactionsError),
     //     #[error("error creating schema variant from definition: {0}")]

@@ -11,7 +11,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    change_set_pointer::ChangeSetPointerError,
+    change_set_pointer::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
     pk,
     socket::input::InputSocketId,
@@ -50,7 +50,7 @@ pub enum AttributePrototypeArgumentError {
     #[error("attribute value error: {0}")]
     AttributeValue(String),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func argument error: {0}")]

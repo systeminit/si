@@ -85,7 +85,8 @@ pub use attribute::{
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::ChangeSetStatus;
-pub use change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+pub use change_set_pointer::ChangeSetApplyError;
+pub use change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer};
 pub use component::Component;
 pub use component::ComponentError;
 pub use component::ComponentId;

@@ -6,7 +6,7 @@ use axum::{
 };
 use convert_case::{Case, Casing};
 use dal::{
-    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, ChangeSetPointerError,
+    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, ChangeSetError,
     DalContextBuilder, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
     TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
 };
@@ -37,7 +37,7 @@ pub enum PkgError {
     #[error("Could not canononicalize path: {0}")]
     Canononicalize(#[from] CanonicalFileError),
     #[error(transparent)]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]

@@ -42,7 +42,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+use crate::change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -61,8 +61,8 @@ use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("change set pointer {0} has no workspace snapshot address")]
     ChangeSetPointerMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("edge weight error: {0}")]

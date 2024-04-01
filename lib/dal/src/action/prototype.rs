@@ -8,7 +8,7 @@ use std::sync::Arc;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
@@ -64,7 +64,7 @@ pub enum ActionPrototypeError {
     #[error(transparent)]
     BeforeFunc(#[from] BeforeFuncError),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("edge weight error: {0}")]

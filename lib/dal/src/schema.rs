@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -31,7 +31,7 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 #[derive(Error, Debug)]
 pub enum SchemaError {
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("layer db error: {0}")]

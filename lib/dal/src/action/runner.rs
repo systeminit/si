@@ -13,7 +13,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::batch::ActionBatchId;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -71,7 +71,7 @@ pub enum ActionRunnerError {
     #[error("cannot set action runner for {0}: batch ({1}) already started")]
     BatchAlreadyStarted(ActionRunnerId, ActionBatchId),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]

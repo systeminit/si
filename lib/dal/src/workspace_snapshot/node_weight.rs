@@ -8,7 +8,7 @@ use ulid::Ulid;
 use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
+    change_set_pointer::{ChangeSetError, ChangeSetPointer},
     workspace_snapshot::{
         content_address::ContentAddress,
         vector_clock::{VectorClock, VectorClockError},
@@ -49,7 +49,7 @@ pub enum NodeWeightError {
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]

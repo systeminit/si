@@ -11,7 +11,7 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -39,7 +39,7 @@ pub enum ActionBatchError {
     #[error("cannot stamp batch as started since it already started")]
     AlreadyStarted,
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("edge weight error: {0}")]

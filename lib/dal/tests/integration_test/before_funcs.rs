@@ -6,17 +6,13 @@ use dal_test::test_harness::create_component_for_schema_name;
 use dal_test::test_harness::encrypt_message;
 use dal_test::{test, WorkspaceSignup};
 
-/// Run with the following environment variable:
-/// ```
-/// SI_TEST_BUILTIN_SCHEMAS=test
-/// ```
 #[test]
 async fn secret_definition_works_with_dummy_qualification(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
 ) {
     let secret_definition_component =
-        create_component_for_schema_name(ctx, "bethesda-secret", "secret-definition").await;
+        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition").await;
 
     let secret_definition_schema_variant_id =
         Component::schema_variant_id(ctx, secret_definition_component.id())
@@ -25,8 +21,8 @@ async fn secret_definition_works_with_dummy_qualification(
 
     let secret_definition_component_id = secret_definition_component.id();
 
-    // This is the name of the secret definition from the "BethesdaSecret" test exclusive schema.
-    let secret_definition_name = "fake";
+    // This is the name of the secret definition from the test exclusive schema.
+    let secret_definition_name = "dummy";
 
     // Cache the output socket that will contain the secret id.
     let output_socket = OutputSocket::find_with_name(
@@ -125,10 +121,9 @@ async fn secret_definition_works_with_dummy_qualification(
             .await
             .expect("could not list qualifications");
         let qualification = qualifications
-            .iter()
-            .find(|q| q.qualification_name == "test:qualificationFakeSecretStringIsTodd")
-            .expect("qualification not found")
-            .to_owned();
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+            .expect("could not find qualification");
         assert_eq!(
             QualificationSubCheckStatus::Failure, // expected
             qualification.result.expect("no result found").status  // actual
@@ -209,10 +204,9 @@ async fn secret_definition_works_with_dummy_qualification(
             .await
             .expect("could not list qualifications");
         let qualification = qualifications
-            .iter()
-            .find(|q| q.qualification_name == "test:qualificationFakeSecretStringIsTodd")
-            .expect("no qualifications found")
-            .to_owned();
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+            .expect("could not find qualification");
         assert_eq!(
             QualificationSubCheckStatus::Success, // expected
             qualification.result.expect("no result found").status  // actual

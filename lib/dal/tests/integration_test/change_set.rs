@@ -39,14 +39,9 @@ async fn open_change_sets(ctx: &mut DalContext) {
     );
 
     // Apply the change set and perform a blocking commit.
-    let mut change_set = ChangeSetPointer::find(ctx, ctx.change_set_id())
+    ChangeSetPointer::apply_to_base_change_set(ctx, true)
         .await
-        .expect("could not perform find change set")
-        .expect("no change set found");
-    change_set
-        .apply_to_base_change_set(ctx)
-        .await
-        .expect("could not apply to base change set");
+        .expect("could not apply to base");
     let conflicts = ctx
         .blocking_commit()
         .await

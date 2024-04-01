@@ -52,7 +52,7 @@ use ulid::Ulid;
 pub use dependent_value_graph::DependentValueGraph;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set_pointer::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
@@ -114,7 +114,7 @@ pub enum AttributeValueError {
     #[error("cannot explicitly set the value of {0} because it is for an input or output socket")]
     CannotExplicitlySetSocketValues(AttributeValueId),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(String),
     #[error("edge weight error: {0}")]

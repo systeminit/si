@@ -1,4 +1,4 @@
-use dal::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
+use dal::change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
@@ -16,7 +16,7 @@ use ulid::Ulid;
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
     #[error("workspace snapshot error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("missing change set pointer")]
     MissingChangeSetPointer(ChangeSetId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
