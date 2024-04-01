@@ -38,7 +38,7 @@ pub async fn save_variant_def(
 ) -> SchemaVariantDefinitionResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     super::save_variant_def(&ctx, &request, None).await?;
 
@@ -64,8 +64,8 @@ pub async fn save_variant_def(
 
     let mut response = axum::response::Response::builder();
     response = response.header("Content-Type", "application/json");
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
     Ok(

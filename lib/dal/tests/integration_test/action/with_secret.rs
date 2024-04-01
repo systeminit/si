@@ -2,7 +2,7 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{
-    Action, ActionKind, AttributeValue, ChangeSetPointer, Component, DalContext, InputSocket,
+    Action, ActionKind, AttributeValue, ChangeSet, Component, DalContext, InputSocket,
     OutputSocket, Prop, Secret,
 };
 use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
@@ -133,7 +133,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .expect("could not perform parent is head"));
 
     // Apply to the base change set and commit.
-    let applied_change_set = ChangeSetPointer::apply_to_base_change_set(ctx, true)
+    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
         .await
         .expect("could apply to base change set");
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");

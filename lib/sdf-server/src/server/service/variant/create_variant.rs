@@ -11,8 +11,8 @@ use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use dal::{
-    ChangeSetPointer, ComponentType, Func, FuncBackendKind, FuncBackendResponseType,
-    SchemaVariantId, Visibility,
+    ChangeSet, ComponentType, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId,
+    Visibility,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
@@ -57,7 +57,7 @@ pub async fn create_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode(DEFAULT_ASSET_CODE);
     let asset_func = Func::new(
@@ -196,8 +196,8 @@ pub async fn create_variant(
 
     let mut response = axum::response::Response::builder();
     response = response.header("Content-Type", "application/json");
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&CreateVariantResponse {
         id: schema_variant_id,

@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use dal::change_set_pointer::{ChangeSetId, ChangeSetPointer};
+use dal::change_set::{ChangeSet, ChangeSetId};
 use dal::{DalContext, UserClaim};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
@@ -143,13 +143,13 @@ pub async fn create_change_set_and_update_ctx(
     ctx: &mut DalContext,
     base_change_set_id: ChangeSetId,
 ) {
-    let base_change_set = ChangeSetPointer::find(ctx, base_change_set_id)
+    let base_change_set = ChangeSet::find(ctx, base_change_set_id)
         .await
         .expect("could not perform find change set")
         .expect("no change set found");
-    let mut change_set = ChangeSetPointer::new(ctx, generate_fake_name(), Some(base_change_set_id))
+    let mut change_set = ChangeSet::new(ctx, generate_fake_name(), Some(base_change_set_id))
         .await
-        .expect("could not create change set pointer");
+        .expect("could not create change set");
     change_set
         .update_pointer(
             ctx,

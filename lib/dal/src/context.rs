@@ -23,7 +23,7 @@ use crate::workspace_snapshot::{
     conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
 };
 use crate::{
-    change_set_pointer::{ChangeSetId, ChangeSetPointer},
+    change_set::{ChangeSet, ChangeSetId},
     job::{
         definition::ActionsJob,
         processor::{JobQueueProcessor, JobQueueProcessorError},
@@ -290,8 +290,8 @@ pub struct DalContext {
     no_dependent_values: bool,
     /// The workspace snapshot for this context
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
-    /// The change set pointer for this context
-    change_set_pointer: Option<ChangeSetPointer>,
+    /// The change set for this context
+    change_set: Option<ChangeSet>,
 }
 
 impl DalContext {
@@ -317,19 +317,16 @@ impl DalContext {
     }
 
     pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
-        let change_set_pointer = ChangeSetPointer::find(self, self.change_set_id())
+        let change_set = ChangeSet::find(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetPointerNotFound(
-                self.change_set_id(),
-            ))?;
+            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
 
-        let workspace_snapshot =
-            WorkspaceSnapshot::find_for_change_set(self, change_set_pointer.id)
-                .await
-                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
+            .await
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
 
-        self.set_change_set_pointer(change_set_pointer)?;
+        self.set_change_set(change_set)?;
         self.set_workspace_snapshot(workspace_snapshot);
 
         Ok(())
@@ -338,19 +335,16 @@ impl DalContext {
     pub async fn update_snapshot_to_visibility_no_editing_change_set(
         &mut self,
     ) -> Result<(), TransactionsError> {
-        let change_set_pointer = ChangeSetPointer::find(self, self.change_set_id())
+        let change_set = ChangeSet::find(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetPointerNotFound(
-                self.change_set_id(),
-            ))?;
+            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
 
-        let workspace_snapshot =
-            WorkspaceSnapshot::find_for_change_set(self, change_set_pointer.id)
-                .await
-                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
+            .await
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
 
-        self.change_set_pointer = Some(change_set_pointer);
+        self.change_set = Some(change_set);
         self.set_workspace_snapshot(workspace_snapshot);
 
         Ok(())
@@ -360,7 +354,7 @@ impl DalContext {
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+            let vector_clock_id = self.change_set()?.vector_clock_id();
 
             Ok(Some(snapshot.write(self, vector_clock_id).await.map_err(
                 |err| TransactionsError::WorkspaceSnapshot(err.to_string()),
@@ -374,7 +368,7 @@ impl DalContext {
         &self,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> Result<RebaseRequest, TransactionsError> {
-        let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+        let vector_clock_id = self.change_set()?.vector_clock_id();
         Ok(RebaseRequest {
             onto_workspace_snapshot_address,
             // the vector clock id of the current change set is just the id
@@ -460,10 +454,10 @@ impl DalContext {
         Ok(())
     }
 
-    pub fn change_set_pointer(&self) -> Result<&ChangeSetPointer, TransactionsError> {
-        match self.change_set_pointer.as_ref() {
+    pub fn change_set(&self) -> Result<&ChangeSet, TransactionsError> {
+        match self.change_set.as_ref() {
             Some(csp_ref) => Ok(csp_ref),
-            None => Err(TransactionsError::ChangeSetPointerNotSet),
+            None => Err(TransactionsError::ChangeSetNotSet),
         }
     }
 
@@ -471,24 +465,24 @@ impl DalContext {
         self.services_context().layer_db().clone()
     }
 
-    /// Fetch the change set pointer for the current change set visibility
+    /// Fetch the change set for the current change set visibility
     /// Should only be called by DalContextBuilder or by ourselves if changing visibility or
     /// refetching after a commit
-    pub fn set_change_set_pointer(
+    pub fn set_change_set(
         &mut self,
-        change_set_pointer: ChangeSetPointer,
-    ) -> Result<&ChangeSetPointer, TransactionsError> {
-        // "fork" a new change set pointer for this dal context "edit session". This gives us a new
+        change_set: ChangeSet,
+    ) -> Result<&ChangeSet, TransactionsError> {
+        // "fork" a new change set for this dal context "edit session". This gives us a new
         // Ulid generator and new vector clock id so that concurrent editing conflicts can be
-        // resolved by the rebaser. This change set pointer is not persisted to the database (the
+        // resolved by the rebaser. This change set is not persisted to the database (the
         // rebaser will persist a new one if it can)
-        self.change_set_pointer = Some(
-            change_set_pointer
+        self.change_set = Some(
+            change_set
                 .editing_changeset()
                 .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?,
         );
 
-        self.change_set_pointer()
+        self.change_set()
     }
 
     pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
@@ -612,7 +606,7 @@ impl DalContext {
                 .await
                 .map_err(|err| TransactionsError::Workspace(err.to_string()))?
                 .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
-            let change_set = self.change_set_pointer()?;
+            let change_set = self.change_set()?;
             let base_change_set_id = change_set
                 .base_change_set_id
                 .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
@@ -907,7 +901,7 @@ impl DalContextBuilder {
             history_actor: HistoryActor::SystemInit,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
-            change_set_pointer: None,
+            change_set: None,
         })
     }
 
@@ -927,7 +921,7 @@ impl DalContextBuilder {
             visibility: Visibility::new_head(),
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
-            change_set_pointer: None,
+            change_set: None,
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -957,7 +951,7 @@ impl DalContextBuilder {
             history_actor: request_context.history_actor,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
-            change_set_pointer: None,
+            change_set: None,
         };
 
         ctx.update_snapshot_to_visibility().await?;
@@ -1002,10 +996,10 @@ pub enum TransactionsError {
     BadActivity(ActivityPayloadDiscriminants, ActivityPayloadDiscriminants),
     #[error("change set error: {0}")]
     ChangeSet(String),
-    #[error("change set pointer not found for change set id: {0}")]
-    ChangeSetPointerNotFound(ChangeSetId),
-    #[error("Change set pointer not set on DalContext")]
-    ChangeSetPointerNotSet,
+    #[error("change set not found for change set id: {0}")]
+    ChangeSetNotFound(ChangeSetId),
+    #[error("change set not set on DalContext")]
+    ChangeSetNotSet,
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
@@ -1216,7 +1210,7 @@ impl Transactions {
 
         // We need to send a rebase request *after* committing any transactions,
         // but before starting any jobs in pinga, since those transactions may
-        // have updated the changeset pointer to point to the current snapshot,
+        // have updated the change set pointer to point to the current snapshot,
         // and that will be the snapshot we expect the dependent values update
         // (for example) to access.
         let conflicts = if let Some(rebase_request) = rebase_request {

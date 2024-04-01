@@ -247,7 +247,7 @@ impl SchemaVariant {
         ctx.workspace_snapshot()?
             .add_edge(
                 item_prop_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(key))?,
                 attribute_prototype_id,
             )
             .await?;

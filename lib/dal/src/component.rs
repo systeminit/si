@@ -19,7 +19,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
@@ -284,7 +284,7 @@ impl Component {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_component(change_set, id, hash)?;
 
@@ -679,7 +679,7 @@ impl Component {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, id.into(), hash)
+                .update_content(ctx.change_set()?, id.into(), hash)
                 .await?;
         }
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
@@ -1233,8 +1233,8 @@ impl Component {
                 .get_node_weight(component_idx)
                 .await?
                 .get_component_node_weight()?;
-            let mut new_component_node_weight = component_node_weight
-                .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            let mut new_component_node_weight =
+                component_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))
@@ -1257,7 +1257,7 @@ impl Component {
                 )
                 .await?;
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, component.id.into(), hash)
+                .update_content(ctx.change_set()?, component.id.into(), hash)
                 .await?;
         }
 

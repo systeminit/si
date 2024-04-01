@@ -7,7 +7,7 @@ use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
-    change_set_pointer::ChangeSetError,
+    change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
     installed_pkg::InstalledPkgError,
     prop::PropError,

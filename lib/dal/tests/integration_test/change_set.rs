@@ -1,5 +1,5 @@
-use dal::change_set_pointer::view::OpenChangeSetsView;
-use dal::change_set_pointer::ChangeSetPointer;
+use dal::change_set::view::OpenChangeSetsView;
+use dal::change_set::ChangeSet;
 use dal::{ChangeSetStatus, DalContext};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -39,7 +39,7 @@ async fn open_change_sets(ctx: &mut DalContext) {
     );
 
     // Apply the change set and perform a blocking commit.
-    ChangeSetPointer::apply_to_base_change_set(ctx, true)
+    ChangeSet::apply_to_base_change_set(ctx, true)
         .await
         .expect("could not apply to base");
     let conflicts = ctx
@@ -66,7 +66,7 @@ async fn open_change_sets(ctx: &mut DalContext) {
     );
 
     // Create a new change set and perform a commit without rebasing.
-    let new_change_set = ChangeSetPointer::fork_head(ctx, "new change set")
+    let new_change_set = ChangeSet::fork_head(ctx, "new change set")
         .await
         .expect("could not create new change set");
     ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
@@ -117,7 +117,7 @@ async fn open_change_sets(ctx: &mut DalContext) {
 #[test]
 async fn abandon_change_set(ctx: &mut DalContext) {
     let change_set_name = "for abandonment".to_string();
-    let mut abandonment_change_set = ChangeSetPointer::fork_head(ctx, change_set_name.clone())
+    let mut abandonment_change_set = ChangeSet::fork_head(ctx, change_set_name.clone())
         .await
         .expect("could not create new change set");
     ctx.update_visibility_and_snapshot_to_visibility(abandonment_change_set.id)

@@ -4,7 +4,7 @@ mod test {
     use pretty_assertions_sorted::assert_eq;
     use si_events::ContentHash;
 
-    use crate::change_set_pointer::ChangeSetPointer;
+    use crate::change_set::ChangeSet;
     use crate::func::FuncKind;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
@@ -15,8 +15,7 @@ mod test {
 
     #[test]
     fn simulate_rebase() {
-        let to_rebase_change_set =
-            ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let to_rebase_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let to_rebase_change_set = &to_rebase_change_set;
         let mut to_rebase = WorkspaceSnapshotGraph::new(to_rebase_change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
@@ -46,7 +45,7 @@ mod test {
             .expect("could not add edge");
 
         // Create the onto graph from the to rebase graph.
-        let onto_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let onto_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let onto_change_set = &onto_change_set;
         let mut onto = to_rebase.clone();
 

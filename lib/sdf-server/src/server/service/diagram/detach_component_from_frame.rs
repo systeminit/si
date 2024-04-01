@@ -24,7 +24,7 @@ pub async fn detach_component_from_frame(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let detached_parent_id = Edge::detach_component_from_parent(&ctx, request.component_id).await?;
 
@@ -42,8 +42,8 @@ pub async fn detach_component_from_frame(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(axum::body::Empty::new())?)
 }

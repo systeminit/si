@@ -21,7 +21,7 @@ use thiserror::Error;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -124,7 +124,7 @@ impl AttributePrototype {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
@@ -280,7 +280,7 @@ impl AttributePrototype {
                 attribute_prototype_id,
             ))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         workspace_snapshot
             .remove_edge(
                 change_set,
@@ -414,7 +414,7 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
 
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, prototype_id)

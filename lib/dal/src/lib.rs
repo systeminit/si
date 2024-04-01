@@ -25,7 +25,6 @@ pub mod attribute;
 pub mod authentication_prototype;
 pub mod builtins;
 pub mod change_set;
-pub mod change_set_pointer;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
@@ -84,9 +83,9 @@ pub use attribute::{
     value::{AttributeValue, AttributeValueId},
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
-pub use change_set::ChangeSetStatus;
-pub use change_set_pointer::ChangeSetApplyError;
-pub use change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer};
+pub use change_set::status::ChangeSetStatus;
+pub use change_set::ChangeSetApplyError;
+pub use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 pub use component::Component;
 pub use component::ComponentError;
 pub use component::ComponentId;

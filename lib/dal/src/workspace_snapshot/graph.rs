@@ -15,7 +15,7 @@ use ulid::Ulid;
 
 use telemetry::prelude::*;
 
-use crate::change_set_pointer::{ChangeSetError, ChangeSetPointer};
+use crate::change_set::{ChangeSet, ChangeSetError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
@@ -99,7 +99,7 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
 }
 
 impl WorkspaceSnapshotGraph {
-    pub fn new(change_set: &ChangeSetPointer) -> WorkspaceSnapshotGraphResult<Self> {
+    pub fn new(change_set: &ChangeSet) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
         let root_node = NodeWeight::new_content(
             change_set,
@@ -219,7 +219,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn add_category_node(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let inner_weight = CategoryNodeWeight::new(change_set, kind)?;
@@ -311,7 +311,7 @@ impl WorkspaceSnapshotGraph {
     #[allow(clippy::type_complexity)]
     pub fn add_ordered_edge(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -366,7 +366,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn add_ordered_node(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         node: NodeWeight,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let new_node_index = self.add_node(node)?;
@@ -1432,7 +1432,7 @@ impl WorkspaceSnapshotGraph {
     /// [`Self::cleanup()`] has run should be considered invalid.
     pub(crate) fn remove_edge(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -1600,7 +1600,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn update_content(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
@@ -1616,7 +1616,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn update_order(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         container_id: Ulid,
         new_order: Vec<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<()> {
@@ -1742,7 +1742,7 @@ impl WorkspaceSnapshotGraph {
     /// and a provided graph as the "onto" graph.
     pub fn perform_updates(
         &mut self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_change_set: &ChangeSet,
         onto: &WorkspaceSnapshotGraph,
         updates: &[Update],
     ) -> WorkspaceSnapshotGraphResult<()> {

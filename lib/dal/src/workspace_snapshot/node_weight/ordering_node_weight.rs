@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointer;
+use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 
@@ -29,20 +29,14 @@ impl OrderingNodeWeight {
         self.id
     }
 
-    pub fn increment_seen_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         self.vector_clock_first_seen
             .inc(change_set.vector_clock_id())?;
 
         Ok(())
     }
 
-    pub fn increment_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         self.vector_clock_write
             .inc(change_set.vector_clock_id())
             .map_err(Into::into)
@@ -67,7 +61,7 @@ impl OrderingNodeWeight {
 
     pub fn merge_clocks(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         other: &OrderingNodeWeight,
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
@@ -84,7 +78,7 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new(change_set: &ChangeSetPointer) -> NodeWeightResult<Self> {
+    pub fn new(change_set: &ChangeSet) -> NodeWeightResult<Self> {
         Ok(Self {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
@@ -96,7 +90,7 @@ impl OrderingNodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let mut new_ordering_weight = self.clone();
         new_ordering_weight.increment_vector_clock(change_set)?;
@@ -116,11 +110,7 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_order(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        order: Vec<Ulid>,
-    ) -> NodeWeightResult<()> {
+    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
         self.order = order;
         self.update_content_hash();
         self.increment_vector_clock(change_set)?;
@@ -130,7 +120,7 @@ impl OrderingNodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         new_val: DateTime<Utc>,
     ) {
         self.vector_clock_recently_seen
@@ -163,11 +153,7 @@ impl OrderingNodeWeight {
         &self.vector_clock_write
     }
 
-    pub fn push_to_order(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        id: Ulid,
-    ) -> NodeWeightResult<()> {
+    pub fn push_to_order(&mut self, change_set: &ChangeSet, id: Ulid) -> NodeWeightResult<()> {
         let mut order = self.order().to_owned();
         order.push(id);
         self.set_order(change_set, order)
@@ -175,7 +161,7 @@ impl OrderingNodeWeight {
 
     pub fn remove_from_order(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: Ulid,
     ) -> NodeWeightResult<bool> {
         let mut order = self.order.to_owned();

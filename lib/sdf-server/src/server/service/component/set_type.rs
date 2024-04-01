@@ -1,6 +1,6 @@
 use axum::{response::IntoResponse, Json};
 
-use dal::{ChangeSetPointer, Component, ComponentId, ComponentType, Visibility};
+use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -22,7 +22,7 @@ pub async fn set_type(
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
 
@@ -54,8 +54,8 @@ pub async fn set_type(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(axum::body::Empty::new())?)
 }

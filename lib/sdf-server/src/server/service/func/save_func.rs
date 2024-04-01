@@ -3,8 +3,7 @@ use axum::{response::IntoResponse, Json};
 use base64::{engine::general_purpose, Engine};
 use dal::FuncBackendResponseType;
 use dal::{
-    func::argument::FuncArgument, ChangeSetPointer, DalContext, Func, FuncBackendKind, FuncId,
-    Visibility,
+    func::argument::FuncArgument, ChangeSet, DalContext, Func, FuncBackendKind, FuncId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -734,7 +733,7 @@ pub async fn save_func<'a>(
 ) -> FuncResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let request_id = request.id;
     let _request_associations = request.associations.clone();
@@ -785,8 +784,8 @@ pub async fn save_func<'a>(
 
     let mut response = axum::response::Response::builder();
     response = response.header("Content-Type", "application/json");
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&save_response)?)?)
 }

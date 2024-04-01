@@ -42,7 +42,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer};
+use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -63,8 +63,8 @@ use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 pub enum WorkspaceSnapshotError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("change set pointer {0} has no workspace snapshot address")]
-    ChangeSetPointerMissingWorkspaceSnapshotAddress(ChangeSetId),
+    #[error("change set {0} has no workspace snapshot address")]
+    ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("layer db error: {0}")]
@@ -186,7 +186,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn initial(
         ctx: &DalContext,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> WorkspaceSnapshotResult<Self> {
         let mut graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(change_set)?;
 
@@ -316,7 +316,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn add_ordered_node(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         node: NodeWeight,
     ) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self
@@ -329,7 +329,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn update_content(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotResult<()> {
@@ -375,7 +375,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn add_ordered_edge(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
@@ -555,7 +555,7 @@ impl WorkspaceSnapshot {
 
     pub async fn find_for_change_set(
         ctx: &DalContext,
-        change_set_pointer_id: ChangeSetId,
+        change_set_id: ChangeSetId,
     ) -> WorkspaceSnapshotResult<Self> {
         let row = ctx
             .txns()
@@ -563,13 +563,11 @@ impl WorkspaceSnapshot {
             .pg()
             .query_opt(
                 "SELECT workspace_snapshot_address FROM change_set_pointers WHERE id = $1",
-                &[&change_set_pointer_id],
+                &[&change_set_id],
             )
             .await?
             .ok_or(
-                WorkspaceSnapshotError::ChangeSetPointerMissingWorkspaceSnapshotAddress(
-                    change_set_pointer_id,
-                ),
+                WorkspaceSnapshotError::ChangeSetMissingWorkspaceSnapshotAddress(change_set_id),
             )?;
 
         let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
@@ -646,7 +644,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_all_edges(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let id = id.into();
@@ -767,7 +765,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_incoming_edges_of_kind(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
@@ -811,7 +809,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_node_by_id(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let id: Ulid = id.into();
@@ -826,7 +824,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_edge(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -842,7 +840,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn remove_edge_for_ulids(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         source_node_id: impl Into<Ulid>,
         target_node_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -864,7 +862,7 @@ impl WorkspaceSnapshot {
     #[instrument(level = "debug", skip_all)]
     pub async fn perform_updates(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_change_set: &ChangeSet,
         onto: &WorkspaceSnapshot,
         updates: &[Update],
     ) -> WorkspaceSnapshotResult<()> {

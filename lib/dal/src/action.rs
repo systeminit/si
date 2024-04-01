@@ -11,7 +11,7 @@ pub mod batch;
 pub mod prototype;
 pub mod runner;
 
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::ComponentContent;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -130,7 +130,7 @@ impl Action {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
         let action_prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
@@ -170,7 +170,7 @@ impl Action {
 
     pub async fn delete(self, ctx: &DalContext) -> ActionResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         workspace_snapshot
             .remove_node_by_id(change_set, self.id)
             .await?;

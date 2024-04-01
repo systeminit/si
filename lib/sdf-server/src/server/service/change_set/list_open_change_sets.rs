@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::change_set_pointer::view::OpenChangeSetsView;
+use dal::change_set::view::OpenChangeSetsView;
 
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
