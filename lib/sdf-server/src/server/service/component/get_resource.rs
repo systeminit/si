@@ -1,5 +1,6 @@
 use axum::{extract::Query, Json};
-use dal::{ComponentId, ResourceView, Visibility};
+use dal::component::resource::ResourceView;
+use dal::{ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -26,6 +27,6 @@ pub async fn get_resource(
 ) -> ComponentResult<Json<GetResourceResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let resource = ResourceView::get_by_component_id(&ctx, &request.component_id).await?;
+    let resource = ResourceView::get_by_component_id(&ctx, request.component_id).await?;
     Ok(Json(GetResourceResponse { resource }))
 }
