@@ -31,7 +31,6 @@ pub mod delete_component;
 pub mod delete_connection;
 // pub mod paste_component;
 pub mod remove_delete_intent;
-// pub mod restore_connection;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -125,10 +124,6 @@ pub fn routes() -> Router<AppState> {
             "/delete_connection",
             post(delete_connection::delete_connection),
         )
-        // .route(
-        //     "/restore_connection",
-        //     post(restore_connection::restore_connection),
-        // )
         .route(
             "/delete_components",
             post(delete_component::delete_components),
