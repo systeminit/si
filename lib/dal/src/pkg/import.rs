@@ -1406,8 +1406,6 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
-            dbg!("Finished import", &installed_schema_variant_ids);
-
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
         SiPkgKind::WorkspaceBackup => {
@@ -1881,7 +1879,6 @@ async fn import_schema(
 
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
-            dbg!("Installing variant", &variant_spec);
             let variant = import_schema_variant(
                 ctx,
                 change_set_id,
