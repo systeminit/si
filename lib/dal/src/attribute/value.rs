@@ -52,7 +52,7 @@ use ulid::Ulid;
 pub use dependent_value_graph::DependentValueGraph;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
@@ -296,7 +296,7 @@ impl AttributeValue {
         maybe_parent_attribute_value: Option<AttributeValueId>,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None, None)?;
         let is_for = is_for.into();
@@ -1025,7 +1025,7 @@ impl AttributeValue {
 
             workspace_snapshot
                 .remove_edge(
-                    ctx.change_set_pointer()?,
+                    ctx.change_set()?,
                     current_node_index,
                     current_target_idx,
                     EdgeWeightKindDiscriminants::Contain,
@@ -1662,7 +1662,7 @@ impl AttributeValue {
         ctx.workspace_snapshot()?
             .add_edge(
                 attribute_value_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype_id,
             )
             .await?;
@@ -1682,7 +1682,7 @@ impl AttributeValue {
 
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.change_set_pointer()?,
+                ctx.change_set()?,
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,
@@ -1847,7 +1847,7 @@ impl AttributeValue {
         );
 
         let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
 
         new_av_node_weight.set_materialized_view(view_address.map(ContentAddress::JsonValue));
 
@@ -1920,7 +1920,7 @@ impl AttributeValue {
         };
 
         let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
 
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight
@@ -2113,7 +2113,7 @@ impl AttributeValue {
         let av = Self::get_by_id(ctx, id).await?;
 
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set_pointer()?, av.id)
+            .remove_node_by_id(ctx.change_set()?, av.id)
             .await?;
 
         ctx.enqueue_dependent_values_update(vec![parent_av_id])

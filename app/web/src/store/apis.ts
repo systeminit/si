@@ -38,10 +38,10 @@ function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
 sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
 async function handleForcedChangesetRedirection(response: AxiosResponse) {
-  if (response.headers.force_changeset_pk) {
+  if (response.headers.force_change_set_id) {
     const changeSetsStore = useChangeSetsStore();
     await changeSetsStore.setActiveChangeset(
-      response.headers.force_changeset_pk,
+      response.headers.force_change_set_id,
     );
   }
 

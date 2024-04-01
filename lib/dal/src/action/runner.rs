@@ -13,7 +13,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::batch::ActionBatchId;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -236,7 +236,7 @@ impl ActionRunner {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionRunner(hash))?;
@@ -366,7 +366,7 @@ impl ActionRunner {
             .await?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
 
         Ok(())

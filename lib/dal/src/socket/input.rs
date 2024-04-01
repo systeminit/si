@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::FuncError;
 use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
@@ -147,10 +147,7 @@ impl InputSocket {
         ctx.workspace_snapshot()?
             .add_edge(
                 input_socket_id,
-                EdgeWeight::new(
-                    ctx.change_set_pointer()?,
-                    EdgeWeightKind::Prototype(key.to_owned()),
-                )?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(key.to_owned()))?,
                 attribute_prototype_id,
             )
             .await?;
@@ -233,7 +230,7 @@ impl InputSocket {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
 
         {

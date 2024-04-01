@@ -4,7 +4,7 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
+use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
 use crate::user::OnlinePayload;

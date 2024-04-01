@@ -11,7 +11,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    change_set_pointer::ChangeSetError,
+    change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
     pk,
     socket::input::InputSocketId,
@@ -176,7 +176,7 @@ impl AttributePrototypeArgument {
         prototype_id: AttributePrototypeId,
         arg_id: FuncArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_attribute_prototype_argument(change_set, id, None)?;
 
@@ -212,7 +212,7 @@ impl AttributePrototypeArgument {
         destination_component_id: ComponentId,
         destination_attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_attribute_prototype_argument(
             change_set,
@@ -361,7 +361,7 @@ impl AttributePrototypeArgument {
         value_id: Ulid,
     ) -> AttributePrototypeArgumentResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
 
         for existing_value_source in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -554,7 +554,7 @@ impl AttributePrototypeArgument {
 
         // Remove the argument
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set_pointer()?, apa_id)
+            .remove_node_by_id(ctx.change_set()?, apa_id)
             .await?;
         // Update the destination attribute values
         for av_id_to_update in &avs_to_update {

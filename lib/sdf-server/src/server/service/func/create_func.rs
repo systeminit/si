@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
 use dal::{
-    generate_name, ActionKind, ChangeSetPointer, DalContext, Func, FuncBackendResponseType, FuncId,
+    generate_name, ActionKind, ChangeSet, DalContext, Func, FuncBackendResponseType, FuncId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
@@ -303,7 +303,7 @@ pub async fn create_func(
         }
     }
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let func = match request.variant {
         FuncVariant::Attribute => {
@@ -355,8 +355,8 @@ pub async fn create_func(
 
     let mut response = axum::response::Response::builder();
     response = response.header("Content-Type", "application/json");
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&CreateFuncResponse {
         id: func.id,

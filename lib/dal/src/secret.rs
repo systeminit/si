@@ -186,7 +186,7 @@ impl Secret {
             HistoryActor::User(user_pk) => Some(*user_pk),
         };
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let secret_id = id.into();
 
@@ -247,7 +247,7 @@ impl Secret {
     /// method is purposefully owned by [`Secret`] to help ensure that we don't generate a key based
     /// on any encrypted contents or parameters to insert encrypted contents.
     fn generate_key(ctx: &DalContext, secret_id: SecretId) -> SecretResult<EncryptedSecretKey> {
-        let new_ulid = ctx.change_set_pointer()?.generate_ulid()?;
+        let new_ulid = ctx.change_set()?.generate_ulid()?;
 
         let mut hasher = blake3::Hasher::new();
         hasher.update(&ctx.tenancy().to_bytes());
@@ -424,7 +424,7 @@ impl Secret {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, secret.id.into(), hash)
+                .update_content(ctx.change_set()?, secret.id.into(), hash)
                 .await?;
         }
 

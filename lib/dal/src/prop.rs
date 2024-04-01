@@ -14,7 +14,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
@@ -537,7 +537,7 @@ impl Prop {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -710,7 +710,7 @@ impl Prop {
         ctx.workspace_snapshot()?
             .add_edge(
                 prop_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype_id,
             )
             .await?;
@@ -849,7 +849,7 @@ impl Prop {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, prop.id.into(), hash)
+                .update_content(ctx.change_set()?, prop.id.into(), hash)
                 .await?;
         }
         Ok(prop)

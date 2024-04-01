@@ -22,7 +22,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
@@ -207,7 +207,7 @@ impl SchemaVariant {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
@@ -507,7 +507,7 @@ impl SchemaVariant {
         debug!(%schema_variant_id, "creating default prototypes");
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
         let mut work_queue: VecDeque<PropNodeWeight> = VecDeque::from(vec![root_prop_node_weight]);
@@ -610,7 +610,7 @@ impl SchemaVariant {
         ctx.workspace_snapshot()?
             .add_edge(
                 schema_variant_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
                 func_id,
             )
             .await?;
@@ -626,10 +626,7 @@ impl SchemaVariant {
         ctx.workspace_snapshot()?
             .add_edge(
                 schema_variant_id,
-                EdgeWeight::new(
-                    ctx.change_set_pointer()?,
-                    EdgeWeightKind::AuthenticationPrototype,
-                )?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::AuthenticationPrototype)?,
                 func_id,
             )
             .await?;

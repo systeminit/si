@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointer;
+use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 use crate::ActionKind;
 
@@ -94,10 +94,7 @@ pub struct EdgeWeight {
 }
 
 impl EdgeWeight {
-    pub fn increment_vector_clocks(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> EdgeWeightResult<()> {
+    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
         self.vector_clock_write.inc(change_set.vector_clock_id())?;
 
         Ok(())
@@ -118,7 +115,7 @@ impl EdgeWeight {
         }
     }
 
-    pub fn new(change_set: &ChangeSetPointer, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
+    pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
         Ok(Self {
             kind,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
@@ -128,7 +125,7 @@ impl EdgeWeight {
 
     pub fn new_with_incremented_vector_clocks(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> EdgeWeightResult<Self> {
         let mut new_weight = self.clone();
         new_weight.increment_vector_clocks(change_set)?;

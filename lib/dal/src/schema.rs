@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -105,7 +105,7 @@ impl Schema {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
 
@@ -188,7 +188,7 @@ impl Schema {
             // we now need to update that edge to be a Use
             workspace_snapshot
                 .remove_edge(
-                    ctx.change_set_pointer()?,
+                    ctx.change_set()?,
                     source_index,
                     target_index,
                     edge_weight.kind().into(),
@@ -198,7 +198,7 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use())?,
+                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
                     schema_variant_id,
                 )
                 .await?;
@@ -216,7 +216,7 @@ impl Schema {
             // we now need to update that edge to be a Default
             workspace_snapshot
                 .remove_edge(
-                    ctx.change_set_pointer()?,
+                    ctx.change_set()?,
                     source_index,
                     target_index,
                     edge_weight.kind().into(),
@@ -226,7 +226,7 @@ impl Schema {
             workspace_snapshot
                 .add_edge(
                     self.id,
-                    EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::new_use_default())?,
+                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use_default())?,
                     schema_variant_id,
                 )
                 .await?;
@@ -278,7 +278,7 @@ impl Schema {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, schema.id.into(), hash)
+                .update_content(ctx.change_set()?, schema.id.into(), hash)
                 .await?;
         }
 

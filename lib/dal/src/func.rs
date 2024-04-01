@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::schema::variant::SchemaVariantResult;
@@ -211,7 +211,7 @@ impl Func {
             Self::determine_func_kind(name.clone().into(), backend_kind, backend_response_type)
                 .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_func(change_set, id, name.clone().into(), func_kind, hash)?;
@@ -407,7 +407,7 @@ impl Func {
 
             workspace_snapshot
                 .add_node(NodeWeight::Func(
-                    node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?,
+                    node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
                 ))
                 .await?;
 
@@ -429,7 +429,7 @@ impl Func {
                 )
                 .await?;
             workspace_snapshot
-                .update_content(ctx.change_set_pointer()?, func.id.into(), hash)
+                .update_content(ctx.change_set()?, func.id.into(), hash)
                 .await?;
         }
 
@@ -448,7 +448,7 @@ impl Func {
             .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::new_use().into())
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         for user in users {
             workspace_snapshot
                 .remove_edge(

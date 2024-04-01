@@ -1,5 +1,5 @@
 use dal::code_view::CodeLanguage;
-use dal::{ChangeSetPointer, Component, ComponentType, DalContext};
+use dal::{ChangeSet, Component, ComponentType, DalContext};
 use dal_test::test;
 use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 use pretty_assertions_sorted::assert_eq;
@@ -46,7 +46,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     // Apply the change set and perform a blocking commit.
-    let applied_change_set = ChangeSetPointer::apply_to_base_change_set(ctx, true)
+    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
         .await
         .expect("could not apply to base change set");
     let conflicts = ctx
@@ -113,7 +113,7 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     assert!(conflicts.is_none());
 
     // Apply the change set and perform a blocking commit.
-    ChangeSetPointer::apply_to_base_change_set(ctx, true)
+    ChangeSet::apply_to_base_change_set(ctx, true)
         .await
         .expect("could not apply to base change set");
     let conflicts = ctx
@@ -123,7 +123,7 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     assert!(conflicts.is_none());
 
     // Create a new change set and perform a commit without rebasing.
-    let new_change_set = ChangeSetPointer::fork_head(ctx, "new change set")
+    let new_change_set = ChangeSet::fork_head(ctx, "new change set")
         .await
         .expect("could not create new change set");
     ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)

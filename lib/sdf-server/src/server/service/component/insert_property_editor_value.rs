@@ -24,7 +24,7 @@ pub async fn insert_property_editor_value(
 ) -> ComponentResult<impl IntoResponse> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    //    let mut force_changeset_pk = None;
+    //    let mut force_change_set_id = None;
     //    if ctx.visibility().is_head() {
     //        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
     //
@@ -32,7 +32,7 @@ pub async fn insert_property_editor_value(
     //
     //        ctx.update_visibility(new_visibility);
     //
-    //        force_changeset_pk = Some(change_set.pk);
+    //        force_change_set_id = Some(change_set.pk);
     //
     //        WsEvent::change_set_created(&ctx, change_set.pk)
     //            .await?
@@ -57,8 +57,8 @@ pub async fn insert_property_editor_value(
     ctx.commit().await?;
 
     let response = axum::response::Response::builder();
-    //    if let Some(force_changeset_pk) = force_changeset_pk {
-    //        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    //    if let Some(force_change_set_id) = force_change_set_id {
+    //        response = response.header("force_change_set_id", force_change_set_id.to_string());
     //    }
     Ok(response.body(axum::body::Empty::new())?)
 }

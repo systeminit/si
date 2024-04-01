@@ -271,7 +271,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 //     ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
 
 //     // Start with the base change set and the initial snapshot.
-//     let mut base_change_set = ChangeSetPointer::new(ctx, "main")
+//     let mut base_change_set = ChangeSet::new(ctx, "main")
 //         .await
 //         .expect("could not create change set");
 //     let base_change_set = &mut base_change_set;
@@ -306,7 +306,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 //         .expect("could not update change set");
 
 //     // Create another change set and update the snapshot.
-//     let mut forked_change_set = ChangeSetPointer::new(ctx, "fork")
+//     let mut forked_change_set = ChangeSet::new(ctx, "fork")
 //         .await
 //         .expect("could not create change set");
 //     let forked_change_set = &mut forked_change_set;

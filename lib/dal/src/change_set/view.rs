@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::change_set_pointer::{ChangeSetError, ChangeSetId, ChangeSetPointer, ChangeSetResult};
+use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId, ChangeSetResult};
 use crate::{ChangeSetStatus, DalContext, UserPk};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub struct ChangeSetView {
 impl OpenChangeSetsView {
     pub async fn assemble(ctx: &DalContext) -> ChangeSetResult<Self> {
         // List all open change sets and assemble them into individual views.
-        let open_change_sets = ChangeSetPointer::list_open(ctx).await?;
+        let open_change_sets = ChangeSet::list_open(ctx).await?;
         let mut views = Vec::with_capacity(open_change_sets.len());
         for change_set in open_change_sets {
             views.push(ChangeSetView {

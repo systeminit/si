@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-use dal::{AttributeValue, AttributeValueId, ChangeSetPointer, Visibility};
+use dal::{AttributeValue, AttributeValueId, ChangeSet, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
@@ -22,7 +22,7 @@ pub async fn restore_default_function(
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     AttributeValue::use_default_prototype(&ctx, request.attribute_value_id).await?;
 
@@ -65,8 +65,8 @@ pub async fn restore_default_function(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(axum::body::Empty::new())?)
 }

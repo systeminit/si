@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -153,7 +153,7 @@ impl OutputSocket {
             )
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::OutputSocket(hash))?;

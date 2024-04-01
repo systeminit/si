@@ -4,7 +4,7 @@ use si_events::ContentHash;
 use ulid::Ulid;
 
 use crate::{
-    change_set_pointer::ChangeSetPointer,
+    change_set::ChangeSet,
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::LineageId,
@@ -28,7 +28,7 @@ pub struct ComponentNodeWeight {
 
 impl ComponentNodeWeight {
     pub fn new(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         id: Ulid,
         content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
@@ -58,10 +58,7 @@ impl ComponentNodeWeight {
         self.id
     }
 
-    pub fn increment_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         self.vector_clock_write.inc(change_set.vector_clock_id())?;
         self.vector_clock_recently_seen
             .inc(change_set.vector_clock_id())?;
@@ -86,11 +83,7 @@ impl ComponentNodeWeight {
         }
     }
 
-    pub fn merge_clocks(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        other: &Self,
-    ) -> NodeWeightResult<()> {
+    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) -> NodeWeightResult<()> {
         self.vector_clock_write
             .merge(change_set.vector_clock_id(), &other.vector_clock_write)?;
         self.vector_clock_first_seen
@@ -134,7 +127,7 @@ impl ComponentNodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let mut new_node_weight = self.clone();
         new_node_weight.increment_vector_clock(change_set)?;
@@ -155,7 +148,7 @@ impl ComponentNodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         new_val: DateTime<Utc>,
     ) {
         self.vector_clock_recently_seen

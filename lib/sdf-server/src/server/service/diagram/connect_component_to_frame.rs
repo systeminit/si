@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::component::frame::{Connection, Frame};
-use dal::{ChangeSetPointer, ComponentId, Visibility};
+use dal::{ChangeSet, ComponentId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 
@@ -35,7 +35,7 @@ pub async fn connect_component_to_frame(
     Json(request): Json<CreateFrameConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // Connect children to parent through frame edge
     Frame::attach_child_to_parent(&ctx, request.parent_id, request.child_id).await?;
@@ -43,8 +43,8 @@ pub async fn connect_component_to_frame(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response
         .header("content-type", "application/json")
