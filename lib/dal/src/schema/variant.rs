@@ -54,7 +54,6 @@ use crate::{FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
 
-pub mod definition;
 pub mod leaves;
 pub mod root_prop;
 
