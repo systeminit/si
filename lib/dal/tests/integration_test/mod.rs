@@ -6,6 +6,7 @@ mod component;
 mod connection;
 mod dependent_values_update;
 mod frame;
+mod graph;
 mod prop;
 mod property_editor;
 mod rebaser;
