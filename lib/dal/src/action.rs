@@ -133,7 +133,6 @@ impl Action {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
-        let action_prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -142,10 +141,7 @@ impl Action {
         workspace_snapshot
             .add_edge(
                 id,
-                EdgeWeight::new(
-                    change_set,
-                    EdgeWeightKind::ActionPrototype(action_prototype.kind),
-                )?,
+                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype)?,
                 prototype_id,
             )
             .await?;

@@ -196,7 +196,7 @@ impl ActionPrototype {
         workspace_snapshot
             .add_edge(
                 schema_variant_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype(kind))?,
+                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype)?,
                 id,
             )
             .await?;
