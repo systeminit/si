@@ -7,7 +7,6 @@ use thiserror::Error;
 
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
-use crate::ActionKind;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -23,7 +22,7 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 pub enum EdgeWeightKind {
     Action,
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
-    ActionPrototype(ActionKind),
+    ActionPrototype,
     /// A function defined for a secret defining [`SchemaVariant`] to be executed before funcs on
     /// components that have a secret of that kind
     AuthenticationPrototype,
