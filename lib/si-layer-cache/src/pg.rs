@@ -18,6 +18,8 @@ pub fn default_pg_pool_config() -> PgPoolConfig {
     PgPoolConfig {
         dbname: DBNAME.into(),
         application_name: APPLICATION_NAME.into(),
+        hostname: "postgres".to_string(),
+        
         ..Default::default()
     }
 }

@@ -1,0 +1,146 @@
+config.define_string_list("to-run", args = True)
+cfg = config.parse()
+
+# Define groups of services
+groups = {
+    "backend": [
+        "pinga",
+        "veritech",
+        "sdf",
+        "rebaser",
+    ],
+    "frontend": [
+        "web",
+    ],
+}
+
+# Add "all" group as a sorted set of all services
+_all = {}
+for group_values in groups.values():
+    for value in group_values:
+        _all.update({value: True})
+groups.update({"all": sorted(_all.keys())})
+
+# Parse the CLI args to enable group names and/or individual service names
+enabled_resources = []
+for arg in cfg.get("to-run", []):
+    if arg in groups:
+        enabled_resources += groups[arg]
+    else:
+        enabled_resources.append(arg)
+config.set_enabled_resources(enabled_resources)
+
+# Default trigger mode to manual so that (importantly) backend services don't rebuild/restart
+# automatically. This is opt-in in the Tilt UI in the `Mode` column
+trigger_mode = TRIGGER_MODE_MANUAL
+
+def _buck2_dep_inputs(target):
+    cmd = [
+        "buck2",
+        "uquery",
+        "\"inputs(deps('{}'))\"".format(target),
+    ]
+    file_paths = str(local(" ".join(cmd))).splitlines()
+
+    return file_paths
+
+# From the Tilt docs:
+#
+# > By default, Tilt will not let you develop against a remote cluster.
+#
+# The implication appears to be that if Tilt finds a configured Kubernetes setup on your system
+# **and** it's a remote cluster, despite the fact that we are not using any Kubernetes features or
+# capabilities, it will still try to connect and fail. Instead, we're going to disable this check
+# and continue.
+#
+# - https://docs.tilt.dev/choosing_clusters.html#remote
+# - https://docs.tilt.dev/api.html#api.allow_k8s_contexts
+allow_k8s_contexts(k8s_context())
+
+# Locally build and run `rebaser-server`
+rebaser_target = "//bin/rebaser:rebaser"
+local_resource(
+    "rebaser",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(rebaser_target),
+    serve_cmd = "buck2 run {}".format(rebaser_target),
+    allow_parallel = True,
+    deps = _buck2_dep_inputs(rebaser_target),
+    trigger_mode = trigger_mode
+)
+
+# Locally build and run `pinga`
+pinga_target = "//bin/pinga:pinga"
+local_resource(
+    "pinga",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(pinga_target),
+    serve_cmd = "buck2 run {}".format(pinga_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
+    allow_parallel = True,
+    resource_deps = [
+        "veritech",
+    ],
+    deps = _buck2_dep_inputs(pinga_target),
+    trigger_mode = trigger_mode,
+)
+
+# Locally build and run `veritech`
+veritech_target = "//bin/veritech:veritech"
+local_resource(
+    "veritech",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(veritech_target),
+    serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
+    # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
+    # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
+    # serve_cmd = "SI_LOG=debug buck2 run {} -- --cyclone-local-firecracker --cyclone-pool-size 10".format(veritech_target),
+    allow_parallel = True,
+    deps = _buck2_dep_inputs(veritech_target),
+    trigger_mode = trigger_mode,
+)
+
+# Locally build and run `sdf`
+sdf_target = "//bin/sdf:sdf"
+local_resource(
+    "sdf",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(sdf_target),
+    serve_cmd = "buck2 run {}".format(sdf_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
+    allow_parallel = True,
+    resource_deps = [
+        "pinga",
+        "veritech",
+        "rebaser",
+    ],
+    deps = _buck2_dep_inputs(sdf_target),
+    trigger_mode = trigger_mode,
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 5156,
+            path = "/api/",
+        ),
+    ),
+)
+
+# Locally build and run `web` in dev mode
+web_target = "//app/web:dev"
+local_resource(
+    "web",
+    labels = ["frontend"],
+    cmd = "buck2 build {}".format(web_target),
+    serve_cmd = "buck2 run {}".format(web_target),
+    allow_parallel = True,
+    resource_deps = [
+        "sdf",
+    ],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 8080,
+        ),
+    ),
+)

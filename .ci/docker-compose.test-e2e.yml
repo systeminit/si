@@ -1,0 +1,94 @@
+---
+version: "3"
+
+services:
+  #test-container:
+  #  image: systeminit/ci-base:stable
+  #  working_dir: /workdir
+  #  volumes:
+  #    - ../.:/workdir
+  #    - /workdir/buck-out
+  #    - /workdir/target
+  #    - /workdir/tmp
+  #  depends_on:
+  #    - apps
+
+  apps:
+    image: systeminit/ci-base:stable
+    #command:
+    #  # Run the rest of the stack in tilt
+    #  - "tilt"
+    #  - "up"
+    #  - "--file"
+    #  - ".ci/Tiltfile.e2e"
+    #  - "--stream"
+    environment:
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+      # Things to fix
+      # Need to fix pg pool clap pass-through for layer_db.
+      # Within lib/si-layer-cache/pg.rs I've hardcoded the value
+      # SDF
+      - "SI_SDF__PG__HOSTNAME=postgres"
+      - "SI_SDF__NATS__URL=nats"
+      - "SI_SDF__PG__DBNAME=si"
+      - "SI_SDF__PG__USER=si"
+      - "SI_SDF__PG__PASSWORD=bugbear"
+      # Rebaser
+      - "SI_REBASER__PG__HOSTNAME=postgres"
+      - "SI_REBASER__NATS__URL=nats"
+      - "SI_REBASER__PG__DBNAME=si"
+      - "SI_REBASER__PG__USER=si"
+      - "SI_REBASER__PG__PASSWORD=bugbear"
+      # Pinga
+      - "SI_PINGA__PG__HOSTNAME=postgres"
+      - "SI_PINGA__NATS__URL=nats"
+      - "SI_PINGA__PG__DBNAME=si"
+      - "SI_PINGA__PG__USER=si"
+      - "SI_PINGA__PG__PASSWORD=bugbear"
+      # Veritech
+      - "SI_VERITECH__NATS__URL=nats"
+    working_dir: /workdir
+    volumes:
+      - ../.:/workdir
+      - /workdir/buck-out
+      - /workdir/target
+      - /workdir/tmp
+    depends_on:
+      - postgres
+      - nats
+      - jaeger
+      - otelcol
+
+  postgres:
+    image: systeminit/postgres:stable
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_module_index"
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  nats:
+    image: systeminit/nats:stable
+    command:
+      - "--config"
+      - "nats-server.conf"
+
+  jaeger:
+    image: systeminit/jaeger:stable
+
+  otelcol:
+    image: systeminit/otelcol:stable
+    depends_on:
+      - jaeger
+
+  localstack:
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
