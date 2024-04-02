@@ -4,10 +4,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::attribute::value::AttributeValueError;
-use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::resolver::ValidationResolverError;
+use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId};
+use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
 use thiserror::Error;
@@ -46,6 +46,8 @@ pub enum ComponentError {
     // AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     // #[error("attribute prototype not found")]
     // AttributePrototypeNotFound,
+    #[error("attribute debug view error: {0}")]
+    AttributeDebugViewError(#[from] AttributeDebugViewError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     // #[error("attribute value not found")]
@@ -56,8 +58,8 @@ pub enum ComponentError {
     // ChangeStatus(#[from] ChangeStatusError),
     // #[error("component debug view error: {0}")]
     // ComponentDebug(String),
-    // #[error("component debug view error: {0}")]
-    // ComponentDebugView(#[from] ComponentDebugViewError),
+    #[error("component debug view error: {0}")]
+    ComponentDebugView(#[from] ComponentDebugViewError),
     // #[error("component name not found")]
     // ComponentNameNotFound,
     // #[error("component view error: {0}")]

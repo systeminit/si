@@ -1,7 +1,7 @@
 <template>
   <div class="overflow-hidden my-xs p-xs border-opacity-10 border-l-2">
     <dl class="flex flex-col gap-xs">
-      <DebugViewItem title="Attribute Value Id" :data="data.valueId" />
+      <DebugViewItem title="Attribute Value Id" :data="data.attributeValueId" />
       <DebugViewItem :data="data.kind ?? 'any'" title="Type" />
       <DebugViewItem
         :data="`${data.funcName} ${data.funcId}`"
@@ -21,31 +21,36 @@
       </DebugViewItem>
       <DebugViewItem title="Value" :data="data.value ?? 'NULL'" />
       <DebugViewItem title="Prototype Id" :data="data.prototypeId" />
-      <DebugViewItem title="Prototype Context" :data="data.prototypeContext" />
+      <DebugViewItem title="Socket Id" :data="data.socketId" />
+      <DebugViewItem title="Connection Annotations">
+        <template #data>
+          <ul
+            v-if="
+              data.connectionAnnotations && data.connectionAnnotations.length
+            "
+          >
+            <li
+              v-for="connection in data.connectionAnnotations"
+              :key="connection"
+              :data="connection"
+            >
+              {{ connection }}
+            </li>
+          </ul>
+          <p v-else>No input sources</p>
+        </template>
+      </DebugViewItem>
       <DebugViewItem
-        title="Implicit Attribute Value"
-        :data="
-          typeof data.implicitValue === 'undefined'
-            ? 'none'
-            : data.implicitValue ?? 'NULL'
-        "
+        title="Materialized View"
+        :data="data.materializedView ?? 'NULL'"
       />
-      <DebugViewItem
-        title="Implicit Set By Function"
-        :data="data.implicitFuncName"
-      />
-      <p class="text-2xs p-2 my-2 border border-opacity-10">
-        prototype in change set?
-        {{ data.prototypeInChangeSet ? "y" : "n" }} value in change set?
-        {{ data.valueInChangeSet ? "y" : "n" }}
-      </p>
     </dl>
   </div>
 </template>
 
 <script setup lang="ts">
-import { AttributeDebugData } from "@/store/components.store";
+import { SocketDebugView } from "@/store/components.store";
 import DebugViewItem from "./DebugViewItem.vue";
 
-defineProps<{ data: AttributeDebugData }>();
+defineProps<{ data: SocketDebugView }>();
 </script>

@@ -44,6 +44,7 @@ use std::sync::Arc;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{RwLock, TryLockError};
@@ -61,6 +62,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -71,7 +73,8 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, Component, ComponentId, DalContext, Func, FuncId,
-    InputSocketId, OutputSocketId, Prop, PropId, PropKind, TransactionsError,
+    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -81,6 +84,7 @@ use super::prototype::argument::{
     AttributePrototypeArgumentId,
 };
 
+pub mod debug;
 pub mod dependent_value_graph;
 pub mod view;
 
@@ -161,6 +165,10 @@ pub enum AttributeValueError {
     NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
     OrphanedAttributeValue(AttributeValueId),
+    #[error("output socket error: {0}")]
+    OutputSocketError(#[from] OutputSocketError),
+    #[error("parent prop of map or array not found: {0}")]
+    ParentAttributeValueMissing(AttributeValueId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("array or map prop missing element prop: {0}")]
@@ -2128,5 +2136,74 @@ impl AttributeValue {
     ) -> AttributeValueResult<Vec<InputSocketId>> {
         let prototype_id = Self::prototype_id(ctx, av_id).await?;
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
+    }
+
+    /// Get the morale equivalent of the [`PropPath`]for a given [`AttributeValueId`].
+    /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
+    /// include the key/index
+    #[instrument(level = "info", skip_all)]
+    pub async fn get_path_for_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<String>> {
+        let mut parts = VecDeque::new();
+        let mut work_queue = VecDeque::from([attribute_value_id]);
+
+        while let Some(mut attribute_value_id) = work_queue.pop_front() {
+            let attribute_path = match Self::is_for(ctx, attribute_value_id).await? {
+                ValueIsFor::Prop(prop_id) => {
+                    let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
+                    let attribute_path = AttributeValuePath::Prop {
+                        path: prop_name,
+                        key_or_index: None,
+                    };
+                    // check the parent of this attribute value
+                    // if the parent is an array or map, we need to add the key/index to the attribute value path
+                    if let Some(parent_attribute_value_id) =
+                        Self::parent_attribute_value_id(ctx, attribute_value_id).await?
+                    {
+                        let key_or_index =
+                            Self::get_index_or_key_of_child_entry(ctx, attribute_value_id).await?;
+                        attribute_path.set_index_or_key(key_or_index);
+                        attribute_value_id = parent_attribute_value_id;
+                        work_queue.push_back(attribute_value_id);
+                    }
+                    attribute_path
+                }
+                ValueIsFor::InputSocket(input_socket_id) => {
+                    let input_socket_name = InputSocket::get_by_id(ctx, input_socket_id)
+                        .await?
+                        .name()
+                        .to_string();
+                    AttributeValuePath::InputSocket(input_socket_name)
+                }
+                ValueIsFor::OutputSocket(output_socket_id) => {
+                    let output_socket_name = OutputSocket::get_by_id(ctx, output_socket_id)
+                        .await?
+                        .name()
+                        .to_string();
+                    AttributeValuePath::OutputSocket(output_socket_name)
+                }
+            };
+            parts.push_front(attribute_path);
+        }
+        if !parts.is_empty() {
+            Ok(Some(
+                AttributeValuePath::assemble_from_parts_with_separator(parts, Some("/")),
+            ))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_index_or_key_of_child_entry(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Option<KeyOrIndex>> {
+        let maybe_key = ctx
+            .workspace_snapshot()?
+            .index_or_key_of_child_entry(id)
+            .await?;
+        Ok(maybe_key)
     }
 }

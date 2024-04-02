@@ -190,7 +190,7 @@ import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
-import ComponentDebugDetails from "./ComponentDebugDetails.vue";
+import ComponentDebugDetails from "./Debug/ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";

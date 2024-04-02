@@ -225,6 +225,19 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&arg_node_weight, &inner))
     }
 
+    pub async fn get_name_by_id(
+        ctx: &DalContext,
+        func_arg_id: FuncArgumentId,
+    ) -> FuncArgumentResult<String> {
+        let node_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(func_arg_id)
+            .await?;
+        let func_arg_node_weight = node_weight.get_func_argument_node_weight()?;
+        let name = func_arg_node_weight.name().to_string();
+        Ok(name)
+    }
+
     pub async fn list_ids_for_func(
         ctx: &DalContext,
         func_id: FuncId,
