@@ -14,5 +14,6 @@ serde = { workspace = true }
 ulid = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+paste = { workspace = true }
 postgres-types = { workspace = true }
 blake3 = { workspace = true }

@@ -211,20 +211,6 @@ impl NodeWeight {
         }
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
-        match self {
-            NodeWeight::AttributePrototypeArgument(weight) => weight.merkle_tree_hash(),
-            NodeWeight::AttributeValue(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Category(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Component(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Content(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Func(weight) => weight.merkle_tree_hash(),
-            NodeWeight::FuncArgument(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Ordering(weight) => weight.merkle_tree_hash(),
-            NodeWeight::Prop(weight) => weight.merkle_tree_hash(),
-        }
-    }
-
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Component(weight) => weight.new_content_hash(content_hash),
@@ -292,20 +278,6 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.node_hash(),
             NodeWeight::Ordering(weight) => weight.node_hash(),
             NodeWeight::Prop(weight) => weight.node_hash(),
-        }
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
-        match self {
-            NodeWeight::AttributePrototypeArgument(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::AttributeValue(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Category(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Component(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Content(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Func(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::FuncArgument(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Ordering(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Prop(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
