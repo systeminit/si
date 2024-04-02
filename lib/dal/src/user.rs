@@ -12,7 +12,6 @@ use crate::{
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
-const USER_GET_BY_EMAIL_RAW: &str = include_str!("queries/user/get_by_email_raw.sql");
 const USER_LIST_FOR_WORKSPACE: &str = include_str!("queries/user/list_members_for_workspace.sql");
 
 #[remain::sorted]
@@ -108,21 +107,6 @@ impl User {
         .await?;
 
         Ok(object)
-    }
-
-    pub async fn get_by_email_raw(ctx: &DalContext, email: &str) -> UserResult<Option<Self>> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(USER_GET_BY_EMAIL_RAW, &[&email])
-            .await?;
-        if let Some(row) = row {
-            let json: serde_json::Value = row.try_get("object")?;
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Ok(None)
-        }
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {

@@ -11,9 +11,6 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 const LIST_FOR_KIND_AND_HASH: &str =
     include_str!("../queries/installed_pkg/list_asset_for_kind_and_hash.sql");
 
-const LIST_FOR_INSTALLED_PKG_ID: &str =
-    include_str!("../queries/installed_pkg/list_asset_for_installed_pkg_id.sql");
-
 pk!(InstalledPkgAssetPk);
 pk!(InstalledPkgAssetId);
 pk!(InstalledPkgAssetAssetId);
@@ -344,23 +341,6 @@ impl InstalledPkgAsset {
                 InstalledPkgAssetKind::SchemaVariant,
             )),
         }
-    }
-
-    pub async fn list_for_installed_pkg_id(
-        ctx: &DalContext,
-        installed_pkg_id: InstalledPkgId,
-    ) -> InstalledPkgResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                LIST_FOR_INSTALLED_PKG_ID,
-                &[ctx.tenancy(), ctx.visibility(), &installed_pkg_id],
-            )
-            .await?;
-
-        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn list_for_kind_and_hash(

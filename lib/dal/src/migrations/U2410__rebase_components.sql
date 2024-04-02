@@ -1,2 +1,0 @@
-ALTER TABLE schema_variants ADD COLUMN pkg_created_at TIMESTAMPTZ;
-ALTER TABLE components ADD COLUMN hidden BOOLEAN DEFAUlT FALSE

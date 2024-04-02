@@ -1,1 +1,0 @@
-DROP TRIGGER IF EXISTS summary_diagram_component_child_node_ids ON summary_diagram_components;

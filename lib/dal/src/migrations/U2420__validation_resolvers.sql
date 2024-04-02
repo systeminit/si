@@ -1,7 +1,3 @@
-DROP TABLE validation_prototypes CASCADE;
-DELETE FROM standard_models where table_name = 'validation_prototypes';
-DROP TABLE validation_resolvers CASCADE;
-
 CREATE TABLE validation_resolvers
 (
     pk                                           ident primary key default ident_create_v1(),
