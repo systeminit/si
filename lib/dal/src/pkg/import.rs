@@ -2666,11 +2666,11 @@ async fn import_schema_variant(
 
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
-            info!("importing sockets");
+            // info!("importing sockets");
             for socket in variant_spec.sockets()? {
                 import_socket(ctx, change_set_id, socket, schema_variant.id(), thing_map).await?;
             }
-            info!("importing action funcs");
+            // info!("importing action funcs");
 
             for action_func in &variant_spec.action_funcs()? {
                 let prototype = import_action_func(
@@ -2691,7 +2691,7 @@ async fn import_schema_variant(
                 }
             }
 
-            info!("importing auth funcs");
+            // info!("importing auth funcs");
             for auth_func in &variant_spec.auth_funcs()? {
                 let prototype = import_auth_func(
                     ctx,
@@ -2711,7 +2711,7 @@ async fn import_schema_variant(
                 }
             }
 
-            info!("importing leaf funcs");
+            // info!("importing leaf funcs");
 
             for leaf_func in variant_spec.leaf_functions()? {
                 import_leaf_function(
@@ -2723,7 +2723,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
-            info!("setting default values");
+            // info!("setting default values");
 
             // Default values must be set before attribute functions are configured so they don't
             // override the prototypes set there
@@ -2748,7 +2748,7 @@ async fn import_schema_variant(
                 set_default_value(ctx, name_default_value_info).await?;
             }
 
-            info!("configuring si_prop_funcs");
+            // info!("configuring si_prop_funcs");
             for si_prop_func in variant_spec.si_prop_funcs()? {
                 let prop_id = Prop::find_prop_id_by_path(
                     ctx,
@@ -2774,7 +2774,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
-            info!("configuring root prop funcs");
+            // info!("configuring root prop funcs");
 
             let mut has_resource_value_func = false;
             for root_prop_func in variant_spec.root_prop_funcs()? {
@@ -2809,7 +2809,7 @@ async fn import_schema_variant(
             if !has_resource_value_func {
                 attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
             }
-            info!("configuring attr funcs");
+            // info!("configuring attr funcs");
 
             for attr_func in side_effects.attr_funcs {
                 import_attr_func_for_prop(
@@ -2823,7 +2823,7 @@ async fn import_schema_variant(
                 .await?;
             }
 
-            info!("configuring map key funcs");
+            // info!("configuring map key funcs");
             for (key, map_key_func) in side_effects.map_key_funcs {
                 import_attr_func_for_prop(
                     ctx,
@@ -2835,7 +2835,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
-            info!("done");
+            // info!("done");
 
             Some(schema_variant)
         }
@@ -3218,7 +3218,6 @@ async fn create_dal_prop(
         }
     };
 
-    info!("prop new");
     let prop = Prop::new(
         ctx,
         &data.name,
@@ -3246,7 +3245,7 @@ async fn create_prop(
     parent_prop_info: Option<ParentPropInfo>,
     ctx: &PropVisitContext<'_>,
 ) -> PkgResult<Option<ParentPropInfo>> {
-    info!("creating prop");
+    // info!("creating prop");
     let prop = match ctx.change_set_id {
         None => {
             let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
@@ -3284,7 +3283,7 @@ async fn create_prop(
         }
     };
 
-    info!("created prop");
+    // info!("created prop");
 
     let prop_id = prop.id();
 
@@ -3365,7 +3364,7 @@ async fn create_prop(
         });
     }
 
-    info!("done with create prop side effect creation");
+    // info!("done with create prop side effect creation");
 
     Ok(Some(ParentPropInfo {
         prop_id: prop.id(),

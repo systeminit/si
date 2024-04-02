@@ -98,7 +98,6 @@ impl Workspace {
     #[instrument(skip_all)]
     pub async fn setup_builtin(ctx: &mut DalContext) -> WorkspaceResult<()> {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
-        info!("finding builtins");
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
             let change_set = ChangeSet::find(ctx, found_builtin.default_change_set_id)
@@ -110,13 +109,11 @@ impl Workspace {
                 .await?;
             return Ok(());
         }
-        info!("after if let");
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
         let mut change_set = ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
-        info!("after workspace snapshot");
         change_set
             .update_pointer(ctx, workspace_snapshot.id().await)
             .await?;

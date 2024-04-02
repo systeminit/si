@@ -125,10 +125,7 @@ impl RootProp {
         .await?;
         let root_prop_id = root_prop.id();
 
-        info!("setting up si, domain and secrets");
         let si_prop_id = Self::setup_si(ctx, root_prop_id).await?;
-
-        info!("setting domain");
 
         let domain_prop = Prop::new_without_ui_optionals(
             ctx,
@@ -137,7 +134,6 @@ impl RootProp {
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
-        info!("setting secrets");
 
         let secrets_prop = Prop::new_without_ui_optionals(
             ctx,
@@ -147,16 +143,11 @@ impl RootProp {
         )
         .await?;
 
-        info!("setting up resource");
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
-        info!("setting up resource value");
         let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id).await?;
-        info!("setting up code");
         let code_prop_id = Self::setup_code(ctx, root_prop_id).await?;
-        info!("setting up qualification");
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
 
-        info!("setting up deleted at");
         let deleted_at_prop = Prop::new(
             ctx,
             "deleted_at",

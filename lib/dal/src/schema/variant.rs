@@ -212,8 +212,6 @@ impl SchemaVariant {
             NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
         workspace_snapshot.add_node(node_weight).await?;
 
-        info!("added sv content node");
-
         // Schema --Use--> SchemaVariant (this)
         workspace_snapshot
             .add_edge(
@@ -222,8 +220,6 @@ impl SchemaVariant {
                 id,
             )
             .await?;
-
-        info!("edge from schema to sv node");
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
@@ -828,11 +824,6 @@ impl SchemaVariant {
                                 input.location.into(),
                             )
                             .await?;
-
-                            info!(
-                                "adding root child func arg: {:?}, {:?}",
-                                input_prop_id, input.location
-                            );
 
                             let new_apa = AttributePrototypeArgument::new(
                                 ctx,

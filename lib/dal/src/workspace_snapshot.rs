@@ -54,7 +54,6 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
-use tokio::time::Instant;
 
 use ulid::Ulid;
 
@@ -348,10 +347,8 @@ impl WorkspaceSnapshot {
         let new_address = {
             self.cleanup().await?;
 
-            info!("after cleanup");
             // Mark everything left as seen.
             self.mark_graph_seen(vector_clock_id).await?;
-            info!("after mark");
 
             let (new_address, status_reader) = ctx
                 .layer_db()
@@ -482,16 +479,7 @@ impl WorkspaceSnapshot {
 
         self.add_node(node_weight).await?;
 
-        let current_index = self.get_node_index_by_id(id).await?;
-        info!("{:?} = {:?}?", current_index, node_weight_index);
-        let old_local_weight = self
-            .working_copy()
-            .await
-            .get_node_weight(node_weight_index)?;
-        let new_local_weight = self.working_copy().await.get_node_weight(current_index);
-
-        info!("old: {:?}", old_local_weight);
-        info!("new: {:?}", new_local_weight);
+        let _current_index = self.get_node_index_by_id(id).await?;
 
         Ok(())
     }
@@ -574,38 +562,25 @@ impl WorkspaceSnapshot {
         let from_node_id = from_node_id.into();
         let to_node_id = to_node_id.into();
 
-        let start = Instant::now();
         self.add_edge(from_node_id, edge_weight, to_node_id).await?;
-        info!("add edge took {:?}", start.elapsed());
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
         // by the `to_node_id` to the ordering. Also point the ordering node at the thing with
         // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
         // in a depth first search
-        let start = Instant::now();
         if let Some(mut container_ordering_node) =
             self.ordering_node_for_container(from_node_id).await?
         {
-            info!("fetched ordering node in {:?}", start.elapsed());
-
-            let start = Instant::now();
             self.add_edge(
                 container_ordering_node.id(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Ordinal)?,
                 to_node_id,
             )
             .await?;
-            info!("added ordinal edge in {:?}", start.elapsed());
 
             container_ordering_node.push_to_order(change_set, to_node_id)?;
-            let start = Instant::now();
             self.add_node(NodeWeight::Ordering(container_ordering_node))
                 .await?;
-            info!("replaced ordering node in {:?}", start.elapsed());
-            info!(
-                "address map size: {}",
-                self.working_copy().await.address_map_len()
-            );
         };
 
         Ok(())
@@ -763,7 +738,7 @@ impl WorkspaceSnapshot {
                     {
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
-                        println!(
+                        debug!(
                             "onto {}, {:?} and to rebase {}, {:?} merkle tree hashes are the same",
                             onto_local_node_weight.merkle_tree_hash(),
                             onto_node_index,
@@ -1028,7 +1003,7 @@ impl WorkspaceSnapshot {
                     });
                 }
             } else {
-                info!(
+                debug!(
                     "edge weight entry for to rebase vector clock id {:?} is older than onto last saw {:?}",
                     only_to_rebase_edge_info.edge_weight.vector_clock_first_seen().entry_for(to_rebase_vector_clock_id),
                     onto_last_saw_to_rebase,
@@ -1105,21 +1080,10 @@ impl WorkspaceSnapshot {
         &self,
         original_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<()> {
-        let start = Instant::now();
         // Climb from the original node, up to root, rewriting outgoing edges
         // along the way. But we have to be sure to climb to root once for each
         // sibling node that we encounter as we walk up to root.
         let mut outer_queue = VecDeque::from([original_node_index]);
-
-        let root_idx = self.root().await?;
-        info!("root index: {:?}", root_idx);
-        info!(
-            "root index merkle: {:?}",
-            self.working_copy()
-                .await
-                .get_node_weight(root_idx)?
-                .address()
-        );
 
         while let Some(old_node_index) = outer_queue.pop_front() {
             let mut work_queue = VecDeque::from([old_node_index]);
@@ -1193,22 +1157,7 @@ impl WorkspaceSnapshot {
             }
         }
 
-        let new_root_idx = self.working_copy_mut().await.update_root_index()?;
-        info!("updated root index: {:?}", new_root_idx);
-
-        // self.working_copy_mut()
-        //     .await
-        //     .update_merkle_tree_hash_to_root(new_node_idx)?;
-
-        info!(
-            "root index merkle: {:?}",
-            self.working_copy()
-                .await
-                .get_node_weight(new_root_idx)?
-                .address()
-        );
-
-        info!("replace references took: {:?}", start.elapsed(),);
+        self.working_copy_mut().await.update_root_index()?;
 
         Ok(())
     }
