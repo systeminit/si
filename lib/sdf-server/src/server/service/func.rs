@@ -3,7 +3,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::authentication_prototype::AuthenticationPrototypeError;
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 use dal::schema::variant::SchemaVariantError;
 use dal::{
@@ -31,143 +30,37 @@ pub mod save_func;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
-    //     #[error("action func {0} assigned to multiple kinds")]
-    //     ActionFuncMultipleKinds(FuncId),
-    //     #[error("action kind missing on prototypes for action func {0}")]
-    //     ActionKindMissing(FuncId),
-    //     #[error(transparent)]
-    //     ActionPrototype(#[from] ActionPrototypeError),
-    //     #[error("attribute context error: {0}")]
-    //     AttributeContext(#[from] AttributeContextError),
-    //     #[error("attribute context builder error: {0}")]
-    //     AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    //     #[error("attribute prototype error: {0}")]
-    //     AttributePrototype(#[from] AttributePrototypeError),
-    //     #[error("That attribute is already set by the function named \"{0}\"")]
-    //     AttributePrototypeAlreadySetByFunc(String),
-    //     #[error("attribute prototype argument error: {0}")]
-    //     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    //     #[error("attribute prototype missing")]
-    //     AttributePrototypeMissing,
-    //     #[error("attribute prototype {0} is missing argument {1}")]
-    //     AttributePrototypeMissingArgument(AttributePrototypeId, AttributePrototypeArgumentId),
-    //     #[error("attribute prototype {0} is missing its prop {1}")]
-    //     AttributePrototypeMissingProp(AttributePrototypeId, PropId),
-    //     #[error("attribute prototype {0} schema is missing")]
-    //     AttributePrototypeMissingSchema(AttributePrototypeId),
-    //     #[error("attribute prototype {0} schema_variant is missing")]
-    //     AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
-    //     #[error("attribute value error: {0}")]
-    //     AttributeValue(#[from] AttributeValueError),
-    #[error("authentication prototype error: {0}")]
-    AuthenticationPrototype(#[from] AuthenticationPrototypeError),
-    //     #[error("attribute value missing")]
-    //     AttributeValueMissing,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    //     #[error("component error: {0}")]
-    //     Component(#[from] ComponentError),
-    //     #[error("component missing schema variant")]
-    //     ComponentMissingSchemaVariant(ComponentId),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    //     #[error("editing reconciliation functions is not implemented")]
-    //     EditingReconciliationFuncsNotImplemented,
     #[error(transparent)]
     Func(#[from] dal::func::FuncError),
-    //     #[error("func argument not found")]
-    //     FuncArgNotFound,
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
-    //     #[error("func argument already exists for that name")]
-    //     FuncArgumentAlreadyExists,
-    //     #[error("func argument {0} missing attribute prototype argument for prototype {1}")]
-    //     FuncArgumentMissingPrototypeArgument(FuncArgumentId, AttributePrototypeId),
-    //     #[error("func binding error: {0}")]
-    //     FuncBinding(#[from] FuncBindingError),
-    //     #[error("func binding return value error: {0}")]
-    //     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    //     #[error("func binding return value not found")]
-    //     FuncBindingReturnValueMissing,
     #[error("func {0} cannot be converted to frontend variant")]
     FuncCannotBeTurnedIntoVariant(FuncId),
-    //     // XXX: we will be able to remove this error once we make output sockets typed
-    //     #[error("Cannot bind function to both an output socket and a prop")]
-    //     FuncDestinationPropAndOutputSocket,
-    //     #[error("cannot bind func to different prop kinds")]
-    //     FuncDestinationPropKindMismatch,
-    //     #[error("Function execution: {0}")]
-    //     FuncExecution(#[from] FuncExecutionError),
-    //     #[error("Function execution failed: {0}")]
-    //     FuncExecutionFailed(String),
-    //     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
-    //     FuncExecutionFailedNoPrototypes,
-    //     #[error("Function still has associations: {0}")]
-    //     FuncHasAssociations(FuncId),
     #[error("Function named \"{0}\" already exists in this changeset")]
     FuncNameExists(String),
     #[error("The function name \"{0}\" is reserved")]
     FuncNameReserved(String),
-    //     #[error("func is not revertible")]
-    //     FuncNotRevertible,
-    //     #[error("Cannot create that type of function")]
-    //     FuncNotSupported,
-    //     #[error("Function options are incompatible with variant")]
-    //     FuncOptionsAndVariantMismatch,
     #[error("Hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
-    //     #[error("failed to join async task; bug!")]
-    //     Join(#[from] JoinError),
-    //     #[error("Missing required options for creating a function")]
-    //     MissingOptions,
     #[error("Function is read-only")]
     NotWritable,
-    //     #[error(transparent)]
-    //     Pg(#[from] si_data_pg::PgError),
-    // #[error(transparent)]
-    // PgPool(#[from] Box<si_data_pg::PgPoolError>),
-    //     #[error("prop error: {0}")]
-    //     Prop(#[from] PropError),
     #[error("prop for value not found")]
     PropNotFound,
-    //     #[error("prop tree error: {0}")]
-    //     PropTree(#[from] PropTreeError),
-    //     #[error("prototype context error: {0}")]self
-    //     PrototypeContext(#[from] PrototypeContextError),
-    //     #[error("prototype list for func error: {0}")]
-    //     PrototypeListForFunc(#[from] PrototypeListForFuncError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    //     #[error("schema variant missing schema")]
-    //     SchemaVariantMissingSchema(SchemaVariantId),
-    //     #[error("Could not find schema variant for prop {0}")]
-    //     SchemaVariantNotFoundForProp(PropId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    //     StandardModel(#[from] StandardModelError),
-    //     #[error("tenancy error: {0}")]
-    //     Tenancy(#[from] TenancyError),
     #[error("unexpected func variant ({0:?}) creating attribute func")]
     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
-    //     #[error("A validation already exists for that attribute")]
-    //     ValidationAlreadyExists,
-    //     #[error("validation prototype error: {0}")]
-    //     ValidationPrototype(#[from] ValidationPrototypeError),
-    //     #[error("validation prototype schema is missing")]
-    //     ValidationPrototypeMissingSchema,
-    //     #[error("validation prototype {0} schema_variant is missing")]
-    //     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
     #[error(transparent)]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
-
-//impl From<si_data_pg::PgPoolError> for FuncError {
-//    fn from(value: si_data_pg::PgPoolError) -> Self {
-//        Self::PgPool(Box::new(value))
-//    }
-//}
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
