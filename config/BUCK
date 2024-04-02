@@ -1,0 +1,3 @@
+constraint_setting(name = "rust_build_mode", visibility = ["PUBLIC"])
+constraint_value(name = "build_debug", constraint_setting = ":rust_build_mode", visibility = ["PUBLIC"])
+constraint_value(name = "build_release", constraint_setting = ":rust_build_mode", visibility = ["PUBLIC"])
