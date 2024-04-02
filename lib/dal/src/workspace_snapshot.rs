@@ -1224,11 +1224,6 @@ impl WorkspaceSnapshot {
                     // This is the key for an entry in a map.
                     EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
 
-                    // This is the kind of the action.
-                    EdgeWeightKind::ActionPrototype(kind) => {
-                        hasher.update(kind.to_string().as_bytes())
-                    }
-
                     EdgeWeightKind::Use { is_default } => {
                         hasher.update(is_default.to_string().as_bytes())
                     }
@@ -1241,6 +1236,7 @@ impl WorkspaceSnapshot {
                     // in the edge itself.
                     EdgeWeightKind::AuthenticationPrototype
                     | EdgeWeightKind::Action
+                    | EdgeWeightKind::ActionPrototype
                     | EdgeWeightKind::Contain(None)
                     | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument

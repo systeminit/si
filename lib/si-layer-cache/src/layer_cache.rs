@@ -1,4 +1,5 @@
 use std::{collections::HashMap, fmt::Display, path::Path, sync::Arc};
+use telemetry::prelude::*;
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -49,6 +50,7 @@ where
             Some(memory_value) => Some(memory_value),
             None => match self.disk_cache.get(&key)? {
                 Some(value) => {
+                    info!("hitting sled");
                     let deserialized: V = postcard::from_bytes(&value)?;
 
                     self.memory_cache.insert(key, deserialized.clone()).await;
@@ -57,6 +59,7 @@ where
                 None => match self.pg.get(&key).await? {
                     Some(value) => {
                         let deserialized: V = postcard::from_bytes(&value)?;
+                        info!("hitting pg");
 
                         self.memory_cache
                             .insert(key.clone(), deserialized.clone())
