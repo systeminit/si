@@ -367,10 +367,10 @@ impl RootProp {
         )
         .await?;
 
-        // /root/resource/payload
+        // /root/resource/last_synced
         let _resource_last_synced_prop = Prop::new(
             ctx,
-            "resource_last_synced_prop",
+            "last_synced",
             PropKind::String,
             true,
             None,
