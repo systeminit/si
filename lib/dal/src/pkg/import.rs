@@ -1801,7 +1801,7 @@ async fn import_schema(
 
             // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
             // to pull it off here, even if we find an existing schema.
-            let category = dbg!(data.category.clone());
+            let category = data.category.clone();
 
             let schema = match existing_schema {
                 None => create_schema(ctx, data).await?,
