@@ -3,7 +3,7 @@ use dal::DalContext;
 use dal_test::test;
 
 #[test]
-async fn list_pkgs(ctx: &DalContext) {
+async fn list_modules(ctx: &DalContext) {
     let modules = Module::list_installed(ctx)
         .await
         .expect("unable to get installed modules");
@@ -34,7 +34,7 @@ async fn list_pkgs(ctx: &DalContext) {
 }
 
 #[test]
-async fn get_fallout_pkg(ctx: &DalContext) {
+async fn get_fallout_module(ctx: &DalContext) {
     let modules = Module::list_installed(ctx)
         .await
         .expect("unable to get installed modules");
@@ -59,7 +59,7 @@ async fn get_fallout_pkg(ctx: &DalContext) {
         assert_eq!("fallout", fallout_module.name());
         assert_eq!("System Initiative", fallout_module.created_by_email());
         assert_eq!("2019-06-03", fallout_module.version());
-        assert_eq!(3, associated_funcs.len());
+        assert_eq!(2, associated_funcs.len());
         assert_eq!(1, associated_schemas.len());
     }
 }

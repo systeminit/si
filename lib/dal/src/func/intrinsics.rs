@@ -12,6 +12,7 @@ use crate::PropKind;
 #[derive(AsRefStr, Display, EnumIter, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntrinsicFunc {
     Identity,
+    ResourcePayloadToValue,
     SetArray,
     SetBoolean,
     SetInteger,
@@ -21,6 +22,10 @@ pub enum IntrinsicFunc {
     Unset,
     Validation,
 }
+
+const SI_RESOURCE_PAYLOAD_TO_VALUE: &str = r#"async function main(arg: Input): Promise < Output > {
+    return arg.payload ?? {};
+}"#;
 
 impl IntrinsicFunc {
     pub fn pkg_spec() -> FuncResult<PkgSpec> {
@@ -165,6 +170,24 @@ impl IntrinsicFunc {
                         .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
+            Self::ResourcePayloadToValue => {
+                builder
+                    .unique_id("f149a2d9254d03bcad537b997c4cedd934cd5e16a38d8035173e3aca85ca7be6");
+                data_builder.backend_kind(FuncSpecBackendKind::JsAttribute);
+                data_builder.response_type(FuncSpecBackendResponseType::Object);
+                data_builder.code_plaintext(SI_RESOURCE_PAYLOAD_TO_VALUE);
+                data_builder.display_name("si:resourcePayloadToValue".to_string());
+                data_builder.name("si:resourcePayloadToValue".to_string());
+                data_builder.handler("main".to_string());
+                builder.is_from_builtin(true);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("payload")
+                        .kind(FuncArgumentKind::Object)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
+            }
         };
 
         let data = data_builder
@@ -180,6 +203,7 @@ impl IntrinsicFunc {
     pub fn name(&self) -> &str {
         match self {
             Self::Identity => "si:identity",
+            Self::ResourcePayloadToValue => "si:resourcePayloadToValue",
             Self::SetArray => "si:setArray",
             Self::SetBoolean => "si:setBoolean",
             Self::SetInteger => "si:setInteger",
@@ -194,6 +218,7 @@ impl IntrinsicFunc {
     pub fn maybe_from_str(s: &str) -> Option<Self> {
         Some(match s {
             "si:identity" => Self::Identity,
+            "si:resourcePayloadToValue" => Self::ResourcePayloadToValue,
             "si:setArray" => Self::SetArray,
             "si:setBoolean" => Self::SetBoolean,
             "si:setInteger" => Self::SetInteger,

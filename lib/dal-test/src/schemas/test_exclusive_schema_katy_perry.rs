@@ -1,7 +1,5 @@
-use crate::schemas::schema_helpers::{
-    build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
-    create_identity_func,
-};
+use crate::schemas::schema_helpers::{build_asset_func, build_codegen_func, create_identity_func};
+use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{pkg, prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -26,7 +24,7 @@ pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> Built
     let kp_authoring_schema_func = build_asset_func(fn_name).await?;
 
     // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = IntrinsicFunc::ResourcePayloadToValue.to_spec()?;
 
     // Build YAML CodeGen Func
     let yaml_codegen_fn_name = "test:generateYamlCode";

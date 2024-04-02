@@ -59,7 +59,7 @@ pub struct ImportOptions {
     pub is_builtin: bool,
 }
 
-const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
+const SPECIAL_CASE_FUNCS: [&str; 1] = ["si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
@@ -102,7 +102,7 @@ async fn import_change_set(
                 func_spec,
                 installed_pkg.clone(),
                 thing_map,
-                options.is_builtin,
+                func_spec.is_from_builtin().unwrap_or(false),
             )
             .await?
             {

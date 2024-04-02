@@ -7,7 +7,7 @@ mod connection;
 mod dependent_values_update;
 mod frame;
 mod func;
-mod pkgs;
+mod modules;
 mod prop;
 mod property_editor;
 mod rebaser;

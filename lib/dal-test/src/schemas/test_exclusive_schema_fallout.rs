@@ -1,3 +1,4 @@
+use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{pkg, prop::PropPath, ActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -9,9 +10,7 @@ use si_pkg::{
 };
 use si_pkg::{SchemaSpecData, SocketSpecArity};
 
-use crate::schemas::schema_helpers::{
-    build_action_func, build_resource_payload_to_value_func, create_identity_func,
-};
+use crate::schemas::schema_helpers::{build_action_func, create_identity_func};
 
 pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
@@ -66,7 +65,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         )
         .build()?;
 
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = IntrinsicFunc::ResourcePayloadToValue.to_spec()?;
 
     let (dummy_secret_input_scoket, dummy_secret_prop) =
         assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
