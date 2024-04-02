@@ -14,7 +14,6 @@ use crate::{
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
-const WORKSPACE_FIND_BY_NAME: &str = include_str!("queries/workspace/find_by_name.sql");
 const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
 
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
@@ -23,6 +22,8 @@ const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
+    #[error("builtin workspace not found")]
+    BuiltinWorkspaceNotFound,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found by id: {0}")]
@@ -195,10 +196,7 @@ impl Workspace {
         // Get the default change set from the builtin workspace.
         let builtin = match Self::find_builtin(ctx).await? {
             Some(found_builtin) => found_builtin,
-            None => {
-                // TODO(nick,jacob): replace this with an error.
-                todo!("this should not happen")
-            }
+            None => return Err(WorkspaceError::BuiltinWorkspaceNotFound),
         };
 
         // Create a new change set whose base is the default change set of the workspace.
@@ -273,20 +271,6 @@ impl Workspace {
         ctx.import_builtins().await?;
 
         Ok(workspace)
-    }
-
-    pub async fn find_by_name(ctx: &DalContext, name: &str) -> WorkspaceResult<Option<Workspace>> {
-        let maybe_row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(WORKSPACE_FIND_BY_NAME, &[&name])
-            .await?;
-        let maybe_workspace = match maybe_row {
-            Some(found) => Some(Self::try_from(found)?),
-            None => None,
-        };
-        Ok(maybe_workspace)
     }
 
     pub async fn get_by_pk(

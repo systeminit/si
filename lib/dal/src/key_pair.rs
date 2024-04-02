@@ -17,8 +17,8 @@ use crate::{
 
 mod key_pair_box_public_key_serde;
 
-const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/public_key_get_current.sql");
-const KEY_PAIR_GET_BY_PK: &str = include_str!("queries/key_pair_get_by_pk.sql");
+const GET_BY_PK: &str = include_str!("queries/key_pair/get_by_pk.sql");
+const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/key_pair/public_key_get_current.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -107,26 +107,7 @@ impl KeyPair {
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: KeyPairPk) -> KeyPairResult<Self> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(KEY_PAIR_GET_BY_PK, &[&pk])
-            .await?;
-        let json: serde_json::Value = row.try_get("object")?;
-        let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
-        let key_pair = key_pair_row.decrypt_into(ctx.symmetric_crypto_service())?;
-        Ok(key_pair)
-    }
-
-    pub async fn get_current(ctx: &DalContext) -> KeyPairResult<Self> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(PUBLIC_KEY_GET_CURRENT, &[&ctx.tenancy().workspace_pk()])
-            .await?;
-
+        let row = ctx.txns().await?.pg().query_one(GET_BY_PK, &[&pk]).await?;
         let json: serde_json::Value = row.try_get("object")?;
         let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
         let key_pair = key_pair_row.decrypt_into(ctx.symmetric_crypto_service())?;

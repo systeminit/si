@@ -70,7 +70,9 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     assert_eq!(starfield_component.id(), diff.component_id);
     assert!(diff.diffs.is_empty());
     let code = diff.current.code.expect("code not found");
-    // We expect there to be no marked diffs as the component is the same on HEAD
+
+    // We expect there to be no marked diffs as the component is the same on HEAD. Since the diff
+    // isn't marked, it is valid json and we can deserialize it.
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -147,9 +149,10 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     assert_eq!(1, diff.diffs.len());
     let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
     assert_eq!(CodeLanguage::Diff, first_diff.language);
-    // We there to be a diff as we have changed the componentType on this changeset but HEAD is a component
+
+    // We expect there to be a diff as we have changed the componentType on this changeset but HEAD is a component
     assert_eq!(
-        Some("{\n  \"si\": {\n    \"color\": \"#ffffff\",\n    \"name\": \"this is a new component\",\n    \"type\": \"component\"\n  },\n  \"domain\": {\n    \"name\": \"this is a new component\",\n    \"possible_world_a\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {}\n        }\n      }\n    },\n    \"possible_world_b\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {\n            \"naming_and_necessity\": \"not hesperus\"\n          }\n        }\n      }\n    },\n    \"universe\": {\n      \"galaxies\": []\n    }\n  }\n}".to_string()), // expected
+        Some(" {\n   \"si\": {\n     \"color\": \"#ffffff\",\n     \"name\": \"this is a new component\",\n-    \"type\": \"component\"\n+    \"type\": \"configurationFrameDown\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_a\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {}\n         }\n       }\n     },\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string()), // expected
         first_diff.code // actual
     );
 }
