@@ -32,15 +32,29 @@ RUN set -eux; \
         containerd.io \
         docker-buildx-plugin \
         docker-compose-plugin \
+    ; \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Cypress Dependencies
+RUN apt-get update; \
+    apt-get install -y --no-install-recommends \
         xvfb \
         libgtk2.0-0 \
         libnss3 \
         libatk-bridge2.0-0 \
         libgtk-3-0 \
         libgdm-dev \
+        libgbm1 \
+        libwayland-server0 \
         libasound2 \
     ; \
     rm -rf /var/lib/apt/lists/*
+
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable libxss1 \
+      --no-install-recommends \
 
 RUN set -eux; \
     useradd --create-home --shell /bin/bash --uid "${USER_UID}" ci; \
