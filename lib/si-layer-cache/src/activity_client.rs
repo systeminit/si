@@ -95,7 +95,7 @@ impl ActivityClient {
                 false
             }
         });
-        let timeout_stream = filter_stream.timeout(Duration::from_secs(30));
+        let timeout_stream = filter_stream.timeout(Duration::from_secs(240));
         pin!(timeout_stream);
         if let Some(activity_result_or_timeout) = timeout_stream.next().await {
             match activity_result_or_timeout {

@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
 
-const DEFAULT_SIZE: u64 = 65_536;
+const DEFAULT_SIZE: u64 = 65_536 * 64;
 const DEFAULT_TTL: Duration = Duration::from_secs(60 * 60 * 24 * 2);
 const DEFAULT_TTI: Duration = Duration::from_secs(60 * 60 * 24);
 
