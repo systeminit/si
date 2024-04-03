@@ -282,7 +282,7 @@ impl ActionPrototype {
         {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             let id = node_weight.id();
-            if NodeWeightDiscriminants::Func == node_weight.as_ref().into() {
+            if NodeWeightDiscriminants::Func == node_weight.into() {
                 return Ok(id.into());
             }
         }

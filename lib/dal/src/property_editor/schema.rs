@@ -52,7 +52,6 @@ impl PropertyEditorSchema {
                     if let NodeWeight::Prop(child_prop_weight) = workspace_snapshot
                         .get_node_weight(child_prop_node_index)
                         .await?
-                        .as_ref()
                     {
                         let child_prop_id: PropId = child_prop_weight.id().into();
 

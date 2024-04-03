@@ -481,18 +481,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "async-compression-0.4.7.crate",
-    sha256 = "86a9249d1447a85f95810c620abea82e001fe58a31713fcce614caf52499f905",
-    strip_prefix = "async-compression-0.4.7",
-    urls = ["https://crates.io/api/v1/crates/async-compression/0.4.7/download"],
+    name = "async-compression-0.4.6.crate",
+    sha256 = "a116f46a969224200a0a97f29cfd4c50e7534e4b4826bd23ea2c3c533039c82c",
+    strip_prefix = "async-compression-0.4.6",
+    urls = ["https://crates.io/api/v1/crates/async-compression/0.4.6/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "async-compression-0.4.7",
-    srcs = [":async-compression-0.4.7.crate"],
+    name = "async-compression-0.4.6",
+    srcs = [":async-compression-0.4.6.crate"],
     crate = "async_compression",
-    crate_root = "async-compression-0.4.7.crate/src/lib.rs",
+    crate_root = "async-compression-0.4.6.crate/src/lib.rs",
     edition = "2018",
     features = [
         "brotli",
@@ -507,7 +507,7 @@ cargo.rust_library(
         ":flate2-1.0.28",
         ":futures-core-0.3.30",
         ":memchr-2.7.2",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
     ],
 )
@@ -621,7 +621,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -643,7 +643,7 @@ cargo.rust_library(
     deps = [
         ":async-stream-impl-0.3.5",
         ":futures-core-0.3.30",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
     ],
 )
 
@@ -666,7 +666,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -695,7 +695,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -720,7 +720,7 @@ cargo.rust_library(
         ":futures-sink-0.3.30",
         ":futures-util-0.3.30",
         ":memchr-2.7.2",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
     ],
 )
 
@@ -917,7 +917,7 @@ cargo.rust_library(
         ":mime-0.3.17",
         ":multer-2.1.0",
         ":percent-encoding-2.3.1",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":serde-1.0.197",
         ":serde_json-1.0.115",
         ":serde_path_to_error-0.1.16",
@@ -980,7 +980,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -1562,7 +1562,7 @@ cargo.rust_library(
         ":hyper-1.2.0",
         ":hyper-util-0.1.3",
         ":log-0.4.21",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":serde-1.0.197",
         ":serde_derive-1.0.197",
         ":serde_json-1.0.115",
@@ -2026,7 +2026,7 @@ cargo.rust_library(
         ":heck-0.5.0",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3277,7 +3277,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3331,7 +3331,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":strsim-0.10.0",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3354,7 +3354,7 @@ cargo.rust_library(
     deps = [
         ":darling_core-0.20.8",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3494,18 +3494,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "der-0.7.9.crate",
-    sha256 = "f55bf8e7b65898637379c1b74eb1551107c8294ed26d855ceb9fd1a09cfc9bc0",
-    strip_prefix = "der-0.7.9",
-    urls = ["https://crates.io/api/v1/crates/der/0.7.9/download"],
+    name = "der-0.7.8.crate",
+    sha256 = "fffa369a668c8af7dbf8b5e56c9f744fbd399949ed171606040001947de40b1c",
+    strip_prefix = "der-0.7.8",
+    urls = ["https://crates.io/api/v1/crates/der/0.7.8/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "der-0.7.9",
-    srcs = [":der-0.7.9.crate"],
+    name = "der-0.7.8",
+    srcs = [":der-0.7.8.crate"],
     crate = "der",
-    crate_root = "der-0.7.9.crate/src/lib.rs",
+    crate_root = "der-0.7.8.crate/src/lib.rs",
     edition = "2021",
     features = [
         "alloc",
@@ -3620,7 +3620,7 @@ cargo.rust_library(
         ":darling-0.20.8",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3643,7 +3643,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":derive_builder_core-0.20.0",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -3966,7 +3966,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.8",
         ":digest-0.10.7",
         ":elliptic-curve-0.13.8",
         ":rfc6979-0.4.0",
@@ -4110,7 +4110,7 @@ cargo.rust_library(
         ":enum-ordinalize-4.3.0",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -4281,7 +4281,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -4907,7 +4907,7 @@ cargo.rust_library(
         ":futures-core-0.3.30",
         ":futures-io-0.3.30",
         ":parking-2.2.0",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
     ],
 )
 
@@ -4930,7 +4930,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -5038,7 +5038,7 @@ cargo.rust_library(
         ":futures-sink-0.3.30",
         ":futures-task-0.3.30",
         ":memchr-2.7.2",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":pin-utils-0.1.0",
         ":slab-0.4.9",
     ],
@@ -5803,7 +5803,7 @@ cargo.rust_library(
     deps = [
         ":bytes-1.6.0",
         ":http-0.2.12",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
     ],
 )
 
@@ -5848,7 +5848,7 @@ cargo.rust_library(
         ":futures-core-0.3.30",
         ":http-1.1.0",
         ":http-body-1.0.0",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
     ],
 )
 
@@ -5952,7 +5952,7 @@ cargo.rust_library(
         ":httparse-1.8.0",
         ":httpdate-1.0.3",
         ":itoa-1.0.11",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":socket2-0.5.6",
         ":tokio-1.37.0",
         ":tower-service-0.3.2",
@@ -5989,7 +5989,7 @@ cargo.rust_library(
         ":http-body-1.0.0",
         ":httparse-1.8.0",
         ":itoa-1.0.11",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":smallvec-1.13.2",
         ":tokio-1.37.0",
         ":want-0.3.1",
@@ -6015,7 +6015,7 @@ cargo.rust_library(
         ":hex-0.4.3",
         ":hyper-1.2.0",
         ":hyper-util-0.1.3",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tower-service-0.3.2",
         ":winapi-0.3.9",
@@ -6094,7 +6094,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":hyper-0.14.28",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tokio-io-timeout-1.2.0",
     ],
@@ -6129,7 +6129,7 @@ cargo.rust_library(
         ":http-1.1.0",
         ":http-body-1.0.0",
         ":hyper-1.2.0",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":socket2-0.5.6",
         ":tokio-1.37.0",
         ":tower-0.4.13",
@@ -6192,7 +6192,7 @@ cargo.rust_library(
         ":http-body-util-0.1.1",
         ":hyper-1.2.0",
         ":hyper-util-0.1.3",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tower-service-0.3.2",
     ],
@@ -6300,7 +6300,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":serde-1.0.197",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
         ":toml-0.8.12",
         ":unicode-xid-0.2.4",
     ],
@@ -6495,7 +6495,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -7578,7 +7578,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -7880,7 +7880,7 @@ cargo.rust_library(
         ":futures-util-0.3.30",
         ":once_cell-1.19.0",
         ":parking_lot-0.12.1",
-        ":quanta-0.12.3",
+        ":quanta-0.12.2",
         ":smallvec-1.13.2",
         ":tagptr-0.2.0",
         ":thiserror-1.0.58",
@@ -8680,7 +8680,7 @@ cargo.rust_library(
         ":futures-core-0.3.30",
         ":futures-sink-0.3.30",
         ":once_cell-1.19.0",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":thiserror-1.0.58",
         ":urlencoding-2.1.3",
     ],
@@ -9037,7 +9037,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -9064,7 +9064,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.79",
         ":proc-macro2-diagnostics-0.10.1",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -9594,29 +9594,29 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
 alias(
     name = "pin-project-lite",
-    actual = ":pin-project-lite-0.2.14",
+    actual = ":pin-project-lite-0.2.13",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "pin-project-lite-0.2.14.crate",
-    sha256 = "bda66fc9667c18cb2758a2ac84d1167245054bcf85d5d1aaa6923f45801bdd02",
-    strip_prefix = "pin-project-lite-0.2.14",
-    urls = ["https://crates.io/api/v1/crates/pin-project-lite/0.2.14/download"],
+    name = "pin-project-lite-0.2.13.crate",
+    sha256 = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58",
+    strip_prefix = "pin-project-lite-0.2.13",
+    urls = ["https://crates.io/api/v1/crates/pin-project-lite/0.2.13/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "pin-project-lite-0.2.14",
-    srcs = [":pin-project-lite-0.2.14.crate"],
+    name = "pin-project-lite-0.2.13",
+    srcs = [":pin-project-lite-0.2.13.crate"],
     crate = "pin_project_lite",
-    crate_root = "pin-project-lite-0.2.14.crate/src/lib.rs",
+    crate_root = "pin-project-lite-0.2.13.crate/src/lib.rs",
     edition = "2018",
     visibility = [],
 )
@@ -9661,7 +9661,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.8",
         ":pkcs8-0.10.2",
         ":spki-0.7.3",
     ],
@@ -9688,7 +9688,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":der-0.7.9",
+        ":der-0.7.8",
         ":spki-0.7.3",
     ],
 )
@@ -9987,7 +9987,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -10326,7 +10326,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
         ":yansi-1.0.1",
     ],
 )
@@ -10378,23 +10378,23 @@ cargo.rust_library(
         ":itertools-0.11.0",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
 http_archive(
-    name = "quanta-0.12.3.crate",
-    sha256 = "8e5167a477619228a0b284fac2674e3c388cba90631d7b7de620e6f1fcd08da5",
-    strip_prefix = "quanta-0.12.3",
-    urls = ["https://crates.io/api/v1/crates/quanta/0.12.3/download"],
+    name = "quanta-0.12.2.crate",
+    sha256 = "9ca0b7bac0b97248c40bb77288fc52029cf1459c0461ea1b05ee32ccf011de2c",
+    strip_prefix = "quanta-0.12.2",
+    urls = ["https://crates.io/api/v1/crates/quanta/0.12.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "quanta-0.12.3",
-    srcs = [":quanta-0.12.3.crate"],
+    name = "quanta-0.12.2",
+    srcs = [":quanta-0.12.2.crate"],
     crate = "quanta",
-    crate_root = "quanta-0.12.3.crate/src/lib.rs",
+    crate_root = "quanta-0.12.2.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -10758,56 +10758,53 @@ cargo.rust_library(
 
 alias(
     name = "refinery",
-    actual = ":refinery-0.8.13",
+    actual = ":refinery-0.8.12",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "refinery-0.8.13.crate",
-    sha256 = "425d0fb45561a45e274d318bfbd1bdfbb7a88045860c7b51a2b812ded1a5efc7",
-    strip_prefix = "refinery-0.8.13",
-    urls = ["https://crates.io/api/v1/crates/refinery/0.8.13/download"],
+    name = "refinery-0.8.12.crate",
+    sha256 = "a2783724569d96af53464d0711dff635cab7a4934df5e22e9fbc9e181523b83e",
+    strip_prefix = "refinery-0.8.12",
+    urls = ["https://crates.io/api/v1/crates/refinery/0.8.12/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "refinery-0.8.13",
-    srcs = [":refinery-0.8.13.crate"],
+    name = "refinery-0.8.12",
+    srcs = [":refinery-0.8.12.crate"],
     crate = "refinery",
-    crate_root = "refinery-0.8.13.crate/src/lib.rs",
+    crate_root = "refinery-0.8.12.crate/src/lib.rs",
     edition = "2018",
     features = [
         "default",
         "tokio-postgres",
-        "toml",
     ],
     visibility = [],
     deps = [
-        ":refinery-core-0.8.13",
-        ":refinery-macros-0.8.13",
+        ":refinery-core-0.8.12",
+        ":refinery-macros-0.8.12",
     ],
 )
 
 http_archive(
-    name = "refinery-core-0.8.13.crate",
-    sha256 = "3d0f5d1af6a2e8d5972ca187b2acf7ecb8d6a1a6ece52bceeae8f57880eaf62f",
-    strip_prefix = "refinery-core-0.8.13",
-    urls = ["https://crates.io/api/v1/crates/refinery-core/0.8.13/download"],
+    name = "refinery-core-0.8.12.crate",
+    sha256 = "08d6c80329c0455510a8d42fce286ecb4b6bcd8c57e1816d9f2d6bd7379c2cc8",
+    strip_prefix = "refinery-core-0.8.12",
+    urls = ["https://crates.io/api/v1/crates/refinery-core/0.8.12/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "refinery-core-0.8.13",
-    srcs = [":refinery-core-0.8.13.crate"],
+    name = "refinery-core-0.8.12",
+    srcs = [":refinery-core-0.8.12.crate"],
     crate = "refinery_core",
-    crate_root = "refinery-core-0.8.13.crate/src/lib.rs",
+    crate_root = "refinery-core-0.8.12.crate/src/lib.rs",
     edition = "2018",
     features = [
         "default",
-        "serde",
         "tokio",
         "tokio-postgres",
-        "toml",
     ],
     visibility = [],
     deps = [
@@ -10828,27 +10825,27 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "refinery-macros-0.8.13.crate",
-    sha256 = "7ba59636ac45d953f2225dc4ca3a55cfda1b015d0e6ff51ea16329918b436d51",
-    strip_prefix = "refinery-macros-0.8.13",
-    urls = ["https://crates.io/api/v1/crates/refinery-macros/0.8.13/download"],
+    name = "refinery-macros-0.8.12.crate",
+    sha256 = "6ab6e31e166a49d55cb09b62639e5ab9ba2e73f2f124336b06f6c321dc602779",
+    strip_prefix = "refinery-macros-0.8.12",
+    urls = ["https://crates.io/api/v1/crates/refinery-macros/0.8.12/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "refinery-macros-0.8.13",
-    srcs = [":refinery-macros-0.8.13.crate"],
+    name = "refinery-macros-0.8.12",
+    srcs = [":refinery-macros-0.8.12.crate"],
     crate = "refinery_macros",
-    crate_root = "refinery-macros-0.8.13.crate/src/lib.rs",
+    crate_root = "refinery-macros-0.8.12.crate/src/lib.rs",
     edition = "2018",
     proc_macro = True,
     visibility = [],
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":refinery-core-0.8.13",
+        ":refinery-core-0.8.12",
         ":regex-1.10.4",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -11053,7 +11050,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -11099,7 +11096,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -11120,7 +11117,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -11141,7 +11138,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -11162,7 +11159,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -11183,7 +11180,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -11205,7 +11202,7 @@ cargo.rust_library(
                 ":mime-0.3.17",
                 ":once_cell-1.19.0",
                 ":percent-encoding-2.3.1",
-                ":pin-project-lite-0.2.14",
+                ":pin-project-lite-0.2.13",
                 ":rustls-0.22.3",
                 ":rustls-pemfile-1.0.4",
                 ":rustls-pki-types-1.4.1",
@@ -12395,10 +12392,10 @@ cargo.rust_library(
             deps = [":openssl-probe-0.1.5"],
         ),
         "macos-arm64": dict(
-            deps = [":security-framework-2.10.0"],
+            deps = [":security-framework-2.9.2"],
         ),
         "macos-x86_64": dict(
-            deps = [":security-framework-2.10.0"],
+            deps = [":security-framework-2.9.2"],
         ),
         "windows-gnu": dict(
             deps = [":schannel-0.1.23"],
@@ -12436,10 +12433,10 @@ cargo.rust_library(
             deps = [":openssl-probe-0.1.5"],
         ),
         "macos-arm64": dict(
-            deps = [":security-framework-2.10.0"],
+            deps = [":security-framework-2.9.2"],
         ),
         "macos-x86_64": dict(
-            deps = [":security-framework-2.10.0"],
+            deps = [":security-framework-2.9.2"],
         ),
         "windows-gnu": dict(
             deps = [":schannel-0.1.23"],
@@ -12735,7 +12732,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -12837,7 +12834,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
         ":unicode-ident-1.0.12",
     ],
 )
@@ -12965,7 +12962,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":base16ct-0.2.0",
-        ":der-0.7.9",
+        ":der-0.7.8",
         ":generic-array-0.14.7",
         ":pkcs8-0.10.2",
         ":subtle-2.5.0",
@@ -12974,22 +12971,20 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "security-framework-2.10.0.crate",
-    sha256 = "770452e37cad93e0a50d5abc3990d2bc351c36d0328f86cefec2f2fb206eaef6",
-    strip_prefix = "security-framework-2.10.0",
-    urls = ["https://crates.io/api/v1/crates/security-framework/2.10.0/download"],
+    name = "security-framework-2.9.2.crate",
+    sha256 = "05b64fb303737d99b81884b2c63433e9ae28abebe5eb5045dcdd175dc2ecf4de",
+    strip_prefix = "security-framework-2.9.2",
+    urls = ["https://crates.io/api/v1/crates/security-framework/2.9.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "security-framework-2.10.0",
-    srcs = [":security-framework-2.10.0.crate"],
+    name = "security-framework-2.9.2",
+    srcs = [":security-framework-2.9.2.crate"],
     crate = "security_framework",
-    crate_root = "security-framework-2.10.0.crate/src/lib.rs",
+    crate_root = "security-framework-2.9.2.crate/src/lib.rs",
     edition = "2021",
     features = [
-        "OSX_10_10",
-        "OSX_10_11",
         "OSX_10_9",
         "default",
     ],
@@ -12999,29 +12994,25 @@ cargo.rust_library(
         ":core-foundation-0.9.4",
         ":core-foundation-sys-0.8.6",
         ":libc-0.2.153",
-        ":security-framework-sys-2.10.0",
+        ":security-framework-sys-2.9.1",
     ],
 )
 
 http_archive(
-    name = "security-framework-sys-2.10.0.crate",
-    sha256 = "41f3cc463c0ef97e11c3461a9d3787412d30e8e7eb907c79180c4a57bf7c04ef",
-    strip_prefix = "security-framework-sys-2.10.0",
-    urls = ["https://crates.io/api/v1/crates/security-framework-sys/2.10.0/download"],
+    name = "security-framework-sys-2.9.1.crate",
+    sha256 = "e932934257d3b408ed8f30db49d85ea163bfe74961f017f405b025af298f0c7a",
+    strip_prefix = "security-framework-sys-2.9.1",
+    urls = ["https://crates.io/api/v1/crates/security-framework-sys/2.9.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "security-framework-sys-2.10.0",
-    srcs = [":security-framework-sys-2.10.0.crate"],
+    name = "security-framework-sys-2.9.1",
+    srcs = [":security-framework-sys-2.9.1.crate"],
     crate = "security_framework_sys",
-    crate_root = "security-framework-sys-2.10.0.crate/src/lib.rs",
+    crate_root = "security-framework-sys-2.9.1.crate/src/lib.rs",
     edition = "2021",
-    features = [
-        "OSX_10_10",
-        "OSX_10_11",
-        "OSX_10_9",
-    ],
+    features = ["OSX_10_9"],
     visibility = [],
     deps = [
         ":core-foundation-sys-0.8.6",
@@ -13223,7 +13214,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -13323,7 +13314,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -13494,7 +13485,7 @@ cargo.rust_library(
         ":darling-0.20.8",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -13518,7 +13509,7 @@ cargo.rust_library(
         ":darling-0.20.8",
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -14117,7 +14108,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":base64ct-1.6.0",
-        ":der-0.7.9",
+        ":der-0.7.8",
     ],
 )
 
@@ -14526,7 +14517,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":rustversion-1.0.14",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -14551,7 +14542,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":rustversion-1.0.14",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -14643,23 +14634,23 @@ cargo.rust_library(
 
 alias(
     name = "syn",
-    actual = ":syn-2.0.57",
+    actual = ":syn-2.0.55",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "syn-2.0.57.crate",
-    sha256 = "11a6ae1e52eb25aab8f3fb9fca13be982a373b8f1157ca14b897a825ba4a2d35",
-    strip_prefix = "syn-2.0.57",
-    urls = ["https://crates.io/api/v1/crates/syn/2.0.57/download"],
+    name = "syn-2.0.55.crate",
+    sha256 = "002a1b3dbf967edfafc32655d0f377ab0bb7b994aa1d32c8cc7e9b8bf3ebb8f0",
+    strip_prefix = "syn-2.0.55",
+    urls = ["https://crates.io/api/v1/crates/syn/2.0.55/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "syn-2.0.57",
-    srcs = [":syn-2.0.57.crate"],
+    name = "syn-2.0.55",
+    srcs = [":syn-2.0.55.crate"],
     crate = "syn",
-    crate_root = "syn-2.0.57.crate/src/lib.rs",
+    crate_root = "syn-2.0.55.crate/src/lib.rs",
     edition = "2021",
     features = [
         "clone-impls",
@@ -14671,6 +14662,7 @@ cargo.rust_library(
         "parsing",
         "printing",
         "proc-macro",
+        "quote",
         "visit",
         "visit-mut",
     ],
@@ -14923,7 +14915,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -14992,7 +14984,7 @@ cargo.rust_binary(
         ":paste-1.0.14",
         ":pathdiff-0.2.1",
         ":petgraph-0.6.4",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":podman-api-0.10.0",
         ":postcard-1.0.8",
         ":postgres-types-0.2.6",
@@ -15000,7 +14992,7 @@ cargo.rust_binary(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":rand-0.8.5",
-        ":refinery-0.8.13",
+        ":refinery-0.8.12",
         ":regex-1.10.4",
         ":remain-0.2.13",
         ":reqwest-0.12.2",
@@ -15020,7 +15012,7 @@ cargo.rust_binary(
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.2",
         ":strum-0.26.2",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
         ":tar-0.4.40",
         ":tempfile-3.10.1",
         ":test-log-0.2.15",
@@ -15094,7 +15086,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -15380,7 +15372,7 @@ cargo.rust_library(
         ":mio-0.8.11",
         ":num_cpus-1.16.0",
         ":parking_lot-0.12.1",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-macros-2.2.0",
         ":tracing",
     ],
@@ -15402,7 +15394,7 @@ cargo.rust_library(
     edition = "2018",
     visibility = [],
     deps = [
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
     ],
 )
@@ -15426,7 +15418,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -15488,7 +15480,7 @@ cargo.rust_library(
         ":parking_lot-0.12.1",
         ":percent-encoding-2.3.1",
         ":phf-0.11.2",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":postgres-protocol-0.6.6",
         ":postgres-types-0.2.6",
         ":rand-0.8.5",
@@ -15645,7 +15637,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":futures-core-0.3.30",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tokio-util-0.7.10",
     ],
@@ -15751,7 +15743,7 @@ cargo.rust_library(
         ":futures-core-0.3.30",
         ":futures-sink-0.3.30",
         ":futures-util-0.3.30",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tracing-0.1.40",
     ],
@@ -15984,7 +15976,7 @@ cargo.rust_library(
         ":hdrhistogram-7.5.4",
         ":indexmap-1.9.3",
         ":pin-project-1.1.5",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":rand-0.8.5",
         ":slab-0.4.9",
         ":tokio-1.37.0",
@@ -16029,7 +16021,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":async-compression-0.4.7",
+        ":async-compression-0.4.6",
         ":bitflags-2.5.0",
         ":bytes-1.6.0",
         ":futures-core-0.3.30",
@@ -16037,7 +16029,7 @@ cargo.rust_library(
         ":http-0.2.12",
         ":http-body-0.4.6",
         ":http-range-header-0.3.1",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
         ":tokio-util-0.7.10",
         ":tower-layer-0.3.2",
@@ -16110,7 +16102,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":log-0.4.21",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tracing-attributes-0.1.27",
         ":tracing-core-0.1.32",
     ],
@@ -16135,7 +16127,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )
 
@@ -16396,7 +16388,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":futures-0.3.30",
-        ":pin-project-lite-0.2.14",
+        ":pin-project-lite-0.2.13",
         ":tokio-1.37.0",
     ],
 )
@@ -17542,7 +17534,7 @@ cargo.rust_library(
         ":bcder-0.7.4",
         ":bytes-1.6.0",
         ":chrono-0.4.37",
-        ":der-0.7.9",
+        ":der-0.7.8",
         ":hex-0.4.3",
         ":pem-3.0.3",
         ":ring-0.17.5",
@@ -17756,6 +17748,6 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
-        ":syn-2.0.57",
+        ":syn-2.0.55",
     ],
 )

@@ -228,10 +228,8 @@ impl OutputSocket {
             )
             .await?;
         for av_source_idx in av_sources {
-            if let NodeWeight::AttributeValue(av_node_weight) = workspace_snapshot
-                .get_node_weight(av_source_idx)
-                .await?
-                .as_ref()
+            if let NodeWeight::AttributeValue(av_node_weight) =
+                workspace_snapshot.get_node_weight(av_source_idx).await?
             {
                 result.push(av_node_weight.id().into());
             }
@@ -375,11 +373,8 @@ impl OutputSocket {
             )
             .await?
         {
-            if let NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_weight) = ctx
-                .workspace_snapshot()?
-                .get_node_weight(tail_idx)
-                .await?
-                .as_ref()
+            if let NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_weight) =
+                ctx.workspace_snapshot()?.get_node_weight(tail_idx).await?
             {
                 results.push(attribute_prototype_argument_weight.id().into());
             }

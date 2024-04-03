@@ -2,7 +2,7 @@ use std::error;
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
-use si_events::ContentHashParseError;
+use si_events::content_hash::ContentHashParseError;
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;

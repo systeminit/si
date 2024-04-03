@@ -1,14 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
-use strum::{Display, EnumIter};
+use strum::Display;
 use ulid::Ulid;
 
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display, EnumIter)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display)]
 pub enum CategoryNodeKind {
     ActionBatch,
     Component,
