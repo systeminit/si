@@ -27,7 +27,6 @@ use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 use veritech_client::CycloneEncryptionKey;
-use veritech_server::StandardConfig;
 
 pub use color_eyre::{
     self,
@@ -495,16 +494,6 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
     Ok(key_pair)
 }
 
-/// Configures and builds a [`council_server::Server`] suitable for running alongside DAL object-related
-/// tests.
-pub async fn council_server(nats_config: NatsConfig) -> Result<council_server::Server> {
-    let config = council_server::server::Config::builder()
-        .nats(nats_config)
-        .build()?;
-    let server = council_server::Server::new_with_config(config).await?;
-    Ok(server)
-}
-
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::Server> {
@@ -582,18 +571,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let services_ctx = test_context
         .create_services_context(token.clone(), traker.clone())
         .await;
-
-    // Create a dedicated Council server with a unique subject prefix for each test
-    let council_server = council_server(test_context.config.nats.clone()).await?;
-    let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
-    let (subscriber_started_tx, mut subscriber_started_rx) = tokio::sync::watch::channel(());
-    tokio::spawn(async move {
-        council_server
-            .run(subscriber_started_tx, shutdown_request_rx)
-            .await
-            .unwrap()
-    });
-    subscriber_started_rx.changed().await?;
 
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");
@@ -701,9 +678,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     // unique subject prefix)
     info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
-
-    info!("shutting down initial migrations Council server");
-    council_shutdown_request_tx.send(())?;
 
     // Cancel and wait for all outstanding tasks to complete
     token.cancel();

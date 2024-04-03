@@ -52,13 +52,6 @@ A-pinga:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-council:
-  - bin/council/**/*
-  - lib/council-server/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
 A-lang-js:
   - bin/lang-js/**/*
   - .prettierrc.js

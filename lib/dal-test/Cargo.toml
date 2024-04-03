@@ -8,7 +8,6 @@ publish = false
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
-council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 jwt-simple = { workspace = true }

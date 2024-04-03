@@ -4,7 +4,6 @@ rust_library(
     name = "dal-test",
     deps = [
         "//lib/buck2-resources:buck2-resources",
-        "//lib/council-server:council-server",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
         "//lib/pinga-server:pinga-server",

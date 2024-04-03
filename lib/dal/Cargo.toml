@@ -7,7 +7,6 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-council-server = { path = "../../lib/council-server" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 object-tree = { path = "../../lib/object-tree" }
 si-cbor = { path = "../../lib/si-cbor" }
