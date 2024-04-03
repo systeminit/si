@@ -11,9 +11,12 @@ async fn list_pkgs(ctx: &DalContext) {
     let mut module_names: Vec<String> = modules.iter().map(|m| m.name().to_string()).collect();
     module_names.sort();
 
-    assert_eq!(11, modules.len());
+    assert_eq!(14, modules.len());
 
     let expected_installed_module_names = vec![
+        "BadValidations".to_string(),
+        "ValidatedInput".to_string(),
+        "ValidatedOutput".to_string(),
         "dummy-secret".to_string(),
         "fallout".to_string(),
         "katy perry".to_string(),

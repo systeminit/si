@@ -18,6 +18,7 @@ use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::{
     conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
@@ -671,8 +672,31 @@ impl DalContext {
         self.txns()
             .await?
             .job_queue
-            .enqueue_dependent_values_update(self.change_set_id(), self.access_builder(), ids)
+            .enqueue_attribute_value_job(
+                self.change_set_id(),
+                self.access_builder(),
+                AttributeValueBasedJobIdentifier::DependentValuesUpdate,
+                ids,
+            )
             .await;
+        Ok(())
+    }
+
+    pub async fn enqueue_compute_validations(
+        &self,
+        attribute_value_id: AttributeValueId,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_attribute_value_job(
+                self.change_set_id(),
+                self.access_builder(),
+                AttributeValueBasedJobIdentifier::ComputeValidation,
+                vec![attribute_value_id],
+            )
+            .await;
+
         Ok(())
     }
 

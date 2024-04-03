@@ -28,7 +28,8 @@ pub enum ContentAddress {
     SchemaVariant(ContentHash),
     Secret(ContentHash),
     StaticArgumentValue(ContentHash),
-    ValidationPrototype(ContentHash),
+    ValidationOutput(ContentHash),
+    ValidationPrototype(ContentHash), // TODO(victor): Remove this after module index gets new data
 }
 
 impl ContentAddress {
@@ -52,7 +53,8 @@ impl ContentAddress {
             | ContentAddress::SchemaVariant(id)
             | ContentAddress::Secret(id)
             | ContentAddress::StaticArgumentValue(id)
-            | ContentAddress::ValidationPrototype(id) => Some(*id),
+            | ContentAddress::ValidationPrototype(id)
+            | ContentAddress::ValidationOutput(id) => Some(*id),
         }
         .unwrap_or_default()
     }

@@ -172,6 +172,12 @@ export const useQualificationsStore = () => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
+              eventType: "ChangeSetWritten",
+              callback: () => {
+                this.FETCH_QUALIFICATIONS_SUMMARY();
+              },
+            },
+            {
               eventType: "ComponentUpdated",
               callback: (data) => {
                 if (data.changeSetId === changeSetId) {

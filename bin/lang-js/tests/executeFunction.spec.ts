@@ -3,10 +3,8 @@ import Joi from "joi";
 import {
   describe, expect, test, vi,
 } from "vitest";
-import { values } from "lodash-es";
 import { executeFunction, FunctionKind } from "../src/function";
 import { AnyFunction, RequestCtx } from "../src/request";
-import { JoiValidationFunc } from "../src/function_kinds/joi_validation";
 
 let lastLog = "";
 const consoleSpy = vi.spyOn(console, "log").mockImplementation((msg) => {
@@ -146,7 +144,7 @@ const scenarios: FuncScenario[] = [
     result: {
       protocol: "result",
       status: "failure",
-      error: { kind: "JoiValidationFormatError" },
+      error: { kind: "JoiValidationJsonParsingError" },
     },
   },
   {
@@ -167,6 +165,13 @@ const scenarios: FuncScenario[] = [
 ];
 
 describe("executeFunction", () => {
+  test("Name", () => {
+    const format = Joi.number().integer().min(0).max(2)
+      .required();
+    const string = JSON.stringify(format.describe());
+    console.log(string);
+  });
+
   test.each(scenarios)(
     "$name",
     async (scenario) => {

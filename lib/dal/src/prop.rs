@@ -270,6 +270,13 @@ impl PropKind {
             _ => None,
         }
     }
+
+    pub fn is_scalar(&self) -> bool {
+        matches!(
+            self,
+            PropKind::String | PropKind::Boolean | PropKind::Integer
+        )
+    }
 }
 
 impl From<PropKind> for PropSpecKind {
@@ -499,6 +506,7 @@ impl Prop {
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -788,10 +796,7 @@ impl Prop {
         let value = serde_json::to_value(value)?;
 
         let prop = Prop::get_by_id(ctx, prop_id).await?;
-        if !matches!(
-            prop.kind,
-            PropKind::String | PropKind::Boolean | PropKind::Integer
-        ) {
+        if !prop.kind.is_scalar() {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
 

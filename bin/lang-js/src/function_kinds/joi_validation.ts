@@ -60,12 +60,20 @@ async function execute(
 
 const wrapCode = (_: string, __: string) => `
 module.exports = function({ value, validationFormat }, callback) {
+  let definition;
+  try {
+    definition = JSON.parse(validationFormat);
+  } catch (e) {
+    e.name = "JoiValidationJsonParsingError";
+    throw e;
+  }
+
   let schema;
   try {
-    const definition = JSON.parse(validationFormat);
     schema = Joi.build(definition);
   } catch (e) {
     e.name = "JoiValidationFormatError";
+    e.message = e.message.replace("\\"value\\"", "validationFormat")
     throw e;
   }
 

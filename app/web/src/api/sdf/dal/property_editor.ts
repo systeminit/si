@@ -122,7 +122,7 @@ export interface PropertyEditorValue {
   isControlledByAncestor: boolean;
   overridden: boolean;
   ancestorManual: boolean;
-  validations?: ValidationOutput;
+  validation?: ValidationOutput;
   // TODO(Wendy) - we also need the default funcId and funcName for this prop to tell the user the default func that was overriden
 }
 

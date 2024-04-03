@@ -62,8 +62,8 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
-use crate::validation::{Validation, ValidationError};
 use crate::socket::output::OutputSocketError;
+use crate::validation::{ValidationError, ValidationOutput, ValidationOutputNode};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -900,7 +900,7 @@ impl AttributeValue {
         let mut current_attribute_value_id = Some(attribute_value_id);
 
         while let Some(attribute_value_id) = current_attribute_value_id {
-            let empty_value = {
+            let prop_kind = {
                 let prop_id = match AttributeValue::is_for(ctx, attribute_value_id)
                     .await?
                     .prop_id()
@@ -918,20 +918,23 @@ impl AttributeValue {
                         .get_prop_node_weight()?
                 };
 
-                prop_node.kind().empty_value()
+                prop_node.kind()
             };
 
             let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
 
-            // If we have a set value, we don't need to vivify
-            if attribute_value.value.is_some() {
-                return Ok(());
-            } else {
-                Self::set_value(ctx, attribute_value_id, empty_value).await?;
-
-                current_attribute_value_id =
-                    AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
+            // If value is for scalar, just go to parent
+            if !prop_kind.is_scalar() {
+                // if value of non-scalar is set, we're done, else set the empty value
+                if attribute_value.value.is_some() {
+                    return Ok(());
+                } else {
+                    Self::set_value(ctx, attribute_value_id, prop_kind.empty_value()).await?;
+                }
             }
+
+            current_attribute_value_id =
+                AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
         }
 
         Ok(())
@@ -1879,15 +1882,6 @@ impl AttributeValue {
         unprocessed_value: Option<serde_json::Value>,
         func_execution_pk: FuncExecutionPk,
     ) -> AttributeValueResult<()> {
-        let maybe_validation =
-            Validation::compute_for_attribute_value(ctx, attribute_value_id, value.clone()).await?;
-
-        if let Some(validation) = maybe_validation {
-            // TODO store the validation result in the attribute value contents
-            dbg!(&value);
-            dbg!(&validation);
-        }
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let (av_idx, av_node_weight) = {
             let av_idx = workspace_snapshot
@@ -1903,7 +1897,7 @@ impl AttributeValue {
             )
         };
 
-        let content_value: Option<si_events::CasValue> = value.map(Into::into);
+        let content_value: Option<si_events::CasValue> = value.clone().map(Into::into);
         let content_unprocessed_value: Option<si_events::CasValue> =
             unprocessed_value.map(Into::into);
 
@@ -1951,6 +1945,29 @@ impl AttributeValue {
             .add_node(NodeWeight::AttributeValue(new_av_node_weight))
             .await?;
         workspace_snapshot.replace_references(av_idx).await?;
+
+        if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value_id)
+            .await?
+            .is_some()
+        {
+            // TODO(victor) the async job to execute this is already implement, but it races with the
+            // DVU in a way that they overwrite each other. Until this is fixed, we can run validations inline
+            // ctx.enqueue_compute_validations(attribute_value_id).await?;
+
+            let maybe_validation = ValidationOutput::compute_for_attribute_value_and_value(
+                ctx,
+                attribute_value_id,
+                value.clone(),
+            )
+            .await?;
+
+            ValidationOutputNode::upsert_or_wipe_for_attribute_value(
+                ctx,
+                attribute_value_id,
+                maybe_validation.clone(),
+            )
+            .await?;
+        }
 
         Ok(())
     }

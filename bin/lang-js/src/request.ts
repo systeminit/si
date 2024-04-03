@@ -6,7 +6,6 @@ import { ResolverFunc } from "./function_kinds/resolver_function";
 import {
   SchemaVariantDefinitionFunc,
 } from "./function_kinds/schema_variant_definition";
-import { ValidationFunc } from "./function_kinds/validation";
 
 export type AnyFunction =
   | ActionRunFunc
@@ -14,9 +13,7 @@ export type AnyFunction =
   | BeforeFunc
   | ReconciliationFunc
   | ResolverFunc
-  | SchemaVariantDefinitionFunc
-  | ValidationFunc;
-
+  | SchemaVariantDefinitionFunc;
 
 export type Request = AnyFunction &
 RequestCtx & {

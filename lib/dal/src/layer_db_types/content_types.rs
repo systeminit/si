@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{CasValue, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 
+use crate::validation::ValidationStatus;
 use crate::{
     func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
     socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
@@ -38,6 +39,7 @@ pub enum ContentTypes {
     SchemaVariant(SchemaVariantContent),
     Secret(SecretContent),
     StaticArgumentValue(StaticArgumentValueContent),
+    Validation(ValidationContent),
     OutputSocket(OutputSocketContent),
 }
 
@@ -92,6 +94,7 @@ impl_into_content_types!(Schema);
 impl_into_content_types!(SchemaVariant);
 impl_into_content_types!(Secret);
 impl_into_content_types!(StaticArgumentValue);
+impl_into_content_types!(Validation);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -322,7 +325,7 @@ pub struct PropContentV1 {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-    /// A serialized validation format JSON object for the prop.  
+    /// A serialized validation format JSON object for the prop.
     pub validation_format: Option<String>,
 }
 
@@ -385,4 +388,16 @@ pub enum StaticArgumentValueContent {
 pub struct StaticArgumentValueContentV1 {
     pub timestamp: Timestamp,
     pub value: si_events::CasValue,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ValidationContent {
+    V1(ValidationContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ValidationContentV1 {
+    pub timestamp: Timestamp,
+    pub status: ValidationStatus,
+    pub message: Option<String>,
 }

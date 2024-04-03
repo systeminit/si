@@ -44,14 +44,6 @@ impl FuncDispatch for FuncBackendValidation {
         let value = veritech
             .execute_validation(output_tx.clone(), &self.request)
             .await?;
-        let value = match value {
-            FunctionResult::Failure(failure) => FunctionResult::Success(Self::Output {
-                execution_id: failure.execution_id,
-                error: Some(failure.error.message),
-            }),
-            FunctionResult::Success(value) => FunctionResult::Success(value),
-        };
-
         Ok(value)
     }
 }

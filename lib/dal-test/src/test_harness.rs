@@ -1,10 +1,19 @@
+use dal::property_editor::schema::{
+    PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
+};
+use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
+use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
     Component, ComponentId, DalContext, FuncBackendKind, InputSocket, KeyPair, OutputSocket,
     Schema, SchemaVariant, SchemaVariantId, User, UserPk,
 };
+use itertools::enumerate;
+use jwt_simple::prelude::{Deserialize, Serialize};
 use names::{Generator, Name};
+use serde_json::Value;
+use std::collections::HashMap;
 
 pub async fn commit_and_update_snapshot(ctx: &mut DalContext) {
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
@@ -242,4 +251,129 @@ pub async fn encrypt_message(
         public_key.public_key(),
     );
     crypted
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PropEditorTestView {
+    pub prop: PropertyEditorProp,
+    pub value: PropertyEditorValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<HashMap<String, PropEditorTestView>>,
+}
+#[allow(dead_code)]
+impl PropEditorTestView {
+    fn get_view(&self, prop_path: &[&str]) -> Value {
+        let mut value = serde_json::to_value(self).expect("convert UnifiedViewItem to json Value");
+
+        // "root" is necessary for compatibility with other prop apis, but we skip it here
+        for &prop_name in prop_path.iter().skip(1) {
+            value = value
+                .get("children")
+                .expect("get children entry of PropEditorView")
+                .get(prop_name)
+                .expect("get child entry of PropEditorView")
+                .clone();
+        }
+
+        value
+    }
+
+    pub fn get_prop(&self, prop_path: &[&str]) -> Value {
+        let view = self.get_view(prop_path);
+        view.get("prop").expect("get prop field of view").clone()
+    }
+    pub fn get_value(&self, prop_path: &[&str]) -> Value {
+        let view = self.get_view(prop_path);
+        view.get("value").expect("get prop field of view").clone()
+    }
+
+    pub async fn for_component_id(ctx: &DalContext, component_id: ComponentId) -> Self {
+        let sv_id = Component::schema_variant_id(ctx, component_id)
+            .await
+            .expect("get schema variant from component");
+
+        let PropertyEditorValues {
+            root_value_id,
+            values,
+            child_values,
+        } = PropertyEditorValues::assemble(ctx, component_id)
+            .await
+            .expect("assemble property editor values");
+
+        let PropertyEditorSchema { props, .. } = PropertyEditorSchema::assemble(ctx, sv_id)
+            .await
+            .expect("assemble property editor schema");
+
+        let root_view = {
+            let value = values
+                .get(&root_value_id)
+                .expect("get property editor root value")
+                .clone();
+
+            let prop = props.get(&value.prop_id).expect("get property editor prop");
+
+            PropEditorTestView {
+                prop: prop.clone(),
+                value,
+                children: Self::property_editor_compile_children(
+                    root_value_id,
+                    &prop.kind,
+                    &values,
+                    &child_values,
+                    &props,
+                ),
+            }
+        };
+
+        root_view
+    }
+
+    fn property_editor_compile_children(
+        parent_value_id: PropertyEditorValueId,
+        parent_prop_kind: &PropertyEditorPropKind,
+        values: &HashMap<PropertyEditorValueId, PropertyEditorValue>,
+        child_values: &HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
+        props: &HashMap<PropertyEditorPropId, PropertyEditorProp>,
+    ) -> Option<HashMap<String, PropEditorTestView>> {
+        let mut children = HashMap::new();
+
+        for (index, child_id) in enumerate(
+            child_values
+                .get(&parent_value_id)
+                .expect("get prop editor value children"),
+        ) {
+            let value = values
+                .get(child_id)
+                .expect("get property editor root value")
+                .clone();
+
+            let prop = props.get(&value.prop_id).expect("get property editor prop");
+
+            let key = match parent_prop_kind {
+                PropertyEditorPropKind::Array => index.to_string(),
+                PropertyEditorPropKind::Map => value.key.clone().unwrap_or("ERROR".to_string()),
+                _ => prop.name.clone(),
+            };
+
+            let child = PropEditorTestView {
+                prop: prop.clone(),
+                value,
+                children: Self::property_editor_compile_children(
+                    *child_id,
+                    &prop.kind,
+                    values,
+                    child_values,
+                    props,
+                ),
+            };
+
+            children.insert(key, child);
+        }
+
+        if children.is_empty() {
+            None
+        } else {
+            Some(children)
+        }
+    }
 }

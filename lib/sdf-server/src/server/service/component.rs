@@ -5,9 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::property_editor::PropertyEditorError;
+use dal::validation::ValidationError;
 use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
-use dal::validation::ValidationError;
 use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
 use thiserror::Error;
@@ -18,7 +18,6 @@ pub mod delete_property_editor_value;
 pub mod get_actions;
 pub mod get_diff;
 pub mod get_property_editor_schema;
-pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod get_resource;
 pub mod insert_property_editor_value;
@@ -150,10 +149,6 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
-        )
-        .route(
-            "/get_property_editor_validations",
-            get(get_property_editor_validations::get_property_editor_validations),
         )
         .route(
             "/list_qualifications",

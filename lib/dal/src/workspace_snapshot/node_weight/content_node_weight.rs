@@ -143,6 +143,7 @@ impl ContentNodeWeight {
             ContentAddress::ValidationPrototype(_) => {
                 ContentAddress::ValidationPrototype(content_hash)
             }
+            ContentAddress::ValidationOutput(_) => ContentAddress::ValidationOutput(content_hash),
         };
 
         self.content_address = new_address;

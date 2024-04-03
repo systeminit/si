@@ -736,10 +736,27 @@ const newMapChildKey = ref("");
 const currentValue = computed(() => props.attributeDef.value?.value);
 const newValueBoolean = ref<boolean>();
 const newValueString = ref<string>("");
-const newValueNumber = ref<number>();
-const noValue = computed(
-  () => currentValue.value === null && newValueString.value === "",
-);
+// The input may set the value to an empty string instead of null or undefined when the input is deleted
+const newValueNumber = ref<number | null | "">();
+
+const instantValue = computed(() => {
+  switch (widgetKind.value) {
+    case "integer":
+      if (newValueNumber.value === "") {
+        return null;
+      } else {
+        return newValueNumber.value;
+      }
+    case "checkbox":
+      return newValueBoolean.value;
+    default:
+      return newValueString.value.trim();
+  }
+});
+
+const noValue = computed(() => {
+  return instantValue.value === null && newValueString.value === "";
+});
 const iconShouldBeHidden = computed(
   () => icon.value === "input-type-select" || icon.value === "check",
 );
@@ -886,7 +903,7 @@ function removeChildHandler() {
   });
 }
 
-const validation = computed(() => props.attributeDef?.validations);
+const validation = computed(() => props.attributeDef?.validation);
 
 function getKey() {
   if (isChildOfMap.value) return props.attributeDef?.mapKey;
@@ -929,8 +946,11 @@ function updateValue() {
     // special handling for empty value + false
     if (newVal === false && !currentValue.value) skipUpdate = true;
   } else if (propKind.value === "integer") {
-    // There is no such thing as an integer widget kind!
-    newVal = newValueNumber.value;
+    if (newValueNumber.value === "") {
+      newVal = null;
+    } else {
+      newVal = newValueNumber.value;
+    }
   } else {
     // for now, we will always trim, but we need to be smarter about this
     // meaning have options, and more generally have some cleaning / coercion logic...

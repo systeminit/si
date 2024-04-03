@@ -62,7 +62,7 @@ export type AttributeTreeItem = {
   value: PropertyEditorValue | undefined;
   valueId: string;
   parentValueId: string;
-  validations: ValidationOutput | null;
+  validation: ValidationOutput | null;
   propId: string;
   mapKey?: string;
   arrayKey?: string;
@@ -113,8 +113,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const value = valuesByValueId![valueId]!;
 
               const propDef = propsByPropId![value.propId as any];
-              const validations: ValidationOutput | null =
-                value?.validations ?? null;
+              const validation = value?.validation ?? null;
 
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
@@ -132,7 +131,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 value,
                 valueId,
                 parentValueId,
-                validations,
+                validation,
                 // using isNil because its actually null (not undefined)
                 ...(indexInParentArray === undefined &&
                   !_.isNil(value.key) && { mapKey: value.key }),

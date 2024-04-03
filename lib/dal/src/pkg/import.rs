@@ -4,6 +4,7 @@ use si_pkg::{
     SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
+use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
@@ -165,15 +166,26 @@ async fn import_change_set(
 
     let mut installed_schema_variant_ids = vec![];
 
+    let mut unseen: HashSet<String> = options
+        .schemas
+        .clone()
+        .unwrap_or_default()
+        .iter()
+        .cloned()
+        .collect();
     for schema_spec in schemas {
+        let normalized_name = &schema_spec.name().to_string().to_lowercase();
+
         match &options.schemas {
             None => {}
             Some(schemas) => {
-                if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
+                if !schemas.contains(normalized_name) {
                     continue;
                 }
             }
         }
+
+        unseen.remove(normalized_name);
 
         info!(
             "installing schema '{}' from {}",
@@ -191,6 +203,14 @@ async fn import_change_set(
         .await?;
 
         installed_schema_variant_ids.extend(schema_variant_ids);
+    }
+
+    for schema_name in unseen {
+        error!(
+            "options specified schema '{}', but it's not present on {}",
+            schema_name,
+            metadata.name(),
+        );
     }
 
     // let mut component_attribute_skips = vec![];

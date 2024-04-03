@@ -157,9 +157,11 @@ impl AttributePrototypeDebugView {
                                     PropPath::new(["Input Socket", inputsock.name()])
                                 }
                                 ValueIsFor::Prop(_) => {
-                                    let prop_id =
-                                        AttributeValue::prop_id_for_id(ctx, attribute_value.id())
-                                            .await?;
+                                    let prop_id = AttributeValue::prop_id_for_id_or_error(
+                                        ctx,
+                                        attribute_value.id(),
+                                    )
+                                    .await?;
                                     Prop::path_by_id(ctx, prop_id).await?
                                 }
                                 ValueIsFor::OutputSocket(_) => continue,

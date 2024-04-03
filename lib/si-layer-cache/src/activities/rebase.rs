@@ -138,6 +138,7 @@ impl<'a> ActivityRebase<'a> {
             onto_vector_clock_id,
         );
         let activity = Activity::rebase(payload, metadata);
+        // println!("trigger: sending rebase and waiting for response");
         debug!(?activity, "sending rebase and waiting for response");
 
         // Why is this in two? We want to start listening before the publish call, to ensure we
@@ -149,6 +150,8 @@ impl<'a> ActivityRebase<'a> {
         self.activity_base.publish(&activity).await?;
         let rebase_finished_activity = join_handle.await??;
         debug!(?rebase_finished_activity, elapsed = ?start.elapsed(), "received rebase finished");
+        // println!("trigger: done rebase");
+
         Ok(rebase_finished_activity)
     }
 
