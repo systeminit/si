@@ -1,4 +1,5 @@
 use std::{collections::HashMap, fmt::Display, path::Path, sync::Arc};
+use telemetry::prelude::*;
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
