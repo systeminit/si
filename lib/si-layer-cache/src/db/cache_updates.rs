@@ -29,28 +29,32 @@ use crate::{
 enum CacheName {
     Cas,
     EncryptedSecret,
+    NodeWeights,
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
     messages: ChunkedMessagesStream,
     cas_cache: LayerCache<Arc<CasValue>>,
     encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+    node_weight_cache: LayerCache<Arc<NodeWeightValue>>,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
+    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
@@ -60,6 +64,7 @@ where
         cas_cache: LayerCache<Arc<CasValue>>,
         encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+        node_weight_cache: LayerCache<Arc<NodeWeightValue>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
         let context = jetstream::new(nats_client.as_inner().clone());
@@ -79,6 +84,7 @@ where
             cas_cache,
             encrypted_secret_cache,
             snapshot_cache,
+            node_weight_cache,
         })
     }
 
@@ -94,6 +100,7 @@ where
                         self.cas_cache.clone(),
                         self.encrypted_secret_cache.clone(),
                         self.snapshot_cache.clone(),
+                        self.node_weight_cache.clone(),
                     );
 
                     tokio::task::spawn(async move { cache_update_task.run(msg).await });
@@ -123,35 +130,40 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R, S>
+struct CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     instance_id: Ulid,
     cas_cache: LayerCache<Arc<Q>>,
     encrypted_secret_cache: LayerCache<Arc<R>>,
     snapshot_cache: LayerCache<Arc<S>>,
+    node_weight_cache: LayerCache<Arc<T>>,
 }
 
-impl<Q, R, S> CacheUpdateTask<Q, R, S>
+impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     fn new(
         instance_id: Ulid,
         cas_cache: LayerCache<Arc<Q>>,
         encrypted_secret_cache: LayerCache<Arc<R>>,
         snapshot_cache: LayerCache<Arc<S>>,
-    ) -> CacheUpdateTask<Q, R, S> {
+        node_weight_cache: LayerCache<Arc<T>>,
+    ) -> CacheUpdateTask<Q, R, S, T> {
         CacheUpdateTask {
             instance_id,
             cas_cache,
             encrypted_secret_cache,
             snapshot_cache,
+            node_weight_cache,
         }
     }
 
@@ -218,6 +230,23 @@ where
                                     let serialized_value = Arc::try_unwrap(event.payload.value)
                                         .unwrap_or_else(|arc| (*arc).clone());
                                     self.snapshot_cache
+                                        .insert_from_cache_updates(
+                                            key.into(),
+                                            memory_value,
+                                            serialized_value,
+                                        )
+                                        .await?;
+                                }
+                            }
+                            CacheName::NodeWeights => {
+                                if !self.node_weight_cache.contains(key) {
+                                    let event: LayeredEvent = postcard::from_bytes(&msg.payload)?;
+                                    let memory_value = self
+                                        .node_weight_cache
+                                        .deserialize_memory_value(&event.payload.value)?;
+                                    let serialized_value = Arc::try_unwrap(event.payload.value)
+                                        .unwrap_or_else(|arc| (*arc).clone());
+                                    self.node_weight_cache
                                         .insert_from_cache_updates(
                                             key.into(),
                                             memory_value,

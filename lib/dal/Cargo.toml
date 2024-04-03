@@ -69,5 +69,6 @@ veritech-client = { path = "../../lib/veritech-client" }
 
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
+si-events = { path = "../../lib/si-events-rs" }
 tempfile = { workspace = true }
 tokio-util = { workspace = true }

@@ -350,7 +350,11 @@ impl Prop {
             .first()
         {
             Some(parent_node_idx) => Ok(
-                match workspace_snapshot.get_node_weight(*parent_node_idx).await? {
+                match workspace_snapshot
+                    .get_node_weight(*parent_node_idx)
+                    .await?
+                    .as_ref()
+                {
                     NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
                     NodeWeight::Content(content_inner) => {
                         let content_addr_discrim: ContentAddressDiscriminants =
@@ -436,7 +440,7 @@ impl Prop {
                 let node_idx = workspace_snapshot.get_node_index_by_id(prop_id).await?;
 
                 if let NodeWeight::Prop(inner) =
-                    workspace_snapshot.get_node_weight(node_idx).await?
+                    workspace_snapshot.get_node_weight(node_idx).await?.as_ref()
                 {
                     parts.push_front(inner.name().to_owned());
                     work_queue.push_back(inner.id().into());
@@ -488,6 +492,7 @@ impl Prop {
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
+    #[instrument(level = "debug", skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -616,6 +621,7 @@ impl Prop {
             if let NodeWeight::Prop(prop_inner) = workspace_snapshot
                 .get_node_weight(maybe_elem_node_idx)
                 .await?
+                .as_ref()
             {
                 return Ok(prop_inner.id().into());
             }
@@ -638,8 +644,10 @@ impl Prop {
             )
             .await?
         {
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_node_index).await?
+            if let NodeWeight::Prop(prop_inner) = workspace_snapshot
+                .get_node_weight(prop_node_index)
+                .await?
+                .as_ref()
             {
                 if prop_inner.name() == child_name.as_ref() {
                     return Ok(prop_node_index);
@@ -653,6 +661,7 @@ impl Prop {
         ))
     }
 
+    #[instrument(level = "info", skip_all)]
     pub async fn find_prop_id_by_path_opt(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
