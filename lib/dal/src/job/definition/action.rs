@@ -142,7 +142,6 @@ impl JobConsumer for ActionsJob {
                     action_items.push(item.clone());
                 }
             }
-            let should_blocking_commit = actions.len() != action_items.len();
 
             debug!(
                 ?actions,
@@ -190,7 +189,6 @@ impl JobConsumer for ActionsJob {
                         self.batch_id,
                         action_item,
                         Span::current(),
-                        should_blocking_commit,
                     ))
                     .await;
                     (id, res)
@@ -333,7 +331,6 @@ async fn action_task(
     batch_id: ActionBatchId,
     action_item: ActionRunnerItem,
     parent_span: Span,
-    should_blocking_commit: bool,
 ) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
     // Get the workflow for the action we need to run.
     let component = Component::get_by_id(&ctx, action_item.component_id).await?;
@@ -367,20 +364,8 @@ async fn action_task(
     .publish_on_commit(&ctx)
     .await?;
 
-    // Commit progress so far, and wait for dependent values propagation so we can run
-    // consecutive actions that depend on the /root/resource from the previous action.
-    // `blocking_commit()` will wait for any jobs that have ben created through
-    // `enqueue_job(...)` to finish before moving on.
-    if should_blocking_commit {
-        ctx.blocking_commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-    } else {
-        if ctx.blocking() {
-            warn!("Blocked on commit that should not block of action definition");
-        }
-        ctx.commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-    }
+    ctx.blocking_commit().await?;
+    ctx.update_snapshot_to_visibility().await?;
 
     if matches!(completion_status, ActionCompletionStatus::Success) {
         if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
