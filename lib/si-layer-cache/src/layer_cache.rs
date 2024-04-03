@@ -55,7 +55,6 @@ where
                 Err(_) => match self.pg.get(&key).await? {
                     Some(value) => {
                         let deserialized: V = postcard::from_bytes(&value)?;
-                        info!("hitting pg");
 
                         self.memory_cache
                             .insert(key.clone(), deserialized.clone())

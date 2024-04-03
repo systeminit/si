@@ -54,6 +54,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
+use tokio::time::Instant;
 
 use ulid::Ulid;
 
@@ -343,9 +344,11 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+        let write_start = Instant::now();
         // Pull out the working copy and clean it up.
         let new_address = {
             self.cleanup().await?;
+            self.calculate_entire_merkle_tree_hash().await?;
 
             // Mark everything left as seen.
             self.mark_graph_seen(vector_clock_id).await?;
@@ -364,6 +367,8 @@ impl WorkspaceSnapshot {
             if let PersistStatus::Error(e) = status_reader.get_status().await? {
                 return Err(e)?;
             }
+
+            info!("write took: {:?}", write_start.elapsed());
 
             new_address
         };
@@ -410,19 +415,11 @@ impl WorkspaceSnapshot {
     pub async fn add_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let node_id = node.id();
         let node_arc = Arc::new(node);
-        let (hash, _) = self
-            .node_weight_db
-            .write(
-                node_arc.clone(),
-                None,
-                self.events_tenancy(),
-                self.events_actor(),
-            )
-            .await?;
+        let hash = self.node_weight_db.mem_write(node_arc.clone()).await?;
 
         let maybe_existing_node_index = self.get_node_index_by_id_opt(node_id).await;
         let new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
-        self.update_merkle_tree_hash(new_node_index).await?;
+        // self.update_merkle_tree_hash(new_node_index).await?;
 
         // If we are replacing an existing node, we need to replace all references to it
         if let Some(existing_node_index) = maybe_existing_node_index {
@@ -529,7 +526,7 @@ impl WorkspaceSnapshot {
         self.working_copy_mut()
             .await
             .add_edge(new_from_node_index, edge_weight, to_node_index)?;
-        self.update_merkle_tree_hash(new_from_node_index).await?;
+        // self.update_merkle_tree_hash(new_from_node_index).await?;
         self.replace_references(from_node_index).await?;
 
         Ok(())
@@ -547,7 +544,7 @@ impl WorkspaceSnapshot {
             self.working_copy_mut()
                 .await
                 .add_edge(from_node_index, edge_weight, to_node_index)?;
-        self.update_merkle_tree_hash(from_node_index).await?;
+        // self.update_merkle_tree_hash(from_node_index).await?;
 
         Ok(edge_index)
     }
@@ -1153,7 +1150,7 @@ impl WorkspaceSnapshot {
                     );
                 }
 
-                self.update_merkle_tree_hash(new_node_idx).await?;
+                // self.update_merkle_tree_hash(new_node_idx).await?;
             }
         }
 
@@ -1273,7 +1270,7 @@ impl WorkspaceSnapshot {
             .working_copy_mut()
             .await
             .add_node(remote_node_weight, local_weight.address())?;
-        self.update_merkle_tree_hash(node_index).await?;
+        // self.update_merkle_tree_hash(node_index).await?;
 
         Ok(node_index)
     }
@@ -2035,13 +2032,13 @@ impl WorkspaceSnapshot {
         let mut work_queue = VecDeque::from([source_node_index]);
 
         while let Some(node_index) = work_queue.pop_front() {
-            self.update_merkle_tree_hash(
-                // If we updated the ordering node, that means we've invalidated the container's
-                // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
-                // to update the container's merkle tree hash.
-                node_index,
-            )
-            .await?;
+            // self.update_merkle_tree_hash(
+            //     // If we updated the ordering node, that means we've invalidated the container's
+            //     // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
+            //     // to update the container's merkle tree hash.
+            //     node_index,
+            // )
+            // .await?;
 
             for edge_ref in self
                 .working_copy()
@@ -2051,6 +2048,32 @@ impl WorkspaceSnapshot {
                 work_queue.push_back(edge_ref.source());
             }
         }
+
+        Ok(())
+    }
+
+    pub async fn calculate_entire_merkle_tree_hash(&self) -> WorkspaceSnapshotResult<()> {
+        let start = Instant::now();
+        let mut dfs = petgraph::visit::DfsPostOrder::new(
+            self.working_copy().await.graph(),
+            self.root().await?,
+        );
+
+        let mut dfs_order_node_indexes: Vec<NodeIndex> = vec![];
+
+        // these have to be gathered up first so we're not hanging onto a read lock
+        while let Some(node_index) = dfs.next(self.working_copy().await.graph()) {
+            dfs_order_node_indexes.push(node_index);
+        }
+
+        for node_index in &dfs_order_node_indexes {
+            self.update_merkle_tree_hash(*node_index).await?;
+        }
+        info!(
+            "merkle tree hash calculation for {} nodes took: {:?}",
+            dfs_order_node_indexes.len(),
+            start.elapsed()
+        );
 
         Ok(())
     }
