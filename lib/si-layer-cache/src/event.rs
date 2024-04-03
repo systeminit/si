@@ -59,6 +59,7 @@ impl std::str::FromStr for LayeredEventId {
 pub enum LayeredEventKind {
     CasInsertion,
     EncryptedSecretInsertion,
+    NodeWeightWrite,
     Raw,
     SnapshotWrite,
 }

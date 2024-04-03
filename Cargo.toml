@@ -94,7 +94,7 @@ directories = "5.0.1"
 docker-api = "0.14.0"
 dyn-clone = "1.0.17"
 flate2 = "1.0.28"
-futures = "0.3.30"
+futures = {version = "0.3.30", features = ["executor"]}
 futures-lite = "2.3.0"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
