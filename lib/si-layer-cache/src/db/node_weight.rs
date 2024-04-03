@@ -36,6 +36,16 @@ where
         }
     }
 
+    pub async fn mem_write(&self, value: Arc<V>) -> LayerDbResult<NodeWeightAddress> {
+        let postcard_value = postcard::to_stdvec(&value)?;
+        let key = NodeWeightAddress::new(&postcard_value);
+        let cache_key: Arc<str> = key.to_string().into();
+
+        self.cache.memory_cache().insert(cache_key, value).await;
+
+        Ok(key)
+    }
+
     pub async fn write(
         &self,
         value: Arc<V>,

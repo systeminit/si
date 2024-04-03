@@ -484,6 +484,11 @@ async fn update_content(ctx: DalContext) {
         .await
         .expect("Unable to add component -> schema variant edge");
 
+    graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("should be able to calculate the merkle tree hash");
+
     // Ensure that the root node merkle tree hash looks as we expect before the update.
     let pre_update_root_node_merkle_tree_hash = MerkleTreeHash::from_str(
         "6b3b0374a25049046f34d6c7e98f890387a963249aaace3d66bb47ce70399033",
@@ -503,6 +508,11 @@ async fn update_content(ctx: DalContext) {
         .update_content(change_set, component_id, updated_content_hash)
         .await
         .expect("Unable to update Component content hash");
+
+    graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("should be able to calculate the merkle tree hash");
 
     let post_update_root_node_merkle_tree_hash = MerkleTreeHash::from_str(
         "46babffabf1567fd20594c7038cfea58991b394b8eb6cc1f81167d2314617e35",
@@ -658,6 +668,15 @@ async fn detect_conflicts_and_updates_simple_no_conflicts_no_updates_in_base(ctx
 
     // new_graph.dot();
 
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mthash");
+    empty_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
             new_change_set.vector_clock_id(),
@@ -774,6 +793,15 @@ async fn detect_conflicts_and_updates_simple_no_conflicts_with_purely_new_conten
     println!("Updated base graph (Root: {:?}):", new_root_id);
     // base_graph.dot();
 
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
             new_change_set.vector_clock_id(),
@@ -875,6 +903,14 @@ async fn detect_conflicts_and_updates_with_purely_new_content_in_new_graph(ctx: 
     new_graph.cleanup().await.expect("should clean up");
     println!("Updated new graph (Root: {:?}):", new_root_id);
     // new_graph.dot();
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
@@ -1053,7 +1089,14 @@ async fn detect_conflicts_and_updates_simple_no_conflicts_with_updates_on_both_s
         .expect("Unable to add component -> schema variant edge");
 
     println!("Updated base graph (Root: {:?}):", base_root_id);
-    // base_graph.dot();
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
@@ -1209,39 +1252,19 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
     // new_graph.dot();
 
     base_graph.cleanup().await.expect("should clean up");
-    let base_root_id = base_graph.root_id().await.expect("should get root id");
-    println!("==========================");
-    println!("Updated base graph (Root: {:?}):", base_root_id);
-    dbg!(base_graph
-        .get_node_weight(base_graph.root().await.expect("..."))
-        .await
-        .expect("get root"));
-    dbg!(
-        new_root_id,
-        base_graph
-            .get_graph_local_node_weight(new_root_id)
-            .await
-            .expect("get graph local node weight"),
-        base_graph
-            .get_node_index_by_id(new_root_id)
-            .await
-            .expect(".."),
-    );
-    dbg!(
-        new_root_id,
-        new_graph
-            .get_graph_local_node_weight(new_root_id)
-            .await
-            .expect("get graph local node weight"),
-        new_graph
-            .get_node_index_by_id(new_root_id)
-            .await
-            .expect(".."),
-    );
 
     // base_graph.tiny_dot_to_file(Some("base_graph")).await;
     // new_graph.tiny_dot_to_file(Some("new_graph")).await;
     //
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
             new_change_set.vector_clock_id(),
@@ -1387,6 +1410,15 @@ async fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict(c
         .expect("Unable to update Component A");
 
     new_graph.cleanup().await.expect("should clean up");
+
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
@@ -1622,6 +1654,10 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
         .expect("Unable to add component -> schema variant edge");
 
     base_graph.cleanup().await.expect("should clean up");
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("should calculate entire merkle tree hash");
 
     // Create a new change set to cause some problems!
     let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -1646,6 +1682,11 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
         )
         .await
         .expect("Unable to update the component");
+
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("should calculate mth");
 
     // Create a node content conflict.
     base_graph
@@ -1674,6 +1715,11 @@ async fn detect_conflicts_and_updates_complex(ctx: &DalContext) {
         )
         .await
         .expect("Unable to update the schema");
+
+    base_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("should be able to calculate merkle tree hash");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
@@ -2304,6 +2350,15 @@ async fn remove_unordered_node_and_detect_edge_removal(ctx: &DalContext) {
         existing_edges,
         "confirm edges after deletion"
     );
+
+    graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    graph_with_deleted_edge
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     graph_with_deleted_edge
         .mark_graph_seen(new_change_set.vector_clock_id())
@@ -3170,6 +3225,15 @@ async fn detect_conflicts_and_updates_simple_ordering_no_conflicts_with_updates_
 
     // new_graph.dot();
 
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    empty_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
             new_change_set.vector_clock_id(),
@@ -3466,6 +3530,15 @@ async fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_
         .await
         .expect("Unable to add container prop -> ordered prop 5 edge");
     // new_graph.dot();
+
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    empty_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
@@ -3793,6 +3866,15 @@ async fn detect_conflicts_and_updates_simple_ordering_with_no_conflicts_add_in_o
 
     new_graph.cleanup().await.expect("should clean up");
     // new_graph.dot();
+
+    new_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
+    empty_graph
+        .calculate_entire_merkle_tree_hash()
+        .await
+        .expect("calculate mth");
 
     let (conflicts, updates) = new_graph
         .detect_conflicts_and_updates(
