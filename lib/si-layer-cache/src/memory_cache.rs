@@ -1,7 +1,11 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
+
+const DEFAULT_SIZE: u64 = 65_536;
+const DEFAULT_TTL: Duration = Duration::from_secs(60 * 60 * 24 * 2);
+const DEFAULT_TTI: Duration = Duration::from_secs(60 * 60 * 24);
 
 #[derive(Clone, Debug)]
 pub struct MemoryCache<V>
@@ -26,7 +30,11 @@ where
 {
     pub fn new() -> Self {
         Self {
-            cache: Cache::new(u64::MAX),
+            cache: Cache::builder()
+                .max_capacity(DEFAULT_SIZE)
+                .time_to_idle(DEFAULT_TTI)
+                .time_to_live(DEFAULT_TTL)
+                .build(),
         }
     }
 

@@ -63,6 +63,7 @@ pub(crate) async fn perform_rebase(
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
+    let detect_start = Instant::now();
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
@@ -74,13 +75,14 @@ pub(crate) async fn perform_rebase(
         "count: conflicts ({}) and updates ({}), {:?}",
         conflicts.len(),
         updates.len(),
-        start.elapsed()
+        detect_start.elapsed()
     );
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
     let message: RebaseStatus = if conflicts.is_empty() {
         // TODO(nick): store the offset with the change set.
+        let update_start = Instant::now();
         to_rebase_workspace_snapshot
             .perform_updates(
                 &to_rebase_change_set,
@@ -88,7 +90,7 @@ pub(crate) async fn perform_rebase(
                 updates.as_slice(),
             )
             .await?;
-        info!("updates complete: {:?}", start.elapsed());
+        info!("updates complete: {:?}", update_start.elapsed());
 
         if !updates.is_empty() {
             // Once all updates have been performed, we can write out, mark everything as recently seen

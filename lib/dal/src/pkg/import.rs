@@ -61,6 +61,8 @@ pub struct ImportOptions {
 const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
+#[instrument(level = "info", skip_all)]
 async fn import_change_set(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
@@ -1740,6 +1742,7 @@ async fn import_func_arguments(
     Ok(())
 }
 
+#[instrument(level = "info", skip_all)]
 async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
     let schema = Schema::new(ctx, schema_spec_data.name())
         .await?
@@ -1780,6 +1783,7 @@ async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> 
 //     Ok(())
 // }
 
+#[instrument(level = "debug", skip_all)]
 async fn import_schema(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
@@ -2359,6 +2363,7 @@ impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
     }
 }
 
+#[instrument(level = "info", skip_all)]
 async fn create_props(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
@@ -2367,6 +2372,7 @@ async fn create_props(
     prop_root_prop_id: PropId,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<CreatePropsSideEffects> {
+    // info!("creating prop");
     let context = PropVisitContext {
         ctx,
         schema_variant_id,
@@ -2416,6 +2422,7 @@ async fn create_props(
 //     Ok(())
 // }
 
+#[instrument(level = "info", skip_all)]
 async fn import_schema_variant(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
@@ -2425,6 +2432,7 @@ async fn import_schema_variant(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<SchemaVariant>> {
+    // info!("installing schema variant");
     let schema_variant = match change_set_id {
         None => {
             let mut existing_schema_variant: Option<SchemaVariant> = None;
@@ -2558,6 +2566,8 @@ async fn import_schema_variant(
             )
             .await?;
 
+            // info!("creating domain");
+
             side_effects.extend(
                 create_props(
                     ctx,
@@ -2595,6 +2605,7 @@ async fn import_schema_variant(
                 &PropPath::new(["root", "secrets"]),
             )
             .await?;
+            // info!("creating secrets");
 
             side_effects.extend(
                 create_props(
@@ -2612,6 +2623,7 @@ async fn import_schema_variant(
                 let root_prop_id =
                     Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))
                         .await?;
+                // info!("creating secret defs");
 
                 let secret_definition_prop = Prop::new(
                     ctx,
@@ -2624,6 +2636,7 @@ async fn import_schema_variant(
                 )
                 .await?;
                 let secret_definition_prop_id = secret_definition_prop.id();
+                // info!("creating secret defs props");
 
                 side_effects.extend(
                     create_props(
@@ -2637,12 +2650,15 @@ async fn import_schema_variant(
                     .await?,
                 );
             }
+            // info!("finalizing");
 
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
+            // info!("importing sockets");
             for socket in variant_spec.sockets()? {
                 import_socket(ctx, change_set_id, socket, schema_variant.id(), thing_map).await?;
             }
+            // info!("importing action funcs");
 
             for action_func in &variant_spec.action_funcs()? {
                 let prototype = import_action_func(
@@ -2663,6 +2679,7 @@ async fn import_schema_variant(
                 }
             }
 
+            // info!("importing auth funcs");
             for auth_func in &variant_spec.auth_funcs()? {
                 let prototype = import_auth_func(
                     ctx,
@@ -2682,6 +2699,8 @@ async fn import_schema_variant(
                 }
             }
 
+            // info!("importing leaf funcs");
+
             for leaf_func in variant_spec.leaf_functions()? {
                 import_leaf_function(
                     ctx,
@@ -2692,6 +2711,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
+            // info!("setting default values");
 
             // Default values must be set before attribute functions are configured so they don't
             // override the prototypes set there
@@ -2716,6 +2736,7 @@ async fn import_schema_variant(
                 set_default_value(ctx, name_default_value_info).await?;
             }
 
+            // info!("configuring si_prop_funcs");
             for si_prop_func in variant_spec.si_prop_funcs()? {
                 let prop_id = Prop::find_prop_id_by_path(
                     ctx,
@@ -2741,6 +2762,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
+            // info!("configuring root prop funcs");
 
             let mut has_resource_value_func = false;
             for root_prop_func in variant_spec.root_prop_funcs()? {
@@ -2775,6 +2797,7 @@ async fn import_schema_variant(
             if !has_resource_value_func {
                 attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
             }
+            // info!("configuring attr funcs");
 
             for attr_func in side_effects.attr_funcs {
                 import_attr_func_for_prop(
@@ -2788,6 +2811,7 @@ async fn import_schema_variant(
                 .await?;
             }
 
+            // info!("configuring map key funcs");
             for (key, map_key_func) in side_effects.map_key_funcs {
                 import_attr_func_for_prop(
                     ctx,
@@ -2799,6 +2823,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
+            // info!("done");
 
             Some(schema_variant)
         }
@@ -3208,6 +3233,7 @@ async fn create_prop(
     parent_prop_info: Option<ParentPropInfo>,
     ctx: &PropVisitContext<'_>,
 ) -> PkgResult<Option<ParentPropInfo>> {
+    // info!("creating prop");
     let prop = match ctx.change_set_id {
         None => {
             let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
@@ -3244,6 +3270,8 @@ async fn create_prop(
             }
         }
     };
+
+    // info!("created prop");
 
     let prop_id = prop.id();
 
@@ -3323,6 +3351,8 @@ async fn create_prop(
             inputs: inputs.drain(..).map(Into::into).collect(),
         });
     }
+
+    // info!("done with create prop side effect creation");
 
     Ok(Some(ParentPropInfo {
         prop_id: prop.id(),

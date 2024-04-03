@@ -1,15 +1,16 @@
-pub mod content_hash;
-pub mod workspace_snapshot_address;
-
 mod actor;
 mod cas;
+pub mod content_address;
 mod encrypted_secret;
 mod tenancy;
 mod web_event;
 
 pub use crate::{
-    actor::Actor, actor::UserPk, cas::CasValue, content_hash::ContentHash,
-    encrypted_secret::EncryptedSecretKey, tenancy::ChangeSetId, tenancy::Tenancy,
-    tenancy::WorkspacePk, web_event::WebEvent,
-    workspace_snapshot_address::WorkspaceSnapshotAddress,
+    actor::Actor, actor::UserPk, cas::CasValue, encrypted_secret::EncryptedSecretKey,
+    tenancy::ChangeSetId, tenancy::Tenancy, tenancy::WorkspacePk, web_event::WebEvent,
 };
+
+content_address!(ContentHash);
+content_address!(WorkspaceSnapshotAddress);
+content_address!(NodeWeightAddress);
+content_address!(MerkleTreeHash);

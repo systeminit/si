@@ -239,7 +239,7 @@ impl SchemaVariant {
         while let Some((prop_id, maybe_parent_path)) = work_queue.pop_front() {
             let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id).await?;
 
-            match node_weight {
+            match node_weight.as_ref() {
                 NodeWeight::Prop(prop_inner) => {
                     let name = prop_inner.name();
 
@@ -496,7 +496,7 @@ impl SchemaVariant {
         for index in edge_targets {
             let node_weight = workspace_snapshot.get_node_weight(index).await?;
             // TODO(nick): ensure that only one prop can be under a schema variant.
-            if let NodeWeight::Prop(inner_weight) = node_weight {
+            if let NodeWeight::Prop(inner_weight) = node_weight.as_ref() {
                 if inner_weight.name() == "root" {
                     return Ok(inner_weight.clone());
                 }
@@ -560,47 +560,8 @@ impl SchemaVariant {
                 .await?;
             for target in targets {
                 let node_weight = workspace_snapshot.get_node_weight(target).await?;
-                if let NodeWeight::Prop(child_prop) = node_weight {
+                if let NodeWeight::Prop(child_prop) = node_weight.as_ref() {
                     work_queue.push_back(child_prop.to_owned())
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    pub async fn mark_props_as_able_to_be_used_as_prototype_args(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<()> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
-        let root_prop_idx = workspace_snapshot
-            .get_node_index_by_id(root_prop_node_weight.id())
-            .await?;
-
-        let mut work_queue = VecDeque::new();
-        work_queue.push_back(root_prop_idx);
-
-        while let Some(prop_idx) = work_queue.pop_front() {
-            workspace_snapshot
-                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_idx)
-                .await?;
-
-            let node_weight = workspace_snapshot
-                .get_node_weight(prop_idx)
-                .await?
-                .to_owned();
-            if let NodeWeight::Prop(prop) = node_weight {
-                // Only descend if we are an object.
-                if prop.kind() == PropKind::Object {
-                    let targets = workspace_snapshot
-                        .outgoing_targets_for_edge_weight_kind(
-                            prop.id(),
-                            EdgeWeightKindDiscriminants::Use,
-                        )
-                        .await?;
-                    work_queue.extend(targets);
                 }
             }
         }
@@ -871,11 +832,6 @@ impl SchemaVariant {
                             )
                             .await?;
 
-                            info!(
-                                "adding root child func arg: {:?}, {:?}",
-                                input_prop_id, input.location
-                            );
-
                             let new_apa = AttributePrototypeArgument::new(
                                 ctx,
                                 existing_proto_id,
@@ -937,7 +893,7 @@ impl SchemaVariant {
             let node_weight = workspace_snapshot
                 .get_node_weight(maybe_socket_node_index)
                 .await?;
-            if let NodeWeight::Content(content_node_weight) = node_weight {
+            if let NodeWeight::Content(content_node_weight) = node_weight.as_ref() {
                 match content_node_weight.content_address() {
                     ContentAddress::OutputSocket(output_socket_content_hash) => {
                         output_socket_hashes
@@ -1022,8 +978,10 @@ impl SchemaVariant {
             let mut schema_id: Option<SchemaId> = None;
             for (edge_weight, source_index, _) in maybe_schema_indices {
                 if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
-                    if let NodeWeight::Content(content) =
-                        workspace_snapshot.get_node_weight(source_index).await?
+                    if let NodeWeight::Content(content) = workspace_snapshot
+                        .get_node_weight(source_index)
+                        .await?
+                        .as_ref()
                     {
                         let content_hash_discriminants: ContentAddressDiscriminants =
                             content.content_address().into();

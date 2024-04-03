@@ -627,6 +627,7 @@ impl Component {
             if let NodeWeight::Content(content) = workspace_snapshot
                 .get_node_weight(maybe_schema_variant_index)
                 .await?
+                .as_ref()
             {
                 let content_hash_discriminants: ContentAddressDiscriminants =
                     content.content_address().into();
@@ -833,7 +834,7 @@ impl Component {
             .await?
         {
             let target_node_weight = workspace_snapshot.get_node_weight(target).await?;
-            if let NodeWeight::AttributeValue(_) = target_node_weight {
+            if let NodeWeight::AttributeValue(_) = target_node_weight.as_ref() {
                 maybe_root_attribute_value_id = match maybe_root_attribute_value_id {
                     Some(already_found_root_attribute_value_id) => {
                         return Err(ComponentError::MultipleRootAttributeValuesFound(
@@ -1242,9 +1243,6 @@ impl Component {
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))
-                .await?;
-            ctx.workspace_snapshot()?
-                .replace_references(component_idx)
                 .await?;
         }
 

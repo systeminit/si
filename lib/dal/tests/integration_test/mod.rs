@@ -7,6 +7,7 @@ mod connection;
 mod dependent_values_update;
 mod frame;
 mod func;
+mod graph;
 mod pkgs;
 mod prop;
 mod property_editor;

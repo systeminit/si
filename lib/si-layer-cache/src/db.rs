@@ -16,23 +16,30 @@ use crate::{
     persister::{PersisterClient, PersisterTask},
 };
 
-use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
+use self::{
+    cache_updates::CacheUpdatesTask, cas::CasDb, node_weight::NodeWeightDb,
+    workspace_snapshot::WorkspaceSnapshotDb,
+};
 
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
+pub mod node_weight;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
+    node_weight: NodeWeightDb<NodeWeightValue>,
+    redb: Arc<redb::Database>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -40,12 +47,13 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
+    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn initialize(
         disk_path: impl AsRef<Path>,
@@ -71,12 +79,16 @@ where
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> =
             LayerCache::new(workspace_snapshot::CACHE_NAME, disk_path, pg_pool.clone())?;
 
+        let node_weight_cache: LayerCache<Arc<NodeWeightValue>> =
+            LayerCache::new(node_weight::CACHE_NAME, disk_path, pg_pool.clone()).await?;
+
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
             &nats_client,
             cas_cache.clone(),
             encrypted_secret_cache.clone(),
             snapshot_cache.clone(),
+            node_weight_cache.clone(),
             token.clone(),
         )
         .await?;
@@ -97,6 +109,7 @@ where
         let encrypted_secret =
             EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
+        let node_weight = NodeWeightDb::new(node_weight_cache, persister_client.clone());
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
@@ -106,6 +119,7 @@ where
             cas,
             encrypted_secret,
             workspace_snapshot,
+            node_weight,
             pg_pool,
             persister_client,
             nats_client,
@@ -139,6 +153,9 @@ where
         &self.workspace_snapshot
     }
 
+    pub fn node_weight(&self) -> &NodeWeightDb<NodeWeightValue> {
+        &self.node_weight
+    }
     pub fn instance_id(&self) -> Ulid {
         self.instance_id
     }

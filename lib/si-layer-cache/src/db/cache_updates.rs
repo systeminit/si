@@ -20,29 +20,33 @@ use crate::{
 enum CacheName {
     Cas,
     EncryptedSecret,
+    NodeWeights,
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<CasValue>>,
     encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+    node_weight_cache: LayerCache<Arc<NodeWeightValue>>,
     event_channel: UnboundedReceiver<LayeredEvent>,
     shutdown_token: CancellationToken,
     tracker: TaskTracker,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
+    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, NodeWeightValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
@@ -52,6 +56,7 @@ where
         cas_cache: LayerCache<Arc<CasValue>>,
         encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
+        node_weight_cache: LayerCache<Arc<NodeWeightValue>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
         let tracker = TaskTracker::new();
@@ -65,6 +70,7 @@ where
             cas_cache,
             encrypted_secret_cache,
             snapshot_cache,
+            node_weight_cache,
             event_channel,
             shutdown_token,
             tracker,
@@ -98,32 +104,37 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R, S>
+struct CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<Q>>,
     encrypted_secret_cache: LayerCache<Arc<R>>,
     snapshot_cache: LayerCache<Arc<S>>,
+    node_weight_cache: LayerCache<Arc<T>>,
 }
 
-impl<Q, R, S> CacheUpdateTask<Q, R, S>
+impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     fn new(
         cas_cache: LayerCache<Arc<Q>>,
         encrypted_secret_cache: LayerCache<Arc<R>>,
         snapshot_cache: LayerCache<Arc<S>>,
-    ) -> CacheUpdateTask<Q, R, S> {
+        node_weight_cache: LayerCache<Arc<T>>,
+    ) -> CacheUpdateTask<Q, R, S, T> {
         CacheUpdateTask {
             cas_cache,
             encrypted_secret_cache,
             snapshot_cache,
+            node_weight_cache,
         }
     }
 
