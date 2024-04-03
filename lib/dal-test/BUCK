@@ -5,10 +5,10 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/council-server:council-server",
-        "//lib/dal:dal",
+        "//lib/dal:dal-integration-test",
         "//lib/module-index-client:module-index-client",
-        "//lib/pinga-server:pinga-server",
-        "//lib/rebaser-server:rebaser-server",
+        "//lib/pinga-server:pinga-server-integration-test",
+        "//lib/rebaser-server:rebaser-server-integration-test",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
