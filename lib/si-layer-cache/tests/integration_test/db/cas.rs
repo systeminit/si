@@ -7,7 +7,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<CasValue, String, String, String>;
+type TestLayerDb = LayerDb<CasValue, String, String>;
 
 #[tokio::test]
 async fn write_to_db() {

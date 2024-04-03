@@ -157,7 +157,7 @@ impl AttributePrototype {
         {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             let node_weight_id = node_weight.id();
-            if NodeWeightDiscriminants::Func == node_weight.as_ref().into() {
+            if NodeWeightDiscriminants::Func == node_weight.into() {
                 return Ok(node_weight_id.into());
             }
         }
@@ -356,7 +356,6 @@ impl AttributePrototype {
             let (target_id, edge_weight_discrim) = match workspace_snapshot
                 .get_node_weight(prototype_edge_source)
                 .await?
-                .as_ref()
             {
                 NodeWeight::Prop(prop_inner) => {
                     (prop_inner.id(), EdgeWeightKindDiscriminants::Prop)
@@ -391,7 +390,6 @@ impl AttributePrototype {
                 if let NodeWeight::AttributeValue(av_node_weight) = workspace_snapshot
                     .get_node_weight(attribute_value_target)
                     .await?
-                    .as_ref()
                 {
                     attribute_value_ids.push(av_node_weight.id().into())
                 }
@@ -428,10 +426,8 @@ impl AttributePrototype {
 
         Ok(match maybe_value_idxs.first().copied() {
             Some(value_idx) => {
-                if let NodeWeight::AttributeValue(av_node_weight) = workspace_snapshot
-                    .get_node_weight(value_idx)
-                    .await?
-                    .as_ref()
+                if let NodeWeight::AttributeValue(av_node_weight) =
+                    workspace_snapshot.get_node_weight(value_idx).await?
                 {
                     Some(av_node_weight.id().into())
                 } else {

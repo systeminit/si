@@ -87,7 +87,6 @@ impl Schema {
         &self.name
     }
 
-    #[instrument(level = "debug", skip_all)]
     pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),

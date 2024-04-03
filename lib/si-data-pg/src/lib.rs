@@ -15,6 +15,7 @@ use tokio_postgres_rustls::MakeRustlsConnect;
 
 use base64::{engine::general_purpose, Engine};
 use std::{
+    cmp,
     fmt::{self, Debug},
     net::ToSocketAddrs,
     path::Path,
@@ -49,7 +50,7 @@ pub use tokio_postgres::error::SqlState;
 pub use tokio_postgres::types as postgres_types;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
-const MAX_POOL_SIZE_MINIMUM: usize = 2;
+const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 const TEST_QUERY: &str = "SELECT 1";
 
@@ -121,7 +122,7 @@ pub struct PgPoolConfig {
 
 impl Default for PgPoolConfig {
     fn default() -> Self {
-        let pool_max_size = MAX_POOL_SIZE_MINIMUM; // cmp::max(MAX_POOL_SIZE_MINIMUM, num_cpus::get_physical() * 4);
+        let pool_max_size = cmp::max(MAX_POOL_SIZE_MINIMUM, num_cpus::get_physical() * 4);
 
         PgPoolConfig {
             user: String::from("si"),
