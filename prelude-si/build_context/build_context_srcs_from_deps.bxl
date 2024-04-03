@@ -27,6 +27,9 @@ def _build_context_srcs_from_deps_impl(ctx):
     # Add candidate path entries for the Buck2 prelude directories (we want *all* these files)
     raw_paths.append("prelude")
     raw_paths.append("prelude-si")
+    raw_paths.append("config")
+    raw_paths.append("mode")
+    raw_paths.append("toolchains")
 
     # While not officially in a prelude, there are macros that Reindeer used to create the Rust
     # third-party targets, so we will include this directory as well.
