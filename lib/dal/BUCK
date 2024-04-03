@@ -136,6 +136,11 @@ rust_library_integration_test(
     ],
     rustc_flags = [
         "--cfg=integration_test",
+        "-Copt-level=3",
+        "-Cdebuginfo=none",
+        "-Clto=false",
+        "-Coverflow-checks=false",
+        "-Ccodegen-units=32"
     ],
     srcs = glob([
         "src/**/*.rs",
