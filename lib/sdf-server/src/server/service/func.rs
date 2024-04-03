@@ -4,6 +4,8 @@ use axum::{
     Json, Router,
 };
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
+use dal::func::view::FuncSummaryError;
+use dal::func::FuncKind;
 use dal::schema::variant::SchemaVariantError;
 use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
@@ -32,21 +34,25 @@ pub mod save_func;
 pub enum FuncError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error(transparent)]
+    #[error("context transaction error: {0}")]
     ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
+    #[error("dal func error: {0}")]
     Func(#[from] dal::func::FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("func {0} cannot be converted to frontend variant")]
     FuncCannotBeTurnedIntoVariant(FuncId),
-    #[error("Function named \"{0}\" already exists in this changeset")]
+    #[error("func named \"{0}\" already exists in this changeset")]
     FuncNameExists(String),
     #[error("The function name \"{0}\" is reserved")]
     FuncNameReserved(String),
-    #[error("Hyper error: {0}")]
+    #[error("func summary error: {0}")]
+    FuncSummary(#[from] FuncSummaryError),
+    #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error("Function is read-only")]
+    #[error("invalid func kind for creation: {0}")]
+    InvalidFuncKindForCreation(FuncKind),
+    #[error("func is read-only")]
     NotWritable,
     #[error("prop for value not found")]
     PropNotFound,
@@ -54,9 +60,9 @@ pub enum FuncError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("unexpected func variant ({0:?}) creating attribute func")]
-    UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
-    #[error(transparent)]
+    #[error("unexpected func kind ({0}) creating attribute func")]
+    UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
+    #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
@@ -65,65 +71,6 @@ pub enum FuncError {
 pub type FuncResult<T> = Result<T, FuncError>;
 
 impl_default_error_into_response!(FuncError);
-
-// Variants don't map 1:1 onto FuncBackendKind, since some JsAttribute functions
-// are a special case (Qualification, CodeGeneration etc)
-#[remain::sorted]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]
-pub enum FuncVariant {
-    Action,
-    Attribute,
-    Authentication,
-    CodeGeneration,
-    Qualification,
-    Reconciliation,
-    Validation,
-}
-
-impl From<FuncVariant> for FuncBackendKind {
-    fn from(value: FuncVariant) -> Self {
-        match value {
-            FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
-            FuncVariant::Action => FuncBackendKind::JsAction,
-            FuncVariant::Validation => FuncBackendKind::JsValidation,
-            FuncVariant::Attribute | FuncVariant::CodeGeneration | FuncVariant::Qualification => {
-                FuncBackendKind::JsAttribute
-            }
-            FuncVariant::Authentication => FuncBackendKind::JsAuthentication,
-        }
-    }
-}
-
-impl TryFrom<&Func> for FuncVariant {
-    type Error = FuncError;
-
-    fn try_from(func: &Func) -> Result<Self, Self::Error> {
-        match (func.backend_kind, func.backend_response_type) {
-            (FuncBackendKind::JsAttribute, response_type) => match response_type {
-                FuncBackendResponseType::CodeGeneration => Ok(FuncVariant::CodeGeneration),
-                FuncBackendResponseType::Qualification => Ok(FuncVariant::Qualification),
-                _ => Ok(FuncVariant::Attribute),
-            },
-            (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
-            (FuncBackendKind::JsAction, _) => Ok(FuncVariant::Action),
-            (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
-            (FuncBackendKind::JsAuthentication, _) => Ok(FuncVariant::Authentication),
-            (FuncBackendKind::Array, _)
-            | (FuncBackendKind::Boolean, _)
-            | (FuncBackendKind::Diff, _)
-            | (FuncBackendKind::Identity, _)
-            | (FuncBackendKind::Integer, _)
-            | (FuncBackendKind::JsSchemaVariantDefinition, _)
-            | (FuncBackendKind::Map, _)
-            | (FuncBackendKind::Object, _)
-            | (FuncBackendKind::String, _)
-            | (FuncBackendKind::Unset, _)
-            | (FuncBackendKind::Validation, _) => {
-                Err(FuncError::FuncCannotBeTurnedIntoVariant(func.id))
-            }
-        }
-    }
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -391,7 +338,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
     Ok(GetFuncResponse {
         id: func.id.to_owned(),
-        variant: func.try_into()?,
+        kind: func.kind,
         display_name: func.display_name.as_ref().map(Into::into),
         name: func.name.to_owned(),
         description: func.description.as_ref().map(|d| d.to_owned()),

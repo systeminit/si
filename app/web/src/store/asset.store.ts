@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { FuncVariant } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
@@ -56,7 +56,7 @@ export interface DetachedAttributePrototype {
   funcId: FuncId;
   funcName: string;
   key: string | null;
-  variant: FuncVariant;
+  kind: FuncKind;
   context: DetachedAttributePrototypeKind;
 }
 
@@ -135,7 +135,7 @@ export const useAssetStore = () => {
         detachmentWarnings: [] as {
           message: string;
           funcId: FuncId;
-          variant?: FuncVariant;
+          kind?: FuncKind;
         }[],
       }),
       getters: {
@@ -495,7 +495,7 @@ export const useAssetStore = () => {
                   ) {
                     this.detachmentWarnings.push({
                       funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
+                      kind: detached.kind ?? undefined,
                       message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
                     });
                   } else if (
@@ -504,7 +504,7 @@ export const useAssetStore = () => {
                   ) {
                     this.detachmentWarnings.push({
                       funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
+                      kind: detached.kind ?? undefined,
                       message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
                     });
                   }

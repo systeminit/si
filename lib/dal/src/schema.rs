@@ -130,10 +130,18 @@ impl Schema {
         &self,
         ctx: &DalContext,
     ) -> SchemaResult<Option<SchemaVariantId>> {
+        Self::get_default_schema_variant_by_id(ctx, self.id).await
+    }
+
+    pub async fn get_default_schema_variant_by_id(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<Option<SchemaVariantId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let default_schema_variant_node_indicies =
-            workspace_snapshot.edges_directed(self.id, Outgoing).await?;
+        let default_schema_variant_node_indicies = workspace_snapshot
+            .edges_directed(schema_id, Outgoing)
+            .await?;
 
         for (edge_weight, _, target_index) in default_schema_variant_node_indicies {
             if *edge_weight.kind() == EdgeWeightKind::new_use_default() {

@@ -5,7 +5,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncVariant } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
@@ -31,12 +31,13 @@ export type FuncId = string;
 
 export type FuncSummary = {
   id: string;
-  variant: FuncVariant;
+  kind: FuncKind;
   name: string;
   displayName?: string;
   description?: string;
   isBuiltin: boolean;
 };
+
 export type FuncWithDetails = FuncSummary & {
   code: string;
   types: string;
@@ -524,7 +525,7 @@ export const useFuncStore = () => {
         },
 
         async CREATE_FUNC(createFuncRequest: {
-          variant: FuncVariant;
+          kind: FuncKind;
           name?: string;
           options?: CreateFuncOptions;
         }) {

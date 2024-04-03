@@ -1,13 +1,11 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
+use dal::func::view::FuncSummary;
 use dal::{ComponentType, Func, SchemaVariant, SchemaVariantId, Timestamp, Visibility};
 use serde::{Deserialize, Serialize};
 
-// use super::{is_variant_def_locked, SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-// use crate::server::tracking::track;
 use crate::service::func::compile_return_types;
-use crate::service::func::list_funcs::ListedFuncView;
 use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -30,7 +28,7 @@ pub struct GetVariantResponse {
     pub description: Option<String>,
     pub code: String,
     pub component_type: ComponentType,
-    pub funcs: Vec<ListedFuncView>,
+    pub funcs: Vec<FuncSummary>,
     pub types: String,
     pub has_components: bool,
     #[serde(flatten)]
@@ -81,25 +79,7 @@ pub async fn get_variant(
     // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
     // response.has_components = has_components;
 
-    response.funcs = SchemaVariant::all_funcs(&ctx, request.id)
-        .await?
-        .iter()
-        .filter_map(|func| match func.try_into() {
-            Ok(func_variant) => Some(ListedFuncView {
-                id: func.id,
-                handler: func.handler.clone().map(|handler| handler.to_owned()),
-                variant: func_variant,
-                name: (*func.name).to_string(),
-                display_name: func
-                    .display_name
-                    .as_ref()
-                    .map(Into::into)
-                    .or_else(|| Some(func.name.to_string())),
-                is_builtin: func.builtin,
-            }),
-            Err(_) => None,
-        })
-        .collect();
+    response.funcs = FuncSummary::list(&ctx, Some(request.id)).await?;
 
     // track(
     //     &posthog_client,

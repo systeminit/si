@@ -4,7 +4,7 @@ use si_events::ContentHash;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
-use strum::{AsRefStr, Display, IntoEnumIterator};
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -29,11 +29,14 @@ pub mod binding;
 pub mod binding_return_value;
 pub mod execution;
 pub mod intrinsics;
+pub mod view;
 
 mod before;
+mod kind;
 
 pub use before::before_funcs_for_component;
 pub use before::BeforeFuncError;
+pub use kind::FuncKind;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -60,8 +63,8 @@ pub enum FuncError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error("unable to determine the function type")]
-    UnknownFunctionType,
+    #[error("unable to determine the function type for backend kind ({0}) and backend response type ({1})")]
+    UnknownFunctionType(FuncBackendKind, FuncBackendResponseType),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]
@@ -101,22 +104,6 @@ pub fn is_intrinsic(name: &str) -> bool {
 
 pk!(FuncId);
 
-/// Describes what kind of [`Func`] this is.
-#[remain::sorted]
-#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum FuncKind {
-    Action,
-    Attribute,
-    Authentication,
-    CodeGeneration,
-    Intrinsic,
-    Qualification,
-    SchemaVariantDefinition,
-    Unknown,
-}
-
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).
 ///
@@ -127,8 +114,10 @@ pub enum FuncKind {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Func {
     pub id: FuncId,
-    pub timestamp: Timestamp,
     pub name: String,
+    pub kind: FuncKind,
+
+    pub timestamp: Timestamp,
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub link: Option<String>,
@@ -146,8 +135,10 @@ impl Func {
         let content = content.to_owned();
         Self {
             id: node_weight.id().into(),
-            timestamp: content.timestamp,
             name: node_weight.name().to_owned(),
+            kind: node_weight.func_kind(),
+
+            timestamp: content.timestamp,
             display_name: content.display_name,
             description: content.description,
             link: content.link,
@@ -207,9 +198,7 @@ impl Func {
             )
             .await?;
 
-        let func_kind =
-            Self::determine_func_kind(name.clone().into(), backend_kind, backend_response_type)
-                .await?;
+        let func_kind = FuncKind::new(backend_kind, backend_response_type)?;
 
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
@@ -233,42 +222,6 @@ impl Func {
         let func_node_weight = node_weight.get_func_node_weight()?;
 
         Ok(Self::assemble(&func_node_weight, &content))
-    }
-
-    pub async fn determine_func_kind(
-        func_name: String,
-        func_backend_kind: FuncBackendKind,
-        func_backend_response_type: FuncBackendResponseType,
-    ) -> FuncResult<FuncKind> {
-        match func_backend_kind {
-            FuncBackendKind::JsAttribute => match func_backend_response_type {
-                FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
-                FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
-                _ => Ok(FuncKind::Attribute),
-            },
-            FuncBackendKind::JsAction => Ok(FuncKind::Action),
-            FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
-            FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
-            FuncBackendKind::JsValidation => {
-                dbg!("Old func kind identifed so marked as unknown");
-                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
-                Ok(FuncKind::Unknown)
-            }
-            FuncBackendKind::Array
-            | FuncBackendKind::Boolean
-            | FuncBackendKind::Diff
-            | FuncBackendKind::Identity
-            | FuncBackendKind::Integer
-            | FuncBackendKind::Map
-            | FuncBackendKind::Object
-            | FuncBackendKind::String
-            | FuncBackendKind::Unset
-            | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
-            _ => {
-                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
-                Err(FuncError::UnknownFunctionType)
-            }
-        }
     }
 
     pub fn metadata_view(&self) -> FuncMetadataView {
