@@ -483,13 +483,13 @@
     >
       <p class="my-3">{{ validation.message }}</p>
 
-      <span
+      <!-- no more logs <span
         v-for="(output, index) in validation.logs"
         :key="index"
         class="text-sm break-all text-warning-500"
       >
         <p v-if="output.stream !== 'output'">{{ output.message }}</p>
-      </span>
+      </span> -->
     </div>
 
     <!-- MODAL FOR EDITING A PROP -->
@@ -886,13 +886,7 @@ function removeChildHandler() {
   });
 }
 
-const validation = computed(
-  () =>
-    (_.find(
-      props.attributeDef?.validations,
-      ([key]) => key === (getKey() ?? null),
-    ) ?? [])[1],
-);
+const validation = computed(() => props.attributeDef?.validations);
 
 function getKey() {
   if (isChildOfMap.value) return props.attributeDef?.mapKey;
