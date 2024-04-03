@@ -7,6 +7,7 @@ use dal::{
 };
 use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
 use dal_test::{test, WorkspaceSignup};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) {
@@ -175,6 +176,20 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             .expect("could not get materialized view")
             .expect("empty materialized view") // actual
     );
+    let last_synced_av_id = destination_component
+        .attribute_values_for_prop(ctx, &["root", "resource", "last_synced"])
+        .await
+        .expect("should be able to find avs for last synced")
+        .pop()
+        .expect("should have an av for last synced");
+
+    let last_synced_value = AttributeValue::get_by_id(ctx, last_synced_av_id)
+        .await
+        .expect("should be able to get last synced av")
+        .materialized_view(ctx)
+        .await
+        .expect("should be able to get value for last synced av");
+
     assert_eq!(
         serde_json::json![{
             "domain": {
@@ -182,6 +197,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
                 "name": "destination",
             },
             "resource": {
+                "last_synced": last_synced_value.unwrap_or(serde_json::Value::Null),
                 "logs": [
                     "Setting dummySecretString to requestStorage",
                      "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}",
