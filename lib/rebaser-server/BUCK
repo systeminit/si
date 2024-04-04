@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_library")
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_library_integration_test",
+)
 
 rust_library(
     name = "rebaser-server",
@@ -31,3 +35,37 @@ rust_library(
         "src/**/*.rs",
     ]),
 )
+
+rust_library_integration_test(
+    name = "rebaser-server-integration-test",
+    crate = "rebaser_server",
+    deps = [
+        "//lib/buck2-resources:buck2-resources",
+        "//lib/dal:dal-integration-test",
+        "//lib/nats-subscriber:nats-subscriber",
+        "//lib/rebaser-core:rebaser-core",
+        "//lib/si-crypto:si-crypto",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/si-layer-cache:si-layer-cache",
+        "//lib/si-settings:si-settings",
+        "//lib/si-std:si-std",
+        "//lib/si-test-macros:si-test-macros",
+        "//lib/telemetry-rs:telemetry",
+        "//lib/veritech-client:veritech-client",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:futures",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:stream-cancel",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
+

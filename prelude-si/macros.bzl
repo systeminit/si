@@ -81,9 +81,11 @@ load(
     _rust_binary = "rust_binary",
     _rust_library = "rust_library",
     _rust_test = "rust_test",
+    _rust_library_integration_test = "rust_library_integration_test",
 )
 rust_binary = _rust_binary
 rust_library = _rust_library
+rust_library_integration_test = _rust_library_integration_test
 rust_test = _rust_test
 
 load(

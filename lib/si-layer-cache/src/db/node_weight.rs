@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
-use si_events::{Actor, EncryptedSecretKey, Tenancy, WebEvent};
+use si_events::{Actor, NodeWeightAddress, Tenancy, WebEvent};
 
 use crate::{
     error::LayerDbResult,
@@ -12,16 +12,12 @@ use crate::{
     LayerDbError,
 };
 
-const KEYWORD_SINGULAR: &str = "encrypted_secret";
-const KEYWORD_PLURAL: &str = "encrypted_secrets";
-
-pub const PARTITION_KEY: &str = KEYWORD_PLURAL;
-pub const DBNAME: &str = KEYWORD_PLURAL;
-pub const CACHE_NAME: &str = KEYWORD_PLURAL;
-pub const SORT_KEY: &str = KEYWORD_SINGULAR;
+pub const DBNAME: &str = "node_weights";
+pub const CACHE_NAME: &str = "node_weights";
+pub const PARTITION_KEY: &str = "node_weights";
 
 #[derive(Debug, Clone)]
-pub struct EncryptedSecretDb<V>
+pub struct NodeWeightDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
@@ -29,37 +25,75 @@ where
     persister_client: PersisterClient,
 }
 
-impl<V> EncryptedSecretDb<V>
+impl<V> NodeWeightDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub fn new(cache: LayerCache<Arc<V>>, persister_client: PersisterClient) -> Self {
-        EncryptedSecretDb {
+        NodeWeightDb {
             cache,
             persister_client,
         }
     }
 
-    pub async fn write(
+    pub async fn mem_write(&self, value: Arc<V>) -> LayerDbResult<NodeWeightAddress> {
+        let postcard_value = postcard::to_stdvec(&value)?;
+        let key = NodeWeightAddress::new(&postcard_value);
+        let cache_key: Arc<str> = key.to_string().into();
+
+        self.cache.memory_cache().insert(cache_key, value).await;
+
+        Ok(key)
+    }
+
+    pub async fn write_no_gossip(
         &self,
-        key: EncryptedSecretKey,
         value: Arc<V>,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
+    ) -> LayerDbResult<(NodeWeightAddress, PersisterStatusReader)> {
         let postcard_value = postcard::to_stdvec(&value)?;
-
+        let key = NodeWeightAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
         self.cache.insert(cache_key.clone(), value.clone()).await;
 
         let event = LayeredEvent::new(
-            LayeredEventKind::EncryptedSecretInsertion,
+            LayeredEventKind::NodeWeightWrite,
             Arc::new(DBNAME.to_string()),
             cache_key,
             Arc::new(postcard_value),
-            Arc::new(SORT_KEY.to_string()),
+            Arc::new("node_weights".to_string()),
+            web_events,
+            tenancy,
+            actor,
+            false,
+        );
+        let reader = self.persister_client.write_event(event)?;
+
+        Ok((key, reader))
+    }
+
+    pub async fn write(
+        &self,
+        value: Arc<V>,
+        web_events: Option<Vec<WebEvent>>,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<(NodeWeightAddress, PersisterStatusReader)> {
+        let postcard_value = postcard::to_stdvec(&value)?;
+        let key = NodeWeightAddress::new(&postcard_value);
+        let cache_key: Arc<str> = key.to_string().into();
+
+        self.cache.insert(cache_key.clone(), value.clone()).await;
+
+        let event = LayeredEvent::new(
+            LayeredEventKind::NodeWeightWrite,
+            Arc::new(DBNAME.to_string()),
+            cache_key,
+            Arc::new(postcard_value),
+            Arc::new("node_weights".to_string()),
             web_events,
             tenancy,
             actor,
@@ -67,17 +101,17 @@ where
         );
         let reader = self.persister_client.write_event(event)?;
 
-        Ok(reader)
+        Ok((key, reader))
     }
 
-    pub async fn read(&self, key: &EncryptedSecretKey) -> LayerDbResult<Option<Arc<V>>> {
+    pub async fn read(&self, key: &NodeWeightAddress) -> LayerDbResult<Option<Arc<V>>> {
         self.cache.get(key.to_string().into()).await
     }
 
     /// We often need to extract the value from the arc by cloning it (although
     /// this should be avoided for large values). This will do that, and also
     /// helpfully convert the value to the type we want to deal with
-    pub async fn try_read_as<T>(&self, key: &EncryptedSecretKey) -> LayerDbResult<Option<T>>
+    pub async fn try_read_as<T>(&self, key: &NodeWeightAddress) -> LayerDbResult<Option<T>>
     where
         V: TryInto<T>,
         <V as TryInto<T>>::Error: Display,
@@ -96,15 +130,15 @@ where
 
     pub async fn read_many(
         &self,
-        keys: &[EncryptedSecretKey],
-    ) -> LayerDbResult<HashMap<EncryptedSecretKey, Arc<V>>> {
+        keys: &[NodeWeightAddress],
+    ) -> LayerDbResult<HashMap<NodeWeightAddress, Arc<V>>> {
         self.cache.get_bulk(keys).await
     }
 
     pub async fn try_read_many_as<T>(
         &self,
-        keys: &[EncryptedSecretKey],
-    ) -> LayerDbResult<HashMap<EncryptedSecretKey, T>>
+        keys: &[NodeWeightAddress],
+    ) -> LayerDbResult<HashMap<NodeWeightAddress, T>>
     where
         V: TryInto<T>,
         <V as TryInto<T>>::Error: Display,
