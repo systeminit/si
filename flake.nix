@@ -195,8 +195,6 @@
     in
       with pkgs; rec {
         packages = {
-          council = binDerivation {pkgName = "council";};
-
           cyclone = binDerivation {pkgName = "cyclone";};
 
           # This one's awful: we don't have a stanalone binary here, we have a

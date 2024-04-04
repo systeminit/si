@@ -8,7 +8,6 @@ rust_library(
     name = "dal",
     deps = [
         "//lib/si-cbor:si-cbor",
-        "//lib/council-server:council-server",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
         "//lib/si-crypto:si-crypto",

@@ -67,33 +67,9 @@ macro_rules! pk {
             }
         }
 
-        impl From<council_server::Id> for $name {
-            fn from(id: council_server::Id) -> Self {
-                Self(id.into())
-            }
-        }
-
-        impl<'a> From<&'a council_server::Id> for $name {
-            fn from(id: &'a council_server::Id) -> Self {
-                Self((*id).into())
-            }
-        }
-
-        impl From<$name> for council_server::Id {
-            fn from(pk: $name) -> Self {
-                pk.0.into()
-            }
-        }
-
         impl From<$name> for String {
             fn from(pk: $name) -> Self {
                 ulid::Ulid::from(pk.0).into()
-            }
-        }
-
-        impl<'a> From<&'a $name> for council_server::Id {
-            fn from(pk: &'a $name) -> Self {
-                pk.0.into()
             }
         }
 

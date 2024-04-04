@@ -9,11 +9,6 @@ load(
 )
 
 alias(
-    name = "council",
-    actual = "//bin/council:council",
-)
-
-alias(
     name = "module-index",
     actual = "//bin/module-index:module-index",
 )
