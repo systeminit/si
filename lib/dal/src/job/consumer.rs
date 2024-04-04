@@ -39,8 +39,6 @@ pub enum JobConsumerError {
     Component(#[from] ComponentError),
     #[error("component {0} is destroyed")]
     ComponentIsDestroyed(ComponentId),
-    #[error("Protocol error with council: {0}")]
-    CouncilProtocol(String),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
