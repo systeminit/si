@@ -11,14 +11,12 @@ use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{FuncArgumentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, DalContext, FuncId, HistoryEventError, PropKind, StandardModelError, Timestamp,
-    TransactionsError,
+    pk, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
+    StandardModelError, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -28,6 +26,8 @@ pub enum FuncArgumentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("intrinsic func {0} ({1}) missing func argument edge")]
@@ -190,13 +190,7 @@ impl FuncArgument {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         workspace_snapshot.add_node(node_weight.clone()).await?;
-        workspace_snapshot
-            .add_edge(
-                func_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
+        Func::add_edge_to_argument(ctx, func_id, id.into(), EdgeWeightKind::new_use()).await?;
 
         let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
 

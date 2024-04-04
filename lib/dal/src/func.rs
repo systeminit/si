@@ -10,16 +10,20 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
+use crate::func::argument::FuncArgumentId;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
+use crate::{
+    implement_add_edge_to, pk, DalContext, HelperError, SchemaVariantId, Timestamp,
+    TransactionsError,
+};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -51,6 +55,8 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
     IntrinsicFuncNotFound(String),
     #[error("intrinsic spec creation error {0}")]
@@ -152,6 +158,21 @@ impl Func {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: FuncId,
+        destination_id: FuncArgumentId,
+        add_fn: add_edge_to_argument,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: FuncResult,
+    );
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: FuncId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: FuncResult,
+    );
+
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
@@ -211,12 +232,7 @@ impl Func {
         let func_category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::Func)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                func_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
+        Self::add_category_edge(ctx, func_category_id, id.into(), EdgeWeightKind::new_use())
             .await?;
 
         let func_node_weight = node_weight.get_func_node_weight()?;

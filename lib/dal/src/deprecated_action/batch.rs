@@ -10,21 +10,24 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError,
+    implement_add_edge_to,
     layer_db_types::{DeprecatedActionBatchContent, DeprecatedActionBatchContentV1},
     pk, ActionCompletionStatus, ActionPrototypeError, ComponentError, DalContext,
-    DeprecatedActionRunner, DeprecatedActionRunnerError, FuncError, HistoryEventError, SchemaError,
-    Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, FuncError,
+    HelperError, HistoryEventError, SchemaError, Timestamp, TransactionsError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -50,6 +53,8 @@ pub enum DeprecatedActionBatchError {
     Func(#[from] FuncError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error("layer db error: {0}")]
@@ -125,6 +130,22 @@ impl DeprecatedActionBatch {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: DeprecatedActionBatchId,
+        destination_id: DeprecatedActionRunnerId,
+        add_fn: add_edge_to_runner,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: DeprecatedActionBatchResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: DeprecatedActionBatchId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: DeprecatedActionBatchResult,
+    );
+
     pub async fn new(
         ctx: &DalContext,
         author: impl AsRef<str>,
@@ -165,13 +186,7 @@ impl DeprecatedActionBatch {
         let category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::ActionBatch)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
+        Self::add_category_edge(ctx, category_id, id.into(), EdgeWeightKind::new_use()).await?;
 
         Ok(Self::assemble(id.into(), content))
     }

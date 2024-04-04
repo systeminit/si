@@ -583,11 +583,7 @@ impl PkgExporter {
             let mut has_custom_func = false;
             if let Some(attr_proto_id) = input_socket_ip.attribute_prototype_id() {
                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
-                    .await?
-                    .ok_or(PkgError::MissingAttributePrototypeForInputSocket(
-                        *attr_proto_id,
-                        *input_socket_ip.id(),
-                    ))?;
+                    .await?;
 
                 if let Some((func_unique_id, mut inputs)) = self
                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)
@@ -638,11 +634,7 @@ impl PkgExporter {
             let mut has_custom_func = false;
             if let Some(attr_proto_id) = output_socket_ep.attribute_prototype_id() {
                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
-                    .await?
-                    .ok_or(PkgError::MissingAttributePrototypeForOutputSocket(
-                        *attr_proto_id,
-                        *output_socket_ep.id(),
-                    ))?;
+                    .await?;
 
                 if let Some((func_unique_id, mut inputs)) = self
                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)

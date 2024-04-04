@@ -7,7 +7,7 @@ use strum::EnumIter;
 use telemetry::prelude::*;
 
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
@@ -244,13 +244,13 @@ impl SchemaVariant {
 
         let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
 
-        ctx.workspace_snapshot()?
-            .add_edge(
-                item_prop_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(key))?,
-                attribute_prototype_id,
-            )
-            .await?;
+        Prop::add_edge_to_attribute_prototype(
+            ctx,
+            item_prop_id,
+            attribute_prototype_id,
+            EdgeWeightKind::Prototype(key),
+        )
+        .await?;
 
         for input in inputs {
             let input_prop_id = SchemaVariant::find_root_child_prop_id(

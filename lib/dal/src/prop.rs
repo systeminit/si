@@ -20,14 +20,14 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, AttributePrototype,
-    AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId, SchemaVariantId,
-    Timestamp, TransactionsError,
+    implement_add_edge_to, label_list::ToLabelList, pk, property_editor::schema::WidgetKind,
+    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
+    HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
 use crate::{AttributeValueId, InputSocketId};
 
@@ -52,6 +52,8 @@ pub enum PropError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("map or array {0} missing element prop")]
@@ -64,6 +66,8 @@ pub enum PropError {
     PropIsOrphan(PropId),
     #[error("prop {0} has a non prop or schema variant parent")]
     PropParentInvalid(PropId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("can only set default values for scalars (string, integer, boolean), prop {0} is {1}")]
@@ -551,32 +555,26 @@ impl Prop {
 
         match prop_parent {
             PropParent::OrderedProp(ordered_prop_id) => {
-                workspace_snapshot
-                    .add_ordered_edge(
-                        change_set,
-                        ordered_prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                Self::add_edge_to_prop_ordered(
+                    ctx,
+                    ordered_prop_id,
+                    id.into(),
+                    EdgeWeightKind::new_use(),
+                )
+                .await?;
             }
             PropParent::Prop(prop_id) => {
-                workspace_snapshot
-                    .add_edge(
-                        prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                Self::add_edge_to_prop(ctx, prop_id, id.into(), EdgeWeightKind::new_use()).await?;
             }
             PropParent::SchemaVariant(schema_variant_id) => {
-                workspace_snapshot
-                    .add_edge(
-                        schema_variant_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                SchemaVariant::add_edge_to_prop(
+                    ctx,
+                    schema_variant_id,
+                    id.into(),
+                    EdgeWeightKind::new_use(),
+                )
+                .await
+                .map_err(Box::new)?;
             }
         };
 
@@ -702,21 +700,21 @@ impl Prop {
         Self::get_by_id(ctx, prop_id).await
     }
 
-    pub async fn set_prototype_id(
-        ctx: &DalContext,
-        prop_id: PropId,
-        attribute_prototype_id: AttributePrototypeId,
-    ) -> PropResult<()> {
-        ctx.workspace_snapshot()?
-            .add_edge(
-                prop_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype_id,
-            )
-            .await?;
+    implement_add_edge_to!(
+        source_id: PropId,
+        destination_id: AttributePrototypeId,
+        add_fn: add_edge_to_attribute_prototype,
+        discriminant: EdgeWeightKindDiscriminants::Prototype,
+        result: PropResult,
+    );
 
-        Ok(())
-    }
+    implement_add_edge_to!(
+        source_id: PropId,
+        destination_id: PropId,
+        add_fn: add_edge_to_prop,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: PropResult,
+    );
 
     pub async fn prototypes_by_key(
         ctx: &DalContext,

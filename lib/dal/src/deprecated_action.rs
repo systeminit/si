@@ -15,15 +15,16 @@ use crate::change_set::ChangeSetError;
 use crate::layer_db_types::ComponentContent;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    implement_add_edge_to,
     layer_db_types::{ActionPrototypeContent, DeprecatedActionContent, DeprecatedActionContentV1},
     pk, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetId,
-    Component, ComponentError, ComponentId, DalContext, DeprecatedActionBatchError, HistoryActor,
-    HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    Component, ComponentError, ComponentId, DalContext, DeprecatedActionBatchError, HelperError,
+    HistoryActor, HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -41,6 +42,8 @@ pub enum DeprecatedActionError {
     DeprecatedActionBatch(#[from] DeprecatedActionBatchError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("history event: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("in head")]
@@ -95,6 +98,14 @@ impl DeprecatedAction {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: ActionId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_prototype,
+        discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
+        result: DeprecatedActionResult,
+    );
+
     pub async fn upsert(
         ctx: &DalContext,
         prototype_id: ActionPrototypeId,
@@ -137,33 +148,32 @@ impl DeprecatedAction {
 
         workspace_snapshot.add_node(node_weight.to_owned()).await?;
 
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype)?,
-                prototype_id,
-            )
-            .await?;
-        workspace_snapshot
-            .add_edge(
-                component_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Action)?,
-                id,
-            )
-            .await?;
-
         let content_node_weight =
             node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::Action)?;
+        let action = Self::assemble(content_node_weight.id().into(), content);
+
+        Self::add_edge_to_prototype(
+            ctx,
+            action.id,
+            prototype_id,
+            EdgeWeightKind::ActionPrototype,
+        )
+        .await?;
+
+        Component::add_edge_to_deprecated_action(
+            ctx,
+            component_id,
+            action.id,
+            EdgeWeightKind::Action,
+        )
+        .await?;
 
         WsEvent::action_added(ctx, component_id, id.into())
             .await?
             .publish_on_commit(ctx)
             .await?;
 
-        Ok(DeprecatedAction::assemble(
-            content_node_weight.id().into(),
-            content,
-        ))
+        Ok(action)
     }
 
     pub async fn delete(self, ctx: &DalContext) -> DeprecatedActionResult<()> {

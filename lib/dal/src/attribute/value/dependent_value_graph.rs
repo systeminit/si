@@ -66,7 +66,7 @@ impl DependentValueGraph {
                     let controlling_func_data =
                         Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
                             .await
-                            .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                            .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
                     let data = controlling_func_data
                         .get(&current_attribute_value_id)
                         .copied();
@@ -120,15 +120,11 @@ impl DependentValueGraph {
                                 let source_component =
                                     Component::get_by_id(ctx, targets.source_component_id)
                                         .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
+                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
                                 let destination_component =
                                     Component::get_by_id(ctx, targets.destination_component_id)
                                         .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
+                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                                 // Both "deleted" and not deleted Components can feed data into
                                 // "deleted" Components. **ONLY** not deleted Components can feed

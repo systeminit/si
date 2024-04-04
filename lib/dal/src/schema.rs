@@ -18,7 +18,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, Timestamp, TransactionsError};
+use crate::{implement_add_edge_to, pk, DalContext, HelperError, Timestamp, TransactionsError};
 
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -34,6 +34,8 @@ pub enum SchemaError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
@@ -86,6 +88,14 @@ impl Schema {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    implement_add_edge_to!(
+        source_id: SchemaId,
+        destination_id: SchemaVariantId,
+        add_fn: add_edge_to_variant,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SchemaResult,
+    );
 
     pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
@@ -203,12 +213,7 @@ impl Schema {
                 )
                 .await?;
 
-            workspace_snapshot
-                .add_edge(
-                    self.id,
-                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
-                    schema_variant_id,
-                )
+            Self::add_edge_to_variant(ctx, self.id, schema_variant_id, EdgeWeightKind::new_use())
                 .await?;
         }
 
@@ -231,13 +236,13 @@ impl Schema {
                 )
                 .await?;
 
-            workspace_snapshot
-                .add_edge(
-                    self.id,
-                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use_default())?,
-                    schema_variant_id,
-                )
-                .await?;
+            Self::add_edge_to_variant(
+                ctx,
+                self.id,
+                schema_variant_id,
+                EdgeWeightKind::new_use_default(),
+            )
+            .await?;
         }
 
         Ok(())
