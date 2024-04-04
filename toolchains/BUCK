@@ -64,7 +64,14 @@ system_rust_toolchain(
     name = "rust_debug",
     default_edition = "2021",
     clippy_toml = "root//:clippy.toml",
-    visibility = ["PUBLIC"]
+    visibility = ["PUBLIC"],
+    rustc_flags = [
+        "-Copt-level=0",
+        "-Cdebuginfo=full",
+        "-Ccodegen-units=256",
+        "-Cdebug-assertions=true",
+        "-Coverflow-checks=true",
+    ]
 )
 
 toolchain_alias(
