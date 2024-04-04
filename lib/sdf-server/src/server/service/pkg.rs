@@ -1,9 +1,5 @@
 use crate::server::{impl_default_error_into_response, state::AppState};
-use axum::{
-    response::Response,
-    routing::{get, post},
-    Json, Router,
-};
+use axum::{response::Response, routing::get, Json, Router};
 use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, ChangeSetError,
@@ -20,15 +16,15 @@ use tokio::fs::read_dir;
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
-mod approval_process;
-pub mod builtin_module_spec;
-pub mod export_pkg;
-pub mod export_workspace;
-pub mod get_pkg;
-pub mod import_workspace_vote;
-pub mod install_pkg;
+// mod approval_process;
+// pub mod builtin_module_spec;
+// pub mod export_pkg;
+// pub mod export_workspace;
+// pub mod get_pkg;
+// pub mod import_workspace_vote;
+// pub mod install_pkg;
 pub mod list_pkgs;
-mod reject_pkg;
+// mod reject_pkg;
 pub mod remote_module_spec;
 
 #[remain::sorted]
@@ -203,33 +199,33 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> PkgResult
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/export_pkg", post(export_pkg::export_pkg))
-        .route(
-            "/export_workspace",
-            post(export_workspace::export_workspace),
-        )
-        .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
-        .route("/install_pkg", post(install_pkg::install_pkg))
+        // .route("/export_pkg", post(export_pkg::export_pkg))
+        // .route(
+        //     "/export_workspace",
+        //     post(export_workspace::export_workspace),
+        // )
+        // .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
+        // .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
         .route(
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
         )
-        .route(
-            "/set_as_builtin",
-            post(builtin_module_spec::promote_to_builtin),
-        )
-        .route("/reject_pkg", post(reject_pkg::reject_pkg))
-        .route(
-            "/begin_approval_process",
-            post(approval_process::begin_approval_process),
-        )
-        .route(
-            "/cancel_approval_process",
-            post(approval_process::cancel_approval_process),
-        )
-        .route(
-            "/import_workspace_vote",
-            post(import_workspace_vote::import_workspace_vote),
-        )
+    // .route(
+    //     "/set_as_builtin",
+    //     post(builtin_module_spec::promote_to_builtin),
+    // )
+    // .route("/reject_pkg", post(reject_pkg::reject_pkg))
+    // .route(
+    //     "/begin_approval_process",
+    //     post(approval_process::begin_approval_process),
+    // )
+    // .route(
+    //     "/cancel_approval_process",
+    //     post(approval_process::cancel_approval_process),
+    // )
+    // .route(
+    //     "/import_workspace_vote",
+    //     post(import_workspace_vote::import_workspace_vote),
+    // )
 }

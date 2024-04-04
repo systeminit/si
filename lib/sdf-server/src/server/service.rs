@@ -10,7 +10,7 @@ pub mod secret;
 pub mod session;
 pub mod ws;
 
-// pub mod pkg;
+pub mod pkg;
 // pub mod status;
 pub mod variant;
 
