@@ -56,6 +56,7 @@ where
             web_events,
             tenancy,
             actor,
+            true,
         );
         let reader = self.persister_client.write_event(event)?;
 

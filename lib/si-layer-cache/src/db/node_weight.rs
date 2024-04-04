@@ -46,6 +46,35 @@ where
         Ok(key)
     }
 
+    pub async fn write_no_gossip(
+        &self,
+        value: Arc<V>,
+        web_events: Option<Vec<WebEvent>>,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<(NodeWeightAddress, PersisterStatusReader)> {
+        let postcard_value = postcard::to_stdvec(&value)?;
+        let key = NodeWeightAddress::new(&postcard_value);
+        let cache_key: Arc<str> = key.to_string().into();
+
+        self.cache.insert(cache_key.clone(), value.clone()).await;
+
+        let event = LayeredEvent::new(
+            LayeredEventKind::NodeWeightWrite,
+            Arc::new(DBNAME.to_string()),
+            cache_key,
+            Arc::new(postcard_value),
+            Arc::new("node_weights".to_string()),
+            web_events,
+            tenancy,
+            actor,
+            false,
+        );
+        let reader = self.persister_client.write_event(event)?;
+
+        Ok((key, reader))
+    }
+
     pub async fn write(
         &self,
         value: Arc<V>,
@@ -68,6 +97,7 @@ where
             web_events,
             tenancy,
             actor,
+            true,
         );
         let reader = self.persister_client.write_event(event)?;
 
