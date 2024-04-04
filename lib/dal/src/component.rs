@@ -38,11 +38,12 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, Action, ActionKind, ActionPrototype,
+    func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
     ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
-    DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
-    Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
-    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    DalContext, DeprecatedAction, Func, FuncError, FuncId, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
 };
 
 pub mod code;
@@ -420,7 +421,7 @@ impl Component {
             .map_err(Box::new)?
         {
             if prototype.kind == ActionKind::Create {
-                Action::upsert(ctx, prototype.id, component.id())
+                DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
             }

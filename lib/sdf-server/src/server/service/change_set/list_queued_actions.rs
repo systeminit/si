@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    action::ActionBag, history_event, Action, ActionId, ActionKind, ActionPrototypeId, ActorView,
-    ComponentId, Func, Visibility,
+    deprecated_action::DeprecatedActionBag, history_event, ActionId, ActionKind, ActionPrototypeId,
+    ActorView, ComponentId, DeprecatedAction, Func, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -44,13 +44,13 @@ pub async fn list_queued_actions(
     let mut actions = HashMap::new();
     for (
         _,
-        ActionBag {
+        DeprecatedActionBag {
             action,
             parents,
             kind,
             component_id,
         },
-    ) in Action::build_graph(&ctx).await?
+    ) in DeprecatedAction::build_graph(&ctx).await?
     {
         let mut display_name = None;
         let prototype = action.prototype(&ctx).await?;

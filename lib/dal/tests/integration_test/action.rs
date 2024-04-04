@@ -3,7 +3,9 @@ mod runner;
 mod with_secret;
 mod with_update;
 
-use dal::{Action, ActionKind, ActionPrototype, Component, DalContext, InputSocket, OutputSocket};
+use dal::{
+    ActionKind, ActionPrototype, Component, DalContext, DeprecatedAction, InputSocket, OutputSocket,
+};
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
 use pretty_assertions_sorted::assert_eq;
@@ -22,7 +24,7 @@ async fn prototype(ctx: &mut DalContext) {
     {
         if proto.kind == ActionKind::Create {
             action = Some(
-                Action::upsert(ctx, proto.id, component.id())
+                DeprecatedAction::upsert(ctx, proto.id, component.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -61,7 +63,7 @@ async fn component(ctx: &mut DalContext) {
     {
         if prototype.kind == ActionKind::Create {
             action = Some(
-                Action::upsert(ctx, prototype.id, component.id())
+                DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -99,7 +101,7 @@ async fn get_by_id(ctx: &mut DalContext) {
     {
         if prototype.kind == ActionKind::Create {
             action = Some(
-                Action::upsert(ctx, prototype.id, component.id())
+                DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -116,7 +118,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
     let action = action.expect("no action found");
     assert_eq!(
-        Action::get_by_id(ctx, action.id)
+        DeprecatedAction::get_by_id(ctx, action.id)
             .await
             .expect("unable to get action"),
         action
@@ -134,7 +136,7 @@ async fn delete(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
     {
         if prototype.kind == ActionKind::Create {
-            Action::upsert(ctx, prototype.id, component.id())
+            DeprecatedAction::upsert(ctx, prototype.id, component.id())
                 .await
                 .expect("unable to upsert action");
             break;
@@ -148,7 +150,7 @@ async fn delete(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let graph = Action::build_graph(ctx)
+    let graph = DeprecatedAction::build_graph(ctx)
         .await
         .expect("unable to build graph");
 
@@ -172,7 +174,7 @@ async fn delete(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let graph = Action::build_graph(ctx)
+    let graph = DeprecatedAction::build_graph(ctx)
         .await
         .expect("unable to build graph");
 
@@ -192,7 +194,7 @@ async fn for_component(ctx: &mut DalContext) {
     {
         if prototype.kind == ActionKind::Create {
             actions.push(
-                Action::upsert(ctx, prototype.id, component.id())
+                DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -206,7 +208,7 @@ async fn for_component(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let list = Action::for_component(ctx, component.id())
+    let list = DeprecatedAction::for_component(ctx, component.id())
         .await
         .expect("unable to list actions for component");
     assert_eq!(list, actions);
@@ -226,7 +228,7 @@ async fn build_graph(ctx: &mut DalContext) {
     {
         if prototype.kind == ActionKind::Create {
             source_action = Some(
-                Action::upsert(ctx, prototype.id, source.id())
+                DeprecatedAction::upsert(ctx, prototype.id, source.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -241,7 +243,7 @@ async fn build_graph(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let graph = Action::build_graph(ctx)
+    let graph = DeprecatedAction::build_graph(ctx)
         .await
         .expect("unable to build graph");
     assert_eq!(graph.len(), 1);
@@ -258,7 +260,7 @@ async fn build_graph(ctx: &mut DalContext) {
     {
         if prototype.kind == ActionKind::Create {
             destination_action = Some(
-                Action::upsert(ctx, prototype.id, destination.id())
+                DeprecatedAction::upsert(ctx, prototype.id, destination.id())
                     .await
                     .expect("unable to upsert action"),
             );
@@ -274,7 +276,7 @@ async fn build_graph(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let graph = Action::build_graph(ctx)
+    let graph = DeprecatedAction::build_graph(ctx)
         .await
         .expect("unable to build graph");
     assert_eq!(graph.len(), 2);
@@ -307,7 +309,7 @@ async fn build_graph(ctx: &mut DalContext) {
         .await
         .expect("update_snapshot_to_visibility");
 
-    let graph = Action::build_graph(ctx)
+    let graph = DeprecatedAction::build_graph(ctx)
         .await
         .expect("unable to build graph");
     assert_eq!(graph.len(), 2);

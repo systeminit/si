@@ -2,7 +2,7 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{
-    Action, ActionKind, AttributeValue, ChangeSet, Component, DalContext, InputSocket,
+    ActionKind, AttributeValue, ChangeSet, Component, DalContext, DeprecatedAction, InputSocket,
     OutputSocket, Prop, Secret,
 };
 use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
@@ -108,7 +108,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     );
 
     // Ensure we have our create action on the destination component.
-    let mut actions = Action::for_component(ctx, destination_component.id())
+    let mut actions = DeprecatedAction::for_component(ctx, destination_component.id())
         .await
         .expect("unable to list actions for component");
     assert_eq!(

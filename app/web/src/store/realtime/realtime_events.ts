@@ -7,7 +7,7 @@ import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
-import { ActionId, ActionStatus } from "../actions.store";
+import { ActionStatus, DeprecatedActionId } from "../actions.store";
 import {
   AttributeValueId,
   AttributeValueKind,
@@ -137,7 +137,7 @@ export type WsEventPayloadMap = {
   //   runnerState: WorkflowRunnerState;
   // };
 
-  ActionRunnerReturn: {
+  DeprecatedActionRunnerReturn: {
     id: string;
     batchId: string;
     attributeValueId: string;
@@ -145,7 +145,7 @@ export type WsEventPayloadMap = {
     output: string[];
     status: ActionStatus;
   };
-  ActionBatchReturn: {
+  DeprecatedActionBatchReturn: {
     id: string;
     status: ActionStatus;
   };
@@ -204,12 +204,12 @@ export type WsEventPayloadMap = {
   };
   ActionAdded: {
     componentId: ComponentId;
-    actionId: ActionId;
+    actionId: DeprecatedActionId;
     changeSetId: ChangeSetId;
   };
   ActionRemoved: {
     componentId: ComponentId;
-    actionId: ActionId;
+    actionId: DeprecatedActionId;
     changeSetId: ChangeSetId;
   };
   SecretUpdated: {

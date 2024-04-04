@@ -1,5 +1,6 @@
 use dal::{
-    ActionBatch, ActionCompletionStatus, ActionPrototype, ActionRunner, Component, DalContext,
+    ActionCompletionStatus, ActionPrototype, Component, DalContext, DeprecatedActionBatch,
+    DeprecatedActionRunner,
 };
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -16,7 +17,7 @@ async fn runners(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
         .pop()
         .expect("unable to find prototype for variant");
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -33,7 +34,7 @@ async fn runners(ctx: &mut DalContext) {
         .expect("unable to list runners")
         .is_empty());
 
-    ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+    DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
         .await
         .expect("unable to create action runner");
 
@@ -56,7 +57,7 @@ async fn runners(ctx: &mut DalContext) {
 
 #[test]
 async fn get_by_id(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -68,7 +69,7 @@ async fn get_by_id(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionBatch::get_by_id(ctx, batch.id)
+        DeprecatedActionBatch::get_by_id(ctx, batch.id)
             .await
             .expect("unable to get action batch"),
         batch
@@ -77,7 +78,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
 #[test]
 async fn set_completion_status(ctx: &mut DalContext) {
-    let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let mut batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     assert_eq!(batch.completion_status, None);
@@ -106,7 +107,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionBatch::get_by_id(ctx, batch.id)
+        DeprecatedActionBatch::get_by_id(ctx, batch.id)
             .await
             .expect("unable to get action batch")
             .completion_status,
@@ -116,7 +117,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
 #[test]
 async fn set_started_at(ctx: &mut DalContext) {
-    let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let mut batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     assert_eq!(batch.started_at, None);
@@ -141,7 +142,7 @@ async fn set_started_at(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionBatch::get_by_id(ctx, batch.id)
+    assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
         .expect("unable to get action batch")
         .started_at
@@ -151,7 +152,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 #[test]
 async fn set_finished_at(ctx: &mut DalContext) {
     dbg!("yo");
-    let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let mut batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -181,7 +182,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionBatch::get_by_id(ctx, batch.id)
+    assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
         .expect("unable to get action batch")
         .finished_at
@@ -190,7 +191,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
 #[test]
 async fn stamp_started(ctx: &mut DalContext) {
-    let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let mut batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     assert!(batch.started_at.is_none());
@@ -204,7 +205,7 @@ async fn stamp_started(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
         .pop()
         .expect("unable to find prototype for variant");
-    ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+    DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
         .await
         .expect("unable to create action runner");
 
@@ -228,7 +229,7 @@ async fn stamp_started(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionBatch::get_by_id(ctx, batch.id)
+    assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
         .expect("unable to get action batch")
         .started_at
@@ -239,7 +240,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
 #[test]
 async fn stamp_finished(ctx: &mut DalContext) {
-    let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let mut batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     assert!(batch.started_at.is_none());
@@ -254,7 +255,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     runner
@@ -287,7 +288,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let batch = ActionBatch::get_by_id(ctx, batch.id)
+    let batch = DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
         .expect("unable to get action batch");
     assert!(batch.finished_at.is_some());
@@ -299,7 +300,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
 #[test]
 async fn list(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -310,7 +311,7 @@ async fn list(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let batches = ActionBatch::list(ctx)
+    let batches = DeprecatedActionBatch::list(ctx)
         .await
         .expect("unable to get action batch");
     assert_eq!(batches.len(), 1);

@@ -1,6 +1,6 @@
 use axum::Json;
-use dal::action::runner::ActionHistoryView;
-use dal::{ActionBatch, ActionBatchId, ActionCompletionStatus};
+use dal::deprecated_action::runner::ActionHistoryView;
+use dal::{ActionCompletionStatus, DeprecatedActionBatch, DeprecatedActionBatchId};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
@@ -9,7 +9,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchHistoryView {
-    pub id: ActionBatchId,
+    pub id: DeprecatedActionBatchId,
     pub status: Option<ActionCompletionStatus>,
     author: String,
     actors: Option<Vec<String>>,
@@ -27,7 +27,7 @@ pub async fn history(
     let ctx = builder.build_head(request_ctx).await?;
 
     let mut batch_views = Vec::new();
-    for batch in ActionBatch::list(&ctx).await? {
+    for batch in DeprecatedActionBatch::list(&ctx).await? {
         let completion_status = if let Some(status) = batch.completion_status {
             Some(status)
         } else {

@@ -22,13 +22,13 @@ use crate::{
 /// Add them to the *END* of the enum *ONLY*.
 #[derive(EnumDiscriminants, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum ContentTypes {
-    Action(ActionContent),
-    ActionBatch(ActionBatchContent),
     ActionPrototype(ActionPrototypeContent),
-    ActionRunner(ActionRunnerContent),
     Any(CasValue),
     AttributePrototype(AttributePrototypeContent),
     Component(ComponentContent),
+    DeprecatedAction(DeprecatedActionContent),
+    DeprecatedActionBatch(DeprecatedActionBatchContent),
+    DeprecatedActionRunner(DeprecatedActionRunnerContent),
     Func(FuncContent),
     FuncArgument(FuncArgumentContent),
     InputSocket(InputSocketContent),
@@ -75,12 +75,12 @@ macro_rules! impl_into_content_types {
     };
 }
 
-impl_into_content_types!(Action);
-impl_into_content_types!(ActionBatch);
 impl_into_content_types!(ActionPrototype);
-impl_into_content_types!(ActionRunner);
 impl_into_content_types!(AttributePrototype);
 impl_into_content_types!(Component);
+impl_into_content_types!(DeprecatedAction);
+impl_into_content_types!(DeprecatedActionBatch);
+impl_into_content_types!(DeprecatedActionRunner);
 impl_into_content_types!(Func);
 impl_into_content_types!(FuncArgument);
 impl_into_content_types!(InputSocket);
@@ -120,23 +120,23 @@ impl From<ContentTypes> for Option<CasValue> {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionContent {
-    V1(ActionContentV1),
+pub enum DeprecatedActionContent {
+    V1(DeprecatedActionContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionContentV1 {
+pub struct DeprecatedActionContentV1 {
     pub creation_user_pk: Option<UserPk>,
     pub timestamp: Timestamp,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionBatchContent {
-    V1(ActionBatchContentV1),
+pub enum DeprecatedActionBatchContent {
+    V1(DeprecatedActionBatchContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionBatchContentV1 {
+pub struct DeprecatedActionBatchContentV1 {
     pub author: String,
     pub actors: String,
     pub started_at: Option<DateTime<Utc>>,
@@ -158,12 +158,12 @@ pub struct ActionPrototypeContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionRunnerContent {
-    V1(ActionRunnerContentV1),
+pub enum DeprecatedActionRunnerContent {
+    V1(DeprecatedActionRunnerContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionRunnerContentV1 {
+pub struct DeprecatedActionRunnerContentV1 {
     pub timestamp: Timestamp,
 
     pub component_id: ComponentId,

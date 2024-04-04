@@ -1,6 +1,6 @@
 use dal::{
-    func::backend::js_action::ActionRunResult, ActionBatch, ActionCompletionStatus,
-    ActionPrototype, ActionRunner, Component, DalContext,
+    func::backend::js_action::ActionRunResult, ActionCompletionStatus, ActionPrototype, Component,
+    DalContext, DeprecatedActionBatch, DeprecatedActionRunner,
 };
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -8,7 +8,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn get_by_id(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
@@ -20,9 +20,10 @@ async fn get_by_id(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
         .pop()
         .expect("unable to find prototype for variant");
-    let runner = ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
-        .await
-        .expect("unable to create action runner");
+    let runner =
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+            .await
+            .expect("unable to create action runner");
 
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
@@ -32,7 +33,7 @@ async fn get_by_id(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionRunner::get_by_id(ctx, runner.id)
+        DeprecatedActionRunner::get_by_id(ctx, runner.id)
             .await
             .expect("unable to get action runner"),
         runner
@@ -41,7 +42,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
 #[test]
 async fn set_resource(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -55,7 +56,7 @@ async fn set_resource(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert_eq!(runner.resource, None);
@@ -88,7 +89,7 @@ async fn set_resource(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionRunner::get_by_id(ctx, runner.id)
+        DeprecatedActionRunner::get_by_id(ctx, runner.id)
             .await
             .expect("unable to get action runner")
             .resource,
@@ -98,7 +99,7 @@ async fn set_resource(ctx: &mut DalContext) {
 
 #[test]
 async fn set_completion_message(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -112,7 +113,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert_eq!(runner.completion_message, None);
@@ -138,7 +139,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionRunner::get_by_id(ctx, runner.id)
+        DeprecatedActionRunner::get_by_id(ctx, runner.id)
             .await
             .expect("unable to get action runner")
             .completion_message,
@@ -148,7 +149,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
 
 #[test]
 async fn set_completion_status(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -162,7 +163,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert_eq!(runner.completion_status, None);
@@ -191,7 +192,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
         .expect("unable to update snapshot to visiblity");
 
     assert_eq!(
-        ActionRunner::get_by_id(ctx, runner.id)
+        DeprecatedActionRunner::get_by_id(ctx, runner.id)
             .await
             .expect("unable to get action runner")
             .completion_status,
@@ -201,7 +202,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
 #[test]
 async fn set_started_at(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -215,7 +216,7 @@ async fn set_started_at(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert_eq!(runner.started_at, None);
@@ -240,7 +241,7 @@ async fn set_started_at(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionRunner::get_by_id(ctx, runner.id)
+    assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
         .expect("unable to get action runner")
         .started_at
@@ -249,7 +250,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 
 #[test]
 async fn set_finished_at(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -263,7 +264,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert!(runner.finished_at.is_none());
@@ -287,7 +288,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionRunner::get_by_id(ctx, runner.id)
+    assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
         .expect("unable to get action runner")
         .finished_at
@@ -296,7 +297,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
 #[test]
 async fn stamp_started(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
 
@@ -310,7 +311,7 @@ async fn stamp_started(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert!(runner.started_at.is_none());
@@ -335,7 +336,7 @@ async fn stamp_started(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    assert!(ActionRunner::get_by_id(ctx, runner.id)
+    assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
         .expect("unable to get action runner")
         .started_at
@@ -346,7 +347,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
 #[test]
 async fn stamp_finished(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
@@ -359,7 +360,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
     assert!(runner.started_at.is_none());
@@ -414,7 +415,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let runner = ActionRunner::get_by_id(ctx, runner.id)
+    let runner = DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
         .expect("unable to get action runner");
     assert!(runner.finished_at.is_some());
@@ -426,7 +427,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
 #[test]
 async fn for_batch(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
@@ -438,9 +439,10 @@ async fn for_batch(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
         .pop()
         .expect("unable to find prototype for variant");
-    let runner = ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
-        .await
-        .expect("unable to create action runner");
+    let runner =
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+            .await
+            .expect("unable to create action runner");
 
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
@@ -449,7 +451,7 @@ async fn for_batch(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let runners = ActionRunner::for_batch(ctx, batch.id)
+    let runners = DeprecatedActionRunner::for_batch(ctx, batch.id)
         .await
         .expect("unable to get action runners for batch");
     assert_eq!(runners.len(), 1);
@@ -458,7 +460,7 @@ async fn for_batch(ctx: &mut DalContext) {
 
 #[test]
 async fn run(ctx: &mut DalContext) {
-    let batch = ActionBatch::new(ctx, "batch", "paulo was here")
+    let batch = DeprecatedActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
@@ -471,7 +473,7 @@ async fn run(ctx: &mut DalContext) {
         .pop()
         .expect("unable to find prototype for variant");
     let mut runner =
-        ActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
+        DeprecatedActionRunner::new(ctx, batch.id, component.id(), "swifty".to_owned(), proto.id)
             .await
             .expect("unable to create action runner");
 

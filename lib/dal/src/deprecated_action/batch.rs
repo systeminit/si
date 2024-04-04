@@ -21,19 +21,17 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError,
-    layer_db_types::{ActionBatchContent, ActionBatchContentV1},
-    pk, ActionCompletionStatus, ActionPrototypeError, ActionRunner, ActionRunnerError,
-    ComponentError, DalContext, FuncError, HistoryEventError, SchemaError, Timestamp,
-    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    layer_db_types::{DeprecatedActionBatchContent, DeprecatedActionBatchContentV1},
+    pk, ActionCompletionStatus, ActionPrototypeError, ComponentError, DalContext,
+    DeprecatedActionRunner, DeprecatedActionRunnerError, FuncError, HistoryEventError, SchemaError,
+    Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum ActionBatchError {
+pub enum DeprecatedActionBatchError {
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error(transparent)]
-    ActionRunner(#[from] ActionRunnerError),
     #[error("cannot stamp batch as started since it already finished")]
     AlreadyFinished,
     #[error("cannot stamp batch as started since it already started")]
@@ -42,6 +40,8 @@ pub enum ActionBatchError {
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
+    #[error(transparent)]
+    DeprecatedActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("completion status is empty")]
@@ -55,7 +55,7 @@ pub enum ActionBatchError {
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("no action runners in batch: action batch is empty")]
-    NoActionRunnersInBatch(ActionBatchId),
+    NoActionRunnersInBatch(DeprecatedActionBatchId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("cannot stamp batch as finished since it has not yet been started")]
@@ -76,13 +76,13 @@ pub enum ActionBatchError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ActionBatchResult<T, E = ActionBatchError> = std::result::Result<T, E>;
+pub type DeprecatedActionBatchResult<T, E = DeprecatedActionBatchError> = std::result::Result<T, E>;
 
 /// A batch of [`ActionRunners`](crate::ActionRunner). Every [`ActionRunner`](crate::ActionRunner)
 /// must belong at one and only one [`batch`](Self).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ActionBatch {
-    pub id: ActionBatchId,
+pub struct DeprecatedActionBatch {
+    pub id: DeprecatedActionBatchId,
     pub timestamp: Timestamp,
 
     // TODO(nick): automate with the logged in user.
@@ -91,16 +91,16 @@ pub struct ActionBatch {
     // This is a comma separated list of people involved in the ChangeSet
     pub actors: String,
 
-    /// Indicates when the [`ActionBatch`] started execution when populated.
+    /// Indicates when the [`DeprecatedActionBatch`] started execution when populated.
     pub started_at: Option<DateTime<Utc>>,
-    /// Indicates when the [`ActionBatch`] finished execution when populated.
+    /// Indicates when the [`DeprecatedActionBatch`] finished execution when populated.
     pub finished_at: Option<DateTime<Utc>>,
-    /// Indicates the state of the [`ActionBatch`] when finished.
+    /// Indicates the state of the [`DeprecatedActionBatch`] when finished.
     pub completion_status: Option<ActionCompletionStatus>,
 }
 
-impl From<ActionBatch> for ActionBatchContentV1 {
-    fn from(batch: ActionBatch) -> Self {
+impl From<DeprecatedActionBatch> for DeprecatedActionBatchContentV1 {
+    fn from(batch: DeprecatedActionBatch) -> Self {
         Self {
             author: batch.author,
             actors: batch.actors,
@@ -112,8 +112,8 @@ impl From<ActionBatch> for ActionBatchContentV1 {
     }
 }
 
-impl ActionBatch {
-    pub fn assemble(id: ActionBatchId, content: ActionBatchContentV1) -> Self {
+impl DeprecatedActionBatch {
+    pub fn assemble(id: DeprecatedActionBatchId, content: DeprecatedActionBatchContentV1) -> Self {
         Self {
             id,
             author: content.author,
@@ -129,10 +129,10 @@ impl ActionBatch {
         ctx: &DalContext,
         author: impl AsRef<str>,
         actors: &str,
-    ) -> ActionBatchResult<Self> {
+    ) -> DeprecatedActionBatchResult<Self> {
         let timestamp = Timestamp::now();
 
-        let content = ActionBatchContentV1 {
+        let content = DeprecatedActionBatchContentV1 {
             author: author.as_ref().to_owned(),
             actors: actors.to_owned(),
             started_at: None,
@@ -145,7 +145,7 @@ impl ActionBatch {
             .layer_db()
             .cas()
             .write(
-                Arc::new(ActionBatchContent::V1(content.clone()).into()),
+                Arc::new(DeprecatedActionBatchContent::V1(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -176,13 +176,16 @@ impl ActionBatch {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: ActionBatchId) -> ActionBatchResult<Self> {
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: DeprecatedActionBatchId,
+    ) -> DeprecatedActionBatchResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
-        let content: ActionBatchContent = ctx
+        let content: DeprecatedActionBatchContent = ctx
             .layer_db()
             .cas()
             .try_read_as(&hash)
@@ -190,12 +193,12 @@ impl ActionBatch {
             .ok_or_else(|| WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let ActionBatchContent::V1(inner) = content;
+        let DeprecatedActionBatchContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
     }
 
-    pub async fn list(ctx: &DalContext) -> ActionBatchResult<Vec<Self>> {
+    pub async fn list(ctx: &DalContext) -> DeprecatedActionBatchResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut action_batches = vec![];
@@ -221,7 +224,7 @@ impl ActionBatch {
             node_weights.push(node_weight);
         }
 
-        let contents: HashMap<ContentHash, ActionBatchContent> = ctx
+        let contents: HashMap<ContentHash, DeprecatedActionBatchContent> = ctx
             .layer_db()
             .cas()
             .try_read_many_as(hashes.as_slice())
@@ -231,7 +234,7 @@ impl ActionBatch {
             match contents.get(&node_weight.content_hash()) {
                 Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let ActionBatchContent::V1(inner) = content;
+                    let DeprecatedActionBatchContent::V1(inner) = content;
 
                     action_batches.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
                 }
@@ -245,27 +248,30 @@ impl ActionBatch {
         Ok(action_batches)
     }
 
-    pub async fn runners(&self, ctx: &DalContext) -> ActionBatchResult<Vec<ActionRunner>> {
-        Ok(ActionRunner::for_batch(ctx, self.id).await?)
+    pub async fn runners(
+        &self,
+        ctx: &DalContext,
+    ) -> DeprecatedActionBatchResult<Vec<DeprecatedActionRunner>> {
+        Ok(DeprecatedActionRunner::for_batch(ctx, self.id).await?)
     }
 
     pub async fn set_completion_status(
         &mut self,
         ctx: &DalContext,
         status: Option<ActionCompletionStatus>,
-    ) -> ActionBatchResult<()> {
+    ) -> DeprecatedActionBatchResult<()> {
         self.completion_status = status;
         self.update_content(ctx).await
     }
 
-    async fn update_content(&self, ctx: &DalContext) -> ActionBatchResult<()> {
-        let content = ActionBatchContentV1::from(self.clone());
+    async fn update_content(&self, ctx: &DalContext) -> DeprecatedActionBatchResult<()> {
+        let content = DeprecatedActionBatchContentV1::from(self.clone());
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(ActionBatchContent::V1(content).into()),
+                Arc::new(DeprecatedActionBatchContent::V1(content).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -279,12 +285,12 @@ impl ActionBatch {
         Ok(())
     }
 
-    pub async fn set_started_at(&mut self, ctx: &DalContext) -> ActionBatchResult<()> {
+    pub async fn set_started_at(&mut self, ctx: &DalContext) -> DeprecatedActionBatchResult<()> {
         self.started_at = Some(Utc::now());
         self.update_content(ctx).await
     }
 
-    pub async fn set_finished_at(&mut self, ctx: &DalContext) -> ActionBatchResult<()> {
+    pub async fn set_finished_at(&mut self, ctx: &DalContext) -> DeprecatedActionBatchResult<()> {
         self.finished_at = Some(Utc::now());
         self.update_content(ctx).await
     }
@@ -293,7 +299,7 @@ impl ActionBatch {
     pub async fn stamp_finished(
         &mut self,
         ctx: &DalContext,
-    ) -> ActionBatchResult<ActionCompletionStatus> {
+    ) -> DeprecatedActionBatchResult<ActionCompletionStatus> {
         if self.started_at.is_some() {
             self.set_finished_at(ctx).await?;
 
@@ -302,7 +308,7 @@ impl ActionBatch {
             for runner in self.runners(ctx).await? {
                 match runner
                     .completion_status
-                    .ok_or(ActionBatchError::EmptyCompletionStatus)?
+                    .ok_or(DeprecatedActionBatchError::EmptyCompletionStatus)?
                 {
                     ActionCompletionStatus::Success => {}
                     ActionCompletionStatus::Failure => {
@@ -321,18 +327,18 @@ impl ActionBatch {
                 .await?;
             Ok(batch_completion_status)
         } else {
-            Err(ActionBatchError::NotYetStarted)
+            Err(DeprecatedActionBatchError::NotYetStarted)
         }
     }
 
     /// A safe wrapper around setting the started column.
-    pub async fn stamp_started(&mut self, ctx: &DalContext) -> ActionBatchResult<()> {
+    pub async fn stamp_started(&mut self, ctx: &DalContext) -> DeprecatedActionBatchResult<()> {
         if self.started_at.is_some() {
-            Err(ActionBatchError::AlreadyStarted)
+            Err(DeprecatedActionBatchError::AlreadyStarted)
         } else if self.finished_at.is_some() {
-            Err(ActionBatchError::AlreadyFinished)
+            Err(DeprecatedActionBatchError::AlreadyFinished)
         } else if self.runners(ctx).await?.is_empty() {
-            Err(ActionBatchError::NoActionRunnersInBatch(self.id))
+            Err(DeprecatedActionBatchError::NoActionRunnersInBatch(self.id))
         } else {
             self.set_started_at(ctx).await?;
             Ok(())
@@ -348,24 +354,24 @@ impl ActionBatch {
     }
 }
 
-pk!(ActionBatchId);
+pk!(DeprecatedActionBatchId);
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ActionBatchReturn {
-    id: ActionBatchId,
+pub struct DeprecatedActionBatchReturn {
+    id: DeprecatedActionBatchId,
     status: ActionCompletionStatus,
 }
 
 impl WsEvent {
     pub async fn action_batch_return(
         ctx: &DalContext,
-        id: ActionBatchId,
+        id: DeprecatedActionBatchId,
         status: ActionCompletionStatus,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ActionBatchReturn(ActionBatchReturn { id, status }),
+            WsPayload::DeprecatedActionBatchReturn(DeprecatedActionBatchReturn { id, status }),
         )
         .await
     }
