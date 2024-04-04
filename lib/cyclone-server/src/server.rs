@@ -116,7 +116,7 @@ impl Server {
                 let inner =
                     axum::Server::builder(UdsIncomingStream::create(path).await?).serve(service);
                 let socket = path.clone();
-                info!(socket = %socket.display(), "unix domain server serving");
+                debug!(socket = %socket.display(), "unix domain server serving");
 
                 Ok(Self {
                     inner: Box::new(InnerServer { inner, shutdown_rx }),
