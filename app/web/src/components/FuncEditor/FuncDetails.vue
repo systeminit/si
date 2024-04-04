@@ -191,7 +191,7 @@
           />
 
           <Collapsible
-            v-if="editingFunc.variant === FuncVariant.Attribute"
+            v-if="editingFunc.kind === FuncKind.Attribute"
             label="Arguments"
             defaultOpen
           >
@@ -206,9 +206,7 @@
           </Collapsible>
 
           <Collapsible
-            v-if="
-              editingFunc.variant === FuncVariant.Attribute && schemaVariantId
-            "
+            v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
             label="Binding"
             defaultOpen
           >
@@ -227,7 +225,7 @@
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="editingFunc.variant === FuncVariant.Attribute && !schemaVariantId"
+        v-if="editingFunc.kind === FuncKind.Attribute && !schemaVariantId"
         label="Bindings"
         slug="bindings"
       >
@@ -280,7 +278,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
+import { FuncArgument, FuncKind } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";

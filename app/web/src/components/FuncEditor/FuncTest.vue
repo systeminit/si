@@ -7,7 +7,7 @@
         <div
           class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow"
         >
-          Test {{ funcStore.selectedFuncDetails?.variant + " " || "" }}Function
+          Test {{ funcStore.selectedFuncDetails?.kind + " " || "" }}Function
           <span class="italic">{{ editingFunc?.name }}</span>
         </div>
         <StatusIndicatorIcon
@@ -238,7 +238,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { FuncVariant } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon, { Status } from "../StatusIndicatorIcon.vue";
 
@@ -267,7 +267,7 @@ const runningTest = ref(false);
 const dryRunConfig = computed(() => {
   // TODO(Wendy) - which function variants allow for a choice of dry run? which are always dry and which are always wet?
   // Note(Paulo): We only support dry run when testing functions
-  if (funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute) {
+  if (funcStore.selectedFuncDetails?.kind === FuncKind.Attribute) {
     return "dry";
     // eslint-disable-next-line no-constant-condition
   } else if (false) {

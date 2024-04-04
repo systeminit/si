@@ -34,7 +34,7 @@
           v-for="(warning, index) in assetStore.detachmentWarnings"
           :key="warning.message"
           class="mx-1"
-          :class="{ 'cursor-pointer': !!warning.variant }"
+          :class="{ 'cursor-pointer': !!warning.kind }"
           icon="alert-triangle"
           tone="warning"
           @click="openAttachModal(warning)"
@@ -172,7 +172,7 @@ import {
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { storeToRefs } from "pinia";
-import { FuncVariant } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
@@ -190,12 +190,9 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 );
 const executeAssetModalRef = ref();
 
-const openAttachModal = (warning: {
-  variant?: FuncVariant;
-  funcId?: FuncId;
-}) => {
-  if (!warning.variant) return;
-  attachModalRef.value?.open(true, warning.variant, warning.funcId);
+const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {
+  if (!warning.kind) return;
+  attachModalRef.value?.open(true, warning.kind, warning.funcId);
 };
 
 const componentTypeOptions = [

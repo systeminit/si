@@ -363,15 +363,22 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
-        let schema = Schema::get_by_id(ctx, schema_id).await?;
-        let default_schema_variant_id = schema
-            .get_default_schema_variant(ctx)
+        let default_schema_variant_id = Schema::get_default_schema_variant_by_id(ctx, schema_id)
             .await?
             .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
 
         Self::get_by_id(ctx, default_schema_variant_id).await
     }
 
+    pub async fn get_default_id_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let default_schema_variant_id = Schema::get_default_schema_variant_by_id(ctx, schema_id)
+            .await?
+            .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
+        Ok(default_schema_variant_id)
+    }
     pub async fn list_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,

@@ -1,9 +1,10 @@
 use axum::{extract::Query, Json};
 use serde::{Deserialize, Serialize};
 
+use dal::func::FuncKind;
 use dal::{Func, FuncId, Visibility};
 
-use super::{FuncAssociations, FuncResult, FuncVariant};
+use super::{FuncAssociations, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -36,7 +37,7 @@ pub struct GetFuncRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetFuncResponse {
     pub id: FuncId,
-    pub variant: FuncVariant,
+    pub kind: FuncKind,
     pub name: String,
     pub display_name: Option<String>,
     pub description: Option<String>,

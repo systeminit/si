@@ -123,10 +123,10 @@ pub async fn create_schema(ctx: &DalContext) -> Schema {
 
 pub async fn create_component_for_schema_name(
     ctx: &DalContext,
-    schema_variant_name: impl AsRef<str>,
+    schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
 ) -> Component {
-    let schema = Schema::find_by_name(ctx, schema_variant_name)
+    let schema = Schema::find_by_name(ctx, schema_name)
         .await
         .expect("could not find schema")
         .expect("schema not found");

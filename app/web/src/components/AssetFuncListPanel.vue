@@ -27,8 +27,8 @@
         class="overflow-y-auto min-h-[200px]"
       >
         <Collapsible
-          v-for="(label, variant) in CUSTOMIZABLE_FUNC_TYPES"
-          :key="variant"
+          v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
+          :key="kind"
           as="li"
           class="w-full"
           contentAs="ul"
@@ -42,7 +42,12 @@
           </template>
 
           <template #default>
-            <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
+            <li
+              v-for="func in funcsByKind[
+                customizableFuncKindToFuncKind(kind)
+              ] ?? []"
+              :key="func.id"
+            >
               <SiFuncListItem
                 :func="func"
                 color="#921ed6"
@@ -69,7 +74,10 @@ import {
   RequestStatusMessage,
   ScrollArea,
 } from "@si/vue-lib/design-system";
-import { CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
+import {
+  CUSTOMIZABLE_FUNC_TYPES,
+  customizableFuncKindToFuncKind,
+} from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
@@ -81,12 +89,9 @@ const props = defineProps<{ assetId?: string }>();
 
 const assetStore = useAssetStore();
 
-const funcsByVariant = computed(() =>
+const funcsByKind = computed(() =>
   props.assetId
-    ? groupBy(
-        assetStore.assetsById[props.assetId]?.funcs ?? [],
-        (f) => f.variant,
-      )
+    ? groupBy(assetStore.assetsById[props.assetId]?.funcs ?? [], (f) => f.kind)
     : {},
 );
 

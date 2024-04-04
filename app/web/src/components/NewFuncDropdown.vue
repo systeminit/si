@@ -12,9 +12,9 @@
     {{ label }}
     <DropdownMenu ref="menuRef">
       <DropdownMenuItem
-        v-for="(fnLabel, fnVariant) in CUSTOMIZABLE_FUNC_TYPES"
-        :key="fnVariant"
-        @select="emit('selectedFuncVariant', fnVariant)"
+        v-for="(fnLabel, fnKind) in CUSTOMIZABLE_FUNC_TYPES"
+        :key="fnKind"
+        @select="emit('selectedFuncKind', fnKind)"
       >
         <template #icon><FuncSkeleton /></template>
         {{ fnLabel.singularLabel }}
@@ -32,7 +32,10 @@ import {
   VButton,
 } from "@si/vue-lib/design-system";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
-import { FuncVariant, CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
+import {
+  CUSTOMIZABLE_FUNC_TYPES,
+  CustomizableFuncKind,
+} from "@/api/sdf/dal/func";
 
 defineProps({
   label: { type: String, required: true },
@@ -40,7 +43,7 @@ defineProps({
 });
 
 const emit = defineEmits<{
-  (e: "selectedFuncVariant", kind: FuncVariant): void;
+  (e: "selectedFuncKind", kind: CustomizableFuncKind): void;
 }>();
 
 const menuRef = ref<InstanceType<typeof DropdownMenu>>();

@@ -2,13 +2,15 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
+use dal::func::FuncKind;
 use dal::{
-    generate_name, ActionKind, ChangeSet, DalContext, Func, FuncBackendResponseType, FuncId,
-    OutputSocketId, PropId, SchemaVariant, SchemaVariantId, Visibility,
+    generate_name, ActionKind, ChangeSet, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, OutputSocketId, PropId, SchemaVariant, SchemaVariantId,
+    Visibility,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{FuncResult, FuncVariant};
+use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::func::FuncError;
@@ -43,17 +45,12 @@ pub enum CreateFuncOptions {
     CodeGenerationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     QualificationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
-    ValidationOptions {
-        schema_variant_id: SchemaVariantId,
-        prop_to_validate: PropId,
-    },
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFuncRequest {
-    variant: FuncVariant,
+    kind: FuncKind,
     name: Option<String>,
     options: Option<CreateFuncOptions>,
     #[serde(flatten)]
@@ -65,7 +62,7 @@ pub struct CreateFuncRequest {
 pub struct CreateFuncResponse {
     pub id: FuncId,
     pub handler: Option<String>,
-    pub variant: FuncVariant,
+    pub kind: FuncKind,
     pub name: String,
     pub code: Option<String>,
 }
@@ -81,8 +78,8 @@ pub static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("./defaults/authenti
 async fn create_func_stub(
     ctx: &DalContext,
     name: Option<String>,
-    variant: FuncVariant,
-    response_type: FuncBackendResponseType,
+    backend_kind: FuncBackendKind,
+    backend_response_type: FuncBackendResponseType,
     code: &str,
     handler: &str,
 ) -> FuncResult<Func> {
@@ -101,8 +98,8 @@ async fn create_func_stub(
         None::<String>,
         false,
         false,
-        variant.into(),
-        response_type,
+        backend_kind,
+        backend_response_type,
         Some(handler),
         Some(code_base64),
     )
@@ -119,7 +116,7 @@ async fn create_action_func(
     let func = create_func_stub(
         ctx,
         name,
-        FuncVariant::Action,
+        FuncBackendKind::JsAction,
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
         DEFAULT_CODE_HANDLER,
@@ -176,33 +173,42 @@ async fn create_action_func(
 async fn create_attribute_func(
     ctx: &DalContext,
     name: Option<String>,
-    variant: FuncVariant,
+    kind: FuncKind,
     _options: Option<CreateFuncOptions>,
 ) -> FuncResult<Func> {
-    let (code, handler, response_type) = match variant {
-        FuncVariant::Attribute => (
+    let (code, handler, backend_kind, backend_response_type) = match kind {
+        FuncKind::Attribute => (
             DEFAULT_ATTRIBUTE_CODE,
             DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
             FuncBackendResponseType::Unset,
         ),
-        FuncVariant::CodeGeneration => (
+        FuncKind::CodeGeneration => (
             DEFAULT_CODE_GENERATION_CODE,
             DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
             FuncBackendResponseType::CodeGeneration,
         ),
-        FuncVariant::Qualification => (
+        FuncKind::Qualification => (
             DEFAULT_QUALIFICATION_CODE,
             DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
             FuncBackendResponseType::Qualification,
         ),
         _ => {
-            return Err(FuncError::UnexpectedFuncVariantCreatingAttributeFunc(
-                variant.to_owned(),
-            ));
+            return Err(FuncError::UnexpectedFuncKindCreatingAttributeFunc(kind));
         }
     };
 
-    let func = create_func_stub(ctx, name, variant, response_type, code, handler).await?;
+    let func = create_func_stub(
+        ctx,
+        name,
+        backend_kind,
+        backend_response_type,
+        code,
+        handler,
+    )
+    .await?;
 
     // if let Some(options) = options {
     //     match (variant, options) {
@@ -272,7 +278,7 @@ async fn create_authentication_func(
     let func = create_func_stub(
         ctx,
         name,
-        FuncVariant::Authentication,
+        FuncBackendKind::JsAuthentication,
         FuncBackendResponseType::Void,
         DEFAULT_AUTHENTICATION_CODE,
         DEFAULT_CODE_HANDLER,
@@ -305,38 +311,29 @@ pub async fn create_func(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let func = match request.variant {
-        FuncVariant::Attribute => {
-            create_attribute_func(&ctx, request.name, FuncVariant::Attribute, request.options)
-                .await?
+    let func = match request.kind {
+        FuncKind::Action => create_action_func(&ctx, request.name, request.options).await?,
+        FuncKind::Attribute => {
+            create_attribute_func(&ctx, request.name, FuncKind::Attribute, request.options).await?
         }
-        FuncVariant::CodeGeneration => {
-            create_attribute_func(
-                &ctx,
-                request.name,
-                FuncVariant::CodeGeneration,
-                request.options,
-            )
-            .await?
-        }
-        FuncVariant::Action => create_action_func(&ctx, request.name, request.options).await?,
-        FuncVariant::Qualification => {
-            create_attribute_func(
-                &ctx,
-                request.name,
-                FuncVariant::Qualification,
-                request.options,
-            )
-            .await?
-        }
-        FuncVariant::Authentication => {
+        FuncKind::Authentication => {
             create_authentication_func(&ctx, request.name, request.options).await?
         }
-        FuncVariant::Reconciliation => unimplemented!(),
-        FuncVariant::Validation => unimplemented!("deprecated"),
+        FuncKind::CodeGeneration => {
+            create_attribute_func(
+                &ctx,
+                request.name,
+                FuncKind::CodeGeneration,
+                request.options,
+            )
+            .await?
+        }
+        FuncKind::Qualification => {
+            create_attribute_func(&ctx, request.name, FuncKind::Qualification, request.options)
+                .await?
+        }
+        kind => return Err(FuncError::InvalidFuncKindForCreation(kind)),
     };
-
-    let func_variant = (&func).try_into()?;
 
     track(
         &posthog_client,
@@ -347,7 +344,7 @@ pub async fn create_func(
                     "func_id": func.id,
                     "func_handler": func.handler.as_ref().map(|h| h.to_owned()),
                     "func_name": func.name.to_owned(),
-                    "func_variant": func_variant,
+                    "func_kind": func.kind,
         }),
     );
 
@@ -361,7 +358,7 @@ pub async fn create_func(
     Ok(response.body(serde_json::to_string(&CreateFuncResponse {
         id: func.id,
         handler: func.handler.as_ref().map(|h| h.to_owned()),
-        variant: func_variant,
+        kind: func.kind,
         name: func.name.to_owned(),
         code: func.code_plaintext()?,
     })?)?)
