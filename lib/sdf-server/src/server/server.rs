@@ -449,6 +449,8 @@ async fn install_builtins(
     dal.commit().await?;
 
     let mut ctx = ctx.clone();
+
+    // Here we return to incremental hashing
     ctx.update_snapshot_to_visibility().await?;
 
     Ok(())

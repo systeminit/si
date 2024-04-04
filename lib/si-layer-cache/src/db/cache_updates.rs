@@ -88,13 +88,11 @@ where
         })
     }
 
+    #[instrument("cache_updates.run", level = "info", skip_all)]
     pub async fn run(mut self) {
         while let Some(result) = self.messages.next().await {
             match result {
                 Ok(msg) => {
-                    if let Err(e) = msg.ack().await {
-                        warn!(error = ?e, "error acknowledging message from stream");
-                    }
                     let cache_update_task = CacheUpdateTask::new(
                         self.instance_id,
                         self.cas_cache.clone(),
@@ -284,10 +282,12 @@ where
         Ok(())
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn run(&self, msg: chunking_nats::Message) {
-        match self.process_message(msg).await {
+        match self.process_message(msg.clone()).await {
             Ok(()) => {}
             Err(e) => {
+                error!("{:?}", msg.inner.headers);
                 error!(error = %e, "error processing layerdb cache update message");
             }
         }

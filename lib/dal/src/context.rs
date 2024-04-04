@@ -351,6 +351,25 @@ impl DalContext {
         Ok(())
     }
 
+    pub async fn update_snapshot_to_visibility_no_incremental_hashing(
+        &mut self,
+    ) -> Result<(), TransactionsError> {
+        let change_set = ChangeSet::find(self, self.change_set_id())
+            .await
+            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
+
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set_without_incremental_hashing(self, change_set.id)
+                .await
+                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+
+        self.set_change_set(change_set)?;
+        self.set_workspace_snapshot(workspace_snapshot);
+
+        Ok(())
+    }
+
     pub async fn write_snapshot(
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
@@ -581,6 +600,17 @@ impl DalContext {
     ) -> Result<(), TransactionsError> {
         self.update_visibility_deprecated(Visibility::new(change_set_id));
         self.update_snapshot_to_visibility().await?;
+        Ok(())
+    }
+
+    /// Updates this context with a new [`Visibility`], specific to the new engine.
+    pub async fn update_visibility_and_snapshot_to_visibility_no_incremental_hashing(
+        &mut self,
+        change_set_id: ChangeSetId,
+    ) -> Result<(), TransactionsError> {
+        self.update_visibility_deprecated(Visibility::new(change_set_id));
+        self.update_snapshot_to_visibility_no_incremental_hashing()
+            .await?;
         Ok(())
     }
 

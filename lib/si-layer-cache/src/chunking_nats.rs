@@ -295,7 +295,7 @@ impl Stream for ChunkedMessagesStream {
 
 #[derive(Clone)]
 pub struct Message {
-    inner: jetstream::Message,
+    pub inner: jetstream::Message,
     ackers: Arc<Vec<jetstream::message::Acker>>,
 }
 

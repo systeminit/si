@@ -55,6 +55,7 @@ where
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     NodeWeightValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
+    #[instrument(level = "info", skip_all)]
     pub async fn initialize(
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,

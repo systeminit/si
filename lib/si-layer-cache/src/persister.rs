@@ -216,7 +216,7 @@ impl PersistEventTask {
         // Write to disk cache
         let disk_self = self.clone();
         let disk_event = event.clone();
-        let disk_join = tokio::task::spawn_blocking(move || disk_self.write_to_disk(disk_event));
+        let disk_result = disk_self.write_to_disk(disk_event);
 
         // Write to nats
         let nats_join = if event.gossip {
@@ -243,7 +243,8 @@ impl PersistEventTask {
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
-        match join![disk_join, pg_join, nats_join] {
+        let join_results = join![pg_join, nats_join];
+        match (disk_result, join_results.0, join_results.1) {
             (Ok(_), Ok(_), Ok(_)) => Ok(()),
             (Err(e), Ok(_), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
                 disk_error: Some(e.to_string()),

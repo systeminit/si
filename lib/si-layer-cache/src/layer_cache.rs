@@ -37,11 +37,7 @@ where
     }
 
     async fn spawn_disk_cache_write_vec(&self, key: Arc<str>, value: Vec<u8>) -> LayerDbResult<()> {
-        let self_clone = self.clone();
-        let write_handle = tokio::task::spawn_blocking(move || {
-            let _ = self_clone.disk_cache.insert(&key, &value);
-        });
-        write_handle.await?;
+        self.disk_cache.insert(&key, &value)?;
         Ok(())
     }
 
@@ -62,7 +58,7 @@ where
                         self.memory_cache
                             .insert(key.clone(), deserialized.clone())
                             .await;
-                        self.spawn_disk_cache_write_vec(key.clone(), value).await?;
+                        self.disk_cache.insert(&key, &value)?;
 
                         Some(deserialized)
                     }
