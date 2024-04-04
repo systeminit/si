@@ -79,13 +79,10 @@ async fn secret_definition_works_with_dummy_qualification(
         let reference_to_secret_attribute_value_id = property_values
             .find_by_prop_id(reference_to_secret_prop.id)
             .expect("unable to find attribute value");
-
-        let fail_value =
-            serde_json::json!(secret_that_will_fail_the_qualification.id().to_string());
-        AttributeValue::update(
+        AttributeValue::update_for_secret(
             ctx,
             reference_to_secret_attribute_value_id,
-            Some(fail_value.clone()),
+            Some(secret_that_will_fail_the_qualification.id()),
         )
         .await
         .expect("unable to perform attribute value update");
@@ -114,7 +111,10 @@ async fn secret_definition_works_with_dummy_qualification(
                 .await
                 .expect("could not get value")
                 .expect("no value found");
-        assert_eq!(fail_value, output_socket_attribute_value);
+        assert_eq!(
+            serde_json::json!(secret_that_will_fail_the_qualification.id().to_string()), // expected
+            output_socket_attribute_value                                                // actual
+        );
 
         // Check that the qualification fails.
         let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)
@@ -162,13 +162,10 @@ async fn secret_definition_works_with_dummy_qualification(
         let reference_to_secret_attribute_value_id = property_values
             .find_by_prop_id(reference_to_secret_prop.id)
             .expect("could not find attribute value");
-
-        let success_value =
-            serde_json::json!(secret_that_will_pass_the_qualification.id().to_string());
-        AttributeValue::update(
+        AttributeValue::update_for_secret(
             ctx,
             reference_to_secret_attribute_value_id,
-            Some(success_value.clone()),
+            Some(secret_that_will_pass_the_qualification.id()),
         )
         .await
         .expect("unable to perform attribute value update");
@@ -197,7 +194,10 @@ async fn secret_definition_works_with_dummy_qualification(
                 .await
                 .expect("could not get value")
                 .expect("no value found");
-        assert_eq!(success_value, output_socket_attribute_value);
+        assert_eq!(
+            serde_json::json!(secret_that_will_pass_the_qualification.id().to_string()), // expected
+            output_socket_attribute_value                                                // actual
+        );
 
         // Check that the qualification passes.
         let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)

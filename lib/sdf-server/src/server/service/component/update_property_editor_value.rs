@@ -15,6 +15,7 @@ pub struct UpdatePropertyEditorValueRequest {
     pub component_id: ComponentId,
     pub value: Option<serde_json::Value>,
     pub key: Option<String>,
+    pub is_for_secret: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -30,7 +31,19 @@ pub async fn update_property_editor_value(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
+    if request.is_for_secret {
+        AttributeValue::update_for_secret(
+            &ctx,
+            request.attribute_value_id,
+            match request.value {
+                Some(value) => Some(serde_json::from_value(value)?),
+                None => None,
+            },
+        )
+        .await?;
+    } else {
+        AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
+    }
 
     // Track
     //    {

@@ -55,8 +55,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, ChangeSetError, DalContext, HistoryActor, HistoryEventError, KeyPair, KeyPairError,
-    SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
+    id, AttributeValueId, ChangeSetError, DalContext, HistoryActor, HistoryEventError, KeyPair,
+    KeyPairError, SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
 };
 
 mod algorithm;
@@ -243,9 +243,9 @@ impl Secret {
     /// Generates a key based on the [`Tenancy`](crate::Tenancy), [`SecretId`] and a newly generated
     /// [`Ulid`].
     ///
-    /// A new key should be assembled anytime an [`EncryptedSecret`] is created or mutated. This
-    /// method is purposefully owned by [`Secret`] to help ensure that we don't generate a key based
-    /// on any encrypted contents or parameters to insert encrypted contents.
+    /// A new key should be assembled anytime an [`EncryptedSecret`] is created. This method is
+    /// purposefully owned by [`Secret`] to help ensure that we don't generate a key based on any
+    /// encrypted contents or parameters to insert encrypted contents.
     fn generate_key(ctx: &DalContext, secret_id: SecretId) -> SecretResult<EncryptedSecretKey> {
         let new_ulid = ctx.change_set()?.generate_ulid()?;
 
@@ -391,6 +391,12 @@ impl Secret {
         let new_key = Self::generate_key(ctx, self.id)?;
         EncryptedSecret::insert(ctx, new_key, crypted, key_pair_pk, version, algorithm).await?;
 
+        // Enqueue attribute values that are affected for dependent values update.
+        let direct_attribute_value_ids =
+            Self::determine_direct_attribute_value_ids(ctx, self.id).await?;
+        ctx.enqueue_dependent_values_update(direct_attribute_value_ids)
+            .await?;
+
         // Now, update the key on the secret on the graph.
         // TODO(nick): ensure that the old encrypted secret gets garbage collected.
         self.modify(ctx, |s| {
@@ -398,6 +404,26 @@ impl Secret {
             Ok(())
         })
         .await
+    }
+
+    async fn determine_direct_attribute_value_ids(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<Vec<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(secret_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        let mut direct_attribute_value_ids = Vec::new();
+        for source in sources {
+            if let NodeWeight::AttributeValue(inner) =
+                workspace_snapshot.get_node_weight(source).await?
+            {
+                direct_attribute_value_ids.push(inner.id().into());
+            }
+        }
+        Ok(direct_attribute_value_ids)
     }
 
     /// Modifies the [`Secret`] and persists modifications as applicable.

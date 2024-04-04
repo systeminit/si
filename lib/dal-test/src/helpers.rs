@@ -1,9 +1,11 @@
 use color_eyre::Result;
 use dal::change_set::{ChangeSet, ChangeSetId};
+use dal::secret::DecryptedSecret;
 use dal::{DalContext, UserClaim};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
 use names::{Generator, Name};
+use serde_json::Value;
 
 use crate::jwt_private_signing_key;
 use crate::signup::WorkspaceSignup;
@@ -164,39 +166,11 @@ pub async fn create_change_set_and_update_ctx(
         .expect("could not update visibility and snapshot");
 }
 
-// /// Get the "si:identity" [`Func`] and execute (if necessary).
-// pub async fn setup_identity_func(
-//     ctx: &DalContext,
-// ) -> (
-//     FuncId,
-//     FuncBindingId,
-//     FuncBindingReturnValueId,
-//     FuncArgumentId,
-// ) {
-//     let identity_func: Func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
-//         .await
-//         .expect("could not find identity func by name attr")
-//         .pop()
-//         .expect("identity func not found");
-//
-//     let identity_func_identity_arg = FuncArgument::list_for_func(ctx, *identity_func.id())
-//         .await
-//         .expect("cannot list identity func args")
-//         .pop()
-//         .expect("cannot find identity func identity arg");
-//
-//     let (identity_func_binding, identity_func_binding_return_value) =
-//         FuncBinding::create_and_execute(
-//             ctx,
-//             serde_json::json![{ "identity": null }],
-//             *identity_func.id(),
-//         )
-//         .await
-//         .expect("could not find or create identity func binding");
-//     (
-//         *identity_func.id(),
-//         *identity_func_binding.id(),
-//         *identity_func_binding_return_value.id(),
-//         *identity_func_identity_arg.id(),
-//     )
-// }
+pub fn prepare_decrypted_secret_for_assertions(decrypted_secret: &DecryptedSecret) -> Value {
+    // We don't provide a direct getter for the raw decrypted message (higher effort should mean
+    // less chance of developer error when handling `DecryptedSecret` types), so we'll serialize to
+    // a `Value` to compare messages
+    let decrypted_value =
+        serde_json::to_value(decrypted_secret).expect("failed to serialize decrypted contents");
+    decrypted_value["message"].to_owned()
+}

@@ -178,6 +178,7 @@ function updateSiProp(key: keyof typeof siValues) {
       propId: prop.propId,
       componentId: component.id,
       value: newVal,
+      isForSecret: false,
     },
   });
 }

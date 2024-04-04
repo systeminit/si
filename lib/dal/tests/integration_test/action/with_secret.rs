@@ -81,10 +81,10 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     let reference_to_secret_attribute_value_id = property_values
         .find_by_prop_id(reference_to_secret_prop.id)
         .expect("could not find attribute value");
-    AttributeValue::update(
+    AttributeValue::update_for_secret(
         ctx,
         reference_to_secret_attribute_value_id,
-        Some(serde_json::json!(secret.id().to_string())),
+        Some(secret.id()),
     )
     .await
     .expect("unable to perform attribute value update");

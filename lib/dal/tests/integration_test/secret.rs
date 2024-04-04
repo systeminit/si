@@ -1,8 +1,14 @@
-use dal::secret::DecryptedSecret;
-use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion};
+use dal::prop::PropPath;
+use dal::property_editor::values::PropertyEditorValues;
+use dal::qualification::QualificationSubCheckStatus;
+use dal::{
+    AttributeValue, Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm,
+    SecretVersion,
+};
+use dal_test::helpers::prepare_decrypted_secret_for_assertions;
+use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
 use dal_test::{test, test_harness::generate_fake_name, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
-use serde_json::Value;
 
 #[test]
 async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
@@ -235,11 +241,181 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     );
 }
 
-fn prepare_decrypted_secret_for_assertions(decrypted_secret: &DecryptedSecret) -> Value {
-    // We don't provide a direct getter for the raw decrypted message (higher effort should mean
-    // less chance of developer error when handling `DecryptedSecret` types), so we'll serialize to
-    // a `Value` to compare messages
-    let decrypted_value =
-        serde_json::to_value(decrypted_secret).expect("failed to serialize decrypted contents");
-    decrypted_value["message"].to_owned()
+#[test]
+async fn update_encrypted_contents_with_dependent_values(
+    ctx: &mut DalContext,
+    nw: &WorkspaceSignup,
+) {
+    let component =
+        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition").await;
+    let schema_variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("could not get schema variant id for component");
+    let component_id = component.id();
+
+    // This is the name of the secret definition from the test exclusive schema.
+    let secret_definition_name = "dummy";
+
+    // Cache the prop we need for attribute value update.
+    let dummy_secret_prop = Prop::find_prop_by_path(
+        ctx,
+        schema_variant_id,
+        &PropPath::new(["root", "secrets", secret_definition_name]),
+    )
+    .await
+    .expect("could not find prop by path");
+
+    // Create a secret with a value that will fail the qualification.
+    let encrypted_message_that_will_fail_the_qualification = encrypt_message(
+        ctx,
+        nw.key_pair.pk(),
+        &serde_json::json![{"value": "howard"}],
+    )
+    .await;
+    let secret = Secret::new(
+        ctx,
+        generate_fake_name(),
+        secret_definition_name,
+        None,
+        &encrypted_message_that_will_fail_the_qualification,
+        nw.key_pair.pk(),
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret");
+
+    // Commit and update snapshot to visibility.
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+
+    // Use the secret in the component.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    AttributeValue::update_for_secret(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
+        .await
+        .expect("unable to perform attribute value update");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+
+    // Check that the qualification fails.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Failure, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Update the encrypted contents.
+    let encrypted_message_that_will_pass_the_qualification =
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await;
+    let updated_secret = secret
+        .update_encrypted_contents(
+            ctx,
+            encrypted_message_that_will_pass_the_qualification.as_slice(),
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("could not update encrypted contents");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+
+    // Check that the qualification succeeds.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Success, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Unset the secret.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    AttributeValue::update_for_secret(ctx, dummy_secret_attribute_value_id, None)
+        .await
+        .expect("unable to perform attribute value update");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+
+    // Ensure that the qualification fails.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Failure, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Use the secret again.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    AttributeValue::update_for_secret(
+        ctx,
+        dummy_secret_attribute_value_id,
+        Some(updated_secret.id()),
+    )
+    .await
+    .expect("unable to perform attribute value update");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
+
+    // Ensure that the qualification succeeds.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Success, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
 }

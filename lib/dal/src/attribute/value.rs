@@ -73,7 +73,7 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, Component, ComponentId, DalContext, Func, FuncId,
-    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, SecretId,
     TransactionsError,
 };
 
@@ -415,6 +415,10 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// Updates an [`AttributeValue`] for a given id.
+    ///
+    /// _Note:_ if updating an [`AttributeValue`] that corresponds to a "/root/secrets/<secret>"
+    /// [`Prop`], [`AttributeValue::update_for_secret`] should be used instead.
     pub async fn update(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -2205,5 +2209,76 @@ impl AttributeValue {
             .index_or_key_of_child_entry(id)
             .await?;
         Ok(maybe_key)
+    }
+
+    /// Perform [`AttributeValue::update`], but ensure that whenever the [`Secret`](crate::Secret)'s
+    /// corresponding [`EncryptedSecret`](crate::EncryptedSecret) is updated, we can enqueue
+    /// [`DependentValuesUpdate`] for all [`AttributeValues`](AttributeValue) that _directly_ use
+    /// the [`Secret`](crate::Secret).
+    #[instrument(level = "debug", skip_all)]
+    pub async fn update_for_secret(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        secret_id: Option<SecretId>,
+    ) -> AttributeValueResult<()> {
+        Self::update_associations_for_secret(ctx, attribute_value_id, secret_id).await?;
+
+        let value = if let Some(secret_id) = secret_id {
+            debug!(%attribute_value_id, %secret_id, "preparing value for setting secret");
+            Some(serde_json::to_value(secret_id.to_string())?)
+        } else {
+            debug!(%attribute_value_id, "preparing value for unsetting secret");
+            None
+        };
+
+        Self::update(ctx, attribute_value_id, value).await
+    }
+
+    /// This _private_ method removes an existing usage of a [`Secret`](crate::Secret) (if there is
+    /// one) and optionally uses the [`Secret`](crate::Secret) provided.
+    #[instrument(level = "debug", skip_all)]
+    async fn update_associations_for_secret(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        secret_id: Option<SecretId>,
+    ) -> AttributeValueResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let change_set = ctx.change_set()?;
+
+        // First, clean up all existing usages of secrets (there should be one or none).
+        let destinations = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                attribute_value_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+        for destination in destinations {
+            let node_weight = workspace_snapshot.get_node_weight(destination).await?;
+            if let Some(ContentAddressDiscriminants::Secret) =
+                node_weight.content_address_discriminants()
+            {
+                workspace_snapshot
+                    .remove_edge_for_ulids(
+                        change_set,
+                        attribute_value_id,
+                        node_weight.id(),
+                        EdgeWeightKindDiscriminants::Use,
+                    )
+                    .await?;
+            }
+        }
+
+        // Use the secret, if one was provided. Otherwise, a secret will not be used.
+        if let Some(secret_id) = secret_id {
+            workspace_snapshot
+                .add_edge(
+                    attribute_value_id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    secret_id,
+                )
+                .await?;
+        }
+
+        Ok(())
     }
 }
