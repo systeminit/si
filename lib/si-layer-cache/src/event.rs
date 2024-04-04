@@ -130,6 +130,7 @@ pub struct LayeredEvent {
     pub metadata: LayeredEventMetadata,
     pub payload: LayeredEventPayload,
     pub web_events: Option<Vec<WebEvent>>,
+    pub gossip: bool,
 }
 
 impl LayeredEvent {
@@ -143,6 +144,7 @@ impl LayeredEvent {
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
+        gossip: bool,
     ) -> Self {
         LayeredEvent {
             event_id: LayeredEventId::new(),
@@ -151,6 +153,7 @@ impl LayeredEvent {
             metadata: LayeredEventMetadata::new(tenancy, actor),
             payload: LayeredEventPayload::new(db_name, key, value, sort_key),
             web_events,
+            gossip,
         }
     }
 }
