@@ -10,7 +10,6 @@ members = [
     "bin/pinga",
     "bin/rebaser",
     "bin/sdf",
-    "bin/si",
     "bin/veritech",
     "lib/auth-api-client",
     "lib/buck2-resources",
