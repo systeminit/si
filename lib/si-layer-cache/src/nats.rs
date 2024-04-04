@@ -38,6 +38,7 @@ pub async fn layerdb_events_stream(
             discard: jetstream::stream::DiscardPolicy::Old,
             // TODO(fnichol): this likely needs tuning
             max_age: Duration::from_secs(60 * 60 * 6),
+            no_ack: true,
             ..Default::default()
         })
         .await?;

@@ -3,7 +3,10 @@ use std::{str::FromStr, sync::Arc};
 use futures::StreamExt;
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::{
-    async_nats::jetstream::{self, consumer::DeliverPolicy},
+    async_nats::jetstream::{
+        self,
+        consumer::{AckPolicy, DeliverPolicy},
+    },
     NatsClient,
 };
 use strum::{AsRefStr, EnumString};
@@ -92,14 +95,8 @@ where
                         self.encrypted_secret_cache.clone(),
                         self.snapshot_cache.clone(),
                     );
-                    // Turns out I think it's probably dangerous to do this spawned, since we want
-                    // to make sure we insert things into the cache in the order we receive them.
-                    // If we spawn, we could do more at once, but at the cost of being uncertain
-                    // about order.
-                    //
-                    // If we need to do it async, we can just spawn. But I think this is what we
-                    // want.
-                    cache_update_task.run(msg).await;
+
+                    tokio::task::spawn(async move { cache_update_task.run(msg).await });
                 }
                 // An error while pulling a new message
                 Err(err) => {
@@ -120,6 +117,7 @@ where
             name: Some(name),
             description: Some(description),
             deliver_policy: DeliverPolicy::New,
+            ack_policy: AckPolicy::None,
             ..Default::default()
         }
     }

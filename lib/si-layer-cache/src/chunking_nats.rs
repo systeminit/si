@@ -129,6 +129,7 @@ impl ChunkedMessagesStream {
         msg: jetstream::Message,
     ) -> Option<Poll<Option<Result<Message, LayerDbError>>>> {
         let context = msg.context.clone();
+
         let (message, acker) = msg.split();
 
         match &message.headers {
