@@ -676,7 +676,6 @@ impl WorkspaceSnapshotGraph {
 
     /// Given the node index for a node in other, find if a node exists in self that has the same
     /// id as the node found in other.
-    #[instrument("info", skip_all)]
     pub(crate) fn find_latest_idx_in_self_from_other_idx(
         &self,
         other: &WorkspaceSnapshotGraph,

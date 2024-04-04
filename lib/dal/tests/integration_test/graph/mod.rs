@@ -1227,7 +1227,7 @@ async fn detect_conflicts_and_updates_simple_with_content_conflict(ctx: DalConte
     let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
     let new_change_set = &new_change_set;
     let new_graph = base_graph.real_clone().await;
-    let new_root_id = new_graph.root_id().await.expect("should get root id");
+    let _new_root_id = new_graph.root_id().await.expect("should get root id");
 
     new_graph
         .update_content(

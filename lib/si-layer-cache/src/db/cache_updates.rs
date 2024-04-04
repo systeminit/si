@@ -77,6 +77,7 @@ where
         })
     }
 
+    #[instrument("cache_updates.run", level = "info", skip_all)]
     pub async fn run(mut self) {
         let shutdown_token = self.shutdown_token.clone();
         tokio::select! {
@@ -187,6 +188,7 @@ where
         match self.process_message(event).await {
             Ok(()) => {}
             Err(e) => {
+                error!("{:?}", msg.inner.headers);
                 error!(error = %e, "error processing layerdb cache update message");
             }
         }

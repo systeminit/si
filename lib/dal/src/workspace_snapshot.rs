@@ -159,6 +159,7 @@ pub struct WorkspaceSnapshot {
     node_weight_db: NodeWeightDb<NodeWeight>,
     events_actor: si_events::Actor,
     events_tenancy: si_events::Tenancy,
+    incremental_hashing: bool,
 }
 
 struct SnapshotReadGuard<'a> {
@@ -218,6 +219,23 @@ impl WorkspaceSnapshot {
     /// Generates a snapshot with only a root node, without persisting it. In
     /// most cases what you want is [`WorkspaceSnapshot::initial`].
     pub async fn empty(ctx: &DalContext, change_set: &ChangeSet) -> WorkspaceSnapshotResult<Self> {
+        Self::empty_inner(ctx, change_set, true).await
+    }
+
+    #[allow(dead_code)]
+    async fn empty_without_incremental_hashing(
+        ctx: &DalContext,
+        change_set: &ChangeSet,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::empty_inner(ctx, change_set, false).await
+    }
+
+    async fn empty_inner(
+        ctx: &DalContext,
+        change_set: &ChangeSet,
+        incremental_hashing: bool,
+    ) -> WorkspaceSnapshotResult<Self> {
+        // todo: we should use a builder pattern
         let root_node = Arc::new(NodeWeight::new_content(
             change_set,
             change_set.generate_ulid()?,
@@ -243,6 +261,7 @@ impl WorkspaceSnapshot {
             node_weight_db: ctx.layer_db().node_weight().clone(),
             events_actor: ctx.events_actor(),
             events_tenancy: ctx.events_tenancy(),
+            incremental_hashing,
         })
     }
 
@@ -253,7 +272,25 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         change_set: &ChangeSet,
     ) -> WorkspaceSnapshotResult<Self> {
-        let initial = Self::empty(ctx, change_set).await?;
+        Self::initial_inner(ctx, change_set, true).await
+    }
+
+    /// Generates a snapshot with the initial category nodes attached to the
+    /// root node and writes it out.
+    #[instrument(level = "debug", skip_all)]
+    pub async fn initial_without_incremental_hashing(
+        ctx: &DalContext,
+        change_set: &ChangeSet,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::initial_inner(ctx, change_set, false).await
+    }
+
+    async fn initial_inner(
+        ctx: &DalContext,
+        change_set: &ChangeSet,
+        incremental_hashing: bool,
+    ) -> WorkspaceSnapshotResult<Self> {
+        let initial = Self::empty_inner(ctx, change_set, incremental_hashing).await?;
         let root_id = initial.root_id().await?;
 
         // Create the category nodes under root.
@@ -285,6 +322,7 @@ impl WorkspaceSnapshot {
             node_weight_db: self.node_weight_db.clone(),
             events_actor: self.events_actor.clone(),
             events_tenancy: self.events_tenancy,
+            incremental_hashing: self.incremental_hashing,
         }
     }
 
@@ -361,11 +399,13 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
-        let write_start = Instant::now();
-        // Pull out the working copy and clean it up.
+        // Pull out the working copy and clean it up and then persist it
         let new_address = {
+            let write_start = Instant::now();
             self.cleanup().await?;
-            self.calculate_entire_merkle_tree_hash().await?;
+            if !self.incremental_hashing {
+                self.calculate_entire_merkle_tree_hash().await?;
+            }
 
             // Mark everything left as seen.
             self.mark_graph_seen(vector_clock_id).await?;
@@ -435,8 +475,10 @@ impl WorkspaceSnapshot {
         let hash = self.node_weight_db.mem_write(node_arc.clone()).await?;
 
         let maybe_existing_node_index = self.get_node_index_by_id_opt(node_id).await;
-        let _new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
-        // self.update_merkle_tree_hash(new_node_index).await?;
+        let new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
+        if self.incremental_hashing {
+            self.update_merkle_tree_hash(new_node_index).await?;
+        }
 
         // If we are replacing an existing node, we need to replace all references to it
         if let Some(existing_node_index) = maybe_existing_node_index {
@@ -543,7 +585,9 @@ impl WorkspaceSnapshot {
         self.working_copy_mut()
             .await
             .add_edge(new_from_node_index, edge_weight, to_node_index)?;
-        // self.update_merkle_tree_hash(new_from_node_index).await?;
+        if self.incremental_hashing {
+            self.update_merkle_tree_hash(new_from_node_index).await?;
+        }
         self.replace_references(from_node_index).await?;
 
         Ok(())
@@ -561,7 +605,9 @@ impl WorkspaceSnapshot {
             self.working_copy_mut()
                 .await
                 .add_edge(from_node_index, edge_weight, to_node_index)?;
-        // self.update_merkle_tree_hash(from_node_index).await?;
+        if self.incremental_hashing {
+            self.update_merkle_tree_hash(from_node_index).await?;
+        }
 
         Ok(edge_index)
     }
@@ -1167,7 +1213,9 @@ impl WorkspaceSnapshot {
                     );
                 }
 
-                // self.update_merkle_tree_hash(new_node_idx).await?;
+                if self.incremental_hashing {
+                    self.update_merkle_tree_hash(new_node_idx).await?;
+                }
             }
         }
 
@@ -1287,7 +1335,9 @@ impl WorkspaceSnapshot {
             .working_copy_mut()
             .await
             .add_node(remote_node_weight, local_weight.address())?;
-        // self.update_merkle_tree_hash(node_index).await?;
+        if self.incremental_hashing {
+            self.update_merkle_tree_hash(node_index).await?;
+        }
 
         Ok(node_index)
     }
@@ -1677,10 +1727,10 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.get_latest_node_idx(node_index)?)
     }
 
-    #[instrument(level = "info", skip_all)]
-    pub async fn find(
+    async fn find_inner(
         ctx: &DalContext,
         workspace_snapshot_addr: WorkspaceSnapshotAddress,
+        incremental_hashing: bool,
     ) -> WorkspaceSnapshotResult<Self> {
         let start = tokio::time::Instant::now();
 
@@ -1693,7 +1743,15 @@ impl WorkspaceSnapshot {
                 workspace_snapshot_addr,
             ))?;
 
-        info!("snapshot fetch took: {:?}", start.elapsed());
+        info!(
+            "snapshot fetch took: {:?} {}",
+            start.elapsed(),
+            if incremental_hashing {
+                "incremental"
+            } else {
+                "non-incremental"
+            }
+        );
 
         Ok(Self {
             address: Arc::new(RwLock::new(workspace_snapshot_addr)),
@@ -1702,12 +1760,30 @@ impl WorkspaceSnapshot {
             node_weight_db: ctx.layer_db().node_weight().clone(),
             events_tenancy: ctx.events_tenancy(),
             events_actor: ctx.events_actor(),
+            incremental_hashing,
         })
     }
 
-    pub async fn find_for_change_set(
+    #[instrument(level = "info", skip_all)]
+    pub async fn find(
+        ctx: &DalContext,
+        workspace_snapshot_addr: WorkspaceSnapshotAddress,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::find_inner(ctx, workspace_snapshot_addr, true).await
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub async fn find_without_incremental_hashing(
+        ctx: &DalContext,
+        workspace_snapshot_addr: WorkspaceSnapshotAddress,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::find_inner(ctx, workspace_snapshot_addr, false).await
+    }
+
+    async fn find_for_change_set_inner(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
+        incremental_hashing: bool,
     ) -> WorkspaceSnapshotResult<Self> {
         let row = ctx
             .txns()
@@ -1724,7 +1800,21 @@ impl WorkspaceSnapshot {
 
         let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
 
-        Self::find(ctx, address).await
+        Self::find_inner(ctx, address, incremental_hashing).await
+    }
+
+    pub async fn find_for_change_set(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::find_for_change_set_inner(ctx, change_set_id, true).await
+    }
+
+    pub async fn find_for_change_set_without_incremental_hashing(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceSnapshotResult<Self> {
+        Self::find_for_change_set_inner(ctx, change_set_id, false).await
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2049,13 +2139,15 @@ impl WorkspaceSnapshot {
         let mut work_queue = VecDeque::from([source_node_index]);
 
         while let Some(node_index) = work_queue.pop_front() {
-            // self.update_merkle_tree_hash(
-            //     // If we updated the ordering node, that means we've invalidated the container's
-            //     // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
-            //     // to update the container's merkle tree hash.
-            //     node_index,
-            // )
-            // .await?;
+            if self.incremental_hashing {
+                self.update_merkle_tree_hash(
+                    // If we updated the ordering node, that means we've invalidated the container's
+                    // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
+                    // to update the container's merkle tree hash.
+                    node_index,
+                )
+                .await?;
+            }
 
             for edge_ref in self
                 .working_copy()

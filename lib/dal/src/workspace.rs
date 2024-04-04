@@ -114,7 +114,8 @@ impl Workspace {
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
         let mut change_set = ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
-        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
+        let workspace_snapshot =
+            WorkspaceSnapshot::initial_without_incremental_hashing(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id().await)
             .await?;
@@ -139,7 +140,7 @@ impl Workspace {
 
         // Update our tenancy and visibility once it has been created.
         ctx.update_tenancy(Tenancy::new(workspace_pk));
-        ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+        ctx.update_visibility_and_snapshot_to_visibility_no_incremental_hashing(change_set.id)
             .await?;
 
         Ok(())
