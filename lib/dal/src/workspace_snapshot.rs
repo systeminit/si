@@ -318,17 +318,34 @@ impl WorkspaceSnapshot {
             let mut remote_node_weight = self.get_node_weight(node_index).await?.as_ref().clone();
             remote_node_weight.mark_seen_at(vector_clock_id, seen_at);
             let node_id = remote_node_weight.id();
-            let (new_address, _) = self
-                .node_weight_db
-                .write(
-                    Arc::new(remote_node_weight),
-                    None,
-                    self.events_tenancy(),
-                    self.events_actor(),
-                )
-                .await?;
-            updates.push((node_index, new_address, node_id));
+            #[cfg(integration_test)]
+            {
+                let (new_address, _) = self
+                    .node_weight_db
+                    .write_no_gossip(
+                        Arc::new(remote_node_weight),
+                        None,
+                        self.events_tenancy(),
+                        self.events_actor(),
+                    )
+                    .await?;
+                updates.push((node_index, new_address, node_id));
+            }
+            #[cfg(not(integration_test))]
+            {
+                let (new_address, _) = self
+                    .node_weight_db
+                    .write(
+                        Arc::new(remote_node_weight),
+                        None,
+                        self.events_tenancy(),
+                        self.events_actor(),
+                    )
+                    .await?;
+                updates.push((node_index, new_address, node_id));
+            }
         }
+
         for (index, address, node_id) in updates {
             self.working_copy_mut()
                 .await
@@ -418,7 +435,7 @@ impl WorkspaceSnapshot {
         let hash = self.node_weight_db.mem_write(node_arc.clone()).await?;
 
         let maybe_existing_node_index = self.get_node_index_by_id_opt(node_id).await;
-        let new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
+        let _new_node_index = self.working_copy_mut().await.add_node(node_arc, hash)?;
         // self.update_merkle_tree_hash(new_node_index).await?;
 
         // If we are replacing an existing node, we need to replace all references to it

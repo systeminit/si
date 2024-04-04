@@ -219,20 +219,24 @@ impl PersistEventTask {
         let disk_join = tokio::task::spawn_blocking(move || disk_self.write_to_disk(disk_event));
 
         // Write to nats
-        let nats_subject = subject::for_event(self.nats.prefix(), event.as_ref());
-        let nats = self.nats.clone();
-        let mut nats_headers = HeaderMap::new();
-        nats_headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
-        nats_headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
-        nats_headers.insert(
-            NATS_HEADER_INSTANCE_ID,
-            self.instance_id.to_string().as_str(),
-        );
-        let nats_payload = postcard::to_stdvec(&event)?;
-        let nats_join = tokio::spawn(async move {
-            nats.publish_with_headers(nats_subject, nats_headers, nats_payload.into())
-                .await
-        });
+        let nats_join = if event.gossip {
+            let nats_subject = subject::for_event(self.nats.prefix(), event.as_ref());
+            let nats = self.nats.clone();
+            let mut nats_headers = HeaderMap::new();
+            nats_headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
+            nats_headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
+            nats_headers.insert(
+                NATS_HEADER_INSTANCE_ID,
+                self.instance_id.to_string().as_str(),
+            );
+            let nats_payload = postcard::to_stdvec(&event)?;
+            tokio::spawn(async move {
+                nats.publish_with_headers(nats_subject, nats_headers, nats_payload.into())
+                    .await
+            })
+        } else {
+            tokio::spawn(async move { Ok(()) })
+        };
 
         // Write to pg
         let pg_self = self.clone();
