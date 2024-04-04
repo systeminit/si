@@ -181,7 +181,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
     //     // a randomized subject prefix
     //     expander.setup_start_veritech_server();
     //     expander.setup_start_pinga_server();
-    //     expander.setup_start_council_server();
     //     expander.setup_start_rebaser_server();
     // }
 

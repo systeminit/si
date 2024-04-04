@@ -4,7 +4,6 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
-    "bin/council",
     "bin/cyclone",
     "bin/module-index",
     "bin/pinga",
@@ -219,10 +218,6 @@ yrs = { version = "0.17.4" }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
-# pending a potential merge and release of
-# https://github.com/vv9k/docker-api-rs/issues/69
-# See: https://github.com/systeminit/si/pull/2903
-docker-api = { git = "https://github.com/vv9k/docker-api-rs.git", branch = "master" }
 # pending a potential merge and release of
 # https://github.com/durch/rust-s3/pull/372
 # Note that this helps us to narrow down the number of `ring`/`rustls` versions to 1 each
