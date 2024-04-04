@@ -59,7 +59,7 @@
             <ErrorMessage :requestStatus="rejectReqStatus" />
             <VButton
               :requestStatus="rejectReqStatus"
-              :disabled="!builtinSummary"
+              :disabled="!builtinSummary || true"
               @click="rejectBuiltinSpecHandler"
             >
               Reject this builtin
@@ -68,7 +68,7 @@
             <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
             <VButton
               :requestStatus="promoteToBuiltinReqStatus"
-              :disabled="builtinSummary && builtinSummary.isBuiltin"
+              :disabled="(builtinSummary && builtinSummary.isBuiltin) || true"
               @click="promoteToBuiltinSpecHandler"
             >
               Promote this module to be a builtin
@@ -155,6 +155,7 @@
             <VButton
               :requestStatus="installReqStatus"
               :loading="moduleStore.installingLoading"
+              disabled
               @click="installButtonHandler"
             >
               Install this module
@@ -171,6 +172,7 @@
             <ErrorMessage :requestStatus="rejectReqStatus" />
             <VButton
               :requestStatus="rejectReqStatus"
+              disabled
               @click="rejectModuleSpecHandler"
             >
               Reject this module
@@ -179,6 +181,7 @@
             <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
             <VButton
               :requestStatus="promoteToBuiltinReqStatus"
+              disabled
               @click="promoteToBuiltinSpecHandler"
             >
               Promote this module to be a builtin
