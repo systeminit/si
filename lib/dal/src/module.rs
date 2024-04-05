@@ -4,6 +4,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::TryLockError;
+use ulid::Ulid;
 
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -170,5 +171,19 @@ impl Module {
         }
 
         Ok(None)
+    }
+
+    pub async fn create_association(&self, ctx: &DalContext, target_id: Ulid) -> ModuleResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        workspace_snapshot
+            .add_edge(
+                self.id,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
+                target_id,
+            )
+            .await?;
+
+        Ok(())
     }
 }
