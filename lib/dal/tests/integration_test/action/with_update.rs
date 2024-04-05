@@ -1,5 +1,5 @@
 use dal::component::resource::ResourceView;
-use dal::{Action, ActionKind, ActionPrototype, ChangeSet, Component, DalContext};
+use dal::{ActionKind, ActionPrototype, ChangeSet, Component, DalContext, DeprecatedAction};
 use dal_test::test;
 use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 
@@ -12,7 +12,7 @@ async fn update_action(ctx: &mut DalContext) {
 
     commit_and_update_snapshot(ctx).await;
 
-    let mut actions = Action::for_component(ctx, ms_swift.id())
+    let mut actions = DeprecatedAction::for_component(ctx, ms_swift.id())
         .await
         .expect("unable to list actions for component");
     pretty_assertions_sorted::assert_eq!(
@@ -79,11 +79,11 @@ async fn update_action(ctx: &mut DalContext) {
 
     let action = update_actions.pop().expect("Unable to get the action");
 
-    Action::upsert(ctx, action.id, ms_swift.id())
+    DeprecatedAction::upsert(ctx, action.id, ms_swift.id())
         .await
         .expect("Unable to insert an action");
 
-    let mut queued_actions = Action::for_component(ctx, ms_swift.id())
+    let mut queued_actions = DeprecatedAction::for_component(ctx, ms_swift.id())
         .await
         .expect("unable to list actions for component");
     pretty_assertions_sorted::assert_eq!(
@@ -117,7 +117,7 @@ async fn update_action(ctx: &mut DalContext) {
     .await
     .expect("could not update visibility and snapshot to visibility");
 
-    let queued_actions = Action::for_component(ctx, ms_swift.id())
+    let queued_actions = DeprecatedAction::for_component(ctx, ms_swift.id())
         .await
         .expect("unable to list actions for component");
     assert!(queued_actions.is_empty());

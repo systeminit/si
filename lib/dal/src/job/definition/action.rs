@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    action::runner::ActionRunnerError,
+    deprecated_action::runner::DeprecatedActionRunnerError,
     func::backend::js_action::ActionRunResult,
     job::{
         consumer::{
@@ -15,23 +15,23 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionBatch, ActionBatchId, ActionCompletionStatus, ActionKind, ActionPrototype,
-    ActionPrototypeId, ActionRunner, ActionRunnerId, Component, ComponentId, DalContext,
-    Visibility, WsEvent,
+    AccessBuilder, ActionCompletionStatus, ActionKind, ActionPrototype, ActionPrototypeId,
+    Component, ComponentId, DalContext, DeprecatedActionBatch, DeprecatedActionBatchId,
+    DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionRunnerItem {
-    pub id: ActionRunnerId,
+    pub id: DeprecatedActionRunnerId,
     pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
-    pub parents: Vec<ActionRunnerId>,
+    pub parents: Vec<DeprecatedActionRunnerId>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ActionsJobArgs {
-    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
+    actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
     started: bool,
 }
 
@@ -47,9 +47,9 @@ impl From<ActionsJob> for ActionsJobArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ActionsJob {
-    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
+    actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
     started: bool,
-    batch_id: ActionBatchId,
+    batch_id: DeprecatedActionBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
@@ -58,16 +58,16 @@ pub struct ActionsJob {
 impl ActionsJob {
     pub fn new(
         ctx: &DalContext,
-        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-        batch_id: ActionBatchId,
+        actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+        batch_id: DeprecatedActionBatchId,
     ) -> Box<Self> {
         Self::new_raw(ctx, actions, batch_id, false)
     }
 
     fn new_raw(
         ctx: &DalContext,
-        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-        batch_id: ActionBatchId,
+        actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+        batch_id: DeprecatedActionBatchId,
         started: bool,
     ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
@@ -121,7 +121,7 @@ impl JobConsumer for ActionsJob {
 
         // Mark the batch as started if it has not been yet.
         if !self.started {
-            let mut batch = ActionBatch::get_by_id(ctx, self.batch_id).await?;
+            let mut batch = DeprecatedActionBatch::get_by_id(ctx, self.batch_id).await?;
             batch.stamp_started(ctx).await?;
         }
 
@@ -202,7 +202,7 @@ impl JobConsumer for ActionsJob {
                             debug!(?action, ?logs, "action job completed");
                             let completion_status: ActionCompletionStatus = action
                                 .completion_status
-                                .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
+                                .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
                             if !matches!(completion_status, ActionCompletionStatus::Success) {
                                 process_failed_action(
                                     ctx,
@@ -303,9 +303,9 @@ impl TryFrom<JobInfo> for ActionsJob {
     }
 }
 
-async fn finish_batch(ctx: &mut DalContext, id: ActionBatchId) -> JobConsumerResult<()> {
+async fn finish_batch(ctx: &mut DalContext, id: DeprecatedActionBatchId) -> JobConsumerResult<()> {
     // Mark the batch as completed.
-    let mut batch = ActionBatch::get_by_id(ctx, id).await?;
+    let mut batch = DeprecatedActionBatch::get_by_id(ctx, id).await?;
     let batch_completion_status = batch.stamp_finished(ctx).await?;
     WsEvent::action_batch_return(ctx, batch.id, batch_completion_status)
         .await?
@@ -328,19 +328,19 @@ async fn finish_batch(ctx: &mut DalContext, id: ActionBatchId) -> JobConsumerRes
 )]
 async fn action_task(
     mut ctx: DalContext,
-    batch_id: ActionBatchId,
+    batch_id: DeprecatedActionBatchId,
     action_item: ActionRunnerItem,
     parent_span: Span,
-) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
+) -> JobConsumerResult<(DeprecatedActionRunner, Vec<String>)> {
     // Get the workflow for the action we need to run.
     let component = Component::get_by_id(&ctx, action_item.component_id).await?;
 
     // Run the action (via the action prototype).
-    let mut action = ActionRunner::get_by_id(&ctx, action_item.id).await?;
+    let mut action = DeprecatedActionRunner::get_by_id(&ctx, action_item.id).await?;
     let resource = action.run(&ctx).await?;
     let completion_status: ActionCompletionStatus = action
         .completion_status
-        .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
+        .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
 
     let logs: Vec<_> = match resource {
         Some(r) => r
@@ -382,9 +382,9 @@ async fn action_task(
 #[instrument(name = "actions_job.process_failed_action", skip_all, level = "info")]
 async fn process_failed_action(
     ctx: &DalContext,
-    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
-    failed_action_id: ActionRunnerId,
+    actions: &mut HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
+    failed_action_id: DeprecatedActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) {
@@ -409,9 +409,9 @@ async fn process_failed_action(
 )]
 async fn process_failed_action_inner(
     ctx: &DalContext,
-    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
-    failed_action_id: ActionRunnerId,
+    actions: &mut HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
+    failed_action_id: DeprecatedActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) -> JobConsumerResult<()> {
@@ -422,7 +422,7 @@ async fn process_failed_action_inner(
         info!(%id, "processing failed action");
         actions.remove(&id);
 
-        let mut action = ActionRunner::get_by_id(ctx, id).await?;
+        let mut action = DeprecatedActionRunner::get_by_id(ctx, id).await?;
         // If this was a delete, we need to un-delete ourselves.
         if matches!(action.action_kind, ActionKind::Delete) {
             // Component::restore_and_propagate(ctx, action.component_id).await?;

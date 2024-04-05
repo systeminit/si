@@ -92,12 +92,12 @@ import {
   TreeNode,
 } from "@si/vue-lib/design-system";
 import { computed } from "vue";
-import { ActionBatch } from "@/store/actions.store";
+import { DeprecatedActionBatch } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import ActionRunnerCard from "./ActionRunnerCard.vue";
 
 const props = defineProps<{
-  actionBatch: ActionBatch;
+  actionBatch: DeprecatedActionBatch;
   collapse: boolean;
 }>();
 

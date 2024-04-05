@@ -19,18 +19,16 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWe
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    layer_db_types::{ActionContent, ActionContentV1, ActionPrototypeContent},
-    pk, ActionBatchError, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId,
-    ChangeSetId, Component, ComponentError, ComponentId, DalContext, HistoryActor,
+    layer_db_types::{ActionPrototypeContent, DeprecatedActionContent, DeprecatedActionContentV1},
+    pk, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetId,
+    Component, ComponentError, ComponentId, DalContext, DeprecatedActionBatchError, HistoryActor,
     HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult,
     WsPayload,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum ActionError {
-    #[error("action error: {0}")]
-    ActionBatch(#[from] ActionBatchError),
+pub enum DeprecatedActionError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
@@ -39,6 +37,8 @@ pub enum ActionError {
     Component(#[from] ComponentError),
     #[error("component not found for: {0}")]
     ComponentNotFoundFor(ActionId),
+    #[error("action error: {0}")]
+    DeprecatedActionBatch(#[from] DeprecatedActionBatchError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("history event: {0}")]
@@ -65,30 +65,29 @@ pub enum ActionError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ActionResult<T> = Result<T, ActionError>;
+pub type DeprecatedActionResult<T> = Result<T, DeprecatedActionError>;
 
-pk!(ActionPk);
 pk!(ActionId);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct ActionBag {
+pub struct DeprecatedActionBag {
     pub component_id: ComponentId,
-    pub action: Action,
+    pub action: DeprecatedAction,
     pub kind: ActionKind,
     pub parents: Vec<ActionId>,
 }
 
 // An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetId`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct Action {
+pub struct DeprecatedAction {
     pub id: ActionId,
     pub creation_user_pk: Option<UserPk>,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
 
-impl Action {
-    pub fn assemble(id: ActionId, content: ActionContentV1) -> Self {
+impl DeprecatedAction {
+    pub fn assemble(id: ActionId, content: DeprecatedActionContentV1) -> Self {
         Self {
             id,
             creation_user_pk: content.creation_user_pk,
@@ -100,7 +99,7 @@ impl Action {
         ctx: &DalContext,
         prototype_id: ActionPrototypeId,
         component_id: ComponentId,
-    ) -> ActionResult<Self> {
+    ) -> DeprecatedActionResult<Self> {
         for action in Self::for_component(ctx, component_id).await? {
             if action.prototype(ctx).await?.id == prototype_id {
                 return Ok(action);
@@ -114,7 +113,7 @@ impl Action {
             _ => None,
         };
 
-        let content = ActionContentV1 {
+        let content = DeprecatedActionContentV1 {
             timestamp,
             creation_user_pk: actor_user_pk,
         };
@@ -123,7 +122,7 @@ impl Action {
             .layer_db()
             .cas()
             .write(
-                Arc::new(ActionContent::V1(content.clone()).into()),
+                Arc::new(DeprecatedActionContent::V1(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -161,10 +160,13 @@ impl Action {
             .publish_on_commit(ctx)
             .await?;
 
-        Ok(Action::assemble(content_node_weight.id().into(), content))
+        Ok(DeprecatedAction::assemble(
+            content_node_weight.id().into(),
+            content,
+        ))
     }
 
-    pub async fn delete(self, ctx: &DalContext) -> ActionResult<()> {
+    pub async fn delete(self, ctx: &DalContext) -> DeprecatedActionResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let change_set = ctx.change_set()?;
         workspace_snapshot
@@ -173,14 +175,14 @@ impl Action {
         Ok(())
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> DeprecatedActionResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash: ContentHash = node_weight.content_hash();
 
-        let content: ActionContent = ctx
+        let content: DeprecatedActionContent = ctx
             .layer_db()
             .cas()
             .try_read_as(&hash)
@@ -188,19 +190,19 @@ impl Action {
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let ActionContent::V1(inner) = content;
+        let DeprecatedActionContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
     }
 
-    pub async fn component(&self, ctx: &DalContext) -> ActionResult<Component> {
+    pub async fn component(&self, ctx: &DalContext) -> DeprecatedActionResult<Component> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Action)
             .await?
             .pop()
-            .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
+            .ok_or(DeprecatedActionError::ComponentNotFoundFor(self.id))?;
         let node_weight = workspace_snapshot
             .get_node_weight(node)
             .await?
@@ -212,7 +214,7 @@ impl Action {
             .cas()
             .try_read_as(&content_hash)
             .await?
-            .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
+            .ok_or(DeprecatedActionError::ComponentNotFoundFor(self.id))?;
 
         let ComponentContent::V1(inner) = content;
 
@@ -220,7 +222,7 @@ impl Action {
         Ok(component)
     }
 
-    pub async fn prototype(&self, ctx: &DalContext) -> ActionResult<ActionPrototype> {
+    pub async fn prototype(&self, ctx: &DalContext) -> DeprecatedActionResult<ActionPrototype> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node = workspace_snapshot
@@ -230,7 +232,7 @@ impl Action {
             )
             .await?
             .pop()
-            .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
+            .ok_or(DeprecatedActionError::PrototypeNotFoundFor(self.id))?;
         let node_weight = workspace_snapshot.get_node_weight(node).await?;
         let content_hash = node_weight.content_hash();
 
@@ -239,7 +241,7 @@ impl Action {
             .cas()
             .try_read_as(&content_hash)
             .await?
-            .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
+            .ok_or(DeprecatedActionError::PrototypeNotFoundFor(self.id))?;
 
         let ActionPrototypeContent::V1(inner) = content;
 
@@ -250,7 +252,7 @@ impl Action {
     pub async fn for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ActionResult<Vec<Self>> {
+    ) -> DeprecatedActionResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let nodes = workspace_snapshot
@@ -267,7 +269,7 @@ impl Action {
             node_weights.push(weight);
         }
 
-        let content_map: HashMap<ContentHash, ActionContent> = ctx
+        let content_map: HashMap<ContentHash, DeprecatedActionContent> = ctx
             .layer_db()
             .cas()
             .try_read_many_as(&content_hashes)
@@ -278,7 +280,7 @@ impl Action {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let ActionContent::V1(inner) = content;
+                    let DeprecatedActionContent::V1(inner) = content;
 
                     actions.push(Self::assemble(node_weight.id().into(), inner.clone()));
                 }
@@ -292,9 +294,11 @@ impl Action {
 
     /// A read-only method that assembles a flattened graph of [`Actions`] that will run when
     /// the change set is applied to head.
-    pub async fn build_graph(ctx: &DalContext) -> ActionResult<HashMap<ActionId, ActionBag>> {
-        let mut actions_by_id: HashMap<ActionId, (Action, ComponentId)> = HashMap::new();
-        let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();
+    pub async fn build_graph(
+        ctx: &DalContext,
+    ) -> DeprecatedActionResult<HashMap<ActionId, DeprecatedActionBag>> {
+        let mut actions_by_id: HashMap<ActionId, (DeprecatedAction, ComponentId)> = HashMap::new();
+        let mut actions_by_component: HashMap<ComponentId, Vec<DeprecatedAction>> = HashMap::new();
         let graph = Component::build_graph(ctx).await?;
         let mut actions_graph: HashMap<ActionId, (ComponentId, ActionKind, Vec<ActionId>)> =
             HashMap::new();
@@ -318,7 +322,7 @@ impl Action {
                 .or_default()
                 .extend(actions.clone());
 
-            let mut actions_by_kind: HashMap<ActionKind, Vec<Action>> = HashMap::new();
+            let mut actions_by_kind: HashMap<ActionKind, Vec<DeprecatedAction>> = HashMap::new();
             for action in actions {
                 actions_by_id.insert(action.id, (action.clone(), component.id()));
 
@@ -434,16 +438,16 @@ impl Action {
             }
         }
 
-        let mut actions_bag_graph: HashMap<ActionId, ActionBag> = HashMap::new();
+        let mut actions_bag_graph: HashMap<ActionId, DeprecatedActionBag> = HashMap::new();
         for (id, (component_id, kind, parents)) in actions_graph {
             actions_bag_graph.insert(
                 id,
-                ActionBag {
+                DeprecatedActionBag {
                     component_id,
                     kind,
                     action: actions_by_id
                         .get(&id)
-                        .ok_or(ActionError::NotFound(id))?
+                        .ok_or(DeprecatedActionError::NotFound(id))?
                         .clone()
                         .0,
                     parents,
@@ -488,7 +492,7 @@ impl Action {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ActionAddedPayload {
+pub struct DeprecatedActionAddedPayload {
     component_id: ComponentId,
     action_id: ActionId,
     change_set_id: ChangeSetId,
@@ -496,7 +500,7 @@ pub struct ActionAddedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ActionRemovedPayload {
+pub struct DeprecatedActionRemovedPayload {
     component_id: ComponentId,
     action_id: ActionId,
     change_set_id: ChangeSetId,
@@ -510,7 +514,7 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ActionAdded(ActionAddedPayload {
+            WsPayload::DeprecatedActionAdded(DeprecatedActionAddedPayload {
                 component_id,
                 action_id,
                 change_set_id: ctx.change_set_id(),
@@ -526,7 +530,7 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ActionRemoved(ActionRemovedPayload {
+            WsPayload::DeprecatedActionRemoved(DeprecatedActionRemovedPayload {
                 component_id,
                 action_id,
                 change_set_id: ctx.change_set_id(),

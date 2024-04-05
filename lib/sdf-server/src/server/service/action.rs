@@ -8,8 +8,9 @@ use thiserror::Error;
 
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    func::binding_return_value::FuncBindingReturnValueError, ActionBatchError, ActionRunnerError,
-    ComponentError, ComponentId, StandardModelError, TransactionsError, UserError, UserPk,
+    func::binding_return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
+    DeprecatedActionBatchError, DeprecatedActionRunnerError, StandardModelError, TransactionsError,
+    UserError, UserPk,
 };
 
 use crate::server::state::AppState;
@@ -20,9 +21,9 @@ pub mod history;
 #[derive(Error, Debug)]
 pub enum ActionError {
     #[error(transparent)]
-    ActionBatch(#[from] ActionBatchError),
+    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error(transparent)]
-    ActionRunner(#[from] ActionRunnerError),
+    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("component {0} not found")]

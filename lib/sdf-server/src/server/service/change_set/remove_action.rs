@@ -1,7 +1,7 @@
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{Action, ActionId, Visibility, WsEvent};
+use dal::{ActionId, DeprecatedAction, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -19,7 +19,7 @@ pub async fn remove_action(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let action = Action::get_by_id(&ctx, request.id).await?;
+    let action = DeprecatedAction::get_by_id(&ctx, request.id).await?;
     let id = action.id;
     let component_id = action.component(&ctx).await?.id();
 

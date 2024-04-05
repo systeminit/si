@@ -19,7 +19,6 @@ use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
 
-pub mod action;
 pub mod actor_view;
 pub mod attribute;
 pub mod authentication_prototype;
@@ -29,6 +28,7 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
+pub mod deprecated_action;
 pub mod diagram;
 pub mod func;
 pub mod history_event;
@@ -72,12 +72,6 @@ pub mod ws_event;
 // pub mod status;
 //pub mod tasks;
 
-pub use action::batch::{ActionBatch, ActionBatchError, ActionBatchId};
-pub use action::prototype::{
-    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ActionPrototypeView,
-};
-pub use action::runner::{ActionCompletionStatus, ActionRunner, ActionRunnerError, ActionRunnerId};
-pub use action::{Action, ActionError, ActionId};
 pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
@@ -94,6 +88,17 @@ pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, DalLayerDb, RequestContext,
     ServicesContext, Transactions, TransactionsError,
 };
+pub use deprecated_action::batch::{
+    DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionBatchId,
+};
+pub use deprecated_action::prototype::{
+    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ActionPrototypeView,
+};
+pub use deprecated_action::runner::{
+    ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,
+    DeprecatedActionRunnerId,
+};
+pub use deprecated_action::{ActionId, DeprecatedAction, DeprecatedActionError};
 pub use func::{
     backend::{FuncBackendKind, FuncBackendResponseType},
     Func, FuncError, FuncId,

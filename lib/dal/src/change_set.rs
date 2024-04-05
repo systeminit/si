@@ -11,15 +11,16 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
-use crate::action::ActionBag;
 use crate::context::RebaseRequest;
+use crate::deprecated_action::DeprecatedActionBag;
 use crate::job::definition::{ActionRunnerItem, ActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    id, Action, ActionBatch, ActionBatchError, ActionError, ActionId, ActionPrototypeId,
-    ActionRunner, ActionRunnerError, ActionRunnerId, ChangeSetStatus, Component, ComponentError,
-    DalContext, HistoryActor, HistoryEvent, HistoryEventError, TransactionsError, User, UserError,
-    UserPk, Workspace, WorkspacePk, WsEvent, WsEventError,
+    id, ActionId, ActionPrototypeId, ChangeSetStatus, Component, ComponentError, DalContext,
+    DeprecatedAction, DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionError,
+    DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor,
+    HistoryEvent, HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace,
+    WorkspacePk, WsEvent, WsEventError,
 };
 
 pub mod event;
@@ -72,13 +73,13 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] DeprecatedActionError),
     #[error("action batch error: {0}")]
-    ActionBatch(#[from] ActionBatchError),
+    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]
     ActionPrototypeNotFound(ActionId),
     #[error("action runner error: {0}")]
-    ActionRunner(#[from] ActionRunnerError),
+    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found by id: {0}")]
@@ -397,14 +398,14 @@ impl ChangeSet {
 
             // TODO: restore actors of change-set concept
             let actors_delimited_string = String::new();
-            let batch = ActionBatch::new(ctx, author, &actors_delimited_string).await?;
-            let mut runners: HashMap<ActionRunnerId, ActionRunnerItem> = HashMap::new();
-            let mut runners_by_action: HashMap<ActionId, ActionRunnerId> = HashMap::new();
+            let batch = DeprecatedActionBatch::new(ctx, author, &actors_delimited_string).await?;
+            let mut runners: HashMap<DeprecatedActionRunnerId, ActionRunnerItem> = HashMap::new();
+            let mut runners_by_action: HashMap<ActionId, DeprecatedActionRunnerId> = HashMap::new();
 
-            let mut values: Vec<ActionBag> = actions_to_run.values().cloned().collect();
+            let mut values: Vec<DeprecatedActionBag> = actions_to_run.values().cloned().collect();
             values.sort_by_key(|a| a.action.id);
 
-            let mut values: VecDeque<ActionBag> = values.into_iter().collect();
+            let mut values: VecDeque<DeprecatedActionBag> = values.into_iter().collect();
 
             // Runners have to be created in the order we want to display them in the actions history panel
             // So we do extra work here to ensure the order is the execution order
@@ -427,7 +428,7 @@ impl ChangeSet {
                 };
 
                 let component = Component::get_by_id(ctx, bag.component_id).await?;
-                let runner = ActionRunner::new(
+                let runner = DeprecatedActionRunner::new(
                     ctx,
                     batch.id,
                     bag.component_id,
@@ -484,7 +485,7 @@ impl ChangeSet {
     async fn list_actions_to_run(
         ctx: &DalContext,
     ) -> ChangeSetApplyResult<(
-        HashMap<ActionId, ActionBag>,
+        HashMap<ActionId, DeprecatedActionBag>,
         HashMap<ActionId, ActionPrototypeId>,
     )> {
         let mut actions_graph = HashMap::new();
@@ -494,7 +495,7 @@ impl ChangeSet {
         // we are applying to head.
         let applying_to_head = ctx.parent_is_head().await?;
         if applying_to_head {
-            actions_graph = Action::build_graph(ctx).await?;
+            actions_graph = DeprecatedAction::build_graph(ctx).await?;
             let mut at_least_one_deleted = false;
 
             for bag in actions_graph.values() {
@@ -520,8 +521,8 @@ impl ChangeSet {
 
     fn determine_runners_for_parent_actions(
         parent_ids: &[ActionId],
-        runners_by_action: &HashMap<ActionId, ActionRunnerId>,
-    ) -> Option<Vec<ActionRunnerId>> {
+        runners_by_action: &HashMap<ActionId, DeprecatedActionRunnerId>,
+    ) -> Option<Vec<DeprecatedActionRunnerId>> {
         let mut parents = Vec::new();
         for parent_id in parent_ids {
             if let Some(parent_id) = runners_by_action.get(parent_id) {

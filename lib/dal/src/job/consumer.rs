@@ -13,22 +13,22 @@ use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
-    ActionBatchError, ActionBatchId, ActionPrototypeError, ActionPrototypeId, ActionRunnerError,
-    ComponentError, ComponentId, DalContext, DalContextBuilder, StandardModelError,
-    TransactionsError, Visibility, WsEventError,
+    ActionPrototypeError, ActionPrototypeId, ComponentError, ComponentId, DalContext,
+    DalContextBuilder, DeprecatedActionBatchError, DeprecatedActionBatchId,
+    DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
     #[error("action batch error: {0}")]
-    ActionBatch(#[from] ActionBatchError),
+    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("action runner error: {0}")]
-    ActionRunner(#[from] ActionRunnerError),
+    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
@@ -48,7 +48,7 @@ pub enum JobConsumerError {
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
     #[error("missing fix execution batch for id: {0}")]
-    MissingActionBatch(ActionBatchId),
+    MissingActionBatch(DeprecatedActionBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
