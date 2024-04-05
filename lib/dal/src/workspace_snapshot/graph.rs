@@ -982,6 +982,7 @@ impl WorkspaceSnapshotGraph {
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
+                        CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),

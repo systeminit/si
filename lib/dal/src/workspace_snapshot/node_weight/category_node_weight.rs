@@ -13,6 +13,7 @@ pub enum CategoryNodeKind {
     ActionBatch,
     Component,
     Func,
+    Module,
     Schema,
     Secret,
 }
