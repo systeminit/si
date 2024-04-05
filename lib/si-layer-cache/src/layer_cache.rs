@@ -15,7 +15,7 @@ where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     memory_cache: MemoryCache<V>,
-    disk_cache: Arc<DiskCache>,
+    disk_cache: DiskCache,
     pg: PgLayer,
 }
 
@@ -23,8 +23,12 @@ impl<V> LayerCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub async fn new(name: &str, fast_disk: sled::Db, pg_pool: PgPool) -> LayerDbResult<Self> {
-        let disk_cache = Arc::new(DiskCache::new(fast_disk, name.as_bytes())?);
+    pub async fn new(
+        name: &str,
+        fast_disk: Arc<redb::Database>,
+        pg_pool: PgPool,
+    ) -> LayerDbResult<Self> {
+        let disk_cache = DiskCache::new(fast_disk, name)?;
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 
@@ -36,20 +40,16 @@ where
     }
 
     async fn spawn_disk_cache_write_vec(&self, key: Arc<str>, value: Vec<u8>) -> LayerDbResult<()> {
-        let self_clone = self.clone();
-        let write_handle = tokio::task::spawn_blocking(move || {
-            let _ = self_clone.disk_cache.insert(&key, &value);
-        });
-        write_handle.await?;
+        self.disk_cache().insert(key, value).await?;
         Ok(())
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
         Ok(match self.memory_cache.get(&key).await {
             Some(memory_value) => Some(memory_value),
-            None => match self.disk_cache.get(&key)? {
+            None => match self.disk_cache.get(key.clone()).await? {
                 Some(value) => {
-                    let deserialized: V = postcard::from_bytes(&value)?;
+                    let deserialized: V = postcard::from_bytes(&value.value()[..])?;
 
                     self.memory_cache.insert(key, deserialized.clone()).await;
                     Some(deserialized)
@@ -83,9 +83,9 @@ where
             let key_str: Arc<str> = key.to_string().into();
             if let Some(found) = match self.memory_cache.get(&key_str).await {
                 Some(memory_value) => Some(memory_value),
-                None => match self.disk_cache.get(&key_str)? {
+                None => match self.disk_cache.get(key_str.clone()).await? {
                     Some(value) => {
-                        let deserialized: V = postcard::from_bytes(&value)?;
+                        let deserialized: V = postcard::from_bytes(&value.value()[..])?;
 
                         self.memory_cache
                             .insert(key_str.clone(), deserialized.clone())
@@ -131,8 +131,8 @@ where
         self.memory_cache.clone()
     }
 
-    pub fn disk_cache(&self) -> Arc<DiskCache> {
-        self.disk_cache.clone()
+    pub fn disk_cache(&self) -> &DiskCache {
+        &self.disk_cache
     }
 
     pub fn pg(&self) -> PgLayer {
@@ -167,16 +167,17 @@ where
 
 #[derive(Clone, Debug)]
 pub struct LayerCacheDependencies {
-    pub sled: sled::Db,
+    pub redb: Arc<redb::Database>,
     pub pg_pool: PgPool,
 }
 
 pub async fn make_layer_cache_dependencies<P: AsRef<Path>>(
-    sled_path: P,
+    redb_path: P,
     pg_pool_config: &PgPoolConfig,
 ) -> LayerDbResult<LayerCacheDependencies> {
+    let redb_path = redb_path.as_ref();
     Ok(LayerCacheDependencies {
-        sled: sled::open(sled_path)?,
+        redb: Arc::new(redb::Database::create(redb_path)?),
         pg_pool: PgPool::new(pg_pool_config).await?,
     })
 }

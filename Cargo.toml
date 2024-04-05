@@ -137,7 +137,7 @@ pretty_assertions_sorted = "1.2.3"
 proc-macro2 = "1.0.79"
 quote = "1.0.35"
 rand = "0.8.5"
-refinery = { version = "0.8.12", features = ["tokio-postgres"] }
+refinery = { version = "= 0.8.12", features = ["tokio-postgres"] }
 regex = "1.10.4"
 remain = "0.2.13"
 reqwest = { version = "0.12.2", default-features = false, features = [
@@ -165,7 +165,7 @@ serde_json = { version = "1.0.115", features = ["preserve_order"] }
 serde_url_params = "0.2.1"
 serde_with = "3.7.0"
 serde_yaml = "0.9.33" # NOTE(nick): this has been archived upstream
-sled = "0.34.7"
+redb = "2.0.0"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }

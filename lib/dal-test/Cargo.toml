@@ -28,7 +28,6 @@ si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
-sled = { workspace = true }
 sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = { workspace = true }

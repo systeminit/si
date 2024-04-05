@@ -21,6 +21,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::RedbTempFile;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
@@ -213,8 +214,8 @@ pub struct TestContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// The pg_pool for the layer db
     layer_db_pg_pool: PgPool,
-    /// The sled path for the layer db
-    layer_db_sled_path: String,
+    /// The redb path for the layer db
+    layer_db_redb_path: RedbTempFile,
 }
 
 impl TestContext {
@@ -289,7 +290,7 @@ impl TestContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
-            self.layer_db_sled_path.clone(),
+            self.layer_db_redb_path.file_name.clone(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             token,
@@ -397,7 +398,7 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
             layer_db_pg_pool,
-            layer_db_sled_path: si_layer_cache::disk_cache::default_sled_path()?.to_string(),
+            layer_db_redb_path: si_layer_cache::disk_cache::default_redb_path()?,
         })
     }
 

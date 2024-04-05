@@ -5,7 +5,7 @@ use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{setup_nats_client, setup_pg_db};
+use crate::integration_test::{redb_path, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<CasValue, String, String>;
 
@@ -14,8 +14,9 @@ async fn write_to_db() {
     let token = CancellationToken::new();
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let dbfile = redb_path(&tempdir, "slash");
     let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
-        tempdir,
+        dbfile,
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         token,
@@ -41,7 +42,7 @@ async fn write_to_db() {
         PersistStatus::Error(e) => panic!("Write failed; {e}"),
     }
 
-    let cas_pk_str = cas_pk.to_string();
+    let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
     // Are we in memory?
     let in_memory = ldb.cas().cache.memory_cache().get(&cas_pk_str).await;
@@ -52,11 +53,12 @@ async fn write_to_db() {
         .cas()
         .cache
         .disk_cache()
-        .get(&cas_pk_str)
+        .get(cas_pk_str.clone())
+        .await
         .expect("cannot get from disk cache")
         .expect("cas pk not found in disk cache");
     let on_disk: CasValue =
-        postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+        postcard::from_bytes(&on_disk_postcard.value()[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &on_disk);
 
     // Are we in pg?
@@ -78,8 +80,11 @@ async fn write_and_read_many() {
     let token = CancellationToken::new();
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+
+    let dbfile = redb_path(&tempdir, "slash");
+
     let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
-        tempdir,
+        dbfile,
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
         token,
@@ -130,8 +135,11 @@ async fn cold_read_from_db() {
     let token = CancellationToken::new();
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+
+    let dbfile = redb_path(&tempdir, "slash");
+
     let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
-        tempdir,
+        dbfile,
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
         token,
@@ -156,7 +164,7 @@ async fn cold_read_from_db() {
         PersistStatus::Error(e) => panic!("Write failed; {e}"),
     }
 
-    let cas_pk_str = cas_pk.to_string();
+    let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
     // Delete from memory and disk
     ldb.cas().cache.memory_cache().remove(&cas_pk_str).await;
@@ -166,15 +174,17 @@ async fn cold_read_from_db() {
     ldb.cas()
         .cache
         .disk_cache()
-        .remove(&cas_pk_str)
+        .remove(cas_pk_str.clone())
+        .await
         .expect("cannot remove from disk");
     let not_on_disk = ldb
         .cas()
         .cache
         .disk_cache()
-        .get(&cas_pk_str)
+        .get(cas_pk_str.clone())
+        .await
         .expect("cannot get from disk cache");
-    assert_eq!(not_on_disk, None);
+    assert!(not_on_disk.is_none());
 
     // Read the data from the cache
     let data = ldb
@@ -195,11 +205,12 @@ async fn cold_read_from_db() {
         .cas()
         .cache
         .disk_cache()
-        .get(&cas_pk_str)
+        .get(cas_pk_str.clone())
+        .await
         .expect("cannot get from disk cache")
         .expect("cas pk not found in disk cache");
     let on_disk: CasValue =
-        postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+        postcard::from_bytes(&on_disk_postcard.value()[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &on_disk);
 
     // Are we in pg?
@@ -220,8 +231,11 @@ async fn cold_read_from_db() {
 async fn writes_are_gossiped() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = redb_path(&tempdir, "slash");
+    let tempdir_axl = redb_path(&tempdir, "axl");
+
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
     // First, we need a layerdb for slash
@@ -246,7 +260,8 @@ async fn writes_are_gossiped() {
     .expect("cannot create layerdb");
     ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
-    let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
+    let big_string = "a".repeat(1_000_000);
+    let cas_value: Arc<CasValue> = Arc::new(CasValue::String(big_string));
     let (cas_pk, status) = ldb_slash
         .cas()
         .write(
@@ -265,7 +280,7 @@ async fn writes_are_gossiped() {
         "persister failed"
     );
 
-    let cas_pk_str = cas_pk.to_string();
+    let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
     let max_check_count = 10;
 
@@ -295,12 +310,13 @@ async fn writes_are_gossiped() {
             .cas()
             .cache
             .disk_cache()
-            .get(&cas_pk_str)
+            .get(cas_pk_str.clone())
+            .await
             .expect("cannot get from disk cache")
         {
             Some(on_disk_postcard) => {
-                let on_disk: CasValue =
-                    postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+                let on_disk: CasValue = postcard::from_bytes(&on_disk_postcard.value()[..])
+                    .expect("cannot deserialize data");
                 assert_eq!(cas_value.as_ref(), &on_disk);
                 break;
             }

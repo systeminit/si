@@ -69,8 +69,16 @@ pub enum LayerDbError {
     PgPool(#[from] PgPoolError),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
-    #[error("sled error: {0}")]
-    SledError(#[from] sled::Error),
+    #[error("redb commit error: {0}]")]
+    RedbCommit(#[from] redb::CommitError),
+    #[error("redb database error: {0}]")]
+    RedbDatabase(#[from] redb::DatabaseError),
+    #[error("redb storage error: {0}]")]
+    RedbStorage(#[from] redb::StorageError),
+    #[error("redb table error: {0}]")]
+    RedbTable(#[from] redb::TableError),
+    #[error("redb transaction error: {0}]")]
+    RedbTransaction(#[from] redb::TransactionError),
     #[error("tokio oneshot recv error: {0}")]
     TokioOneShotRecv(#[from] tokio::sync::oneshot::error::RecvError),
     #[error("unexpected activity variant; expected={0}, actual={1}")]

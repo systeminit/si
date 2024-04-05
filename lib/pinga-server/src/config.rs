@@ -1,4 +1,7 @@
-use std::{env, path::Path};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -7,7 +10,7 @@ use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServi
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::error::LayerDbError;
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -62,7 +65,8 @@ pub struct Config {
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
-    layer_cache_sled_path: CanonicalFile,
+    #[builder(default = "si_layer_cache::default_redb_path_for_service(\"pinga\")")]
+    layer_cache_redb_path: PathBuf,
 }
 
 impl StandardConfig for Config {
@@ -113,8 +117,8 @@ impl Config {
     }
 
     #[must_use]
-    pub fn layer_cache_sled_path(&self) -> &Path {
-        self.layer_cache_sled_path.as_path()
+    pub fn layer_cache_redb_path(&self) -> &Path {
+        self.layer_cache_redb_path.as_path()
     }
 }
 
@@ -168,7 +172,7 @@ impl TryFrom<ConfigFile> for Config {
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_sled_path = Some(si_layer_cache::default_sled_path()?);
+        config.layer_cache_redb_path = Some(si_layer_cache::default_redb_path_for_service("pinga"));
         config.build().map_err(Into::into)
     }
 }

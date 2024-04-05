@@ -4650,43 +4650,6 @@ cargo.rust_library(
     deps = [":percent-encoding-2.3.1"],
 )
 
-http_archive(
-    name = "fs2-0.4.3.crate",
-    sha256 = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213",
-    strip_prefix = "fs2-0.4.3",
-    urls = ["https://crates.io/api/v1/crates/fs2/0.4.3/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "fs2-0.4.3",
-    srcs = [":fs2-0.4.3.crate"],
-    crate = "fs2",
-    crate_root = "fs2-0.4.3.crate/src/lib.rs",
-    edition = "2015",
-    platform = {
-        "linux-arm64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "linux-x86_64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "macos-arm64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "macos-x86_64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "windows-gnu": dict(
-            deps = [":winapi-0.3.9"],
-        ),
-        "windows-msvc": dict(
-            deps = [":winapi-0.3.9"],
-        ),
-    },
-    visibility = [],
-)
-
 alias(
     name = "futures",
     actual = ":futures-0.3.30",
@@ -6541,24 +6504,6 @@ cargo.rust_library(
         ":unicode-segmentation-1.11.0",
         ":unicode-width-0.1.11",
     ],
-)
-
-http_archive(
-    name = "instant-0.1.12.crate",
-    sha256 = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c",
-    strip_prefix = "instant-0.1.12",
-    urls = ["https://crates.io/api/v1/crates/instant/0.1.12/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "instant-0.1.12",
-    srcs = [":instant-0.1.12.crate"],
-    crate = "instant",
-    crate_root = "instant-0.1.12.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-    deps = [":cfg-if-1.0.0"],
 )
 
 http_archive(
@@ -9199,29 +9144,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "parking_lot-0.11.2.crate",
-    sha256 = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99",
-    strip_prefix = "parking_lot-0.11.2",
-    urls = ["https://crates.io/api/v1/crates/parking_lot/0.11.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "parking_lot-0.11.2",
-    srcs = [":parking_lot-0.11.2.crate"],
-    crate = "parking_lot",
-    crate_root = "parking_lot-0.11.2.crate/src/lib.rs",
-    edition = "2018",
-    features = ["default"],
-    visibility = [],
-    deps = [
-        ":instant-0.1.12",
-        ":lock_api-0.4.11",
-        ":parking_lot_core-0.8.6",
-    ],
-)
-
-http_archive(
     name = "parking_lot-0.12.1.crate",
     sha256 = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f",
     strip_prefix = "parking_lot-0.12.1",
@@ -9240,48 +9162,6 @@ cargo.rust_library(
     deps = [
         ":lock_api-0.4.11",
         ":parking_lot_core-0.9.9",
-    ],
-)
-
-http_archive(
-    name = "parking_lot_core-0.8.6.crate",
-    sha256 = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc",
-    strip_prefix = "parking_lot_core-0.8.6",
-    urls = ["https://crates.io/api/v1/crates/parking_lot_core/0.8.6/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "parking_lot_core-0.8.6",
-    srcs = [":parking_lot_core-0.8.6.crate"],
-    crate = "parking_lot_core",
-    crate_root = "parking_lot_core-0.8.6.crate/src/lib.rs",
-    edition = "2018",
-    platform = {
-        "linux-arm64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "linux-x86_64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "macos-arm64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "macos-x86_64": dict(
-            deps = [":libc-0.2.153"],
-        ),
-        "windows-gnu": dict(
-            deps = [":winapi-0.3.9"],
-        ),
-        "windows-msvc": dict(
-            deps = [":winapi-0.3.9"],
-        ),
-    },
-    visibility = [],
-    deps = [
-        ":cfg-if-1.0.0",
-        ":instant-0.1.12",
-        ":smallvec-1.13.2",
     ],
 )
 
@@ -10756,6 +10636,56 @@ cargo.rust_library(
         ":crossbeam-deque-0.8.5",
         ":crossbeam-utils-0.8.19",
     ],
+)
+
+alias(
+    name = "redb",
+    actual = ":redb-2.0.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "redb-2.0.0.crate",
+    sha256 = "a1100a056c5dcdd4e5513d5333385223b26ef1bf92f31eb38f407e8c20549256",
+    strip_prefix = "redb-2.0.0",
+    urls = ["https://crates.io/api/v1/crates/redb/2.0.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "redb-2.0.0",
+    srcs = [":redb-2.0.0.crate"],
+    crate = "redb",
+    crate_root = "redb-2.0.0.crate/src/lib.rs",
+    dlopen_enable = True,
+    edition = "2021",
+    env = {
+        "CARGO_MANIFEST_DIR": "redb-2.0.0.crate",
+        "CARGO_PKG_AUTHORS": "Christopher Berner <christopherberner@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Rust Embedded DataBase",
+        "CARGO_PKG_NAME": "redb",
+        "CARGO_PKG_REPOSITORY": "https://github.com/cberner/redb",
+        "CARGO_PKG_VERSION": "2.0.0",
+        "CARGO_PKG_VERSION_MAJOR": "2",
+        "CARGO_PKG_VERSION_MINOR": "0",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
+    linkable_alias = "redb",
+    platform = {
+        "linux-arm64": dict(
+            deps = [":libc-0.2.153"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":libc-0.2.153"],
+        ),
+        "macos-arm64": dict(
+            deps = [":libc-0.2.153"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":libc-0.2.153"],
+        ),
+    },
+    visibility = [],
 )
 
 alias(
@@ -13870,73 +13800,6 @@ cargo.rust_library(
     visibility = [],
 )
 
-alias(
-    name = "sled",
-    actual = ":sled-0.34.7",
-    visibility = ["PUBLIC"],
-)
-
-http_archive(
-    name = "sled-0.34.7.crate",
-    sha256 = "7f96b4737c2ce5987354855aed3797279def4ebf734436c6aa4552cf8e169935",
-    strip_prefix = "sled-0.34.7",
-    urls = ["https://crates.io/api/v1/crates/sled/0.34.7/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "sled-0.34.7",
-    srcs = [":sled-0.34.7.crate"],
-    crate = "sled",
-    crate_root = "sled-0.34.7.crate/src/lib.rs",
-    edition = "2018",
-    env = {
-        "CARGO_MANIFEST_DIR": "sled-0.34.7.crate",
-        "CARGO_PKG_AUTHORS": "Tyler Neely <t@jujit.su>",
-        "CARGO_PKG_DESCRIPTION": "Lightweight high-performance pure-rust transactional embedded database.",
-        "CARGO_PKG_NAME": "sled",
-        "CARGO_PKG_REPOSITORY": "https://github.com/spacejam/sled",
-        "CARGO_PKG_VERSION": "0.34.7",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "34",
-        "CARGO_PKG_VERSION_PATCH": "7",
-    },
-    features = [
-        "default",
-        "no_metrics",
-    ],
-    platform = {
-        "linux-arm64": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-        "linux-x86_64": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-        "macos-arm64": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-        "macos-x86_64": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-        "windows-gnu": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-        "windows-msvc": dict(
-            deps = [":fs2-0.4.3"],
-        ),
-    },
-    visibility = [],
-    deps = [
-        ":crc32fast-1.4.0",
-        ":crossbeam-epoch-0.9.18",
-        ":crossbeam-utils-0.8.19",
-        ":fxhash-0.2.1",
-        ":libc-0.2.153",
-        ":log-0.4.21",
-        ":parking_lot-0.11.2",
-    ],
-)
-
 http_archive(
     name = "smallstr-0.3.0.crate",
     sha256 = "63b1aefdf380735ff8ded0b15f31aab05daf1f70216c01c02a12926badd1df9d",
@@ -15003,6 +14866,7 @@ cargo.rust_binary(
         ":proc-macro2-1.0.79",
         ":quote-1.0.35",
         ":rand-0.8.5",
+        ":redb-2.0.0",
         ":refinery-0.8.14",
         ":regex-1.10.4",
         ":remain-0.2.13",
@@ -15019,7 +14883,6 @@ cargo.rust_binary(
         ":serde_url_params-0.2.1",
         ":serde_with-3.7.0",
         ":serde_yaml-0.9.34+deprecated",
-        ":sled-0.34.7",
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.2",
         ":strum-0.26.2",
@@ -17102,9 +16965,7 @@ cargo.rust_library(
         "handleapi",
         "impl-default",
         "minwindef",
-        "ntstatus",
         "processenv",
-        "processthreadsapi",
         "profileapi",
         "std",
         "synchapi",
@@ -17140,9 +17001,7 @@ cargo.rust_binary(
         "handleapi",
         "impl-default",
         "minwindef",
-        "ntstatus",
         "processenv",
-        "processthreadsapi",
         "profileapi",
         "std",
         "synchapi",
@@ -17167,9 +17026,7 @@ buildscript_run(
         "handleapi",
         "impl-default",
         "minwindef",
-        "ntstatus",
         "processenv",
-        "processthreadsapi",
         "profileapi",
         "std",
         "synchapi",
