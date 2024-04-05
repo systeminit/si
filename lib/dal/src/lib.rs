@@ -39,6 +39,7 @@ pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod layer_db_types;
+mod module;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;

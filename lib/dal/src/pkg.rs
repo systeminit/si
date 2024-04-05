@@ -19,6 +19,7 @@ use crate::{
 };
 use crate::{FuncId, PropId, PropKind};
 
+use crate::module::ModuleError;
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
@@ -65,6 +66,8 @@ pub enum PkgError {
     MissingInputSocketName(String),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
+    #[error(transparent)]
+    Module(#[from] ModuleError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("output socket {0} missing attribute prototype")]
