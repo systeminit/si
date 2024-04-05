@@ -33,7 +33,7 @@ where
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
-    sled: sled::Db,
+    redb: Arc<redb::Database>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -59,20 +59,20 @@ where
         let tracker = TaskTracker::new();
 
         let disk_path = disk_path.as_ref();
-        let sled = sled::open(disk_path)?;
+        let redb = Arc::new(redb::Database::create(disk_path)?);
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
         let cas_cache: LayerCache<Arc<CasValue>> =
-            LayerCache::new(cas::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+            LayerCache::new(cas::CACHE_NAME, redb.clone(), pg_pool.clone()).await?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
-            LayerCache::new(encrypted_secret::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+            LayerCache::new(encrypted_secret::CACHE_NAME, redb.clone(), pg_pool.clone()).await?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
-            sled.clone(),
+            redb.clone(),
             pg_pool.clone(),
         )
         .await?;
@@ -90,7 +90,7 @@ where
 
         let persister_task = PersisterTask::create(
             rx,
-            sled.clone(),
+            redb.clone(),
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -112,7 +112,7 @@ where
             cas,
             encrypted_secret,
             workspace_snapshot,
-            sled,
+            redb,
             pg_pool,
             persister_client,
             nats_client,
@@ -122,8 +122,8 @@ where
         Ok((layerdb, graceful_shutdown))
     }
 
-    pub fn sled(&self) -> &sled::Db {
-        &self.sled
+    pub fn redb(&self) -> &Arc<redb::Database> {
+        &self.redb
     }
 
     pub fn pg_pool(&self) -> &PgPool {

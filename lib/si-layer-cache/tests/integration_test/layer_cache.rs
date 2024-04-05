@@ -6,7 +6,10 @@ use si_layer_cache::layer_cache::LayerCache;
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let db = sled::open(tempdir).expect("unable to open sled database");
+    let db = Arc::new(
+        redb::Database::create(tempdir.path().join(format!("redb-{db_name}")))
+            .expect("unable to open sled database"),
+    );
 
     let layer_cache = LayerCache::new("cas", db, super::setup_pg_db(db_name).await)
         .await
@@ -53,7 +56,8 @@ async fn not_in_memory_but_on_disk_insert() {
     // Insert the object directly to disk cache
     layer_cache
         .disk_cache()
-        .insert("skid row", "slave to the grind".as_bytes())
+        .insert("skid row".into(), "slave to the grind".as_bytes().to_vec())
+        .await
         .expect("failed to insert to disk cache");
 
     // There should not be anything for the key in memory cache
@@ -78,7 +82,8 @@ async fn get_inserts_to_memory() {
 
     layer_cache
         .disk_cache()
-        .insert("skid row", &postcard_serialized)
+        .insert("skid row".into(), postcard_serialized)
+        .await
         .expect("failed to insert to disk cache");
 
     assert!(!layer_cache.memory_cache().contains(&skid_row));

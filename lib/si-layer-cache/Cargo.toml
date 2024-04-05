@@ -14,6 +14,7 @@ futures = { workspace = true }
 lazy_static = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
+redb = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
@@ -21,7 +22,6 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-std = { path = "../../lib/si-std" }
-sled = { workspace = true }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = { workspace = true }
@@ -38,7 +38,6 @@ criterion = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
 rand = { workspace = true }
-sled = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
@@ -58,7 +59,7 @@ pub struct Config {
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
-    layer_cache_sled_path: CanonicalFile,
+    layer_cache_redb_path: PathBuf,
 }
 
 impl StandardConfig for Config {
@@ -105,10 +106,10 @@ impl Config {
         &self.layer_cache_pg_pool
     }
 
-    /// Gets a reference to the layer cache's sled database path
+    /// Gets a reference to the layer cache's redb database path
     #[must_use]
-    pub fn layer_cache_sled_path(&self) -> &Path {
-        self.layer_cache_sled_path.as_path()
+    pub fn layer_cache_redb_path(&self) -> &Path {
+        self.layer_cache_redb_path.as_path()
     }
 }
 
@@ -158,7 +159,8 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_sled_path = Some(si_layer_cache::default_sled_path()?);
+        config.layer_cache_redb_path =
+            Some(si_layer_cache::default_redb_path_for_service("rebaser"));
         config.build().map_err(Into::into)
     }
 }

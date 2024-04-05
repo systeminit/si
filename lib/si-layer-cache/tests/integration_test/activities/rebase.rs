@@ -6,7 +6,7 @@ use si_layer_cache::{activities::ActivityId, event::LayeredEventMetadata, LayerD
 use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
-use crate::integration_test::{setup_nats_client, setup_pg_db};
+use crate::integration_test::{redb_path, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 
@@ -14,9 +14,11 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 async fn subscribe_rebaser_requests_work_queue() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_duff = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = redb_path(&tempdir, "slash");
+    let tempdir_axl = redb_path(&tempdir, "axl");
+    let tempdir_duff = redb_path(&tempdir, "duff");
     let db = setup_pg_db("subscribe_rebaser_requests_work_queue").await;
 
     // we need a layerdb for slash, which will be a consumer of our work queue
@@ -142,8 +144,11 @@ async fn subscribe_rebaser_requests_work_queue() {
 async fn rebase_and_wait() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = redb_path(&tempdir, "slash");
+    let tempdir_axl = redb_path(&tempdir, "axl");
+
     let db = setup_pg_db("rebase_and_wait").await;
 
     // we need a layerdb for slash, who will send the rebase request

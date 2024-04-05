@@ -37,6 +37,6 @@ pub mod persister;
 pub mod pg;
 
 pub use db::LayerDb;
-pub use disk_cache::default_sled_path;
+pub use disk_cache::{default_redb_path, default_redb_path_for_service, RedbTempFile};
 pub use error::LayerDbError;
 pub use pg::{default_pg_pool_config, APPLICATION_NAME, DBNAME};

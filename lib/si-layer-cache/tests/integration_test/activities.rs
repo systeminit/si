@@ -9,7 +9,7 @@ use si_layer_cache::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{setup_nats_client, setup_pg_db};
+use crate::integration_test::{redb_path, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 
@@ -17,8 +17,11 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 async fn activities() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = redb_path(&tempdir, "slash");
+    let tempdir_axl = redb_path(&tempdir, "axl");
+
     let db = setup_pg_db("activities").await;
 
     // First, we need a layerdb for slash
@@ -75,8 +78,10 @@ async fn activities() {
 async fn activities_subscribe_partial() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let tempdir_axl = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = redb_path(&tempdir, "slash");
+    let tempdir_axl = redb_path(&tempdir, "axl");
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     // First, we need a layerdb for slash

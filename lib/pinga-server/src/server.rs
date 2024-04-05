@@ -120,7 +120,7 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
         let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-            config.layer_cache_sled_path(),
+            config.layer_cache_redb_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
             token,
