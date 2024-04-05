@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { useRoute } from "vue-router";
 import {
   ChangeSet,
   ChangeSetId,
@@ -19,6 +20,7 @@ export interface OpenChangeSetsView {
 }
 
 export function useChangeSetsStore() {
+  const route = useRoute();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
@@ -314,6 +316,23 @@ export function useChangeSetsStore() {
                   this.postApplyActor = userPk;
                 }
                 this.changeSetsById[changeSetId] = changeSet;
+                // whenever the changeset is applied move us to head
+              }
+              // `list_open_change_sets` gets called prior on voters
+              // which means the changeset is gone, so always move
+              if (
+                !this.selectedChangeSetId ||
+                this.selectedChangeSetId === changeSetId
+              ) {
+                if (route.name) {
+                  router.push({
+                    name: route.name,
+                    params: {
+                      ...route.params,
+                      changeSetId: "head",
+                    },
+                  });
+                }
               }
             },
           },

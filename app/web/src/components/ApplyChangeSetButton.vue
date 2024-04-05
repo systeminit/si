@@ -360,7 +360,8 @@ const applyChangeSetReqStatus =
 const applyChangeSet = async () => {
   if (!route.name) return;
   applyModalRef.value?.close();
-  await changeSetsStore.APPLY_CHANGE_SET();
+  // don't await
+  changeSetsStore.APPLY_CHANGE_SET();
   window.localStorage.setItem("applied-changes", "true");
   router.replace({
     name: route.name,
@@ -459,14 +460,24 @@ watch(
   },
 );
 
+/* FUTURE: we have a hole here (we need storage on the backend to resolve)
+Person 1 & 2 are on a changeset
+Person 1 starts the vote
+Person 3 joins the changeset
+  they missed the "please vote WS Event"
+We now expect 3 votes
+Person 1 will be forced to hit override to move forward
+
+We can now look at "are you looking at a changeset that needs approval?"
+And show them the vote prompt
+*/
 watch(
   () => changeSetsStore.changeSetApprovals,
   () => {
     if (!appliedByYou.value) return;
     if (
       _.values(changeSetsStore.changeSetApprovals).length !==
-      usersInChangeset.value.length + 1
-      // This is the number of other users + the person who triggered the merge
+      usersInChangeset.value.length // This is the number of other users (without the person who triggered the merge)
     )
       return;
     if (

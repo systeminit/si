@@ -16,15 +16,15 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 pub mod abandon_change_set;
-// mod abandon_vote;
+mod abandon_vote;
 pub mod add_action;
 pub mod apply_change_set;
-// mod begin_abandon_approval_process;
-// mod begin_approval_process;
+mod begin_abandon_approval_process;
+mod begin_approval_process;
 pub mod create_change_set;
 pub mod list_open_change_sets;
 pub mod list_queued_actions;
-// mod merge_vote;
+mod merge_vote;
 pub mod remove_action;
 
 #[remain::sorted]
@@ -95,22 +95,22 @@ pub fn routes() -> Router<AppState> {
             "/abandon_change_set",
             post(abandon_change_set::abandon_change_set),
         )
-    // .route(
-    //     "/begin_approval_process",
-    //     post(begin_approval_process::begin_approval_process),
-    // )
-    // .route(
-    //     "/cancel_approval_process",
-    //     post(begin_approval_process::cancel_approval_process),
-    // )
-    // .route("/merge_vote", post(merge_vote::merge_vote))
-    // .route(
-    //     "/begin_abandon_approval_process",
-    //     post(begin_abandon_approval_process::begin_abandon_approval_process),
-    // )
-    // .route(
-    //     "/cancel_abandon_approval_process",
-    //     post(begin_abandon_approval_process::cancel_abandon_approval_process),
-    // )
-    // .route("/abandon_vote", post(abandon_vote::abandon_vote))
+        .route(
+            "/begin_approval_process",
+            post(begin_approval_process::begin_approval_process),
+        )
+        .route(
+            "/cancel_approval_process",
+            post(begin_approval_process::cancel_approval_process),
+        )
+        .route("/merge_vote", post(merge_vote::merge_vote))
+        .route(
+            "/begin_abandon_approval_process",
+            post(begin_abandon_approval_process::begin_abandon_approval_process),
+        )
+        .route(
+            "/cancel_abandon_approval_process",
+            post(begin_abandon_approval_process::cancel_abandon_approval_process),
+        )
+        .route("/abandon_vote", post(abandon_vote::abandon_vote))
 }
