@@ -948,6 +948,7 @@ impl WorkspaceSnapshotGraph {
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::Module => "yellow",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",

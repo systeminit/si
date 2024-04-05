@@ -12,6 +12,7 @@ use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
+use crate::module::Module;
 use crate::prop::PropParent;
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
@@ -1376,11 +1377,28 @@ pub async fn import_pkg_from_pkg(
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
     }
 
+    dbg!(
+        "Existing Module",
+        Module::find_by_root_hash(ctx, &root_hash).await?
+    );
+
     let metadata = pkg.metadata()?;
 
     let installed_pkg_id = if options.no_record {
         None
     } else {
+        // This is the start of the cut over from InstalledPkg in the database
+        // to Module on the graph
+        Module::new(
+            ctx,
+            metadata.name(),
+            pkg.hash()?.to_string(),
+            metadata.version(),
+            metadata.description(),
+            metadata.created_by(),
+            metadata.created_at(),
+        )
+        .await?;
         Some(
             *InstalledPkg::new(ctx, metadata.name(), pkg.hash()?.to_string())
                 .await?
