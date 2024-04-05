@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_events::{Actor, Tenancy, WebEvent, WorkspaceSnapshotAddress};
+use tokio::time::Instant;
 
 use crate::{
     error::LayerDbResult,
@@ -41,11 +42,18 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
+        let start = Instant::now();
         let postcard_value = postcard::to_stdvec(&value)?;
+        println!("serialized in {:?}", start.elapsed());
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
+        println!("got cache key, total time {:?}", start.elapsed());
 
         self.cache.insert(cache_key.clone(), value.clone()).await;
+        println!(
+            "inserted into layer cache, total time {:?}",
+            start.elapsed()
+        );
 
         let event = LayeredEvent::new(
             LayeredEventKind::SnapshotWrite,
@@ -56,9 +64,12 @@ where
             web_events,
             tenancy,
             actor,
-            true,
         );
         let reader = self.persister_client.write_event(event)?;
+        println!(
+            "dispatched to persister client (done), total time {:?}",
+            start.elapsed()
+        );
 
         Ok((key, reader))
     }

@@ -1,6 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::sync::Arc;
+use ulid::Ulid;
 
 use si_layer_cache::layer_cache::LayerCache;
 
@@ -118,6 +119,34 @@ async fn get_bulk_inserts_to_memory() {
     for value in values {
         let key = value.to_string();
         assert_eq!(key, get_values[&key]);
+    }
+}
+
+#[tokio::test]
+async fn get_bulk_from_db_huge() {
+    let layer_cache = make_layer_cache("get_bulk_from_db_huge").await;
+    const SIZE: usize = 20_000;
+
+    let mut values: Vec<String> = Vec::with_capacity(SIZE);
+    for _ in 0..SIZE {
+        values.push(Ulid::new().into());
+    }
+
+    for value in &values {
+        let serialized_bytes = postcard::to_stdvec(value).expect("able to serialize");
+        let _ = layer_cache
+            .pg()
+            .insert(value, "cas", &serialized_bytes)
+            .await;
+    }
+
+    let get_values = layer_cache
+        .get_bulk(&values)
+        .await
+        .expect("should succeed results");
+
+    for value in &values {
+        assert_eq!(value, &get_values[&value.to_string()]);
     }
 }
 

@@ -437,9 +437,9 @@ pub(crate) trait FnSetupExpander {
     }
 
     fn setup_services_context(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.services_context() {
-            return ident.clone();
-        }
+        //if let Some(ident) = self.services_context() {
+        //return ident.clone();
+        //}
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();

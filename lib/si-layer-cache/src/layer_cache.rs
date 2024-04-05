@@ -4,12 +4,15 @@ use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
+use tokio::time::Instant;
 
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
 use crate::memory_cache::MemoryCache;
 use crate::pg::PgLayer;
 use crate::LayerDbError;
+
+const BULK_FETCH_LIMIT: usize = 16_384;
 
 #[derive(Debug, Clone)]
 pub struct LayerCache<V>
@@ -55,6 +58,7 @@ where
                 Err(_) => match self.pg.get(&key).await? {
                     Some(value) => {
                         let deserialized: V = postcard::from_bytes(&value)?;
+                        println!("pg get");
 
                         self.memory_cache
                             .insert(key.clone(), deserialized.clone())
@@ -101,19 +105,24 @@ where
         }
 
         if !not_found.is_empty() {
-            if let Some(pg_found) = self.pg.get_many(&not_found).await? {
-                for (k, v) in pg_found {
-                    let deserialized: V = postcard::from_bytes(&v)?;
-                    self.memory_cache
-                        .insert(k.clone().into(), deserialized.clone())
-                        .await;
-                    self.spawn_disk_cache_write_vec(k.clone().into(), v).await?;
-                    found_keys.insert(
-                        K::from_str(&k).map_err(|err| {
-                            LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
-                        })?,
-                        deserialized,
-                    );
+            for chunk in not_found.chunks(BULK_FETCH_LIMIT) {
+                println!("fetching chunk of size: {}", chunk.len());
+                let fetch_start = Instant::now();
+                if let Some(pg_found) = self.pg.get_many(&chunk).await? {
+                    println!("db fetch took: {:?}", fetch_start.elapsed());
+                    for (k, v) in pg_found {
+                        let deserialized: V = postcard::from_bytes(&v)?;
+                        self.memory_cache
+                            .insert(k.clone().into(), deserialized.clone())
+                            .await;
+                        self.spawn_disk_cache_write_vec(k.clone().into(), v).await?;
+                        found_keys.insert(
+                            K::from_str(&k).map_err(|err| {
+                                LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
+                            })?,
+                            deserialized,
+                        );
+                    }
                 }
             }
         }

@@ -39,7 +39,6 @@ where
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     node_weight: NodeWeightDb<NodeWeightValue>,
-    redb: Arc<redb::Database>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -81,7 +80,7 @@ where
             LayerCache::new(workspace_snapshot::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let node_weight_cache: LayerCache<Arc<NodeWeightValue>> =
-            LayerCache::new(node_weight::CACHE_NAME, disk_path, pg_pool.clone()).await?;
+            LayerCache::new(node_weight::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,

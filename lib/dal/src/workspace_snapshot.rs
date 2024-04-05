@@ -356,7 +356,7 @@ impl WorkspaceSnapshot {
             let mut remote_node_weight = self.get_node_weight(node_index).await?.as_ref().clone();
             remote_node_weight.mark_seen_at(vector_clock_id, seen_at);
             let node_id = remote_node_weight.id();
-            #[cfg(integration_test)]
+            #[cfg(integration_test_bar)]
             {
                 let (new_address, _) = self
                     .node_weight_db
@@ -369,19 +369,17 @@ impl WorkspaceSnapshot {
                     .await?;
                 updates.push((node_index, new_address, node_id));
             }
-            #[cfg(not(integration_test))]
-            {
-                let (new_address, _) = self
-                    .node_weight_db
-                    .write(
-                        Arc::new(remote_node_weight),
-                        None,
-                        self.events_tenancy(),
-                        self.events_actor(),
-                    )
-                    .await?;
-                updates.push((node_index, new_address, node_id));
-            }
+            //            #[cfg(not(integration_test))]
+            let (new_address, _) = self
+                .node_weight_db
+                .write(
+                    Arc::new(remote_node_weight),
+                    None,
+                    self.events_tenancy(),
+                    self.events_actor(),
+                )
+                .await?;
+            updates.push((node_index, new_address, node_id));
         }
 
         for (index, address, node_id) in updates {
@@ -425,7 +423,7 @@ impl WorkspaceSnapshot {
                 return Err(e)?;
             }
 
-            info!("write took: {:?}", write_start.elapsed());
+            println!("write took: {:?}", write_start.elapsed());
 
             new_address
         };
@@ -1342,6 +1340,13 @@ impl WorkspaceSnapshot {
         Ok(node_index)
     }
 
+    pub async fn get_bulk_node_weights_by_address(
+        &self,
+        addresses: &[NodeWeightAddress],
+    ) -> WorkspaceSnapshotResult<HashMap<NodeWeightAddress, Arc<NodeWeight>>> {
+        Ok(self.node_weight_db.read_many(addresses).await?)
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn get_node_weight_by_address(
         &self,
@@ -1425,19 +1430,28 @@ impl WorkspaceSnapshot {
         }
         info!("Removed stale NodeIndex: {:?}", start.elapsed());
 
-        let node_addresses: HashSet<NodeWeightAddress> = self
-            .working_copy()
-            .await
+        let lock_start = Instant::now();
+        let read_guard = self.working_copy().await;
+        println!("Got read guard in cleanup: {:?}", lock_start.elapsed());
+
+        let collect_start = Instant::now();
+        let node_addresses: Vec<NodeWeightAddress> = read_guard
             .graph()
             .node_weights()
             .map(|weight| weight.address())
             .collect();
+        drop(read_guard);
+        println!("Collected node addresses: {:?}", collect_start.elapsed());
 
-        let mut remaining_node_ids = HashSet::new();
-        for address in &node_addresses {
-            let node_weight = self.get_node_weight_by_address(*address).await?;
-            remaining_node_ids.insert(node_weight.id());
-        }
+        let get_ids_start = Instant::now();
+        let remaining_node_ids: HashSet<Ulid> = self
+            .get_bulk_node_weights_by_address(&node_addresses)
+            .await?
+            .values()
+            .map(|weight| weight.id())
+            .collect();
+
+        println!("Got ids: {:?}", get_ids_start.elapsed());
 
         // After we retain the nodes, collect the remaining ids and indices.
         info!(
@@ -1470,8 +1484,8 @@ impl WorkspaceSnapshot {
 
         self.working_copy_mut()
             .await
-            .retain_id_by_node_addresses(node_addresses);
-        info!("Removed stale id_by_node_address: {:?}", start.elapsed());
+            .retain_id_by_node_addresses(node_addresses.into_iter().collect());
+        println!("Removed stale id_by_node_address: {:?}", start.elapsed());
 
         Ok(())
     }
@@ -1587,6 +1601,7 @@ impl WorkspaceSnapshot {
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::Module => "yellow",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
@@ -1619,6 +1634,7 @@ impl WorkspaceSnapshot {
                             ("Action Batches (Category)".to_string(), "black")
                         }
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
+                        CategoryNodeKind::Module => ("Module (Category".to_string(), "black"),
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                     },

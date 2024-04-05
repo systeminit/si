@@ -19,7 +19,7 @@ use crate::{
 #[strum(serialize_all = "snake_case")]
 enum CacheName {
     Cas,
-    EncryptedSecret,
+    EncryptedSecrets,
     NodeWeights,
     WorkspaceSnapshots,
 }
@@ -98,6 +98,7 @@ where
                 self.cas_cache.clone(),
                 self.encrypted_secret_cache.clone(),
                 self.snapshot_cache.clone(),
+                self.node_weight_cache.clone(),
             );
             self.tracker
                 .spawn(async move { cache_update_task.run(event).await });
@@ -180,6 +181,18 @@ where
                         .await?;
                 }
             }
+            crate::event::LayeredEventKind::NodeWeightWrite => {
+                if !self.node_weight_cache.contains(&event.key) {
+                    let memory_value = self
+                        .node_weight_cache
+                        .deserialize_memory_value(&event.payload.value)?;
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.node_weight_cache
+                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .await?;
+                }
+            }
         }
         Ok(())
     }
@@ -188,7 +201,6 @@ where
         match self.process_message(event).await {
             Ok(()) => {}
             Err(e) => {
-                error!("{:?}", msg.inner.headers);
                 error!(error = %e, "error processing layerdb cache update message");
             }
         }

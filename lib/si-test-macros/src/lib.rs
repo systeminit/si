@@ -17,7 +17,7 @@ use syn::{
 const LOG_ENV_VAR: &str = "SI_TEST_LOG";
 const SPAN_EVENTS_ENV_VAR: &str = "SI_TEST_LOG_SPAN_EVENTS";
 
-const RT_DEFAULT_WORKER_THREADS: usize = 2;
+const RT_DEFAULT_WORKER_THREADS: usize = 64;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
 #[allow(dead_code)] // We aren't current using args on the macro, but when we do we can drop this

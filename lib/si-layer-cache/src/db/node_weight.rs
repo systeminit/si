@@ -68,7 +68,6 @@ where
             web_events,
             tenancy,
             actor,
-            false,
         );
         let reader = self.persister_client.write_event(event)?;
 
@@ -97,7 +96,6 @@ where
             web_events,
             tenancy,
             actor,
-            true,
         );
         let reader = self.persister_client.write_event(event)?;
 

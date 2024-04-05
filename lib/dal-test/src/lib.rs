@@ -152,7 +152,7 @@ impl Config {
         config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
-        config.layer_cache_pg_pool.pool_max_size = 8;
+        config.layer_cache_pg_pool.pool_max_size = 200;
         config.layer_cache_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
 

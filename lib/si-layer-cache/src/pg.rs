@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use si_data_pg::{PgPool, PgPoolConfig};
+use tokio::time::Instant;
 
 use crate::error::LayerDbResult;
 
@@ -103,11 +104,18 @@ impl PgLayer {
         sort_key: impl AsRef<str>,
         value: &[u8],
     ) -> LayerDbResult<()> {
-        let client = self.pool.get().await?;
+        let start = Instant::now();
         let sort_key = sort_key.as_ref();
+        let client = self.pool.get().await?;
+        if sort_key == "workspace_snapshot" {
+            println!("got client in {:?}", start.elapsed());
+        }
         client
             .query(&self.insert_value_query, &[&key, &sort_key, &value])
             .await?;
+        if sort_key == "workspace_snapshot" {
+            println!("wrote to pg in {:?}", start.elapsed());
+        }
         Ok(())
     }
 

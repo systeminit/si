@@ -228,7 +228,7 @@ impl Module {
 
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
-            if let NodeWeight::Func(inner) = &node_weight {
+            if let NodeWeight::Func(inner) = node_weight.as_ref() {
                 let func = Func::get_by_id(ctx, inner.id().into()).await?;
                 all_funcs.push(func);
             }
@@ -243,7 +243,7 @@ impl Module {
 
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
-            if let NodeWeight::Content(inner) = &node_weight {
+            if let NodeWeight::Content(inner) = node_weight.as_ref() {
                 let inner_addr_discrim: ContentAddressDiscriminants =
                     inner.content_address().into();
 
@@ -266,7 +266,7 @@ impl Module {
 
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
-            if let NodeWeight::Content(inner) = &node_weight {
+            if let NodeWeight::Content(inner) = node_weight.as_ref() {
                 let inner_addr_discrim: ContentAddressDiscriminants =
                     inner.content_address().into();
 
