@@ -32,11 +32,17 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: { \"poop\": true }, status: \"ok\" };
+              return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
             }";
 
     let fn_name = "test:refreshActionSwifty";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
+
+    let update_action_code = "async function main(component: Input): Promise<Output> {
+              return { payload: { \"poonami\": true }, status: \"ok\" };
+            }";
+    let fn_name = "test:updateActionSwifty";
+    let update_action_func = build_action_func(update_action_code, fn_name).await?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
@@ -116,6 +122,12 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
                         .func_unique_id(&refresh_action_func.unique_id)
                         .build()?,
                 )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(&ActionKind::Other)
+                        .func_unique_id(&update_action_func.unique_id)
+                        .build()?,
+                )
                 .leaf_function(
                     LeafFunctionSpec::builder()
                         .func_unique_id(codegen_fn_name)
@@ -131,6 +143,7 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
         .func(identity_func_spec)
         .func(refresh_action_func)
         .func(create_action_func)
+        .func(update_action_func)
         .func(swifty_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .func(code_gen_func)
