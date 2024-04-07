@@ -6,13 +6,8 @@ use si_layer_cache::layer_cache::LayerCache;
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let db = Arc::new(
-        redb::Database::create(tempdir.path().join(format!("redb-{db_name}")))
-            .expect("unable to open sled database"),
-    );
 
-    let layer_cache = LayerCache::new("cas", db, super::setup_pg_db(db_name).await)
-        .await
+    let layer_cache = LayerCache::new("cas", tempdir.path(), super::setup_pg_db(db_name).await)
         .expect("cannot create layer cache");
     layer_cache.pg().migrate().await.expect("migrate");
 

@@ -1,24 +1,23 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
-use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient};
+use si_data_nats::{async_nats::jetstream, NatsClient};
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
 use tokio::{
     join,
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc::{self},
+        oneshot,
+    },
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
-    chunking_nats::ChunkingNats,
     disk_cache::DiskCache,
     error::{LayerDbError, LayerDbResult},
-    event::LayeredEvent,
-    nats::{
-        layerdb_events_stream, subject, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID,
-        NATS_HEADER_KEY,
-    },
+    event::{LayeredEvent, LayeredEventClient},
+    nats::layerdb_events_stream,
     pg::PgLayer,
 };
 
@@ -84,7 +83,9 @@ impl PersisterClient {
 
     pub fn write_event(&self, event: LayeredEvent) -> LayerDbResult<PersisterStatusReader> {
         let (status_write, status_read) = self.get_status_channels();
-        self.tx.send(PersistMessage::Write((event, status_write)))?;
+        self.tx
+            .send(PersistMessage::Write((event, status_write)))
+            .map_err(Box::new)?;
         Ok(status_read)
     }
 }
@@ -92,10 +93,9 @@ impl PersisterClient {
 #[derive(Debug)]
 pub struct PersisterTask {
     messages: mpsc::UnboundedReceiver<PersistMessage>,
-    redb: Arc<redb::Database>,
+    disk_path: PathBuf,
     pg_pool: PgPool,
-    nats: ChunkingNats,
-    instance_id: Ulid,
+    layered_event_client: LayeredEventClient,
     tracker: TaskTracker,
     shutdown_token: CancellationToken,
 }
@@ -105,7 +105,7 @@ impl PersisterTask {
 
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
-        redb: Arc<redb::Database>,
+        disk_path: PathBuf,
         pg_pool: PgPool,
         nats_client: &NatsClient,
         instance_id: Ulid,
@@ -117,20 +117,21 @@ impl PersisterTask {
         // Ensure the Jetstream is created
         let _stream =
             layerdb_events_stream(&context, nats_client.metadata().subject_prefix()).await?;
-        let nats = ChunkingNats::new(
+
+        let layered_event_client = LayeredEventClient::new(
             nats_client
                 .metadata()
                 .subject_prefix()
                 .map(|s| s.to_owned()),
-            context,
+            instance_id,
+            context.clone(),
         );
 
         Ok(Self {
             messages,
-            redb,
+            disk_path,
             pg_pool,
-            nats,
-            instance_id,
+            layered_event_client,
             tracker,
             shutdown_token,
         })
@@ -167,10 +168,9 @@ impl PersisterTask {
             match msg {
                 PersistMessage::Write((event, status_tx)) => {
                     let task = PersistEventTask::new(
-                        self.redb.clone(),
+                        self.disk_path.clone(),
                         self.pg_pool.clone(),
-                        self.nats.clone(),
-                        self.instance_id,
+                        self.layered_event_client.clone(),
                     );
                     self.tracker.spawn(task.write_layers(event, status_tx));
                 }
@@ -188,83 +188,66 @@ pub struct PersisterTaskError {
 
 #[derive(Debug, Clone)]
 pub struct PersistEventTask {
-    redb: Arc<redb::Database>,
+    disk_path: PathBuf,
     pg_pool: PgPool,
-    nats: ChunkingNats,
-    instance_id: Ulid,
+    layered_event_client: LayeredEventClient,
 }
 
 impl PersistEventTask {
     pub fn new(
-        redb: Arc<redb::Database>,
+        disk_path: PathBuf,
         pg_pool: PgPool,
-        nats: ChunkingNats,
-        instance_id: Ulid,
+        layered_event_client: LayeredEventClient,
     ) -> Self {
         PersistEventTask {
-            redb,
+            disk_path,
             pg_pool,
-            nats,
-            instance_id,
+            layered_event_client,
         }
     }
 
     pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
-            Err(e) => status_tx.send(PersistStatus::Error(e)),
+            Err(e) => {
+                println!("wtf: {:?}", e);
+                status_tx.send(PersistStatus::Error(e));
+            }
         }
     }
 
     pub async fn try_write_layers(&self, event: LayeredEvent) -> LayerDbResult<()> {
         let event = Arc::new(event);
 
-        // Write to disk cache
-        let disk_self = self.clone();
-        let disk_event = event.clone();
-        let disk_write = disk_self.write_to_disk(disk_event);
-
         // Write to nats
-        let nats_subject = subject::for_event(self.nats.prefix(), event.as_ref());
-        let nats = self.nats.clone();
-        let mut nats_headers = HeaderMap::new();
-        nats_headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
-        nats_headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
-        nats_headers.insert(
-            NATS_HEADER_INSTANCE_ID,
-            self.instance_id.to_string().as_str(),
-        );
-        let nats_payload = postcard::to_stdvec(&event)?;
-        let nats_join = tokio::spawn(async move {
-            nats.publish_with_headers(nats_subject, nats_headers, nats_payload.into())
-                .await
-        });
+        let nats_join = self.layered_event_client.publish(event.clone()).await?;
 
         // Write to pg
         let pg_self = self.clone();
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
-        match join![disk_write, pg_join, nats_join] {
-            (Ok(_), Ok(_), Ok(_)) => Ok(()),
-            (Err(e), Ok(_), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                disk_error: Some(e.to_string()),
-                pg_error: None,
-                nats_error: None,
-            })),
-            (Ok(_), Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                disk_error: None,
-                pg_error: Some(e.to_string()),
-                nats_error: None,
-            })),
+        // Write to disk cache
+        let disk_cache = DiskCache::new(&self.disk_path, event.payload.db_name.to_string())?;
+        let disk_join = tokio::task::spawn(async move { disk_cache.write_to_disk(event).await });
+
+        match join![disk_join, pg_join, nats_join] {
+            (Ok(Ok(_)), Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
+            (disk_res, Ok(pg_res), Ok(nats_res)) => {
+                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                    disk_error: disk_res.err().map(|e| e.to_string()),
+                    pg_error: pg_res.err().map(|e| e.to_string()),
+                    nats_error: nats_res.err().map(|e| e.to_string()),
+                }))
+            }
             (Ok(_), Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
                 disk_error: None,
                 pg_error: None,
                 nats_error: Some(e.to_string()),
             })),
-            (Err(d), Err(p), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                disk_error: Some(d.to_string()),
-                pg_error: Some(p.to_string()),
+            (Ok(_), Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: None,
+                pg_error: Some(e.to_string()),
                 nats_error: None,
             })),
             (Ok(_), Err(p), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
@@ -277,6 +260,11 @@ impl PersistEventTask {
                 pg_error: None,
                 nats_error: Some(n.to_string()),
             })),
+            (Err(d), Err(p), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: Some(d.to_string()),
+                pg_error: Some(p.to_string()),
+                nats_error: None,
+            })),
             (Err(d), Err(p), Err(n)) => {
                 Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
                     disk_error: Some(d.to_string()),
@@ -285,17 +273,6 @@ impl PersistEventTask {
                 }))
             }
         }
-    }
-
-    pub async fn write_to_disk(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
-        let db = self.redb.clone();
-        let table_name = event.payload.db_name.clone();
-        let key = event.payload.key.clone();
-        let value = event.payload.value.clone();
-        let handle = tokio::task::spawn_blocking(move || {
-            DiskCache::insert_blocking(db, table_name, key, value.to_vec())
-        });
-        handle.await?
     }
 
     // Write an event to the pg layer

@@ -65,8 +65,8 @@ pub struct Config {
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
-    #[builder(default = "si_layer_cache::default_redb_path_for_service(\"pinga\")")]
-    layer_cache_redb_path: PathBuf,
+    #[builder(default = "si_layer_cache::default_cache_path_for_service(\"pinga\")")]
+    layer_cache_disk_path: PathBuf,
 }
 
 impl StandardConfig for Config {
@@ -117,8 +117,8 @@ impl Config {
     }
 
     #[must_use]
-    pub fn layer_cache_redb_path(&self) -> &Path {
-        self.layer_cache_redb_path.as_path()
+    pub fn layer_cache_disk_path(&self) -> &Path {
+        self.layer_cache_disk_path.as_path()
     }
 }
 
@@ -172,7 +172,8 @@ impl TryFrom<ConfigFile> for Config {
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_redb_path = Some(si_layer_cache::default_redb_path_for_service("pinga"));
+        config.layer_cache_disk_path =
+            Some(si_layer_cache::default_cache_path_for_service("pinga"));
         config.build().map_err(Into::into)
     }
 }

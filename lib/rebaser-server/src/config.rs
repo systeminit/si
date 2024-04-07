@@ -59,7 +59,7 @@ pub struct Config {
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
-    layer_cache_redb_path: PathBuf,
+    layer_cache_disk_path: PathBuf,
 }
 
 impl StandardConfig for Config {
@@ -106,10 +106,10 @@ impl Config {
         &self.layer_cache_pg_pool
     }
 
-    /// Gets a reference to the layer cache's redb database path
+    /// Gets a reference to the layer cache's disk database path
     #[must_use]
-    pub fn layer_cache_redb_path(&self) -> &Path {
-        self.layer_cache_redb_path.as_path()
+    pub fn layer_cache_disk_path(&self) -> &Path {
+        self.layer_cache_disk_path.as_path()
     }
 }
 
@@ -159,8 +159,8 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_redb_path =
-            Some(si_layer_cache::default_redb_path_for_service("rebaser"));
+        config.layer_cache_disk_path =
+            Some(si_layer_cache::default_cache_path_for_service("rebaser"));
         config.build().map_err(Into::into)
     }
 }

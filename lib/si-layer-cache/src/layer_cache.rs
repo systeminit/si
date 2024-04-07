@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fmt::Display, path::Path, sync::Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -23,12 +25,8 @@ impl<V> LayerCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub async fn new(
-        name: &str,
-        fast_disk: Arc<redb::Database>,
-        pg_pool: PgPool,
-    ) -> LayerDbResult<Self> {
-        let disk_cache = DiskCache::new(fast_disk, name)?;
+    pub fn new(name: &str, disk_path: impl Into<PathBuf>, pg_pool: PgPool) -> LayerDbResult<Self> {
+        let disk_cache = DiskCache::new(disk_path, name)?;
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 
@@ -47,14 +45,14 @@ where
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
         Ok(match self.memory_cache.get(&key).await {
             Some(memory_value) => Some(memory_value),
-            None => match self.disk_cache.get(key.clone()).await? {
-                Some(value) => {
-                    let deserialized: V = postcard::from_bytes(&value.value()[..])?;
+            None => match self.disk_cache.get(key.clone()).await {
+                Ok(value) => {
+                    let deserialized: V = postcard::from_bytes(&value[..])?;
 
                     self.memory_cache.insert(key, deserialized.clone()).await;
                     Some(deserialized)
                 }
-                None => match self.pg.get(&key).await? {
+                Err(_) => match self.pg.get(&key).await? {
                     Some(value) => {
                         let deserialized: V = postcard::from_bytes(&value)?;
 
@@ -83,16 +81,16 @@ where
             let key_str: Arc<str> = key.to_string().into();
             if let Some(found) = match self.memory_cache.get(&key_str).await {
                 Some(memory_value) => Some(memory_value),
-                None => match self.disk_cache.get(key_str.clone()).await? {
-                    Some(value) => {
-                        let deserialized: V = postcard::from_bytes(&value.value()[..])?;
+                None => match self.disk_cache.get(key_str.clone()).await {
+                    Ok(value) => {
+                        let deserialized: V = postcard::from_bytes(&value[..])?;
 
                         self.memory_cache
                             .insert(key_str.clone(), deserialized.clone())
                             .await;
                         Some(deserialized)
                     }
-                    None => {
+                    Err(_) => {
                         not_found.push(key_str.clone());
                         None
                     }
@@ -167,17 +165,17 @@ where
 
 #[derive(Clone, Debug)]
 pub struct LayerCacheDependencies {
-    pub redb: Arc<redb::Database>,
+    pub disk_path: PathBuf,
     pub pg_pool: PgPool,
 }
 
-pub async fn make_layer_cache_dependencies<P: AsRef<Path>>(
-    redb_path: P,
+pub async fn make_layer_cache_dependencies(
+    disk_path: impl Into<PathBuf>,
     pg_pool_config: &PgPoolConfig,
 ) -> LayerDbResult<LayerCacheDependencies> {
-    let redb_path = redb_path.as_ref();
+    let disk_path = disk_path.into();
     Ok(LayerCacheDependencies {
-        redb: Arc::new(redb::Database::create(redb_path)?),
+        disk_path,
         pg_pool: PgPool::new(pg_pool_config).await?,
     })
 }

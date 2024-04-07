@@ -6,7 +6,7 @@ use dal::{
     WsEventError,
 };
 use si_layer_cache::activities::rebase::RebaseStatus;
-use si_layer_cache::activities::AckRebaseRequest;
+use si_layer_cache::activities::ActivityRebaseRequest;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -35,7 +35,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 
 pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
-    message: &AckRebaseRequest,
+    message: &ActivityRebaseRequest,
 ) -> RebaseResult<RebaseStatus> {
     let start = Instant::now();
     // Gather everything we need to detect conflicts and updates from the inbound message.
@@ -60,11 +60,6 @@ pub(crate) async fn perform_rebase(
         onto_workspace_snapshot.id().await
     );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());
-
-    // Let NATS know we are still working
-    let _ = message
-        .ack_with(si_layer_cache::activities::AckKind::Progress)
-        .await;
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();

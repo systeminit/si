@@ -60,7 +60,7 @@ pub struct ServicesContext {
     module_index_url: Option<String>,
     /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
-    /// The layer db (moka-rs, sled and postgres)
+    /// The layer db
     layer_db: DalLayerDb,
 }
 
