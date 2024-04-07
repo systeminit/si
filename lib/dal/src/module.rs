@@ -19,7 +19,10 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, ChangeSetError, DalContext, Timestamp, TransactionsError};
+use crate::{
+    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaVariant,
+    SchemaVariantError, Timestamp, TransactionsError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -28,10 +31,16 @@ pub enum ModuleError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
+    #[error(transparent)]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -91,8 +100,8 @@ impl Module {
         &self.root_hash
     }
 
-    pub fn created_at(&self) -> &DateTime<Utc> {
-        &self.created_at
+    pub fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
     }
 
     pub async fn new(
@@ -211,6 +220,64 @@ impl Module {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn list_associated_funcs(&self, ctx: &DalContext) -> ModuleResult<Vec<Func>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut all_funcs = vec![];
+
+        let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
+        for node_weight in node_weights {
+            if let NodeWeight::Func(inner) = &node_weight {
+                let func = Func::get_by_id(ctx, inner.id().into()).await?;
+                all_funcs.push(func);
+            }
+        }
+
+        Ok(all_funcs)
+    }
+
+    pub async fn list_associated_schemas(&self, ctx: &DalContext) -> ModuleResult<Vec<Schema>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut all_schemas = vec![];
+
+        let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
+        for node_weight in node_weights {
+            if let NodeWeight::Content(inner) = &node_weight {
+                let inner_addr_discrim: ContentAddressDiscriminants =
+                    inner.content_address().into();
+
+                if inner_addr_discrim == ContentAddressDiscriminants::Schema {
+                    let schema = Schema::get_by_id(ctx, inner.id().into()).await?;
+                    all_schemas.push(schema);
+                }
+            }
+        }
+
+        Ok(all_schemas)
+    }
+
+    pub async fn list_associated_schema_variants(
+        &self,
+        ctx: &DalContext,
+    ) -> ModuleResult<Vec<SchemaVariant>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut all_schema_variants = vec![];
+
+        let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
+        for node_weight in node_weights {
+            if let NodeWeight::Content(inner) = &node_weight {
+                let inner_addr_discrim: ContentAddressDiscriminants =
+                    inner.content_address().into();
+
+                if inner_addr_discrim == ContentAddressDiscriminants::SchemaVariant {
+                    let variant = SchemaVariant::get_by_id(ctx, inner.id().into()).await?;
+                    all_schema_variants.push(variant);
+                }
+            }
+        }
+
+        Ok(all_schema_variants)
     }
 
     pub async fn list_installed(ctx: &DalContext) -> ModuleResult<Vec<Self>> {

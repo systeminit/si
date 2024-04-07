@@ -1,13 +1,16 @@
-use axum::{extract::Query, Json};
-use chrono::{DateTime, Utc};
-use dal::{installed_pkg::InstalledPkg, StandardModel, Visibility};
-use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, PartialOrd};
 
-use super::{pkg_open, PkgError, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
 use axum::extract::OriginalUri;
+use axum::{extract::Query, Json};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+use dal::module::Module;
+use dal::Visibility;
+
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+
+use super::{PkgError, PkgResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -48,77 +51,66 @@ pub struct PkgGetResponse {
     pub created_by: String,
     pub schemas: Vec<String>,
     pub funcs: Vec<PkgFuncView>,
-    pub spec: serde_json::Value,
     pub installed: bool,
 }
 
 pub async fn get_module_by_hash(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
     Query(request): Query<PkgGetRequest>,
 ) -> PkgResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let installed_pkg = match InstalledPkg::find_by_hash(&ctx, &request.hash).await? {
-        Some(p) => p,
+    let installed_pkg = match Module::find_by_root_hash(&ctx, &request.hash).await? {
+        Some(m) => m,
         None => return Err(PkgError::ModuleHashNotFound(request.hash.to_string())),
     };
 
-    let pkg = pkg_open(&builder, installed_pkg.name()).await?;
-
-    let mut schemas: Vec<String> = pkg
-        .schemas()?
+    let mut pkg_schemas: Vec<String> = installed_pkg
+        .list_associated_schemas(&ctx)
+        .await?
         .iter()
-        .map(|schema| schema.name().to_string())
+        .map(|s| s.name.clone())
         .collect();
-    schemas.sort();
+    pkg_schemas.sort();
 
-    let mut funcs: Vec<PkgFuncView> = pkg
-        .funcs()?
+    let mut pkg_funcs: Vec<PkgFuncView> = installed_pkg
+        .list_associated_funcs(&ctx)
+        .await?
         .iter()
-        .map(|func| PkgFuncView {
-            name: func.name().to_string(),
-            display_name: func.display_name().map(|dname| dname.to_string()),
-            description: func.description().map(|desc| desc.to_string()),
+        .map(|f| PkgFuncView {
+            name: f.clone().name.to_string(),
+            display_name: f.clone().display_name,
+            description: f.clone().description,
         })
         .collect();
-    funcs.sort();
+    pkg_funcs.sort();
 
-    let metadata = pkg.metadata()?;
-    let root_hash = pkg.hash()?.to_string();
-    let installed = !InstalledPkg::find_by_attr(&ctx, "root_hash", &root_hash)
-        .await?
-        .is_empty();
-
-    // This type can be serialized to json with serde_json::to_string/to_string_pretty
-    let pkg_spec = pkg.to_spec().await?;
-
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        "get_pkg",
-        serde_json::json!({
-                    "pkg_name": metadata.clone().name(),
-                    "pkg_version": metadata.clone().version(),
-                    "pkg_schema_count": schemas.len(),
-                    "pkg_funcs_count":  funcs.len(),
-                    "pkg_is_installed":  installed.clone(),
-        }),
-    );
+    // track(
+    //     &posthog_client,
+    //     &ctx,
+    //     &original_uri,
+    //     "get_pkg",
+    //     serde_json::json!({
+    //                 "pkg_name": metadata.clone().name(),
+    //                 "pkg_version": metadata.clone().version(),
+    //                 "pkg_schema_count": schemas.len(),
+    //                 "pkg_funcs_count":  funcs.len(),
+    //                 "pkg_is_installed":  installed.clone(),
+    //     }),
+    // );
 
     Ok(Json(PkgGetResponse {
-        hash: root_hash,
-        name: metadata.name().to_string(),
-        version: metadata.version().to_string(),
-        description: metadata.description().to_string(),
-        created_at: metadata.created_at(),
-        created_by: metadata.created_by().to_string(),
-        spec: serde_json::to_value(&pkg_spec)?,
-        installed,
-        schemas,
-        funcs,
+        hash: installed_pkg.root_hash().to_string(),
+        name: installed_pkg.name().to_string(),
+        version: installed_pkg.version().to_string(),
+        description: installed_pkg.description().to_string(),
+        created_at: installed_pkg.created_at(),
+        created_by: installed_pkg.created_by_email().to_string(),
+        installed: true,
+        schemas: pkg_schemas,
+        funcs: pkg_funcs,
     }))
 }
