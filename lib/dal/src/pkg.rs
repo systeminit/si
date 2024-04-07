@@ -9,7 +9,6 @@ use crate::schema::variant::SchemaVariantError;
 use crate::{
     change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
-    installed_pkg::InstalledPkgError,
     prop::PropError,
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
@@ -56,8 +55,6 @@ pub enum PkgError {
     FuncNotFoundByName(String),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
-    #[error(transparent)]
-    InstalledPkg(#[from] InstalledPkgError),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]

@@ -2,9 +2,9 @@ use crate::server::{impl_default_error_into_response, state::AppState};
 use axum::{response::Response, routing::get, Json, Router};
 use convert_case::{Case, Casing};
 use dal::{
-    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, ChangeSetError,
-    DalContextBuilder, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
-    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
+    pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, SchemaVariantError,
+    SchemaVariantId, StandardModelError, TenancyError, TransactionsError, UserError, UserPk,
+    WorkspaceError, WorkspacePk, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -41,8 +41,6 @@ pub enum PkgError {
     #[error(transparent)]
     Hyper(#[from] hyper::http::Error),
     // add error for matching hash
-    #[error(transparent)]
-    InstalledPkg(#[from] InstalledPkgError),
     #[error("Invalid pacakge file name: {0}")]
     InvalidPackageFileName(String),
     #[error("invalid user {0}")]
