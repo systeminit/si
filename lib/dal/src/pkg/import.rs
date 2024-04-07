@@ -1577,22 +1577,21 @@ pub async fn import_func(
 ) -> PkgResult<Option<Func>> {
     let func = match change_set_id {
         None => {
-            let _hash = func_spec.hash().to_string();
-
-            // TODO: Paul - Change this to look up the graph to see if there's a func on the
-            // graph associated with that module
-            // We need to check we are not already connected to a func of that name
-            let existing_func: Option<Func> = None;
+            let mut existing_func: Option<Func> = None;
+            if let Some(installed_pkg) = installed_module.clone() {
+                let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
+                let mut maybe_matching_func: Vec<Func> = associated_funcs
+                    .into_iter()
+                    .filter(|f| f.name.clone() == func_spec.name())
+                    .collect();
+                if let Some(matching_func) = maybe_matching_func.pop() {
+                    existing_func = Some(matching_func);
+                }
+            }
 
             let (func, created) = match existing_func {
                 None => (create_func(ctx, func_spec, is_builtin).await?, true),
-                // TODO - Paul
-                // Get the existing func that it's associated with
-                // Some(installed_func_record) => match installed_func_record.as_installed_func()? {
-                //     InstalledPkgAssetTyped::Func { id, .. } => {
-                //         (Func::get_by_id(ctx, id).await?, false)
-                // },
-                _ => unimplemented!("no idea what happens here!"),
+                Some(installed_func_record) => (installed_func_record, true),
             };
 
             if let Some(installed_pkg) = installed_module {
@@ -1785,17 +1784,22 @@ async fn import_schema(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
     schema_spec: &SiPkgSchema<'_>,
-    installed_pkg: Option<Module>,
+    installed_module: Option<Module>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let schema_and_category = match change_set_id {
         None => {
-            let _hash = schema_spec.hash().to_string();
-            // TODO - Paul
-            // We need to check the graph for this going forward!
-            // We need to see if the Module is associated to a schema of this name
-            let existing_schema: Option<Schema> = None;
-
+            let mut existing_schema: Option<Schema> = None;
+            if let Some(installed_pkg) = installed_module.clone() {
+                let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
+                let mut maybe_matching_schema: Vec<Schema> = associated_schemas
+                    .into_iter()
+                    .filter(|s| s.name.clone() == schema_spec.name())
+                    .collect();
+                if let Some(matching_schema) = maybe_matching_schema.pop() {
+                    existing_schema = Some(matching_schema);
+                }
+            }
             let data = schema_spec
                 .data()
                 .ok_or(PkgError::DataNotFound("schema".into()))?;
@@ -1806,22 +1810,12 @@ async fn import_schema(
 
             let schema = match existing_schema {
                 None => create_schema(ctx, data).await?,
-                _ => unimplemented!("no idea what happens here!"),
-                // TODO - Paul
-                // We need to get the schema if it's already installed
-                // Some(installed_schema_record) => {
-                // match installed_schema_record.as_installed_schema()? {
-                //     InstalledPkgAssetTyped::Schema { id, .. } => {
-                //         Schema::get_by_id(ctx, id).await?
-                //     }
-                //     _ => unimplemented!("no idea what happens here!"),
-                // }
-                // },
+                Some(installed_schema_record) => installed_schema_record,
             };
 
             // Even if the asset is already installed, we write a record of the asset installation so that
             // we can track the installed packages that share schemas.
-            if let Some(module) = installed_pkg.clone() {
+            if let Some(module) = installed_module.clone() {
                 module.create_association(ctx, schema.id().into()).await?;
             }
 
@@ -1889,7 +1883,7 @@ async fn import_schema(
                 &mut schema,
                 schema_spec.clone(),
                 variant_spec,
-                installed_pkg.clone(),
+                installed_module.clone(),
                 thing_map,
             )
             .await?;
@@ -2428,16 +2422,24 @@ async fn import_schema_variant(
     schema: &mut Schema,
     schema_spec: SiPkgSchema<'_>,
     variant_spec: &SiPkgSchemaVariant<'_>,
-    installed_pkg: Option<Module>,
+    installed_module: Option<Module>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<SchemaVariant>> {
     let schema_variant = match change_set_id {
         None => {
-            let _hash = variant_spec.hash().to_string();
-            // TODO - Paul
-            // we need to check for this on the graph not the database!
-            // we are checking that the module is not already associated with a schema_variant of this name;
-            let existing_schema_variant: Option<SchemaVariant> = None;
+            let mut existing_schema_variant: Option<SchemaVariant> = None;
+            if let Some(installed_pkg) = installed_module.clone() {
+                let associated_schema_variants =
+                    installed_pkg.list_associated_schema_variants(ctx).await?;
+                let mut maybe_matching_schema_variant: Vec<SchemaVariant> =
+                    associated_schema_variants
+                        .into_iter()
+                        .filter(|s| s.name() == schema_spec.name())
+                        .collect();
+                if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
+                    existing_schema_variant = Some(matching_schema_variant);
+                }
+            }
 
             let (variant, created) = match existing_schema_variant {
                 None => {
@@ -2472,20 +2474,10 @@ async fn import_schema_variant(
                         true,
                     )
                 }
-                // TODO - Paul
-                // Get the existing schema_variant that it's associated with
-                // Some(installed_sv_record) => {
-                //     match installed_sv_record.as_installed_schema_variant()? {
-                //         InstalledPkgAssetTyped::SchemaVariant { id, .. } => (SchemaVariant::get_by_id(ctx, id).await?, false),
-                //         _ => unreachable!(
-                //             "the as_installed_schema_variant method ensures we cannot hit this branch"
-                //         ),
-                //     }
-                // }
-                _ => unimplemented!("no idea what happens here!"),
+                Some(installed_variant) => (installed_variant, true),
             };
 
-            if let Some(module) = installed_pkg.clone() {
+            if let Some(module) = installed_module.clone() {
                 module.create_association(ctx, variant.id().into()).await?;
             }
 
