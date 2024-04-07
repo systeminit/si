@@ -1,10 +1,9 @@
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
-use serde::{Deserialize, Serialize};
-
+use dal::module::Module;
 use dal::Visibility;
-
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use serde::{Deserialize, Serialize};
 
 use super::PkgResult;
 
@@ -29,24 +28,24 @@ pub struct PkgView {
 }
 
 pub async fn list_pkgs(
-    HandlerContext(_builder): HandlerContext,
-    AccessBuilder(_request_ctx): AccessBuilder,
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
-    Query(_request): Query<PkgListRequest>,
+    Query(request): Query<PkgListRequest>,
 ) -> PkgResult<Json<PkgListResponse>> {
-    // let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-    //
-    // let installed_pkgs = InstalledPkg::list(&ctx).await?;
-    //
-    // let pkgs: Vec<PkgView> = installed_pkgs
-    //     .iter()
-    //     .map(|pkg| PkgView {
-    //         name: pkg.name().to_owned(),
-    //         hash: pkg.root_hash().to_string(),
-    //     })
-    //     .collect();
-    //
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let installed_pkgs = Module::list_installed(&ctx).await?;
+
+    let pkgs: Vec<PkgView> = installed_pkgs
+        .iter()
+        .map(|pkg| PkgView {
+            name: pkg.name().to_owned(),
+            hash: pkg.root_hash().to_string(),
+        })
+        .collect();
+
     // track(
     //     &posthog_client,
     //     &ctx,
@@ -54,8 +53,6 @@ pub async fn list_pkgs(
     //     "list_pkgs",
     //     serde_json::json!({}),
     // );
-    //
-    // Ok(Json(PkgListResponse { pkgs }))
 
-    Ok(Json(PkgListResponse { pkgs: vec![] }))
+    Ok(Json(PkgListResponse { pkgs }))
 }
