@@ -1,6 +1,7 @@
 use crate::server::{impl_default_error_into_response, state::AppState};
 use axum::{response::Response, routing::get, Json, Router};
 use convert_case::{Case, Casing};
+use dal::module::ModuleError;
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, SchemaVariantError,
     SchemaVariantId, StandardModelError, TenancyError, TransactionsError, UserError, UserPk,
@@ -49,6 +50,8 @@ pub enum PkgError {
     InvalidUserSystemInit,
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    Module(#[from] ModuleError),
     #[error("Module hash not be found: {0}")]
     ModuleHashNotFound(String),
     #[error("Module index: {0}")]

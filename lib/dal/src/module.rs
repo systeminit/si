@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
@@ -67,6 +69,30 @@ impl Module {
             created_by_email: inner.created_by_email,
             created_at: inner.created_at,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn created_by_email(&self) -> &str {
+        &self.created_by_email
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    pub fn root_hash(&self) -> &str {
+        &self.root_hash
+    }
+
+    pub fn created_at(&self) -> &DateTime<Utc> {
+        &self.created_at
     }
 
     pub async fn new(
@@ -185,5 +211,53 @@ impl Module {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn list_installed(ctx: &DalContext) -> ModuleResult<Vec<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut modules = vec![];
+        let module_category_index_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Module)
+            .await?;
+
+        let module_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                module_category_index_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+
+        let mut node_weights = vec![];
+        let mut content_hashes = vec![];
+        for module_node_index in module_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(module_node_index)
+                .await?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Module)?;
+            content_hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
+
+        let content_map: HashMap<ContentHash, ModuleContent> = ctx
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
+            .await?;
+
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(module_content) => {
+                    let ModuleContent::V1(inner) = module_content;
+
+                    modules.push(Self::assemble(node_weight.id().into(), inner.to_owned()))
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(modules)
     }
 }
