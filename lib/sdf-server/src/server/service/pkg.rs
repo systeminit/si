@@ -21,7 +21,7 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 // pub mod builtin_module_spec;
 // pub mod export_pkg;
 // pub mod export_workspace;
-// pub mod get_pkg;
+pub mod get_pkg;
 // pub mod import_workspace_vote;
 // pub mod install_pkg;
 pub mod list_pkgs;
@@ -205,7 +205,7 @@ pub fn routes() -> Router<AppState> {
         //     "/export_workspace",
         //     post(export_workspace::export_workspace),
         // )
-        // .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
+        .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
         // .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
         .route(
