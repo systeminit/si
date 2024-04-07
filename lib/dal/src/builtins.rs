@@ -10,7 +10,6 @@ use thiserror::Error;
 use si_pkg::{SiPkgError, SpecError};
 
 use crate::func::FuncError;
-use crate::installed_pkg::InstalledPkgError;
 use crate::module::ModuleError;
 use crate::pkg::PkgError;
 use crate::{AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
@@ -36,8 +35,6 @@ pub enum BuiltinsError {
     FuncMetadata(String),
     #[error("func not found in migration cache {0}")]
     FuncNotFoundInMigrationCache(&'static str),
-    #[error(transparent)]
-    InstalledPkg(#[from] InstalledPkgError),
     #[error("missing attribute prototype for attribute value")]
     MissingAttributePrototypeForAttributeValue,
     #[error("no packages path configured")]
