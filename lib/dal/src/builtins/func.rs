@@ -1,8 +1,8 @@
 use si_pkg::SiPkg;
 
+use crate::module::Module;
 use crate::{
-    func::intrinsics::IntrinsicFunc, installed_pkg::InstalledPkg, pkg::import_pkg_from_pkg,
-    BuiltinsResult, DalContext,
+    func::intrinsics::IntrinsicFunc, pkg::import_pkg_from_pkg, BuiltinsResult, DalContext,
 };
 
 // #[derive(Deserialize, Serialize, Debug)]
@@ -51,7 +51,7 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
     let _name = intrinsics_pkg_spec.name.to_owned();
     let intrinsics_pkg = SiPkg::load_from_spec(intrinsics_pkg_spec)?;
 
-    if InstalledPkg::find_by_hash(ctx, &intrinsics_pkg.hash()?.to_string())
+    if Module::find_by_root_hash(ctx, &intrinsics_pkg.hash()?.to_string())
         .await?
         .is_none()
     {

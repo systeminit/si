@@ -11,6 +11,7 @@ use si_pkg::{SiPkgError, SpecError};
 
 use crate::func::FuncError;
 use crate::installed_pkg::InstalledPkgError;
+use crate::module::ModuleError;
 use crate::pkg::PkgError;
 use crate::{AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
 
@@ -41,6 +42,8 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForAttributeValue,
     #[error("no packages path configured")]
     MissingPkgsPath,
+    #[error(transparent)]
+    Module(#[from] ModuleError),
     #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error("prop cache not found: {0}")]
