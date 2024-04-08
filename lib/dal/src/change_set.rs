@@ -5,11 +5,12 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use ulid::{Generator, Ulid};
+
 use si_data_pg::{PgError, PgRow};
 use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
-use thiserror::Error;
-use ulid::{Generator, Ulid};
 
 use crate::context::RebaseRequest;
 use crate::deprecated_action::DeprecatedActionBag;
@@ -39,6 +40,10 @@ pub enum ChangeSetError {
     EnumParse(#[from] strum::ParseError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("invalid user actor pk")]
+    InvalidActor(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -57,6 +62,8 @@ pub enum ChangeSetError {
     Transactions(#[from] TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace not found: {0}")]
@@ -333,10 +340,12 @@ impl ChangeSet {
             .await?
             .pg()
             .query(
-                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status = $2",
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4)",
                 &[
                     &ctx.tenancy().workspace_pk(),
                     &ChangeSetStatus::Open.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
                 ],
             )
             .await?;
@@ -478,7 +487,11 @@ impl ChangeSet {
         ctx.do_rebase_request(rebase_request).await?;
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
-
+        let user = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_applied(ctx, self.id, user)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         Ok(())
     }
 
@@ -555,6 +568,99 @@ impl ChangeSet {
 
     fn generate_name() -> String {
         Utc::now().format("%Y-%m-%d-%H:%M").to_string()
+    }
+
+    pub async fn merge_vote(&mut self, ctx: &DalContext, vote: String) -> ChangeSetResult<()> {
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_merge_vote(ctx, self.id, user_id, vote)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+    pub async fn abandon_vote(&mut self, ctx: &DalContext, vote: String) -> ChangeSetResult<()> {
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_abandon_vote(ctx, self.id, user_id, vote)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn cancel_abandon_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Open).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_cancel_abandon_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+    pub async fn begin_abandon_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::NeedsAbandonApproval)
+            .await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_begin_abandon_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        WsEvent::change_set_abandon_vote(
+            ctx,
+            ctx.visibility().change_set_id,
+            user_id,
+            "Approve".to_string(),
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn begin_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::NeedsApproval)
+            .await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_begin_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn cancel_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Open).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_cancel_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+    pub async fn abandon(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Abandoned).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_abandoned(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+
+    async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
+        let user_id = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => {
+                let maybe_user = User::get_by_pk(ctx, *user_pk).await;
+                match maybe_user {
+                    Ok(user_option) => user_option.map(|user| user.pk()),
+                    Err(_) => None,
+                }
+            }
+            HistoryActor::SystemInit => None,
+        };
+        user_id
     }
 }
 

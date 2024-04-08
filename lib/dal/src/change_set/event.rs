@@ -54,7 +54,7 @@ impl WsEvent {
     pub async fn change_set_merge_vote(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        user_pk: UserPk,
+        user_pk: Option<UserPk>,
         vote: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
@@ -101,7 +101,7 @@ impl WsEvent {
     pub async fn change_set_abandon_vote(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        user_pk: UserPk,
+        user_pk: Option<UserPk>,
         vote: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
@@ -157,6 +157,6 @@ pub struct ChangeSetActorPayload {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetMergeVotePayload {
     change_set_id: ChangeSetId,
-    user_pk: UserPk,
+    user_pk: Option<UserPk>,
     vote: String,
 }
