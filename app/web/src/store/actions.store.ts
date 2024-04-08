@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { trackEvent } from "@/utils/tracking";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -133,6 +134,13 @@ export const useActionsStore = () => {
             return this.actionsOnBatch(this.runningActionBatch);
           },
           rawProposedActions: (state) => _.values(state.rawProposedActionsById),
+          countActionsByKind(): Record<string, number> {
+            const counts = new DefaultMap<string, number>(() => 0);
+            for (const action of this.proposedActions) {
+              counts.set(action.kind, counts.get(action.kind) + 1);
+            }
+            return Object.fromEntries(counts);
+          },
           proposedActions(): ProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
             // probably want to clean up and avoid the while loop if possible too

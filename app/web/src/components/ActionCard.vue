@@ -4,7 +4,10 @@
     @click="addAction"
   >
     <StatusIndicatorIcon type="action" :status="action.kind" tone="shade" />
-    <div class="flex flex-col overflow-hidden">
+    <div v-if="props.slim" class="flex flex-col overflow-hidden">
+      {{ actionName }}
+    </div>
+    <div v-else class="flex flex-col overflow-hidden">
       <div class="">{{ actionName }}</div>
       <div
         :class="
@@ -57,6 +60,7 @@ const changeSetStore = useChangeSetsStore();
 
 const props = defineProps<{
   action: ProposedAction;
+  slim?: boolean;
 }>();
 
 const actionName = computed(() => {
