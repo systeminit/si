@@ -155,7 +155,6 @@
             <VButton
               :requestStatus="installReqStatus"
               :loading="moduleStore.installingLoading"
-              disabled
               @click="installButtonHandler"
             >
               Install this module
