@@ -22,8 +22,8 @@ use crate::{
     func::{self, argument::FuncArgument},
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ActionPrototype, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    ActionPrototype, DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
 
@@ -2923,7 +2923,13 @@ async fn get_prototype_for_context(
                 None => {
                     let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
                     let prototype_id = AttributePrototype::new(ctx, unset_func_id).await?.id();
-                    Prop::set_prototype_id(ctx, element_prop_id, prototype_id).await?;
+                    Prop::add_edge_to_attribute_prototype(
+                        ctx,
+                        element_prop_id,
+                        prototype_id,
+                        EdgeWeightKind::Prototype(None),
+                    )
+                    .await?;
 
                     prototype_id
                 }

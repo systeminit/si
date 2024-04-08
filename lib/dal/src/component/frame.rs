@@ -5,7 +5,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::diagram::{EdgeId, NodeId};
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, User,
@@ -67,14 +67,7 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
-        let change_set = ctx.change_set()?;
-
-        ctx.workspace_snapshot()?
-            .add_edge(
-                parent_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::FrameContains)?,
-                child_id,
-            )
+        Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
 
         Ok(())

@@ -25,15 +25,16 @@ use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
     content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, DalContext, FuncId, InputSocketId, OutputSocketId, PropId, Timestamp,
-    TransactionsError,
+    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to, pk,
+    AttributeValueId, DalContext, FuncId, HelperError, InputSocketId, OutputSocketId, PropId,
+    Timestamp, TransactionsError,
 };
 
 pub mod argument;
@@ -48,6 +49,8 @@ pub enum AttributePrototypeError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
@@ -72,8 +75,8 @@ pk!(AttributePrototypeId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {
-    id: AttributePrototypeId,
-    timestamp: Timestamp,
+    pub id: AttributePrototypeId,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Debug, PartialEq)]
@@ -106,6 +109,21 @@ impl AttributePrototype {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: AttributePrototypeId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_func,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: AttributePrototypeResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributePrototypeId,
+        destination_id: AttributePrototypeArgumentId,
+        add_fn: add_edge_to_argument,
+        discriminant: EdgeWeightKindDiscriminants::PrototypeArgument,
+        result: AttributePrototypeResult,
+    );
+
     pub fn id(&self) -> AttributePrototypeId {
         self.id
     }
@@ -132,18 +150,11 @@ impl AttributePrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_id,
-            )
-            .await?;
+        let prototype = AttributePrototype::assemble(AttributePrototypeId::from(id), &content);
 
-        Ok(AttributePrototype::assemble(
-            AttributePrototypeId::from(id),
-            &content,
-        ))
+        Self::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use()).await?;
+
+        Ok(prototype)
     }
 
     pub async fn func_id(
@@ -256,9 +267,9 @@ impl AttributePrototype {
     pub async fn get_by_id(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
-    ) -> AttributePrototypeResult<Option<Self>> {
+    ) -> AttributePrototypeResult<Self> {
         let (_node_weight, content) = Self::get_node_weight_and_content(ctx, prototype_id).await?;
-        Ok(Some(Self::assemble(prototype_id, &content)))
+        Ok(Self::assemble(prototype_id, &content))
     }
 
     async fn get_node_weight_and_content(
@@ -318,13 +329,13 @@ impl AttributePrototype {
             )
             .await?;
 
-        workspace_snapshot
-            .add_edge(
-                attribute_prototype_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_id,
-            )
-            .await?;
+        Self::add_edge_to_func(
+            ctx,
+            attribute_prototype_id,
+            func_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         Ok(())
     }

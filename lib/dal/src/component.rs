@@ -31,19 +31,19 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
-    ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
-    DalContext, DeprecatedAction, Func, FuncError, FuncId, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    func::backend::js_action::ActionRunResult, implement_add_edge_to, pk, ActionId, ActionKind,
+    ActionPrototype, ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId,
+    ChangeSetId, DalContext, DeprecatedAction, Func, FuncError, FuncId, HelperError, InputSocket,
+    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -93,6 +93,8 @@ pub enum ComponentError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
@@ -262,6 +264,49 @@ impl Component {
         Ok(None)
     }
 
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: SchemaVariantId,
+        add_fn: add_edge_to_schema_variant,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: ComponentId,
+        add_fn: add_edge_to_frame,
+        discriminant: EdgeWeightKindDiscriminants::FrameContains,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: ActionId,
+        add_fn: add_edge_to_deprecated_action,
+        discriminant: EdgeWeightKindDiscriminants::Action,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: AttributeValueId,
+        add_fn: add_edge_to_root_attribute_value,
+        discriminant: EdgeWeightKindDiscriminants::Root,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: AttributeValueId,
+        add_fn: add_edge_to_socket_attribute_value,
+        discriminant: EdgeWeightKindDiscriminants::SocketValue,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: ComponentId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ComponentResult,
+    );
+
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -300,22 +345,13 @@ impl Component {
         let component_category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::Component)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                component_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
-
-        // Component (this) --> Schema Variant
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                schema_variant_id,
-            )
-            .await?;
+        Self::add_category_edge(
+            ctx,
+            component_category_id,
+            id.into(),
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         let mut attribute_values = vec![];
 
@@ -404,6 +440,15 @@ impl Component {
 
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id.into()).await?;
         let component = Self::assemble(&node_weight, content);
+
+        // Component (this) --> Schema Variant
+        Component::add_edge_to_schema_variant(
+            ctx,
+            component.id,
+            schema_variant_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         component.set_name(ctx, &name).await?;
 

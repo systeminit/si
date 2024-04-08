@@ -104,11 +104,11 @@ impl AttributePrototypeDebugView {
                 // that are marked for deletion to ones that are not.
                 let destination_component = Component::get_by_id(ctx, destination_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                 let source_component = Component::get_by_id(ctx, expected_source_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                 if source_component.to_delete() && !destination_component.to_delete() {
                     continue;

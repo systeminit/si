@@ -36,7 +36,7 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::graph::NodeIndex;
 
@@ -44,11 +44,12 @@ use crate::property_editor::schema::WidgetKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk,
+    implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototype, AttributePrototype, AttributePrototypeId, ComponentId, ComponentType,
-    DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
-    Schema, SchemaError, SchemaId, SocketArity, Timestamp, TransactionsError,
+    ActionPrototype, ActionPrototypeId, AttributePrototype, AttributePrototypeId, ComponentId,
+    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, SocketArity, Timestamp,
+    TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -84,6 +85,8 @@ pub enum SchemaVariantError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("layer db error: {0}")]
@@ -213,13 +216,7 @@ impl SchemaVariant {
         workspace_snapshot.add_node(node_weight).await?;
 
         // Schema --Use--> SchemaVariant (this)
-        workspace_snapshot
-            .add_edge(
-                schema_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
+        Schema::add_edge_to_variant(ctx, schema_id, id.into(), EdgeWeightKind::new_use()).await?;
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
@@ -513,7 +510,6 @@ impl SchemaVariant {
         debug!(%schema_variant_id, "creating default prototypes");
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let change_set = ctx.change_set()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
         let mut work_queue: VecDeque<PropNodeWeight> = VecDeque::from(vec![root_prop_node_weight]);
@@ -545,13 +541,13 @@ impl SchemaVariant {
                 let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
                 // New edge Prop --Prototype--> AttributePrototype.
-                workspace_snapshot
-                    .add_edge(
-                        prop.id(),
-                        EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                        attribute_prototype.id(),
-                    )
-                    .await?;
+                Prop::add_edge_to_attribute_prototype(
+                    ctx,
+                    prop.id().into(),
+                    attribute_prototype.id(),
+                    EdgeWeightKind::Prototype(None),
+                )
+                .await?;
             }
 
             // Push all children onto the work queue.
@@ -608,18 +604,61 @@ impl SchemaVariant {
         Ok(())
     }
 
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_deprecated_action_prototype,
+        discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
+        result: SchemaVariantResult,
+    );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: PropId,
+        add_fn: add_edge_to_prop,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SchemaVariantResult,
+    );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_deprecated_action_func,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SchemaVariantResult,
+    );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_authentication_func,
+        discriminant: EdgeWeightKindDiscriminants::AuthenticationPrototype,
+        result: SchemaVariantResult,
+    );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: InputSocketId,
+        add_fn: add_edge_to_input_socket,
+        discriminant: EdgeWeightKindDiscriminants::Socket,
+        result: SchemaVariantResult,
+    );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: OutputSocketId,
+        add_fn: add_edge_to_output_socket,
+        discriminant: EdgeWeightKindDiscriminants::Socket,
+        result: SchemaVariantResult,
+    );
+
     pub async fn new_action_prototype(
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        ctx.workspace_snapshot()?
-            .add_edge(
-                schema_variant_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
-                func_id,
-            )
-            .await?;
+        Self::add_edge_to_deprecated_action_func(
+            ctx,
+            schema_variant_id,
+            func_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -629,13 +668,13 @@ impl SchemaVariant {
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        ctx.workspace_snapshot()?
-            .add_edge(
-                schema_variant_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::AuthenticationPrototype)?,
-                func_id,
-            )
-            .await?;
+        Self::add_edge_to_authentication_func(
+            ctx,
+            schema_variant_id,
+            func_id,
+            EdgeWeightKind::AuthenticationPrototype,
+        )
+        .await?;
         Ok(())
     }
 

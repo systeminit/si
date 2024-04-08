@@ -13,14 +13,15 @@ use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{implement_add_edge_to, AttributePrototypeId, AttributeValueId, SchemaVariantId};
 use crate::{
-    pk, AttributePrototype, DalContext, FuncId, InputSocket, Timestamp, TransactionsError,
+    pk, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
+    SchemaVariantError, Timestamp, TransactionsError,
 };
-use crate::{AttributeValueId, SchemaVariantId};
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
 
@@ -35,6 +36,8 @@ pub enum OutputSocketError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error(
@@ -43,6 +46,8 @@ pub enum OutputSocketError {
     NameCollision(OutputSocketId, OutputSocketId, SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -112,6 +117,14 @@ impl OutputSocket {
         self.connection_annotations.clone()
     }
 
+    implement_add_edge_to!(
+        source_id: OutputSocketId,
+        destination_id: AttributePrototypeId,
+        add_fn: add_edge_to_attribute_prototype,
+        discriminant: EdgeWeightKindDiscriminants::Prototype,
+        result: OutputSocketResult,
+    );
+
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
@@ -160,25 +173,27 @@ impl OutputSocket {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight).await?;
-        workspace_snapshot
-            .add_edge(
-                schema_variant_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
-                id,
-            )
-            .await?;
+
+        SchemaVariant::add_edge_to_output_socket(
+            ctx,
+            schema_variant_id,
+            id.into(),
+            EdgeWeightKind::Socket,
+        )
+        .await
+        .map_err(Box::new)?;
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype.id(),
-            )
-            .await?;
-
-        Ok(Self::assemble(id.into(), content))
+        let socket = Self::assemble(id.into(), content);
+        Self::add_edge_to_attribute_prototype(
+            ctx,
+            socket.id,
+            attribute_prototype.id(),
+            EdgeWeightKind::Prototype(None),
+        )
+        .await?;
+        Ok(socket)
     }
 
     pub async fn get_by_id(

@@ -16,8 +16,8 @@ use crate::change_set::ChangeSetError;
 use crate::deprecated_action::batch::DeprecatedActionBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::edge_weight::EdgeWeightError;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -25,9 +25,9 @@ use crate::{
     func::backend::js_action::ActionRunResult,
     layer_db_types::{DeprecatedActionRunnerContent, DeprecatedActionRunnerContentV1},
     pk, ActionId, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
-    ComponentError, ComponentId, DalContext, Func, FuncError, HistoryEventError, SchemaError,
-    SchemaVariantError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    ComponentError, ComponentId, DalContext, DeprecatedActionBatch, DeprecatedActionBatchError,
+    EdgeWeightKind, Func, FuncError, HistoryEventError, SchemaError, SchemaVariantError, Timestamp,
+    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use veritech_client::ResourceStatus;
 
@@ -74,6 +74,8 @@ pub enum DeprecatedActionRunnerError {
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
+    #[error(transparent)]
+    DeprecatedActionBatch(#[from] Box<DeprecatedActionBatchError>),
     #[error(transparent)]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("completion status is empty")]
@@ -247,13 +249,14 @@ impl DeprecatedActionRunner {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         workspace_snapshot.add_node(node_weight.to_owned()).await?;
-        workspace_snapshot
-            .add_edge(
-                action_batch_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
+        DeprecatedActionBatch::add_edge_to_runner(
+            ctx,
+            action_batch_id,
+            id.into(),
+            EdgeWeightKind::new_use(),
+        )
+        .await
+        .map_err(Box::new)?;
 
         Ok(DeprecatedActionRunner::assemble(id.into(), content))
     }

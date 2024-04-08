@@ -11,7 +11,7 @@ use thiserror::Error;
 use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
@@ -21,10 +21,11 @@ use crate::{
     func::binding::{FuncBinding, FuncBindingError},
     func::binding_return_value::FuncBindingReturnValueError,
     func::{before_funcs_for_component, BeforeFuncError},
+    implement_add_edge_to,
     layer_db_types::{ActionPrototypeContent, ActionPrototypeContentV1},
-    pk, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
-    SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    pk, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -75,6 +76,8 @@ pub enum ActionPrototypeError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("action prototype {0} is missing a function edge")]
@@ -159,6 +162,14 @@ impl ActionPrototype {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: ActionPrototypeId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_func,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ActionPrototypeResult,
+    );
+
     pub async fn new(
         ctx: &DalContext,
         name: Option<impl Into<String>>,
@@ -193,22 +204,19 @@ impl ActionPrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         workspace_snapshot.add_node(node_weight.to_owned()).await?;
-        workspace_snapshot
-            .add_edge(
-                schema_variant_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype)?,
-                id,
-            )
-            .await?;
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_id,
-            )
+        SchemaVariant::add_edge_to_deprecated_action_prototype(
+            ctx,
+            schema_variant_id,
+            id.into(),
+            EdgeWeightKind::ActionPrototype,
+        )
+        .await?;
+
+        let prototype = ActionPrototype::assemble(id.into(), content);
+        ActionPrototype::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use())
             .await?;
 
-        Ok(ActionPrototype::assemble(id.into(), content))
+        Ok(prototype)
     }
 
     pub async fn for_variant(

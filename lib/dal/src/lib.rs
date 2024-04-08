@@ -48,6 +48,7 @@ pub mod secret;
 pub mod serde_impls;
 pub mod socket;
 pub mod standard_accessors;
+pub mod standard_connection;
 pub mod standard_id;
 pub mod standard_model;
 pub mod standard_pk;
@@ -130,14 +131,18 @@ pub use socket::input::{InputSocket, InputSocketId};
 pub use socket::output::{OutputSocket, OutputSocketId};
 pub use socket::SocketArity;
 pub use socket::SocketKind;
+pub use standard_connection::{HelperError, HelperResult};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
+pub use workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
-pub use workspace_snapshot::WorkspaceSnapshot;
+pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[remain::sorted]
