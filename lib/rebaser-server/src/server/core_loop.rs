@@ -16,7 +16,7 @@ use std::time::Instant;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::watch;
+use tokio::sync::oneshot;
 
 use crate::server::rebase::perform_rebase;
 
@@ -49,7 +49,7 @@ pub(crate) async fn setup_and_run_core_loop(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
-    shutdown_watch_rx: watch::Receiver<()>,
+    shutdown_watch_rx: oneshot::Receiver<()>,
     layer_db: DalLayerDb,
 ) -> CoreLoopSetupResult<()> {
     let services_context = ServicesContext::new(
@@ -80,13 +80,29 @@ pub(crate) async fn setup_and_run_core_loop(
 async fn core_loop_infallible(
     ctx_builder: DalContextBuilder,
     mut rebase_activity_channel: UnboundedReceiver<ActivityRebaseRequest>,
-    mut _shutdown_watch_rx: watch::Receiver<()>,
+    shutdown_watch_rx: oneshot::Receiver<()>,
 ) {
-    while let Some(message) = rebase_activity_channel.recv().await {
-        let ctx_builder = ctx_builder.clone();
-        tokio::spawn(async move {
-            perform_rebase_and_reply_infallible(ctx_builder, &message).await;
-        });
+    let run_core_handle = tokio::spawn(async move {
+        while let Some(message) = rebase_activity_channel.recv().await {
+            let ctx_builder = ctx_builder.clone();
+            tokio::spawn(async move {
+                perform_rebase_and_reply_infallible(ctx_builder, &message).await;
+            });
+        }
+    });
+    let watch_handle = tokio::spawn(async move {
+        match shutdown_watch_rx.await {
+            Ok(_) => info!("shutting down core loop from signal"),
+            Err(error) => info!(?error, "shutdown sender exited, shutting down"),
+        }
+    });
+    tokio::select! {
+        _ = run_core_handle => {
+           info!("core rebase loop has exited");
+        },
+        _ = watch_handle => {
+           info!("graceful shutdown");
+        }
     }
 }
 
