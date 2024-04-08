@@ -5,44 +5,44 @@ use dal::module::Module;
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
-use super::PkgResult;
+use super::ModuleResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PkgListRequest {
+pub struct ModuleListRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PkgListResponse {
-    pub pkgs: Vec<PkgView>,
+pub struct ModuleListResponse {
+    pub modules: Vec<ModuleView>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PkgView {
+pub struct ModuleView {
     name: String,
     hash: String,
 }
 
-pub async fn list_pkgs(
+pub async fn list_modules(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
-    Query(request): Query<PkgListRequest>,
-) -> PkgResult<Json<PkgListResponse>> {
+    Query(request): Query<ModuleListRequest>,
+) -> ModuleResult<Json<ModuleListResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let installed_pkgs = Module::list_installed(&ctx).await?;
+    let installed_modules = Module::list_installed(&ctx).await?;
 
-    let pkgs: Vec<PkgView> = installed_pkgs
+    let modules: Vec<ModuleView> = installed_modules
         .iter()
-        .map(|pkg| PkgView {
-            name: pkg.name().to_owned(),
-            hash: pkg.root_hash().to_string(),
+        .map(|module| ModuleView {
+            name: module.name().to_owned(),
+            hash: module.root_hash().to_string(),
         })
         .collect();
 
@@ -54,5 +54,5 @@ pub async fn list_pkgs(
     //     serde_json::json!({}),
     // );
 
-    Ok(Json(PkgListResponse { pkgs }))
+    Ok(Json(ModuleListResponse { modules }))
 }

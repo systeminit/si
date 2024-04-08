@@ -12,14 +12,14 @@ use crate::server::extract::RawAccessToken;
 use crate::service::async_route::handle_error;
 use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::pkg::PkgError,
+    service::module::ModuleError,
 };
 
-use super::PkgResult;
+use super::ModuleResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallPkgRequest {
+pub struct InstallModuleRequest {
     pub id: Ulid,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -27,25 +27,25 @@ pub struct InstallPkgRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallPkgResponse {
+pub struct InstallModuleResponse {
     pub id: Ulid,
 }
 
-pub async fn install_pkg(
+pub async fn install_module(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<InstallPkgRequest>,
-) -> PkgResult<impl IntoResponse> {
+    Json(request): Json<InstallModuleRequest>,
+) -> ModuleResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let id = Ulid::new();
     tokio::task::spawn(async move {
-        if let Err(err) = install_pkg_inner(
+        if let Err(err) = install_module_inner(
             &ctx,
             request,
             &original_uri,
@@ -79,19 +79,19 @@ pub async fn install_pkg(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response.body(serde_json::to_string(&InstallPkgResponse { id })?)?)
+    Ok(response.body(serde_json::to_string(&InstallModuleResponse { id })?)?)
 }
 
-async fn install_pkg_inner(
+async fn install_module_inner(
     ctx: &DalContext,
-    request: InstallPkgRequest,
+    request: InstallModuleRequest,
     _original_uri: &Uri,
     PosthogClient(_posthog_client): PosthogClient,
     raw_access_token: String,
-) -> PkgResult<()> {
+) -> ModuleResult<()> {
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(PkgError::ModuleIndexNotConfigured),
+        None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
     let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);

@@ -5,7 +5,6 @@ use axum::{
     Json, Router,
 };
 use convert_case::{Case, Casing};
-use dal::module::ModuleError;
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, SchemaVariantError,
     SchemaVariantId, StandardModelError, TenancyError, TransactionsError, UserError, UserPk,
@@ -25,16 +24,16 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 // pub mod builtin_module_spec;
 // pub mod export_pkg;
 // pub mod export_workspace;
-pub mod get_pkg;
+pub mod get_module;
 // pub mod import_workspace_vote;
-pub mod install_pkg;
-pub mod list_pkgs;
+pub mod install_module;
+pub mod list_modules;
 // mod reject_pkg;
 pub mod remote_module_spec;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum PkgError {
+pub enum ModuleError {
     #[error("Could not canononicalize path: {0}")]
     Canononicalize(#[from] CanonicalFileError),
     #[error(transparent)]
@@ -55,7 +54,7 @@ pub enum PkgError {
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
-    Module(#[from] ModuleError),
+    Module(#[from] dal::module::ModuleError),
     #[error("Module hash not be found: {0}")]
     ModuleHashNotFound(String),
     #[error("Module index: {0}")]
@@ -110,9 +109,9 @@ pub enum PkgError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type PkgResult<T> = Result<T, PkgError>;
+pub type ModuleResult<T> = Result<T, ModuleError>;
 
-impl_default_error_into_response!(PkgError);
+impl_default_error_into_response!(ModuleError);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -122,14 +121,14 @@ pub struct PkgView {
     hash: Option<String>,
 }
 
-pub async fn get_pkgs_path(builder: &DalContextBuilder) -> PkgResult<&PathBuf> {
+pub async fn get_pkgs_path(builder: &DalContextBuilder) -> ModuleResult<&PathBuf> {
     match builder.pkgs_path().await {
-        None => Err(PkgError::NoPackagesPath),
+        None => Err(ModuleError::NoPackagesPath),
         Some(path) => Ok(path),
     }
 }
 
-pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> PkgResult<Vec<String>> {
+pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> ModuleResult<Vec<String>> {
     let mut result = vec![];
     let mut entries = read_dir(pkgs_path).await?;
 
@@ -143,7 +142,7 @@ pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> PkgResult<Vec<String>> {
 pub async fn pkg_lookup(
     pkgs_path: &Path,
     name: &str,
-) -> PkgResult<(Option<PathBuf>, Option<String>)> {
+) -> ModuleResult<(Option<PathBuf>, Option<String>)> {
     let real_pkg_path = safe_canonically_join(pkgs_path, name)?;
     let file_name = real_pkg_path
         .file_name()
@@ -165,7 +164,7 @@ pub async fn get_new_pkg_path(
     builder: &DalContextBuilder,
     name: &str,
     version: &str,
-) -> PkgResult<PathBuf> {
+) -> ModuleResult<PathBuf> {
     let name_kebabed = name.to_case(Case::Kebab);
     let version_kebabed = version.to_case(Case::Kebab);
 
@@ -174,12 +173,12 @@ pub async fn get_new_pkg_path(
         let file_name = add_pkg_extension(&name_kebabed, &version_kebabed, attempts);
 
         let real_pkg_path = match Path::new(&file_name).file_name() {
-            None => return Err(PkgError::InvalidPackageFileName(file_name)),
+            None => return Err(ModuleError::InvalidPackageFileName(file_name)),
             Some(file_name) => Path::join(get_pkgs_path(builder).await?, file_name),
         };
 
         if attempts > MAX_NAME_SEARCH_ATTEMPTS {
-            return Err(PkgError::PackageAlreadyOnDisk(
+            return Err(ModuleError::PackageAlreadyOnDisk(
                 real_pkg_path.to_string_lossy().to_string(),
             ));
         } else if real_pkg_path.is_file() {
@@ -191,11 +190,11 @@ pub async fn get_new_pkg_path(
     }
 }
 
-pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> PkgResult<SiPkg> {
+pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleResult<SiPkg> {
     let pkg_tuple = pkg_lookup(get_pkgs_path(builder).await?, file_name).await?;
 
     let real_pkg_path = match pkg_tuple {
-        (None, _) => return Err(PkgError::PackageNotFound(file_name.to_string())),
+        (None, _) => return Err(ModuleError::PackageNotFound(file_name.to_string())),
         (Some(real_pkg_path), _) => real_pkg_path,
     };
 
@@ -209,9 +208,9 @@ pub fn routes() -> Router<AppState> {
         //     "/export_workspace",
         //     post(export_workspace::export_workspace),
         // )
-        .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
-        .route("/install_pkg", post(install_pkg::install_pkg))
-        .route("/list_pkgs", get(list_pkgs::list_pkgs))
+        .route("/get_module_by_hash", get(get_module::get_module_by_hash))
+        .route("/install_module", post(install_module::install_module))
+        .route("/list_modules", get(list_modules::list_modules))
         .route(
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
