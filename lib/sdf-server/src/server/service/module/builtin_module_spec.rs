@@ -1,10 +1,7 @@
-use super::PkgResult;
 use crate::server::extract::RawAccessToken;
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::{
-    server::extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::pkg::PkgError,
-};
+use crate::service::module::{ModuleError, ModuleResult};
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{HistoryActor, User, Visibility};
@@ -14,7 +11,7 @@ use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PromoteToBuiltinPkgRequest {
+pub struct PromoteToBuiltinModuleRequest {
     pub id: Ulid,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -22,7 +19,7 @@ pub struct PromoteToBuiltinPkgRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PromoteToBuiltinPkgResponse {
+pub struct PromoteToBuiltinModuleResponse {
     pub success: bool,
 }
 
@@ -32,13 +29,13 @@ pub async fn promote_to_builtin(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<PromoteToBuiltinPkgRequest>,
-) -> PkgResult<Json<PromoteToBuiltinPkgResponse>> {
+    Json(request): Json<PromoteToBuiltinModuleRequest>,
+) -> ModuleResult<Json<PromoteToBuiltinModuleResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(PkgError::ModuleIndexNotConfigured),
+        None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
     let user = match ctx.history_actor() {
@@ -74,5 +71,5 @@ pub async fn promote_to_builtin(
 
     ctx.commit().await?;
 
-    Ok(Json(PromoteToBuiltinPkgResponse { success: true }))
+    Ok(Json(PromoteToBuiltinModuleResponse { success: true }))
 }
