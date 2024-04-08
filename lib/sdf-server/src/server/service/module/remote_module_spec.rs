@@ -1,9 +1,9 @@
-use super::PkgResult;
+use super::ModuleResult;
 use crate::server::extract::RawAccessToken;
 use crate::server::tracking::track;
 use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::pkg::PkgError,
+    service::module::ModuleError,
 };
 use axum::extract::{OriginalUri, Query};
 use axum::Json;
@@ -30,12 +30,12 @@ pub async fn remote_module_spec(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Query(request): Query<RemoteModuleDetailsRequest>,
-) -> PkgResult<Json<RemoteModuleDetailsResponse>> {
+) -> ModuleResult<Json<RemoteModuleDetailsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(PkgError::ModuleIndexNotConfigured),
+        None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
     let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);

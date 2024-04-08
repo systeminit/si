@@ -10,7 +10,7 @@ use dal::Visibility;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 
-use super::{PkgError, PkgResult};
+use super::{ModuleError, ModuleResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -60,12 +60,12 @@ pub async fn get_module_by_hash(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Query(request): Query<PkgGetRequest>,
-) -> PkgResult<Json<PkgGetResponse>> {
+) -> ModuleResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let installed_pkg = match Module::find_by_root_hash(&ctx, &request.hash).await? {
         Some(m) => m,
-        None => return Err(PkgError::ModuleHashNotFound(request.hash.to_string())),
+        None => return Err(ModuleError::ModuleHashNotFound(request.hash.to_string())),
     };
 
     let mut pkg_schemas: Vec<String> = installed_pkg

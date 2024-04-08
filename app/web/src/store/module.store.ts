@@ -25,7 +25,7 @@ export interface SchemaVariant {
   outputSockets: DiagramOutputSocket[];
 }
 
-export interface PkgFuncView {
+export interface ModuleFuncView {
   name: string;
   displayName?: string;
   description?: string;
@@ -51,7 +51,7 @@ export interface LocalModuleDetails {
   createdAt: IsoDateString;
   createdBy: string;
   schemas: string[];
-  funcs: PkgFuncView[];
+  funcs: ModuleFuncView[];
   hash: ModuleHash;
   kind: "module" | "workspaceExport";
 }
@@ -96,7 +96,7 @@ export type RemoteModuleSummary = {
 export type RemoteModuleDetails = RemoteModuleSummary & {
   metadata?: {
     schemas: string[];
-    funcs: PkgFuncView[];
+    funcs: ModuleFuncView[];
     version: string;
   };
 };
@@ -190,15 +190,15 @@ export const useModuleStore = () => {
         },
         actions: {
           async LOAD_LOCAL_MODULES() {
-            return new ApiRequest<{ pkgs: LocalModuleSummary[] }>({
-              url: "/pkg/list_pkgs",
+            return new ApiRequest<{ modules: LocalModuleSummary[] }>({
+              url: "/module/list_modules",
               params: { ...visibility },
               onSuccess: (response) => {
                 // TODO: remove this
                 // the backend currently needs the full tar file name
                 // but we want the actual name in the module metadata
                 // easier to strip off temporarily but we'll need to change what the backend is storing
-                const modulesWithNamesFixed = _.map(response.pkgs, (m) => ({
+                const modulesWithNamesFixed = _.map(response.modules, (m) => ({
                   ...m,
                   name: m.name.replace(/-\d\d\d\d-\d\d-\d\d\.sipkg/, ""),
                 }));
@@ -214,7 +214,7 @@ export const useModuleStore = () => {
           async GET_LOCAL_MODULE_DETAILS(hash: ModuleHash) {
             return new ApiRequest<LocalModuleDetails>({
               method: "get",
-              url: "/pkg/get_module_by_hash",
+              url: "/module/get_module_by_hash",
               params: { hash, ...visibility },
               onSuccess: (response) => {
                 this.localModuleDetailsByName[response.name] = response;
@@ -303,7 +303,7 @@ export const useModuleStore = () => {
           async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
             return new ApiRequest({
               method: "get",
-              url: "/pkg/remote_module_spec",
+              url: "/module/remote_module_spec",
               params: { id, ...visibility },
               onSuccess: (response) => {
                 this.remoteModuleSpecsById[id] = response;
@@ -323,7 +323,7 @@ export const useModuleStore = () => {
 
             return new ApiRequest<{ id: string }>({
               method: "post",
-              url: "/pkg/install_pkg",
+              url: "/module/install_module",
               params: {
                 id: moduleId,
                 ...visibility,
@@ -341,7 +341,7 @@ export const useModuleStore = () => {
           async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/pkg/reject_pkg",
+              url: "/module/reject_module",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
@@ -354,7 +354,7 @@ export const useModuleStore = () => {
           async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/pkg/set_as_builtin",
+              url: "/module/set_as_builtin",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
@@ -370,7 +370,7 @@ export const useModuleStore = () => {
 
             return new ApiRequest<{ id: string }>({
               method: "post",
-              url: "/pkg/export_workspace",
+              url: "/module/export_workspace",
               params: { ...visibility },
               onSuccess: (response) => {
                 this.exportingWorkspaceOperationId = response.id;
@@ -390,7 +390,7 @@ export const useModuleStore = () => {
           async EXPORT_MODULE(exportRequest: PkgExportRequest) {
             return new ApiRequest({
               method: "post",
-              url: "/pkg/export_pkg",
+              url: "/module/export_module",
               params: { ...exportRequest, ...visibility },
             });
           },
