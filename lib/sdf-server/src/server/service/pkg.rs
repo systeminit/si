@@ -1,5 +1,9 @@
 use crate::server::{impl_default_error_into_response, state::AppState};
-use axum::{response::Response, routing::get, Json, Router};
+use axum::{
+    response::Response,
+    routing::{get, post},
+    Json, Router,
+};
 use convert_case::{Case, Casing};
 use dal::module::ModuleError;
 use dal::{
@@ -23,7 +27,7 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 // pub mod export_workspace;
 pub mod get_pkg;
 // pub mod import_workspace_vote;
-// pub mod install_pkg;
+pub mod install_pkg;
 pub mod list_pkgs;
 // mod reject_pkg;
 pub mod remote_module_spec;
@@ -206,7 +210,7 @@ pub fn routes() -> Router<AppState> {
         //     post(export_workspace::export_workspace),
         // )
         .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
-        // .route("/install_pkg", post(install_pkg::install_pkg))
+        .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
         .route(
             "/remote_module_spec",

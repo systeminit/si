@@ -14,7 +14,8 @@ use crate::{
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
     ActionPrototypeError, ChangeSetId, DalContext, FuncBackendKind, FuncBackendResponseType,
-    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
+    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError, WsEvent, WsEventResult,
+    WsPayload,
 };
 use crate::{FuncId, PropId, PropKind};
 
@@ -289,98 +290,98 @@ pub struct ModuleImportedPayload {
 //     name: String,
 // }
 //
-// impl WsEvent {
-//     pub async fn module_imported(
-//         ctx: &DalContext,
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::ModuleImported(ModuleImportedPayload { schema_variant_ids }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_imported(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImported(WorkspaceImportPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_exported(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceExported(WorkspaceExportPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn import_workspace_vote(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: UserPk,
-//         vote: String,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
-//                 workspace_pk,
-//                 user_pk,
-//                 vote,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_import_begin_approval_process(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//         workspace_export_created_at: DateTime<Utc>,
-//         workspace_export_created_by: String,
-//         workspace_export_name: String,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
-//                 workspace_pk,
-//                 user_pk,
-//                 created_at: workspace_export_created_at,
-//                 created_by: workspace_export_created_by,
-//                 name: workspace_export_name,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_import_cancel_approval_process(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-// }
+impl WsEvent {
+    pub async fn module_imported(
+        ctx: &DalContext,
+        schema_variant_ids: Vec<SchemaVariantId>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ModuleImported(ModuleImportedPayload { schema_variant_ids }),
+        )
+        .await
+    }
+    //
+    //     pub async fn workspace_imported(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImported(WorkspaceImportPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_exported(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceExported(WorkspaceExportPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn import_workspace_vote(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: UserPk,
+    //         vote: String,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //                 vote,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_import_begin_approval_process(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //         workspace_export_created_at: DateTime<Utc>,
+    //         workspace_export_created_by: String,
+    //         workspace_export_name: String,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //                 created_at: workspace_export_created_at,
+    //                 created_by: workspace_export_created_by,
+    //                 name: workspace_export_name,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_import_cancel_approval_process(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+}
