@@ -17,41 +17,42 @@ use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::SchemaVariant;
 use crate::{
-    func::backend::js_action::ActionRunResult,
+    func::backend::js_action::DeprecatedActionRunResult,
     func::binding::return_value::FuncBindingReturnValueError,
     func::binding::{FuncBinding, FuncBindingError},
     func::{before_funcs_for_component, BeforeFuncError},
     implement_add_edge_to,
-    layer_db_types::{ActionPrototypeContent, ActionPrototypeContentV1},
-    pk, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
+    layer_db_types::{DeprecatedActionPrototypeContent, DeprecatedActionPrototypeContentV1},
+    ActionPrototypeId, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
+    HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ActionPrototypeView {
+pub struct DeprecatedActionPrototypeView {
     id: ActionPrototypeId,
     name: String,
     display_name: Option<String>,
 }
 
-impl ActionPrototypeView {
+impl DeprecatedActionPrototypeView {
     pub async fn new(
         ctx: &DalContext,
-        prototype: ActionPrototype,
-    ) -> ActionPrototypeResult<ActionPrototypeView> {
+        prototype: DeprecatedActionPrototype,
+    ) -> DeprecatedActionPrototypeResult<DeprecatedActionPrototypeView> {
         let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
         let display_name = func.display_name.map(|dname| dname.to_string());
         Ok(Self {
             id: prototype.id,
             name: prototype.name.as_deref().map_or_else(
                 || match prototype.kind {
-                    ActionKind::Create => "create".to_owned(),
-                    ActionKind::Delete => "delete".to_owned(),
-                    ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => "refresh".to_owned(),
+                    DeprecatedActionKind::Create => "create".to_owned(),
+                    DeprecatedActionKind::Delete => "delete".to_owned(),
+                    DeprecatedActionKind::Other => "other".to_owned(),
+                    DeprecatedActionKind::Refresh => "refresh".to_owned(),
                 },
                 ToOwned::to_owned,
             ),
@@ -62,7 +63,7 @@ impl ActionPrototypeView {
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum ActionPrototypeError {
+pub enum DeprecatedActionPrototypeError {
     #[error(transparent)]
     BeforeFunc(#[from] BeforeFuncError),
     #[error(transparent)]
@@ -101,14 +102,14 @@ pub enum ActionPrototypeError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
+pub type DeprecatedActionPrototypeResult<T> = Result<T, DeprecatedActionPrototypeError>;
 
 /// Describes how an [`Action`](ActionPrototype) affects the world.
 #[remain::sorted]
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-pub enum ActionKind {
+pub enum DeprecatedActionKind {
     /// The [`action`](ActionPrototype) creates a new "resource".
     Create,
     /// The [`action`](ActionPrototype) deletes an existing "resource".
@@ -119,42 +120,40 @@ pub enum ActionKind {
     Refresh,
 }
 
-impl From<ActionFuncSpecKind> for ActionKind {
+impl From<ActionFuncSpecKind> for DeprecatedActionKind {
     fn from(value: ActionFuncSpecKind) -> Self {
         match value {
-            ActionFuncSpecKind::Create => ActionKind::Create,
-            ActionFuncSpecKind::Refresh => ActionKind::Refresh,
-            ActionFuncSpecKind::Other => ActionKind::Other,
-            ActionFuncSpecKind::Delete => ActionKind::Delete,
+            ActionFuncSpecKind::Create => DeprecatedActionKind::Create,
+            ActionFuncSpecKind::Refresh => DeprecatedActionKind::Refresh,
+            ActionFuncSpecKind::Other => DeprecatedActionKind::Other,
+            ActionFuncSpecKind::Delete => DeprecatedActionKind::Delete,
         }
     }
 }
 
-impl From<&ActionKind> for ActionFuncSpecKind {
-    fn from(value: &ActionKind) -> Self {
+impl From<&DeprecatedActionKind> for ActionFuncSpecKind {
+    fn from(value: &DeprecatedActionKind) -> Self {
         match value {
-            ActionKind::Create => ActionFuncSpecKind::Create,
-            ActionKind::Refresh => ActionFuncSpecKind::Refresh,
-            ActionKind::Other => ActionFuncSpecKind::Other,
-            ActionKind::Delete => ActionFuncSpecKind::Delete,
+            DeprecatedActionKind::Create => ActionFuncSpecKind::Create,
+            DeprecatedActionKind::Refresh => ActionFuncSpecKind::Refresh,
+            DeprecatedActionKind::Other => ActionFuncSpecKind::Other,
+            DeprecatedActionKind::Delete => ActionFuncSpecKind::Delete,
         }
     }
 }
-
-pk!(ActionPrototypeId);
 
 // An ActionPrototype joins a `FuncId` to a `SchemaVariantId` with a `ActionKind` and `name`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ActionPrototype {
+pub struct DeprecatedActionPrototype {
     pub id: ActionPrototypeId,
-    pub kind: ActionKind,
+    pub kind: DeprecatedActionKind,
     pub name: Option<String>,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
 
-impl ActionPrototype {
-    pub fn assemble(id: ActionPrototypeId, content: ActionPrototypeContentV1) -> Self {
+impl DeprecatedActionPrototype {
+    pub fn assemble(id: ActionPrototypeId, content: DeprecatedActionPrototypeContentV1) -> Self {
         Self {
             id,
             name: content.name,
@@ -168,19 +167,19 @@ impl ActionPrototype {
         destination_id: FuncId,
         add_fn: add_edge_to_func,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ActionPrototypeResult,
+        result: DeprecatedActionPrototypeResult,
     );
 
     pub async fn new(
         ctx: &DalContext,
         name: Option<impl Into<String>>,
-        kind: ActionKind,
+        kind: DeprecatedActionKind,
         schema_variant_id: SchemaVariantId,
         func_id: FuncId,
-    ) -> ActionPrototypeResult<Self> {
+    ) -> DeprecatedActionPrototypeResult<Self> {
         let timestamp = Timestamp::now();
 
-        let content = ActionPrototypeContentV1 {
+        let content = DeprecatedActionPrototypeContentV1 {
             kind,
             timestamp,
             name: name.map(Into::into),
@@ -190,7 +189,7 @@ impl ActionPrototype {
             .layer_db()
             .cas()
             .write(
-                Arc::new(ActionPrototypeContent::V1(content.clone()).into()),
+                Arc::new(DeprecatedActionPrototypeContent::V1(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -213,9 +212,14 @@ impl ActionPrototype {
         )
         .await?;
 
-        let prototype = ActionPrototype::assemble(id.into(), content);
-        ActionPrototype::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use())
-            .await?;
+        let prototype = DeprecatedActionPrototype::assemble(id.into(), content);
+        DeprecatedActionPrototype::add_edge_to_func(
+            ctx,
+            prototype.id,
+            func_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         Ok(prototype)
     }
@@ -223,7 +227,7 @@ impl ActionPrototype {
     pub async fn for_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> ActionPrototypeResult<Vec<Self>> {
+    ) -> DeprecatedActionPrototypeResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let nodes = workspace_snapshot
@@ -240,7 +244,7 @@ impl ActionPrototype {
             node_weights.push(weight);
         }
 
-        let content_map: HashMap<ContentHash, ActionPrototypeContent> = ctx
+        let content_map: HashMap<ContentHash, DeprecatedActionPrototypeContent> = ctx
             .layer_db()
             .cas()
             .try_read_many_as(content_hashes.as_slice())
@@ -251,7 +255,7 @@ impl ActionPrototype {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let ActionPrototypeContent::V1(inner) = content;
+                    let DeprecatedActionPrototypeContent::V1(inner) = content;
 
                     prototypes.push(Self::assemble(node_weight.id().into(), inner.clone()));
                 }
@@ -266,14 +270,14 @@ impl ActionPrototype {
     pub async fn get_by_id_or_error(
         ctx: &DalContext,
         id: ActionPrototypeId,
-    ) -> ActionPrototypeResult<Self> {
+    ) -> DeprecatedActionPrototypeResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
-        let content: ActionPrototypeContent = ctx
+        let content: DeprecatedActionPrototypeContent = ctx
             .layer_db()
             .cas()
             .try_read_as(&hash)
@@ -281,12 +285,12 @@ impl ActionPrototype {
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let ActionPrototypeContent::V1(inner) = content;
+        let DeprecatedActionPrototypeContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
     }
 
-    pub async fn func_id(&self, ctx: &DalContext) -> ActionPrototypeResult<FuncId> {
+    pub async fn func_id(&self, ctx: &DalContext) -> DeprecatedActionPrototypeResult<FuncId> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         for node_index in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
@@ -299,14 +303,14 @@ impl ActionPrototype {
             }
         }
 
-        Err(ActionPrototypeError::MissingFunction(self.id))
+        Err(DeprecatedActionPrototypeError::MissingFunction(self.id))
     }
 
     pub async fn run(
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ActionPrototypeResult<Option<ActionRunResult>> {
+    ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.materialized_view(ctx).await?;
         let before = before_funcs_for_component(ctx, &component_id).await?;
@@ -332,7 +336,8 @@ impl ActionPrototype {
 
         Ok(match return_value.value() {
             Some(value) => {
-                let mut run_result: ActionRunResult = serde_json::from_value(value.clone())?;
+                let mut run_result: DeprecatedActionRunResult =
+                    serde_json::from_value(value.clone())?;
                 run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
 
                 let component = if component.to_delete() && run_result.payload.is_none() {

@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    deprecated_action::DeprecatedActionBag, history_event, ActionId, ActionKind, ActionPrototypeId,
-    ActorView, ComponentId, DeprecatedAction, Func, Visibility,
+    deprecated_action::DeprecatedActionBag, history_event, ActionId, ActionPrototypeId, ActorView,
+    ComponentId, DeprecatedAction, DeprecatedActionKind, Func, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 pub struct ActionView {
     pub id: ActionId,
     pub action_prototype_id: ActionPrototypeId,
-    pub kind: ActionKind,
+    pub kind: DeprecatedActionKind,
     pub name: String,
     pub component_id: ComponentId,
     pub actor: Option<String>,
@@ -84,10 +84,10 @@ pub async fn list_queued_actions(
                 action_prototype_id: prototype.id,
                 kind,
                 name: display_name.unwrap_or_else(|| match kind {
-                    ActionKind::Create => "create".to_owned(),
-                    ActionKind::Delete => "delete".to_owned(),
-                    ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => "refresh".to_owned(),
+                    DeprecatedActionKind::Create => "create".to_owned(),
+                    DeprecatedActionKind::Delete => "delete".to_owned(),
+                    DeprecatedActionKind::Other => "other".to_owned(),
+                    DeprecatedActionKind::Refresh => "refresh".to_owned(),
                 }),
                 component_id,
                 actor: actor_email,

@@ -932,17 +932,18 @@ impl WorkspaceSnapshotGraph {
             },
             &|_, (node_index, node_weight)| {
                 let (label, color) = match node_weight {
+                    NodeWeight::Action(_) => ("Action".to_string(), "cyan"),
                     NodeWeight::Content(weight) => {
                         let discrim = ContentAddressDiscriminants::from(weight.content_address());
                         let color = match discrim {
                             // Some of these should never happen as they have their own top-level
                             // NodeWeight variant.
-                            ContentAddressDiscriminants::Action => "green",
-                            ContentAddressDiscriminants::ActionBatch => "green",
-                            ContentAddressDiscriminants::ActionRunner => "green",
                             ContentAddressDiscriminants::ActionPrototype => "green",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
+                            ContentAddressDiscriminants::DeprecatedAction => "green",
+                            ContentAddressDiscriminants::DeprecatedActionBatch => "green",
+                            ContentAddressDiscriminants::DeprecatedActionRunner => "green",
                             ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
@@ -975,10 +976,11 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
                     NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
                     {
+                        CategoryNodeKind::Action => ("Actions (Category)".to_string(), "black"),
                         CategoryNodeKind::Component => {
                             ("Components (Category)".to_string(), "black")
                         }
-                        CategoryNodeKind::ActionBatch => {
+                        CategoryNodeKind::DeprecatedActionBatch => {
                             ("Action Batches (Category)".to_string(), "black")
                         }
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),

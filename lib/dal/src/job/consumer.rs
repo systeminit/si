@@ -13,8 +13,8 @@ use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
-    ActionPrototypeError, ActionPrototypeId, ComponentError, ComponentId, DalContext,
-    DalContextBuilder, DeprecatedActionBatchError, DeprecatedActionBatchId,
+    ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
+    DeprecatedActionBatchError, DeprecatedActionBatchId, DeprecatedActionPrototypeError,
     DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
@@ -24,7 +24,7 @@ pub enum JobConsumerError {
     #[error("action batch error: {0}")]
     ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("action runner error: {0}")]

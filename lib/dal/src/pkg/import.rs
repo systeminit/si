@@ -23,7 +23,7 @@ use crate::{
     func::{self, argument::FuncArgument},
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ActionPrototype, DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket,
+    DalContext, DeprecatedActionPrototype, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
@@ -32,7 +32,7 @@ use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Thing {
-    ActionPrototype(ActionPrototype),
+    ActionPrototype(DeprecatedActionPrototype),
     AuthPrototype(AuthenticationPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
@@ -2172,8 +2172,8 @@ async fn create_action_protoype(
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<ActionPrototype> {
-    let proto = ActionPrototype::new(
+) -> PkgResult<DeprecatedActionPrototype> {
+    let proto = DeprecatedActionPrototype::new(
         ctx,
         action_func_spec.name(),
         action_func_spec.kind().into(),
@@ -2220,7 +2220,7 @@ async fn import_action_func(
     action_func_spec: &SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<Option<ActionPrototype>> {
+) -> PkgResult<Option<DeprecatedActionPrototype>> {
     let prototype =
         match thing_map.get(change_set_id, &action_func_spec.func_unique_id().to_owned()) {
             Some(Thing::Func(func)) => {

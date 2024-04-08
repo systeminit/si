@@ -6,8 +6,8 @@ use strum::EnumDiscriminants;
 use crate::validation::ValidationStatus;
 use crate::{
     func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
-    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
-    ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
+    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionPrototypeId,
+    ComponentId, ComponentType, DeprecatedActionKind, FuncBackendKind, FuncBackendResponseType,
     FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
 };
 
@@ -23,12 +23,12 @@ use crate::{
 /// Add them to the *END* of the enum *ONLY*.
 #[derive(EnumDiscriminants, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum ContentTypes {
-    ActionPrototype(ActionPrototypeContent),
     Any(CasValue),
     AttributePrototype(AttributePrototypeContent),
     Component(ComponentContent),
     DeprecatedAction(DeprecatedActionContent),
     DeprecatedActionBatch(DeprecatedActionBatchContent),
+    DeprecatedActionPrototype(DeprecatedActionPrototypeContent),
     DeprecatedActionRunner(DeprecatedActionRunnerContent),
     Func(FuncContent),
     FuncArgument(FuncArgumentContent),
@@ -78,7 +78,7 @@ macro_rules! impl_into_content_types {
     };
 }
 
-impl_into_content_types!(ActionPrototype);
+impl_into_content_types!(DeprecatedActionPrototype);
 impl_into_content_types!(AttributePrototype);
 impl_into_content_types!(Component);
 impl_into_content_types!(DeprecatedAction);
@@ -151,13 +151,13 @@ pub struct DeprecatedActionBatchContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionPrototypeContent {
-    V1(ActionPrototypeContentV1),
+pub enum DeprecatedActionPrototypeContent {
+    V1(DeprecatedActionPrototypeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionPrototypeContentV1 {
-    pub kind: ActionKind,
+pub struct DeprecatedActionPrototypeContentV1 {
+    pub kind: DeprecatedActionKind,
     pub name: Option<String>,
     pub timestamp: Timestamp,
 }
@@ -176,7 +176,7 @@ pub struct DeprecatedActionRunnerContentV1 {
     pub schema_name: String,
     pub func_name: String,
     pub action_prototype_id: ActionPrototypeId,
-    pub action_kind: ActionKind,
+    pub action_kind: DeprecatedActionKind,
     pub resource: Option<String>,
 
     pub started_at: Option<DateTime<Utc>>,

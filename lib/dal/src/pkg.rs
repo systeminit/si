@@ -13,9 +13,9 @@ use crate::{
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ActionPrototypeError, ChangeSetId, DalContext, FuncBackendKind, FuncBackendResponseType,
-    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError, WsEvent, WsEventResult,
-    WsPayload,
+    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncBackendKind,
+    FuncBackendResponseType, OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
+    WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncId, PropId, PropKind};
 
@@ -31,7 +31,7 @@ mod import;
 #[derive(Debug, Error)]
 pub enum PkgError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]

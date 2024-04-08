@@ -37,8 +37,9 @@ use crate::func::associations::FuncAssociations;
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::{
-    ActionKind, ActionPrototypeError, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError, SchemaVariantId,
+    DalContext, DeprecatedActionKind, DeprecatedActionPrototypeError, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
+    SchemaVariantId,
 };
 
 mod create;
@@ -50,7 +51,7 @@ mod types;
 #[derive(Error, Debug)]
 pub enum FuncAuthoringError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("That attribute is already set by the function named \"{0}\"")]
@@ -170,7 +171,7 @@ pub enum CreateFuncOptions {
     #[serde(rename_all = "camelCase")]
     ActionOptions {
         schema_variant_id: SchemaVariantId,
-        action_kind: ActionKind,
+        action_kind: DeprecatedActionKind,
     },
     #[serde(rename_all = "camelCase")]
     AttributeOptions {

@@ -2,8 +2,8 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{
-    ActionKind, AttributeValue, ChangeSet, Component, DalContext, DeprecatedAction, InputSocket,
-    OutputSocket, Prop, Secret,
+    AttributeValue, ChangeSet, Component, DalContext, DeprecatedAction, DeprecatedActionKind,
+    InputSocket, OutputSocket, Prop, Secret,
 };
 use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
 use dal_test::{test, WorkspaceSignup};
@@ -121,7 +121,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .await
         .expect("could not get action prototype for action");
     assert_eq!(
-        ActionKind::Create,           // expected
+        DeprecatedActionKind::Create, // expected
         create_action_prototype.kind, // actual
     );
 

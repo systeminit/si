@@ -37,9 +37,10 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, implement_add_edge_to, pk, ActionId, ActionKind,
-    ActionPrototype, ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId,
-    ChangeSetId, DalContext, DeprecatedAction, Func, FuncError, FuncId, HelperError, InputSocket,
+    func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
+    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
+    DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
+    DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
     SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
@@ -67,7 +68,7 @@ pub enum ComponentError {
     #[error("action error: {0}")]
     Action(String),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] Box<ActionPrototypeError>),
+    ActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -462,11 +463,11 @@ impl Component {
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
-        for prototype in ActionPrototype::for_variant(ctx, schema_variant_id)
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
             .await
             .map_err(Box::new)?
         {
-            if prototype.kind == ActionKind::Create {
+            if prototype.kind == DeprecatedActionKind::Create {
                 DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
@@ -755,10 +756,10 @@ impl Component {
         Ok(())
     }
 
-    pub async fn act(&self, ctx: &DalContext, action: ActionKind) -> ComponentResult<()> {
+    pub async fn act(&self, ctx: &DalContext, action: DeprecatedActionKind) -> ComponentResult<()> {
         let schema_variant = self.schema_variant(ctx).await?;
 
-        let action = ActionPrototype::for_variant(ctx, schema_variant.id())
+        let action = DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
             .await
             .map_err(Box::new)?
             .into_iter()
@@ -773,7 +774,7 @@ impl Component {
     pub async fn set_resource(
         &self,
         ctx: &DalContext,
-        resource: ActionRunResult,
+        resource: DeprecatedActionRunResult,
     ) -> ComponentResult<()> {
         let av_for_resource = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
@@ -787,7 +788,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<ActionRunResult> {
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<DeprecatedActionRunResult> {
         let value_id = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
             .await?
@@ -799,7 +800,7 @@ impl Component {
 
         Ok(match av.materialized_view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
-            None => ActionRunResult::default(),
+            None => DeprecatedActionRunResult::default(),
         })
     }
 

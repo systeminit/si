@@ -3,7 +3,7 @@ use crate::schemas::schema_helpers::{
     create_identity_func,
 };
 use dal::pkg::import_pkg_from_pkg;
-use dal::{prop::PropPath, ActionKind, ComponentType};
+use dal::{prop::PropPath, ComponentType, DeprecatedActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
@@ -114,19 +114,19 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Create)
+                        .kind(&DeprecatedActionKind::Create)
                         .func_unique_id(&create_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Refresh)
+                        .kind(&DeprecatedActionKind::Refresh)
                         .func_unique_id(&refresh_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Other)
+                        .kind(&DeprecatedActionKind::Other)
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )

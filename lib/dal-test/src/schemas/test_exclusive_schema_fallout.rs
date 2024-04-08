@@ -1,5 +1,5 @@
 use dal::pkg::import_pkg_from_pkg;
-use dal::{prop::PropPath, ActionKind};
+use dal::{prop::PropPath, DeprecatedActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
@@ -174,7 +174,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
                 .socket(dummy_secret_input_scoket)
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Create)
+                        .kind(&DeprecatedActionKind::Create)
                         .func_unique_id(&fallout_create_action_func.unique_id)
                         .build()?,
                 )
