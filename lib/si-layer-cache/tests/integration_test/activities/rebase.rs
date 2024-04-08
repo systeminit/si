@@ -1,12 +1,14 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicI32, Ordering},
+    Arc,
+};
 
-use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk, WorkspaceSnapshotAddress};
 use si_layer_cache::{activities::ActivityId, event::LayeredEventMetadata, LayerDb};
-use tokio_util::sync::CancellationToken;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
-use crate::integration_test::{redb_path, setup_nats_client, setup_pg_db};
+use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 
@@ -16,9 +18,9 @@ async fn subscribe_rebaser_requests_work_queue() {
 
     let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
 
-    let tempdir_slash = redb_path(&tempdir, "slash");
-    let tempdir_axl = redb_path(&tempdir, "axl");
-    let tempdir_duff = redb_path(&tempdir, "duff");
+    let tempdir_slash = disk_cache_path(&tempdir, "slash");
+    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_duff = disk_cache_path(&tempdir, "duff");
     let db = setup_pg_db("subscribe_rebaser_requests_work_queue").await;
 
     // we need a layerdb for slash, which will be a consumer of our work queue
@@ -101,16 +103,14 @@ async fn subscribe_rebaser_requests_work_queue() {
         .expect("cannot send rebase finished");
 
     let which = tokio::select! {
-        maybe_result = slash_work_queue.next() => {
-            let request = maybe_result.expect("had no messages").expect("cannot retrieve the ack rebase request");
+        maybe_result = slash_work_queue.recv() => {
+            let request = maybe_result.expect("had no messages");
             assert_eq!(request.id, rebase_request_activity.id);
-            request.ack().await.expect("cannot ack message");
             "slash".to_string()
         },
-        maybe_result = axl_work_queue.next() => {
-            let request = maybe_result.expect("had no messages").expect("cannot retrieve the ack rebase request");
+        maybe_result = axl_work_queue.recv() => {
+            let request = maybe_result.expect("had no messages");
             assert_eq!(request.id, rebase_request_activity.id);
-            request.ack().await.expect("cannot ack message");
             "axl".to_string()
         },
     };
@@ -123,7 +123,7 @@ async fn subscribe_rebaser_requests_work_queue() {
 
     if which == "slash" {
         tokio::select! {
-            maybe_result = axl_work_queue.next() => {
+            maybe_result = axl_work_queue.recv() => {
                 assert!(maybe_result.is_none(), "expected no work, but there is some work to do");
             },
             _ = &mut sleep => {
@@ -131,7 +131,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         }
     } else {
         tokio::select! {
-            maybe_result = slash_work_queue.next() => {
+            maybe_result = slash_work_queue.recv() => {
                 assert!(maybe_result.is_none(), "expected no work, but there is some work to do");
             },
             _ = &mut sleep => {
@@ -146,8 +146,8 @@ async fn rebase_and_wait() {
 
     let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
 
-    let tempdir_slash = redb_path(&tempdir, "slash");
-    let tempdir_axl = redb_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path(&tempdir, "slash");
+    let tempdir_axl = disk_cache_path(&tempdir, "axl");
 
     let db = setup_pg_db("rebase_and_wait").await;
 
@@ -200,11 +200,9 @@ async fn rebase_and_wait() {
     });
 
     let rebase_request = axl_work_queue
-        .next()
+        .recv()
         .await
-        .expect("should have an message, but the channel is closed")
-        .expect("should have a rebase request, but we have an error");
-    rebase_request.ack().await.expect("cannot ack the message");
+        .expect("should have an message, but the channel is closed");
 
     // Send a rebase finished activity
     let rebase_finished_activity = ldb_axl
@@ -228,4 +226,161 @@ async fn rebase_and_wait() {
         .expect("expected rebase finished activity, but got an error");
 
     assert_eq!(received_finish_activity, rebase_finished_activity);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rebase_requests_work_queue_stress() {
+    let token = CancellationToken::new();
+
+    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
+
+    let tempdir_slash = disk_cache_path(&tempdir, "slash");
+    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_duff = disk_cache_path(&tempdir, "duff");
+    let db = setup_pg_db("rebase_requests_work_queue_stress").await;
+
+    // we need a layerdb for slash, which will be a consumer of our work queue
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+        tempdir_slash,
+        db.clone(),
+        setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        token.clone(),
+    )
+    .await
+    .expect("cannot create layerdb");
+    ldb_slash.pg_migrate().await.expect("migrate layerdb");
+
+    // we need a layerdb for axl, who will also be a consumer for our work queue
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+        tempdir_axl,
+        db.clone(),
+        setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        token.clone(),
+    )
+    .await
+    .expect("cannot create layerdb");
+    ldb_axl.pg_migrate().await.expect("migrate layerdb");
+
+    // we need a layerdb for duff, who will also be a producer for our work queue
+    let (ldb_duff, _): (TestLayerDb, _) = LayerDb::initialize(
+        tempdir_duff,
+        db,
+        setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        token.clone(),
+    )
+    .await
+    .expect("cannot create layerdb");
+    ldb_duff.pg_migrate().await.expect("migrate layerdb");
+
+    // Subscribe to a work queue of rebase activities on axl and slash
+    let mut axl_work_queue = ldb_axl
+        .activity()
+        .rebase()
+        .subscribe_work_queue()
+        .await
+        .expect("cannot retrieve a work queue");
+    let mut slash_work_queue = ldb_slash
+        .activity()
+        .rebase()
+        .subscribe_work_queue()
+        .await
+        .expect("cannot retrieve a work queue");
+
+    let tenancy = Tenancy::new(WorkspacePk::new(), ChangeSetId::new());
+    let actor = Actor::System;
+    let metadata = LayeredEventMetadata::new(tenancy, actor);
+    let send_meta = metadata.clone();
+
+    let rebase_activities = 10_000;
+
+    static MESSAGE_COUNTER: AtomicI32 = AtomicI32::new(0);
+
+    let tracker = TaskTracker::new();
+
+    let axl_process_token = token.clone();
+    let axl_process_handle = tracker.spawn(async move {
+        while let Some(_request) = axl_work_queue.recv().await {
+            MESSAGE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            if axl_process_token.is_cancelled() {
+                break;
+            }
+        }
+    });
+    let slash_process_token = token.clone();
+    let slash_process_handle = tracker.spawn(async move {
+        while let Some(_request) = slash_work_queue.recv().await {
+            MESSAGE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            if slash_process_token.is_cancelled() {
+                break;
+            }
+        }
+    });
+
+    let send_process_token = token.clone();
+    tracker.spawn(async move {
+        let mut count = 0;
+        while count < rebase_activities {
+            let _rebase_request_activity = ldb_duff
+                .activity()
+                .rebase()
+                .rebase(
+                    Ulid::new(),
+                    WorkspaceSnapshotAddress::new(b"poop"),
+                    Ulid::new(),
+                    send_meta.clone(),
+                )
+                .await
+                .expect("cannot publish rebase request");
+            count += 1;
+            if send_process_token.is_cancelled() {
+                break;
+            }
+        }
+    });
+
+    let check_token = token.clone();
+    let all_messages_processed_stream = tracker.spawn(async move {
+        loop {
+            let count = MESSAGE_COUNTER.load(Ordering::SeqCst);
+            if count == rebase_activities {
+                break;
+            }
+            if check_token.is_cancelled() {
+                break;
+            }
+        }
+    });
+    let timeout_handle = tracker.spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    });
+    tracker.close();
+
+    let result = tokio::select!(
+        _e = axl_process_handle => {
+            token.cancel();
+          "axl".to_string()
+        },
+        _e = slash_process_handle => {
+            token.cancel();
+          "slash".to_string()
+        },
+        _ = all_messages_processed_stream => {
+            token.cancel();
+           "finished".to_string()
+        }
+        _ = timeout_handle => {
+            token.cancel();
+           "deadline".to_string()
+        },
+        () = token.cancelled() => {
+           "finished".to_string()
+        }
+    );
+    match result.as_str() {
+        "axl" => panic!("axl write process died"),
+        "slash" => panic!("slash write process died"),
+        "finished" => {}
+        "deadline" => panic!("took longer than 10 seconds to process messages"),
+        _ => panic!("I dunno what happened"),
+    }
 }

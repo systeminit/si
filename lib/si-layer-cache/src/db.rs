@@ -33,7 +33,6 @@ where
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
-    redb: Arc<redb::Database>,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -59,23 +58,18 @@ where
         let tracker = TaskTracker::new();
 
         let disk_path = disk_path.as_ref();
-        let redb = Arc::new(redb::Database::create(disk_path)?);
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
         let cas_cache: LayerCache<Arc<CasValue>> =
-            LayerCache::new(cas::CACHE_NAME, redb.clone(), pg_pool.clone()).await?;
+            LayerCache::new(cas::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
-            LayerCache::new(encrypted_secret::CACHE_NAME, redb.clone(), pg_pool.clone()).await?;
+            LayerCache::new(encrypted_secret::CACHE_NAME, disk_path, pg_pool.clone())?;
 
-        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
-            workspace_snapshot::CACHE_NAME,
-            redb.clone(),
-            pg_pool.clone(),
-        )
-        .await?;
+        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> =
+            LayerCache::new(workspace_snapshot::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
@@ -90,7 +84,7 @@ where
 
         let persister_task = PersisterTask::create(
             rx,
-            redb.clone(),
+            disk_path.to_path_buf(),
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -112,7 +106,6 @@ where
             cas,
             encrypted_secret,
             workspace_snapshot,
-            redb,
             pg_pool,
             persister_client,
             nats_client,
@@ -120,10 +113,6 @@ where
         };
 
         Ok((layerdb, graceful_shutdown))
-    }
-
-    pub fn redb(&self) -> &Arc<redb::Database> {
-        &self.redb
     }
 
     pub fn pg_pool(&self) -> &PgPool {

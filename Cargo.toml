@@ -67,6 +67,7 @@ base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
 bytes = "1.6.0"
+cacache = { version = "13.0.0", default-features = false, features = [ "tokio-runtime", "mmap" ] }
 chrono = { version = "0.4.37", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
@@ -165,7 +166,6 @@ serde_json = { version = "1.0.115", features = ["preserve_order"] }
 serde_url_params = "0.2.1"
 serde_with = "3.7.0"
 serde_yaml = "0.9.33" # NOTE(nick): this has been archived upstream
-redb = "2.0.0"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }

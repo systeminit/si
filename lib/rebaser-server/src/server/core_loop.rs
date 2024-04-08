@@ -2,21 +2,20 @@ use dal::{
     DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, ServicesContext, Tenancy,
     TransactionsError, Visibility, WorkspacePk,
 };
-use futures::FutureExt;
-use futures::StreamExt;
+
 use si_crypto::SymmetricCryptoService;
-use si_data_nats::jetstream::{AckKind, JetstreamError};
+use si_data_nats::jetstream::JetstreamError;
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use si_layer_cache::activities::rebase::RebaseStatus;
-use si_layer_cache::activities::AckRebaseRequest;
-use si_layer_cache::activities::RebaserRequestsWorkQueueStream;
+use si_layer_cache::activities::ActivityRebaseRequest;
 use si_layer_cache::LayerDbError;
 use std::sync::Arc;
 use std::time::Instant;
-use stream_cancel::StreamExt as CancelStreamExt;
+
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::watch;
 
 use crate::server::rebase::perform_rebase;
@@ -80,37 +79,20 @@ pub(crate) async fn setup_and_run_core_loop(
 
 async fn core_loop_infallible(
     ctx_builder: DalContextBuilder,
-    stream: RebaserRequestsWorkQueueStream,
-    mut shutdown_watch_rx: watch::Receiver<()>,
+    mut rebase_activity_channel: UnboundedReceiver<ActivityRebaseRequest>,
+    mut _shutdown_watch_rx: watch::Receiver<()>,
 ) {
-    let mut stream = stream.take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
-
-    while let Some(unprocessed_message) = stream.next().await {
-        let message = match unprocessed_message {
-            Ok(processed) => processed,
-            Err(err) => {
-                error!(error = ?err, "error when pull message off stream");
-                continue;
-            }
-        };
-
-        if let Err(err) = message.ack_with(AckKind::Progress).await {
-            error!(error = ?err, "could not ack with progress, going to continue anyway");
-        }
-
+    while let Some(message) = rebase_activity_channel.recv().await {
         let ctx_builder = ctx_builder.clone();
         tokio::spawn(async move {
             perform_rebase_and_reply_infallible(ctx_builder, &message).await;
-            if let Err(err) = message.ack_with(AckKind::Ack).await {
-                error!(?message, ?err, "failing acking message");
-            }
         });
     }
 }
 
 async fn perform_rebase_and_reply_infallible(
     ctx_builder: DalContextBuilder,
-    message: &AckRebaseRequest,
+    message: &ActivityRebaseRequest,
 ) {
     let start = Instant::now();
 
@@ -132,10 +114,6 @@ async fn perform_rebase_and_reply_infallible(
                 message: err.to_string(),
             }
         });
-
-    if let Err(e) = message.ack().await {
-        error!(error = ?e, ?message, "failed to acknolwedge the nats message after rebase; likely a timeout");
-    }
 
     if let Err(e) = ctx
         .layer_db()

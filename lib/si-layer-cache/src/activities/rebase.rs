@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
 use telemetry::tracing::instrument;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 use tokio_stream::wrappers::BroadcastStream;
 use ulid::Ulid;
 
-use super::{Activity, ActivityId, ActivityPayloadDiscriminants, RebaserRequestsWorkQueueStream};
+use super::{Activity, ActivityId, ActivityPayloadDiscriminants, ActivityRebaseRequest};
 use crate::activity_client::ActivityClient;
 use crate::{error::LayerDbResult, event::LayeredEventMetadata};
 
@@ -179,7 +180,9 @@ impl<'a> ActivityRebase<'a> {
         Ok(activity)
     }
 
-    pub async fn subscribe_work_queue(&self) -> LayerDbResult<RebaserRequestsWorkQueueStream> {
-        RebaserRequestsWorkQueueStream::create(self.activity_base.nats_client()).await
+    pub async fn subscribe_work_queue(
+        &self,
+    ) -> LayerDbResult<UnboundedReceiver<ActivityRebaseRequest>> {
+        self.activity_base.rebaser_request_work_queue().await
     }
 }

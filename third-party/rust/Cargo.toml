@@ -31,6 +31,7 @@ base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
 bytes = "1.6.0"
+cacache = { version = "13.0.0", default-features = false, features = [ "tokio-runtime", "mmap" ] }
 chrono = { version = "0.4.37", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
@@ -101,7 +102,6 @@ pretty_assertions_sorted = "1.2.3"
 proc-macro2 = "1.0.79"
 quote = "1.0.35"
 rand = "0.8.5"
-redb = "2.0.0"
 refinery = { version = "0.8.12", features = ["tokio-postgres"] }
 regex = "1.10.4"
 remain = "0.2.13"

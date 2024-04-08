@@ -3,6 +3,7 @@ use std::time::Duration;
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::pin;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
@@ -11,6 +12,7 @@ use crate::activities::rebase::ActivityRebase;
 use crate::activities::test::ActivityIntegrationTest;
 use crate::activities::{
     Activity, ActivityId, ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
+    ActivityRebaseRequest, RebaserRequestWorkQueue,
 };
 use crate::error::{LayerDbError, LayerDbResult};
 
@@ -21,6 +23,7 @@ pub struct ActivityClient {
     nats_client: NatsClient,
     activity_publisher: ActivityPublisher,
     activity_multiplexer: ActivityMultiplexer,
+    shutdown_token: CancellationToken,
 }
 
 impl ActivityClient {
@@ -31,13 +34,14 @@ impl ActivityClient {
     ) -> ActivityClient {
         let activity_publisher = ActivityPublisher::new(&nats_client);
         let activity_multiplexer =
-            ActivityMultiplexer::new(instance_id, nats_client.clone(), shutdown_token);
+            ActivityMultiplexer::new(instance_id, nats_client.clone(), shutdown_token.clone());
 
         ActivityClient {
             activity_publisher,
             activity_multiplexer,
             instance_id,
             nats_client,
+            shutdown_token,
         }
     }
 
@@ -51,6 +55,18 @@ impl ActivityClient {
 
     pub fn activity_multiplexer(&self) -> &ActivityMultiplexer {
         &self.activity_multiplexer
+    }
+
+    pub async fn rebaser_request_work_queue(
+        &self,
+    ) -> LayerDbResult<UnboundedReceiver<ActivityRebaseRequest>> {
+        let (mut worker, rx) = RebaserRequestWorkQueue::create(
+            self.nats_client().clone(),
+            self.shutdown_token.clone(),
+        )
+        .await?;
+        tokio::spawn(async move { worker.run().await });
+        Ok(rx)
     }
 
     // Publish an activity

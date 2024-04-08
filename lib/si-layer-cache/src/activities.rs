@@ -1,21 +1,19 @@
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    ops,
-    pin::Pin,
     str::FromStr,
     sync::Arc,
-    task::{Context, Poll},
 };
 
-use futures::{Future, Stream, StreamExt};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{
-    async_nats::jetstream::{self, message::Acker},
+    async_nats::jetstream::{self, Message},
+    jetstream::Stream,
     NatsClient,
 };
 use strum::EnumDiscriminants;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{broadcast, mpsc::UnboundedReceiver, mpsc::UnboundedSender, RwLock};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::{Ulid, ULID_LEN};
 
@@ -146,59 +144,6 @@ impl ActivityPayloadDiscriminants {
     }
 }
 
-#[derive(Clone)]
-pub struct AckActivity {
-    inner: Activity,
-    acker: Arc<Acker>,
-}
-
-impl AckActivity {
-    pub fn into_parts(self) -> (Activity, Arc<Acker>) {
-        (self.inner, self.acker)
-    }
-
-    pub fn as_activity(&self) -> &Activity {
-        &self.inner
-    }
-
-    pub async fn ack(&self) -> LayerDbResult<()> {
-        self.acker.ack().await.map_err(LayerDbError::NatsAck)
-    }
-
-    pub async fn ack_with(&self, kind: AckKind) -> LayerDbResult<()> {
-        self.acker
-            .ack_with(kind)
-            .await
-            .map_err(LayerDbError::NatsAck)
-    }
-
-    pub async fn double_ack(&self) -> LayerDbResult<()> {
-        self.acker.double_ack().await.map_err(LayerDbError::NatsAck)
-    }
-}
-
-impl fmt::Debug for AckActivity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AckActivity")
-            .field("inner", &self.inner)
-            .finish_non_exhaustive()
-    }
-}
-
-impl PartialEq for AckActivity {
-    fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
-    }
-}
-
-impl ops::Deref for AckActivity {
-    type Target = Activity;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ActivityPublisher {
     prefix: Option<Arc<str>>,
@@ -241,7 +186,6 @@ impl ActivityMultiplexer {
     pub fn new(
         instance_id: Ulid,
         nats_client: NatsClient,
-
         shutdown_token: CancellationToken,
     ) -> Self {
         let tracker = TaskTracker::new();
@@ -277,10 +221,15 @@ impl ActivityMultiplexer {
                 return Ok(sender.subscribe());
             }
         }
-        let activity_stream =
-            ActivityStream::create(self.instance_id, &self.nats_client, has_filter_array).await?;
-        let (tx, rx) = broadcast::channel(1000); // the 1000 here is the depth the channel will
-                                                 // keep if a reader is slow
+        let activity_stream = ActivityStream::run(
+            self.instance_id,
+            &self.nats_client,
+            self.tracker.clone(),
+            has_filter_array,
+        )
+        .await?;
+        let (tx, rx) = broadcast::channel(1_000_000); // the 1_000_000 here is the depth the channel will
+                                                      // keep if a reader is slow
         let mut amx_task = ActivityMultiplexerTask::new(activity_stream, tx.clone());
         let amx_shutdown_token = self.shutdown_token.clone();
         self.tracker
@@ -294,12 +243,15 @@ impl ActivityMultiplexer {
 }
 
 pub struct ActivityMultiplexerTask {
-    activity_stream: ActivityStream,
+    activity_stream: UnboundedReceiver<Activity>,
     tx: broadcast::Sender<Activity>,
 }
 
 impl ActivityMultiplexerTask {
-    pub fn new(activity_stream: ActivityStream, tx: broadcast::Sender<Activity>) -> Self {
+    pub fn new(
+        activity_stream: UnboundedReceiver<Activity>,
+        tx: broadcast::Sender<Activity>,
+    ) -> Self {
         Self {
             activity_stream,
             tx,
@@ -319,40 +271,29 @@ impl ActivityMultiplexerTask {
     }
 
     pub async fn process(&mut self) {
-        while let Some(ack_activity_result) = self.activity_stream.next().await {
-            match ack_activity_result {
-                Ok(ack_activity) => match ack_activity.ack().await {
-                    Ok(_) => {
-                        if let Err(e) = self.tx.send(ack_activity.inner) {
-                            trace!(
-                                ?e,
-                                "activity multiplexer skipping message; no receivers listening. this can be totally normal!"
-                            );
-                        }
-                    }
-                    Err(e) => warn!(?e, "Failed to ack an activity stream message; bug!"),
-                },
-                Err(e) => {
-                    warn!(?e, "Activity stream message had an error; bug!");
-                }
+        while let Some(activity) = self.activity_stream.recv().await {
+            if let Err(error) = self.tx.send(activity) {
+                trace!(
+                    ?error,
+                    "activity multiplexer skipping message; no receivers listening. this can be totally normal!"
+                );
             }
         }
     }
 }
 
-pub struct ActivityStream {
-    inner: jetstream::consumer::pull::Stream,
-}
+pub struct ActivityStream;
 
 impl ActivityStream {
-    pub(crate) async fn create(
+    pub(crate) async fn run(
         instance_id: Ulid,
         nats_client: &NatsClient,
+        tracker: TaskTracker,
         filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
-    ) -> LayerDbResult<Self> {
+    ) -> LayerDbResult<UnboundedReceiver<Activity>> {
         let context = jetstream::new(nats_client.as_inner().clone());
 
-        let inner =
+        let stream =
             nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
                 .await?
                 .create_consumer(Self::consumer_config(
@@ -364,7 +305,45 @@ impl ActivityStream {
                 .messages()
                 .await?;
 
-        Ok(Self { inner })
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let spawn_tracker = tracker.clone();
+        tracker.spawn(async move { Self::process_messages(stream, spawn_tracker, tx).await });
+
+        Ok(rx)
+    }
+
+    pub async fn process_messages(
+        mut stream: Stream,
+        tracker: TaskTracker,
+        tx: UnboundedSender<Activity>,
+    ) {
+        while let Some(msg_result) = stream.next().await {
+            match msg_result {
+                Ok(msg) => {
+                    if let Err(error) = msg.ack().await {
+                        warn!(
+                            ?error,
+                            "Error sending message ack while processing activity stream"
+                        );
+                    }
+                    let tx = tx.clone();
+                    tracker.spawn(async move {
+                        if let Err(error) = Self::process_message(tx, msg).await {
+                            warn!(?error, "error processing message in activity stream");
+                        }
+                    });
+                }
+                Err(error) => {
+                    warn!(?error, "Error processing activity stream");
+                }
+            }
+        }
+    }
+
+    pub async fn process_message(tx: UnboundedSender<Activity>, msg: Message) -> LayerDbResult<()> {
+        let activity = postcard::from_bytes::<Activity>(&msg.payload)?;
+        tx.send(activity).map_err(Box::new)?;
+        Ok(())
     }
 
     #[inline]
@@ -395,89 +374,57 @@ impl ActivityStream {
     }
 }
 
-impl Stream for ActivityStream {
-    type Item = LayerDbResult<AckActivity>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.inner.next()).poll(cx) {
-            // Process the message
-            Poll::Ready(Some(Ok(msg))) => {
-                let (msg, acker) = msg.split();
-
-                match postcard::from_bytes::<Activity>(&msg.payload) {
-                    // Successfully deserialized into an activity
-                    Ok(inner) => Poll::Ready(Some(Ok(AckActivity {
-                        inner,
-                        acker: Arc::new(acker),
-                    }))),
-                    // Error deserializing message
-                    Err(err) => {
-                        error!(?msg, "failure to deserialize message in activity stream");
-                        Poll::Ready(Some(Err(err.into())))
-                    }
-                }
-            }
-            // Upstream errors are propagated downstream
-            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
-            // If the upstream closes, then we do too
-            Poll::Ready(None) => Poll::Ready(None),
-            // Not ready, so...not ready!
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AckRebaseRequest {
+#[derive(Clone, Debug)]
+pub struct ActivityRebaseRequest {
     pub id: ActivityId,
     pub payload: RebaseRequest,
     pub metadata: LayeredEventMetadata,
-    acker: Arc<Acker>,
+    pub parent_activity_id: Option<ActivityId>,
 }
 
-impl Debug for AckRebaseRequest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "AckRebaseRequest {{ id: {:?}, payload: {:?}, metadata: {:?} }}",
-            self.id, self.payload, self.metadata
-        )
+impl TryFrom<Activity> for ActivityRebaseRequest {
+    type Error = LayerDbError;
+
+    fn try_from(activity: Activity) -> LayerDbResult<Self> {
+        let payload = match activity.payload {
+            ActivityPayload::RebaseRequest(payload) => payload,
+            _ => return Err(LayerDbError::ActivityRebase),
+        };
+        Ok(ActivityRebaseRequest {
+            id: activity.id,
+            payload,
+            metadata: activity.metadata,
+            parent_activity_id: activity.parent_activity_id,
+        })
     }
 }
 
-impl AckRebaseRequest {
-    pub async fn ack(&self) -> LayerDbResult<()> {
-        self.acker.ack().await.map_err(LayerDbError::NatsAck)
-    }
-
-    pub async fn ack_with(&self, kind: AckKind) -> LayerDbResult<()> {
-        self.acker
-            .ack_with(kind)
-            .await
-            .map_err(LayerDbError::NatsAck)
-    }
-
-    pub async fn double_ack(&self) -> LayerDbResult<()> {
-        self.acker.double_ack().await.map_err(LayerDbError::NatsAck)
-    }
+pub struct RebaserRequestWorkQueue {
+    tracker: TaskTracker,
+    shutdown_token: CancellationToken,
+    stream: Stream,
+    tx: tokio::sync::mpsc::UnboundedSender<ActivityRebaseRequest>,
 }
 
-pub struct RebaserRequestsWorkQueueStream {
-    inner: jetstream::consumer::pull::Stream,
-}
-
-impl RebaserRequestsWorkQueueStream {
+impl RebaserRequestWorkQueue {
+    const NAME: &'static str = "LayerDB::RebaserRequestWorkQueue";
     const CONSUMER_NAME: &'static str = "rebaser-requests";
 
-    pub(crate) async fn create(nats_client: &NatsClient) -> LayerDbResult<Self> {
+    pub async fn create(
+        nats_client: NatsClient,
+        shutdown_token: CancellationToken,
+    ) -> LayerDbResult<(Self, UnboundedReceiver<ActivityRebaseRequest>)> {
+        let tracker = TaskTracker::new();
         let context = jetstream::new(nats_client.as_inner().clone());
+
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Ensure the sourced stream is created
         let _activities =
             nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
                 .await?;
 
-        let inner = nats::rebaser_requests_work_queue_stream(
+        let stream = nats::rebaser_requests_work_queue_stream(
             &context,
             nats_client.metadata().subject_prefix(),
         )
@@ -487,7 +434,58 @@ impl RebaserRequestsWorkQueueStream {
         .messages()
         .await?;
 
-        Ok(Self { inner })
+        Ok((
+            Self {
+                tracker,
+                shutdown_token,
+                stream,
+                tx,
+            },
+            rx,
+        ))
+    }
+
+    pub async fn run(&mut self) {
+        let shutdown_token = self.shutdown_token.clone();
+        tokio::select! {
+            _ = self.process_messages() => {
+            }
+            _ = shutdown_token.cancelled() => {
+                debug!(task = Self::NAME, "received cancellation");
+            }
+        }
+
+        // All remaining work has been dispatched (i.e. spawned) so no more tasks will be spawned
+        self.tracker.close();
+        // Wait for all in-flight writes work to complete
+        self.tracker.wait().await;
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+
+    pub async fn process_messages(&mut self) {
+        while let Some(msg_result) = self.stream.next().await {
+            match msg_result {
+                Ok(msg) => {
+                    if let Err(error) = msg.ack().await {
+                        warn!(?error, "rebaser request work queue message ack error");
+                    }
+                    if let Err(error) = self.process_message(msg).await {
+                        error!(?error, "rebaser request has failed to process message");
+                    }
+                }
+                Err(error) => {
+                    warn!(?error, "rebaser request work queue has failed to get a message from the nats stream");
+                }
+            }
+        }
+    }
+
+    pub async fn process_message(&self, msg: Message) -> LayerDbResult<()> {
+        let activity = postcard::from_bytes::<Activity>(&msg.payload)?;
+        let rebase_activity = activity.try_into()?;
+        self.tx.send(rebase_activity).map_err(Box::new)?;
+        Ok(())
     }
 
     #[inline]
@@ -496,51 +494,6 @@ impl RebaserRequestsWorkQueueStream {
             durable_name: Some(Self::CONSUMER_NAME.to_string()),
             description: Some("rebaser requests consumer".to_string()),
             ..Default::default()
-        }
-    }
-}
-
-impl Stream for RebaserRequestsWorkQueueStream {
-    type Item = LayerDbResult<AckRebaseRequest>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.inner.next()).poll(cx) {
-            // Process the message
-            Poll::Ready(Some(Ok(msg))) => {
-                let (msg, acker) = msg.split();
-
-                match postcard::from_bytes::<Activity>(&msg.payload) {
-                    // Successfully deserialized into an activity
-                    Ok(activity) => match activity.payload {
-                        // Correct variant, convert to work-specific type
-                        ActivityPayload::RebaseRequest(req) => {
-                            warn!(?req, "received rebase request over pull channel");
-                            Poll::Ready(Some(Ok(AckRebaseRequest {
-                                id: activity.id,
-                                payload: req,
-                                metadata: activity.metadata,
-                                acker: Arc::new(acker),
-                            })))
-                        }
-                        // Unexpected variant, message is invalid
-                        _ => Poll::Ready(Some(Err(LayerDbError::UnexpectedActivityVariant(
-                            ActivityPayloadDiscriminants::RebaseRequest.to_subject(),
-                            ActivityPayloadDiscriminants::from(activity.payload).to_subject(),
-                        )))),
-                    },
-                    // Error deserializing message
-                    Err(err) => {
-                        warn!(?msg, "failed to deserialize message");
-                        Poll::Ready(Some(Err(err.into())))
-                    }
-                }
-            }
-            // Upstream errors are propagated downstream
-            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
-            // If the upstream closes, then we do too
-            Poll::Ready(None) => Poll::Ready(None),
-            // Not ready, so...not ready!
-            Poll::Pending => Poll::Pending,
         }
     }
 }

@@ -8,7 +8,6 @@ use tempfile::TempDir;
 use crate::TEST_PG_DBNAME;
 
 mod activities;
-mod chunking_nats;
 mod db;
 mod disk_cache;
 mod layer_cache;
@@ -137,6 +136,6 @@ pub async fn setup_nats_client(subject_prefix: Option<String>) -> NatsClient {
         .expect("failed to connect to nats")
 }
 
-pub fn redb_path(tempdir: &TempDir, name: &str) -> PathBuf {
-    tempdir.path().join(format!("{name}.redb"))
+pub fn disk_cache_path(tempdir: &TempDir, name: &str) -> PathBuf {
+    tempdir.path().join(format!("{name}-cacache"))
 }
