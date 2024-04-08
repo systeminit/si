@@ -733,6 +733,9 @@ async fn migrate_local_builtins(
     schemas::migrate_test_exclusive_schema_katy_perry(&ctx).await?;
     schemas::migrate_test_exclusive_schema_pirate(&ctx).await?;
     schemas::migrate_test_exclusive_schema_pet_shop(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_validated_input(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_validated_output(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_bad_validations(&ctx).await?;
 
     ctx.blocking_commit().await?;
 

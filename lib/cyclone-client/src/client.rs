@@ -1034,20 +1034,11 @@ mod tests {
         C: CycloneClient<Strm>,
     {
         let req = ValidationRequest {
-            execution_id: "1337".to_string(),
-            handler: "validate".to_string(),
-            value: "a string is a sequence of bytes".into(),
-            code_base64: base64_encode(
-                r"function validate(value) {
-                    console.log('i came here to chew bubblegum and validate prop values');
-                    console.log('and i\'m all out of gum');
-                    if (value === 'a string is a sequence of bytes') {
-                        return { valid: true };
-                    } else {
-                        return { valid: false, message: value + ' is not what i expected' };
-                    }
-                }",
-            ),
+            execution_id: "31337".to_string(),
+            handler: "".to_string(),
+            value: Some(33.into()),
+            validation_format: r#"{"type":"number","flags":{"presence":"required"},"rules":[{"name":"integer"},{"name":"min","args":{"limit":33}},{"name":"max","args":{"limit":33}}]}"#.to_string(),
+            code_base64: "".to_string(),
             before: vec![],
         };
         let mut progress = client
@@ -1058,33 +1049,6 @@ mod tests {
             .await
             .expect("failed to start protocol");
 
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(
-                        output.message,
-                        "i came here to chew bubblegum and validate prop values"
-                    );
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'bubblegum' output: err={err:?}"),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "and i'm all out of gum");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => {
-                    panic!("failed to receive 'all out of gum' output: err={err:?}")
-                }
-                None => panic!("output stream ended early"),
-            };
-        }
         loop {
             match progress.next().await {
                 None => {
@@ -1098,7 +1062,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert!(success.valid);
+                assert!(success.error.is_none());
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={failure:?}")

@@ -62,6 +62,13 @@ pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsR
                 )
                 .domain_prop(
                     PropSpec::builder()
+                        .name("working_eyes")
+                        .kind(PropKind::Integer)
+                        .validation_format(r#"{"type":"number","flags":{"presence":"required"},"rules":[{"name":"integer"},{"name":"min","args":{"limit":0}},{"name":"max","args":{"limit":2}}]}"#)
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
                         .name("parrot_names")
                         .kind(PropKind::Array)
                         .func_unique_id(&identity_func_spec.unique_id)

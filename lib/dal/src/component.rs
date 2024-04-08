@@ -81,6 +81,8 @@ pub enum ComponentError {
     CodeView(#[from] CodeViewError),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
+    #[error("component {0} has no attribute value for the root/domain prop")]
+    ComponentMissingDomainValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
     ComponentMissingNameValue(ComponentId),
     #[error("component {0} has no attribute value for the root/resource prop")]
@@ -951,6 +953,17 @@ impl Component {
         }
 
         Ok(result)
+    }
+
+    pub async fn domain_prop_attribute_value(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<AttributeValueId> {
+        self.attribute_values_for_prop(ctx, &["root", "domain"])
+            .await?
+            .first()
+            .cloned()
+            .ok_or(ComponentError::ComponentMissingDomainValue(self.id))
     }
 
     async fn values_for_all_sockets(

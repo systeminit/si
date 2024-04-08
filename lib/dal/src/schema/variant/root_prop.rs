@@ -118,6 +118,7 @@ impl RootProp {
             false,
             None,
             None,
+            None,
             PropParent::SchemaVariant(schema_variant_id),
         )
         .await?;
@@ -159,6 +160,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
@@ -195,6 +197,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
@@ -206,6 +209,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(leaf_prop.id()),
         )
         .await?;
@@ -214,24 +218,18 @@ impl RootProp {
     }
 
     async fn setup_si(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
-        let si_prop = Prop::new(
+        let si_prop = Prop::new_without_ui_optionals(
             ctx,
             "si",
             PropKind::Object,
-            false,
-            None,
-            None,
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
 
-        let _si_name_prop = Prop::new(
+        let _si_name_prop = Prop::new_without_ui_optionals(
             ctx,
             "name",
             PropKind::String,
-            false,
-            None,
-            None,
             PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
@@ -275,6 +273,7 @@ impl RootProp {
                     },
                 ])),
             )),
+            None,
             PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
@@ -287,6 +286,7 @@ impl RootProp {
             false,
             None,
             Some((WidgetKind::Color, None)),
+            None,
             PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
@@ -303,6 +303,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
@@ -313,6 +314,7 @@ impl RootProp {
             "status",
             PropKind::String,
             true,
+            None,
             None,
             None,
             PropParent::OrderedProp(resource_prop.id()),
@@ -327,6 +329,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
@@ -337,6 +340,7 @@ impl RootProp {
             "logs",
             PropKind::Array,
             true,
+            None,
             None,
             None,
             PropParent::OrderedProp(resource_prop.id()),
@@ -351,6 +355,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(resource_logs_prop.id()),
         )
         .await?;
@@ -363,6 +368,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
@@ -373,6 +379,7 @@ impl RootProp {
             "last_synced",
             PropKind::String,
             true,
+            None,
             None,
             None,
             PropParent::OrderedProp(resource_prop.id()),
@@ -393,6 +400,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(root_prop_id),
         )
         .await?;
@@ -411,6 +419,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(code_map_item_prop_id),
         )
         .await?;
@@ -420,6 +429,7 @@ impl RootProp {
             "format",
             PropKind::String,
             true,
+            None,
             None,
             None,
             PropParent::OrderedProp(code_map_item_prop_id),
@@ -443,6 +453,7 @@ impl RootProp {
             true,
             None,
             None,
+            None,
             PropParent::OrderedProp(qualification_map_item_prop_id),
         )
         .await?;
@@ -452,6 +463,7 @@ impl RootProp {
             "message",
             PropKind::String,
             true,
+            None,
             None,
             None,
             PropParent::OrderedProp(qualification_map_item_prop_id),

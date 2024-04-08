@@ -63,6 +63,7 @@ use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::validation::{ValidationError, ValidationOutput, ValidationOutputNode};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -191,6 +192,8 @@ pub enum AttributeValueError {
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
     UnexpectedGraphLayout(&'static str),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
     ValueSource(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
@@ -928,7 +931,7 @@ impl AttributeValue {
         let mut current_attribute_value_id = Some(attribute_value_id);
 
         while let Some(attribute_value_id) = current_attribute_value_id {
-            let empty_value = {
+            let prop_kind = {
                 let prop_id = match AttributeValue::is_for(ctx, attribute_value_id)
                     .await?
                     .prop_id()
@@ -946,20 +949,23 @@ impl AttributeValue {
                         .get_prop_node_weight()?
                 };
 
-                prop_node.kind().empty_value()
+                prop_node.kind()
             };
 
             let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
 
-            // If we have a set value, we don't need to vivify
-            if attribute_value.value.is_some() {
-                return Ok(());
-            } else {
-                Self::set_value(ctx, attribute_value_id, empty_value).await?;
-
-                current_attribute_value_id =
-                    AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
+            // If value is for scalar, just go to parent
+            if !prop_kind.is_scalar() {
+                // if value of non-scalar is set, we're done, else set the empty value
+                if attribute_value.value.is_some() {
+                    return Ok(());
+                } else {
+                    Self::set_value(ctx, attribute_value_id, prop_kind.empty_value()).await?;
+                }
             }
+
+            current_attribute_value_id =
+                AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
         }
 
         Ok(())
@@ -1922,7 +1928,7 @@ impl AttributeValue {
             )
         };
 
-        let content_value: Option<si_events::CasValue> = value.map(Into::into);
+        let content_value: Option<si_events::CasValue> = value.clone().map(Into::into);
         let content_unprocessed_value: Option<si_events::CasValue> =
             unprocessed_value.map(Into::into);
 
@@ -1971,6 +1977,29 @@ impl AttributeValue {
             .await?;
         workspace_snapshot.replace_references(av_idx).await?;
 
+        if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value_id)
+            .await?
+            .is_some()
+        {
+            // TODO(victor) the async job to execute this is already implement, but it races with the
+            // DVU in a way that they overwrite each other. Until this is fixed, we can run validations inline
+            // ctx.enqueue_compute_validations(attribute_value_id).await?;
+
+            let maybe_validation = ValidationOutput::compute_for_attribute_value_and_value(
+                ctx,
+                attribute_value_id,
+                value.clone(),
+            )
+            .await?;
+
+            ValidationOutputNode::upsert_or_wipe_for_attribute_value(
+                ctx,
+                attribute_value_id,
+                maybe_validation.clone(),
+            )
+            .await?;
+        }
+
         Ok(())
     }
 
@@ -1994,7 +2023,7 @@ impl AttributeValue {
     pub async fn prop_id_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<PropId> {
+    ) -> AttributeValueResult<Option<PropId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut maybe_prop_id = None;
@@ -2020,7 +2049,16 @@ impl AttributeValue {
             }
         }
 
-        maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+        Ok(maybe_prop_id)
+    }
+
+    pub async fn prop_id_for_id_or_error(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        Self::prop_id_for_id(ctx, attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 
     async fn fetch_value_from_store(
@@ -2097,7 +2135,7 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop_id_for_id(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
@@ -2169,7 +2207,7 @@ impl AttributeValue {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
-    /// Get the morale equivalent of the [`PropPath`]for a given [`AttributeValueId`].
+    /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
     #[instrument(level = "info", skip_all)]

@@ -8,6 +8,7 @@ use thiserror::Error;
 
 use crate::attribute::value::AttributeValueError;
 use crate::prop::PropError;
+use crate::validation::ValidationError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -51,6 +52,8 @@ pub enum PropertyEditorError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }

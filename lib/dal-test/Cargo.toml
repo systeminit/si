@@ -39,3 +39,4 @@ tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
+itertools = { workspace = true }

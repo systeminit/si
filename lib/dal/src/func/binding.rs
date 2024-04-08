@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
 
 use super::FuncError;
+use crate::func::backend::validation::FuncBackendValidation;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
     standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
@@ -243,7 +244,7 @@ impl FuncBinding {
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
             FuncBackendKind::Unset => Ok((None, None)),
             FuncBackendKind::Validation => {
-                unimplemented!("direct Validation function execution is deprecated")
+                FuncBackendValidation::create_and_execute(context, &func, &self.args, before).await
             }
             FuncBackendKind::JsValidation => {
                 unimplemented!("direct Validation function execution is deprecated")

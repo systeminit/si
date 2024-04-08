@@ -272,11 +272,10 @@ async fn executes_simple_validation() {
 
     let request = ValidationRequest {
         execution_id: "31337".to_string(),
-        handler: "isThirtyThree".to_string(),
-        value: 33.into(),
-        code_base64: base64_encode(
-            "function isThirtyThree(value) { return { valid: value === 33 }; };",
-        ),
+        handler: "".to_string(),
+        value: Some(33.into()),
+        validation_format: r#"{"type":"number","flags":{"presence":"required"},"rules":[{"name":"integer"},{"name":"min","args":{"limit":33}},{"name":"max","args":{"limit":33}}]}"#.to_string(),
+        code_base64: "".to_string(),
         before: vec![],
     };
 
@@ -288,7 +287,7 @@ async fn executes_simple_validation() {
     match result {
         FunctionResult::Success(success) => {
             assert_eq!(success.execution_id, "31337");
-            assert!(success.valid);
+            assert!(success.error.is_none());
         }
         FunctionResult::Failure(failure) => {
             panic!("function did not succeed and should have: {failure:?}")

@@ -8,9 +8,10 @@ function main() {
 
   const keys = requestStorage.getKeys();
 
+  console.log(`Before function 1 set b1="${b1}", Before function 2 said "${b3}", keys are ${keys}`);
+
   return {
-    valid: b1 && b2 === undefined && typeof b3 === "string",
-    message: `Before function 1 set b1="${b1}", Before function 2 said "${b3}", keys are ${keys}`,
+    status: b1 && b2 === undefined && typeof b3 === "string" ? "ok" : "error",
   };
 }
 

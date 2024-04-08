@@ -20,6 +20,7 @@ rust_library(
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:color-eyre",
         "//third-party/rust:derive_builder",
+        "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",
         "//third-party/rust:names",

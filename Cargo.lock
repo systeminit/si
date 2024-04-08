@@ -1360,6 +1360,7 @@ dependencies = [
  "color-eyre",
  "dal",
  "derive_builder",
+ "itertools 0.12.1",
  "jwt-simple",
  "lazy_static",
  "module-index-client",

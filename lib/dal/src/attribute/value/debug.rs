@@ -88,13 +88,12 @@ impl AttributeDebugView {
         let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
         let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
 
-        let prop_id = AttributeValue::prop_id_for_id(ctx, attribute_value_id).await?;
+        let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, attribute_value_id).await?;
 
         let prop = Prop::get_by_id(ctx, prop_id).await?;
-        let path = match AttributeValue::get_path_for_id(ctx, attribute_value_id).await? {
-            Some(path) => path,
-            None => String::new(),
-        };
+        let path = AttributeValue::get_path_for_id(ctx, attribute_value_id)
+            .await?
+            .unwrap_or_else(String::new);
         let prop_opt: Option<Prop> = Some(prop);
         let attribute_prototype_debug_view =
             AttributePrototypeDebugView::assemble(ctx, attribute_value_id).await?;
