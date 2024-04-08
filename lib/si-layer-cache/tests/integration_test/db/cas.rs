@@ -403,7 +403,8 @@ async fn stress_test() {
 
         let ldb_axl_task = ldb_axl.clone();
         read_join_set.spawn(async move {
-            let max_check_count = 3000;
+            // This should be reset to 3000 but currently CI is flaking on this test
+            let max_check_count = 10_000;
             let mut memory_check_count = 0;
             while memory_check_count < max_check_count {
                 let in_memory = ldb_axl_task

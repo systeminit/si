@@ -30,7 +30,6 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
-use si_layer_cache::persister::PersistStatus;
 use si_pkg::KeyOrIndex;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -260,7 +259,7 @@ impl WorkspaceSnapshot {
             // Mark everything left as seen.
             working_copy.mark_graph_seen(vector_clock_id)?;
 
-            let (new_address, status_reader) = ctx
+            let (new_address, _) = ctx
                 .layer_db()
                 .workspace_snapshot()
                 .write(
@@ -270,10 +269,6 @@ impl WorkspaceSnapshot {
                     ctx.events_actor(),
                 )
                 .await?;
-
-            if let PersistStatus::Error(e) = status_reader.get_status().await? {
-                return Err(e)?;
-            }
 
             new_address
         };
@@ -545,7 +540,7 @@ impl WorkspaceSnapshot {
         let snapshot = ctx
             .layer_db()
             .workspace_snapshot()
-            .read(&workspace_snapshot_addr)
+            .read_wait_for_memory(&workspace_snapshot_addr)
             .await?
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
                 workspace_snapshot_addr,

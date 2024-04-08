@@ -82,8 +82,8 @@ rebaser_target = "//bin/rebaser:rebaser"
 local_resource(
     "rebaser",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(rebaser_target),
-    serve_cmd = "buck2 run {}".format(rebaser_target),
+    cmd = "buck2 build @//mode/release {}".format(rebaser_target),
+    serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target),
     allow_parallel = True,
     resource_deps = [
         "nats",
@@ -117,8 +117,8 @@ pinga_target = "//bin/pinga:pinga"
 local_resource(
     "pinga",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(pinga_target),
-    serve_cmd = "buck2 run {}".format(pinga_target),
+    cmd = "buck2 build @//mode/release {}".format(pinga_target),
+    serve_cmd = "buck2 run @//mode/release {}".format(pinga_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
@@ -135,8 +135,8 @@ veritech_target = "//bin/veritech:veritech"
 local_resource(
     "veritech",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(veritech_target),
-    serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
+    cmd = "buck2 build @//mode/release {}".format(veritech_target),
+    serve_cmd = "SI_LOG=debug buck2 run @//mode/release {}".format(veritech_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
@@ -155,8 +155,8 @@ sdf_target = "//bin/sdf:sdf"
 local_resource(
     "sdf",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(sdf_target),
-    serve_cmd = "buck2 run {}".format(sdf_target),
+    cmd = "buck2 build @//mode/release {}".format(sdf_target),
+    serve_cmd = "buck2 run @//mode/release {}".format(sdf_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
