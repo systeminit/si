@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::ContentHash;
 use ulid::Ulid;
 
@@ -21,7 +22,7 @@ pub struct PropNodeWeight {
     id: Ulid,
     lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     kind: PropKind,
     name: String,
     can_be_used_as_prototype_arg: bool,
@@ -42,7 +43,7 @@ impl PropNodeWeight {
             id,
             lineage_id: change_set.generate_ulid()?,
             content_address,
-            merkle_tree_hash: ContentHash::default(),
+            merkle_tree_hash: MerkleTreeHash::default(),
             kind,
             name,
             can_be_used_as_prototype_arg: false,
@@ -114,7 +115,7 @@ impl PropNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
@@ -156,7 +157,7 @@ impl PropNodeWeight {
         }])
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 
