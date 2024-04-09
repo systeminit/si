@@ -14,7 +14,7 @@ use thiserror::Error;
 
 use crate::change_set::ChangeSetError;
 use crate::deprecated_action::batch::DeprecatedActionBatchId;
-use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::func::binding::return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightError;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;

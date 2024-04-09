@@ -21,7 +21,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::binding_return_value::FuncBindingReturnValueError,
+    func::binding::return_value::FuncBindingReturnValueError,
     implement_add_edge_to,
     layer_db_types::{DeprecatedActionBatchContent, DeprecatedActionBatchContentV1},
     pk, ActionCompletionStatus, ActionPrototypeError, ComponentError, DalContext,

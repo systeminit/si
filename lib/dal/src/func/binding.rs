@@ -35,10 +35,12 @@ use crate::{
 use crate::{DalContext, Tenancy};
 
 use super::{
-    binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    binding::return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     execution::{FuncExecution, FuncExecutionError},
     FuncId,
 };
+
+pub mod return_value;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

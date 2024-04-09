@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::func::authoring;
-use dal::func::view::FuncAssociations;
+use dal::func::authoring::FuncAuthoringClient;
+use dal::func::FuncAssociations;
 use dal::{ChangeSet, Func, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +35,7 @@ pub async fn save_func(
 
     let request_id = request.id;
 
-    let (save_response, _) = authoring::save_func(
+    let (save_response, _) = FuncAuthoringClient::save_func(
         &ctx,
         request.id,
         request.display_name,

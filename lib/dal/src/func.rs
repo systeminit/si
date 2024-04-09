@@ -32,14 +32,16 @@ pub mod argument;
 pub mod authoring;
 pub mod backend;
 pub mod binding;
-pub mod binding_return_value;
 pub mod execution;
 pub mod intrinsics;
 pub mod view;
 
+mod associations;
 mod before;
 mod kind;
 
+pub use associations::AttributePrototypeView;
+pub use associations::FuncAssociations;
 pub use before::before_funcs_for_component;
 pub use before::BeforeFuncError;
 pub use kind::FuncKind;
