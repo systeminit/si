@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    func::binding_return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
+    func::binding::return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     DeprecatedActionBatchError, DeprecatedActionRunnerError, StandardModelError, TransactionsError,
     UserError, UserPk,
 };

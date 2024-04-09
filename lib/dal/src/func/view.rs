@@ -3,12 +3,13 @@ use telemetry::prelude::debug;
 use thiserror::Error;
 
 use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
-use crate::func::authoring::{compile_langjs_types, compile_return_types};
+use crate::func::associations::FuncAssociations;
+use crate::func::authoring::FuncAuthoringClient;
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
-    ActionKind, ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, SchemaVariantError, SchemaVariantId,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
+    SchemaVariantError,
 };
 
 pub mod summary;
@@ -25,49 +26,6 @@ pub enum FuncViewError {
 }
 
 type FuncViewResult<T> = Result<T, FuncViewError>;
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeView {}
-
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ValidationPrototypeView {
-//     schema_variant_id: SchemaVariantId,
-//     prop_id: PropId,
-// }
-//
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum FuncAssociations {
-    #[serde(rename_all = "camelCase")]
-    Action {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        kind: ActionKind,
-    },
-    #[serde(rename_all = "camelCase")]
-    Attribute {
-        prototypes: Vec<AttributePrototypeView>,
-        arguments: Vec<FuncArgumentView>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Authentication {
-        schema_variant_ids: Vec<SchemaVariantId>,
-    },
-    #[serde(rename_all = "camelCase")]
-    CodeGeneration {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        component_ids: Vec<ComponentId>,
-        inputs: Vec<LeafInputLocation>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Qualification {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        component_ids: Vec<ComponentId>,
-        inputs: Vec<LeafInputLocation>,
-    },
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -229,9 +187,12 @@ impl FuncView {
         };
 
         let types = [
-            compile_return_types(func.backend_response_type, func.backend_kind),
+            FuncAuthoringClient::compile_return_types(
+                func.backend_response_type,
+                func.backend_kind,
+            ),
             &input_type,
-            compile_langjs_types(),
+            FuncAuthoringClient::compile_langjs_types(),
         ]
         .join("\n");
 

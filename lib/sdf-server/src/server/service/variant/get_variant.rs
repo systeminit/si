@@ -1,6 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
-use dal::func::authoring::compile_return_types;
+use dal::func::authoring::FuncAuthoringClient;
 use dal::func::view::summary::FuncSummary;
 use dal::{ComponentType, Func, SchemaVariant, SchemaVariantId, Timestamp, Visibility};
 use serde::{Deserialize, Serialize};
@@ -71,9 +71,11 @@ pub async fn get_variant(
             .code_plaintext()?
             .ok_or(SchemaVariantError::FuncIsEmpty(asset_func.id))?;
 
-        response.types =
-            compile_return_types(asset_func.backend_response_type, asset_func.backend_kind)
-                .to_string();
+        response.types = FuncAuthoringClient::compile_return_types(
+            asset_func.backend_response_type,
+            asset_func.backend_kind,
+        )
+        .to_string();
     }
 
     // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;

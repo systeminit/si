@@ -1,50 +1,17 @@
-//! This module contains [`SavedFunc`], which is used for saving [`Funcs`](Func) in the [`Func`]
-//! authoring experience.
+//! This module contains [`save_func`] and everything it needs.
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
-use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
-use crate::func::view::{FuncAssociations, FuncView};
+use crate::func::associations::FuncAssociations;
+use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult, SavedFunc};
+use crate::func::view::FuncView;
 use crate::func::FuncKind;
 use crate::{
     ActionKind, ActionPrototype, DalContext, Func, FuncId, SchemaVariant, SchemaVariantId,
 };
 
-// /// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and
-// /// [`AttributeValues`](dal::AttributeValue) that are currently associated with a function but
-// /// that are having their association removed.
-// ///
-// /// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that
-// /// value using a builtin value function, like `si:setString`, etc.
-// ///
-// /// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
-// #[remain::sorted]
-// #[derive(Debug)]
-// enum RemovedPrototypeOp {
-//     Delete,
-//     Reset,
-// }
-
-/// The result of creating a [`Func`] via [`SavedFunc::run`].
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SavedFunc {
-    /// The [associations](FuncAssociations) for a saved [`Func`].
-    pub associations: Option<FuncAssociations>,
-    /// Indicates the success of saving the [`Func`].
-    pub success: bool,
-    /// Indicates if the [`Func`] is ["revertible"](Func::is_revertible).
-    pub is_revertible: bool,
-    /// The compiled types for the saved [`Func`].
-    pub types: String,
-}
-
-/// Saves a [`Func`] and returns the [result](SavedFunc).
-#[instrument(name = "func.authoring.save_func", level = "info", skip_all)]
-pub async fn save_func(
+pub(crate) async fn save_func(
     ctx: &DalContext,
     id: FuncId,
     display_name: Option<String>,

@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::func::authoring::CreateFuncOptions;
-use dal::func::{authoring, FuncKind};
+use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient};
+use dal::func::FuncKind;
 use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
 
@@ -40,7 +40,7 @@ pub async fn create_func(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let created_func =
-        authoring::create_func(&ctx, request.kind, request.name, request.options).await?;
+        FuncAuthoringClient::create_func(&ctx, request.kind, request.name, request.options).await?;
 
     track(
         &posthog_client,

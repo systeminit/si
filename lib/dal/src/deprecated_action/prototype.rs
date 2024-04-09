@@ -19,8 +19,8 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::ActionRunResult,
+    func::binding::return_value::FuncBindingReturnValueError,
     func::binding::{FuncBinding, FuncBindingError},
-    func::binding_return_value::FuncBindingReturnValueError,
     func::{before_funcs_for_component, BeforeFuncError},
     implement_add_edge_to,
     layer_db_types::{ActionPrototypeContent, ActionPrototypeContentV1},

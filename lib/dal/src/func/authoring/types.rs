@@ -10,8 +10,7 @@ const SCHEMA_VARIANT_DEFINITION_TYPES: &str = concat!(
     "type Output = any;"
 );
 
-/// Compiles return types based on a [`FuncBackendResponseType`] and [`FuncBackendKind`].
-pub fn compile_return_types(
+pub(crate) fn compile_return_types(
     response_type: FuncBackendResponseType,
     kind: FuncBackendKind,
 ) -> &'static str {
@@ -76,8 +75,8 @@ pub fn compile_return_types(
 // TODO: use execa types instead of any
 // TODO: add os, fs and path types (possibly fetch but I think it comes with DOM)
 
-/// Compiles types corresponding to "lang-js".
-pub fn compile_langjs_types() -> &'static str {
+// #[allow(missing_docs)]
+pub(crate) fn compile_langjs_types() -> &'static str {
     "declare namespace YAML {
     function stringify(obj: unknown): string;
 }

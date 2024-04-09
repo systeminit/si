@@ -10,7 +10,7 @@ use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
 use crate::{
-    func::binding_return_value::FuncBindingReturnValueError,
+    func::binding::return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
     Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
 };

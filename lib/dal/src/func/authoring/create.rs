@@ -1,16 +1,14 @@
-//! This module contains [`CreatedFunc`], which provides the ability to create [`Funcs`](Func) in
-//! the [`Func`] authoring experience.
+//! This module contains [`create_func`] and everything it needs.
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
-use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
+use crate::func::authoring::{
+    CreateFuncOptions, CreatedFunc, FuncAuthoringError, FuncAuthoringResult,
+};
 use crate::func::FuncKind;
 use crate::{
-    generate_name, ActionKind, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId,
-    OutputSocketId, PropId, SchemaVariant, SchemaVariantId,
+    generate_name, DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariant,
 };
 
 static DEFAULT_CODE_HANDLER: &str = "main";
@@ -23,59 +21,7 @@ static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("data/defaults/authentic
 #[allow(dead_code)]
 static DEFAULT_VALIDATION_CODE: &str = include_str!("data/defaults/validation.ts");
 
-#[allow(missing_docs)]
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum AttributeOutputLocation {
-    #[serde(rename_all = "camelCase")]
-    OutputSocket { output_socket_id: OutputSocketId },
-    #[serde(rename_all = "camelCase")]
-    Prop { prop_id: PropId },
-}
-
-#[allow(missing_docs)]
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum CreateFuncOptions {
-    #[serde(rename_all = "camelCase")]
-    ActionOptions {
-        schema_variant_id: SchemaVariantId,
-        action_kind: ActionKind,
-    },
-    #[serde(rename_all = "camelCase")]
-    AttributeOptions {
-        schema_variant_id: SchemaVariantId,
-        output_location: AttributeOutputLocation,
-    },
-    #[serde(rename_all = "camelCase")]
-    AuthenticationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
-    CodeGenerationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
-    QualificationOptions { schema_variant_id: SchemaVariantId },
-}
-
-/// The result of creating a [`Func`] via [`CreatedFunc::run`].
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreatedFunc {
-    /// The id of the created [`Func`].
-    pub id: FuncId,
-    /// The handler of the created [`Func`].
-    pub handler: Option<String>,
-    /// The [kind](FuncKind) of the created [`Func`].
-    pub kind: FuncKind,
-    /// The name of the created [`Func`].
-    pub name: String,
-    /// The code for the created [`Func`].
-    pub code: Option<String>,
-}
-
-/// Creates a [`Func`] and returns the [result](CreatedFunc).
-#[instrument(name = "func.authoring.create_func", level = "info", skip_all)]
-pub async fn create_func(
+pub(crate) async fn create_func(
     ctx: &DalContext,
     kind: FuncKind,
     name: Option<String>,
