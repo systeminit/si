@@ -10,9 +10,8 @@ pub use petgraph::Direction;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use thiserror::Error;
-use ulid::Ulid;
 
 use telemetry::prelude::*;
 

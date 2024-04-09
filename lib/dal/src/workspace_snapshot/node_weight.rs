@@ -2,10 +2,12 @@ use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    {ulid::Ulid, ContentHash},
+};
 use strum::EnumDiscriminants;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;

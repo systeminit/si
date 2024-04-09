@@ -35,7 +35,7 @@ macro_rules! pk {
 
         impl $name {
             /// An unset id value.
-            pub const NONE: Self = Self(ulid::Ulid::nil());
+            pub const NONE: Self = Self(::ulid::Ulid::nil());
 
             /// Returns `true` if id is set (i.e. not [`NONE`](Self::NONE)).
             pub fn is_some(&self) -> bool {
@@ -58,6 +58,12 @@ macro_rules! pk {
             }
         }
 
+        impl From<::si_events::ulid::Ulid> for $name {
+            fn from(events_ulid: ::si_events::ulid::Ulid) -> Self {
+                events_ulid.inner().into()
+            }
+        }
+
         impl From<Option<$name>> for $name {
             fn from(optional_pk: Option<$name>) -> Self {
                 match optional_pk {
@@ -73,9 +79,21 @@ macro_rules! pk {
             }
         }
 
-        impl<'a> From<&'a $name> for ulid::Ulid {
+        impl<'a> From<&'a $name> for ::ulid::Ulid {
             fn from(pk: &'a $name) -> Self {
                 pk.0
+            }
+        }
+
+        impl From<$name> for ::si_events::ulid::Ulid {
+            fn from(pk: $name) -> Self {
+                pk.0.into()
+            }
+        }
+
+        impl<'a> From<&'a $name> for ::si_events::ulid::Ulid {
+            fn from(pk: &'a $name) -> Self {
+                pk.0.into()
             }
         }
 

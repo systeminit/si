@@ -42,6 +42,7 @@ where
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
         let postcard_value = postcard::to_stdvec(&value)?;
+        dbg!(postcard_value.len());
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 

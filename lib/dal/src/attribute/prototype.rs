@@ -137,7 +137,7 @@ impl AttributePrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
-        let prototype = AttributePrototype::assemble(AttributePrototypeId::from(id), &content);
+        let prototype = AttributePrototype::assemble(id.into(), &content);
 
         Self::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use()).await?;
 

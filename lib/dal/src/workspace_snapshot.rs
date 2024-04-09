@@ -36,11 +36,9 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use petgraph::prelude::*;
 use si_data_pg::PgError;
-use si_events::ContentHash;
-use si_events::WorkspaceSnapshotAddress;
+use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;

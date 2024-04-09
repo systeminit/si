@@ -29,8 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_pg::PgError;
-use si_events::ContentHash;
-use si_events::EncryptedSecretKey;
+use si_events::{ulid::Ulid, ContentHash, EncryptedSecretKey};
 use si_hash::Hash;
 use si_layer_cache::LayerDbError;
 use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
@@ -39,7 +38,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use thiserror::Error;
-use ulid::Ulid;
 use veritech_client::SensitiveContainer;
 
 use crate::key_pair::KeyPairPk;

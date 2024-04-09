@@ -4,7 +4,7 @@
 use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
 use si_pkg::{
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
@@ -15,7 +15,6 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 use url::ParseError;
 
 use crate::attribute::prototype::argument::{

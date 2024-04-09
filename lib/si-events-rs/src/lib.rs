@@ -7,6 +7,7 @@ mod actor;
 mod cas;
 mod encrypted_secret;
 mod tenancy;
+pub mod ulid;
 mod web_event;
 
 pub use crate::{

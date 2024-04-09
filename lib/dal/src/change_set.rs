@@ -6,10 +6,10 @@ use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use ulid::{Generator, Ulid};
+use ulid::Generator;
 
 use si_data_pg::{PgError, PgRow};
-use si_events::WorkspaceSnapshotAddress;
+use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
 use crate::context::RebaseRequest;
@@ -158,7 +158,7 @@ impl TryFrom<PgRow> for ChangeSet {
 impl ChangeSet {
     pub fn new_local() -> ChangeSetResult<Self> {
         let mut generator = Generator::new();
-        let id = generator.generate()?;
+        let id: Ulid = generator.generate()?.into();
 
         Ok(Self {
             id: id.into(),
@@ -255,6 +255,7 @@ impl ChangeSet {
             .lock()
             .map_err(|e| ChangeSetError::Mutex(e.to_string()))?
             .generate()
+            .map(Into::into)
             .map_err(Into::into)
     }
 

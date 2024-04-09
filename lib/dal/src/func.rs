@@ -1,13 +1,12 @@
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
