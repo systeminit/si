@@ -420,10 +420,6 @@ async fn install_builtins(
         match res {
             Ok(pkg) => {
                 let instant = Instant::now();
-                println!("import {pkg_name}");
-                if pkg_name == "si-docker-image-builtin-20240130" {
-                    dbg!(&pkg);
-                }
 
                 if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
