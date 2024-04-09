@@ -3,7 +3,7 @@ use crate::schemas::schema_helpers::{
     create_identity_func,
 };
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ComponentType};
+use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
@@ -14,8 +14,10 @@ use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut kp_builder = PkgSpec::builder();
 
+    let schema_name = "katy perry";
+
     kp_builder
-        .name("katy perry")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -51,12 +53,12 @@ pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> Built
         build_codegen_func(string_codegen_func_code, string_codegen_fn_name).await?;
 
     let kp_schema = SchemaSpec::builder()
-        .name("katy perry")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("katy perry")
+                .name(schema_name)
                 .category("test exclusive")
-                .category_name("katy perry")
+                .category_name(schema_name)
                 .build()
                 .expect("schema spec data build"),
         )
@@ -114,16 +116,8 @@ pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> Built
         .schema(kp_schema)
         .build()?;
 
-    let kp_pkg = SiPkg::load_from_spec(kp_spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &kp_pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["katy perry".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    let pkg = SiPkg::load_from_spec(kp_spec)?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(())
 }

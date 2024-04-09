@@ -34,7 +34,6 @@ impl JobProcessorConnector for NatsProcessor {
         config: &Config,
     ) -> Result<(Self::Client, Box<dyn JobQueueProcessor + Send + Sync>), ServerError> {
         let job_client = Server::connect_to_nats(config.nats()).await?;
-        dbg!(&job_client);
         let job_processor = Box::new(NatsProcessor::new(job_client.clone()))
             as Box<dyn JobQueueProcessor + Send + Sync>;
         Ok((job_client, job_processor))

@@ -3,7 +3,7 @@ use crate::schemas::schema_helpers::{
     create_identity_func,
 };
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ActionKind, ComponentType};
+use dal::{prop::PropPath, ActionKind, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
@@ -15,8 +15,10 @@ use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
 
+    let schema_name = "swifty";
+
     swifty_builder
-        .name("swifty")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -62,12 +64,12 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
     let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name).await?;
 
     let swifty_schema = SchemaSpec::builder()
-        .name("swifty")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("swifty")
+                .name(schema_name)
                 .category("test exclusive")
-                .category_name("swifty")
+                .category_name(schema_name)
                 .build()
                 .expect("schema spec data build"),
         )
@@ -151,15 +153,7 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
         .build()?;
 
     let swifty_pkg = SiPkg::load_from_spec(swifty_spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &swifty_pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["swifty".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
 
     Ok(())
 }

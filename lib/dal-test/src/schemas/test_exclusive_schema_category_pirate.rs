@@ -1,6 +1,6 @@
 use crate::schemas::schema_helpers::{build_asset_func, create_identity_func};
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ComponentType};
+use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
@@ -13,8 +13,10 @@ const CATEGORY: &str = "pirate";
 pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
+    let schema_name = "pirate";
+
     builder
-        .name("pirate")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -25,10 +27,10 @@ pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsR
     let authoring_schema_func = build_asset_func(fn_name).await?;
 
     let schema = SchemaSpec::builder()
-        .name("pirate")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("pirate")
+                .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
                 .build()
@@ -124,15 +126,7 @@ pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsR
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["pirate".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(())
 }
@@ -220,15 +214,7 @@ pub async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> Builtin
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec![schema_name.into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(())
 }

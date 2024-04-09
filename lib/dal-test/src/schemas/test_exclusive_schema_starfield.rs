@@ -1,7 +1,7 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ActionKind};
+use dal::{prop::PropPath, ActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::SchemaSpecData;
 use si_pkg::{
@@ -13,8 +13,10 @@ use si_pkg::{
 pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut starfield_builder = PkgSpec::builder();
 
+    let schema_name = "starfield";
+
     starfield_builder
-        .name("starfield")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -176,12 +178,12 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         .build()?;
 
     let starfield_schema = SchemaSpec::builder()
-        .name("starfield")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("starfield")
+                .name(schema_name)
                 .category("test exclusive")
-                .category_name("starfield")
+                .category_name(schema_name)
                 .build()
                 .expect("schema spec data build"),
         )
@@ -408,15 +410,7 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         .build()?;
 
     let starfield_pkg = SiPkg::load_from_spec(starfield_spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &starfield_pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["starfield".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &starfield_pkg, None).await?;
 
     Ok(())
 }
