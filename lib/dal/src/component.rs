@@ -1191,7 +1191,7 @@ impl Component {
         while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
             let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
+            let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
             let this_tuple = ControllingFuncData {
                 func_id,

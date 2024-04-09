@@ -193,7 +193,7 @@ impl QualificationView {
                 None => return Ok(None),
             };
 
-        let func = Func::get_by_id(ctx, *func_execution.func_id()).await?;
+        let func = Func::get_by_id_or_error(ctx, *func_execution.func_id()).await?;
 
         let func_metadata = func.metadata_view();
 

@@ -678,6 +678,23 @@ impl SchemaVariant {
         Ok(())
     }
 
+    pub async fn remove_authentication_prototype(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let change_set = ctx.change_set()?;
+        ctx.workspace_snapshot()?
+            .remove_edge_for_ulids(
+                change_set,
+                schema_variant_id,
+                func_id,
+                EdgeWeightKindDiscriminants::AuthenticationPrototype,
+            )
+            .await?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     async fn get_content(
         ctx: &DalContext,
@@ -1107,7 +1124,7 @@ impl SchemaVariant {
                     .get_func_node_weight()?;
 
                 if node_weight.func_kind() == FuncKind::Attribute {
-                    let func = Func::get_by_id(ctx, func_id).await?;
+                    let func = Func::get_by_id_or_error(ctx, func_id).await?;
                     all_funcs.push(func);
                 }
             }
@@ -1118,7 +1135,7 @@ impl SchemaVariant {
             {
                 if let EdgeWeightKind::Prototype(Some(key)) = edge_weight.kind() {
                     if let Some(func_id) = Func::find_by_name(ctx, key).await? {
-                        let func = Func::get_by_id(ctx, func_id).await?;
+                        let func = Func::get_by_id_or_error(ctx, func_id).await?;
                         all_funcs.push(func);
                     }
                 }
@@ -1129,7 +1146,7 @@ impl SchemaVariant {
         let auth_func_ids =
             Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await?;
         for auth_func_id in auth_func_ids {
-            let auth_func = Func::get_by_id(ctx, auth_func_id).await?;
+            let auth_func = Func::get_by_id_or_error(ctx, auth_func_id).await?;
             // We may not need this - the list_auth_func_ids_for_schema_variant returns multiple
             // of the same type
             if !all_funcs.contains(&auth_func) {
@@ -1150,7 +1167,7 @@ impl SchemaVariant {
             let ap = ActionPrototype::get_by_id(ctx, weight.id().into())
                 .await
                 .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?;
-            let func = Func::get_by_id(
+            let func = Func::get_by_id_or_error(
                 ctx,
                 ap.func_id(ctx)
                     .await

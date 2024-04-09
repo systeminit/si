@@ -8,6 +8,7 @@ use std::sync::Arc;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
+use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -41,7 +42,7 @@ impl ActionPrototypeView {
         ctx: &DalContext,
         prototype: ActionPrototype,
     ) -> ActionPrototypeResult<ActionPrototypeView> {
-        let func = Func::get_by_id(ctx, prototype.func_id(ctx).await?).await?;
+        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
         let display_name = func.display_name.map(|dname| dname.to_string());
         Ok(Self {
             id: prototype.id,
@@ -147,7 +148,7 @@ pk!(ActionPrototypeId);
 pub struct ActionPrototype {
     pub id: ActionPrototypeId,
     pub kind: ActionKind,
-    name: Option<String>,
+    pub name: Option<String>,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -349,6 +350,16 @@ impl ActionPrototype {
             }
             None => None,
         })
+    }
+
+    pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> AttributePrototypeResult<()> {
+        let change_set = ctx.change_set()?;
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, id)
+            .await?;
+
+        Ok(())
     }
 }
 

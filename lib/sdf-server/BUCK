@@ -52,11 +52,7 @@ rust_library(
         "//third-party/rust:y-sync",
         "//third-party/rust:yrs",
     ],
-    srcs = glob([
-        "src/**/*.rs",
-        "src/server/service/func/defaults/*.ts",
-        "src/server/service/ts_types/*.ts",
-    ]),
+    srcs = glob(["src/**/*.rs"]),
     extra_test_targets = [":test-integration"],
 )
 

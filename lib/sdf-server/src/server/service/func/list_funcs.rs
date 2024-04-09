@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::func::view::FuncSummary;
+use dal::func::view::summary::FuncSummary;
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ pub async fn list_funcs(
 ) -> FuncResult<Json<ListFuncsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let funcs = FuncSummary::list(&ctx, None).await?;
+    let funcs = FuncSummary::list(&ctx).await?;
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

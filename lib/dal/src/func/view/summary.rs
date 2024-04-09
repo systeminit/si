@@ -1,41 +1,41 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
+use crate::func::view::FuncViewResult;
 use crate::func::FuncKind;
-use crate::{
-    DalContext, Func, FuncError, FuncId, SchemaVariant, SchemaVariantError, SchemaVariantId,
-};
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum FuncSummaryError {
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
-}
-
-type FuncSummaryResult<T> = Result<T, FuncSummaryError>;
+use crate::{DalContext, Func, FuncId, SchemaVariant, SchemaVariantId};
 
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncSummary {
-    id: FuncId,
-    handler: Option<String>,
-    kind: FuncKind,
-    name: String,
-    display_name: Option<String>,
-    is_builtin: bool,
+    pub id: FuncId,
+    pub handler: Option<String>,
+    pub kind: FuncKind,
+    pub name: String,
+    pub display_name: Option<String>,
+    pub is_builtin: bool,
 }
 
 impl FuncSummary {
+    /// Returns the [summaries](FuncSummary) for all [`Funcs`](Func) in the [`ChangeSet`](crate::ChangeSet).
+    pub async fn list(ctx: &DalContext) -> FuncViewResult<Vec<Self>> {
+        Self::list_inner(ctx, None).await
+    }
+
+    /// Returns the [summaries](FuncSummary) that are associated with the provided [variant](SchemaVariant).
+    pub async fn list_for_schema_variant_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncViewResult<Vec<Self>> {
+        Self::list_inner(ctx, Some(schema_variant_id)).await
+    }
+
     /// By default, this returns a list of [`Func`] [summaries](FuncSummary) for the entire
     /// workspace. If a [`SchemaVariantId`](SchemaVariant) is passed in, it will only return
     /// [summaries](FuncSummary) that are associated with the [variant](SchemaVariant).
-    pub async fn list(
+    async fn list_inner(
         ctx: &DalContext,
         schema_variant_id: Option<SchemaVariantId>,
-    ) -> FuncSummaryResult<Vec<Self>> {
+    ) -> FuncViewResult<Vec<Self>> {
         let funcs = match schema_variant_id {
             Some(provided_schema_variant_id) => {
                 SchemaVariant::all_funcs(ctx, provided_schema_variant_id).await?
@@ -73,9 +73,5 @@ impl FuncSummary {
         func_summaries.sort_by(|a, b| a.name.cmp(&b.name));
 
         Ok(func_summaries)
-    }
-
-    pub fn name(&self) -> String {
-        self.name.to_owned()
     }
 }

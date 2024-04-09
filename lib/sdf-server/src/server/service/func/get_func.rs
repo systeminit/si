@@ -1,10 +1,10 @@
 use axum::{extract::Query, Json};
 use serde::{Deserialize, Serialize};
 
-use dal::func::FuncKind;
+use dal::func::view::FuncView;
 use dal::{Func, FuncId, Visibility};
 
-use super::{FuncAssociations, FuncResult};
+use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -33,20 +33,7 @@ pub struct GetFuncRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetFuncResponse {
-    pub id: FuncId,
-    pub kind: FuncKind,
-    pub name: String,
-    pub display_name: Option<String>,
-    pub description: Option<String>,
-    pub code: Option<String>,
-    pub types: String,
-    pub is_builtin: bool,
-    pub is_revertible: bool,
-    pub associations: Option<FuncAssociations>,
-}
+type GetFuncResponse = FuncView;
 
 pub async fn get_func(
     HandlerContext(builder): HandlerContext,
@@ -55,11 +42,10 @@ pub async fn get_func(
 ) -> FuncResult<Json<GetFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    dbg!("get_func");
+    let func = Func::get_by_id_or_error(&ctx, request.id).await?;
+    let view = FuncView::assemble(&ctx, &func).await?;
 
-    let func = Func::get_by_id(&ctx, request.id).await?;
-
-    Ok(Json(super::get_func_view(&ctx, &func).await?))
+    Ok(Json(view))
 }
 
 // pub async fn get_latest_func_execution(

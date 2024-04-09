@@ -1,11 +1,11 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
-use dal::func::view::FuncSummary;
+use dal::func::authoring::compile_return_types;
+use dal::func::view::summary::FuncSummary;
 use dal::{ComponentType, Func, SchemaVariant, SchemaVariantId, Timestamp, Visibility};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::service::func::compile_return_types;
 use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -65,7 +65,7 @@ pub async fn get_variant(
     };
 
     if let Some(authoring_func) = variant.asset_func_id() {
-        let asset_func = Func::get_by_id(&ctx, authoring_func).await?;
+        let asset_func = Func::get_by_id_or_error(&ctx, authoring_func).await?;
 
         response.code = asset_func
             .code_plaintext()?
@@ -79,7 +79,7 @@ pub async fn get_variant(
     // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
     // response.has_components = has_components;
 
-    response.funcs = FuncSummary::list(&ctx, Some(request.id)).await?;
+    response.funcs = FuncSummary::list_for_schema_variant_id(&ctx, request.id).await?;
 
     // track(
     //     &posthog_client,

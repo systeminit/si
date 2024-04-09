@@ -54,7 +54,7 @@ pub async fn list_queued_actions(
     {
         let mut display_name = None;
         let prototype = action.prototype(&ctx).await?;
-        let func = Func::get_by_id(&ctx, prototype.func_id(&ctx).await?).await?;
+        let func = Func::get_by_id_or_error(&ctx, prototype.func_id(&ctx).await?).await?;
         if func.display_name.is_some() {
             display_name = func.display_name.as_ref().map(|dname| dname.to_string());
         }

@@ -89,7 +89,7 @@ async fn import_change_set(
             || func_spec.is_from_builtin().unwrap_or(false)
         {
             if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
-                let func = Func::get_by_id(ctx, func_id).await?;
+                let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
                 thing_map.insert(
                     change_set_id,
