@@ -8,5 +8,6 @@ CREATE TABLE change_set_pointers
     status                     text                     NOT NULL,
 
     workspace_id               ident                    REFERENCES workspaces (pk) DEFERRABLE,
-    workspace_snapshot_address text
+    workspace_snapshot_address text,
+    merge_requested_by_user_id ident
 );

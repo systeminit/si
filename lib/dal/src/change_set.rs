@@ -128,6 +128,7 @@ pub struct ChangeSet {
     pub base_change_set_id: Option<ChangeSetId>,
     pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
     pub workspace_id: Option<WorkspacePk>,
+    pub merge_requested_by_user_id: Option<UserPk>,
 
     #[serde(skip)]
     pub generator: Arc<Mutex<Generator>>,
@@ -148,6 +149,7 @@ impl TryFrom<PgRow> for ChangeSet {
             base_change_set_id: value.try_get("base_change_set_id")?,
             workspace_snapshot_address: value.try_get("workspace_snapshot_address")?,
             workspace_id: value.try_get("workspace_id")?,
+            merge_requested_by_user_id: value.try_get("merge_requested_by_user_id")?,
             generator: Arc::new(Mutex::new(Default::default())),
         })
     }
@@ -168,6 +170,7 @@ impl ChangeSet {
             workspace_id: None,
             name: "".to_string(),
             status: ChangeSetStatus::Open,
+            merge_requested_by_user_id: None,
         })
     }
 
@@ -308,6 +311,25 @@ impl ChangeSet {
             .await?;
 
         self.status = status;
+
+        Ok(())
+    }
+
+    pub async fn update_merge_requested_by_user_id(
+        &mut self,
+        ctx: &DalContext,
+        user_pk: UserPk,
+    ) -> ChangeSetResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2 WHERE id = $1",
+                &[&self.id, &user_pk],
+            )
+            .await?;
+
+        self.merge_requested_by_user_id = Some(user_pk);
 
         Ok(())
     }
@@ -623,6 +645,9 @@ impl ChangeSet {
         self.update_status(ctx, ChangeSetStatus::NeedsApproval)
             .await?;
         let user_id = Self::extract_userid_from_context(ctx).await;
+        if let Some(user_pk) = user_id {
+            self.update_merge_requested_by_user_id(ctx, user_pk).await?;
+        }
         WsEvent::change_set_begin_approval_process(ctx, self.id, user_id)
             .await?
             .publish_on_commit(ctx)
@@ -677,6 +702,12 @@ impl std::fmt::Debug for ChangeSet {
                 &self
                     .workspace_snapshot_address
                     .map(|wsaddr| wsaddr.to_string()),
+            )
+            .field(
+                "merge_requested_by_user_id",
+                &self
+                    .merge_requested_by_user_id
+                    .map(|user_pk| user_pk.to_string()),
             )
             .finish()
     }
