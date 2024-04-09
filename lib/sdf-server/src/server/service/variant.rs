@@ -7,7 +7,10 @@ use convert_case::{Case, Casing};
 use dal::func::binding::FuncBindingError;
 use dal::func::view::FuncSummaryError;
 use dal::pkg::PkgError;
-use dal::{ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError};
+use dal::{
+    ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+    WsEventError,
+};
 use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
@@ -59,6 +62,8 @@ pub enum SchemaVariantError {
     Transactions(#[from] TransactionsError),
     #[error("schema variant not found: {0}")]
     VariantNotFound(SchemaVariantId),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;

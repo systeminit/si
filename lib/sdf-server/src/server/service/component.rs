@@ -6,7 +6,7 @@ use axum::{
 };
 use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
-use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId};
+use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId, WsEventError};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
@@ -115,10 +115,10 @@ pub enum ComponentError {
     // SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
-    // #[error("ws event error: {0}")]
-    // WsEvent(#[from] WsEventError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

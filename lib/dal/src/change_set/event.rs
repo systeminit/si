@@ -10,10 +10,6 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_id)).await
     }
 
-    pub async fn change_set_written(ctx: &DalContext) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetWritten(ctx.change_set_id())).await
-    }
-
     pub async fn change_set_abandoned(
         ctx: &DalContext,
         change_set_id: ChangeSetId,

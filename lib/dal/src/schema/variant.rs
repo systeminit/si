@@ -46,10 +46,10 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototype, ActionPrototypeId, AttributePrototype, AttributePrototypeId, ComponentId,
-    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
+    ActionPrototype, ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId,
+    ComponentId, ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, SocketArity, Timestamp,
-    TransactionsError,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -1188,6 +1188,29 @@ impl SchemaVariant {
         }
 
         Ok(auth_funcs)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantCreatedPayload {
+    schema_variant_id: SchemaVariantId,
+    change_set_id: ChangeSetId,
+}
+
+impl WsEvent {
+    pub async fn schema_variant_created(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantCreated(SchemaVariantCreatedPayload {
+                schema_variant_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
     }
 }
 

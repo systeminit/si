@@ -7,6 +7,7 @@ use ulid::Ulid;
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
+use crate::schema::variant::SchemaVariantCreatedPayload;
 use crate::user::OnlinePayload;
 use crate::{
     deprecated_action::prototype::ResourceRefreshedPayload,
@@ -59,9 +60,7 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetId),
     ChangeSetCreated(ChangeSetId),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
-    ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
-    // CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
@@ -75,10 +74,10 @@ pub enum WsPayload {
     Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
-    // SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
-    // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
-    // SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
-    // SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
+    // SchemaVariantCloned(SchemaVariantClonedPayload),
+    SchemaVariantCreated(SchemaVariantCreatedPayload),
+    // SchemaVariantFinished(FinishSchemaVariantPayload),
+    // SchemaVariantSaved(SchemaVariantSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
     // StatusUpdate(StatusMessage),

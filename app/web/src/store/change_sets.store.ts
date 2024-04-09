@@ -261,12 +261,6 @@ export function useChangeSetsStore() {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
           {
-            eventType: "ChangeSetWritten",
-            callback: () => {
-              this.FETCH_CHANGE_SETS();
-            },
-          },
-          {
             eventType: "ChangeSetCreated",
             callback: this.FETCH_CHANGE_SETS,
           },

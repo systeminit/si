@@ -414,12 +414,6 @@ export const useAssetStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            callback: () => {
-              this.LOAD_ASSET_LIST();
-            },
-          },
-          {
             eventType: "SchemaVariantCreated",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;

@@ -1343,35 +1343,47 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const realtimeStore = useRealtimeStore();
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            // TODO(Wendy) - this covers off some of the old WS subscriptions but not all of them
-            // Events that are particular to a component require metadata we don't currently have
             {
-              eventType: "ChangeSetWritten",
+              eventType: "ComponentCreated",
               debounce: true,
-              callback: () => {
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
                 this.FETCH_DIAGRAM_DATA();
               },
             },
-            // TODO(Wendy) - logic from these old WS subscriptions need to be migrated due to rebaser delay and require metadata we don't have on ChangeSetWritten
-            // {
-            //   eventType: "CodeGenerated",
-            //   callback: (codeGeneratedEvent) => {
-            //     if (
-            //       this.selectedComponentId === codeGeneratedEvent.componentId
-            //     ) {
-            //       this.FETCH_COMPONENT_CODE(codeGeneratedEvent.componentId);
-            //     }
-            //   },
-            // },
-            // {
-            //   eventType: "ResourceRefreshed",
-            //   callback: (resourceRefreshedEvent) => {
-            //     if (resourceRefreshedEvent?.componentId) {
-            //       this.refreshingStatus[resourceRefreshedEvent.componentId] =
-            //         false;
-            //     }
-            //   },
-            // },
+            {
+              eventType: "ResourceRefreshed",
+              callback: (resourceRefreshedEvent) => {
+                if (resourceRefreshedEvent?.componentId) {
+                  this.refreshingStatus[resourceRefreshedEvent.componentId] =
+                    false;
+                }
+              },
+            },
+            {
+              eventType: "AsyncFinish",
+              callback: ({ id }: { id: string }) => {
+                if (id === this.pastingId) {
+                  this.pastingLoading = false;
+                  this.pastingError = undefined;
+                  this.pastingId = null;
+                  delete this.pendingInsertedComponents[id];
+                }
+              },
+            },
+            {
+              eventType: "AsyncError",
+              callback: ({ id, error }: { id: string; error: string }) => {
+                if (id === this.pastingId) {
+                  this.pastingLoading = false;
+                  this.pastingError = error;
+                  this.pastingId = null;
+                  delete this.pendingInsertedComponents[id];
+                }
+              },
+            },
           ]);
 
           return () => {
