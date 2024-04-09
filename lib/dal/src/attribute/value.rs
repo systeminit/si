@@ -63,7 +63,7 @@ use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::validation::{ValidationError, ValidationOutput, ValidationOutputNode};
+use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -1981,23 +1981,7 @@ impl AttributeValue {
             .await?
             .is_some()
         {
-            // TODO(victor) the async job to execute this is already implement, but it races with the
-            // DVU in a way that they overwrite each other. Until this is fixed, we can run validations inline
-            // ctx.enqueue_compute_validations(attribute_value_id).await?;
-
-            let maybe_validation = ValidationOutput::compute_for_attribute_value_and_value(
-                ctx,
-                attribute_value_id,
-                value.clone(),
-            )
-            .await?;
-
-            ValidationOutputNode::upsert_or_wipe_for_attribute_value(
-                ctx,
-                attribute_value_id,
-                maybe_validation.clone(),
-            )
-            .await?;
+            ctx.enqueue_compute_validations(attribute_value_id).await?;
         }
 
         Ok(())
