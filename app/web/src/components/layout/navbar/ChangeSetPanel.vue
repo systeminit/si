@@ -416,8 +416,6 @@ function onSelectChangeSet(newVal: string) {
   }
 
   if (newVal && route.name) {
-    if (newVal === changeSetsStore.headChangeSetId) newVal = "head";
-
     // do not allow people to navigate to a changeset that NeedsApproval
     if (
       changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open
