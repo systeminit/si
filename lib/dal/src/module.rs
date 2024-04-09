@@ -229,7 +229,7 @@ impl Module {
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
             if let NodeWeight::Func(inner) = &node_weight {
-                let func = Func::get_by_id(ctx, inner.id().into()).await?;
+                let func = Func::get_by_id_or_error(ctx, inner.id().into()).await?;
                 all_funcs.push(func);
             }
         }

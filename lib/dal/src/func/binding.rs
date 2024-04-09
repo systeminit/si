@@ -123,7 +123,7 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         let row = ctx
             .txns()
@@ -156,7 +156,7 @@ impl FuncBinding {
         func_id: FuncId,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
         let func_binding = Self::new(ctx, args, func.id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue =
@@ -312,7 +312,7 @@ impl FuncBinding {
         mpsc::Receiver<OutputStream>,
     )> {
         let func_id = self.func_id();
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         let mut execution = FuncExecution::new(ctx, &func, self).await?;
 

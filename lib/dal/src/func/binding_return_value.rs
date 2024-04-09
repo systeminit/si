@@ -172,7 +172,7 @@ impl FuncBindingReturnValue {
         &self,
         ctx: &DalContext,
     ) -> FuncBindingReturnValueResult<FuncMetadataView> {
-        let func = Func::get_by_id(ctx, self.func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, self.func_id).await?;
         Ok(func.metadata_view())
     }
 }

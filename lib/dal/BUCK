@@ -62,8 +62,8 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
         "src/builtins/func/**",
-        "src/builtins/schema/data/**/*.json",
-        "src/builtins/schema/definitions/**/*.json",
+        "src/func/authoring/data/defaults/*.ts",
+        "src/func/authoring/data/ts_types/*.ts",
         "src/migrations/**/*.sql",
         "src/queries/**/*.sql",
     ]),

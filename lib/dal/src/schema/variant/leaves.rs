@@ -136,8 +136,8 @@ impl LeafInputLocation {
         vec!["root", self.arg_name()]
     }
 
-    pub fn maybe_from_arg_name(arg_name: &str) -> Option<Self> {
-        Some(match arg_name {
+    pub fn maybe_from_arg_name(arg_name: impl AsRef<str>) -> Option<Self> {
+        Some(match arg_name.as_ref() {
             "domain" => LeafInputLocation::Domain,
             "code" => LeafInputLocation::Code,
             "resource" => LeafInputLocation::Resource,
@@ -204,7 +204,7 @@ impl SchemaVariant {
         inputs: Vec<LeafInput>,
     ) -> SchemaVariantResult<(PropId, AttributePrototypeId)> {
         // Ensure the func matches what we need.
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
         if func.backend_kind != FuncBackendKind::JsAttribute {
             return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id));
         }

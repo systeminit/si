@@ -629,7 +629,8 @@ impl DalContext {
         new
     }
 
-    /// Clones a new context from this one with a head [`Visibility`].
+    /// Clones a new context from this one with a "head" [`Visibility`] (default [`ChangeSet`] for
+    /// the workspace).
     pub async fn clone_with_head(&self) -> Result<Self, TransactionsError> {
         let mut new = self.clone();
         let default_change_set_id = new.get_workspace_default_change_set_id().await?;
@@ -637,6 +638,21 @@ impl DalContext {
             default_change_set_id,
         )
         .await?;
+        Ok(new)
+    }
+
+    /// Clones a new context from this one with a "base" [`Visibility`].
+    ///
+    /// _Warning:_ this only works if the current [`ChangeSet`] is not an editing [`ChangeSet`].
+    pub async fn clone_with_base(&self) -> Result<Self, TransactionsError> {
+        let change_set = self.change_set()?;
+        let base_change_set_id = change_set
+            .base_change_set_id
+            .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
+
+        let mut new = self.clone();
+        new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(base_change_set_id)
+            .await?;
         Ok(new)
     }
 

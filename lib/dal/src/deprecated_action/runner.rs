@@ -208,7 +208,7 @@ impl DeprecatedActionRunner {
 
         let component = Component::get_by_id(ctx, component_id).await?;
         let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
-        let func = Func::get_by_id(ctx, prototype.func_id(ctx).await?).await?;
+        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
         let func_name = func
             .display_name
             .clone()

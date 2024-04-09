@@ -17,6 +17,7 @@ use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -28,6 +29,7 @@ use crate::{
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 pub mod argument;
+pub mod authoring;
 pub mod backend;
 pub mod binding;
 pub mod binding_return_value;
@@ -252,9 +254,38 @@ impl Func {
         }
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
-        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
-        Ok(Self::assemble(&node_weight, &content))
+    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Option<Self>> {
+        let (func_node_weight, hash) = if let Some((func_node_weight, hash)) =
+            Self::get_node_weight_and_content_hash(ctx, id).await?
+        {
+            (func_node_weight, hash)
+        } else {
+            return Ok(None);
+        };
+
+        let func = Self::get_by_id_inner(ctx, &hash, &func_node_weight).await?;
+        Ok(Some(func))
+    }
+
+    pub async fn get_by_id_or_error(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
+        let (func_node_weight, hash) =
+            Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
+        Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
+    }
+
+    async fn get_by_id_inner(
+        ctx: &DalContext,
+        hash: &ContentHash,
+        func_node_weight: &FuncNodeWeight,
+    ) -> FuncResult<Self> {
+        let content: FuncContent = ctx.layer_db().cas().try_read_as(hash).await?.ok_or(
+            WorkspaceSnapshotError::MissingContentFromStore(func_node_weight.id()),
+        )?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let FuncContent::V1(inner) = content;
+
+        Ok(Self::assemble(func_node_weight, &inner))
     }
 
     pub async fn find_by_name(
@@ -318,28 +349,32 @@ impl Func {
     where
         L: FnOnce(&mut Func) -> FuncResult<()>,
     {
-        let func = Func::get_by_id(ctx, id).await?;
+        let func = Func::get_by_id_or_error(ctx, id).await?;
         let modified_func = func.modify(ctx, lambda).await?;
         Ok(modified_func)
     }
 
-    pub async fn get_node_weight_and_content(
+    async fn get_node_weight_and_content_hash(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncResult<(FuncNodeWeight, FuncContentV1)> {
-        let (func_node_weight, hash) = Self::get_node_weight_and_content_hash(ctx, func_id).await?;
+    ) -> FuncResult<Option<(FuncNodeWeight, ContentHash)>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id: Ulid = func_id.into();
+        let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
+            Ok(node_index) => node_index,
+            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
+            )) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
-        let content: FuncContent = ctx.layer_db().cas().try_read_as(&hash).await?.ok_or(
-            WorkspaceSnapshotError::MissingContentFromStore(func_id.into()),
-        )?;
-
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let FuncContent::V1(inner) = content;
-
-        Ok((func_node_weight, inner))
+        let hash = node_weight.content_hash();
+        let func_node_weight = node_weight.get_func_node_weight()?;
+        Ok(Some((func_node_weight, hash)))
     }
 
-    async fn get_node_weight_and_content_hash(
+    async fn get_node_weight_and_content_hash_or_error(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
@@ -362,7 +397,8 @@ impl Func {
         let before = FuncContentV1::from(func.clone());
         lambda(&mut func)?;
 
-        let (mut node_weight, _) = Func::get_node_weight_and_content_hash(ctx, func.id).await?;
+        let (mut node_weight, _) =
+            Func::get_node_weight_and_content_hash_or_error(ctx, func.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -516,6 +552,25 @@ impl Func {
         }
 
         Ok(schema_variant_ids)
+    }
+
+    /// Checks if the [`Func`] is "revertible".
+    pub async fn is_revertible(&self, ctx: &DalContext) -> FuncResult<bool> {
+        Self::is_revertible_for_id(ctx, self.id).await
+    }
+
+    /// Checks if the [`Func`] corresponding to the provided id is "revertible".
+    pub async fn is_revertible_for_id(ctx: &DalContext, id: FuncId) -> FuncResult<bool> {
+        if Func::get_by_id(ctx, id).await?.is_none() {
+            return Ok(false);
+        }
+
+        let exists_on_base = {
+            let base_ctx = ctx.clone_with_base().await?;
+            Func::get_by_id(&base_ctx, id).await?.is_some()
+        };
+
+        Ok(exists_on_base)
     }
 }
 
