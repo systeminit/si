@@ -1,16 +1,12 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{
-    DalContext, Tenancy, TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshot, WsEvent,
-    WsEventError,
-};
+use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityRebaseRequest;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
-use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -117,21 +113,6 @@ pub(crate) async fn perform_rebase(
 
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;
-
-    let change_set_ulid: Ulid = to_rebase_change_set.id.into();
-
-    let to_rebase_ctx = ctx
-        .clone_with_new_visibility(Visibility::new(change_set_ulid.into()))
-        .clone_with_new_tenancy(Tenancy::new(
-            to_rebase_change_set
-                .workspace_id
-                .unwrap_or(WorkspacePk::NONE),
-        ));
-
-    WsEvent::change_set_written(&to_rebase_ctx)
-        .await?
-        .publish_immediately(&to_rebase_ctx)
-        .await?;
 
     Ok(message)
 }

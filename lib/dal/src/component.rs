@@ -1428,6 +1428,13 @@ pub struct ComponentCreatedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpdatedPayload {
+    component_id: ComponentId,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn component_created(
         ctx: &DalContext,
@@ -1443,16 +1450,7 @@ impl WsEvent {
         )
         .await
     }
-}
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ComponentUpdatedPayload {
-    component_id: ComponentId,
-    change_set_id: ChangeSetId,
-}
-
-impl WsEvent {
     pub async fn component_updated(
         ctx: &DalContext,
         component_id: ComponentId,

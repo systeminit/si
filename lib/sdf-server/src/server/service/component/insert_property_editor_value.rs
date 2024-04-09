@@ -1,9 +1,11 @@
 use axum::{response::IntoResponse, Json};
-use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
+use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility};
+
 use crate::server::extract::{AccessBuilder, HandlerContext};
+
+use super::ComponentResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,11 +35,6 @@ pub async fn insert_property_editor_value(
         request.key,
     )
     .await?;
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 
