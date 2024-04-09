@@ -40,7 +40,7 @@
                 size="sm"
                 tone="success"
                 loadingText="Applying Changes"
-                label="Override Approval And Apply"
+                label="Continue"
                 :requestStatus="applyChangeSetReqStatus"
                 :disabled="statusStoreUpdating"
                 @click="applyChangeSet"
@@ -166,8 +166,37 @@
               Pick which actions will be applied to the real world:
             </div>
             <div
-              class="flex-grow overflow-y-auto mb-sm border border-neutral-300 dark:border-neutral-700"
+              class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
             >
+              <div
+                class="flex flex-row justify-between place-items-center py-sm bg-neutral-100 dark:bg-neutral-700"
+              >
+                <div class="grow-0 mx-[.66em]">
+                  <Icon
+                    name="bullet-list"
+                    class="attributes-panel-item__type-icon"
+                    size="sm"
+                  />
+                </div>
+                <div class="grow">
+                  {{ actionsStore.proposedActions.length }} Total Action(s)
+                </div>
+                <div class="grow-0 flex flex-row mr-xs">
+                  <div
+                    v-for="(cnt, kind) in actionsStore.countActionsByKind"
+                    :key="kind"
+                    class="flex flex-row mx-2xs p-2xs rounded bg-neutral-900"
+                  >
+                    <div class="mx-2xs">{{ cnt }}</div>
+                    <StatusIndicatorIcon
+                      type="action"
+                      :status="kind"
+                      tone="shade"
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              </div>
               <ul>
                 <li
                   v-for="(action, index) in actionsStore.proposedActions"
@@ -181,6 +210,7 @@
                   "
                 >
                   <ActionCard
+                    slim
                     :action="action"
                     @remove="actionsStore.REMOVE_ACTION(action.id)"
                   />
@@ -279,6 +309,7 @@ import UserIcon from "@/components/layout/navbar/UserIcon.vue";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
 import UserCard from "@/components/layout/navbar/UserCard.vue";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const applyModalRef = ref<InstanceType<typeof Modal> | null>(null);
 const presenceStore = usePresenceStore();
