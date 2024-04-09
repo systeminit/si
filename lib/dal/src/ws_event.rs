@@ -7,6 +7,7 @@ use ulid::Ulid;
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
+use crate::schema::variant::SchemaVariantCreatedPayload;
 use crate::user::OnlinePayload;
 use crate::{
     deprecated_action::prototype::ResourceRefreshedPayload,
@@ -76,7 +77,7 @@ pub enum WsPayload {
     ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
     // SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
-    // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
+    SchemaVariantCreated(SchemaVariantCreatedPayload),
     // SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
     // SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
     SecretCreated(SecretCreatedPayload),

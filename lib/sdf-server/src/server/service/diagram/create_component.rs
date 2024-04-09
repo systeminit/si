@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility};
+use dal::{
+    generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent,
+};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
@@ -138,11 +140,10 @@ pub async fn create_component(
     //     );
     // }
 
-    // Does not work for now since commit does not wait for the rebaser
-    // WsEvent::component_created(&ctx, component.id())
-    //     .await?
-    //     .publish_on_commit(&ctx)
-    //     .await?;
+    WsEvent::component_created(&ctx, component.id())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     // TODO(nick): restore posthog tracking.
     // track(

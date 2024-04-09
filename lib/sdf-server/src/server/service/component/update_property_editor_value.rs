@@ -1,6 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility};
+use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -68,11 +68,11 @@ pub async fn update_property_editor_value(
     //        );
     //    }
     //
-    //    WsEvent::change_set_written(&ctx)
-    //        .await?
-    //        .publish_on_commit(&ctx)
-    //        .await?;
-    //
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

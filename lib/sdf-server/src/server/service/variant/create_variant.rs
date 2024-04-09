@@ -12,7 +12,7 @@ use dal::pkg::import_pkg_from_pkg;
 use dal::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use dal::{
     ChangeSet, ComponentType, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId,
-    Visibility,
+    Visibility, WsEvent,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
@@ -187,11 +187,11 @@ pub async fn create_variant(
     //     }),
     // );
     //
-    // WsEvent::schema_variant_definition_created(&ctx, *variant_def.id())
-    //     .await?
-    //     .publish_on_commit(&ctx)
-    //     .await?;
-    //
+    WsEvent::schema_variant_created(&ctx, schema_variant_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
