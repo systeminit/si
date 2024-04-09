@@ -2,7 +2,7 @@ use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ContentHash};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;
@@ -211,7 +211,7 @@ impl NodeWeight {
         }
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         match self {
             NodeWeight::AttributePrototypeArgument(weight) => weight.merkle_tree_hash(),
             NodeWeight::AttributeValue(weight) => weight.merkle_tree_hash(),
@@ -295,7 +295,7 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         match self {
             NodeWeight::AttributePrototypeArgument(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::AttributeValue(weight) => weight.set_merkle_tree_hash(new_hash),

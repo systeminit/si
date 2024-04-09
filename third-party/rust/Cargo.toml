@@ -101,7 +101,7 @@ pretty_assertions_sorted = "1.2.3"
 proc-macro2 = "1.0.79"
 quote = "1.0.35"
 rand = "0.8.5"
-refinery = { version = "0.8.12", features = ["tokio-postgres"] }
+refinery = { version = "= 0.8.12", features = ["tokio-postgres"] }
 regex = "1.10.4"
 remain = "0.2.13"
 reqwest = { version = "0.12.2", default-features = false, features = [
@@ -174,6 +174,7 @@ uuid = { version = "1.8.0", features = ["serde", "v4"] }
 vfs = "0.12.0"
 vfs-tar = { version = "0.4.1", features = ["mmap"] }
 webpki-roots = { version = "0.25.4" }
+xxhash-rust = { version = "0.8.10", features = ["xxh3", "const_xxh3"] }
 y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }
 

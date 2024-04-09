@@ -210,6 +210,7 @@ uuid = { version = "1.8.0", features = ["serde", "v4"] }
 vfs = "0.12.0"
 vfs-tar = { version = "0.4.1", features = ["mmap"] }
 webpki-roots = { version = "0.25.4" }
+xxhash-rust = { version = "0.8.10", features = ["xxh3", "const_xxh3"] }
 y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }
 

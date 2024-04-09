@@ -9,6 +9,7 @@ use petgraph::stable_graph::Edges;
 pub use petgraph::Direction;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::ContentHash;
 use thiserror::Error;
 use ulid::Ulid;
@@ -670,10 +671,9 @@ impl WorkspaceSnapshotGraph {
         match event {
             DfsEvent::Discover(onto_node_index, _) => {
                 let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|err| {
-                    dbg!(
+                    error!(
                         "Unable to get NodeWeight for onto NodeIndex {:?}: {}",
-                        onto_node_index,
-                        err,
+                        onto_node_index, err,
                     );
                     event
                 })?;
@@ -742,8 +742,8 @@ impl WorkspaceSnapshotGraph {
                         // identical, and we don't need to check any further.
                         debug!(
                             "onto {} and to rebase {} merkle tree hashes are the same",
-                            onto_node_weight.id(),
-                            to_rebase_node_weight.id()
+                            onto_node_weight.merkle_tree_hash(),
+                            to_rebase_node_weight.merkle_tree_hash()
                         );
                         continue;
                     }
@@ -1012,7 +1012,7 @@ impl WorkspaceSnapshotGraph {
                 let color = color.to_string();
                 let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n\"\nfontcolor = {color}\ncolor = {color}",
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash()
                 )
             },
         );
@@ -1639,7 +1639,7 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         node_index_to_update: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut hasher = ContentHash::hasher();
+        let mut hasher = MerkleTreeHash::hasher();
         hasher.update(
             self.get_node_weight(node_index_to_update)?
                 .node_hash()

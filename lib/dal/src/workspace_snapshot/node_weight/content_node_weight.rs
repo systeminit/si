@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::ContentHash;
 use ulid::Ulid;
 
@@ -31,7 +32,7 @@ pub struct ContentNodeWeight {
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
@@ -50,7 +51,7 @@ impl ContentNodeWeight {
             id,
             lineage_id: change_set.generate_ulid()?,
             content_address,
-            merkle_tree_hash: ContentHash::default(),
+            merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -107,7 +108,7 @@ impl ContentNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
@@ -165,7 +166,7 @@ impl ContentNodeWeight {
         self.content_hash()
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 

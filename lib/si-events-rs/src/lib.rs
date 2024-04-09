@@ -1,5 +1,7 @@
 pub mod content_hash;
+pub mod merkle_tree_hash;
 pub mod workspace_snapshot_address;
+pub mod xxhash_type;
 
 mod actor;
 mod cas;
