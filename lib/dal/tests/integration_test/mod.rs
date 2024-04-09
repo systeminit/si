@@ -1,4 +1,5 @@
 mod action;
+mod authoring;
 mod before_funcs;
 mod builtins;
 mod change_set;
