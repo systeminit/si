@@ -34,7 +34,80 @@
             </div>
           </div>
           <template v-if="appliedByYou">
-            <div class="flex w-full justify-center pb-xs">
+            <div
+              class="text-sm py-xs px-sm w-full bg-neutral-700 dark:text-neutral-200 text-white font-bold rounded-t-md"
+            >
+              <template v-if="!allUsersVoted"
+                >{{ usersInChangeset.length }} users can approve</template
+              >
+            </div>
+            <div
+              class="overflow-y-auto flex-grow border dark:border-neutral-700 dark:bg-neutral-600 bg-neutral-200"
+            >
+              <div
+                v-for="(user, index) in usersInChangeset"
+                :key="index"
+                class="flex items-center pr-sm justify-between gap-4"
+              >
+                <div class="min-w-0">
+                  <UserCard :user="user" hideChangesetInfo hideStatus />
+                </div>
+                <span
+                  v-if="!changeSetsStore.changeSetApprovals[user.pk]"
+                  class="italic leading-tight"
+                  >waiting...</span
+                >
+                <!-- while waiting show all options dimmer, once voted only show the selected vote -->
+                <div class="grow flex justify-end">
+                  <Icon
+                    name="thumbs-up"
+                    size="lg"
+                    class="text-success-400"
+                    :class="{
+                      'opacity-25':
+                        !changeSetsStore.changeSetApprovals[user.pk],
+                      'opacity-0':
+                        changeSetsStore.changeSetApprovals[user.pk] &&
+                        changeSetsStore.changeSetApprovals[user.pk] !==
+                          'Approve',
+                    }"
+                  />
+                  <Icon
+                    name="minus"
+                    size="lg"
+                    class="text-neutral-400"
+                    :class="{
+                      'opacity-25':
+                        !changeSetsStore.changeSetApprovals[user.pk],
+                      'opacity-0':
+                        changeSetsStore.changeSetApprovals[user.pk] &&
+                        changeSetsStore.changeSetApprovals[user.pk] !== 'Pass',
+                    }"
+                  />
+                  <Icon
+                    name="thumbs-down"
+                    size="lg"
+                    class="text-destructive-500"
+                    :class="{
+                      'opacity-25':
+                        !changeSetsStore.changeSetApprovals[user.pk],
+                      'opacity-0':
+                        changeSetsStore.changeSetApprovals[user.pk] &&
+                        changeSetsStore.changeSetApprovals[user.pk] ===
+                          'Reject',
+                    }"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="flex w-full justify-center pb-xs mt-sm gap-sm">
+              <VButton
+                tone="shade"
+                variant="ghost"
+                icon="x"
+                label="Cancel"
+                @click="cancelVoting"
+              />
               <VButton
                 icon="tools"
                 size="sm"
@@ -43,52 +116,9 @@
                 label="Continue"
                 :requestStatus="applyChangeSetReqStatus"
                 :disabled="statusStoreUpdating"
+                class="grow"
                 @click="applyChangeSet"
               />
-            </div>
-            <div
-              class="text-sm pb-2 italic text-center w-full text-neutral-400"
-            >
-              <template v-if="!allUsersVoted"
-                >Waiting on other users in the changeset to vote.</template
-              >
-            </div>
-            <div
-              class="overflow-y-auto flex-grow border border-neutral-300 dark:border-neutral-700"
-            >
-              <div
-                v-for="(user, index) in usersInChangeset"
-                :key="index"
-                class="flex items-center pr-sm justify-center gap-4"
-              >
-                <div class="min-w-0">
-                  <UserCard :user="user" hideChangesetInfo />
-                </div>
-                <Icon
-                  v-if="
-                    changeSetsStore.changeSetApprovals[user.pk] === 'Approve'
-                  "
-                  name="thumbs-up"
-                  size="lg"
-                  class="text-success-400"
-                />
-                <Icon
-                  v-else-if="
-                    changeSetsStore.changeSetApprovals[user.pk] === 'Pass'
-                  "
-                  name="minus"
-                  size="lg"
-                  class="text-neutral-400"
-                />
-                <Icon
-                  v-else-if="
-                    changeSetsStore.changeSetApprovals[user.pk] === 'Reject'
-                  "
-                  name="thumbs-down"
-                  size="lg"
-                  class="text-destructive-500"
-                />
-              </div>
             </div>
           </template>
           <template v-else>
@@ -185,7 +215,7 @@
                   <div
                     v-for="(cnt, kind) in actionsStore.countActionsByKind"
                     :key="kind"
-                    class="flex flex-row mx-2xs p-2xs rounded bg-neutral-900"
+                    class="flex flex-row mx-2xs p-2xs rounded dark:bg-neutral-900 bg-neutral-200"
                   >
                     <div class="mx-2xs">{{ cnt }}</div>
                     <StatusIndicatorIcon
@@ -224,7 +254,7 @@
               variant="ghost"
               icon="x"
               label="Cancel"
-              @click="applyModalRef?.close"
+              @click="cancelApprovalProcess"
             />
             <VButton
               v-if="!changeSetsStore.headSelected"
@@ -264,6 +294,7 @@
         </template>
       </div>
     </Modal>
+
     <Modal ref="changeSetAppliedRef" title="Change Set Has Been Merged" noExit>
       <div
         class="bg-white dark:bg-neutral-700 rounded-lg flex flex-col items-center max-h-[90vh] shadow-md overflow-hidden pb-xs"
@@ -273,7 +304,7 @@
         </div>
 
         <div v-if="appliedByUser" class="pr-xs">
-          <UserCard :user="appliedByUser" hideChangesetInfo />
+          <UserCard :user="appliedByUser" hideChangesetInfo hideStatus />
         </div>
         <div class="px-sm pb-sm pt-xs w-full">
           You are now on Head. You can continue your work by creating a new
@@ -422,10 +453,15 @@ async function cancelMergeHandler() {
   await cancelApprovalProcess();
 }
 
+async function cancelVoting() {
+  await cancelApprovalProcess();
+}
+
 async function cancelApprovalProcess() {
   await changeSetsStore.CANCEL_APPROVAL_PROCESS();
   rejectedWorkflow.value = true;
   canCloseModal.value = true;
+  applyModalRef.value?.close();
 }
 
 const appliedByYou = computed(

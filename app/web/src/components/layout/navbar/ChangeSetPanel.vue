@@ -116,7 +116,7 @@
               size="sm"
               tone="success"
               loadingText="Abandoning Change Set"
-              label="Override Approval And Abandon"
+              label="Abandon Change Set"
               :requestStatus="abandonChangeSetReqStatus"
               :disabled="statusStoreUpdating"
               @click="overrideAbandonChangesetHandler"
@@ -419,8 +419,11 @@ function onSelectChangeSet(newVal: string) {
     if (newVal === changeSetsStore.headChangeSetId) newVal = "head";
 
     // do not allow people to navigate to a changeset that NeedsApproval
+    // unless they were the one that initiated the merge request (avoids dead end)
     if (
-      changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open
+      changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open &&
+      changeSetsStore.changeSetsById[newVal]?.mergeRequestedByUserId !==
+        authStore.user?.pk
     ) {
       return;
     }

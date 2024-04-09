@@ -25,7 +25,7 @@
             : "Head"
         }}
       </div>
-      <div class="text-xs italic line-clamp-3 break-words">
+      <div v-if="!hideStatus" class="text-xs italic line-clamp-3 break-words">
         {{ user.status }}
       </div>
     </div>
@@ -44,6 +44,7 @@ defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
   hideChangesetInfo: { type: Boolean },
   iconHasHoverState: { type: Boolean },
+  hideStatus: { type: Boolean },
 });
 
 const emit = defineEmits<{
