@@ -10,8 +10,8 @@ use dal::{
     InputSocket, KeyPair, OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
 };
 use itertools::enumerate;
-use jwt_simple::prelude::{Deserialize, Serialize};
 use names::{Generator, Name};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 

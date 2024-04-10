@@ -207,7 +207,7 @@ impl DeprecatedActionRunner {
         let timestamp = Timestamp::now();
 
         let component = Component::get_by_id(ctx, component_id).await?;
-        let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
+        let prototype = ActionPrototype::get_by_id_or_error(ctx, action_prototype_id).await?;
         let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
         let func_name = func
             .display_name
@@ -291,7 +291,8 @@ impl DeprecatedActionRunner {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
 
-        let action_prototype = ActionPrototype::get_by_id(ctx, self.action_prototype_id).await?;
+        let action_prototype =
+            ActionPrototype::get_by_id_or_error(ctx, self.action_prototype_id).await?;
 
         Ok(match action_prototype.run(ctx, self.component_id).await {
             Ok(Some(run_result)) => {

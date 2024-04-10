@@ -8,8 +8,8 @@ use crate::func::view::FuncArgumentView;
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
-    ActionKind, AttributePrototype, ComponentId, DalContext, Func, FuncBackendResponseType, FuncId,
-    SchemaVariantError, SchemaVariantId,
+    AttributePrototype, ComponentId, DalContext, Func, FuncBackendResponseType, FuncId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId,
 };
 
 #[remain::sorted]
@@ -38,7 +38,6 @@ pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Action {
         schema_variant_ids: Vec<SchemaVariantId>,
-        kind: ActionKind,
     },
     #[serde(rename_all = "camelCase")]
     Attribute {
@@ -73,8 +72,12 @@ impl FuncAssociations {
 
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
-                // TODO(nick): do something similar to authentications
-                (None::<FuncAssociations>, String::new())
+                let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
+                (
+                    Some(Self::Action { schema_variant_ids }),
+                    // TODO(nick): get input type.
+                    String::new(),
+                )
             }
             FuncKind::Attribute => {
                 // TODO(nick): get prototype views and types
@@ -95,9 +98,7 @@ impl FuncAssociations {
                 )
             }
             FuncKind::Authentication => {
-                let schema_variant_ids =
-                    Func::list_schema_variants_for_auth_func(ctx, func.id).await?;
-
+                let schema_variant_ids = SchemaVariant::list_for_auth_func(ctx, func.id).await?;
                 (
                     Some(Self::Authentication { schema_variant_ids }),
                     concat!(
