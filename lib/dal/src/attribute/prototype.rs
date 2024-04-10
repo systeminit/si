@@ -14,10 +14,10 @@ use std::sync::Arc;
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
