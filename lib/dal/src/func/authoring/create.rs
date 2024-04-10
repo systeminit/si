@@ -10,8 +10,8 @@ use crate::func::authoring::{
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    generate_name, AttributePrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    SchemaVariant, SchemaVariantId,
+    generate_name, AttributePrototype, DalContext, DeprecatedActionPrototype, Func,
+    FuncBackendKind, FuncBackendResponseType, SchemaVariant, SchemaVariantId,
 };
 
 static DEFAULT_CODE_HANDLER: &str = "main";
@@ -90,11 +90,11 @@ async fn create_func_stub(
 async fn create_action_func(
     ctx: &DalContext,
     name: Option<String>,
-    _options: Option<CreateFuncOptions>,
+    options: Option<CreateFuncOptions>,
 ) -> FuncAuthoringResult<Func> {
     let func = create_func_stub(
         ctx,
-        name,
+        name.clone(),
         FuncBackendKind::JsAction,
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
@@ -102,19 +102,14 @@ async fn create_action_func(
     )
     .await?;
 
-    //    if let Some(CreateFuncOptions::ActionOptions {
-    //        schema_variant_id,
-    //        action_kind,
-    //    }) = options
-    //    {
-    //        ActionPrototype::new(
-    //            ctx,
-    //            *func.id(),
-    //            action_kind,
-    //            ActionPrototypeContext { schema_variant_id },
-    //        )
-    //        .await?;
-    //    }
+    if let Some(CreateFuncOptions::ActionOptions {
+        schema_variant_id,
+        action_kind,
+    }) = options
+    {
+        DeprecatedActionPrototype::new(ctx, name.clone(), action_kind, schema_variant_id, func.id)
+            .await?;
+    }
 
     Ok(func)
 }

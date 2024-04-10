@@ -356,7 +356,6 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Option<PropId>> {
-        dbg!(Self::get_by_id(ctx, prop_id).await?.name);
         let workspace_snapshot = ctx.workspace_snapshot()?;
         match workspace_snapshot
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
