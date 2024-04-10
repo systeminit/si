@@ -295,6 +295,7 @@
       </div>
     </Modal>
 
+    <!-- only voters ever see this, not viewed by instigators -->
     <Modal ref="changeSetAppliedRef" title="Change Set Has Been Merged" noExit>
       <div
         class="bg-white dark:bg-neutral-700 rounded-lg flex flex-col items-center max-h-[90vh] shadow-md overflow-hidden pb-xs"
@@ -307,8 +308,8 @@
           <UserCard :user="appliedByUser" hideChangesetInfo hideStatus />
         </div>
         <div class="px-sm pb-sm pt-xs w-full">
-          You are now on Head. You can continue your work by creating a new
-          change set or joining another existing change set.
+          We are redirecting you to head. You can continue your work by creating
+          a new change set or joining another existing change set.
         </div>
         <div class="self-stretch px-sm flex flex-row">
           <VButton
@@ -422,9 +423,7 @@ const applyChangeSetReqStatus =
 const applyChangeSet = async () => {
   if (!route.name) return;
   applyModalRef.value?.close();
-  // don't await
-  changeSetsStore.APPLY_CHANGE_SET();
-  window.localStorage.setItem("applied-changes", "true");
+  await changeSetsStore.APPLY_CHANGE_SET(authStore.user?.email ?? "");
   router.replace({
     name: route.name,
     params: {
@@ -432,6 +431,7 @@ const applyChangeSet = async () => {
       changeSetId: "head",
     },
   });
+  // TODO this will fire after actions have run
   await jsConfetti.addConfetti(_.sample(confettis));
 };
 
@@ -517,6 +517,7 @@ watch(
       rejectedWorkflow.value = false;
     }
 
+    // this moves voters from the changeset to head
     if (
       newVal === ChangeSetStatus.Applied &&
       oldVal === ChangeSetStatus.NeedsApproval
@@ -524,6 +525,7 @@ watch(
       applyModalRef.value?.close();
       changeSetAppliedRef.value?.open();
     }
+    // NOTE, when there are no votes required newVal = Applied && oldVal = Open
   },
 );
 

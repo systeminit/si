@@ -53,7 +53,7 @@ app.use(FloatingVue, {
   },
 });
 
-function asyncGetContainer(): Promise<HTMLElement> {
+/* function asyncGetContainer(): Promise<HTMLElement> {
   return new Promise((resolve) => {
     const observer = new MutationObserver((mutations, me) => {
       const myContainer = document.getElementById("konva-container");
@@ -67,7 +67,7 @@ function asyncGetContainer(): Promise<HTMLElement> {
       subtree: true,
     });
   });
-}
+} */
 
 const options: PluginOptions = {
   newestOnTop: true,

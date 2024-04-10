@@ -3,6 +3,7 @@ import * as _ from "lodash-es";
 import { watch } from "vue";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { useRoute } from "vue-router";
+import { useToast } from "vue-toastification";
 import {
   ChangeSet,
   ChangeSetId,
@@ -10,9 +11,13 @@ import {
 } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
+import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
+import ChangesMerged from "@/components/toasts/ChangesMerged.vue";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
+
+const toast = useToast();
 
 export interface OpenChangeSetsView {
   headChangeSetId: ChangeSetId;
@@ -130,7 +135,7 @@ export function useChangeSetsStore() {
             },
           });
         },
-        async APPLY_CHANGE_SET() {
+        async APPLY_CHANGE_SET(username: string) {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
@@ -138,9 +143,23 @@ export function useChangeSetsStore() {
             params: {
               visibility_change_set_pk: this.selectedChangeSet.id,
             },
+            optimistic: () => {
+              toast({
+                component: IncomingChangesMerging,
+                props: {
+                  username,
+                },
+              });
+            },
+            _delay: 1000,
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.id] = response.changeSet;
-              // could switch to head here, or could let the caller decide...
+              toast({
+                component: ChangesMerged,
+                props: {
+                  name: response.changeSet.name,
+                },
+              });
             },
           });
         },
