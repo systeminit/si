@@ -30,8 +30,7 @@ pub async fn set_component_position(
 ) -> DiagramResult<Json<SetComponentPositionResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component = Component::get_by_id(&ctx, request.component_id).await?;
-    //let schema_variant_id = Component::schema_variant_id(&ctx, request.component_id).await?;
+    let mut component = Component::get_by_id(&ctx, request.component_id).await?;
 
     let (width, height) = {
         let mut size = (None, None);
@@ -53,7 +52,7 @@ pub async fn set_component_position(
     };
 
     // TODO(nick): handle the "deleted" case with the new engine.
-    let component = component
+    component
         .set_geometry(&ctx, request.x, request.y, width, height)
         .await?;
     // {

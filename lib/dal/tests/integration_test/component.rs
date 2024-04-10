@@ -6,7 +6,11 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
+use dal_test::test_harness::{
+    commit_and_update_snapshot, connect_components_with_socket_names,
+    create_component_for_schema_name,
+};
+use pretty_assertions_sorted::assert_eq;
 
 mod debug;
 mod get_code;
@@ -92,10 +96,10 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    dbg!(component
+    component
         .materialized_view(ctx)
         .await
-        .expect("materialized_view for component"));
+        .expect("materialized_view for component");
 
     // Confirm after rebase
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
@@ -183,10 +187,10 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "fsu not top four";
-    let component = Component::new(ctx, name, schema_variant_id)
+    let mut component = Component::new(ctx, name, schema_variant_id)
         .await
         .expect("could not create component");
-    let component = component
+    component
         .set_geometry(
             ctx,
             "1",
@@ -905,4 +909,77 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+}
+
+#[test]
+async fn paste_component(ctx: &mut DalContext) {
+    let pirate_name = "Long John Silver";
+    let parrot_name = "Captain Flint";
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+
+    let parrots_path = &["root", "domain", "parrot_names"];
+
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+
+    // set value on source component
+    {
+        let pet_shop_parrot_av_id = pet_shop_component
+            .attribute_values_for_prop(ctx, parrots_path)
+            .await
+            .expect("find value ids for prop parrot_names")
+            .pop()
+            .expect("there should only be one value id");
+
+        AttributeValue::insert(ctx, pet_shop_parrot_av_id, Some(parrot_name.into()), None)
+            .await
+            .expect("insert value in pet_shop parrot_names array");
+    }
+
+    connect_components_with_socket_names(
+        ctx,
+        pet_shop_component.id(),
+        "parrot_names",
+        pirate_component.id(),
+        "parrot_names",
+    )
+    .await;
+
+    commit_and_update_snapshot(ctx).await;
+
+    let pasted_pirate_component = pirate_component
+        .copy_paste(ctx, (20., 20.))
+        .await
+        .expect("unable to paste component");
+
+    commit_and_update_snapshot(ctx).await;
+
+    let view = pasted_pirate_component
+        .materialized_view(ctx)
+        .await
+        .expect("unable to get materialized view of component")
+        .expect("no view found");
+
+    assert_eq!(
+        view,
+        serde_json::json!({
+            "domain": {
+                // Propagated from /si/name, which means the attribute prototype has been copied
+                // from the copied component (since we manually set all values, which removes the
+                // default attribute prototype for the slot
+                "name": "Long John Silver - Copy",
+
+                // The connection is not copied
+                // "parrot_names": [
+                //     "Captain Flint",
+                // ],
+            },
+            "resource": {},
+            "resource_value": {},
+            "si": {
+                "color": "#ff00ff",
+                "name": "Long John Silver - Copy",
+                "type": "component",
+            },
+        })
+    );
 }

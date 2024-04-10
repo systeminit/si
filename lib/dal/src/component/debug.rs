@@ -1,7 +1,5 @@
-use petgraph::graph::NodeIndex;
-use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -12,7 +10,6 @@ use crate::prop::PropError;
 use crate::socket::debug::{SocketDebugView, SocketDebugViewError};
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -215,74 +212,6 @@ impl ComponentDebugData {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentDebugViewResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        let mut child_values = HashMap::new();
-        // Get the root attribute value and load it into the work queue.
-        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let mut work_queue = VecDeque::from([root_attribute_value_id]);
-        while let Some(attribute_value_id) = work_queue.pop_front() {
-            // Collect all child attribute values.
-            let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
-            {
-                let mut child_attribute_values_with_keys_by_id: HashMap<
-                    AttributeValueId,
-                    (NodeIndex, Option<String>),
-                > = HashMap::new();
-
-                for (edge_weight, _, target_idx) in workspace_snapshot
-                    .edges_directed(attribute_value_id, Direction::Outgoing)
-                    .await?
-                {
-                    if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                        let child_id = workspace_snapshot
-                            .get_node_weight(target_idx)
-                            .await?
-                            .id()
-                            .into();
-                        child_attribute_values_with_keys_by_id
-                            .insert(child_id, (target_idx, key.to_owned()));
-                    }
-                }
-
-                let maybe_ordering =
-                    AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
-                        .await
-                        .ok();
-                // Ideally every attribute value with children is connected via an ordering node
-                // We don't error out on ordering not existing here because we don't have that
-                // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
-                for av_id in maybe_ordering.unwrap_or_else(|| {
-                    child_attribute_values_with_keys_by_id
-                        .keys()
-                        .cloned()
-                        .collect()
-                }) {
-                    let (child_attribute_value_node_index, key) =
-                        &child_attribute_values_with_keys_by_id[&av_id];
-                    let child_attribute_value_node_weight = workspace_snapshot
-                        .get_node_weight(*child_attribute_value_node_index)
-                        .await?;
-                    let content =
-                        child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                    cache.push((content.id().into(), key.clone()));
-                }
-            }
-
-            // Now that we have the child props, prepare debug views and load the work queue.
-            let mut child_attribute_value_ids = Vec::new();
-            for (child_attribute_value_id, _key) in cache {
-                let child_attribute_value =
-                    AttributeValue::get_by_id(ctx, child_attribute_value_id).await?;
-
-                // Load the work queue with the child attribute value.
-                work_queue.push_back(child_attribute_value_id);
-
-                // Cache the  prop values to eventually insert into the child property editor values map.
-                child_attribute_value_ids.push(child_attribute_value.id());
-            }
-            child_values.insert(attribute_value_id, child_attribute_value_ids);
-        }
-        Ok(child_values)
+        Ok(AttributeValue::tree_for_component(ctx, component_id).await?)
     }
 }

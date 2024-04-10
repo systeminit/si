@@ -2319,17 +2319,18 @@ async function triggerPasteElements() {
 
   const newParentNodeId =
     allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
+  const copyingFrom = componentsStore.copyingFrom;
+  componentsStore.copyingFrom = null;
 
   await componentsStore.PASTE_COMPONENTS(
     componentsStore.selectedComponentIds,
     {
-      x: gridPointerPos.value.x - componentsStore.copyingFrom.x,
-      y: gridPointerPos.value.y - componentsStore.copyingFrom.y,
+      x: gridPointerPos.value.x - copyingFrom.x,
+      y: gridPointerPos.value.y - copyingFrom.y,
     },
     gridPointerPos.value,
     newParentNodeId,
   );
-  componentsStore.copyingFrom = null;
 }
 
 // ELEMENT ADDITION

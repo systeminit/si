@@ -262,10 +262,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
-
-          pastingId: null as string | null,
-          pastingError: undefined as string | undefined,
-          pastingLoading: false as boolean,
         }),
         getters: {
           // transforming the diagram-y data back into more generic looking data
@@ -1093,9 +1089,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            this.pastingId = null;
-            this.pastingLoading = true;
-            this.pastingError = undefined;
+            const tempInsertId = _.uniqueId("temp-insert-component");
 
             return new ApiRequest<{
               id: string;
@@ -1110,16 +1104,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 newParentNodeId,
                 ...visibilityParams,
               },
-              onSuccess: (data) => {
-                this.pastingId = data.id;
-                this.pendingInsertedComponents[this.pastingId] = {
-                  tempId: this.pastingId,
+              optimistic: () => {
+                this.pendingInsertedComponents[tempInsertId] = {
+                  tempId: tempInsertId,
                   position,
                 };
+
+                return () => {
+                  delete this.pendingInsertedComponents[tempInsertId];
+                };
               },
-              onFail: () => {
-                this.pastingId = null;
-                this.pastingLoading = false;
+              onSuccess: () => {
+                delete this.pendingInsertedComponents[tempInsertId];
               },
             });
           },
@@ -1369,28 +1365,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (resourceRefreshedEvent?.componentId) {
                   this.refreshingStatus[resourceRefreshedEvent.componentId] =
                     false;
-                }
-              },
-            },
-            {
-              eventType: "AsyncFinish",
-              callback: ({ id }: { id: string }) => {
-                if (id === this.pastingId) {
-                  this.pastingLoading = false;
-                  this.pastingError = undefined;
-                  this.pastingId = null;
-                  delete this.pendingInsertedComponents[id];
-                }
-              },
-            },
-            {
-              eventType: "AsyncError",
-              callback: ({ id, error }: { id: string; error: string }) => {
-                if (id === this.pastingId) {
-                  this.pastingLoading = false;
-                  this.pastingError = error;
-                  this.pastingId = null;
-                  delete this.pendingInsertedComponents[id];
                 }
               },
             },

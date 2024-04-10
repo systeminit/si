@@ -14,7 +14,7 @@ use crate::{
     Component, ComponentId, DalContext, Prop,
 };
 
-use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
+use super::{AttributeValue, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
@@ -83,7 +83,7 @@ impl DependentValueGraph {
                     let controlling_func_data =
                         Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
                             .await
-                            .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+                            .map_err(Box::new)?;
                     let data = controlling_func_data
                         .get(&current_attribute_value_id)
                         .copied();
@@ -137,11 +137,11 @@ impl DependentValueGraph {
                                 let source_component =
                                     Component::get_by_id(ctx, targets.source_component_id)
                                         .await
-                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+                                        .map_err(Box::new)?;
                                 let destination_component =
                                     Component::get_by_id(ctx, targets.destination_component_id)
                                         .await
-                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+                                        .map_err(Box::new)?;
 
                                 // Both "deleted" and not deleted Components can feed data into
                                 // "deleted" Components. **ONLY** not deleted Components can feed

@@ -15,7 +15,8 @@ use crate::{
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
     ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
     DeprecatedActionBatchError, DeprecatedActionBatchId, DeprecatedActionPrototypeError,
-    DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility, WsEventError,
+    DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility,
+    WorkspaceSnapshotError, WsEventError,
 };
 
 #[remain::sorted]
@@ -75,6 +76,8 @@ pub enum JobConsumerError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationError),
+    #[error(transparent)]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
