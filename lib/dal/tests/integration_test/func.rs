@@ -5,6 +5,7 @@ use dal_test::test_harness::create_empty_action_func;
 use pretty_assertions_sorted::assert_eq;
 
 mod associations;
+mod authoring;
 
 #[test]
 async fn summary(ctx: &mut DalContext) {
