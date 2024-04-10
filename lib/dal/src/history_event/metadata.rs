@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use jwt_simple::prelude::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::diagram::DiagramResult;
 use crate::{ActorView, DalContext, HistoryActorTimestamp};

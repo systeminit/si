@@ -2,14 +2,13 @@
 
 use base64::engine::general_purpose;
 use base64::Engine;
+use telemetry::prelude::debug;
 
 use crate::func::associations::FuncAssociations;
 use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult, SavedFunc};
 use crate::func::view::FuncView;
 use crate::func::FuncKind;
-use crate::{
-    ActionKind, ActionPrototype, DalContext, Func, FuncId, SchemaVariant, SchemaVariantId,
-};
+use crate::{ActionPrototype, DalContext, Func, FuncId, SchemaVariant, SchemaVariantId};
 
 pub(crate) async fn save_func(
     ctx: &DalContext,
@@ -41,33 +40,30 @@ pub(crate) async fn save_func(
 
     match func.kind {
         FuncKind::Action => {
-            if let Some(FuncAssociations::Action {
-                schema_variant_ids,
-                kind,
-            }) = associations
-            {
-                save_action_func_prototypes(ctx, &func, kind, schema_variant_ids).await?;
+            if let Some(FuncAssociations::Action { schema_variant_ids }) = associations {
+                save_action_func_prototypes(ctx, &func, schema_variant_ids).await?;
             }
         }
         FuncKind::Attribute => {
-            // if let Some(FuncAssociations::Attribute {
-            //     prototypes,
-            //     arguments,
-            // }) = associations
-            // {
-            //     let backend_response_type = save_attr_func_prototypes(
-            //         ctx,
-            //         &func,
-            //         prototypes,
-            //         RemovedPrototypeOp::Reset,
-            //         None,
-            //     )
-            //     .await?;
-            //     save_attr_func_arguments(ctx, &func, arguments).await?;
-            //
-            //     func.set_backend_response_type(ctx, backend_response_type)
-            //         .await?;
-            // }
+            if let Some(FuncAssociations::Attribute {
+                prototypes,
+                arguments,
+            }) = associations
+            {
+                debug!(?prototypes, ?arguments, "saving for attribute func kind");
+                //     let backend_response_type = save_attr_func_prototypes(
+                //         ctx,
+                //         &func,
+                //         prototypes,
+                //         RemovedPrototypeOp::Reset,
+                //         None,
+                //     )
+                //     .await?;
+                //     save_attr_func_arguments(ctx, &func, arguments).await?;
+                //
+                //     func.set_backend_response_type(ctx, backend_response_type)
+                //         .await?;
+            }
         }
         FuncKind::Authentication => {
             if let Some(FuncAssociations::Authentication { schema_variant_ids }) = associations {
@@ -75,40 +71,52 @@ pub(crate) async fn save_func(
             }
         }
         FuncKind::CodeGeneration => {
-            // if let Some(FuncAssociations::CodeGeneration {
-            //     schema_variant_ids,
-            //     component_ids,
-            //     inputs,
-            // }) = associations
-            // {
-            //     save_leaf_prototypes(
-            //         ctx,
-            //         &func,
-            //         schema_variant_ids,
-            //         component_ids,
-            //         &inputs,
-            //         LeafKind::CodeGeneration,
-            //     )
-            //     .await?;
-            // }
+            if let Some(FuncAssociations::CodeGeneration {
+                schema_variant_ids,
+                component_ids,
+                inputs,
+            }) = associations
+            {
+                debug!(
+                    ?schema_variant_ids,
+                    ?component_ids,
+                    ?inputs,
+                    "saving for code generation func kind"
+                );
+                // save_leaf_prototypes(
+                //     ctx,
+                //     &func,
+                //     schema_variant_ids,
+                //     component_ids,
+                //     &inputs,
+                //     LeafKind::CodeGeneration,
+                // )
+                // .await?;
+            }
         }
         FuncKind::Qualification => {
-            // if let Some(FuncAssociations::Qualification {
-            //     schema_variant_ids,
-            //     component_ids,
-            //     inputs,
-            // }) = associations
-            // {
-            //     save_leaf_prototypes(
-            //         ctx,
-            //         &func,
-            //         schema_variant_ids,
-            //         component_ids,
-            //         &inputs,
-            //         LeafKind::Qualification,
-            //     )
-            //     .await?;
-            // }
+            if let Some(FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
+                inputs,
+            }) = associations
+            {
+                debug!(
+                    ?schema_variant_ids,
+                    ?component_ids,
+                    ?inputs,
+                    "saving for qualification func kind"
+                );
+                //     save_leaf_prototypes(
+                //         ctx,
+                //         &func,
+                //         schema_variant_ids,
+                //         component_ids,
+                //         &inputs,
+                //         LeafKind::Qualification,
+                //     )
+                //     .await?;
+            }
         }
         FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {
             return Err(FuncAuthoringError::NotWritable)
@@ -134,30 +142,33 @@ pub(crate) async fn save_func(
 async fn save_action_func_prototypes(
     ctx: &DalContext,
     func: &Func,
-    kind: ActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
     for schema_variant_id in schema_variant_ids {
         let prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
-        let mut at_least_one_exists = false;
         for prototype in prototypes {
             let prototype_func_id = prototype.func_id(ctx).await?;
             if func.id == prototype_func_id {
-                at_least_one_exists = true;
                 ActionPrototype::remove(ctx, prototype.id).await?;
-                ActionPrototype::new(ctx, prototype.name, kind, schema_variant_id, func.id).await?;
+                ActionPrototype::new(
+                    ctx,
+                    prototype.name,
+                    prototype.kind,
+                    schema_variant_id,
+                    func.id,
+                )
+                .await?;
             }
-        }
-
-        // If we didn't replace any existing prototypes, we know that this is a new one.
-        if !at_least_one_exists {
-            ActionPrototype::new(ctx, None::<String>, kind, schema_variant_id, func.id).await?;
         }
     }
 
     Ok(())
 }
+
+// TODO(nick): decide how we want to handle mutating the action kind. Do you just create a new
+// prototype via create func? That seems wasteful, but the way authoring flows now, the kind would
+// come in via the associations, which you may want a different action kind per prototype.
 
 async fn save_auth_func_prototypes(
     ctx: &DalContext,
@@ -167,21 +178,14 @@ async fn save_auth_func_prototypes(
     for schema_variant_id in schema_variant_ids {
         let prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
-        let mut at_least_one_exists = false;
         for prototype in prototypes {
             let prototype_func_id = prototype.func_id(ctx).await?;
             if func.id == prototype_func_id {
-                at_least_one_exists = true;
                 SchemaVariant::remove_authentication_prototype(ctx, func.id, schema_variant_id)
                     .await?;
                 SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id)
                     .await?;
             }
-        }
-
-        // If we didn't replace any existing prototypes, we know that this is a new one.
-        if !at_least_one_exists {
-            SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id).await?;
         }
     }
 

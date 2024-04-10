@@ -451,7 +451,8 @@ async fn process_failed_action_inner(
                 .await?;
         }
 
-        let prototype = ActionPrototype::get_by_id(ctx, action.action_prototype_id).await?;
+        let prototype =
+            ActionPrototype::get_by_id_or_error(ctx, action.action_prototype_id).await?;
 
         WsEvent::action_return(
             ctx,
