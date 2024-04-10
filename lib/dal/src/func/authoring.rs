@@ -53,12 +53,16 @@ pub enum FuncAuthoringError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("That attribute is already set by the function named \"{0}\"")]
+    AttributePrototypeAlreadySetByFunc(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
+    #[error("Function options are incompatible with variant")]
+    FuncOptionsAndVariantMismatch,
     #[error("func view error: {0}")]
     FuncView(#[from] FuncViewError),
     #[error("invalid func kind for creation: {0}")]
