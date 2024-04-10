@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
+use si_layer_cache::db::serialize;
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -57,7 +58,7 @@ async fn write_to_db() {
         .await
         .expect("cannot get from disk cache");
     let on_disk: CasValue =
-        postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &on_disk);
 
     // Are we in pg?
@@ -70,7 +71,7 @@ async fn write_to_db() {
         .expect("error getting data from pg")
         .expect("no cas object in pg");
     let in_pg: CasValue =
-        postcard::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
+        serialize::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &in_pg);
 }
 
@@ -202,7 +203,7 @@ async fn cold_read_from_db() {
         .await
         .expect("cannot get from disk cache");
     let on_disk: CasValue =
-        postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &on_disk);
 
     // Are we in pg?
@@ -215,7 +216,7 @@ async fn cold_read_from_db() {
         .expect("error getting data from pg")
         .expect("no cas object in pg");
     let in_pg: CasValue =
-        postcard::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
+        serialize::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &in_pg);
 }
 
@@ -307,7 +308,7 @@ async fn writes_are_gossiped() {
         {
             Ok(on_disk_postcard) => {
                 let on_disk: CasValue =
-                    postcard::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+                    serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
                 assert_eq!(cas_value.as_ref(), &on_disk);
                 break;
             }
@@ -332,7 +333,7 @@ async fn writes_are_gossiped() {
         .expect("error getting data from pg")
         .expect("no cas object in pg");
     let in_pg: CasValue =
-        postcard::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
+        serialize::from_bytes(&in_pg_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &in_pg);
 }
 
@@ -383,7 +384,7 @@ async fn stress_test() {
         let big_string: Arc<String> = Arc::new(v.repeat(10_000_000));
         let cas_value = Arc::new(CasValue::String(big_string.to_string()));
         let postcard_value =
-            postcard::to_stdvec(&cas_value).expect("cannot deserialize big ass string");
+            serialize::to_vec(&cas_value).expect("cannot deserialize big ass string");
         let cas_pk_string = ContentHash::new(&postcard_value).to_string();
         let ldb_slash_task = ldb_slash.clone();
         let _write_big_string = big_string.clone();
