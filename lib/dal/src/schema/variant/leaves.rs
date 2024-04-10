@@ -15,6 +15,7 @@ use crate::{
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 
 use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
+use crate::prop::PropPath;
 use crate::schema::variant::root_prop::RootPropChild;
 
 use super::{SchemaVariantError, SchemaVariantResult};
@@ -132,8 +133,8 @@ impl LeafInputLocation {
         }
     }
 
-    pub fn prop_path(&self) -> Vec<&'static str> {
-        vec!["root", self.arg_name()]
+    pub fn prop_path(&self) -> PropPath {
+        PropPath::new(["root", self.arg_name()])
     }
 
     pub fn maybe_from_arg_name(arg_name: impl AsRef<str>) -> Option<Self> {

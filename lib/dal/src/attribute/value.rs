@@ -1700,8 +1700,8 @@ impl AttributeValue {
         let maybe_existing_prototype_id =
             Self::component_prototype_id(ctx, attribute_value_id).await?;
 
-        if let Some(exsiting_prototype_id) = maybe_existing_prototype_id {
-            AttributePrototype::remove(ctx, exsiting_prototype_id).await?;
+        if let Some(existing_prototype_id) = maybe_existing_prototype_id {
+            AttributePrototype::remove(ctx, existing_prototype_id).await?;
         }
 
         Self::add_edge_to_attribute_prototype(
