@@ -19,7 +19,7 @@ use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{implement_add_edge_to, pk, DalContext, HelperError, Timestamp, TransactionsError};
+use crate::{id, implement_add_edge_to, DalContext, HelperError, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -35,6 +35,7 @@ mod associations;
 mod before;
 mod kind;
 
+pub use associations::AttributePrototypeArgumentView;
 pub use associations::AttributePrototypeView;
 pub use associations::FuncAssociations;
 pub use before::before_funcs_for_component;
@@ -104,10 +105,10 @@ pub struct FuncMetadataView {
 }
 
 pub fn is_intrinsic(name: &str) -> bool {
-    intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
+    IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
 }
 
-pk!(FuncId);
+id!(FuncId);
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).

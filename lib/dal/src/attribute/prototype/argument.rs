@@ -13,7 +13,7 @@ use ulid::Ulid;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
-    implement_add_edge_to, pk,
+    id, implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -40,7 +40,7 @@ use super::AttributePrototypeError;
 pub mod static_value;
 pub mod value_source;
 
-pk!(AttributePrototypeArgumentId);
+id!(AttributePrototypeArgumentId);
 
 #[remain::sorted]
 #[derive(Error, Debug)]

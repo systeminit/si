@@ -216,10 +216,10 @@ const attributeOutputLocationParsed = computed<
         type: "prop",
         propId: parsed.propId,
       };
-    } else if ("externalProviderId" in parsed && parsed.externalProviderId) {
+    } else if ("outputSocketId" in parsed && parsed.outputSocketId) {
       return {
         type: "outputSocket",
-        externalProviderId: parsed.externalProviderId,
+        outputSocketId: parsed.outputSocketId,
       };
     }
   }
@@ -349,9 +349,9 @@ const attachToAttributeFunction = (
     {
       id: nilId(),
       propId: "propId" in outputLocation ? outputLocation.propId : undefined,
-      externalProviderId:
-        "externalProviderId" in outputLocation
-          ? outputLocation.externalProviderId
+      outputSocketId:
+        "outputSocketId" in outputLocation
+          ? outputLocation.outputSocketId
           : undefined,
       prototypeArguments: [],
       componentId: undefined,

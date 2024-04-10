@@ -51,18 +51,18 @@ pub(crate) async fn save_func(
             }) = associations
             {
                 debug!(?prototypes, ?arguments, "saving for attribute func kind");
-                //     let backend_response_type = save_attr_func_prototypes(
-                //         ctx,
-                //         &func,
-                //         prototypes,
-                //         RemovedPrototypeOp::Reset,
-                //         None,
-                //     )
-                //     .await?;
-                //     save_attr_func_arguments(ctx, &func, arguments).await?;
+                // let backend_response_type = save_attr_func_prototypes(
+                //     ctx,
+                //     &func,
+                //     prototypes,
+                //     RemovedPrototypeOp::Reset,
+                //     None,
+                // )
+                // .await?;
+                // save_attr_func_arguments(ctx, &func, arguments).await?;
                 //
-                //     func.set_backend_response_type(ctx, backend_response_type)
-                //         .await?;
+                // func.set_backend_response_type(ctx, backend_response_type)
+                //     .await?;
             }
         }
         FuncKind::Authentication => {

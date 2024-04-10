@@ -132,15 +132,15 @@ const editedPrototype = computed(() => ({
     "propId" in selectedOutputLocation.value.value
       ? selectedOutputLocation.value.value.propId
       : undefined,
-  externalProviderId:
-    "externalProviderId" in selectedOutputLocation.value.value
-      ? selectedOutputLocation.value.value.externalProviderId
+  outputSocketId:
+    "outputSocketId" in selectedOutputLocation.value.value
+      ? selectedOutputLocation.value.value.outputSocketId
       : undefined,
   prototypeArguments: editableBindings.value.map(
     ({ id, funcArgumentId, binding }) => ({
       id: id ?? nilId(),
       funcArgumentId: funcArgumentId ?? nilId(),
-      internalProviderId: binding.value as string,
+      inputSocketId: binding.value as string,
     }),
   ),
 }));
@@ -176,21 +176,21 @@ const inputSourceOptions = computed<Option[]>(() => {
   const socketOptions =
     funcStore.inputSourceSockets[selectedVariantId]?.map((socket) => ({
       label: `Input Socket: ${socket.name}`,
-      value: socket.internalProviderId,
+      value: socket.inputSocketId,
     })) ?? [];
 
   const propOptions =
     funcStore.inputSourceProps[selectedVariantId]
       ?.filter(
         (prop) =>
-          prop.internalProviderId &&
+          prop.inputSocketId &&
           ("propId" in selectedOutputLocation.value.value
             ? prop.propId !== selectedOutputLocation.value.value.propId
             : true),
       )
       .map((prop) => ({
         label: `Attribute: ${prop.path}${prop.name}`,
-        value: prop.internalProviderId ?? nilId(),
+        value: prop.inputSocketId ?? nilId(),
       })) ?? [];
 
   return socketOptions.concat(propOptions);
@@ -214,9 +214,9 @@ watch(selectedVariant, (selectedVariant) => {
         "propId" in selectedOutputLocation.value.value
           ? selectedOutputLocation.value.value.propId
           : undefined,
-      externalProviderId:
-        "externalProviderId" in selectedOutputLocation.value.value
-          ? selectedOutputLocation.value.value.externalProviderId
+      outputSocketId:
+        "outputSocketId" in selectedOutputLocation.value.value
+          ? selectedOutputLocation.value.value.outputSocketId
           : undefined,
     },
   );
@@ -264,19 +264,18 @@ const open = (prototype: AttributePrototypeView) => {
     outputLocationOptions.value.find(
       (loc) =>
         ("propId" in loc.value && loc.value.propId === prototype.propId) ||
-        ("externalProviderId" in loc.value &&
-          loc.value.externalProviderId === prototype.externalProviderId),
+        ("outputSocketId" in loc.value &&
+          loc.value.outputSocketId === prototype.outputSocketId),
     ) ?? noneOutputLocation;
 
   editableBindings.value =
     prototype?.prototypeArguments.map(
-      ({ id, funcArgumentId, internalProviderId }) => ({
+      ({ id, funcArgumentId, inputSocketId }) => ({
         id: id ?? undefined,
         funcArgumentId,
         binding:
-          inputSourceOptions.value.find(
-            (opt) => opt.value === internalProviderId,
-          ) ?? noneSource,
+          inputSourceOptions.value.find((opt) => opt.value === inputSocketId) ??
+          noneSource,
       }),
     ) ?? [];
 
