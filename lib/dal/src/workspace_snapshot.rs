@@ -521,6 +521,14 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub async fn try_get_node_index_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
+        Ok(self.working_copy().await.try_get_node_index_by_id(id)?)
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_latest_node_index(
         &self,
         node_index: NodeIndex,

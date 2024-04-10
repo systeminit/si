@@ -1227,6 +1227,16 @@ impl WorkspaceSnapshotGraph {
             .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
     }
 
+    #[inline(always)]
+    pub(crate) fn try_get_node_index_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        let id = id.into();
+
+        Ok(self.node_index_by_id.get(&id).copied())
+    }
+
     fn get_node_index_by_lineage(&self, lineage_id: Ulid) -> HashSet<NodeIndex> {
         self.node_indices_by_lineage_id
             .get(&lineage_id)
