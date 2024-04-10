@@ -3,6 +3,7 @@ changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
   <div
+    id="konva-container"
     ref="containerRef"
     :style="{ cursor }"
     class="absolute inset-0 overflow-hidden"

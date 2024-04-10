@@ -160,6 +160,8 @@ body.light {
   --input-focus-bg-color: @colors-white;
   --input-focus-border-color: @colors-action-400;
   --panel-bg-color: @colors-white;
+  --toast-text-color: @colors-black;
+  --toast-bg-color: @colors-white;
 }
 body.dark {
   --input-border-color: @colors-neutral-600;
@@ -167,5 +169,54 @@ body.dark {
   --input-focus-bg-color: @colors-black;
   --input-focus-border-color: @colors-action-300;
   --panel-bg-color: @colors-neutral-800;
+  --toast-text-color: @colors-white;
+  --toast-bg-color: @colors-black;
+}
+
+@keyframes siToastFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes siToastFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.si-toast-fade-enter-active {
+  animation-name: siToastFadeIn;
+  animation-duration: 250ms;
+  animation-fill-mode: both;
+}
+.si-toast-fade-leave-active {
+  animation-name: siToastFadeOut;
+  animation-duration: 250ms;
+  animation-fill-mode: both;
+}
+.si-toast-fade-move {
+  transition-timing-function: ease-in-out;
+  transition-property: all;
+  transition-duration: 400ms;
+}
+
+.Vue-Toastification__container.diagram-toast-container {
+  position: absolute; // default is fixed, but we want it positioned within its container, so go absolute
+  padding: 0;
+  top: 40vh;
+
+  & .Vue-Toastification__toast {
+    background-color: var(--toast-bg-color);
+    color: var(--toast-text-color);
+
+    .Vue-Toastification__progress-bar {
+      background-color: var(--toast-text-color);
+    }
+  }
 }
 </style>

@@ -4,7 +4,7 @@ import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
 import VueSafeTeleport from "vue-safe-teleport";
-import Toast from "vue-toastification";
+import Toast, { PluginOptions, POSITION } from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
 import "@si/vue-lib/tailwind/main.css";
@@ -53,7 +53,36 @@ app.use(FloatingVue, {
   },
 });
 
-app.use(Toast); // see https://vue-toastification.maronato.dev/ for some optoins we can set
+function asyncGetContainer(): Promise<HTMLElement> {
+  return new Promise((resolve) => {
+    const observer = new MutationObserver((mutations, me) => {
+      const myContainer = document.getElementById("konva-container");
+      if (myContainer) {
+        me.disconnect();
+        resolve(myContainer);
+      }
+    });
+    observer.observe(document, {
+      childList: true,
+      subtree: true,
+    });
+  });
+}
+
+const options: PluginOptions = {
+  newestOnTop: true,
+  containerClassName: "diagram-toast-container",
+  position: POSITION.TOP_CENTER, // we overriding to push this down, BOTTOM is useless now
+  transition: "si-toast-fade", // works better with overriden position
+  icon: false,
+  closeButton: false,
+  draggable: false,
+  hideProgressBar: true,
+  timeout: 1500,
+  // container: asyncGetContainer // right now we cannot make the container a div within nested components that get destroyed on route transitions
+  // if we could use that div, we get get TOP_RIGHT position cleanly...
+};
+app.use(Toast, options); // see https://vue-toastification.maronato.dev/ for some optoins we can set
 
 // unfortunately, vue-konva only works as a global plugin, so we must register it here
 // TODO: fork the lib and set it up so we can import individual components
