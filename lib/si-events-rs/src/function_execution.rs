@@ -1,8 +1,8 @@
-use std::str::FromStr;
+use std::{str::FromStr, string::ParseError};
 
 use ulid::Ulid;
 
-#[derive(Eq, PartialEq, Hash, Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct FunctionExecutionKey {
     value: String,
 }
@@ -20,7 +20,7 @@ impl FunctionExecutionKey {
 }
 
 impl FromStr for FunctionExecutionKey {
-    type Err = ulid::DecodeError;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self {

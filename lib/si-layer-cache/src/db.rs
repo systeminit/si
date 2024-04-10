@@ -24,8 +24,8 @@ use self::{
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
-pub mod serialize;
 pub mod function_execution;
+pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]

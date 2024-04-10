@@ -27,6 +27,7 @@ pub struct PgLayer {
     pool: Arc<PgPool>,
     pub table_name: String,
     get_value_query: String,
+    get_value_by_prefix_query: String,
     get_value_many_query: String,
     get_most_recent_query: String,
     insert_value_query: String,
@@ -40,8 +41,9 @@ impl PgLayer {
         Self {
             pool: Arc::new(pg_pool),
             get_value_query: format!("SELECT value FROM {table_name} WHERE key = $1 LIMIT 1"),
+            get_value_by_prefix_query: format!("SELECT key, value FROM {table_name} WHERE key like $1"),
             get_value_many_query: format!("SELECT key, value FROM {table_name} WHERE key = any($1)"),
-            get_most_recent_query: format!("SELECT key, value FROM {table_name} LIMIT $1 ORDER BY created_at"),
+            get_most_recent_query: format!("SELECT key, value FROM {table_name} ORDER BY created_at LIMIT $1"),
             insert_value_query: format!("INSERT INTO {table_name} (key, sort_key, value) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"),
             contains_key_query: format!("SELECT key FROM {table_name} WHERE key = $1 LIMIT 1"),
             search_query: format!("SELECT value FROM {table_name} WHERE sort_key LIKE $1"),
@@ -91,16 +93,49 @@ impl PgLayer {
         Ok(Some(result))
     }
 
-    pub async fn get_most_recent(&self, limit: &u32) -> LayerDbResult<Option<Vec<u8>>> {
+    pub async fn get_many_by_prefix(
+        &self,
+        key: &str,
+    ) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
+        let mut result = HashMap::new();
         let client = self.pool.get().await?;
-        let maybe_row = client
-            .query_opt(&self.get_most_recent_query, &[&limit])
-            .await?;
 
-        match maybe_row {
-            Some(row) => Ok(Some(row.get("value"))),
-            None => Ok(None),
+        for row in client
+            .query(&self.get_value_by_prefix_query, &[&format!("{}%", &key)])
+            .await?
+        {
+            result.insert(
+                row.get::<&str, String>("key").to_owned(),
+                row.get::<&str, Vec<u8>>("value"),
+            );
         }
+
+        if result.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(result))
+    }
+
+    pub async fn get_most_recent(
+        &self,
+        limit: i64,
+    ) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
+        let mut result = HashMap::new();
+        let client = self.pool.get().await?;
+
+        for row in client.query(&self.get_most_recent_query, &[&limit]).await? {
+            result.insert(
+                row.get::<&str, String>("key").to_owned(),
+                row.get::<&str, Vec<u8>>("value"),
+            );
+        }
+
+        if result.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(result))
     }
 
     pub async fn search(&self, sort_key_like: impl AsRef<str>) -> LayerDbResult<Vec<Vec<u8>>> {

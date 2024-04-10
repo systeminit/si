@@ -157,3 +157,32 @@ async fn get_bulk_from_db() {
         }
     }
 }
+
+#[tokio::test]
+async fn get_last_four_from_database() {
+    let layer_cache = make_layer_cache("get_last_four_from_database").await;
+
+    let values: [Arc<str>; 5] = [
+        "skid row".into(),
+        "kid scrow".into(),
+        "march for macragge".into(),
+        "magnus did nothing wrong".into(),
+        "steppa pig".into(),
+    ];
+
+    for value in &values {
+        let _ = layer_cache
+            .pg()
+            .insert(value, "gettin'", value.as_ref().as_bytes())
+            .await;
+    }
+
+    let get_values = layer_cache
+        .pg()
+        .get_most_recent(4)
+        .await
+        .expect("should get")
+        .expect("should have results");
+
+    assert_eq!(get_values.len(), 4);
+}

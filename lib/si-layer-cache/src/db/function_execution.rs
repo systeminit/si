@@ -1,8 +1,10 @@
+use std::string::ParseError;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_events::FunctionExecutionKey;
+use ulid::Ulid;
 
 use crate::{error::LayerDbResult, layer_cache::LayerCache, LayerDbError};
 
@@ -73,7 +75,7 @@ where
 
     pub async fn read_many(
         &self,
-        keys: &[Arc<FunctionExecutionKey>],
+        keys: &[FunctionExecutionKey],
     ) -> LayerDbResult<HashMap<FunctionExecutionKey, Arc<V>>> {
         let mut formatted_keys = vec![];
         for key in keys {
@@ -83,7 +85,58 @@ where
         let mut values: HashMap<FunctionExecutionKey, Arc<V>> = HashMap::new();
         if let Some(found) = self.cache.pg().get_many(&formatted_keys).await? {
             for (k, v) in found {
-                values.insert(k.parse().unwrap(), postcard::from_bytes(&v)?);
+                values.insert(
+                    k.parse().map_err(|err: ParseError| {
+                        LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
+                    })?,
+                    postcard::from_bytes(&v)?,
+                );
+            }
+        }
+        Ok(values)
+    }
+
+    pub async fn read_many_by_component_id(
+        &self,
+        component_id: &Ulid,
+    ) -> LayerDbResult<HashMap<FunctionExecutionKey, Arc<V>>> {
+        self.read_many_by_prefix(&component_id.to_string()).await
+    }
+
+    pub async fn read_many_by_prototype_id(
+        &self,
+        prototype_id: &Ulid,
+    ) -> LayerDbResult<HashMap<FunctionExecutionKey, Arc<V>>> {
+        self.read_many_by_prefix(&format!("%{}", &prototype_id.to_string()))
+            .await
+    }
+
+    pub async fn read_many_by_component_id_and_prototype_id(
+        &self,
+        component_id: &Ulid,
+        prototype_id: &Ulid,
+    ) -> LayerDbResult<HashMap<FunctionExecutionKey, Arc<V>>> {
+        self.read_many_by_prefix(&format!(
+            "{}{}",
+            &component_id.to_string(),
+            &prototype_id.to_string()
+        ))
+        .await
+    }
+
+    async fn read_many_by_prefix(
+        &self,
+        key: &str,
+    ) -> LayerDbResult<HashMap<FunctionExecutionKey, Arc<V>>> {
+        let mut values: HashMap<FunctionExecutionKey, Arc<V>> = HashMap::new();
+        if let Some(found) = self.cache.pg().get_many_by_prefix(key).await? {
+            for (k, v) in found {
+                values.insert(
+                    k.parse().map_err(|err: ParseError| {
+                        LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
+                    })?,
+                    postcard::from_bytes(&v)?,
+                );
             }
         }
         Ok(values)
