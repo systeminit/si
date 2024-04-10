@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{EncryptedSecret, Workspace};
 
-pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, String, WorkspaceSnapshotGraph>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
