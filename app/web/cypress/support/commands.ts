@@ -32,6 +32,7 @@ import "./auth-provider-commands/auth0";
 
 // Import commands for posthog
 import "./posthog-commands/posthog";
+import "./component-actions/create";
 
 Cypress.Commands.add("getBySel", (selector, ...args) => {
   return cy.get(`[data-test=${selector}]`, ...args)
