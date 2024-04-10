@@ -13,6 +13,7 @@ cacache = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }
 lazy_static = { workspace = true }
+miniz_oxide = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
 refinery = { workspace = true }

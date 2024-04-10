@@ -26,6 +26,7 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use ulid::Ulid;
 
+use crate::db::serialize;
 use crate::error::LayerDbResult;
 use crate::nats;
 use crate::nats::subject;
@@ -193,7 +194,7 @@ impl LayeredEventClient {
             headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
             headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
             headers.insert(NATS_HEADER_INSTANCE_ID, instance_id.to_string().as_str());
-            let payload = postcard::to_stdvec(&event)?;
+            let payload = serialize::to_vec(&event)?;
 
             let event_id = Ulid::new();
             let object_size = payload.len();
@@ -380,7 +381,7 @@ impl LayeredEventServer {
         tx: UnboundedSender<LayeredEvent>,
         message: Message,
     ) -> LayerDbResult<()> {
-        let event: LayeredEvent = postcard::from_bytes(&message.payload)?;
+        let event: LayeredEvent = serialize::from_bytes(&message.payload)?;
         tx.send(event).map_err(Box::new)?;
         Ok(())
     }
@@ -389,7 +390,7 @@ impl LayeredEventServer {
         tx: UnboundedSender<LayeredEvent>,
         payload: Bytes,
     ) -> LayerDbResult<()> {
-        let event: LayeredEvent = postcard::from_bytes(&payload)?;
+        let event: LayeredEvent = serialize::from_bytes(&payload)?;
         tx.send(event).map_err(Box::new)?;
         Ok(())
     }

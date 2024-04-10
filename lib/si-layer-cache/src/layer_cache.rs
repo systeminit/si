@@ -5,6 +5,7 @@ use std::{collections::HashMap, fmt::Display};
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
 
+use crate::db::serialize;
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
 use crate::memory_cache::MemoryCache;
@@ -47,14 +48,14 @@ where
             Some(memory_value) => Some(memory_value),
             None => match self.disk_cache.get(key.clone()).await {
                 Ok(value) => {
-                    let deserialized: V = postcard::from_bytes(&value[..])?;
+                    let deserialized: V = serialize::from_bytes(&value[..])?;
 
                     self.memory_cache.insert(key, deserialized.clone()).await;
                     Some(deserialized)
                 }
                 Err(_) => match self.pg.get(&key).await? {
                     Some(value) => {
-                        let deserialized: V = postcard::from_bytes(&value)?;
+                        let deserialized: V = serialize::from_bytes(&value)?;
 
                         self.memory_cache
                             .insert(key.clone(), deserialized.clone())
@@ -83,7 +84,7 @@ where
                 Some(memory_value) => Some(memory_value),
                 None => match self.disk_cache.get(key_str.clone()).await {
                     Ok(value) => {
-                        let deserialized: V = postcard::from_bytes(&value[..])?;
+                        let deserialized: V = serialize::from_bytes(&value[..])?;
 
                         self.memory_cache
                             .insert(key_str.clone(), deserialized.clone())
@@ -103,7 +104,7 @@ where
         if !not_found.is_empty() {
             if let Some(pg_found) = self.pg.get_many(&not_found).await? {
                 for (k, v) in pg_found {
-                    let deserialized: V = postcard::from_bytes(&v)?;
+                    let deserialized: V = serialize::from_bytes(&v)?;
                     self.memory_cache
                         .insert(k.clone().into(), deserialized.clone())
                         .await;
@@ -122,7 +123,7 @@ where
     }
 
     pub fn deserialize_memory_value(&self, bytes: &[u8]) -> LayerDbResult<V> {
-        postcard::from_bytes(bytes).map_err(Into::into)
+        serialize::from_bytes(bytes).map_err(Into::into)
     }
 
     pub fn memory_cache(&self) -> MemoryCache<V> {

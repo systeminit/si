@@ -18,6 +18,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::{Ulid, ULID_LEN};
 
 use crate::{
+    db::serialize,
     error::LayerDbResult,
     event::LayeredEventMetadata,
     nats::{self, subject},
@@ -159,7 +160,7 @@ impl ActivityPublisher {
 
     pub(crate) async fn publish(&self, activity: &Activity) -> LayerDbResult<()> {
         let nats_subject = subject::for_activity(self.prefix(), activity);
-        let nats_payload = postcard::to_stdvec(&activity)?;
+        let nats_payload = serialize::to_vec(&activity)?;
         // Publish message and await confirmation from server that it has been received
         self.context
             .publish(nats_subject, nats_payload.into())
@@ -341,7 +342,7 @@ impl ActivityStream {
     }
 
     pub async fn process_message(tx: UnboundedSender<Activity>, msg: Message) -> LayerDbResult<()> {
-        let activity = postcard::from_bytes::<Activity>(&msg.payload)?;
+        let activity = serialize::from_bytes::<Activity>(&msg.payload)?;
         tx.send(activity).map_err(Box::new)?;
         Ok(())
     }
@@ -482,7 +483,7 @@ impl RebaserRequestWorkQueue {
     }
 
     pub async fn process_message(&self, msg: Message) -> LayerDbResult<()> {
-        let activity = postcard::from_bytes::<Activity>(&msg.payload)?;
+        let activity = serialize::from_bytes::<Activity>(&msg.payload)?;
         let rebase_activity = activity.try_into()?;
         self.tx.send(rebase_activity).map_err(Box::new)?;
         Ok(())
