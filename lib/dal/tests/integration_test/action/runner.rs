@@ -1,6 +1,6 @@
 use dal::{
-    func::backend::js_action::ActionRunResult, ActionCompletionStatus, ActionPrototype, Component,
-    DalContext, DeprecatedActionBatch, DeprecatedActionRunner,
+    func::backend::js_action::DeprecatedActionRunResult, ActionCompletionStatus, Component,
+    DalContext, DeprecatedActionBatch, DeprecatedActionPrototype, DeprecatedActionRunner,
 };
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -15,7 +15,7 @@ async fn get_by_id(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -50,7 +50,7 @@ async fn set_resource(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -68,7 +68,7 @@ async fn set_resource(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let resource = ActionRunResult {
+    let resource = DeprecatedActionRunResult {
         status: None,
         payload: None,
         message: None,
@@ -107,7 +107,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -157,7 +157,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -210,7 +210,7 @@ async fn set_started_at(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -258,7 +258,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -305,7 +305,7 @@ async fn stamp_started(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -354,7 +354,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -377,7 +377,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
             ctx,
             ActionCompletionStatus::Success,
             Some("message".to_owned()),
-            Some(ActionRunResult {
+            Some(DeprecatedActionRunResult {
                 status: None,
                 payload: None,
                 message: None,
@@ -396,7 +396,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
             ctx,
             ActionCompletionStatus::Success,
             Some("message".to_owned()),
-            Some(ActionRunResult {
+            Some(DeprecatedActionRunResult {
                 status: None,
                 payload: None,
                 message: None,
@@ -434,7 +434,7 @@ async fn for_batch(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -467,7 +467,7 @@ async fn run(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()

@@ -19,6 +19,7 @@ use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
 
+pub mod action;
 pub mod actor_view;
 pub mod attribute;
 pub mod authentication_prototype;
@@ -72,6 +73,7 @@ pub mod ws_event;
 // pub mod status;
 //pub mod tasks;
 
+pub use action::ActionPrototypeId;
 pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
@@ -92,7 +94,8 @@ pub use deprecated_action::batch::{
     DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionBatchId,
 };
 pub use deprecated_action::prototype::{
-    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ActionPrototypeView,
+    DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
+    DeprecatedActionPrototypeView,
 };
 pub use deprecated_action::runner::{
     ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,

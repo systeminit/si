@@ -19,21 +19,21 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::DeprecatedActionRunnerId;
 use crate::{
     func::binding::return_value::FuncBindingReturnValueError,
     implement_add_edge_to,
     layer_db_types::{DeprecatedActionBatchContent, DeprecatedActionBatchContentV1},
-    pk, ActionCompletionStatus, ActionPrototypeError, ComponentError, DalContext,
-    DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, FuncError,
-    HelperError, HistoryEventError, SchemaError, Timestamp, TransactionsError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    pk, ActionCompletionStatus, ComponentError, DalContext, DeprecatedActionPrototypeError,
+    DeprecatedActionRunner, DeprecatedActionRunnerError, FuncError, HelperError, HistoryEventError,
+    SchemaError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DeprecatedActionBatchError {
     #[error(transparent)]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("cannot stamp batch as started since it already finished")]
     AlreadyFinished,
     #[error("cannot stamp batch as started since it already started")]
@@ -175,7 +175,7 @@ impl DeprecatedActionBatch {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
-            NodeWeight::new_content(change_set, id, ContentAddress::ActionBatch(hash))?;
+            NodeWeight::new_content(change_set, id, ContentAddress::DeprecatedActionBatch(hash))?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -183,7 +183,7 @@ impl DeprecatedActionBatch {
 
         // Root --> ActionBatch Category --> Component (this)
         let category_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::ActionBatch)
+            .get_category_node(None, CategoryNodeKind::DeprecatedActionBatch)
             .await?;
         Self::add_category_edge(ctx, category_id, id.into(), EdgeWeightKind::new_use()).await?;
 
@@ -217,7 +217,7 @@ impl DeprecatedActionBatch {
 
         let mut action_batches = vec![];
         let action_batch_category_node_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::ActionBatch)
+            .get_category_node(None, CategoryNodeKind::DeprecatedActionBatch)
             .await?;
 
         let action_batch_node_indices = workspace_snapshot
@@ -233,7 +233,9 @@ impl DeprecatedActionBatch {
             let node_weight = workspace_snapshot
                 .get_node_weight(index)
                 .await?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::ActionBatch)?;
+                .get_content_node_weight_of_kind(
+                    ContentAddressDiscriminants::DeprecatedActionBatch,
+                )?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
         }

@@ -9,8 +9,9 @@ use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::Vec
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display)]
 pub enum CategoryNodeKind {
-    ActionBatch,
+    Action,
     Component,
+    DeprecatedActionBatch,
     Func,
     Module,
     Schema,

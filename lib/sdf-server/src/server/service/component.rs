@@ -8,8 +8,10 @@ use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId, WsEventError};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
-use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
+use dal::{
+    ComponentError as DalComponentError, DeprecatedActionPrototypeError, StandardModelError,
+};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -36,7 +38,7 @@ pub mod set_type;
 #[derive(Debug, Error)]
 pub enum ComponentError {
     #[error("action prototype: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     // #[error("attribute context builder error: {0}")]
     // AttributeContextBuilder(#[from] AttributeContextBuilderError),
     // #[error("attribute prototype error: {0}")]

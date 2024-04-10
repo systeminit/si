@@ -5,8 +5,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ActionPrototypeError, ChangeSetApplyError as DalChangeSetApplyError,
-    ChangeSetError as DalChangeSetError, ComponentError, DeprecatedActionError, FuncError,
+    ChangeSetApplyError as DalChangeSetApplyError, ChangeSetError as DalChangeSetError,
+    ComponentError, DeprecatedActionError, DeprecatedActionPrototypeError, FuncError,
     StandardModelError, TransactionsError, WsEventError,
 };
 
@@ -33,7 +33,7 @@ pub enum ChangeSetError {
     #[error("action error: {0}")]
     Action(#[from] DeprecatedActionError),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]

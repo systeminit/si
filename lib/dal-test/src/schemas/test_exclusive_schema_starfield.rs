@@ -1,7 +1,7 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
-use dal::{prop::PropPath, ActionKind};
+use dal::{prop::PropPath, DeprecatedActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::SchemaSpecData;
 use si_pkg::{
@@ -384,13 +384,13 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Create)
+                        .kind(&DeprecatedActionKind::Create)
                         .func_unique_id(&starfield_create_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Refresh)
+                        .kind(&DeprecatedActionKind::Refresh)
                         .func_unique_id(&starfield_refresh_action_func.unique_id)
                         .build()?,
                 )

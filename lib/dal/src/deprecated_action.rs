@@ -20,18 +20,22 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to,
-    layer_db_types::{ActionPrototypeContent, DeprecatedActionContent, DeprecatedActionContentV1},
-    pk, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetId,
-    Component, ComponentError, ComponentId, DalContext, DeprecatedActionBatchError, HelperError,
-    HistoryActor, HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    layer_db_types::{
+        DeprecatedActionContent, DeprecatedActionContentV1, DeprecatedActionPrototypeContent,
+    },
+    ActionPrototypeId, ChangeSetId, Component, ComponentError, ComponentId, DalContext,
+    DeprecatedActionBatchError, DeprecatedActionKind, DeprecatedActionPrototype,
+    DeprecatedActionPrototypeError, HelperError, HistoryActor, HistoryEventError, Timestamp,
+    TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
+
+pub use crate::action::ActionId;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DeprecatedActionError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
@@ -70,13 +74,11 @@ pub enum DeprecatedActionError {
 
 pub type DeprecatedActionResult<T> = Result<T, DeprecatedActionError>;
 
-pk!(ActionId);
-
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct DeprecatedActionBag {
     pub component_id: ComponentId,
     pub action: DeprecatedAction,
-    pub kind: ActionKind,
+    pub kind: DeprecatedActionKind,
     pub parents: Vec<ActionId>,
 }
 
@@ -142,14 +144,15 @@ impl DeprecatedAction {
 
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::DeprecatedAction(hash))?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         workspace_snapshot.add_node(node_weight.to_owned()).await?;
 
-        let content_node_weight =
-            node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::Action)?;
+        let content_node_weight = node_weight
+            .get_content_node_weight_of_kind(ContentAddressDiscriminants::DeprecatedAction)?;
         let action = Self::assemble(content_node_weight.id().into(), content);
 
         Self::add_edge_to_prototype(
@@ -232,7 +235,10 @@ impl DeprecatedAction {
         Ok(component)
     }
 
-    pub async fn prototype(&self, ctx: &DalContext) -> DeprecatedActionResult<ActionPrototype> {
+    pub async fn prototype(
+        &self,
+        ctx: &DalContext,
+    ) -> DeprecatedActionResult<DeprecatedActionPrototype> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node = workspace_snapshot
@@ -253,9 +259,9 @@ impl DeprecatedAction {
             .await?
             .ok_or(DeprecatedActionError::PrototypeNotFoundFor(self.id))?;
 
-        let ActionPrototypeContent::V1(inner) = content;
+        let DeprecatedActionPrototypeContent::V1(inner) = content;
 
-        let prototype = ActionPrototype::assemble(node_weight.id().into(), inner);
+        let prototype = DeprecatedActionPrototype::assemble(node_weight.id().into(), inner);
         Ok(prototype)
     }
 
@@ -310,8 +316,10 @@ impl DeprecatedAction {
         let mut actions_by_id: HashMap<ActionId, (DeprecatedAction, ComponentId)> = HashMap::new();
         let mut actions_by_component: HashMap<ComponentId, Vec<DeprecatedAction>> = HashMap::new();
         let graph = Component::build_graph(ctx).await?;
-        let mut actions_graph: HashMap<ActionId, (ComponentId, ActionKind, Vec<ActionId>)> =
-            HashMap::new();
+        let mut actions_graph: HashMap<
+            ActionId,
+            (ComponentId, DeprecatedActionKind, Vec<ActionId>),
+        > = HashMap::new();
 
         let mut parents_graph = Vec::new();
 
@@ -332,7 +340,8 @@ impl DeprecatedAction {
                 .or_default()
                 .extend(actions.clone());
 
-            let mut actions_by_kind: HashMap<ActionKind, Vec<DeprecatedAction>> = HashMap::new();
+            let mut actions_by_kind: HashMap<DeprecatedActionKind, Vec<DeprecatedAction>> =
+                HashMap::new();
             for action in actions {
                 actions_by_id.insert(action.id, (action.clone(), component.id()));
 
@@ -343,7 +352,7 @@ impl DeprecatedAction {
                     .push(action);
             }
 
-            let action_ids_by_kind = |kind: ActionKind| {
+            let action_ids_by_kind = |kind: DeprecatedActionKind| {
                 actions_by_kind
                     .get(&kind)
                     .cloned()
@@ -368,9 +377,9 @@ impl DeprecatedAction {
                     // Action kind order is Initial Deletion -> Creation -> Others -> Final Deletion
                     // Initial deletions happen if there is a resource and a create action, so it deletes before creating
                     match kind {
-                        ActionKind::Create => {
+                        DeprecatedActionKind::Create => {
                             if has_resource {
-                                let ids = action_ids_by_kind(ActionKind::Delete);
+                                let ids = action_ids_by_kind(DeprecatedActionKind::Delete);
                                 actions_graph
                                     .entry(action.id)
                                     .or_insert_with(|| (component.id(), *kind, Vec::new()))
@@ -378,14 +387,15 @@ impl DeprecatedAction {
                                     .extend(ids);
                             }
                         }
-                        ActionKind::Delete => {
+                        DeprecatedActionKind::Delete => {
                             // If there is a resource and a create, this is a initial deletion, so no parent
-                            if !has_resource || action_ids_by_kind(ActionKind::Create).count() == 0
+                            if !has_resource
+                                || action_ids_by_kind(DeprecatedActionKind::Create).count() == 0
                             {
                                 // Every other action kind is a parent
                                 let ids = actions_by_kind
                                     .iter()
-                                    .filter(|(k, _)| **k != ActionKind::Delete)
+                                    .filter(|(k, _)| **k != DeprecatedActionKind::Delete)
                                     .flat_map(|(_, a)| a)
                                     .map(|a| a.id);
                                 actions_graph
@@ -395,10 +405,12 @@ impl DeprecatedAction {
                                     .extend(ids);
                             }
                         }
-                        ActionKind::Refresh | ActionKind::Other => {
+                        DeprecatedActionKind::Refresh | DeprecatedActionKind::Other => {
                             // If there is a resource and a create, delete actions will be initial, so our parent
-                            if has_resource && action_ids_by_kind(ActionKind::Create).count() > 0 {
-                                let ids = action_ids_by_kind(ActionKind::Delete);
+                            if has_resource
+                                && action_ids_by_kind(DeprecatedActionKind::Create).count() > 0
+                            {
+                                let ids = action_ids_by_kind(DeprecatedActionKind::Delete);
                                 actions_graph
                                     .entry(action.id)
                                     .or_insert_with(|| (component.id(), *kind, Vec::new()))
@@ -406,7 +418,7 @@ impl DeprecatedAction {
                                     .extend(ids);
                             }
 
-                            let ids = action_ids_by_kind(ActionKind::Create);
+                            let ids = action_ids_by_kind(DeprecatedActionKind::Create);
                             actions_graph
                                 .entry(action.id)
                                 .or_insert_with(|| (component.id(), *kind, Vec::new()))
@@ -469,7 +481,7 @@ impl DeprecatedAction {
         let mut reversed_parents: HashMap<ActionId, Vec<ActionId>> = HashMap::new();
 
         for bag in actions_bag_graph.values() {
-            if bag.kind == ActionKind::Delete {
+            if bag.kind == DeprecatedActionKind::Delete {
                 for parent_id in &bag.parents {
                     if let Some((_parent, component_id)) = actions_by_id.get(parent_id) {
                         if *component_id != bag.component_id {
@@ -484,7 +496,7 @@ impl DeprecatedAction {
         }
 
         for bag in actions_bag_graph.values_mut() {
-            if bag.kind == ActionKind::Delete {
+            if bag.kind == DeprecatedActionKind::Delete {
                 bag.parents.clear();
             }
 

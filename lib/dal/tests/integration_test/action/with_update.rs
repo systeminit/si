@@ -1,5 +1,8 @@
 use dal::component::resource::ResourceView;
-use dal::{ActionKind, ActionPrototype, ChangeSet, Component, DalContext, DeprecatedAction};
+use dal::{
+    ChangeSet, Component, DalContext, DeprecatedAction, DeprecatedActionKind,
+    DeprecatedActionPrototype,
+};
 use dal_test::test;
 use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 
@@ -25,7 +28,7 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("could not get action prototype for action");
     pretty_assertions_sorted::assert_eq!(
-        ActionKind::Create,           // expected
+        DeprecatedActionKind::Create, // expected
         create_action_prototype.kind, // actual
     );
 
@@ -65,15 +68,15 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("could not update visibility");
 
-    let actions_available = ActionPrototype::for_variant(ctx, swift_schema_variant_id)
+    let actions_available = DeprecatedActionPrototype::for_variant(ctx, swift_schema_variant_id)
         .await
         .expect("Unable to get action prototypes");
 
     assert_eq!(3, actions_available.len());
 
-    let mut update_actions: Vec<&ActionPrototype> = actions_available
+    let mut update_actions: Vec<&DeprecatedActionPrototype> = actions_available
         .iter()
-        .filter(|a| a.kind == ActionKind::Other)
+        .filter(|a| a.kind == DeprecatedActionKind::Other)
         .collect();
     assert_eq!(1, update_actions.len());
 
@@ -96,8 +99,8 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("could not get action prototype for action");
     pretty_assertions_sorted::assert_eq!(
-        ActionKind::Other,     // expected
-        action_prototype.kind, // actual
+        DeprecatedActionKind::Other, // expected
+        action_prototype.kind,       // actual
     );
 
     commit_and_update_snapshot(ctx).await;

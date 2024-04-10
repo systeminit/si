@@ -36,9 +36,9 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototype, ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId,
-    ComponentId, ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
+    ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
+    ComponentType, DalContext, DeprecatedActionPrototype, Func, FuncId, HelperError, InputSocket,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
     TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
@@ -1191,7 +1191,7 @@ impl SchemaVariant {
             let weight = workspace_snapshot
                 .get_node_weight(action_prototype_node)
                 .await?;
-            let ap = ActionPrototype::get_by_id_or_error(ctx, weight.id().into())
+            let ap = DeprecatedActionPrototype::get_by_id_or_error(ctx, weight.id().into())
                 .await
                 .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?;
             let func = Func::get_by_id_or_error(

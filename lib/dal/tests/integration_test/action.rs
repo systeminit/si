@@ -4,7 +4,8 @@ mod with_secret;
 mod with_update;
 
 use dal::{
-    ActionKind, ActionPrototype, Component, DalContext, DeprecatedAction, InputSocket, OutputSocket,
+    Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
+    InputSocket, OutputSocket,
 };
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -18,11 +19,11 @@ async fn prototype(ctx: &mut DalContext) {
         .expect("find variant id for component");
     let mut action = None;
     let mut prototype = None;
-    for proto in ActionPrototype::for_variant(ctx, variant_id)
+    for proto in DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if proto.kind == ActionKind::Create {
+        if proto.kind == DeprecatedActionKind::Create {
             action = Some(
                 DeprecatedAction::upsert(ctx, proto.id, component.id())
                     .await
@@ -57,11 +58,11 @@ async fn component(ctx: &mut DalContext) {
         .await
         .expect("find variant id for component");
     let mut action = None;
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             action = Some(
                 DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
@@ -95,11 +96,11 @@ async fn get_by_id(ctx: &mut DalContext) {
         .await
         .expect("find variant id for component");
     let mut action = None;
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             action = Some(
                 DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
@@ -131,11 +132,11 @@ async fn delete(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             DeprecatedAction::upsert(ctx, prototype.id, component.id())
                 .await
                 .expect("unable to upsert action");
@@ -155,7 +156,9 @@ async fn delete(ctx: &mut DalContext) {
         .expect("unable to build graph");
 
     assert_eq!(graph.len(), 1);
-    assert!(graph.values().next().expect("no graph value found").kind == ActionKind::Create);
+    assert!(
+        graph.values().next().expect("no graph value found").kind == DeprecatedActionKind::Create
+    );
 
     graph
         .values()
@@ -188,11 +191,11 @@ async fn for_component(ctx: &mut DalContext) {
         .await
         .expect("find variant id for component");
     let mut actions = Vec::new();
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             actions.push(
                 DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
@@ -222,11 +225,11 @@ async fn build_graph(ctx: &mut DalContext) {
         .expect("find variant id for component");
     let mut source_action = None;
 
-    for prototype in ActionPrototype::for_variant(ctx, source_sv_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, source_sv_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             source_action = Some(
                 DeprecatedAction::upsert(ctx, prototype.id, source.id())
                     .await
@@ -254,11 +257,11 @@ async fn build_graph(ctx: &mut DalContext) {
         .expect("find variant id for component");
     let mut destination_action = None;
 
-    for prototype in ActionPrototype::for_variant(ctx, destination_sv_id)
+    for prototype in DeprecatedActionPrototype::for_variant(ctx, destination_sv_id)
         .await
         .expect("unable to list prototypes for variant")
     {
-        if prototype.kind == ActionKind::Create {
+        if prototype.kind == DeprecatedActionKind::Create {
             destination_action = Some(
                 DeprecatedAction::upsert(ctx, prototype.id, destination.id())
                     .await

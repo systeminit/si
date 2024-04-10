@@ -8,16 +8,17 @@ use veritech_client::ResourceStatus;
 
 use crate::{
     deprecated_action::runner::DeprecatedActionRunnerError,
-    func::backend::js_action::ActionRunResult,
+    func::backend::js_action::DeprecatedActionRunResult,
     job::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionCompletionStatus, ActionKind, ActionPrototype, ActionPrototypeId,
-    Component, ComponentId, DalContext, DeprecatedActionBatch, DeprecatedActionBatchId,
-    DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility, WsEvent,
+    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, Component, ComponentId, DalContext,
+    DeprecatedActionBatch, DeprecatedActionBatchId, DeprecatedActionKind,
+    DeprecatedActionPrototype, DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -368,7 +369,7 @@ async fn action_task(
     ctx.update_snapshot_to_visibility().await?;
 
     if matches!(completion_status, ActionCompletionStatus::Success) {
-        if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
+        if let Err(err) = component.act(&ctx, DeprecatedActionKind::Refresh).await {
             error!("Unable to refresh component: {err}");
         }
         if let Err(err) = ctx.blocking_commit().await {
@@ -424,7 +425,7 @@ async fn process_failed_action_inner(
 
         let mut action = DeprecatedActionRunner::get_by_id(ctx, id).await?;
         // If this was a delete, we need to un-delete ourselves.
-        if matches!(action.action_kind, ActionKind::Delete) {
+        if matches!(action.action_kind, DeprecatedActionKind::Delete) {
             // Component::restore_and_propagate(ctx, action.component_id).await?;
         }
 
@@ -433,7 +434,7 @@ async fn process_failed_action_inner(
         }
 
         if action.finished_at.is_none() {
-            let resource = ActionRunResult {
+            let resource = DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Error),
                 payload: action.resource.clone().and_then(|r| r.payload),
                 message: Some(err.clone()),
@@ -452,7 +453,7 @@ async fn process_failed_action_inner(
         }
 
         let prototype =
-            ActionPrototype::get_by_id_or_error(ctx, action.action_prototype_id).await?;
+            DeprecatedActionPrototype::get_by_id_or_error(ctx, action.action_prototype_id).await?;
 
         WsEvent::action_return(
             ctx,

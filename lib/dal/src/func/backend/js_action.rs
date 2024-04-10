@@ -105,7 +105,7 @@ impl FuncDispatch for FuncBackendJsAction {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct ActionRunResult {
+pub struct DeprecatedActionRunResult {
     #[serde(default)]
     pub status: Option<ResourceStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,10 +122,10 @@ pub struct ActionRunResult {
 }
 
 impl ExtractPayload for ActionRunResultSuccess {
-    type Payload = ActionRunResult;
+    type Payload = DeprecatedActionRunResult;
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
-        Ok(ActionRunResult {
+        Ok(DeprecatedActionRunResult {
             payload: self
                 .payload
                 .as_ref()

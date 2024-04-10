@@ -13,7 +13,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::change_set::ChangeSetError;
-use crate::deprecated_action::batch::DeprecatedActionBatchId;
+use crate::deprecated_action::batch::{
+    DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionBatchId,
+};
 use crate::func::binding::return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightError;
@@ -22,10 +24,10 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     component::resource::ResourceView,
-    func::backend::js_action::ActionRunResult,
+    func::backend::js_action::DeprecatedActionRunResult,
     layer_db_types::{DeprecatedActionRunnerContent, DeprecatedActionRunnerContentV1},
-    pk, ActionId, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
-    ComponentError, ComponentId, DalContext, DeprecatedActionBatch, DeprecatedActionBatchError,
+    pk, ActionId, ActionPrototypeId, Component, ComponentError, ComponentId, DalContext,
+    DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
     EdgeWeightKind, Func, FuncError, HistoryEventError, SchemaError, SchemaVariantError, Timestamp,
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
@@ -61,7 +63,7 @@ pub enum ActionCompletionStatus {
 #[derive(Error, Debug)]
 pub enum DeprecatedActionRunnerError {
     #[error(transparent)]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("cannot stamp action runner as started since it already finished")]
     AlreadyFinished,
     #[error("cannot stamp action runner as started since it already started")]
@@ -137,8 +139,8 @@ pub struct DeprecatedActionRunner {
     pub schema_name: String,
     pub func_name: String,
     pub action_prototype_id: ActionPrototypeId,
-    pub action_kind: ActionKind,
-    pub resource: Option<ActionRunResult>,
+    pub action_kind: DeprecatedActionKind,
+    pub resource: Option<DeprecatedActionRunResult>,
 
     pub started_at: Option<DateTime<Utc>>,
     pub finished_at: Option<DateTime<Utc>>,
@@ -207,7 +209,8 @@ impl DeprecatedActionRunner {
         let timestamp = Timestamp::now();
 
         let component = Component::get_by_id(ctx, component_id).await?;
-        let prototype = ActionPrototype::get_by_id_or_error(ctx, action_prototype_id).await?;
+        let prototype =
+            DeprecatedActionPrototype::get_by_id_or_error(ctx, action_prototype_id).await?;
         let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
         let func_name = func
             .display_name
@@ -244,7 +247,7 @@ impl DeprecatedActionRunner {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
-            NodeWeight::new_content(change_set, id, ContentAddress::ActionRunner(hash))?;
+            NodeWeight::new_content(change_set, id, ContentAddress::DeprecatedActionRunner(hash))?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -287,12 +290,12 @@ impl DeprecatedActionRunner {
     pub async fn run(
         &mut self,
         ctx: &DalContext,
-    ) -> DeprecatedActionRunnerResult<Option<ActionRunResult>> {
+    ) -> DeprecatedActionRunnerResult<Option<DeprecatedActionRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
 
         let action_prototype =
-            ActionPrototype::get_by_id_or_error(ctx, self.action_prototype_id).await?;
+            DeprecatedActionPrototype::get_by_id_or_error(ctx, self.action_prototype_id).await?;
 
         Ok(match action_prototype.run(ctx, self.component_id).await {
             Ok(Some(run_result)) => {
@@ -347,7 +350,7 @@ impl DeprecatedActionRunner {
         ctx: &DalContext,
         completion_status: ActionCompletionStatus,
         completion_message: Option<String>,
-        resource: Option<ActionRunResult>,
+        resource: Option<DeprecatedActionRunResult>,
     ) -> DeprecatedActionRunnerResult<()> {
         if self.started_at.is_some() {
             self.set_finished_at(ctx).await?;
@@ -388,7 +391,7 @@ impl DeprecatedActionRunner {
     pub async fn set_resource(
         &mut self,
         ctx: &DalContext,
-        resource: Option<ActionRunResult>,
+        resource: Option<DeprecatedActionRunResult>,
     ) -> DeprecatedActionRunnerResult<()> {
         self.resource = resource;
         self.update_content(ctx).await
@@ -512,7 +515,7 @@ impl DeprecatedActionRunner {
 pub struct ActionHistoryView {
     id: DeprecatedActionRunnerId,
     status: ActionCompletionStatus,
-    action_kind: ActionKind,
+    action_kind: DeprecatedActionKind,
     display_name: String,
     schema_name: String,
     component_name: String,
@@ -533,7 +536,7 @@ impl ActionHistoryView {
 pub struct ActionRunnerReturn {
     id: DeprecatedActionRunnerId,
     batch_id: DeprecatedActionBatchId,
-    action: ActionKind,
+    action: DeprecatedActionKind,
     status: ActionCompletionStatus,
     output: Vec<String>,
 }
@@ -543,7 +546,7 @@ impl WsEvent {
         ctx: &DalContext,
         id: DeprecatedActionRunnerId,
         batch_id: DeprecatedActionBatchId,
-        action: ActionKind,
+        action: DeprecatedActionKind,
         status: ActionCompletionStatus,
         output: Vec<String>,
     ) -> WsEventResult<Self> {

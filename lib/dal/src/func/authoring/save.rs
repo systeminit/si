@@ -8,7 +8,7 @@ use crate::func::associations::FuncAssociations;
 use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult, SavedFunc};
 use crate::func::view::FuncView;
 use crate::func::FuncKind;
-use crate::{ActionPrototype, DalContext, Func, FuncId, SchemaVariant, SchemaVariantId};
+use crate::{DalContext, DeprecatedActionPrototype, Func, FuncId, SchemaVariant, SchemaVariantId};
 
 pub(crate) async fn save_func(
     ctx: &DalContext,
@@ -145,13 +145,13 @@ async fn save_action_func_prototypes(
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
     for schema_variant_id in schema_variant_ids {
-        let prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+        let prototypes = DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
         for prototype in prototypes {
             let prototype_func_id = prototype.func_id(ctx).await?;
             if func.id == prototype_func_id {
-                ActionPrototype::remove(ctx, prototype.id).await?;
-                ActionPrototype::new(
+                DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
+                DeprecatedActionPrototype::new(
                     ctx,
                     prototype.name,
                     prototype.kind,
@@ -176,7 +176,7 @@ async fn save_auth_func_prototypes(
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
     for schema_variant_id in schema_variant_ids {
-        let prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+        let prototypes = DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
         for prototype in prototypes {
             let prototype_func_id = prototype.func_id(ctx).await?;

@@ -1,6 +1,6 @@
 use dal::{
-    ActionCompletionStatus, ActionPrototype, Component, DalContext, DeprecatedActionBatch,
-    DeprecatedActionRunner,
+    ActionCompletionStatus, Component, DalContext, DeprecatedActionBatch,
+    DeprecatedActionPrototype, DeprecatedActionRunner,
 };
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
@@ -12,7 +12,7 @@ async fn runners(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -195,7 +195,7 @@ async fn stamp_started(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
@@ -244,7 +244,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-    let proto = ActionPrototype::for_variant(ctx, variant_id)
+    let proto = DeprecatedActionPrototype::for_variant(ctx, variant_id)
         .await
         .expect("unable to list prototypes for variant")
         .pop()
