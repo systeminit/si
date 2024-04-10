@@ -101,6 +101,14 @@ pub enum SchemaVariantError {
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant not found for input socket: {0}")]
+    NotFoundForInputSocket(InputSocketId),
+    #[error("schema variant not found for output socket: {0}")]
+    NotFoundForOutputSocket(OutputSocketId),
+    #[error("schema variant not found for prop: {0}")]
+    NotFoundForProp(PropId),
+    #[error("schema variant not found for root prop: {0}")]
+    NotFoundForRootProp(PropId),
     #[error("schema spec has no variants")]
     NoVariants,
     #[error("output socket error: {0}")]
@@ -1205,6 +1213,99 @@ impl SchemaVariant {
         }
 
         Ok(auth_funcs)
+    }
+
+    /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`PropId`](Prop).
+    pub async fn find_for_prop_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let mut work_queue = VecDeque::new();
+        work_queue.push_back(prop_id);
+
+        // If the parent prop id is empty, then we know the parent is the schema variant.
+        while let Some(prop_id) = work_queue.pop_front() {
+            match Prop::parent_prop_id_by_id(ctx, prop_id).await? {
+                Some(parent) => work_queue.push_back(parent),
+                None => return Self::find_for_root_prop_id(ctx, prop_id).await,
+            }
+        }
+
+        // This should be impossible to hit.
+        Err(SchemaVariantError::NotFoundForProp(prop_id))
+    }
+
+    async fn find_for_root_prop_id(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(root_prop_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        for source in sources {
+            let node_weight = workspace_snapshot.get_node_weight(source).await?;
+            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+                &node_weight.content_address_discriminants()
+            {
+                return Ok(node_weight.id().into());
+            }
+        }
+
+        Err(SchemaVariantError::NotFoundForRootProp(root_prop_id))
+    }
+
+    /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`InputSocketId`](InputSocket).
+    pub async fn find_for_input_socket_id(
+        ctx: &DalContext,
+        input_socket_id: InputSocketId,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                input_socket_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+
+        for source in sources {
+            let node_weight = workspace_snapshot.get_node_weight(source).await?;
+            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+                &node_weight.content_address_discriminants()
+            {
+                return Ok(node_weight.id().into());
+            }
+        }
+
+        Err(SchemaVariantError::NotFoundForInputSocket(input_socket_id))
+    }
+
+    /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`OutputSocketId`](OutputSocket).
+    pub async fn find_for_output_socket_id(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+    ) -> SchemaVariantResult<SchemaVariantId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                output_socket_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+
+        for source in sources {
+            let node_weight = workspace_snapshot.get_node_weight(source).await?;
+            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+                &node_weight.content_address_discriminants()
+            {
+                return Ok(node_weight.id().into());
+            }
+        }
+
+        Err(SchemaVariantError::NotFoundForOutputSocket(
+            output_socket_id,
+        ))
     }
 }
 

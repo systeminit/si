@@ -351,10 +351,13 @@ impl Prop {
         self.id
     }
 
+    /// Returns `Some` with the parent [`PropId`](Prop) or returns `None` if the parent is a
+    /// [`SchemaVariant`].
     pub async fn parent_prop_id_by_id(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Option<PropId>> {
+        dbg!(Self::get_by_id(ctx, prop_id).await?.name);
         let workspace_snapshot = ctx.workspace_snapshot()?;
         match workspace_snapshot
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
@@ -375,7 +378,7 @@ impl Prop {
                     _ => return Err(PropError::PropParentInvalid(prop_id)),
                 },
             ),
-            None => Ok(None),
+            None => Err(PropError::PropIsOrphan(prop_id)),
         }
     }
 
