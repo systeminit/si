@@ -19,7 +19,7 @@ export default defineConfig({
     },
     
     // Hotfix, needs amended
-    baseUrl: 'http://localhost:8080/',
+    baseUrl: 'https://app.systeminit.com',
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
