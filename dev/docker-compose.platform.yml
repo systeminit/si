@@ -1,6 +1,4 @@
 ---
-version: "3"
-
 services:
   postgres:
     image: systeminit/postgres:stable
@@ -47,7 +45,7 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
-    # We can't have the docker-compose finish before postgres is ready, this is 
+    # We can't have the docker-compose finish before postgres is ready, this is
     # a workaround to allow the rest of the tilt file continue to create sdf etc
     # so that the start doesn't fail as the databases don't exist
     depends_on:
