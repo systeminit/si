@@ -14,10 +14,10 @@ use std::sync::Arc;
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
@@ -137,7 +137,7 @@ impl AttributePrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
-        let prototype = AttributePrototype::assemble(AttributePrototypeId::from(id), &content);
+        let prototype = AttributePrototype::assemble(id.into(), &content);
 
         Self::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use()).await?;
 

@@ -265,7 +265,7 @@ impl ActionPrototype {
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let ulid: ulid::Ulid = id.into();
+        let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();

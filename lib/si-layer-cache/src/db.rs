@@ -21,6 +21,7 @@ use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::Work
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
+pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]

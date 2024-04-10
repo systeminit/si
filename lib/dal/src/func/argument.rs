@@ -1,13 +1,12 @@
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
@@ -199,7 +198,7 @@ impl FuncArgument {
 
     pub async fn get_by_id(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: ulid::Ulid = id.into();
+        let id: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();

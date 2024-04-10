@@ -8,9 +8,8 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-use ulid::Ulid;
 
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;

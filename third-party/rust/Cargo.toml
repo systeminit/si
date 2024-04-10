@@ -78,6 +78,7 @@ jwt-simple = { version = "0.12.9", default-features = false, features = [
     "pure-rust",
 ] }
 lazy_static = "1.4.0"
+miniz_oxide = { version = "0.7.2", features = ["simd"] }
 moka = { version = "0.12.5", features = ["future"] }
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.27.1", features = ["process", "signal"] }

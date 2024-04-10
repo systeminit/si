@@ -10,9 +10,8 @@ pub use petgraph::Direction;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use thiserror::Error;
-use ulid::Ulid;
 
 use telemetry::prelude::*;
 
@@ -1016,7 +1015,7 @@ impl WorkspaceSnapshotGraph {
                 )
             },
         );
-        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
+        let filename_no_extension = format!("{}-{}", Ulid::new(), suffix);
 
         let home_str = std::env::var("HOME").expect("could not find home directory via env");
         let home = std::path::Path::new(&home_str);

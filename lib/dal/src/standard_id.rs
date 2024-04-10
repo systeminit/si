@@ -20,7 +20,7 @@ macro_rules! id {
             serde::Serialize,
             serde::Deserialize,
         )]
-        pub struct $name(ulid::Ulid);
+        pub struct $name(::ulid::Ulid);
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,12 +31,30 @@ macro_rules! id {
         impl $name {
             /// Generates a new key which is virtually guaranteed to be unique.
             pub fn generate() -> Self {
-                Self(ulid::Ulid::new())
+                Self(::ulid::Ulid::new())
             }
 
             /// Converts type into inner [`Ulid`](::ulid::Ulid).
             pub fn into_inner(self) -> ::ulid::Ulid {
                 self.0
+            }
+        }
+
+        impl From<$name> for ::si_events::ulid::Ulid {
+            fn from(pk: $name) -> Self {
+                pk.0.into()
+            }
+        }
+
+        impl<'a> From<&'a $name> for ::si_events::ulid::Ulid {
+            fn from(pk: &'a $name) -> Self {
+                pk.0.into()
+            }
+        }
+
+        impl From<::si_events::ulid::Ulid> for $name {
+            fn from(ulid: ::si_events::ulid::Ulid) -> Self {
+                ulid.inner().into()
             }
         }
 
@@ -59,10 +77,10 @@ macro_rules! id {
         }
 
         impl std::str::FromStr for $name {
-            type Err = ulid::DecodeError;
+            type Err = ::ulid::DecodeError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(ulid::Ulid::from_string(s)?))
+                Ok(Self(::ulid::Ulid::from_string(s)?))
             }
         }
 
@@ -72,7 +90,7 @@ macro_rules! id {
                 raw: &'a [u8],
             ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
                 let id: String = postgres_types::FromSql::from_sql(ty, raw)?;
-                Ok(Self(ulid::Ulid::from_string(&id)?))
+                Ok(Self(::ulid::Ulid::from_string(&id)?))
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool {

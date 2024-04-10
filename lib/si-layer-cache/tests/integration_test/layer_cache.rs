@@ -2,6 +2,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::sync::Arc;
 
+use si_layer_cache::db::serialize;
 use si_layer_cache::layer_cache::LayerCache;
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
@@ -73,7 +74,7 @@ async fn get_inserts_to_memory() {
 
     let skid_row: Arc<str> = "skid row".into();
 
-    let postcard_serialized = postcard::to_stdvec("slave to the grind").expect("should serialize");
+    let postcard_serialized = serialize::to_vec("slave to the grind").expect("should serialize");
 
     layer_cache
         .disk_cache()

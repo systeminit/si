@@ -19,6 +19,7 @@ rust_library(
         "//third-party/rust:chrono",
         "//third-party/rust:futures",
         "//third-party/rust:lazy_static",
+        "//third-party/rust:miniz_oxide",
         "//third-party/rust:moka",
         "//third-party/rust:postcard",
         "//third-party/rust:refinery",

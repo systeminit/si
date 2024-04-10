@@ -4,13 +4,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};

@@ -12,6 +12,8 @@ use crate::{
     LayerDbError,
 };
 
+use super::serialize;
+
 const KEYWORD_SINGULAR: &str = "encrypted_secret";
 const KEYWORD_PLURAL: &str = "encrypted_secrets";
 
@@ -48,7 +50,7 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<PersisterStatusReader> {
-        let postcard_value = postcard::to_stdvec(&value)?;
+        let postcard_value = serialize::to_vec(&value)?;
 
         let cache_key: Arc<str> = key.to_string().into();
 

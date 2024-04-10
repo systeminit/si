@@ -10,6 +10,8 @@ use crate::{
     persister::{PersisterClient, PersisterStatusReader},
 };
 
+use super::serialize;
+
 pub const DBNAME: &str = "workspace_snapshots";
 pub const CACHE_NAME: &str = "workspace_snapshots";
 pub const PARTITION_KEY: &str = "workspace_snapshots";
@@ -41,7 +43,7 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
-        let postcard_value = postcard::to_stdvec(&value)?;
+        let postcard_value = serialize::to_vec(&value)?;
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
