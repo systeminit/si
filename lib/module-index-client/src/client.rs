@@ -2,8 +2,10 @@ use reqwest::StatusCode;
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
-use crate::{IndexClientResult, ModuleDetailsResponse};
+use crate::types::{
+    BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse, WorkspaceExport,
+};
+use crate::{IndexClientError, IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
 pub struct IndexClient {
@@ -169,5 +171,29 @@ impl IndexClient {
         let bytes = response.error_for_status()?.bytes().await?;
 
         Ok(bytes.to_vec())
+    }
+
+    pub async fn upload_workspace(
+        &self,
+        workspace_name: &str,
+        workspace_version: &str,
+        content: WorkspaceExport,
+    ) -> IndexClientResult<()> {
+        let bytes = serde_json::to_vec(&content).map_err(IndexClientError::Serialization)?;
+
+        let upload_part = reqwest::multipart::Part::bytes(bytes)
+            .file_name(format!("{workspace_name}_{workspace_version}.tar"));
+
+        let upload_url = self.base_url.join("workspace")?;
+
+        reqwest::Client::new()
+            .post(upload_url)
+            .multipart(reqwest::multipart::Form::new().part("workspace bundle", upload_part))
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
     }
 }
