@@ -72,6 +72,7 @@ async fn delete_single_component(
         serde_json::json!({
             "component_id": comp.id(),
             "component_schema_name": comp_schema.name(),
+            "change_set_id": ctx.change_set_id(),
         }),
     );
 

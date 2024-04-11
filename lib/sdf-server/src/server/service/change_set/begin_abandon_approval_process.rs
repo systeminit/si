@@ -41,7 +41,7 @@ pub async fn begin_abandon_approval_process(
         "begin_abandon_approval_process",
         serde_json::json!({
             "how": "/change_set/begin_abandon_approval_process",
-            "change_set_pk": ctx.visibility().change_set_id,
+            "change_set_id": ctx.visibility().change_set_id,
         }),
     );
     ctx.commit_no_rebase().await?;
@@ -69,7 +69,7 @@ pub async fn cancel_abandon_approval_process(
         "cancel_abandon_approval_process",
         serde_json::json!({
             "how": "/change_set/cancel_abandon_approval_process",
-            "change_set_pk": ctx.visibility().change_set_id,
+            "change_set_id": ctx.visibility().change_set_id,
         }),
     );
 

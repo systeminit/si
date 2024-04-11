@@ -37,9 +37,8 @@ pub async fn add_action(
         "create_action",
         serde_json::json!({
             "how": "/change_set/add_action",
-            "prototype_id": prototype.id,
-            "prototype_kind": prototype.kind,
-            "component_name": component.name(&ctx).await?,
+            "action_id": action.id.clone(),
+            "action_kind": prototype.kind,
             "component_id": component.id(),
             "change_set_id": ctx.change_set_id(),
         }),

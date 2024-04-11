@@ -28,10 +28,6 @@ pub async fn set_component_position(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetComponentPositionRequest>,
 ) -> DiagramResult<Json<SetComponentPositionResponse>> {
-    // let visibility = Visibility::new_change_set(request.visibility.change_set_pk, true);
-    // let ctx = builder.build(request_ctx.build(visibility)).await?;
-
-    // TODO(nick): I think the above visibility style is wrong for the new engine and we want what's below.
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;

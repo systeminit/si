@@ -24,16 +24,6 @@ pub async fn get_property_editor_values(
 ) -> ComponentResult<Json<serde_json::Value>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // TODO(nick): restore functionality.
-    // let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
-    // let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
-    //     .await?
-    //     .is_some();
-    // if is_component_in_tenancy && !is_component_in_visibility {
-    //     return Err(ComponentError::InvalidVisibility);
-    // }
-    //
-
     let prop_edit_values = PropertyEditorValues::assemble(&ctx, request.component_id).await?;
 
     // TODO(nick): this is temporary since main uses a serialized payload from the summary table.

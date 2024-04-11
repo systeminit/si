@@ -4,9 +4,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
-use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId, WsEventError};
+use dal::{
+    attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId, WsEventError,
+};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
 use dal::{
@@ -93,12 +96,12 @@ pub enum ComponentError {
     NotFound(ComponentId),
     // #[error(transparent)]
     // Pg(#[from] si_data_pg::PgError),
-    // #[error(transparent)]
-    // Prop(#[from] PropError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     #[error("property editor error: {0}")]
     PropertyEditor(#[from] PropertyEditorError),
-    // #[error("prop not found for id: {0}")]
-    // PropNotFound(PropId),
+    #[error("prop not found for id: {0}")]
+    PropNotFound(PropId),
     // #[error("reconciliation prototype: {0}")]
     // ReconciliationPrototype(#[from] ReconciliationPrototypeError),
     // #[error("can't delete attribute value for root prop")]
