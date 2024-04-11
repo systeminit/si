@@ -60,6 +60,7 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetId),
     ChangeSetCreated(ChangeSetId),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
+    ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
     ComponentCreated(ComponentCreatedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
@@ -131,6 +132,10 @@ impl WsEvent {
 
     pub fn workspace_pk(&self) -> WorkspacePk {
         self.workspace_pk
+    }
+
+    pub fn set_workspace_pk(&mut self, workspace_pk: WorkspacePk) {
+        self.workspace_pk = workspace_pk;
     }
 
     fn workspace_subject(&self) -> String {

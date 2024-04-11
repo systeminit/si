@@ -1,6 +1,6 @@
 use dal::{
     DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, ServicesContext, Tenancy,
-    TransactionsError, Visibility, WorkspacePk,
+    TransactionsError, Visibility, WorkspacePk, WsEvent,
 };
 
 use si_crypto::SymmetricCryptoService;
@@ -207,6 +207,22 @@ async fn perform_rebase_and_reply_infallible(
         .await
     {
         error!(error = ?e, ?message, "failed to send rebase finished activity");
+    }
+
+    match WsEvent::change_set_written(&ctx, message.payload.to_rebase_change_set_id.into()).await {
+        Ok(mut event) => {
+            event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_inner().into());
+            if let Err(error) = event.publish_immediately(&ctx).await {
+                error!(?error, "failed to send wsevent for change set updated");
+            }
+            warn!(?event, "for real, we did publish it");
+        }
+        Err(error) => {
+            error!(
+                ?error,
+                "failed to construct a wsevent; this really shouldn't be happening. bug!"
+            );
+        }
     }
 
     info!(
