@@ -426,12 +426,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ]);
 
               return {
-                ..._.omit(component, "parentId"),
+                ...component,
                 // swapping "id" to be node id and passing along component id separately for the diagram
                 // this is gross and needs to go, but will happen later
                 id: component.id,
                 componentId: component.id,
-                parentComponentId: component.parentId,
                 title: component.displayName,
                 subtitle: component.schemaName,
                 isLoading:
@@ -707,9 +706,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 diagramKind: "configuration",
                 ...visibilityParams,
               },
-              onSuccess: (response) => {
-                // record position change rather than wait for re-fetch
-              },
             });
           },
 
@@ -725,6 +721,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             schemaId: string,
             position: Vector2d,
             parentId?: string,
+            size?: Size2D,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -745,6 +742,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 parentId,
                 x: position.x.toString(),
                 y: position.y.toString(),
+                height: size?.height.toString(),
+                width: size?.width.toString(),
                 ...visibilityParams,
               },
               optimistic: () => {

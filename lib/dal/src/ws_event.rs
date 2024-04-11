@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -5,7 +7,9 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
-use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
+use crate::component::{
+    ComponentCreatedPayload, ComponentSetPositionPayload, ComponentUpdatedPayload,
+};
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::SchemaVariantCreatedPayload;
 use crate::status::StatusUpdate;
@@ -32,6 +36,8 @@ pub enum WsEventError {
     NoUserInContext,
     #[error("no workspace in tenancy")]
     NoWorkspaceInTenancy,
+    #[error("number parse string error: {0}")]
+    ParseIntError(#[from] ParseIntError),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
@@ -82,6 +88,7 @@ pub enum WsPayload {
     // SchemaVariantSaved(SchemaVariantSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
+    SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
     // WorkspaceExported(WorkspaceExportPayload),
     // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),

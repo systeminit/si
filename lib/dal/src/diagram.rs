@@ -292,7 +292,7 @@ impl Diagram {
                 y: component.y().parse::<f64>()?.round() as isize,
             };
             let size = match (component.width(), component.height()) {
-                (Some(h), Some(w)) => Size2D {
+                (Some(w), Some(h)) => Size2D {
                     height: h.parse()?,
                     width: w.parse()?,
                 },

@@ -40,7 +40,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.get('canvas').first().as('konvaStage');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentA');
-      let componentIDA, componentIDB, bearertoken;
+      let componentIDA, componentIDB;
 
       // drag to the canvas
       cy.dragTo('@awsRegion', '@konvaStage');
@@ -48,7 +48,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         componentIDA = interception.response?.body.componentId;
       });
 
-      cy.wait(5000);
+      cy.wait(1000);
 
       cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
 
@@ -56,31 +56,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
 
       cy.wait('@componentB', {timeout: 60000}).then(async (interception) => {
-        bearertoken = interception.request.headers.authorization;
         componentIDB = interception.response?.body.componentId;
       });
 
-      // WE CANNOT FORCE A HOVER STATE INSIDE CANVAS
-      // SO THE "PARENT" IS NOT SET DESPITE COMPONENT B BEING INSIDE THE FRAME
-      // HACK
-      cy.url().then(currentUrl => {
-        const parts = currentUrl.split('/');
-        parts.pop(); // c
-        const changeset = parts.pop();
-        cy.request({
-          method: 'POST',
-          url: '/api/diagram/connect_component_to_frame',
-          body: JSON.stringify({
-            childId: componentIDB,
-            parentId: componentIDA,
-            visibility_change_set_pk: changeset,
-            workspaceId: SI_WORKSPACE_ID
-          }),
-          headers: { Authorization: bearertoken, "Content-Type": 'application/json' }
-        });
-      });
-
-      cy.wait(2000);
+      cy.wait(1000);
 
       cy.url().then(currentUrl => {
         // Construct a new URL with desired query parameters for selecting 
@@ -95,7 +74,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // Give the page a few seconds to load
-      cy.wait(2000);
+      cy.wait(1000);
 
       cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
 
@@ -116,7 +95,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // Wait for the values to propagate
-      cy.wait(1000);
+      cy.wait(3000);
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')

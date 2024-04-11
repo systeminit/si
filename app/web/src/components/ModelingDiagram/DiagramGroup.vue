@@ -428,7 +428,7 @@ const props = defineProps({
 const diagramContext = useDiagramContext();
 
 const componentId = computed(() => props.group.def.componentId);
-const parentComponentId = computed(() => _.last(props.group.def.ancestorIds));
+const parentComponentId = computed(() => props.group.def.parentId);
 
 const diffIconHover = ref(false);
 const statusIconHovers = ref(

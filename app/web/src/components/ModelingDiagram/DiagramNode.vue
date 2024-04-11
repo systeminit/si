@@ -420,7 +420,7 @@ const nodeHeight = computed(
   () => nodeHeaderHeight.value + nodeBodyHeight.value,
 );
 
-const parentComponentId = computed(() => _.last(props.node.def.ancestorIds));
+const parentComponentId = computed(() => props.node.def.parentId);
 
 const position = computed(() => props.tempPosition || props.node.def.position);
 
