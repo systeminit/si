@@ -5,6 +5,7 @@ use dal::{
 };
 use dal_test::test;
 use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn update_action(ctx: &mut DalContext) {
@@ -40,6 +41,7 @@ async fn update_action(ctx: &mut DalContext) {
     let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
         .await
         .expect("could apply to base change set");
+
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
 
@@ -136,4 +138,13 @@ async fn update_action(ctx: &mut DalContext) {
     } else {
         panic!("No resource data found for the component after update action");
     }
+
+    assert_eq!(
+        1,
+        ms_swift
+            .attribute_values_for_prop(ctx, &["root", "resource", "last_synced"])
+            .await
+            .expect("should be able to get values")
+            .len()
+    );
 }
