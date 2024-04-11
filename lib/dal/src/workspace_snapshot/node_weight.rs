@@ -22,6 +22,7 @@ use crate::{
 
 use crate::func::FuncKind;
 pub use action_node_weight::ActionNodeWeight;
+pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
 pub use attribute_prototype_argument_node_weight::ArgumentTargets;
 pub use attribute_prototype_argument_node_weight::AttributePrototypeArgumentNodeWeight;
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
@@ -36,6 +37,7 @@ pub use prop_node_weight::PropNodeWeight;
 use super::content_address::ContentAddressDiscriminants;
 
 pub mod action_node_weight;
+pub mod action_prototype_node_weight;
 pub mod attribute_prototype_argument_node_weight;
 pub mod attribute_value_node_weight;
 pub mod category_node_weight;
@@ -79,6 +81,7 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum NodeWeight {
     Action(ActionNodeWeight),
+    ActionPrototype(ActionPrototypeNodeWeight),
     AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight),
     AttributeValue(AttributeValueNodeWeight),
     Category(CategoryNodeWeight),
@@ -94,6 +97,7 @@ impl NodeWeight {
     pub fn content_hash(&self) -> ContentHash {
         match self {
             NodeWeight::Action(weight) => weight.content_hash(),
+            NodeWeight::ActionPrototype(weight) => weight.content_hash(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.content_hash(),
             NodeWeight::AttributeValue(weight) => weight.content_hash(),
             NodeWeight::Category(weight) => weight.content_hash(),
@@ -110,6 +114,7 @@ impl NodeWeight {
         match self {
             NodeWeight::Content(weight) => Some(weight.content_address().into()),
             NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
             | NodeWeight::AttributeValue(_)
             | NodeWeight::Category(_)
@@ -124,6 +129,7 @@ impl NodeWeight {
     pub fn id(&self) -> Ulid {
         match self {
             NodeWeight::Action(weight) => weight.id(),
+            NodeWeight::ActionPrototype(weight) => weight.id(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.id(),
             NodeWeight::AttributeValue(weight) => weight.id(),
             NodeWeight::Category(weight) => weight.id(),
@@ -139,6 +145,7 @@ impl NodeWeight {
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Action(weight) => weight.increment_vector_clock(change_set),
+            NodeWeight::ActionPrototype(weight) => weight.increment_vector_clock(change_set),
             NodeWeight::AttributePrototypeArgument(weight) => {
                 weight.increment_vector_clock(change_set)
             }
@@ -156,6 +163,7 @@ impl NodeWeight {
     pub fn lineage_id(&self) -> Ulid {
         match self {
             NodeWeight::Action(weight) => weight.lineage_id(),
+            NodeWeight::ActionPrototype(weight) => weight.lineage_id(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.lineage_id(),
             NodeWeight::AttributeValue(weight) => weight.lineage_id(),
             NodeWeight::Category(weight) => weight.lineage_id(),
@@ -171,6 +179,7 @@ impl NodeWeight {
     pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
         match self {
             NodeWeight::Action(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
+            NodeWeight::ActionPrototype(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
             NodeWeight::AttributePrototypeArgument(weight) => {
                 weight.mark_seen_at(vector_clock_id, seen_at)
             }
@@ -194,6 +203,10 @@ impl NodeWeight {
             (NodeWeight::Action(self_weight), NodeWeight::Action(other_weight)) => {
                 self_weight.merge_clocks(change_set, other_weight)
             }
+            (
+                NodeWeight::ActionPrototype(self_weight),
+                NodeWeight::ActionPrototype(other_weight),
+            ) => self_weight.merge_clocks(change_set, other_weight),
             (
                 NodeWeight::AttributePrototypeArgument(self_weight),
                 NodeWeight::AttributePrototypeArgument(other_weight),
@@ -229,6 +242,7 @@ impl NodeWeight {
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         match self {
             NodeWeight::Action(weight) => weight.merkle_tree_hash(),
+            NodeWeight::ActionPrototype(weight) => weight.merkle_tree_hash(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.merkle_tree_hash(),
             NodeWeight::AttributeValue(weight) => weight.merkle_tree_hash(),
             NodeWeight::Category(weight) => weight.merkle_tree_hash(),
@@ -249,6 +263,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
             | NodeWeight::AttributeValue(_)
             | NodeWeight::Category(_)
@@ -263,6 +278,9 @@ impl NodeWeight {
         let new_weight = match self {
             NodeWeight::Action(weight) => {
                 NodeWeight::Action(weight.new_with_incremented_vector_clock(change_set)?)
+            }
+            NodeWeight::ActionPrototype(weight) => {
+                NodeWeight::ActionPrototype(weight.new_with_incremented_vector_clock(change_set)?)
             }
             NodeWeight::AttributePrototypeArgument(weight) => {
                 NodeWeight::AttributePrototypeArgument(
@@ -304,6 +322,7 @@ impl NodeWeight {
     pub fn node_hash(&self) -> ContentHash {
         match self {
             NodeWeight::Action(weight) => weight.node_hash(),
+            NodeWeight::ActionPrototype(weight) => weight.node_hash(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.node_hash(),
             NodeWeight::AttributeValue(weight) => weight.node_hash(),
             NodeWeight::Category(weight) => weight.node_hash(),
@@ -319,6 +338,7 @@ impl NodeWeight {
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         match self {
             NodeWeight::Action(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::ActionPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::AttributePrototypeArgument(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::AttributeValue(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::Category(weight) => weight.set_merkle_tree_hash(new_hash),
@@ -335,6 +355,7 @@ impl NodeWeight {
         match self {
             NodeWeight::Ordering(ordering_weight) => ordering_weight.set_order(change_set, order),
             NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
             | NodeWeight::AttributeValue(_)
             | NodeWeight::Category(_)
@@ -353,6 +374,9 @@ impl NodeWeight {
     ) {
         match self {
             NodeWeight::Action(weight) => {
+                weight.set_vector_clock_recently_seen_to(change_set, new_val)
+            }
+            NodeWeight::ActionPrototype(weight) => {
                 weight.set_vector_clock_recently_seen_to(change_set, new_val)
             }
             NodeWeight::AttributePrototypeArgument(weight) => {
@@ -388,6 +412,7 @@ impl NodeWeight {
     pub fn vector_clock_first_seen(&self) -> &VectorClock {
         match self {
             NodeWeight::Action(weight) => weight.vector_clock_first_seen(),
+            NodeWeight::ActionPrototype(weight) => weight.vector_clock_first_seen(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_first_seen(),
             NodeWeight::AttributeValue(weight) => weight.vector_clock_first_seen(),
             NodeWeight::Category(weight) => weight.vector_clock_first_seen(),
@@ -403,6 +428,7 @@ impl NodeWeight {
     pub fn vector_clock_recently_seen(&self) -> &VectorClock {
         match self {
             NodeWeight::Action(weight) => weight.vector_clock_recently_seen(),
+            NodeWeight::ActionPrototype(weight) => weight.vector_clock_recently_seen(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_recently_seen(),
             NodeWeight::AttributeValue(weight) => weight.vector_clock_recently_seen(),
             NodeWeight::Category(weight) => weight.vector_clock_recently_seen(),
@@ -418,6 +444,7 @@ impl NodeWeight {
     pub fn vector_clock_write(&self) -> &VectorClock {
         match self {
             NodeWeight::Action(weight) => weight.vector_clock_write(),
+            NodeWeight::ActionPrototype(weight) => weight.vector_clock_write(),
             NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_write(),
             NodeWeight::AttributeValue(weight) => weight.vector_clock_write(),
             NodeWeight::Category(weight) => weight.vector_clock_write(),
@@ -435,6 +462,16 @@ impl NodeWeight {
             NodeWeight::Action(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Action,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_action_prototype_node_weight(&self) -> NodeWeightResult<ActionPrototypeNodeWeight> {
+        match self {
+            NodeWeight::ActionPrototype(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::ActionPrototype,
                 other.into(),
             )),
         }

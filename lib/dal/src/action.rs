@@ -13,6 +13,8 @@ use crate::{
     EdgeWeightKindDiscriminants, HelperError, TransactionsError, WorkspaceSnapshotError,
 };
 
+pub mod prototype;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
@@ -83,6 +85,14 @@ impl Action {
         discriminant: EdgeWeightKindDiscriminants::Use,
         result: ActionResult,
     );
+    implement_add_edge_to!(
+        source_id: ActionId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_action_prototype,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ActionResult,
+    );
+
     // Even though we're using `implement_add_edge_to`, we're not creating an edge from Self *TO*
     // the Category node. We're adding an edge *FROM* the Category node to Self.
     implement_add_edge_to!(
@@ -95,7 +105,7 @@ impl Action {
 
     pub async fn new(
         ctx: &DalContext,
-        _action_prototype_id: &ActionPrototypeId,
+        action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
     ) -> ActionResult<Self> {
         let change_set = ctx.change_set()?;
@@ -115,7 +125,13 @@ impl Action {
         )
         .await?;
 
-        // TODO: Add edge to the ActionPrototype
+        Self::add_edge_to_action_prototype(
+            ctx,
+            new_id,
+            action_prototype_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         if let Some(component_id) = maybe_component_id {
             Self::add_edge_to_component(ctx, new_id, component_id, EdgeWeightKind::new_use())
