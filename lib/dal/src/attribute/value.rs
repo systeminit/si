@@ -1061,20 +1061,13 @@ impl AttributeValue {
             )
             .await?
         {
-            let current_node_index = workspace_snapshot
-                .get_node_index_by_id(attribute_value_id)
-                .await?;
-            let current_target_idx = workspace_snapshot
-                .get_latest_node_index(attribute_value_target)
-                .await?;
+            let current_target_id = workspace_snapshot
+                .get_node_weight(attribute_value_target)
+                .await?
+                .id();
 
             workspace_snapshot
-                .remove_edge(
-                    ctx.change_set()?,
-                    current_node_index,
-                    current_target_idx,
-                    EdgeWeightKindDiscriminants::Contain,
-                )
+                .remove_node_by_id(ctx.change_set()?, current_target_id)
                 .await?;
         }
 
