@@ -30,10 +30,12 @@ async fn remove_single_delete_intent(
         posthog_client,
         ctx,
         original_uri,
-        "restore_component",
+        "remove_delete_intent",
         serde_json::json!({
-                    "component_id": comp.id(),
-                    "component_schema_name": comp_schema.name(),
+            "how": "/diagram/remove_delete_intent",
+            "component_id": comp.id(),
+            "component_schema_name": comp_schema.name(),
+            "change_set_id": ctx.change_set_id(),
         }),
     );
 

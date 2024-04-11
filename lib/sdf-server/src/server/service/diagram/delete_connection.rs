@@ -113,6 +113,7 @@ pub async fn delete_connection(
         &original_uri,
         "delete_connection",
         serde_json::json!({
+            "how": "/diagram/delete_connection",
             "from_component_id": targets.source_component_id,
             "from_component_schema_name": from_component_schema.name(),
             "from_socket_id": output_socket_id,
@@ -121,6 +122,7 @@ pub async fn delete_connection(
             "to_component_schema_name": to_component_schema.name(),
             "to_socket_id": input_socket_id,
             "to_socket_name":  &input_socket.name(),
+            "change_set_id": ctx.change_set_id(),
         }),
     );
 
