@@ -933,6 +933,7 @@ impl WorkspaceSnapshotGraph {
             &|_, (node_index, node_weight)| {
                 let (label, color) = match node_weight {
                     NodeWeight::Action(_) => ("Action".to_string(), "cyan"),
+                    NodeWeight::ActionPrototype(_) => ("Action Prototype".to_string(), "cyan"),
                     NodeWeight::Content(weight) => {
                         let discrim = ContentAddressDiscriminants::from(weight.content_address());
                         let color = match discrim {

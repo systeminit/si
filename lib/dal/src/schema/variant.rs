@@ -673,6 +673,13 @@ impl SchemaVariant {
         discriminant: EdgeWeightKindDiscriminants::Socket,
         result: SchemaVariantResult,
     );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_action_prototype,
+        discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
+        result: SchemaVariantResult,
+    );
 
     pub async fn new_action_prototype(
         ctx: &DalContext,
