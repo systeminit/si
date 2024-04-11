@@ -1,4 +1,5 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::change_set::{ChangeSetError, ChangeSetResult};
 use axum::extract::OriginalUri;
 use axum::Json;
@@ -14,8 +15,8 @@ pub struct AbandonVoteRequest {
 }
 
 pub async fn abandon_vote(
-    OriginalUri(_original_uri): OriginalUri,
-    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<AbandonVoteRequest>,
@@ -25,20 +26,19 @@ pub async fn abandon_vote(
     let mut change_set = ChangeSet::find(&ctx, ctx.change_set_id())
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.abandon_vote(&ctx, request.vote).await?;
+    change_set.abandon_vote(&ctx, request.vote.clone()).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "abandon_vote",
-    //     serde_json::json!({
-    //         "how": "/change_set/abandon_vote",
-    //         "change_set_pk": ctx.visibility().change_set_id,
-    //         "user_pk": user.pk(),
-    //         "vote": request.vote,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "abandon_vote",
+        serde_json::json!({
+            "how": "/change_set/abandon_vote",
+            "change_set_id": ctx.visibility().change_set_id,
+            "vote": request.vote,
+        }),
+    );
 
     ctx.commit_no_rebase().await?;
 

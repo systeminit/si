@@ -1,4 +1,5 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::change_set::{ChangeSetError, ChangeSetResult};
 use axum::extract::OriginalUri;
 use axum::Json;
@@ -20,8 +21,8 @@ pub struct CancelMergeFlow {
 }
 
 pub async fn begin_approval_process(
-    OriginalUri(_original_uri): OriginalUri,
-    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<BeginMergeFlow>,
@@ -33,16 +34,16 @@ pub async fn begin_approval_process(
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     change_set.begin_approval_flow(&ctx).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "begin_approval_process",
-    //     serde_json::json!({
-    //         "how": "/change_set/begin_approval_process",
-    //         "change_set_pk": ctx.visibility().change_set_pk,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "begin_approval_process",
+        serde_json::json!({
+            "how": "/change_set/begin_approval_process",
+            "change_set_id": ctx.visibility().change_set_id,
+        }),
+    );
 
     ctx.commit_no_rebase().await?;
 
@@ -50,8 +51,8 @@ pub async fn begin_approval_process(
 }
 
 pub async fn cancel_approval_process(
-    OriginalUri(_original_uri): OriginalUri,
-    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CancelMergeFlow>,
@@ -63,16 +64,16 @@ pub async fn cancel_approval_process(
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     change_set.cancel_approval_flow(&ctx).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "cancel_approval_process",
-    //     serde_json::json!({
-    //         "how": "/change_set/cancel_approval_process",
-    //         "change_set_pk": ctx.visibility().change_set_pk,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "cancel_approval_process",
+        serde_json::json!({
+            "how": "/change_set/cancel_approval_process",
+            "change_set_id": ctx.visibility().change_set_id,
+        }),
+    );
 
     ctx.commit_no_rebase().await?;
 

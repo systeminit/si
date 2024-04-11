@@ -1,4 +1,5 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::change_set::ChangeSetError;
 use crate::service::change_set::ChangeSetResult;
 use axum::extract::OriginalUri;
@@ -15,8 +16,8 @@ pub struct MergeVoteRequest {
 }
 
 pub async fn merge_vote(
-    OriginalUri(_original_uri): OriginalUri,
-    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<MergeVoteRequest>,
@@ -26,20 +27,19 @@ pub async fn merge_vote(
     let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.merge_vote(&ctx, request.vote).await?;
+    change_set.merge_vote(&ctx, request.vote.clone()).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "merge_vote",
-    //     serde_json::json!({
-    //         "how": "/change_set/merge_vote",
-    //         "change_set_pk": ctx.visibility().change_set_pk,
-    //         "user_pk": user.pk(),
-    //         "vote": request.vote,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "merge_vote",
+        serde_json::json!({
+            "how": "/change_set/merge_vote",
+            "change_set_id": ctx.visibility().change_set_id,
+            "vote": request.vote,
+        }),
+    );
 
     ctx.commit_no_rebase().await?;
 
