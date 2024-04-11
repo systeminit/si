@@ -1,5 +1,5 @@
 // @ts-check
-///<reference path="../global.d.ts"/>
+///<reference path="../../global.d.ts"/>
 
 const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
@@ -30,19 +30,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Give time to redirect onto the new changeset
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
-      // Find the AWS Region
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('region');
-
-      // Find the canvas to get a location to drag to
-      cy.get('canvas').first().as('konvaStage');
-
-      // drag to the canvas
-      cy.dragTo('@region', '@konvaStage');
-
-      cy.wait(5000);
-
-      //check to make sure a component has been added to the outliner
-      cy.get('[class="component-outline-node"]', { timeout: 30000 }).contains('Region', { timeout: 30000 }).should('be.visible');
+      // Create a region component
+      cy.createComponent("region");
 
       // Click the button to destroy changeset
       cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')
