@@ -4,8 +4,8 @@
       <SidebarSubpanelTitle
         :label="
           changeSetStore.headSelected
-            ? 'Workspace Activity'
-            : 'Change Set Details'
+            ? 'HEAD'
+            : changeSetStore.selectedChangeSet?.name
         "
         :icon="changeSetStore.headSelected ? 'git-branch' : 'git-branch'"
       />
