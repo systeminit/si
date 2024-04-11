@@ -202,9 +202,13 @@ async fn create_attribute_func(
                         AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
                     }
                 } {
+                    // TODO - Paul / Nick - we need to ensure this code is working as expected
+                    // right now, we don't allow overiding identity
+                    // See create_attribute_with_socket and create_attribute_with_prop tests for
+                    // examples of where this breaks
                     let func_id = AttributePrototype::func_id(ctx, ap).await?;
                     if let Some(func) = Func::get_by_id(ctx, func_id).await? {
-                        if !Func::is_dynamic_for_name_string(func.name.as_str()) {
+                        if Func::is_dynamic_for_name_string(func.name.as_str()) {
                             return Err(FuncAuthoringError::AttributePrototypeAlreadySetByFunc(
                                 kind.to_string(),
                             ));
