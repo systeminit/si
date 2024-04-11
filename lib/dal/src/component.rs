@@ -756,21 +756,6 @@ impl Component {
         Ok(())
     }
 
-    pub async fn act(&self, ctx: &DalContext, action: DeprecatedActionKind) -> ComponentResult<()> {
-        let schema_variant = self.schema_variant(ctx).await?;
-
-        let action = DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
-            .await
-            .map_err(Box::new)?
-            .into_iter()
-            .find(|p| p.kind == action);
-        if let Some(action) = action {
-            action.run(ctx, self.id()).await.map_err(Box::new)?;
-        }
-
-        Ok(())
-    }
-
     pub async fn set_resource(
         &self,
         ctx: &DalContext,

@@ -15,7 +15,7 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, Component, ComponentId, DalContext,
+    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, ComponentId, DalContext,
     DeprecatedActionBatch, DeprecatedActionBatchId, DeprecatedActionKind,
     DeprecatedActionPrototype, DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility,
     WsEvent,
@@ -333,9 +333,6 @@ async fn action_task(
     action_item: ActionRunnerItem,
     parent_span: Span,
 ) -> JobConsumerResult<(DeprecatedActionRunner, Vec<String>)> {
-    // Get the workflow for the action we need to run.
-    let component = Component::get_by_id(&ctx, action_item.component_id).await?;
-
     // Run the action (via the action prototype).
     let mut action = DeprecatedActionRunner::get_by_id(&ctx, action_item.id).await?;
     let resource = action.run(&ctx).await?;
@@ -367,15 +364,6 @@ async fn action_task(
 
     ctx.blocking_commit().await?;
     ctx.update_snapshot_to_visibility().await?;
-
-    if matches!(completion_status, ActionCompletionStatus::Success) {
-        if let Err(err) = component.act(&ctx, DeprecatedActionKind::Refresh).await {
-            error!("Unable to refresh component: {err}");
-        }
-        if let Err(err) = ctx.blocking_commit().await {
-            error!("Unable to blocking commit after component refresh: {err}");
-        }
-    }
 
     Ok((action, logs))
 }
