@@ -2,9 +2,8 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
-import { Visibility } from "@/api/sdf/dal/visibility";
-import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -101,12 +100,27 @@ export type RemoteModuleDetails = RemoteModuleSummary & {
   };
 };
 
+// Gather the current changeset ID, since our components don't appear to be
+// reacting to the visibility changes that happen on the setup code
+// TODO: Generalize this and make the api client pass these arguments implicitly
+function getVisibilityParams(forceChangeSetId?: ChangeSetId) {
+  const changeSetsStore = useChangeSetsStore();
+  let changeSetId = changeSetsStore.selectedChangeSetId;
+  if (forceChangeSetId) {
+    changeSetId = forceChangeSetId;
+  }
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspacePk;
+
+  return {
+    visibility_change_set_pk: changeSetId,
+    workspaceId,
+  };
+}
+
 export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const visibility: Visibility = {
-    visibility_change_set_pk: changeSetId ?? nilId(),
-  };
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -192,7 +206,7 @@ export const useModuleStore = () => {
           async LOAD_LOCAL_MODULES() {
             return new ApiRequest<{ modules: LocalModuleSummary[] }>({
               url: "/module/list_modules",
-              params: { ...visibility },
+              params: { ...getVisibilityParams() },
               onSuccess: (response) => {
                 // TODO: remove this
                 // the backend currently needs the full tar file name
@@ -215,7 +229,7 @@ export const useModuleStore = () => {
             return new ApiRequest<LocalModuleDetails>({
               method: "get",
               url: "/module/get_module_by_hash",
-              params: { hash, ...visibility },
+              params: { hash, ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.localModuleDetailsByName[response.name] = response;
               },
@@ -304,7 +318,7 @@ export const useModuleStore = () => {
             return new ApiRequest({
               method: "get",
               url: "/module/remote_module_spec",
-              params: { id, ...visibility },
+              params: { id, ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.remoteModuleSpecsById[id] = response;
               },
@@ -326,7 +340,7 @@ export const useModuleStore = () => {
               url: "/module/install_module",
               params: {
                 id: moduleId,
-                ...visibility,
+                ...getVisibilityParams(),
               },
               onSuccess: (data) => {
                 this.installingModuleId = data.id;
@@ -342,7 +356,7 @@ export const useModuleStore = () => {
             return new ApiRequest<{ success: true }>({
               method: "post",
               url: "/module/reject_module",
-              params: { id: moduleId, ...visibility },
+              params: { id: moduleId, ...getVisibilityParams() },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
@@ -355,7 +369,7 @@ export const useModuleStore = () => {
             return new ApiRequest<{ success: true }>({
               method: "post",
               url: "/module/set_as_builtin",
-              params: { id: moduleId, ...visibility },
+              params: { id: moduleId, ...getVisibilityParams() },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.SEARCH_REMOTE_MODULES();
@@ -371,7 +385,7 @@ export const useModuleStore = () => {
             return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/module/export_workspace",
-              params: { ...visibility },
+              params: { ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.exportingWorkspaceOperationId = response.id;
               },
@@ -391,7 +405,7 @@ export const useModuleStore = () => {
             return new ApiRequest({
               method: "post",
               url: "/module/export_module",
-              params: { ...exportRequest, ...visibility },
+              params: { ...exportRequest, ...getVisibilityParams() },
             });
           },
         },
