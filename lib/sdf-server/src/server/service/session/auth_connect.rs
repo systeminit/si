@@ -105,7 +105,6 @@ async fn find_or_create_user_and_workspace(
             )
             .await?;
             let _key_pair = KeyPair::new(&ctx, "default").await?;
-            ctx.import_builtins().await?;
             workspace
         }
     };

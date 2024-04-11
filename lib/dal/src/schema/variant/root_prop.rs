@@ -3,7 +3,7 @@
 
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 
-use crate::prop::{PropParent, PropPath};
+use crate::prop::PropPath;
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::SchemaVariantResult;
@@ -111,7 +111,7 @@ impl RootProp {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
-        let root_prop = Prop::new(
+        let root_prop = Prop::new_root(
             ctx,
             "root",
             PropKind::Object,
@@ -119,7 +119,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::SchemaVariant(schema_variant_id),
+            schema_variant_id,
         )
         .await?;
         let root_prop_id = root_prop.id();
@@ -127,21 +127,11 @@ impl RootProp {
         // info!("setting up si, domain and secrets");
         let si_prop_id = Self::setup_si(ctx, root_prop_id).await?;
 
-        let domain_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "domain",
-            PropKind::Object,
-            PropParent::OrderedProp(root_prop_id),
-        )
-        .await?;
+        let domain_prop =
+            Prop::new_without_ui_optionals(ctx, "domain", PropKind::Object, root_prop_id).await?;
 
-        let secrets_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "secrets",
-            PropKind::Object,
-            PropParent::OrderedProp(root_prop_id),
-        )
-        .await?;
+        let secrets_prop =
+            Prop::new_without_ui_optionals(ctx, "secrets", PropKind::Object, root_prop_id).await?;
 
         // info!("setting up resource");
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
@@ -161,7 +151,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(root_prop_id),
+            root_prop_id,
         )
         .await?;
 
@@ -198,7 +188,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(root_prop_id),
+            root_prop_id,
         )
         .await?;
 
@@ -210,7 +200,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(leaf_prop.id()),
+            leaf_prop.id(),
         )
         .await?;
 
@@ -218,30 +208,16 @@ impl RootProp {
     }
 
     async fn setup_si(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
-        let si_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "si",
-            PropKind::Object,
-            PropParent::OrderedProp(root_prop_id),
-        )
-        .await?;
+        let si_prop =
+            Prop::new_without_ui_optionals(ctx, "si", PropKind::Object, root_prop_id).await?;
 
-        let _si_name_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "name",
-            PropKind::String,
-            PropParent::OrderedProp(si_prop.id()),
-        )
-        .await?;
+        let _si_name_prop =
+            Prop::new_without_ui_optionals(ctx, "name", PropKind::String, si_prop.id()).await?;
 
         // The protected prop ensures a component cannot be deleted in the configuration diagram.
-        let _protected_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "protected",
-            PropKind::Boolean,
-            PropParent::OrderedProp(si_prop.id()),
-        )
-        .await?;
+        let _protected_prop =
+            Prop::new_without_ui_optionals(ctx, "protected", PropKind::Boolean, si_prop.id())
+                .await?;
 
         // The type prop controls the type of the configuration node. The default type can be
         // determined by the schema variant author. The widget options correspond to the component
@@ -274,7 +250,7 @@ impl RootProp {
                 ])),
             )),
             None,
-            PropParent::OrderedProp(si_prop.id()),
+            si_prop.id(),
         )
         .await?;
 
@@ -287,7 +263,7 @@ impl RootProp {
             None,
             Some((WidgetKind::Color, None)),
             None,
-            PropParent::OrderedProp(si_prop.id()),
+            si_prop.id(),
         )
         .await?;
 
@@ -304,7 +280,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(root_prop_id),
+            root_prop_id,
         )
         .await?;
 
@@ -317,7 +293,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_prop.id()),
+            resource_prop.id(),
         )
         .await?;
 
@@ -330,7 +306,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_prop.id()),
+            resource_prop.id(),
         )
         .await?;
 
@@ -343,7 +319,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_prop.id()),
+            resource_prop.id(),
         )
         .await?;
 
@@ -356,7 +332,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_logs_prop.id()),
+            resource_logs_prop.id(),
         )
         .await?;
 
@@ -369,7 +345,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_prop.id()),
+            resource_prop.id(),
         )
         .await?;
 
@@ -382,7 +358,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(resource_prop.id()),
+            resource_prop.id(),
         )
         .await?;
 
@@ -401,7 +377,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(root_prop_id),
+            root_prop_id,
         )
         .await?;
 
@@ -420,7 +396,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(code_map_item_prop_id),
+            code_map_item_prop_id,
         )
         .await?;
 
@@ -432,7 +408,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(code_map_item_prop_id),
+            code_map_item_prop_id,
         )
         .await?;
 
@@ -454,7 +430,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(qualification_map_item_prop_id),
+            qualification_map_item_prop_id,
         )
         .await?;
 
@@ -466,7 +442,7 @@ impl RootProp {
             None,
             None,
             None,
-            PropParent::OrderedProp(qualification_map_item_prop_id),
+            qualification_map_item_prop_id,
         )
         .await?;
 

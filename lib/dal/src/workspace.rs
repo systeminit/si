@@ -268,8 +268,6 @@ impl Workspace {
             None => Workspace::new(ctx, workspace_pk, workspace_name).await?,
         };
 
-        ctx.import_builtins().await?;
-
         Ok(workspace)
     }
 

@@ -191,8 +191,8 @@ impl IntrinsicFunc {
         }
     }
 
-    pub fn maybe_from_str(s: &str) -> Option<Self> {
-        Some(match s {
+    pub fn maybe_from_str(s: impl AsRef<str>) -> Option<Self> {
+        Some(match s.as_ref() {
             "si:identity" => Self::Identity,
             "si:setArray" => Self::SetArray,
             "si:setBoolean" => Self::SetBoolean,

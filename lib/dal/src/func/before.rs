@@ -151,7 +151,7 @@ async fn auth_funcs_for_secret_prop_id(
         }
 
         for auth_func_id in
-            SchemaVariant::list_auth_func_ids_for_schema_variant(ctx, secret_defining_sv_id).await?
+            SchemaVariant::list_auth_func_ids_for_id(ctx, secret_defining_sv_id).await?
         {
             auth_funcs.push(
                 Func::get_by_id_or_error(ctx, auth_func_id)
