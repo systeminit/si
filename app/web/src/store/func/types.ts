@@ -34,27 +34,18 @@ export interface QualificationAssociations {
   inputs: LeafInputLocation[];
 }
 
-export interface ValidationAssociations {
-  type: "validation";
-  prototypes: ValidationPrototypeView[];
-}
-
-export interface ValidationPrototypeView {
-  schemaVariantId: string;
-  propId: string;
-}
-
 export interface AttributePrototypeArgumentView {
   funcArgumentId: string;
   id?: string;
-  internalProviderId?: string;
+  inputSocketId?: string;
 }
 
 export interface AttributePrototypeView {
   id: string;
   componentId?: string;
+  schemaVariantId?: string;
   propId?: string;
-  externalProviderId?: string;
+  outputSocketId?: string;
   prototypeArguments: AttributePrototypeArgumentView[];
 }
 
@@ -69,18 +60,17 @@ export type FuncAssociations =
   | ActionAssociations
   | AttributeAssociations
   | CodeGenerationAssociations
-  | QualificationAssociations
-  | ValidationAssociations;
+  | QualificationAssociations;
 
 export interface InputSourceSocket {
   schemaVariantId: string;
-  internalProviderId: string;
+  inputSocketId: string;
   name: string;
 }
 
 export interface OutputSocket {
   schemaVariantId: string;
-  externalProviderId: string;
+  outputSocketId: string;
   name: string;
 }
 
@@ -88,7 +78,7 @@ export interface InputSourceProp {
   propId: string;
   kind: PropKind;
   schemaVariantId: string;
-  internalProviderId?: string;
+  inputSocketId?: string;
   path: string;
   name: string;
 }
@@ -100,7 +90,7 @@ export interface OutputLocationProp {
 
 export interface OutputLocationOutputSocket {
   label: string;
-  externalProviderId: string;
+  outputSocketId: string;
 }
 
 export type OutputLocation = OutputLocationProp | OutputLocationOutputSocket;
@@ -112,7 +102,7 @@ export interface CreateFuncAttributeOutputLocationProp {
 
 export interface CreateFuncAttributeOutputLocationOutputSocket {
   type: "outputSocket";
-  externalProviderId: string;
+  outputSocketId: string;
 }
 
 export type CreateFuncOutputLocation =
@@ -128,12 +118,6 @@ export interface CreateFuncAttributeOptions {
   type: "attributeOptions";
   schemaVariantId: string;
   outputLocation: CreateFuncOutputLocation;
-}
-
-export interface CreateFuncValidationOptions {
-  type: "validationOptions";
-  schemaVariantId: string;
-  propToValidate: string;
 }
 
 export interface CreateFuncActionOptions {
@@ -157,5 +141,4 @@ export type CreateFuncOptions =
   | CreateFuncActionOptions
   | CreateFuncAttributeOptions
   | CreateFuncCodeGenerationOptions
-  | CreateFuncQualificationOptions
-  | CreateFuncValidationOptions;
+  | CreateFuncQualificationOptions;

@@ -35,20 +35,20 @@ export interface InstalledPkgAssetView {
 
 export type DetachedAttributePrototypeKind =
   | {
-      type: "ExternalProviderSocket";
+      type: "OutputSocketSocket";
       data: {
         name: string;
         kind: "ConfigurationInput" | "ConfigurationOutput";
       };
     }
   | {
-      type: "InternalProviderSocket";
+      type: "InputSocketSocket";
       data: {
         name: string;
         kind: "ConfigurationInput" | "ConfigurationOutput";
       };
     }
-  | { type: "InternalProviderProp"; data: { path: string; kind: PropKind } }
+  | { type: "InputSocketProp"; data: { path: string; kind: PropKind } }
   | { type: "Prop"; data: { path: string; kind: PropKind } };
 
 export interface DetachedAttributePrototype {
@@ -484,8 +484,8 @@ export const useAssetStore = () => {
 
                 for (const detached of detachedAttributePrototypes) {
                   if (
-                    detached.context.type === "ExternalProviderSocket" ||
-                    detached.context.type === "InternalProviderSocket"
+                    detached.context.type === "OutputSocketSocket" ||
+                    detached.context.type === "InputSocketSocket"
                   ) {
                     this.detachmentWarnings.push({
                       funcId: detached.funcId,
@@ -493,7 +493,7 @@ export const useAssetStore = () => {
                       message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
                     });
                   } else if (
-                    detached.context.type === "InternalProviderProp" ||
+                    detached.context.type === "InputSocketProp" ||
                     detached.context.type === "Prop"
                   ) {
                     this.detachmentWarnings.push({

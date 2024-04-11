@@ -369,9 +369,7 @@ const prepareTest = async () => {
     const getJsonPath = () => {
       for (const prototype of prototypes) {
         for (const arg of prototype.prototypeArguments) {
-          const prop = funcStore.propForInternalProviderId(
-            arg.internalProviderId ?? "",
-          );
+          const prop = funcStore.proprForInputSocketId(arg.inputSocketId ?? "");
 
           if (prop) {
             return `${prop.path}${prop.name}`;
@@ -411,40 +409,6 @@ const prepareTest = async () => {
       string,
       unknown
     >;
-
-    testInputCode.value = JSON.stringify(properties, null, 2);
-    testInputProperties.value = properties;
-  } else if (selectedFunc?.associations?.type === "validation") {
-    const prototypes = selectedFunc.associations.prototypes;
-
-    const getJsonPath = () => {
-      for (const prototype of prototypes) {
-        const prop = funcStore.propForId(prototype.propId);
-
-        if (prop) {
-          return `${prop.path}${prop.name}`;
-        }
-      }
-    };
-    const jsonPath = getJsonPath();
-    if (!jsonPath) {
-      // TODO(Wendy) - handle a failure properly instead of just bailing!
-      return;
-    }
-    // We remove the first two strings because they will always be an empty string and "root"
-    const jsonPathArray = jsonPath.split("/").splice(2);
-    let properties: Record<string, unknown> | null = json as Record<
-      string,
-      unknown
-    >;
-
-    for (const key of jsonPathArray) {
-      if (!properties[key]) {
-        properties = null;
-        break;
-      }
-      properties = properties[key] as Record<string, unknown>;
-    }
 
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
@@ -520,9 +484,7 @@ const startTest = async () => {
   funcTestTabsRef.value.selectTab("logs");
 
   let args = testInputProperties.value;
-  if (funcStore.selectedFuncDetails.associations?.type === "validation") {
-    args = { value: args };
-  } else if (funcStore.selectedFuncDetails.associations?.type === "action") {
+  if (funcStore.selectedFuncDetails.associations?.type === "action") {
     args = { kind: "standard", properties: args };
   }
 

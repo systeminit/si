@@ -16,6 +16,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -33,7 +34,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to, pk,
+    attribute::prototype::argument::AttributePrototypeArgumentId, id, implement_add_edge_to,
     AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
@@ -65,6 +66,8 @@ pub enum AttributePrototypeError {
     NodeWeight(#[from] NodeWeightError),
     #[error("Attribute Prototype not found: {0}")]
     NotFound(AttributePrototypeId),
+    #[error("attribute prototype has been orphaned: {0}")]
+    Orphaned(AttributePrototypeId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
@@ -79,7 +82,23 @@ pub enum AttributePrototypeError {
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 
-pk!(AttributePrototypeId);
+/// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
+///
+/// - If an [`AttributePrototype`] is used by an [`AttributeValue`], its eventual parent is a
+///   [`SchemaVariant`].
+/// - If an [`AttributePrototype`] is used by a [`Prop`](crate::Prop), an
+///   [`InputSocket`](crate::InputSocket), or an [`OutputSocket`](crate::OutputSocket), its eventual
+///   parent is a [`Component`](crate::Component).
+#[remain::sorted]
+#[derive(Debug, Clone, Copy, EnumDiscriminants)]
+pub enum AttributePrototypeEventualParent {
+    Component(ComponentId),
+    SchemaVariantFromInputSocket(SchemaVariantId, InputSocketId),
+    SchemaVariantFromOutputSocket(SchemaVariantId, OutputSocketId),
+    SchemaVariantFromProp(SchemaVariantId, PropId),
+}
+
+id!(AttributePrototypeId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {
@@ -494,53 +513,52 @@ impl AttributePrototype {
         Ok(attribute_prototype_argument_ids)
     }
 
-    pub async fn schema_variants_and_components(
+    /// Returns the [eventual parent](AttributePrototypeEventualParent) of the
+    /// [`AttributePrototype`], which will either be a [`Component`](crate::Component) or a
+    /// [`SchemaVariant`].
+    pub async fn eventual_parent(
         ctx: &DalContext,
         id: AttributePrototypeId,
-    ) -> AttributePrototypeResult<(Vec<SchemaVariantId>, Vec<ComponentId>)> {
+    ) -> AttributePrototypeResult<AttributePrototypeEventualParent> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let sources = workspace_snapshot
+        let source = *workspace_snapshot
             .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Prototype)
-            .await?;
+            .await?
+            .first()
+            .ok_or(AttributePrototypeError::Orphaned(id))?;
 
-        let mut component_ids = Vec::new();
-        let mut schema_variant_ids = Vec::new();
+        let node_weight = workspace_snapshot.get_node_weight(source).await?;
+        let node_weight_id = node_weight.id();
 
-        for source in sources {
-            let node_weight = workspace_snapshot.get_node_weight(source).await?;
-            let node_weight_id = node_weight.id();
-
-            match node_weight {
-                NodeWeight::AttributeValue(_) => component_ids.push(
-                    AttributeValue::component_id(ctx, node_weight_id.into())
-                        .await
-                        .map_err(Box::new)?,
-                ),
-                NodeWeight::Prop(_) => schema_variant_ids.push(
-                    SchemaVariant::find_for_prop_id(ctx, node_weight_id.into())
-                        .await
-                        .map_err(Box::new)?,
-                ),
-                NodeWeight::Content(inner) => match inner.content_address().into() {
-                    ContentAddressDiscriminants::InputSocket => schema_variant_ids.push(
+        let eventual_parent = match node_weight {
+            NodeWeight::AttributeValue(_) => AttributePrototypeEventualParent::Component(
+                AttributeValue::component_id(ctx, node_weight_id.into())
+                    .await
+                    .map_err(Box::new)?,
+            ),
+            NodeWeight::Prop(_) => AttributePrototypeEventualParent::SchemaVariantFromProp(
+                SchemaVariant::find_for_prop_id(ctx, node_weight_id.into())
+                    .await
+                    .map_err(Box::new)?,
+                node_weight_id.into(),
+            ),
+            NodeWeight::Content(inner) => match inner.content_address().into() {
+                ContentAddressDiscriminants::InputSocket => {
+                    AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
                         SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into())
                             .await
                             .map_err(Box::new)?,
-                    ),
-                    ContentAddressDiscriminants::OutputSocket => schema_variant_ids.push(
+                        node_weight_id.into(),
+                    )
+                }
+                ContentAddressDiscriminants::OutputSocket => {
+                    AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
                         SchemaVariant::find_for_output_socket_id(ctx, node_weight_id.into())
                             .await
                             .map_err(Box::new)?,
-                    ),
-                    _ => {
-                        return Err(
-                            AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
-                                node_weight_id,
-                                id,
-                            ),
-                        )
-                    }
-                },
+                        node_weight_id.into(),
+                    )
+                }
                 _ => {
                     return Err(
                         AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
@@ -549,9 +567,17 @@ impl AttributePrototype {
                         ),
                     )
                 }
+            },
+            _ => {
+                return Err(
+                    AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
+                        node_weight_id,
+                        id,
+                    ),
+                )
             }
-        }
+        };
 
-        Ok((schema_variant_ids, component_ids))
+        Ok(eventual_parent)
     }
 }

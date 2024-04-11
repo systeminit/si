@@ -14,7 +14,7 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDisc
 use crate::workspace_snapshot::node_weight::{FuncArgumentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
+    id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,
 };
 
@@ -120,8 +120,7 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
     }
 }
 
-pk!(FuncArgumentPk);
-pk!(FuncArgumentId);
+id!(FuncArgumentId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncArgument {

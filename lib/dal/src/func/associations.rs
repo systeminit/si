@@ -2,14 +2,18 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::attribute::prototype::argument::value_source::ValueSource;
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
+use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeEventualParent};
+use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
 use crate::func::view::FuncArgumentView;
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
-    AttributePrototype, ComponentId, DalContext, Func, FuncBackendResponseType, FuncId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId, InputSocketId,
+    OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId,
 };
 
 #[remain::sorted]
@@ -17,6 +21,8 @@ use crate::{
 pub enum FuncAssociationsError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("schema variant error: {0}")]
@@ -27,8 +33,95 @@ type FuncAssociationsResult<T> = Result<T, FuncAssociationsError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeArgumentView {
+    pub func_argument_id: FuncArgumentId,
+    pub id: AttributePrototypeArgumentId,
+    pub input_socket_id: Option<InputSocketId>,
+}
+
+impl AttributePrototypeArgumentView {
+    pub async fn assemble(
+        ctx: &DalContext,
+        id: AttributePrototypeArgumentId,
+    ) -> FuncAssociationsResult<Self> {
+        let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(ctx, id).await?;
+
+        let input_socket_id =
+            if let Some(value_source) = attribute_prototype_argument.value_source(ctx).await? {
+                match value_source {
+                    ValueSource::InputSocket(input_socket_id) => Some(input_socket_id),
+                    ValueSource::OutputSocket(_)
+                    | ValueSource::Prop(_)
+                    | ValueSource::StaticArgumentValue(_) => None,
+                }
+            } else {
+                None
+            };
+
+        let func_argument_id = AttributePrototypeArgument::func_argument_id_by_id(ctx, id).await?;
+
+        Ok(Self {
+            func_argument_id,
+            id,
+            input_socket_id,
+        })
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeView {
-    // TODO(nick): populate this or delete it.
+    pub id: AttributePrototypeId,
+    pub component_id: Option<ComponentId>,
+    pub schema_variant_id: Option<SchemaVariantId>,
+    pub prop_id: Option<PropId>,
+    pub output_socket_id: Option<OutputSocketId>,
+    pub prototype_arguments: Vec<AttributePrototypeArgumentView>,
+}
+
+impl AttributePrototypeView {
+    pub async fn assemble(
+        ctx: &DalContext,
+        id: AttributePrototypeId,
+    ) -> FuncAssociationsResult<Self> {
+        let attribute_prototype_argument_ids =
+            AttributePrototypeArgument::list_ids_for_prototype(ctx, id).await?;
+
+        let eventual_parent = AttributePrototype::eventual_parent(ctx, id).await?;
+        let (component_id, schema_variant_id, prop_id, output_socket_id) = match eventual_parent {
+            AttributePrototypeEventualParent::Component(component_id) => {
+                (Some(component_id), None, None, None)
+            }
+            AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
+                schema_variant_id,
+                _,
+            ) => (None, Some(schema_variant_id), None, None),
+            AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
+                schema_variant_id,
+                output_socket_id,
+            ) => (None, Some(schema_variant_id), None, Some(output_socket_id)),
+            AttributePrototypeEventualParent::SchemaVariantFromProp(schema_variant_id, prop_id) => {
+                (None, Some(schema_variant_id), Some(prop_id), None)
+            }
+        };
+
+        let mut prototype_arguments = Vec::new();
+        for attribute_prototype_argument_id in attribute_prototype_argument_ids {
+            prototype_arguments.push(
+                AttributePrototypeArgumentView::assemble(ctx, attribute_prototype_argument_id)
+                    .await?,
+            );
+        }
+
+        Ok(Self {
+            id,
+            component_id,
+            schema_variant_id,
+            prop_id,
+            output_socket_id,
+            prototype_arguments,
+        })
+    }
 }
 
 #[remain::sorted]
@@ -75,15 +168,23 @@ impl FuncAssociations {
                 let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
                 (
                     Some(Self::Action { schema_variant_ids }),
-                    // TODO(nick): get input type.
+                    // TODO(nick): ensure the input type is correct.
                     String::new(),
                 )
             }
             FuncKind::Attribute => {
-                // TODO(nick): get prototype views and types
+                let attribute_prototype_ids =
+                    AttributePrototype::list_ids_for_func_id(ctx, func.id).await?;
+
+                let mut prototypes = Vec::new();
+                for attribute_prototype_id in attribute_prototype_ids {
+                    prototypes
+                        .push(AttributePrototypeView::assemble(ctx, attribute_prototype_id).await?);
+                }
+
                 (
                     Some(Self::Attribute {
-                        prototypes: vec![],
+                        prototypes,
                         arguments: arguments
                             .iter()
                             .map(|arg| FuncArgumentView {
@@ -94,6 +195,7 @@ impl FuncAssociations {
                             })
                             .collect(),
                     }),
+                    // TODO(nick): ensure the input type is correct.
                     "type Input = any".into(),
                 )
             }
@@ -101,6 +203,7 @@ impl FuncAssociations {
                 let schema_variant_ids = SchemaVariant::list_for_auth_func(ctx, func.id).await?;
                 (
                     Some(Self::Authentication { schema_variant_ids }),
+                    // TODO(nick): ensure the input type is correct.
                     concat!(
                         "type Input = Record<string, unknown>;\n",
                         "\n",
@@ -114,7 +217,7 @@ impl FuncAssociations {
                     .to_owned(),
                 )
             }
-            FuncKind::CodeGeneration | FuncKind::Qualification => {
+            FuncKind::CodeGeneration => {
                 let attribute_prototype_ids =
                     AttributePrototype::list_ids_for_func_id(ctx, func.id).await?;
 
@@ -122,40 +225,75 @@ impl FuncAssociations {
                 let mut component_ids = Vec::new();
 
                 for attribute_prototype_id in attribute_prototype_ids {
-                    let (
-                        schema_variant_ids_for_attribute_prototype,
-                        component_ids_for_attribute_prototype,
-                    ) = AttributePrototype::schema_variants_and_components(
-                        ctx,
-                        attribute_prototype_id,
-                    )
-                    .await?;
-                    schema_variant_ids.extend(schema_variant_ids_for_attribute_prototype);
-                    component_ids.extend(component_ids_for_attribute_prototype);
+                    let eventual_parent =
+                        AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
+
+                    match eventual_parent {
+                        AttributePrototypeEventualParent::Component(component_id) => {
+                            component_ids.push(component_id)
+                        }
+                        AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                        AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                        AttributePrototypeEventualParent::SchemaVariantFromProp(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                    }
                 }
 
-                let inputs = Self::list_leaf_function_inputs(ctx, func.id).await?;
+                (
+                    Some(Self::CodeGeneration {
+                        schema_variant_ids,
+                        component_ids,
+                        inputs: Self::list_leaf_function_inputs(ctx, func.id).await?,
+                    }),
+                    // TODO(nick): ensure the input type is correct.
+                    "".to_string(),
+                )
+            }
+            FuncKind::Qualification => {
+                let attribute_prototype_ids =
+                    AttributePrototype::list_ids_for_func_id(ctx, func.id).await?;
 
-                // TODO(nick): restore the ability to compile func input types.
-                let input_type = "".to_string();
-                // compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs).await?;
+                let mut schema_variant_ids = Vec::new();
+                let mut component_ids = Vec::new();
+
+                for attribute_prototype_id in attribute_prototype_ids {
+                    let eventual_parent =
+                        AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
+                    match eventual_parent {
+                        AttributePrototypeEventualParent::Component(component_id) => {
+                            component_ids.push(component_id)
+                        }
+                        AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                        AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                        AttributePrototypeEventualParent::SchemaVariantFromProp(
+                            schema_variant_id,
+                            _,
+                        ) => schema_variant_ids.push(schema_variant_id),
+                    }
+                }
 
                 (
-                    Some(match func.backend_response_type {
-                        FuncBackendResponseType::CodeGeneration => Self::CodeGeneration {
-                            schema_variant_ids,
-                            component_ids,
-                            inputs,
-                        },
-
-                        FuncBackendResponseType::Qualification => Self::Qualification {
-                            schema_variant_ids,
-                            component_ids,
-                            inputs: Self::list_leaf_function_inputs(ctx, func.id).await?,
-                        },
-                        _ => unreachable!("the match above ensures this is unreachable"),
+                    Some(Self::Qualification {
+                        schema_variant_ids,
+                        component_ids,
+                        inputs: Self::list_leaf_function_inputs(ctx, func.id).await?,
                     }),
-                    input_type,
+                    // TODO(nick): ensure the input type is correct.
+                    "".to_string(),
                 )
             }
             FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {

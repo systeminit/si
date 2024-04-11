@@ -150,12 +150,12 @@ export const useFuncStore = () => {
             return undefined;
           },
 
-        propForInternalProviderId:
+        proprForInputSocketId:
           (state) =>
-          (internalProviderId: string): InputSourceProp | undefined => {
+          (inputSocketId: string): InputSourceProp | undefined => {
             for (const props of Object.values(state.inputSourceProps)) {
               const inputSourceProp = props.find(
-                (prop) => prop.internalProviderId === internalProviderId,
+                (prop) => prop.inputSocketId === inputSocketId,
               );
               if (inputSourceProp) {
                 return inputSourceProp;
@@ -164,12 +164,12 @@ export const useFuncStore = () => {
             return undefined;
           },
 
-        inputSocketForInternalProviderId:
+        inputSocketForInputSocketId:
           (state) =>
-          (internalProviderId: string): InputSourceSocket | undefined => {
+          (inputSocketId: string): InputSourceSocket | undefined => {
             for (const sockets of Object.values(state.inputSourceSockets)) {
               const inputSourceSocket = sockets.find(
-                (socket) => socket.internalProviderId === internalProviderId,
+                (socket) => socket.inputSocketId === inputSocketId,
               );
               if (inputSourceSocket) {
                 return inputSourceSocket;
@@ -180,10 +180,10 @@ export const useFuncStore = () => {
 
         outputSocketForId:
           (state) =>
-          (externalProviderId: string): OutputSocket | undefined => {
+          (outputSocketId: string): OutputSocket | undefined => {
             for (const sockets of Object.values(state.outputSockets)) {
               const outputSocket = sockets.find(
-                (socket) => socket.externalProviderId === externalProviderId,
+                (socket) => socket.outputSocketId === outputSocketId,
               );
               if (outputSocket) {
                 return outputSocket;
@@ -222,14 +222,13 @@ export const useFuncStore = () => {
       },
 
       actions: {
-        internalProviderIdToSourceName(internalProviderId: string) {
-          const socket =
-            this.inputSocketForInternalProviderId(internalProviderId);
+        inputSocketIdToSourceName(inputSocketId: string) {
+          const socket = this.inputSocketForInputSocketId(inputSocketId);
           if (socket) {
             return `Input Socket: ${socket.name}`;
           }
 
-          const prop = this.propForInternalProviderId(internalProviderId);
+          const prop = this.proprForInputSocketId(inputSocketId);
           if (prop) {
             return `Attribute: ${prop.path}${prop.name}`;
           }
@@ -244,8 +243,8 @@ export const useFuncStore = () => {
           }
         },
 
-        externalProviderIdToSourceName(externalProviderId: string) {
-          const outputSocket = this.outputSocketForId(externalProviderId);
+        outputSocketIdToSourceName(outputSocketId: string) {
+          const outputSocket = this.outputSocketForId(outputSocketId);
           if (outputSocket) {
             return `Output Socket: ${outputSocket.name}`;
           }
@@ -259,8 +258,8 @@ export const useFuncStore = () => {
             return this.propForId(prototype.propId)?.schemaVariantId;
           }
 
-          if (prototype.externalProviderId) {
-            return this.outputSocketForId(prototype.externalProviderId)
+          if (prototype.outputSocketId) {
+            return this.outputSocketForId(prototype.outputSocketId)
               ?.schemaVariantId;
           }
         },
@@ -275,13 +274,12 @@ export const useFuncStore = () => {
             };
           }
 
-          if (prototype.externalProviderId) {
+          if (prototype.outputSocketId) {
             return {
               label:
-                this.externalProviderIdToSourceName(
-                  prototype.externalProviderId,
-                ) ?? "none",
-              externalProviderId: prototype.externalProviderId,
+                this.outputSocketIdToSourceName(prototype.outputSocketId) ??
+                "none",
+              outputSocketId: prototype.outputSocketId,
             };
           }
 
@@ -312,14 +310,13 @@ export const useFuncStore = () => {
               : this.outputSockets[schemaVariantId]
             )?.map((socket) => {
               const label =
-                this.externalProviderIdToSourceName(
-                  socket.externalProviderId,
-                ) ?? "none";
+                this.outputSocketIdToSourceName(socket.outputSocketId) ??
+                "none";
               return {
                 label,
                 value: {
                   label,
-                  externalProviderId: socket.externalProviderId,
+                  outputSocketId: socket.outputSocketId,
                 },
               };
             }) ?? [];

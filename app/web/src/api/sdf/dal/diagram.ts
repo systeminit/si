@@ -2,8 +2,6 @@ import * as _ from "lodash-es";
 
 export type DiagramKind = "configuration";
 
-export type DiagramProviderMetadata = string;
-
 export interface DiagramOutputSocket {
   id: string;
   name: string;
