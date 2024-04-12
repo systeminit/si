@@ -35,12 +35,21 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       // Ensure Auth0 has redirected us back to the auth portal.
       cy.url().should("contain", import.meta.env.VITE_AUTH_PORTAL_URL);
 
+      cy.log("Checked we're in the auth portal again");
+
       // Push onto the workspace requested
       cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go');
 
+      cy.log("hello after redirect function");
     },
     {
       validate: () => {
+
+        // Sometimes the session token isn't there .. yet?
+        cy.wait(5000);
+
+        cy.log("hello from validation function");
+
         // Validate presence of access token in localStorage.
         cy.window().its("localStorage").invoke("getItem", "si-auth").should("exist");
       },
