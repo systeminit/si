@@ -1,18 +1,20 @@
 const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
 const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
 const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
 
 Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe("logout", () => {
     beforeEach(() => {
       cy.visit("/");
-      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
     });
 
     it("log_out", () => {
-      cy.visit("/");
+      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
+      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
