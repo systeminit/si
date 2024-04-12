@@ -2,9 +2,9 @@ const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || impor
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
 const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
 const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
 const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
-const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 
 Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe("logout", () => {
@@ -14,9 +14,11 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
     it("log_out", () => {
       cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
-      // Push onto the workspace requested
-      cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go');
+      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+      // check that you're on head i.e. that you were redirected correctly
+      cy.wait(4000)
+      cy.url().should("contain", SI_WORKSPACE_ID);
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
       cy.get('[aria-label="Profile"]').should('exist').click();

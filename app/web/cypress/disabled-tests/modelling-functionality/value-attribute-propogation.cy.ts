@@ -67,6 +67,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         const parts = currentUrl.split('/');
         parts.pop(); // c
         const changeset = parts.pop();
+        cy.log(componentIDB, componentIDA, changeset, SI_WORKSPACE_ID, bearertoken)
         cy.request({
           method: 'POST',
           url: '/api/diagram/connect_component_to_frame',
@@ -106,6 +107,9 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Intercept the API call and alias it
       cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
 
+      // Wait for the values to propagate
+      cy.wait(2000);
+
       cy.url().then(currentUrl => {
         // Construct a new URL with desired query parameters for selecting 
         // the attribute panel for a known connected component
@@ -114,9 +118,6 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         newUrl.searchParams.set('t', 'attributes');
         cy.visit(newUrl.href);
       });
-
-      // Wait for the values to propagate
-      cy.wait(1000);
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')
