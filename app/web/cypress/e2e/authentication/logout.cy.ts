@@ -4,6 +4,7 @@ const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VIT
 const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
 const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
 const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 
 Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe("logout", () => {
