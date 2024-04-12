@@ -9,10 +9,12 @@ publish = false
 si-hash = { path = "../../lib/si-hash" }
 
 bytes = { workspace = true }
+chrono = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 ulid = { workspace = true }
 serde_json = { workspace = true }
+strum = { workspace = true }
 thiserror = { workspace = true }
 postgres-types = { workspace = true }
 blake3 = { workspace = true }
