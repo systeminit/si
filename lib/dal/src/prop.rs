@@ -21,7 +21,7 @@ use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, label_list::ToLabelList, pk, property_editor::schema::WidgetKind,
@@ -123,8 +123,10 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-    /// A serialized validation format JSON object for the prop.  
+    /// A serialized validation format JSON object for the prop.
     pub validation_format: Option<String>,
+    /// Indicates whether this prop is a valid input for a function
+    pub can_be_used_as_prototype_arg: bool,
 }
 
 impl From<Prop> for PropContentV1 {
@@ -329,7 +331,7 @@ pub enum PropParent {
 }
 
 impl Prop {
-    pub fn assemble(id: PropId, inner: PropContentV1) -> Self {
+    pub fn assemble(id: PropId, inner: PropContentV1, node_weight: PropNodeWeight) -> Self {
         Self {
             id,
             timestamp: inner.timestamp,
@@ -343,6 +345,7 @@ impl Prop {
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
             validation_format: inner.validation_format,
+            can_be_used_as_prototype_arg: node_weight.can_be_used_as_prototype_arg(),
         }
     }
 
@@ -566,6 +569,7 @@ impl Prop {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let prop_node_weight = node_weight.get_prop_node_weight()?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
         if ordered {
             workspace_snapshot
@@ -600,14 +604,17 @@ impl Prop {
             }
         };
 
-        Ok(Self::assemble(id.into(), content))
+        Ok(Self::assemble(id.into(), content, prop_node_weight))
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot
+            .get_node_weight(node_index)
+            .await?
+            .get_prop_node_weight()?;
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
@@ -620,7 +627,7 @@ impl Prop {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let PropContent::V1(inner) = content;
 
-        Ok(Prop::assemble(id, inner))
+        Ok(Prop::assemble(id, inner, node_weight))
     }
 
     pub async fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
