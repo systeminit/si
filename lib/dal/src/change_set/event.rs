@@ -3,6 +3,13 @@ use serde::{Deserialize, Serialize};
 use crate::{ChangeSetId, DalContext, UserPk, WsEvent, WsEventResult, WsPayload};
 
 impl WsEvent {
+    pub async fn change_set_written(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetWritten(change_set_id)).await
+    }
+
     pub async fn change_set_created(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
