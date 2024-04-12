@@ -763,7 +763,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         Self::create_default_prototypes(ctx, schema_variant_id).await?;
-        //Self::mark_props_as_able_to_be_used_as_prototype_args(ctx, schema_variant_id)?;
+        Self::mark_props_as_able_to_be_used_as_prototype_args(ctx, schema_variant_id).await?;
 
         // TODO(nick,jacob,zack): if we are going to copy the existing system (which we likely will), we need to
         // set "/root/si/type" and "/root/si/protected".
