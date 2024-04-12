@@ -37,9 +37,6 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
 
       cy.log("Checked we're in the auth portal again");
 
-      // Push onto the workspace requested
-      cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go');
-
       cy.log("hello after redirect function");
     },
     {
