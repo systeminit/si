@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use si_data_pg::{PgPool, PgPoolConfig};
+use si_data_pg::{postgres_types::ToSql, PgPool, PgPoolConfig, PgRow};
 
 use crate::error::LayerDbResult;
 
@@ -67,6 +67,18 @@ impl PgLayer {
         }
     }
 
+    pub async fn get_raw(
+        &self,
+        query: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> LayerDbResult<Option<PgRow>> {
+        let client = self.pool.get().await?;
+        match client.query_opt(query, params).await? {
+            Some(row) => Ok(Some(row)),
+            None => Ok(None),
+        }
+    }
+
     pub async fn get_many(
         &self,
         keys: &[Arc<str>],
@@ -91,6 +103,15 @@ impl PgLayer {
         }
 
         Ok(Some(result))
+    }
+
+    pub async fn get_many_raw(
+        &self,
+        query: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> LayerDbResult<Option<Vec<PgRow>>> {
+        let client = self.pool.get().await?;
+        Ok(Some(client.query(query, params).await?))
     }
 
     pub async fn get_many_by_prefix(
@@ -157,6 +178,16 @@ impl PgLayer {
         client
             .query(&self.insert_value_query, &[&key, &sort_key, &value])
             .await?;
+        Ok(())
+    }
+
+    pub async fn insert_raw(
+        &self,
+        query: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> LayerDbResult<()> {
+        let client = self.pool.get().await?;
+        client.query(query, params).await?;
         Ok(())
     }
 

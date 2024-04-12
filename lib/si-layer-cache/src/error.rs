@@ -46,6 +46,8 @@ pub enum LayerDbError {
     Decompress(String),
     #[error("failed to parse content hash from str: {0}")]
     HashParse(#[from] ContentHashParseError),
+    #[error("incomplete key: {0}")]
+    IncompleteKey(String),
     #[error("invalid cache name: {0}")]
     InvalidCacheName(String),
     #[error("io error: {0}")]
