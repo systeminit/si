@@ -71,57 +71,20 @@ pub async fn create_component(
 
     if let Some(frame_id) = request.parent_id {
         Frame::attach_child_to_parent(&ctx, frame_id, component.id()).await?;
-    }
 
-    // TODO(nick): restore posthog logic and other potential missing frame logic.
-    // if let Some(frame_id) = request.parent_id {
-    //     let component_socket = Socket::find_frame_socket_for_node(
-    //         &ctx,
-    //         *node.id(),
-    //         SocketEdgeKind::ConfigurationOutput,
-    //     )
-    //     .await?;
-    //     let frame_socket =
-    //         Socket::find_frame_socket_for_node(&ctx, frame_id, SocketEdgeKind::ConfigurationInput)
-    //             .await?;
-    //
-    //     let _connection = Connection::new(
-    //         &ctx,
-    //         *node.id(),
-    //         *component_socket.id(),
-    //         frame_id,
-    //         *frame_socket.id(),
-    //         EdgeKind::Symbolic,
-    //     )
-    //     .await?;
-    //
-    //     connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
-    //
-    //     let child_comp = Node::get_by_id(&ctx, node.id())
-    //         .await?
-    //         .ok_or(DiagramError::NodeNotFound(*node.id()))?
-    //         .component(&ctx)
-    //         .await?
-    //         .ok_or(DiagramError::ComponentNotFound)?;
-    //
-    //     let child_schema = child_comp
-    //         .schema(&ctx)
-    //         .await?
-    //         .ok_or(DiagramError::SchemaNotFound)?;
-    //
-    //     let parent_comp = Node::get_by_id(&ctx, &frame_id)
-    //         .await?
-    //         .ok_or(DiagramError::NodeNotFound(frame_id))?
-    //         .component(&ctx)
-    //         .await?
-    //         .ok_or(DiagramError::ComponentNotFound)?;
-    //
-    //     let parent_schema = parent_comp
-    //         .schema(&ctx)
-    //         .await?
-    //         .ok_or(DiagramError::SchemaNotFound)?;
-    //
-    // }
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "component_attached_to_frame",
+            serde_json::json!({
+                "how": "/diagram/create_component",
+                "component_id": component.id(),
+                "parent_id": frame_id.clone(),
+                "change_set_id": ctx.change_set_id(),
+            }),
+        );
+    }
 
     WsEvent::component_created(&ctx, component.id())
         .await?
