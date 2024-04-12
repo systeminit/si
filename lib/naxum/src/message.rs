@@ -21,7 +21,9 @@ impl fmt::Display for FromPartsError {
 impl error::Error for FromPartsError {}
 
 impl IntoResponse for FromPartsError {
-    fn into_response(self) -> Response {}
+    fn into_response(self) -> Response {
+        Response::server_error()
+    }
 }
 
 pub trait MessageHead {

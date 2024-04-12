@@ -20,6 +20,7 @@ impl InvalidUtf8 {
 impl IntoResponse for InvalidUtf8 {
     fn into_response(self) -> Response {
         // TODO: log rejection
+        Response::server_error()
     }
 }
 

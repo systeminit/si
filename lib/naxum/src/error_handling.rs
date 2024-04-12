@@ -133,7 +133,7 @@ where
             // Unclear...
             #[allow(clippy::unit_arg)]
             match inner.oneshot(req).await {
-                Ok(_res) => Ok(()),
+                Ok(_res) => Ok(Response::default()),
                 Err(err) => Ok(f(err).await.into_response()),
             }
         });
