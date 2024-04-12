@@ -14,7 +14,6 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
     it("log_out", () => {
       cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
-      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
