@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
-use ulid::Ulid;
+use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::{ulid::Ulid, ContentHash};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
@@ -31,7 +31,7 @@ pub struct ContentNodeWeight {
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
@@ -50,7 +50,7 @@ impl ContentNodeWeight {
             id,
             lineage_id: change_set.generate_ulid()?,
             content_address,
-            merkle_tree_hash: ContentHash::default(),
+            merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -107,15 +107,19 @@ impl ContentNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
-            ContentAddress::Action(_) => ContentAddress::Action(content_hash),
-            ContentAddress::ActionBatch(_) => ContentAddress::ActionBatch(content_hash),
-            ContentAddress::ActionRunner(_) => ContentAddress::ActionRunner(content_hash),
+            ContentAddress::DeprecatedAction(_) => ContentAddress::DeprecatedAction(content_hash),
+            ContentAddress::DeprecatedActionBatch(_) => {
+                ContentAddress::DeprecatedActionBatch(content_hash)
+            }
+            ContentAddress::DeprecatedActionRunner(_) => {
+                ContentAddress::DeprecatedActionRunner(content_hash)
+            }
             ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
@@ -126,6 +130,7 @@ impl ContentNodeWeight {
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
             ContentAddress::InputSocket(_) => ContentAddress::InputSocket(content_hash),
             ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
+            ContentAddress::Module(_) => ContentAddress::Module(content_hash),
             ContentAddress::Prop(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Prop".to_string(),
@@ -142,6 +147,7 @@ impl ContentNodeWeight {
             ContentAddress::ValidationPrototype(_) => {
                 ContentAddress::ValidationPrototype(content_hash)
             }
+            ContentAddress::ValidationOutput(_) => ContentAddress::ValidationOutput(content_hash),
         };
 
         self.content_address = new_address;
@@ -163,7 +169,7 @@ impl ContentNodeWeight {
         self.content_hash()
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 

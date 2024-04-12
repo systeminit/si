@@ -8,12 +8,11 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::qualification::QualificationEntry;
 use crate::func::FuncError;
 use crate::prop::PropError;
-use crate::validation::resolver::{ValidationResolver, ValidationResolverError, ValidationStatus};
+use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
 use crate::{
-    func::binding_return_value::FuncBindingReturnValueError,
+    func::binding::return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentError, ComponentId, DalContext, Prop, StandardModel, StandardModelError,
-    WsEventResult,
+    Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
 };
 use crate::{AttributeValue, AttributeValueId, Func};
 
@@ -129,7 +128,7 @@ pub enum QualificationError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
-    ValidationResolver(#[from] ValidationResolverError),
+    ValidationResolver(#[from] ValidationError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
@@ -194,7 +193,7 @@ impl QualificationView {
                 None => return Ok(None),
             };
 
-        let func = Func::get_by_id(ctx, *func_execution.func_id()).await?;
+        let func = Func::get_by_id_or_error(ctx, *func_execution.func_id()).await?;
 
         let func_metadata = func.metadata_view();
 
@@ -248,18 +247,33 @@ impl QualificationView {
         let mut status = QualificationSubCheckStatus::Success;
 
         let mut fail_counter = 0;
-        for resolver in ValidationResolver::find_by_attr(ctx, "component_id", &component_id).await?
+
+        // Note(victor): If this is ever the bottleneck, we could pretty easily compute a
+        // validations summary for a component and store it on the graph during the
+        // compute_validations job.
+        // Then we'd just load it here and convert to the view struct
+        for (av_id, validation_output) in
+            ValidationOutput::list_for_component(ctx, component_id).await?
         {
-            let value = resolver.value()?;
-            if value.status != ValidationStatus::Success {
+            if validation_output.status != ValidationStatus::Success {
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
 
-                let prop = Prop::get_by_id(ctx, resolver.prop_id()).await?;
+                let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id).await?;
+
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+
                 output.push(QualificationOutputStreamView {
                     stream: "stdout".to_owned(),
                     level: "log".to_owned(),
-                    line: format!("{}: {}", prop.name, value.message),
+                    line: format!(
+                        "{}: {}",
+                        prop.name,
+                        validation_output
+                            .message
+                            .clone()
+                            .unwrap_or("message missing".to_string())
+                    ),
                 });
             }
         }
@@ -275,7 +289,7 @@ impl QualificationView {
         });
 
         Ok(Some(QualificationView {
-            title: "Schema Validations".to_owned(),
+            title: "Prop Validations".to_owned(),
             description: None,
             link: None,
             output,

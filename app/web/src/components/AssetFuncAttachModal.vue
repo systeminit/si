@@ -11,10 +11,10 @@
         "
       >
         <VormInput
-          v-model="funcVariant"
+          v-model="funcKind"
           label="Kind"
           type="dropdown"
-          :options="funcVariantOptions"
+          :options="funcKindOptions"
         />
         <VormInput
           v-if="!attachExisting"
@@ -31,7 +31,7 @@
           required
           :options="existingFuncOptions"
         />
-        <template v-if="funcVariant === FuncVariant.Action && !attachExisting">
+        <template v-if="funcKind === FuncKind.Action && !attachExisting">
           <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="create"
@@ -58,7 +58,7 @@
           </h2>
         </template>
         <VormInput
-          v-if="funcVariant === FuncVariant.Attribute"
+          v-if="funcKind === FuncKind.Attribute"
           v-model="attributeOutputLocation"
           label="Output Location"
           type="dropdown"
@@ -121,7 +121,11 @@ import clsx from "clsx";
 import * as _ from "lodash-es";
 import { ActionKind } from "@/store/actions.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
-import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
+import {
+  CUSTOMIZABLE_FUNC_TYPES,
+  CustomizableFuncKind,
+  FuncKind,
+} from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
@@ -153,17 +157,15 @@ const showLoading = computed(
     createFuncReqStatus.value.isPending || loadAssetsReqStatus.value.isPending,
 );
 
-const funcVariantOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map(
-  (variant) => ({
-    label: CUSTOMIZABLE_FUNC_TYPES[variant as FuncVariant]?.singularLabel,
-    value: variant as string,
-  }),
-);
+const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map((kind) => ({
+  label: CUSTOMIZABLE_FUNC_TYPES[kind as CustomizableFuncKind]?.singularLabel,
+  value: kind as string,
+}));
 
 const attachExisting = ref(false);
 
 const name = ref("");
-const funcVariant = ref(FuncVariant.Action);
+const funcKind = ref(FuncKind.Action);
 
 const selectedExistingFuncId = ref<FuncId | undefined>();
 const selectedFuncCode = ref<string>("");
@@ -191,7 +193,7 @@ watch(selectedExistingFuncId, async (funcId) => {
 
 const existingFuncOptions = computed(() =>
   Object.values(funcStore.funcsById)
-    .filter((func) => func.variant === funcVariant.value)
+    .filter((func) => func.kind === funcKind.value)
     .map((func) => ({
       label: func.name,
       value: func.id,
@@ -214,10 +216,10 @@ const attributeOutputLocationParsed = computed<
         type: "prop",
         propId: parsed.propId,
       };
-    } else if ("externalProviderId" in parsed && parsed.externalProviderId) {
+    } else if ("outputSocketId" in parsed && parsed.outputSocketId) {
       return {
         type: "outputSocket",
-        externalProviderId: parsed.externalProviderId,
+        outputSocketId: parsed.outputSocketId,
       };
     }
   }
@@ -250,7 +252,7 @@ const attachEnabled = computed(() => {
   const nameIsSet =
     attachExisting.value || !!(name.value && name.value.length > 0);
   const hasOutput =
-    funcVariant.value !== FuncVariant.Attribute ||
+    funcKind.value !== FuncKind.Attribute ||
     !!attributeOutputLocationParsed.value;
   const existingSelected =
     !attachExisting.value || !!selectedExistingFuncId.value;
@@ -258,11 +260,11 @@ const attachEnabled = computed(() => {
   return nameIsSet && hasOutput && existingSelected;
 });
 
-const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
+const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
   attachExisting.value = existing ?? false;
 
   name.value = "";
-  funcVariant.value = variant ?? FuncVariant.Action;
+  funcKind.value = variant ?? FuncKind.Action;
   isCreate.value = false;
   isDelete.value = false;
   isRefresh.value = false;
@@ -287,7 +289,7 @@ const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
 };
 
 const newFuncOptions = (
-  funcVariant: FuncVariant,
+  funcKind: FuncKind,
   schemaVariantId: string,
 ): CreateFuncOptions => {
   const baseOptions = {
@@ -295,13 +297,13 @@ const newFuncOptions = (
   };
 
   let kind = ActionKind.Other;
-  switch (funcVariant) {
-    case FuncVariant.Authentication:
+  switch (funcKind) {
+    case FuncKind.Authentication:
       return {
         type: "authenticationOptions",
         ...baseOptions,
       };
-    case FuncVariant.Action:
+    case FuncKind.Action:
       if (isCreate.value) kind = ActionKind.Create;
       if (isDelete.value) kind = ActionKind.Delete;
       if (isRefresh.value) kind = ActionKind.Refresh;
@@ -311,7 +313,7 @@ const newFuncOptions = (
         actionKind: kind,
         ...baseOptions,
       };
-    case FuncVariant.Attribute:
+    case FuncKind.Attribute:
       if (attributeOutputLocationParsed.value) {
         return {
           type: "attributeOptions",
@@ -323,18 +325,18 @@ const newFuncOptions = (
         `attributeOutputLocationParsed not defined for Attribute`,
       );
 
-    case FuncVariant.CodeGeneration:
+    case FuncKind.CodeGeneration:
       return {
         type: "codeGenerationOptions",
         ...baseOptions,
       };
-    case FuncVariant.Qualification:
+    case FuncKind.Qualification:
       return {
         type: "qualificationOptions",
         ...baseOptions,
       };
     default:
-      throw new Error(`newFuncOptions not defined for ${funcVariant}`);
+      throw new Error(`newFuncOptions not defined for ${funcKind}`);
   }
 };
 
@@ -347,9 +349,9 @@ const attachToAttributeFunction = (
     {
       id: nilId(),
       propId: "propId" in outputLocation ? outputLocation.propId : undefined,
-      externalProviderId:
-        "externalProviderId" in outputLocation
-          ? outputLocation.externalProviderId
+      outputSocketId:
+        "outputSocketId" in outputLocation
+          ? outputLocation.outputSocketId
           : undefined,
       prototypeArguments: [],
       componentId: undefined,
@@ -416,9 +418,9 @@ const attachExistingFunc = async () => {
 
 const attachNewFunc = async () => {
   if (props.schemaVariantId) {
-    const options = newFuncOptions(funcVariant.value, props.schemaVariantId);
+    const options = newFuncOptions(funcKind.value, props.schemaVariantId);
     const result = await funcStore.CREATE_FUNC({
-      variant: funcVariant.value,
+      kind: funcKind.value,
       name: name.value,
       options,
     });

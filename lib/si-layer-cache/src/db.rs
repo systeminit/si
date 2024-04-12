@@ -16,24 +16,30 @@ use crate::{
     persister::{PersisterClient, PersisterTask},
 };
 
-use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
+use self::{
+    cache_updates::CacheUpdatesTask, cas::CasDb, function_execution::FunctionExecutionDb,
+    workspace_snapshot::WorkspaceSnapshotDb,
+};
 
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
+pub mod function_execution;
+pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, EncryptedSecretValue, FunctionExecutionValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    FunctionExecutionValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
+    function_execution: FunctionExecutionDb<FunctionExecutionValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
-    sled: sled::Db,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -41,11 +47,12 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, FunctionExecutionValue, WorkspaceSnapshotValue>
+    LayerDb<CasValue, EncryptedSecretValue, FunctionExecutionValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    FunctionExecutionValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn initialize(
@@ -59,23 +66,21 @@ where
         let tracker = TaskTracker::new();
 
         let disk_path = disk_path.as_ref();
-        let sled = sled::open(disk_path)?;
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
         let cas_cache: LayerCache<Arc<CasValue>> =
-            LayerCache::new(cas::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+            LayerCache::new(cas::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
-            LayerCache::new(encrypted_secret::CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+            LayerCache::new(encrypted_secret::CACHE_NAME, disk_path, pg_pool.clone())?;
 
-        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
-            workspace_snapshot::CACHE_NAME,
-            sled.clone(),
-            pg_pool.clone(),
-        )
-        .await?;
+        let function_execution_cache: LayerCache<Arc<FunctionExecutionValue>> =
+            LayerCache::new(function_execution::CACHE_NAME, disk_path, pg_pool.clone())?;
+
+        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> =
+            LayerCache::new(workspace_snapshot::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
@@ -90,7 +95,7 @@ where
 
         let persister_task = PersisterTask::create(
             rx,
-            sled.clone(),
+            disk_path.to_path_buf(),
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -102,6 +107,7 @@ where
         let cas = CasDb::new(cas_cache, persister_client.clone());
         let encrypted_secret =
             EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
+        let function_execution = FunctionExecutionDb::new(function_execution_cache);
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
@@ -111,8 +117,8 @@ where
             activity,
             cas,
             encrypted_secret,
+            function_execution,
             workspace_snapshot,
-            sled,
             pg_pool,
             persister_client,
             nats_client,
@@ -120,10 +126,6 @@ where
         };
 
         Ok((layerdb, graceful_shutdown))
-    }
-
-    pub fn sled(&self) -> &sled::Db {
-        &self.sled
     }
 
     pub fn pg_pool(&self) -> &PgPool {
@@ -144,6 +146,10 @@ where
 
     pub fn encrypted_secret(&self) -> &EncryptedSecretDb<EncryptedSecretValue> {
         &self.encrypted_secret
+    }
+
+    pub fn function_execution(&self) -> &FunctionExecutionDb<FunctionExecutionValue> {
+        &self.function_execution
     }
 
     pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {

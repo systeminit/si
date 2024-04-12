@@ -16,3 +16,5 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 postgres-types = { workspace = true }
 blake3 = { workspace = true }
+xxhash-rust = { workspace = true }
+paste = { workspace = true }

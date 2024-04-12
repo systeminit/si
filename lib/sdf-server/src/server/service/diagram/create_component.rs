@@ -4,9 +4,12 @@ use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility};
+use dal::{
+    generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent,
+};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::diagram::DiagramResult;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,8 +32,8 @@ pub struct CreateComponentResponse {
 pub async fn create_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -43,20 +46,18 @@ pub async fn create_component(
 
     let component = Component::new(&ctx, &name, variant.id()).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "create_action",
-    //     serde_json::json!({
-    //                 "how": "/diagram/create_component",
-    //                 "prototype_id": prototype.id,
-    //                 "prototype_kind": prototype.kind,
-    //                 "component_id": component.id(),
-    //                 "component_name": component.name(&ctx).await?,
-    //                 "change_set_id": ctx.change_set_id(),
-    //             }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "create_component",
+        serde_json::json!({
+            "how": "/diagram/create_component",
+            "component_id": component.id(),
+            "component_name": name.clone(),
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
 
     let component = component
         .set_geometry(
@@ -120,44 +121,25 @@ pub async fn create_component(
     //         .await?
     //         .ok_or(DiagramError::SchemaNotFound)?;
     //
-    //     track(
-    //         &posthog_client,
-    //         &ctx,
-    //         &original_uri,
-    //         "component_connected_to_frame",
-    //         serde_json::json!({
-    //                     "parent_component_id": parent_comp.id(),
-    //                     "parent_component_schema_name": parent_schema.name(),
-    //                     "parent_socket_id": frame_socket.id(),
-    //                     "parent_socket_name": frame_socket.name(),
-    //                     "child_component_id": child_comp.id(),
-    //                     "child_component_schema_name": child_schema.name(),
-    //                     "child_socket_id": component_socket.id(),
-    //                     "child_socket_name": component_socket.name(),
-    //         }),
-    //     );
     // }
 
-    // Does not work for now since commit does not wait for the rebaser
-    // WsEvent::component_created(&ctx, component.id())
-    //     .await?
-    //     .publish_on_commit(&ctx)
-    //     .await?;
+    WsEvent::component_created(&ctx, component.id())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
-    // TODO(nick): restore posthog tracking.
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "component_created",
-    //     serde_json::json!({
-    //                 "schema_id": schema.id(),
-    //                 "schema_name": schema.name(),
-    //                 "schema_variant_id": &schema_variant_id,
-    //                 "component_id": component.id(),
-    //                 "component_name": &name,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "component_created",
+        serde_json::json!({
+            "how": "/diagram/create_component",
+            "component_id": component.id(),
+            "component_name": name.clone(),
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
 
     ctx.commit().await?;
 

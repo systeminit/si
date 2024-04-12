@@ -1,5 +1,6 @@
 use std::{future::IntoFuture, io, sync::Arc};
 
+use dal::job::definition::compute_validation::ComputeValidation;
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -120,7 +121,7 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
         let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-            config.layer_cache_sled_path(),
+            config.layer_cache_disk_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
             token,
@@ -485,6 +486,8 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
         stringify!(ActionsJob) => {
             Box::new(ActionsJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
         }
+        stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
+            as Box<dyn JobConsumer + Send + Sync>,
         //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
         //         as Box<dyn JobConsumer + Send + Sync>,
         kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),

@@ -18,7 +18,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, Timestamp, TransactionsError};
+use crate::{implement_add_edge_to, pk, DalContext, HelperError, Timestamp, TransactionsError};
 
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -34,6 +34,8 @@ pub enum SchemaError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
@@ -87,6 +89,14 @@ impl Schema {
         &self.name
     }
 
+    implement_add_edge_to!(
+        source_id: SchemaId,
+        destination_id: SchemaVariantId,
+        add_fn: add_edge_to_variant,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SchemaResult,
+    );
+
     pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),
@@ -130,10 +140,18 @@ impl Schema {
         &self,
         ctx: &DalContext,
     ) -> SchemaResult<Option<SchemaVariantId>> {
+        Self::get_default_schema_variant_by_id(ctx, self.id).await
+    }
+
+    pub async fn get_default_schema_variant_by_id(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<Option<SchemaVariantId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let default_schema_variant_node_indicies =
-            workspace_snapshot.edges_directed(self.id, Outgoing).await?;
+        let default_schema_variant_node_indicies = workspace_snapshot
+            .edges_directed(schema_id, Outgoing)
+            .await?;
 
         for (edge_weight, _, target_index) in default_schema_variant_node_indicies {
             if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
@@ -195,12 +213,7 @@ impl Schema {
                 )
                 .await?;
 
-            workspace_snapshot
-                .add_edge(
-                    self.id,
-                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
-                    schema_variant_id,
-                )
+            Self::add_edge_to_variant(ctx, self.id, schema_variant_id, EdgeWeightKind::new_use())
                 .await?;
         }
 
@@ -223,13 +236,13 @@ impl Schema {
                 )
                 .await?;
 
-            workspace_snapshot
-                .add_edge(
-                    self.id,
-                    EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use_default())?,
-                    schema_variant_id,
-                )
-                .await?;
+            Self::add_edge_to_variant(
+                ctx,
+                self.id,
+                schema_variant_id,
+                EdgeWeightKind::new_use_default(),
+            )
+            .await?;
         }
 
         Ok(())

@@ -1,12 +1,10 @@
 ---
-version: "3.8"
-
 services:
 
   init:
     container_name: init
     image: systeminit/init:${SI_VERSION}
-    profiles: [council, pinga, sdf, veritech]
+    profiles: [rebaser, pinga, sdf, veritech]
     environment:
       - SI_HOSTENV=${SI_HOSTENV}
       - SI_SERVICE=${SI_SERVICE}
@@ -17,7 +15,7 @@ services:
   otelcol:
     container_name: otelcol
     image: systeminit/otelcol:${SI_VERSION}
-    profiles: [council, pinga, sdf, veritech]
+    profiles: [rebaser, pinga, sdf, veritech]
     ports:
       - 4317:4317
       - 55679:55679
@@ -30,9 +28,9 @@ services:
   node-exporter:
     container_name: node_exporter
     image: prom/node-exporter:v1.7.0
-    profiles: [council, pinga, sdf, veritech]
+    profiles: [rebaser, pinga, sdf, veritech]
     command:
-      - --collector.systemd 
+      - --collector.systemd
       - --collector.systemd.unit-include=${SI_SERVICE}.service
     volumes:
       - /proc:/host/proc:ro
@@ -54,7 +52,7 @@ services:
   vector:
     container_name: vector
     image: timberio/vector:0.X-debian
-    profiles: [council, pinga, sdf, veritech]
+    profiles: [rebaser, pinga, sdf, veritech]
     ports:
       - 8686:8686
     volumes:

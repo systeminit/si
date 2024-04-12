@@ -1,14 +1,13 @@
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use si_pkg::PropSpecKind;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
@@ -20,14 +19,14 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, AttributePrototype,
-    AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId, SchemaVariantId,
-    Timestamp, TransactionsError,
+    implement_add_edge_to, label_list::ToLabelList, pk, property_editor::schema::WidgetKind,
+    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
+    HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
 use crate::{AttributeValueId, InputSocketId};
 
@@ -52,6 +51,8 @@ pub enum PropError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("map or array {0} missing element prop")]
@@ -64,6 +65,8 @@ pub enum PropError {
     PropIsOrphan(PropId),
     #[error("prop {0} has a non prop or schema variant parent")]
     PropParentInvalid(PropId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("can only set default values for scalars (string, integer, boolean), prop {0} is {1}")]
@@ -120,8 +123,10 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-    /// A serialized validation format JSON object for the prop.  TODO: useTODO: use
+    /// A serialized validation format JSON object for the prop.
     pub validation_format: Option<String>,
+    /// Indicates whether this prop is a valid input for a function
+    pub can_be_used_as_prototype_arg: bool,
 }
 
 impl From<Prop> for PropContentV1 {
@@ -137,6 +142,7 @@ impl From<Prop> for PropContentV1 {
             hidden: value.hidden,
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
+            validation_format: value.validation_format,
         }
     }
 }
@@ -269,6 +275,13 @@ impl PropKind {
             _ => None,
         }
     }
+
+    pub fn is_scalar(&self) -> bool {
+        matches!(
+            self,
+            PropKind::String | PropKind::Boolean | PropKind::Integer
+        )
+    }
 }
 
 impl From<PropKind> for PropSpecKind {
@@ -318,7 +331,7 @@ pub enum PropParent {
 }
 
 impl Prop {
-    pub fn assemble(id: PropId, inner: PropContentV1) -> Self {
+    pub fn assemble(id: PropId, inner: PropContentV1, node_weight: PropNodeWeight) -> Self {
         Self {
             id,
             timestamp: inner.timestamp,
@@ -331,7 +344,8 @@ impl Prop {
             hidden: inner.hidden,
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
-            validation_format: None,
+            validation_format: inner.validation_format,
+            can_be_used_as_prototype_arg: node_weight.can_be_used_as_prototype_arg(),
         }
     }
 
@@ -339,6 +353,8 @@ impl Prop {
         self.id
     }
 
+    /// Returns `Some` with the parent [`PropId`](Prop) or returns `None` if the parent is a
+    /// [`SchemaVariant`].
     pub async fn parent_prop_id_by_id(
         ctx: &DalContext,
         prop_id: PropId,
@@ -363,7 +379,7 @@ impl Prop {
                     _ => return Err(PropError::PropParentInvalid(prop_id)),
                 },
             ),
-            None => Ok(None),
+            None => Err(PropError::PropIsOrphan(prop_id)),
         }
     }
 
@@ -482,12 +498,23 @@ impl Prop {
         kind: PropKind,
         prop_parent: PropParent,
     ) -> PropResult<Self> {
-        Self::new(ctx, name.as_ref(), kind, false, None, None, prop_parent).await
+        Self::new(
+            ctx,
+            name.as_ref(),
+            kind,
+            false,
+            None,
+            None,
+            None,
+            prop_parent,
+        )
+        .await
     }
 
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -495,6 +522,7 @@ impl Prop {
         hidden: bool,
         doc_link: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        validation_format: Option<String>,
         prop_parent: PropParent,
     ) -> PropResult<Self> {
         let ordered = kind.ordered();
@@ -524,6 +552,7 @@ impl Prop {
             hidden,
             refers_to_prop_id: None,
             diff_func_id: None,
+            validation_format,
         };
 
         let (hash, _) = ctx
@@ -540,6 +569,7 @@ impl Prop {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let prop_node_weight = node_weight.get_prop_node_weight()?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
         if ordered {
             workspace_snapshot
@@ -551,43 +581,40 @@ impl Prop {
 
         match prop_parent {
             PropParent::OrderedProp(ordered_prop_id) => {
-                workspace_snapshot
-                    .add_ordered_edge(
-                        change_set,
-                        ordered_prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                Self::add_edge_to_prop_ordered(
+                    ctx,
+                    ordered_prop_id,
+                    id.into(),
+                    EdgeWeightKind::new_use(),
+                )
+                .await?;
             }
             PropParent::Prop(prop_id) => {
-                workspace_snapshot
-                    .add_edge(
-                        prop_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                Self::add_edge_to_prop(ctx, prop_id, id.into(), EdgeWeightKind::new_use()).await?;
             }
             PropParent::SchemaVariant(schema_variant_id) => {
-                workspace_snapshot
-                    .add_edge(
-                        schema_variant_id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                        id,
-                    )
-                    .await?;
+                SchemaVariant::add_edge_to_prop(
+                    ctx,
+                    schema_variant_id,
+                    id.into(),
+                    EdgeWeightKind::new_use(),
+                )
+                .await
+                .map_err(Box::new)?;
             }
         };
 
-        Ok(Self::assemble(id.into(), content))
+        Ok(Self::assemble(id.into(), content, prop_node_weight))
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let ulid: ulid::Ulid = id.into();
+        let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let node_weight = workspace_snapshot
+            .get_node_weight(node_index)
+            .await?
+            .get_prop_node_weight()?;
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
@@ -600,7 +627,7 @@ impl Prop {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let PropContent::V1(inner) = content;
 
-        Ok(Prop::assemble(id, inner))
+        Ok(Prop::assemble(id, inner, node_weight))
     }
 
     pub async fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
@@ -702,21 +729,21 @@ impl Prop {
         Self::get_by_id(ctx, prop_id).await
     }
 
-    pub async fn set_prototype_id(
-        ctx: &DalContext,
-        prop_id: PropId,
-        attribute_prototype_id: AttributePrototypeId,
-    ) -> PropResult<()> {
-        ctx.workspace_snapshot()?
-            .add_edge(
-                prop_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype_id,
-            )
-            .await?;
+    implement_add_edge_to!(
+        source_id: PropId,
+        destination_id: AttributePrototypeId,
+        add_fn: add_edge_to_attribute_prototype,
+        discriminant: EdgeWeightKindDiscriminants::Prototype,
+        result: PropResult,
+    );
 
-        Ok(())
-    }
+    implement_add_edge_to!(
+        source_id: PropId,
+        destination_id: PropId,
+        add_fn: add_edge_to_prop,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: PropResult,
+    );
 
     pub async fn prototypes_by_key(
         ctx: &DalContext,
@@ -775,10 +802,7 @@ impl Prop {
         let value = serde_json::to_value(value)?;
 
         let prop = Prop::get_by_id(ctx, prop_id).await?;
-        if !matches!(
-            prop.kind,
-            PropKind::String | PropKind::Boolean | PropKind::Integer
-        ) {
+        if !prop.kind.is_scalar() {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
 

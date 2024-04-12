@@ -4,7 +4,6 @@ rust_library(
     name = "dal-test",
     deps = [
         "//lib/buck2-resources:buck2-resources",
-        "//lib/council-server:council-server",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
         "//lib/pinga-server:pinga-server",
@@ -21,6 +20,7 @@ rust_library(
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:color-eyre",
         "//third-party/rust:derive_builder",
+        "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",
         "//third-party/rust:names",
@@ -29,7 +29,6 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
-        "//third-party/rust:sled",
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:tempfile",
         "//third-party/rust:thiserror",

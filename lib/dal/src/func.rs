@@ -1,39 +1,46 @@
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
-use strum::{AsRefStr, Display, IntoEnumIterator};
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::ChangeSetError;
+use crate::func::argument::FuncArgumentId;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
-use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
+use crate::{id, implement_add_edge_to, DalContext, HelperError, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 pub mod argument;
+pub mod authoring;
 pub mod backend;
 pub mod binding;
-pub mod binding_return_value;
 pub mod execution;
 pub mod intrinsics;
+pub mod view;
 
+mod associations;
 mod before;
+mod kind;
 
+pub use associations::AttributePrototypeArgumentView;
+pub use associations::AttributePrototypeView;
+pub use associations::FuncAssociations;
 pub use before::before_funcs_for_component;
 pub use before::BeforeFuncError;
+pub use kind::FuncKind;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -48,6 +55,8 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
     IntrinsicFuncNotFound(String),
     #[error("intrinsic spec creation error {0}")]
@@ -60,8 +69,8 @@ pub enum FuncError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error("unable to determine the function type")]
-    UnknownFunctionType,
+    #[error("unable to determine the function type for backend kind ({0}) and backend response type ({1})")]
+    UnknownFunctionType(FuncBackendKind, FuncBackendResponseType),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]
@@ -96,26 +105,10 @@ pub struct FuncMetadataView {
 }
 
 pub fn is_intrinsic(name: &str) -> bool {
-    intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
+    IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
 }
 
-pk!(FuncId);
-
-/// Describes what kind of [`Func`] this is.
-#[remain::sorted]
-#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum FuncKind {
-    Action,
-    Attribute,
-    Authentication,
-    CodeGeneration,
-    Intrinsic,
-    Qualification,
-    SchemaVariantDefinition,
-    Unknown,
-}
+id!(FuncId);
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).
@@ -127,8 +120,10 @@ pub enum FuncKind {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Func {
     pub id: FuncId,
-    pub timestamp: Timestamp,
     pub name: String,
+    pub kind: FuncKind,
+
+    pub timestamp: Timestamp,
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub link: Option<String>,
@@ -146,8 +141,10 @@ impl Func {
         let content = content.to_owned();
         Self {
             id: node_weight.id().into(),
-            timestamp: content.timestamp,
             name: node_weight.name().to_owned(),
+            kind: node_weight.func_kind(),
+
+            timestamp: content.timestamp,
             display_name: content.display_name,
             description: content.description,
             link: content.link,
@@ -160,6 +157,21 @@ impl Func {
             code_blake3: content.code_blake3,
         }
     }
+
+    implement_add_edge_to!(
+        source_id: FuncId,
+        destination_id: FuncArgumentId,
+        add_fn: add_edge_to_argument,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: FuncResult,
+    );
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: FuncId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: FuncResult,
+    );
 
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
@@ -207,9 +219,7 @@ impl Func {
             )
             .await?;
 
-        let func_kind =
-            Self::determine_func_kind(name.clone().into(), backend_kind, backend_response_type)
-                .await?;
+        let func_kind = FuncKind::new(backend_kind, backend_response_type)?;
 
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
@@ -222,53 +232,12 @@ impl Func {
         let func_category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::Func)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                func_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
+        Self::add_category_edge(ctx, func_category_id, id.into(), EdgeWeightKind::new_use())
             .await?;
 
         let func_node_weight = node_weight.get_func_node_weight()?;
 
         Ok(Self::assemble(&func_node_weight, &content))
-    }
-
-    pub async fn determine_func_kind(
-        func_name: String,
-        func_backend_kind: FuncBackendKind,
-        func_backend_response_type: FuncBackendResponseType,
-    ) -> FuncResult<FuncKind> {
-        match func_backend_kind {
-            FuncBackendKind::JsAttribute => match func_backend_response_type {
-                FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
-                FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
-                _ => Ok(FuncKind::Attribute),
-            },
-            FuncBackendKind::JsAction => Ok(FuncKind::Action),
-            FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
-            FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
-            FuncBackendKind::JsValidation => {
-                dbg!("Old func kind identifed so marked as unknown");
-                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
-                Ok(FuncKind::Unknown)
-            }
-            FuncBackendKind::Array
-            | FuncBackendKind::Boolean
-            | FuncBackendKind::Diff
-            | FuncBackendKind::Identity
-            | FuncBackendKind::Integer
-            | FuncBackendKind::Map
-            | FuncBackendKind::Object
-            | FuncBackendKind::String
-            | FuncBackendKind::Unset
-            | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
-            _ => {
-                dbg!(&func_name, &func_backend_kind, &func_backend_response_type);
-                Err(FuncError::UnknownFunctionType)
-            }
-        }
     }
 
     pub fn metadata_view(&self) -> FuncMetadataView {
@@ -283,9 +252,38 @@ impl Func {
         }
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
-        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
-        Ok(Self::assemble(&node_weight, &content))
+    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Option<Self>> {
+        let (func_node_weight, hash) = if let Some((func_node_weight, hash)) =
+            Self::get_node_weight_and_content_hash(ctx, id).await?
+        {
+            (func_node_weight, hash)
+        } else {
+            return Ok(None);
+        };
+
+        let func = Self::get_by_id_inner(ctx, &hash, &func_node_weight).await?;
+        Ok(Some(func))
+    }
+
+    pub async fn get_by_id_or_error(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
+        let (func_node_weight, hash) =
+            Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
+        Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
+    }
+
+    async fn get_by_id_inner(
+        ctx: &DalContext,
+        hash: &ContentHash,
+        func_node_weight: &FuncNodeWeight,
+    ) -> FuncResult<Self> {
+        let content: FuncContent = ctx.layer_db().cas().try_read_as(hash).await?.ok_or(
+            WorkspaceSnapshotError::MissingContentFromStore(func_node_weight.id()),
+        )?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let FuncContent::V1(inner) = content;
+
+        Ok(Self::assemble(func_node_weight, &inner))
     }
 
     pub async fn find_by_name(
@@ -327,10 +325,13 @@ impl Func {
         Self::is_dynamic_for_name_string(&self.name)
     }
 
+    /// A non-dynamic Func is an Intrinsic func that returns a fixed value, set by a StaticArgumentValue in the graph
+    /// opposingly, a dynamic Func is a func that returns a non statically predictable value, possibly user defined.
+    ///
+    /// It's important to note that not all Intrinsic funcs are non-dynamic. Identity, for instance, is dynamic.
     pub fn is_dynamic_for_name_string(name: &str) -> bool {
         if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(name) {
             ![
-                IntrinsicFunc::SetArray,
                 IntrinsicFunc::SetArray,
                 IntrinsicFunc::SetBoolean,
                 IntrinsicFunc::SetInteger,
@@ -349,28 +350,32 @@ impl Func {
     where
         L: FnOnce(&mut Func) -> FuncResult<()>,
     {
-        let func = Func::get_by_id(ctx, id).await?;
+        let func = Func::get_by_id_or_error(ctx, id).await?;
         let modified_func = func.modify(ctx, lambda).await?;
         Ok(modified_func)
     }
 
-    pub async fn get_node_weight_and_content(
+    async fn get_node_weight_and_content_hash(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncResult<(FuncNodeWeight, FuncContentV1)> {
-        let (func_node_weight, hash) = Self::get_node_weight_and_content_hash(ctx, func_id).await?;
+    ) -> FuncResult<Option<(FuncNodeWeight, ContentHash)>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id: Ulid = func_id.into();
+        let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
+            Ok(node_index) => node_index,
+            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
+            )) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
-        let content: FuncContent = ctx.layer_db().cas().try_read_as(&hash).await?.ok_or(
-            WorkspaceSnapshotError::MissingContentFromStore(func_id.into()),
-        )?;
-
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let FuncContent::V1(inner) = content;
-
-        Ok((func_node_weight, inner))
+        let hash = node_weight.content_hash();
+        let func_node_weight = node_weight.get_func_node_weight()?;
+        Ok(Some((func_node_weight, hash)))
     }
 
-    async fn get_node_weight_and_content_hash(
+    async fn get_node_weight_and_content_hash_or_error(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
@@ -393,7 +398,8 @@ impl Func {
         let before = FuncContentV1::from(func.clone());
         lambda(&mut func)?;
 
-        let (mut node_weight, _) = Func::get_node_weight_and_content_hash(ctx, func.id).await?;
+        let (mut node_weight, _) =
+            Func::get_node_weight_and_content_hash_or_error(ctx, func.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -522,31 +528,23 @@ impl Func {
         Ok(funcs)
     }
 
-    pub async fn list_schema_variants_for_auth_func(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+    /// Checks if the [`Func`] is "revertible".
+    pub async fn is_revertible(&self, ctx: &DalContext) -> FuncResult<bool> {
+        Self::is_revertible_for_id(ctx, self.id).await
+    }
 
-        let mut schema_variant_ids = vec![];
-
-        for node_id in workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(
-                func_id,
-                EdgeWeightKindDiscriminants::AuthenticationPrototype,
-            )
-            .await?
-        {
-            schema_variant_ids.push(
-                workspace_snapshot
-                    .get_node_weight(node_id)
-                    .await?
-                    .id()
-                    .into(),
-            )
+    /// Checks if the [`Func`] corresponding to the provided id is "revertible".
+    pub async fn is_revertible_for_id(ctx: &DalContext, id: FuncId) -> FuncResult<bool> {
+        if Func::get_by_id(ctx, id).await?.is_none() {
+            return Ok(false);
         }
 
-        Ok(schema_variant_ids)
+        let exists_on_base = {
+            let base_ctx = ctx.clone_with_base().await?;
+            Func::get_by_id(&base_ctx, id).await?.is_some()
+        };
+
+        Ok(exists_on_base)
     }
 }
 

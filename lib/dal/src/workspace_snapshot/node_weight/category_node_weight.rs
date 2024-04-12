@@ -1,8 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use strum::Display;
-use ulid::Ulid;
 
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -10,9 +9,11 @@ use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::Vec
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display)]
 pub enum CategoryNodeKind {
-    ActionBatch,
+    Action,
     Component,
+    DeprecatedActionBatch,
     Func,
+    Module,
     Schema,
     Secret,
 }
@@ -23,7 +24,7 @@ pub struct CategoryNodeWeight {
     lineage_id: Ulid,
     kind: CategoryNodeKind,
     content_hash: ContentHash,
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
@@ -87,7 +88,7 @@ impl CategoryNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
@@ -118,7 +119,7 @@ impl CategoryNodeWeight {
         self.content_hash()
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 

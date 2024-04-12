@@ -8,7 +8,6 @@ publish = false
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
-council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 jwt-simple = { workspace = true }
@@ -29,7 +28,6 @@ si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
-sled = { workspace = true }
 sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = { workspace = true }
@@ -41,3 +39,4 @@ tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
+itertools = { workspace = true }

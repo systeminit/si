@@ -3,7 +3,7 @@ use crate::server::tracking::track;
 use crate::service::change_set::{ChangeSetError, ChangeSetResult};
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{ChangeSet, HistoryActor, User, Visibility, WsEvent};
+use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,24 +27,12 @@ pub async fn begin_approval_process(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<BeginMergeFlow>,
 ) -> ChangeSetResult<Json<()>> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
+    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.begin_approval_flow(&mut ctx).await?;
-
-    let user_pk = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => {
-            let user = User::get_by_pk(&ctx, *user_pk)
-                .await?
-                .ok_or(ChangeSetError::InvalidUser(*user_pk))?;
-
-            Some(user.pk())
-        }
-
-        HistoryActor::SystemInit => None,
-    };
+    change_set.begin_approval_flow(&ctx).await?;
 
     track(
         &posthog_client,
@@ -53,26 +41,11 @@ pub async fn begin_approval_process(
         "begin_approval_process",
         serde_json::json!({
             "how": "/change_set/begin_approval_process",
-            "change_set_pk": ctx.visibility().change_set_pk,
+            "change_set_id": ctx.visibility().change_set_id,
         }),
     );
 
-    WsEvent::change_set_begin_approval_process(&ctx, ctx.visibility().change_set_pk, user_pk)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
-    WsEvent::change_set_merge_vote(
-        &ctx,
-        ctx.visibility().change_set_pk,
-        user_pk.expect("A user was definitely found as per above"),
-        "Approve".to_string(),
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
-
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
     Ok(Json(()))
 }
@@ -84,24 +57,12 @@ pub async fn cancel_approval_process(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CancelMergeFlow>,
 ) -> ChangeSetResult<Json<()>> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
+    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.cancel_approval_flow(&mut ctx).await?;
-
-    let user_pk = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => {
-            let user = User::get_by_pk(&ctx, *user_pk)
-                .await?
-                .ok_or(ChangeSetError::InvalidUser(*user_pk))?;
-
-            Some(user.pk())
-        }
-
-        HistoryActor::SystemInit => None,
-    };
+    change_set.cancel_approval_flow(&ctx).await?;
 
     track(
         &posthog_client,
@@ -110,16 +71,11 @@ pub async fn cancel_approval_process(
         "cancel_approval_process",
         serde_json::json!({
             "how": "/change_set/cancel_approval_process",
-            "change_set_pk": ctx.visibility().change_set_pk,
+            "change_set_id": ctx.visibility().change_set_id,
         }),
     );
 
-    WsEvent::change_set_cancel_approval_process(&ctx, ctx.visibility().change_set_pk, user_pk)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
     Ok(Json(()))
 }

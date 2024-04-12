@@ -14,25 +14,29 @@ use std::sync::Arc;
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
+use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
     content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, DalContext, FuncId, InputSocketId, OutputSocketId, PropId, Timestamp,
+    attribute::prototype::argument::AttributePrototypeArgumentId, id, implement_add_edge_to,
+    AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
+    OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
 };
 
@@ -44,10 +48,14 @@ pub mod debug;
 pub enum AttributePrototypeError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(String),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
@@ -58,43 +66,44 @@ pub enum AttributePrototypeError {
     NodeWeight(#[from] NodeWeightError),
     #[error("Attribute Prototype not found: {0}")]
     NotFound(AttributePrototypeId),
+    #[error("attribute prototype has been orphaned: {0}")]
+    Orphaned(AttributePrototypeId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("unexpected node ({0}) using attribute prototype ({1})")]
+    UnexpectedNodeUsingAttributePrototype(Ulid, AttributePrototypeId),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 
-pk!(AttributePrototypeId);
+/// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
+///
+/// - If an [`AttributePrototype`] is used by an [`AttributeValue`], its eventual parent is a
+///   [`SchemaVariant`].
+/// - If an [`AttributePrototype`] is used by a [`Prop`](crate::Prop), an
+///   [`InputSocket`](crate::InputSocket), or an [`OutputSocket`](crate::OutputSocket), its eventual
+///   parent is a [`Component`](crate::Component).
+#[remain::sorted]
+#[derive(Debug, Clone, Copy, EnumDiscriminants)]
+pub enum AttributePrototypeEventualParent {
+    Component(ComponentId),
+    SchemaVariantFromInputSocket(SchemaVariantId, InputSocketId),
+    SchemaVariantFromOutputSocket(SchemaVariantId, OutputSocketId),
+    SchemaVariantFromProp(SchemaVariantId, PropId),
+}
+
+id!(AttributePrototypeId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {
-    id: AttributePrototypeId,
-    timestamp: Timestamp,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct AttributePrototypeGraphNode {
-    id: AttributePrototypeId,
-    content_address: ContentAddress,
-    content: AttributePrototypeContentV1,
-}
-
-impl AttributePrototypeGraphNode {
-    pub fn assemble(
-        id: impl Into<AttributePrototypeId>,
-        content_hash: ContentHash,
-        content: AttributePrototypeContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::AttributePrototype(content_hash),
-            content,
-        }
-    }
+    pub id: AttributePrototypeId,
+    pub timestamp: Timestamp,
 }
 
 impl AttributePrototype {
@@ -105,6 +114,21 @@ impl AttributePrototype {
             timestamp: inner.timestamp,
         }
     }
+
+    implement_add_edge_to!(
+        source_id: AttributePrototypeId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_func,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: AttributePrototypeResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributePrototypeId,
+        destination_id: AttributePrototypeArgumentId,
+        add_fn: add_edge_to_argument,
+        discriminant: EdgeWeightKindDiscriminants::PrototypeArgument,
+        result: AttributePrototypeResult,
+    );
 
     pub fn id(&self) -> AttributePrototypeId {
         self.id
@@ -132,18 +156,11 @@ impl AttributePrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_id,
-            )
-            .await?;
+        let prototype = AttributePrototype::assemble(id.into(), &content);
 
-        Ok(AttributePrototype::assemble(
-            AttributePrototypeId::from(id),
-            &content,
-        ))
+        Self::add_edge_to_func(ctx, prototype.id, func_id, EdgeWeightKind::new_use()).await?;
+
+        Ok(prototype)
     }
 
     pub async fn func_id(
@@ -256,9 +273,9 @@ impl AttributePrototype {
     pub async fn get_by_id(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
-    ) -> AttributePrototypeResult<Option<Self>> {
+    ) -> AttributePrototypeResult<Self> {
         let (_node_weight, content) = Self::get_node_weight_and_content(ctx, prototype_id).await?;
-        Ok(Some(Self::assemble(prototype_id, &content)))
+        Ok(Self::assemble(prototype_id, &content))
     }
 
     async fn get_node_weight_and_content(
@@ -318,13 +335,13 @@ impl AttributePrototype {
             )
             .await?;
 
-        workspace_snapshot
-            .add_edge(
-                attribute_prototype_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                func_id,
-            )
-            .await?;
+        Self::add_edge_to_func(
+            ctx,
+            attribute_prototype_id,
+            func_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -470,5 +487,97 @@ impl AttributePrototype {
         }
 
         Ok(input_socket_ids)
+    }
+
+    pub async fn list_ids_for_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> AttributePrototypeResult<Vec<AttributePrototypeId>> {
+        let mut attribute_prototype_argument_ids = Vec::new();
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        for node_index in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            let node_weight_id = node_weight.id();
+            if let Some(ContentAddressDiscriminants::AttributePrototype) =
+                node_weight.content_address_discriminants()
+            {
+                attribute_prototype_argument_ids.push(node_weight_id.into());
+            }
+        }
+
+        Ok(attribute_prototype_argument_ids)
+    }
+
+    /// Returns the [eventual parent](AttributePrototypeEventualParent) of the
+    /// [`AttributePrototype`], which will either be a [`Component`](crate::Component) or a
+    /// [`SchemaVariant`].
+    pub async fn eventual_parent(
+        ctx: &DalContext,
+        id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<AttributePrototypeEventualParent> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let source = *workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Prototype)
+            .await?
+            .first()
+            .ok_or(AttributePrototypeError::Orphaned(id))?;
+
+        let node_weight = workspace_snapshot.get_node_weight(source).await?;
+        let node_weight_id = node_weight.id();
+
+        let eventual_parent = match node_weight {
+            NodeWeight::AttributeValue(_) => AttributePrototypeEventualParent::Component(
+                AttributeValue::component_id(ctx, node_weight_id.into())
+                    .await
+                    .map_err(Box::new)?,
+            ),
+            NodeWeight::Prop(_) => AttributePrototypeEventualParent::SchemaVariantFromProp(
+                SchemaVariant::find_for_prop_id(ctx, node_weight_id.into())
+                    .await
+                    .map_err(Box::new)?,
+                node_weight_id.into(),
+            ),
+            NodeWeight::Content(inner) => match inner.content_address().into() {
+                ContentAddressDiscriminants::InputSocket => {
+                    AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
+                        SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into())
+                            .await
+                            .map_err(Box::new)?,
+                        node_weight_id.into(),
+                    )
+                }
+                ContentAddressDiscriminants::OutputSocket => {
+                    AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
+                        SchemaVariant::find_for_output_socket_id(ctx, node_weight_id.into())
+                            .await
+                            .map_err(Box::new)?,
+                        node_weight_id.into(),
+                    )
+                }
+                _ => {
+                    return Err(
+                        AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
+                            node_weight_id,
+                            id,
+                        ),
+                    )
+                }
+            },
+            _ => {
+                return Err(
+                    AttributePrototypeError::UnexpectedNodeUsingAttributePrototype(
+                        node_weight_id,
+                        id,
+                    ),
+                )
+            }
+        };
+
+        Ok(eventual_parent)
     }
 }

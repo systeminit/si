@@ -1,5 +1,5 @@
 <template>
-  <div ref="outlineRef" class="flex flex-col">
+  <div ref="outlineRef" class="flex flex-col component-outline">
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle icon="bullet-list-indented">

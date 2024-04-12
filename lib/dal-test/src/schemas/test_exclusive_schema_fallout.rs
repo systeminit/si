@@ -1,5 +1,5 @@
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ActionKind};
+use dal::{prop::PropPath, DeprecatedActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
@@ -16,8 +16,10 @@ use crate::schemas::schema_helpers::{
 pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
 
+    let schema_name = "fallout";
+
     fallout_builder
-        .name("fallout")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -72,12 +74,12 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
 
     let fallout_schema = SchemaSpec::builder()
-        .name("fallout")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("fallout")
+                .name(schema_name)
                 .category("test exclusive")
-                .category_name("fallout")
+                .category_name(schema_name)
                 .build()
                 .expect("build schema spec data"),
         )
@@ -172,7 +174,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
                 .socket(dummy_secret_input_scoket)
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Create)
+                        .kind(&DeprecatedActionKind::Create)
                         .func_unique_id(&fallout_create_action_func.unique_id)
                         .build()?,
                 )
@@ -188,16 +190,8 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         .schema(fallout_schema)
         .build()?;
 
-    let fallout_pkg = SiPkg::load_from_spec(fallout_spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &fallout_pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["fallout".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    let pkg = SiPkg::load_from_spec(fallout_spec)?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(())
 }

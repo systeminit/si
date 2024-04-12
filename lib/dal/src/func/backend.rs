@@ -25,6 +25,7 @@ pub mod js_schema_variant_definition;
 pub mod map;
 pub mod object;
 pub mod string;
+pub mod validation;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

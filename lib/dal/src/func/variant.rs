@@ -3,7 +3,7 @@
 //! since some JsAttribute functions are a special case (Qualification, CodeGeneration etc.)
 
 use crate::{Func, FuncBackendKind, FuncBackendResponseType, FuncError};
-use jwt_simple::prelude::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[remain::sorted]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]

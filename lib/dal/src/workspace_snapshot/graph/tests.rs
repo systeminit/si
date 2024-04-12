@@ -7,9 +7,11 @@ mod test {
     use petgraph::visit::EdgeRef;
     use petgraph::Outgoing;
     use pretty_assertions_sorted::assert_eq;
+    use si_events::merkle_tree_hash::MerkleTreeHash;
     use si_events::ContentHash;
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use std::str::FromStr;
 
     use crate::change_set::ChangeSet;
     use crate::workspace_snapshot::conflict::Conflict;
@@ -540,11 +542,9 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         // Ensure that the root node merkle tree hash looks as we expect before the update.
-        let pre_update_root_node_merkle_tree_hash: ContentHash =
-            serde_json::from_value(serde_json::json![
-                "e24d50279e223b763e56317f692713b1b1f172258ec2df66e2b41db49982b810"
-            ])
-            .expect("could not deserialize");
+        let pre_update_root_node_merkle_tree_hash: MerkleTreeHash =
+            MerkleTreeHash::from_str("49a6baef5d1c29f43653e0b7c02dfb73")
+                .expect("able to create hash from hex string");
         assert_eq!(
             pre_update_root_node_merkle_tree_hash, // expected
             graph
@@ -558,11 +558,9 @@ mod test {
             .update_content(change_set, component_id, updated_content_hash)
             .expect("Unable to update Component content hash");
 
-        let post_update_root_node_merkle_tree_hash: ContentHash =
-            serde_json::from_value(serde_json::json![
-                "94f16e91eca11765f507747aacf49e2e0bacbb63ec5a11ea0cbea7d372f1b2cd"
-            ])
-            .expect("could not deserialize");
+        let post_update_root_node_merkle_tree_hash: MerkleTreeHash =
+            MerkleTreeHash::from_str("75febafba241026c63e27ab5b129cb26")
+                .expect("able to create hash from hex string");
         assert_eq!(
             post_update_root_node_merkle_tree_hash, // expected
             graph

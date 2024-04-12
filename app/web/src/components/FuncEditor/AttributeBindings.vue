@@ -200,9 +200,8 @@ const prototypeViews = computed(() =>
 
       const args = proto.prototypeArguments.map((arg) => ({
         name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
-        prop: arg.internalProviderId
-          ? funcStore.internalProviderIdToSourceName(arg.internalProviderId) ??
-            "none"
+        prop: arg.inputSocketId
+          ? funcStore.inputSocketIdToSourceName(arg.inputSocketId) ?? "none"
           : "none",
       }));
 

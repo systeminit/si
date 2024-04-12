@@ -9,9 +9,9 @@ use petgraph::stable_graph::Edges;
 pub use petgraph::Direction;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
+use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::{ulid::Ulid, ContentHash};
 use thiserror::Error;
-use ulid::Ulid;
 
 use telemetry::prelude::*;
 
@@ -670,10 +670,9 @@ impl WorkspaceSnapshotGraph {
         match event {
             DfsEvent::Discover(onto_node_index, _) => {
                 let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|err| {
-                    dbg!(
+                    error!(
                         "Unable to get NodeWeight for onto NodeIndex {:?}: {}",
-                        onto_node_index,
-                        err,
+                        onto_node_index, err,
                     );
                     event
                 })?;
@@ -742,8 +741,8 @@ impl WorkspaceSnapshotGraph {
                         // identical, and we don't need to check any further.
                         debug!(
                             "onto {} and to rebase {} merkle tree hashes are the same",
-                            onto_node_weight.id(),
-                            to_rebase_node_weight.id()
+                            onto_node_weight.merkle_tree_hash(),
+                            to_rebase_node_weight.merkle_tree_hash()
                         );
                         continue;
                     }
@@ -915,6 +914,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
+                    EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                 };
 
                 match edgeref.weight().kind() {
@@ -932,22 +932,25 @@ impl WorkspaceSnapshotGraph {
             },
             &|_, (node_index, node_weight)| {
                 let (label, color) = match node_weight {
+                    NodeWeight::Action(_) => ("Action".to_string(), "cyan"),
+                    NodeWeight::ActionPrototype(_) => ("Action Prototype".to_string(), "cyan"),
                     NodeWeight::Content(weight) => {
                         let discrim = ContentAddressDiscriminants::from(weight.content_address());
                         let color = match discrim {
                             // Some of these should never happen as they have their own top-level
                             // NodeWeight variant.
-                            ContentAddressDiscriminants::Action => "green",
-                            ContentAddressDiscriminants::ActionBatch => "green",
-                            ContentAddressDiscriminants::ActionRunner => "green",
                             ContentAddressDiscriminants::ActionPrototype => "green",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
+                            ContentAddressDiscriminants::DeprecatedAction => "green",
+                            ContentAddressDiscriminants::DeprecatedActionBatch => "green",
+                            ContentAddressDiscriminants::DeprecatedActionRunner => "green",
                             ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
+                            ContentAddressDiscriminants::Module => "yellow",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
@@ -955,6 +958,7 @@ impl WorkspaceSnapshotGraph {
                             ContentAddressDiscriminants::Secret => "black",
                             ContentAddressDiscriminants::StaticArgumentValue => "green",
                             ContentAddressDiscriminants::ValidationPrototype => "black",
+                            ContentAddressDiscriminants::ValidationOutput => "darkcyan",
                         };
                         (discrim.to_string(), color)
                     }
@@ -973,15 +977,17 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
                     NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
                     {
+                        CategoryNodeKind::Action => ("Actions (Category)".to_string(), "black"),
                         CategoryNodeKind::Component => {
                             ("Components (Category)".to_string(), "black")
                         }
-                        CategoryNodeKind::ActionBatch => {
+                        CategoryNodeKind::DeprecatedActionBatch => {
                             ("Action Batches (Category)".to_string(), "black")
                         }
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
+                        CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
@@ -1008,11 +1014,11 @@ impl WorkspaceSnapshotGraph {
                 let color = color.to_string();
                 let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n\"\nfontcolor = {color}\ncolor = {color}",
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash()
                 )
             },
         );
-        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
+        let filename_no_extension = format!("{}-{}", Ulid::new(), suffix);
 
         let home_str = std::env::var("HOME").expect("could not find home directory via env");
         let home = std::path::Path::new(&home_str);
@@ -1222,6 +1228,16 @@ impl WorkspaceSnapshotGraph {
             .get(&id)
             .copied()
             .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
+    }
+
+    #[inline(always)]
+    pub(crate) fn try_get_node_index_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        let id = id.into();
+
+        Ok(self.node_index_by_id.get(&id).copied())
     }
 
     fn get_node_index_by_lineage(&self, lineage_id: Ulid) -> HashSet<NodeIndex> {
@@ -1635,7 +1651,7 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         node_index_to_update: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut hasher = ContentHash::hasher();
+        let mut hasher = MerkleTreeHash::hasher();
         hasher.update(
             self.get_node_weight(node_index_to_update)?
                 .node_hash()
@@ -1720,7 +1736,8 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
-                    | EdgeWeightKind::SocketValue => {}
+                    | EdgeWeightKind::SocketValue
+                    | EdgeWeightKind::ValidationOutput => {}
                 }
             }
         }

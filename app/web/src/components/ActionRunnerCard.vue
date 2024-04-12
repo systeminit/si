@@ -97,7 +97,7 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed, ref } from "vue";
 import { TreeNode, useTheme } from "@si/vue-lib/design-system";
-import { ActionRunner } from "@/store/actions.store";
+import { DeprecatedActionRunner } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
@@ -111,7 +111,7 @@ const componentsStore = useComponentsStore();
 const { theme } = useTheme();
 
 const props = defineProps({
-  runner: { type: Object as PropType<ActionRunner>, required: true },
+  runner: { type: Object as PropType<DeprecatedActionRunner>, required: true },
   hideTopBorder: { type: Boolean },
 });
 

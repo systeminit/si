@@ -8,6 +8,7 @@ import {
   PropertyEditorSchema,
   PropertyEditorValue,
   PropertyEditorValues,
+  ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -55,23 +56,13 @@ export interface OutputStream {
   message: string;
 }
 
-export interface ValidationOutput {
-  status: "Error" | "Failure" | "Success";
-  message: string;
-  logs: OutputStream[];
-}
-
-export type PropertyEditorValidations = {
-  [key: string]: [string | null, ValidationOutput][];
-};
-
 export type AttributeTreeItem = {
   propDef: PropertyEditorProp;
   children: AttributeTreeItem[];
   value: PropertyEditorValue | undefined;
   valueId: string;
   parentValueId: string;
-  validations: [string | null, ValidationOutput][];
+  validation: ValidationOutput | null;
   propId: string;
   mapKey?: string;
   arrayKey?: string;
@@ -99,15 +90,13 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
           values: null as PropertyEditorValues | null,
-          validations: null as PropertyEditorValidations | null,
         }),
         getters: {
           // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
           attributesTree: (state): AttributeTreeItem | undefined => {
-            const { schema, values, validations } = state;
+            const { schema, values } = state;
             if (!schema || !values) return;
 
-            const validationsByPropId = validations ?? {};
             const valuesByValueId = values.values;
             const propsByPropId = schema.props;
             const rootValueId = values.rootValueId;
@@ -124,8 +113,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const value = valuesByValueId![valueId]!;
 
               const propDef = propsByPropId![value.propId as any];
-              const validations =
-                validationsByPropId![value.propId as any] ?? [];
+              const validation = value?.validation ?? null;
 
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
@@ -143,7 +131,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 value,
                 valueId,
                 parentValueId,
-                validations,
+                validation,
                 // using isNil because its actually null (not undefined)
                 ...(indexInParentArray === undefined &&
                   !_.isNil(value.key) && { mapKey: value.key }),
@@ -250,23 +238,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
-          async FETCH_PROPERTY_EDITOR_VALIDATIONS() {
-            return new ApiRequest<PropertyEditorValidations>({
-              url: "component/get_property_editor_validations",
-              params: {
-                componentId: this.selectedComponentId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.validations = response;
-              },
-            });
-          },
 
           reloadPropertyEditorData() {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
-            this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
           },
 
           async REMOVE_PROPERTY_VALUE(
@@ -378,21 +353,24 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ChangeSetWritten",
-              callback: () => {
+              eventType: "ComponentUpdated",
+              debounce: true,
+              callback: (updated) => {
+                if (updated.changeSetId !== changeSetId) return;
+                if (updated.componentId !== this.selectedComponentId) return;
                 this.reloadPropertyEditorData();
               },
             },
-            // This is nor working right now, since even if the changeset event comes through, it does not wait for the rebaser
-            // {
-            //   eventType: "ComponentUpdated",
-            //   debounce: true,
-            //   callback: (updated) => {
-            //     if (updated.changeSetPk !== changeSetId) return;
-            //     if (updated.componentId !== this.selectedComponentId) return;
-            //     this.reloadPropertyEditorData();
-            //   },
-            // },
+          ]);
+          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+            {
+              eventType: "ChangeSetWritten",
+              debounce: true,
+              callback: (writtenChangeSetId) => {
+                if (writtenChangeSetId !== changeSetId) return;
+                this.reloadPropertyEditorData();
+              },
+            },
           ]);
 
           return () => {

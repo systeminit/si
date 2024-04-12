@@ -63,18 +63,19 @@ use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
+use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, Component, ComponentId, DalContext, Func, FuncId,
-    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
-    TransactionsError,
+    implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
+    ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -120,7 +121,7 @@ pub enum AttributeValueError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
-    Component(String),
+    Component(#[from] Box<ComponentError>),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("empty attribute prototype arguments for group name: {0}")]
@@ -139,6 +140,8 @@ pub enum AttributeValueError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(#[from] FuncExecutionError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
@@ -189,6 +192,8 @@ pub enum AttributeValueError {
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
     UnexpectedGraphLayout(&'static str),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
     ValueSource(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
@@ -297,6 +302,42 @@ impl AttributeValue {
         self.id
     }
 
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: AttributeValueId,
+        add_fn: add_edge_to_attribute_value,
+        discriminant: EdgeWeightKindDiscriminants::Contain,
+        result: AttributeValueResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: AttributePrototypeId,
+        add_fn: add_edge_to_attribute_prototype,
+        discriminant: EdgeWeightKindDiscriminants::Prototype,
+        result: AttributeValueResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: PropId,
+        add_fn: add_edge_to_prop,
+        discriminant: EdgeWeightKindDiscriminants::Prop,
+        result: AttributeValueResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: OutputSocketId,
+        add_fn: add_edge_to_output_socket,
+        discriminant: EdgeWeightKindDiscriminants::Socket,
+        result: AttributeValueResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: InputSocketId,
+        add_fn: add_edge_to_input_socket,
+        discriminant: EdgeWeightKindDiscriminants::Socket,
+        result: AttributeValueResult,
+    );
+
     pub async fn new(
         ctx: &DalContext,
         is_for: impl Into<ValueIsFor>,
@@ -330,71 +371,64 @@ impl AttributeValue {
                 .await?;
         };
 
+        let av: Self = node_weight.get_attribute_value_node_weight()?.into();
         match is_for {
             ValueIsFor::Prop(prop_id) => {
-                ctx.workspace_snapshot()?
-                    .add_edge(
-                        id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
-                        prop_id,
-                    )
-                    .await?;
+                Self::add_edge_to_prop(ctx, av.id, prop_id, EdgeWeightKind::Prop).await?;
 
                 // Attach value to parent prop (or root to component)
                 match maybe_parent_attribute_value {
                     Some(pav_id) => {
-                        ctx.workspace_snapshot()?
-                            .add_ordered_edge(
-                                change_set,
-                                pav_id,
-                                EdgeWeight::new(change_set, EdgeWeightKind::Contain(key))?,
-                                id,
-                            )
-                            .await?;
+                        Self::add_edge_to_attribute_value_ordered(
+                            ctx,
+                            pav_id,
+                            id.into(),
+                            EdgeWeightKind::Contain(key),
+                        )
+                        .await?;
                     }
                     None => {
                         // Component --Use--> AttributeValue
-                        ctx.workspace_snapshot()?.add_edge(
+                        Component::add_edge_to_root_attribute_value(
+                            ctx,
                             component_id.ok_or(
                                 AttributeValueError::CannotCreateRootPropValueWithoutComponentId,
                             )?,
-                            EdgeWeight::new(change_set, EdgeWeightKind::Root)?,
-                            id,
-                        ).await?;
+                            id.into(),
+                            EdgeWeightKind::Root,
+                        )
+                        .await
+                        .map_err(Box::new)?;
                     }
                 }
             }
             is_for_socket => {
                 // Attach value to component via SocketValue edge and to Socket
-                let socket_id: Ulid = is_for_socket
-                    .output_socket_id()
-                    .map(Into::into)
-                    .or_else(|| is_for_socket.input_socket_id().map(Into::into))
-                    .ok_or(AttributeValueError::UnexpectedGraphLayout(
+                if let Some(socket_id) = is_for_socket.output_socket_id() {
+                    Self::add_edge_to_output_socket(ctx, av.id, socket_id, EdgeWeightKind::Socket)
+                        .await?;
+                } else if let Some(socket_id) = is_for_socket.input_socket_id() {
+                    Self::add_edge_to_input_socket(ctx, av.id, socket_id, EdgeWeightKind::Socket)
+                        .await?;
+                } else {
+                    return Err(AttributeValueError::UnexpectedGraphLayout(
                         "we expected a ValueIsFor for a socket type here but did not get one",
-                    ))?;
+                    ));
+                }
 
-                ctx.workspace_snapshot()?
-                    .add_edge(
-                        component_id.ok_or(
-                            AttributeValueError::CannotCreateSocketValueWithoutComponentId,
-                        )?,
-                        EdgeWeight::new(change_set, EdgeWeightKind::SocketValue)?,
-                        id,
-                    )
-                    .await?;
-
-                ctx.workspace_snapshot()?
-                    .add_edge(
-                        id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
-                        socket_id,
-                    )
-                    .await?;
+                Component::add_edge_to_socket_attribute_value(
+                    ctx,
+                    component_id
+                        .ok_or(AttributeValueError::CannotCreateSocketValueWithoutComponentId)?,
+                    id.into(),
+                    EdgeWeightKind::SocketValue,
+                )
+                .await
+                .map_err(Box::new)?;
             }
         }
 
-        Ok(node_weight.get_attribute_value_node_weight()?.into())
+        Ok(av)
     }
 
     async fn update_inner(
@@ -539,10 +573,10 @@ impl AttributeValue {
                 // that are marked for deletion to ones that are not.
                 let destination_component = Component::get_by_id(ctx, destination_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(Box::new)?;
                 let source_component = Component::get_by_id(ctx, expected_source_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(Box::new)?;
                 if source_component.to_delete() && !destination_component.to_delete() {
                     continue;
                 }
@@ -897,7 +931,7 @@ impl AttributeValue {
         let mut current_attribute_value_id = Some(attribute_value_id);
 
         while let Some(attribute_value_id) = current_attribute_value_id {
-            let empty_value = {
+            let prop_kind = {
                 let prop_id = match AttributeValue::is_for(ctx, attribute_value_id)
                     .await?
                     .prop_id()
@@ -915,20 +949,23 @@ impl AttributeValue {
                         .get_prop_node_weight()?
                 };
 
-                prop_node.kind().empty_value()
+                prop_node.kind()
             };
 
             let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
 
-            // If we have a set value, we don't need to vivify
-            if attribute_value.value.is_some() {
-                return Ok(());
-            } else {
-                Self::set_value(ctx, attribute_value_id, empty_value).await?;
-
-                current_attribute_value_id =
-                    AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
+            // If value is for scalar, just go to parent
+            if !prop_kind.is_scalar() {
+                // if value of non-scalar is set, we're done, else set the empty value
+                if attribute_value.value.is_some() {
+                    return Ok(());
+                } else {
+                    Self::set_value(ctx, attribute_value_id, prop_kind.empty_value()).await?;
+                }
             }
+
+            current_attribute_value_id =
+                AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
         }
 
         Ok(())
@@ -1024,20 +1061,13 @@ impl AttributeValue {
             )
             .await?
         {
-            let current_node_index = workspace_snapshot
-                .get_node_index_by_id(attribute_value_id)
-                .await?;
-            let current_target_idx = workspace_snapshot
-                .get_latest_node_index(attribute_value_target)
-                .await?;
+            let current_target_id = workspace_snapshot
+                .get_node_weight(attribute_value_target)
+                .await?
+                .id();
 
             workspace_snapshot
-                .remove_edge(
-                    ctx.change_set()?,
-                    current_node_index,
-                    current_target_idx,
-                    EdgeWeightKindDiscriminants::Contain,
-                )
+                .remove_node_by_id(ctx.change_set()?, current_target_id)
                 .await?;
         }
 
@@ -1663,17 +1693,17 @@ impl AttributeValue {
         let maybe_existing_prototype_id =
             Self::component_prototype_id(ctx, attribute_value_id).await?;
 
-        if let Some(exsiting_prototype_id) = maybe_existing_prototype_id {
-            AttributePrototype::remove(ctx, exsiting_prototype_id).await?;
+        if let Some(existing_prototype_id) = maybe_existing_prototype_id {
+            AttributePrototype::remove(ctx, existing_prototype_id).await?;
         }
 
-        ctx.workspace_snapshot()?
-            .add_edge(
-                attribute_value_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype_id,
-            )
-            .await?;
+        Self::add_edge_to_attribute_prototype(
+            ctx,
+            attribute_value_id,
+            attribute_prototype_id,
+            EdgeWeightKind::Prototype(None),
+        )
+        .await?;
 
         Ok(())
     }
@@ -1891,7 +1921,7 @@ impl AttributeValue {
             )
         };
 
-        let content_value: Option<si_events::CasValue> = value.map(Into::into);
+        let content_value: Option<si_events::CasValue> = value.clone().map(Into::into);
         let content_unprocessed_value: Option<si_events::CasValue> =
             unprocessed_value.map(Into::into);
 
@@ -1940,6 +1970,13 @@ impl AttributeValue {
             .await?;
         workspace_snapshot.replace_references(av_idx).await?;
 
+        if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value_id)
+            .await?
+            .is_some()
+        {
+            ctx.enqueue_compute_validations(attribute_value_id).await?;
+        }
+
         Ok(())
     }
 
@@ -1963,7 +2000,7 @@ impl AttributeValue {
     pub async fn prop_id_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<PropId> {
+    ) -> AttributeValueResult<Option<PropId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut maybe_prop_id = None;
@@ -1989,7 +2026,16 @@ impl AttributeValue {
             }
         }
 
-        maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+        Ok(maybe_prop_id)
+    }
+
+    pub async fn prop_id_for_id_or_error(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        Self::prop_id_for_id(ctx, attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 
     async fn fetch_value_from_store(
@@ -2066,7 +2112,7 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop_id_for_id(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
@@ -2138,7 +2184,7 @@ impl AttributeValue {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
-    /// Get the morale equivalent of the [`PropPath`]for a given [`AttributeValueId`].
+    /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
     #[instrument(level = "info", skip_all)]

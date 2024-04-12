@@ -177,12 +177,6 @@ pub(crate) trait FnSetupExpander {
     fn nats_subject_prefix(&self) -> Option<&Rc<Ident>>;
     fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>);
 
-    fn council_server(&self) -> Option<&Rc<Ident>>;
-    fn set_council_server(&mut self, value: Option<Rc<Ident>>);
-
-    fn start_council_server(&self) -> Option<()>;
-    fn set_start_council_server(&mut self, value: Option<()>);
-
     fn pinga_server(&self) -> Option<&Rc<Ident>>;
     fn set_pinga_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -294,47 +288,6 @@ pub(crate) trait FnSetupExpander {
         self.set_nats_subject_prefix(Some(Rc::new(var)));
 
         self.nats_subject_prefix().unwrap().clone()
-    }
-
-    fn setup_council_server(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.council_server() {
-            return ident.clone();
-        }
-
-        let test_context = self.setup_test_context();
-        let test_context = test_context.as_ref();
-
-        let var = Ident::new("council_server", Span::call_site());
-        self.code_extend(quote! {
-            let #var = ::dal_test::council_server(
-                #test_context.nats_config().clone(),
-            ).await?;
-        });
-        self.set_council_server(Some(Rc::new(var)));
-
-        self.council_server().unwrap().clone()
-    }
-
-    fn setup_start_council_server(&mut self) {
-        if self.start_council_server().is_some() {
-            return;
-        }
-
-        let council_server = self.setup_council_server();
-        let council_server = council_server.as_ref();
-
-        self.code_extend(quote! {
-            {
-                let (_, shutdown_request_rx) = ::tokio::sync::watch::channel(());
-                let (
-                    subscriber_started_tx,
-                    mut subscriber_started_rx
-                ) = ::tokio::sync::watch::channel(());
-                ::tokio::spawn(#council_server.run(subscriber_started_tx, shutdown_request_rx));
-                subscriber_started_rx.changed().await.unwrap()
-            }
-        });
-        self.set_start_council_server(Some(()));
     }
 
     fn setup_pinga_server(&mut self) -> Rc<Ident> {

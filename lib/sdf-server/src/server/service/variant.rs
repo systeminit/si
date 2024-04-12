@@ -5,8 +5,12 @@ use axum::{routing::get, Json, Router};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use dal::func::binding::FuncBindingError;
+use dal::func::view::FuncViewError;
 use dal::pkg::PkgError;
-use dal::{ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError};
+use dal::{
+    ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+    WsEventError,
+};
 use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
@@ -22,110 +26,44 @@ pub mod list_variants;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
-    //     #[error(transparent)]
-    //     ActionPrototype(#[from] ActionPrototypeError),
-    //     #[error(transparent)]
-    //     AttributeContext(#[from] AttributeContextError),
-    //     #[error(transparent)]
-    //     AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    //     #[error(transparent)]
-    //     AttributePrototype(#[from] AttributePrototypeError),
-    //     #[error(transparent)]
-    //     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    //     #[error(transparent)]
-    //     AttributeValue(#[from] AttributeValueError),
-    //     #[error(transparent)]
-    //     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    //     #[error(transparent)]
-    //     ContextTransaction(#[from] TransactionsError),
-    //     #[error("error creating schema variant from definition: {0}")]
-    //     CouldNotCreateSchemaVariantFromDefinition(String),
-    //     #[error("component error: {0}")]
-    //     DalComponent(#[from] DalComponentError),
-    //     #[error(transparent)]
-    //     ExternalProvider(#[from] ExternalProviderError),
-    //     #[error("external provider not found for socket: {0}")]
-    //     ExternalProviderNotFoundForSocket(SocketId),
+    #[error("dal schema variant error: {0}")]
+    DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    //     #[error(transparent)]
-    //     FuncArgument(#[from] FuncArgumentError),
-    //     #[error("func argument not found: {0}")]
-    //     FuncArgumentNotFound(FuncArgumentId),
-    #[error(transparent)]
+    #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
     #[error("func execution failure error: {0}")]
     FuncExecutionFailure(String),
-    //     #[error("func has no handler: {0}")]
-    //     FuncHasNoHandler(FuncId),
     #[error("func is empty: {0}")]
     FuncIsEmpty(FuncId),
-    #[error("Func {0} not found")]
+    #[error("func not found: {0}")]
     FuncNotFound(FuncId),
-    #[error(transparent)]
+    #[error("func view error: {0}")]
+    FuncView(#[from] FuncViewError),
+    #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
-    //     #[error(transparent)]
-    //     InstalledPkg(#[from] InstalledPkgError),
-    //     #[error(transparent)]
-    //     InternalProvider(#[from] InternalProviderError),
-    //     #[error("internal provider not found for socket: {0}")]
-    //     InternalProviderNotFoundForSocket(SocketId),
-    //     #[error("updating the schema variant found an invalid state: {0}")]
-    //     InvalidState(String),
-    #[error("No new asset was created")]
+    #[error("no new asset was created")]
     NoAssetCreated,
-    //     #[error(transparent)]
-    //     Pg(#[from] si_data_pg::PgError),
-    //     #[error(transparent)]
-    //     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error(transparent)]
+    #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
-    //     #[error("constructed package has no schema node")]
-    //     PkgMissingSchema,
-    //     #[error("constructed package has no schema variant node")]
-    //     PkgMissingSchemaVariant,
-    //     #[error(transparent)]
-    //     Prop(#[from] PropError),
-    #[error(transparent)]
+    #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    //     #[error("could not find schema connected to variant definition {0}")]
-    //     SchemaNotFound(SchemaVariantDefinitionId),
-    //     #[error("could not find schema connected to variant {0}")]
-    //     SchemaNotFoundForVariant(SchemaVariantId),
-    #[error(transparent)]
-    SchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
-    //     #[error("could not find schema variant {0} connected to variant definition {1}")]
-    //     SchemaVariantNotFound(SchemaVariantId, SchemaVariantDefinitionId),
-    //     #[error(transparent)]
-    //     SdfFunc(#[from] SdfFuncError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
-    //     #[error(transparent)]
-    //     Socket(#[from] SocketError),
-    #[error(transparent)]
+    #[error("spec error: {0}")]
     Spec(#[from] SpecError),
-    //     #[error(transparent)]
-    //     StandardModel(#[from] StandardModelError),
-    //     #[error("summary diagram error: {0}")]
-    //     SummaryDiagram(#[from] dal::diagram::SummaryDiagramError),
-    //     #[error("tenancy error: {0}")]
-    //     Tenancy(#[from] TenancyError),
-    //     #[error("transparent")]
-    //     User(#[from] UserError),
-    //     #[error("Cannot update asset structure while in use by components, attribute functions, or validations")]
-    //     VariantInUse,
-    //     #[error("could not publish websocket event: {0}")]
-    //     WsEvent(#[from] WsEventError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("Schema Variant {0} not found")]
+    #[error("schema variant not found: {0}")]
     VariantNotFound(SchemaVariantId),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;

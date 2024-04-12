@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
-use ulid::Ulid;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::NodeWeightError;
 use crate::change_set::ChangeSet;
@@ -15,7 +14,7 @@ pub struct OrderingNodeWeight {
     /// The `id` of the items, in the order that they should appear in the container.
     order: Vec<Ulid>,
     content_hash: ContentHash,
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
@@ -75,7 +74,7 @@ impl OrderingNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
@@ -107,7 +106,7 @@ impl OrderingNodeWeight {
         &self.order
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 

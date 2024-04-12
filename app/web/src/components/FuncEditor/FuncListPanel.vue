@@ -13,7 +13,7 @@
           <NewFuncDropdown
             label="Function"
             :fnTypes="CREATE_OPTIONS"
-            @selected-func-variant="createNewFunc"
+            @selected-func-kind="createNewFunc"
           />
         </div>
         <ErrorMessage
@@ -34,8 +34,8 @@
 
       <ul class="overflow-y-auto min-h-[200px]">
         <Collapsible
-          v-for="(label, variant) in CUSTOMIZABLE_FUNC_TYPES"
-          :key="variant"
+          v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
+          :key="kind"
           as="li"
           class="w-full"
           contentAs="ul"
@@ -48,7 +48,12 @@
             </div>
           </template>
           <template #default>
-            <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
+            <li
+              v-for="func in funcsByKind[
+                customizableFuncKindToFuncKind(kind)
+              ] ?? []"
+              :key="func.id"
+            >
               <SiFuncListItem
                 :func="func"
                 color="#921ed6"
@@ -74,7 +79,11 @@ import {
 } from "@si/vue-lib/design-system";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
-import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
+import {
+  CUSTOMIZABLE_FUNC_TYPES,
+  CustomizableFuncKind,
+  customizableFuncKindToFuncKind,
+} from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
@@ -100,14 +109,16 @@ const filteredList = computed(() => {
   );
 });
 
-const funcsByVariant = computed(() =>
-  _.groupBy(filteredList.value, (f) => f.variant),
+const funcsByKind = computed(() =>
+  _.groupBy(filteredList.value, (f) => f.kind),
 );
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 
-async function createNewFunc(variant: FuncVariant) {
-  const createReq = await funcStore.CREATE_FUNC({ variant });
+async function createNewFunc(kind: CustomizableFuncKind) {
+  const createReq = await funcStore.CREATE_FUNC({
+    kind: customizableFuncKindToFuncKind(kind),
+  });
   if (createReq.result.success) {
     routeToFunc(createReq.result.data.id);
   }

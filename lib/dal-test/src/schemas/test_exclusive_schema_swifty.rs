@@ -3,7 +3,7 @@ use crate::schemas::schema_helpers::{
     create_identity_func,
 };
 use dal::pkg::import_pkg_from_pkg;
-use dal::{pkg, prop::PropPath, ActionKind, ComponentType};
+use dal::{prop::PropPath, ComponentType, DeprecatedActionKind};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
@@ -15,8 +15,10 @@ use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
 
+    let schema_name = "swifty";
+
     swifty_builder
-        .name("swifty")
+        .name(schema_name)
         .version(crate::schemas::PKG_VERSION)
         .created_by(crate::schemas::PKG_CREATED_BY);
 
@@ -32,11 +34,17 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: { \"poop\": true }, status: \"ok\" };
+              return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
             }";
 
     let fn_name = "test:refreshActionSwifty";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
+
+    let update_action_code = "async function main(component: Input): Promise<Output> {
+              return { payload: { \"poonami\": true }, status: \"ok\" };
+            }";
+    let fn_name = "test:updateActionSwifty";
+    let update_action_func = build_action_func(update_action_code, fn_name).await?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
@@ -56,12 +64,12 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
     let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name).await?;
 
     let swifty_schema = SchemaSpec::builder()
-        .name("swifty")
+        .name(schema_name)
         .data(
             SchemaSpecData::builder()
-                .name("swifty")
+                .name(schema_name)
                 .category("test exclusive")
-                .category_name("swifty")
+                .category_name(schema_name)
                 .build()
                 .expect("schema spec data build"),
         )
@@ -106,14 +114,20 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Create)
+                        .kind(&DeprecatedActionKind::Create)
                         .func_unique_id(&create_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&ActionKind::Refresh)
+                        .kind(&DeprecatedActionKind::Refresh)
                         .func_unique_id(&refresh_action_func.unique_id)
+                        .build()?,
+                )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(&DeprecatedActionKind::Other)
+                        .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )
                 .leaf_function(
@@ -131,6 +145,7 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
         .func(identity_func_spec)
         .func(refresh_action_func)
         .func(create_action_func)
+        .func(update_action_func)
         .func(swifty_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .func(code_gen_func)
@@ -138,15 +153,7 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
         .build()?;
 
     let swifty_pkg = SiPkg::load_from_spec(swifty_spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &swifty_pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec!["swifty".into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
 
     Ok(())
 }

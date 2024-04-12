@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { trackEvent } from "@/utils/tracking";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -22,9 +23,9 @@ export enum ActionKind {
   Refresh = "refresh",
 }
 
-export type ActionRunnerId = string;
-export type ActionRunner = {
-  id: ActionRunnerId;
+export type DeprecatedActionRunnerId = string;
+export type DeprecatedActionRunner = {
+  id: DeprecatedActionRunnerId;
   status: ActionStatus;
   actionKind: string;
   schemaName: string;
@@ -37,13 +38,13 @@ export type ActionRunner = {
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
-export type ActionBatchId = string;
-export type ActionBatch = {
-  id: ActionBatchId;
+export type DeprecatedActionBatchId = string;
+export type DeprecatedActionBatch = {
+  id: DeprecatedActionBatchId;
   status?: ActionStatus;
   author: string;
   actors?: string[];
-  actions: ActionRunner[];
+  actions: DeprecatedActionRunner[];
   startedAt: string | null;
   finishedAt: string | null;
 };
@@ -67,19 +68,19 @@ export interface NewAction {
   displayName: string;
 }
 
-export type ActionId = string;
+export type DeprecatedActionId = string;
 export interface ActionInstance {
-  id: ActionId;
+  id: DeprecatedActionId;
   actionPrototypeId: ActionPrototypeId;
   name: string;
   componentId: ComponentId;
   actor?: string;
-  parents: ActionId[];
+  parents: DeprecatedActionId[];
 }
 
 export type FullAction = {
   actionPrototypeId: ActionPrototypeId;
-  actionInstanceId?: ActionId;
+  actionInstanceId?: DeprecatedActionId;
   componentId?: ComponentId;
   actor?: string;
 } & Omit<ActionPrototype, "id">;
@@ -97,20 +98,23 @@ export const useActionsStore = () => {
       {
         state: () => ({
           rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
-          rawProposedActionsById: {} as Record<ActionId, ProposedAction>,
-          actionBatches: [] as Array<ActionBatch>,
-          runningActionBatch: undefined as ActionBatchId | undefined,
+          rawProposedActionsById: {} as Record<
+            DeprecatedActionId,
+            ProposedAction
+          >,
+          actionBatches: [] as Array<DeprecatedActionBatch>,
+          runningActionBatch: undefined as DeprecatedActionBatchId | undefined,
           populatingActionRunners: false,
         }),
         getters: {
           actionsAreInProgress: (state) => !!state.runningActionBatch,
-          allFinishedActionBatches(): ActionBatch[] {
+          allFinishedActionBatches(): DeprecatedActionBatch[] {
             return this.actionBatches.filter(
               (f) => f.status !== "running" && f.status !== "unstarted",
             );
           },
           actionsOnBatch() {
-            return (actionBatchId: ActionBatchId) => {
+            return (actionBatchId: DeprecatedActionBatchId) => {
               for (const batch of this.actionBatches) {
                 if (batch.id === actionBatchId) {
                   return batch.actions;
@@ -119,17 +123,24 @@ export const useActionsStore = () => {
               return [];
             };
           },
-          completedActionsOnRunningBatch(): ActionRunner[] {
+          completedActionsOnRunningBatch(): DeprecatedActionRunner[] {
             return _.filter(
               this.actionsOnRunningBatch,
               (runner) => !["running", "unstarted"].includes(runner.status),
             );
           },
-          actionsOnRunningBatch(): ActionRunner[] {
+          actionsOnRunningBatch(): DeprecatedActionRunner[] {
             if (!this.runningActionBatch) return [];
             return this.actionsOnBatch(this.runningActionBatch);
           },
           rawProposedActions: (state) => _.values(state.rawProposedActionsById),
+          countActionsByKind(): Record<string, number> {
+            const counts = new DefaultMap<string, number>(() => 0);
+            for (const action of this.proposedActions) {
+              counts.set(action.kind, counts.get(action.kind) + 1);
+            }
+            return Object.fromEntries(counts);
+          },
           proposedActions(): ProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
             // probably want to clean up and avoid the while loop if possible too
@@ -137,8 +148,9 @@ export const useActionsStore = () => {
             const actions = [];
             let count = 0;
             while (_.keys(graph).length) {
-              if (count++ > 1000)
+              if (count++ > 1000) {
                 throw new Error("infinite loop when flattening actions");
+              }
               const removeIds = [];
 
               const sortedEntries = _.entries(graph);
@@ -194,7 +206,7 @@ export const useActionsStore = () => {
           },
 
           actionHistoryByComponentId() {
-            const allHistory: ActionRunner[] = _.flatMap(
+            const allHistory: DeprecatedActionRunner[] = _.flatMap(
               this.actionBatches,
               (batch) => batch.actions,
             );
@@ -203,10 +215,11 @@ export const useActionsStore = () => {
         },
         actions: {
           async FETCH_QUEUED_ACTIONS() {
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               return ApiRequest.noop;
+            }
             return new ApiRequest<{
-              actions: Record<ActionId, ProposedAction>;
+              actions: Record<DeprecatedActionId, ProposedAction>;
             }>({
               method: "get",
               url: "change_set/list_queued_actions",
@@ -233,7 +246,7 @@ export const useActionsStore = () => {
               },
             });
           },
-          async REMOVE_ACTION(id: ActionId) {
+          async REMOVE_ACTION(id: DeprecatedActionId) {
             return new ApiRequest<null>({
               method: "post",
               url: "change_set/remove_action",
@@ -258,7 +271,7 @@ export const useActionsStore = () => {
             });
           },
           async LOAD_ACTION_BATCHES() {
-            return new ApiRequest<Array<ActionBatch>>({
+            return new ApiRequest<Array<DeprecatedActionBatch>>({
               url: "/action/history",
               onSuccess: (response) => {
                 this.actionBatches = response;
@@ -308,7 +321,7 @@ export const useActionsStore = () => {
                 },
               },
               {
-                eventType: "ActionRunnerReturn",
+                eventType: "DeprecatedActionRunnerReturn",
                 callback: (update) => {
                   trackEvent("action_runner_return", {
                     action_runner: update.action,
@@ -321,7 +334,7 @@ export const useActionsStore = () => {
                 },
               },
               {
-                eventType: "ActionBatchReturn",
+                eventType: "DeprecatedActionBatchReturn",
                 callback: (update) => {
                   this.runningActionBatch = undefined;
                   trackEvent("action_batch_return", {

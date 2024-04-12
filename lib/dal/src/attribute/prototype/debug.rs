@@ -104,11 +104,11 @@ impl AttributePrototypeDebugView {
                 // that are marked for deletion to ones that are not.
                 let destination_component = Component::get_by_id(ctx, destination_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                 let source_component = Component::get_by_id(ctx, expected_source_component_id)
                     .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                 if source_component.to_delete() && !destination_component.to_delete() {
                     continue;
@@ -157,9 +157,11 @@ impl AttributePrototypeDebugView {
                                     PropPath::new(["Input Socket", inputsock.name()])
                                 }
                                 ValueIsFor::Prop(_) => {
-                                    let prop_id =
-                                        AttributeValue::prop_id_for_id(ctx, attribute_value.id())
-                                            .await?;
+                                    let prop_id = AttributeValue::prop_id_for_id_or_error(
+                                        ctx,
+                                        attribute_value.id(),
+                                    )
+                                    .await?;
                                     Prop::path_by_id(ctx, prop_id).await?
                                 }
                                 ValueIsFor::OutputSocket(_) => continue,
@@ -191,7 +193,7 @@ impl AttributePrototypeDebugView {
 
         let func_execution =
             Some(FuncExecution::get_latest_execution_by_func_id(ctx, &func_id).await?);
-        let func_name = Func::get_by_id(ctx, func_id).await?.name;
+        let func_name = Func::get_by_id_or_error(ctx, func_id).await?.name;
 
         Ok(AttributePrototypeDebugView {
             func_args: func_binding_args,

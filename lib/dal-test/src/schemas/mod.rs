@@ -1,5 +1,8 @@
 pub use test_exclusive_schema_category_pirate::migrate_test_exclusive_schema_pet_shop;
 pub use test_exclusive_schema_category_pirate::migrate_test_exclusive_schema_pirate;
+pub use test_exclusive_schema_category_validated::migrate_test_exclusive_schema_bad_validations;
+pub use test_exclusive_schema_category_validated::migrate_test_exclusive_schema_validated_input;
+pub use test_exclusive_schema_category_validated::migrate_test_exclusive_schema_validated_output;
 pub use test_exclusive_schema_dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 pub use test_exclusive_schema_fallout::migrate_test_exclusive_schema_fallout;
 pub use test_exclusive_schema_katy_perry::migrate_test_exclusive_schema_katy_perry;
@@ -11,6 +14,7 @@ const PKG_CREATED_BY: &str = "System Initiative";
 
 mod schema_helpers;
 mod test_exclusive_schema_category_pirate;
+mod test_exclusive_schema_category_validated;
 mod test_exclusive_schema_dummy_secret;
 mod test_exclusive_schema_fallout;
 mod test_exclusive_schema_katy_perry;

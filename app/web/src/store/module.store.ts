@@ -2,9 +2,8 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
-import { Visibility } from "@/api/sdf/dal/visibility";
-import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -25,7 +24,7 @@ export interface SchemaVariant {
   outputSockets: DiagramOutputSocket[];
 }
 
-export interface PkgFuncView {
+export interface ModuleFuncView {
   name: string;
   displayName?: string;
   description?: string;
@@ -51,7 +50,7 @@ export interface LocalModuleDetails {
   createdAt: IsoDateString;
   createdBy: string;
   schemas: string[];
-  funcs: PkgFuncView[];
+  funcs: ModuleFuncView[];
   hash: ModuleHash;
   kind: "module" | "workspaceExport";
 }
@@ -96,17 +95,32 @@ export type RemoteModuleSummary = {
 export type RemoteModuleDetails = RemoteModuleSummary & {
   metadata?: {
     schemas: string[];
-    funcs: PkgFuncView[];
+    funcs: ModuleFuncView[];
     version: string;
   };
 };
 
+// Gather the current changeset ID, since our components don't appear to be
+// reacting to the visibility changes that happen on the setup code
+// TODO: Generalize this and make the api client pass these arguments implicitly
+function getVisibilityParams(forceChangeSetId?: ChangeSetId) {
+  const changeSetsStore = useChangeSetsStore();
+  let changeSetId = changeSetsStore.selectedChangeSetId;
+  if (forceChangeSetId) {
+    changeSetId = forceChangeSetId;
+  }
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspacePk;
+
+  return {
+    visibility_change_set_pk: changeSetId,
+    workspaceId,
+  };
+}
+
 export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const visibility: Visibility = {
-    visibility_change_set_pk: changeSetId ?? nilId(),
-  };
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -190,15 +204,15 @@ export const useModuleStore = () => {
         },
         actions: {
           async LOAD_LOCAL_MODULES() {
-            return new ApiRequest<{ pkgs: LocalModuleSummary[] }>({
-              url: "/pkg/list_pkgs",
-              params: { ...visibility },
+            return new ApiRequest<{ modules: LocalModuleSummary[] }>({
+              url: "/module/list_modules",
+              params: { ...getVisibilityParams() },
               onSuccess: (response) => {
                 // TODO: remove this
                 // the backend currently needs the full tar file name
                 // but we want the actual name in the module metadata
                 // easier to strip off temporarily but we'll need to change what the backend is storing
-                const modulesWithNamesFixed = _.map(response.pkgs, (m) => ({
+                const modulesWithNamesFixed = _.map(response.modules, (m) => ({
                   ...m,
                   name: m.name.replace(/-\d\d\d\d-\d\d-\d\d\.sipkg/, ""),
                 }));
@@ -214,8 +228,8 @@ export const useModuleStore = () => {
           async GET_LOCAL_MODULE_DETAILS(hash: ModuleHash) {
             return new ApiRequest<LocalModuleDetails>({
               method: "get",
-              url: "/pkg/get_module_by_hash",
-              params: { hash, ...visibility },
+              url: "/module/get_module_by_hash",
+              params: { hash, ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.localModuleDetailsByName[response.name] = response;
               },
@@ -303,8 +317,8 @@ export const useModuleStore = () => {
           async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
             return new ApiRequest({
               method: "get",
-              url: "/pkg/remote_module_spec",
-              params: { id, ...visibility },
+              url: "/module/remote_module_spec",
+              params: { id, ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.remoteModuleSpecsById[id] = response;
               },
@@ -323,10 +337,10 @@ export const useModuleStore = () => {
 
             return new ApiRequest<{ id: string }>({
               method: "post",
-              url: "/pkg/install_pkg",
+              url: "/module/install_module",
               params: {
                 id: moduleId,
-                ...visibility,
+                ...getVisibilityParams(),
               },
               onSuccess: (data) => {
                 this.installingModuleId = data.id;
@@ -341,8 +355,8 @@ export const useModuleStore = () => {
           async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/pkg/reject_pkg",
-              params: { id: moduleId, ...visibility },
+              url: "/module/reject_module",
+              params: { id: moduleId, ...getVisibilityParams() },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
@@ -354,8 +368,8 @@ export const useModuleStore = () => {
           async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: "/pkg/set_as_builtin",
-              params: { id: moduleId, ...visibility },
+              url: "/module/set_as_builtin",
+              params: { id: moduleId, ...getVisibilityParams() },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.SEARCH_REMOTE_MODULES();
@@ -370,8 +384,8 @@ export const useModuleStore = () => {
 
             return new ApiRequest<{ id: string }>({
               method: "post",
-              url: "/pkg/export_workspace",
-              params: { ...visibility },
+              url: "/module/export_workspace",
+              params: { ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.exportingWorkspaceOperationId = response.id;
               },
@@ -390,8 +404,8 @@ export const useModuleStore = () => {
           async EXPORT_MODULE(exportRequest: PkgExportRequest) {
             return new ApiRequest({
               method: "post",
-              url: "/pkg/export_pkg",
-              params: { ...exportRequest, ...visibility },
+              url: "/module/export_module",
+              params: { ...exportRequest, ...getVisibilityParams() },
             });
           },
         },

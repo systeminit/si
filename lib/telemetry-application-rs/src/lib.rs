@@ -244,7 +244,7 @@ pub fn init(
     let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
 
-    info!(
+    debug!(
         ?config,
         directives = TracingDirectives::from(&tracing_level).as_str(),
         "telemetry configuration"
@@ -668,7 +668,7 @@ impl TelemetryUpdateTask {
 
         let timeout = Duration::from_secs(5);
         match time::timeout(timeout, wait_on_shutdown).await {
-            Ok(Ok(_)) => info!(
+            Ok(Ok(_)) => debug!(
                 time_ns = (Instant::now() - started_at).as_nanos(),
                 "opentelemetry shutdown"
             ),

@@ -5,21 +5,23 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data_pg::{PgError, PgRow};
-use si_events::WorkspaceSnapshotAddress;
-use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::{Generator, Ulid};
+use ulid::Generator;
 
-use crate::action::ActionBag;
+use si_data_pg::{PgError, PgRow};
+use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
+use telemetry::prelude::*;
+
 use crate::context::RebaseRequest;
+use crate::deprecated_action::DeprecatedActionBag;
 use crate::job::definition::{ActionRunnerItem, ActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    id, Action, ActionBatch, ActionBatchError, ActionError, ActionId, ActionPrototypeId,
-    ActionRunner, ActionRunnerError, ActionRunnerId, ChangeSetStatus, Component, ComponentError,
-    DalContext, HistoryActor, HistoryEvent, HistoryEventError, TransactionsError, User, UserError,
-    UserPk, Workspace, WorkspacePk, WsEvent, WsEventError,
+    id, ActionId, ActionPrototypeId, ChangeSetStatus, Component, ComponentError, DalContext,
+    DeprecatedAction, DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionError,
+    DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor,
+    HistoryEvent, HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace,
+    WorkspacePk, WsEvent, WsEventError,
 };
 
 pub mod event;
@@ -38,6 +40,10 @@ pub enum ChangeSetError {
     EnumParse(#[from] strum::ParseError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("invalid user actor pk")]
+    InvalidActor(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -56,6 +62,8 @@ pub enum ChangeSetError {
     Transactions(#[from] TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace not found: {0}")]
@@ -72,13 +80,13 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] DeprecatedActionError),
     #[error("action batch error: {0}")]
-    ActionBatch(#[from] ActionBatchError),
+    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]
     ActionPrototypeNotFound(ActionId),
     #[error("action runner error: {0}")]
-    ActionRunner(#[from] ActionRunnerError),
+    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found by id: {0}")]
@@ -120,6 +128,7 @@ pub struct ChangeSet {
     pub base_change_set_id: Option<ChangeSetId>,
     pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
     pub workspace_id: Option<WorkspacePk>,
+    pub merge_requested_by_user_id: Option<UserPk>,
 
     #[serde(skip)]
     pub generator: Arc<Mutex<Generator>>,
@@ -140,6 +149,7 @@ impl TryFrom<PgRow> for ChangeSet {
             base_change_set_id: value.try_get("base_change_set_id")?,
             workspace_snapshot_address: value.try_get("workspace_snapshot_address")?,
             workspace_id: value.try_get("workspace_id")?,
+            merge_requested_by_user_id: value.try_get("merge_requested_by_user_id")?,
             generator: Arc::new(Mutex::new(Default::default())),
         })
     }
@@ -148,7 +158,7 @@ impl TryFrom<PgRow> for ChangeSet {
 impl ChangeSet {
     pub fn new_local() -> ChangeSetResult<Self> {
         let mut generator = Generator::new();
-        let id = generator.generate()?;
+        let id: Ulid = generator.generate()?.into();
 
         Ok(Self {
             id: id.into(),
@@ -160,6 +170,7 @@ impl ChangeSet {
             workspace_id: None,
             name: "".to_string(),
             status: ChangeSetStatus::Open,
+            merge_requested_by_user_id: None,
         })
     }
 
@@ -244,6 +255,7 @@ impl ChangeSet {
             .lock()
             .map_err(|e| ChangeSetError::Mutex(e.to_string()))?
             .generate()
+            .map(Into::into)
             .map_err(Into::into)
     }
 
@@ -304,6 +316,25 @@ impl ChangeSet {
         Ok(())
     }
 
+    pub async fn update_merge_requested_by_user_id(
+        &mut self,
+        ctx: &DalContext,
+        user_pk: UserPk,
+    ) -> ChangeSetResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2 WHERE id = $1",
+                &[&self.id, &user_pk],
+            )
+            .await?;
+
+        self.merge_requested_by_user_id = Some(user_pk);
+
+        Ok(())
+    }
+
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
@@ -332,10 +363,12 @@ impl ChangeSet {
             .await?
             .pg()
             .query(
-                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status = $2",
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4)",
                 &[
                     &ctx.tenancy().workspace_pk(),
                     &ChangeSetStatus::Open.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
                 ],
             )
             .await?;
@@ -397,14 +430,14 @@ impl ChangeSet {
 
             // TODO: restore actors of change-set concept
             let actors_delimited_string = String::new();
-            let batch = ActionBatch::new(ctx, author, &actors_delimited_string).await?;
-            let mut runners: HashMap<ActionRunnerId, ActionRunnerItem> = HashMap::new();
-            let mut runners_by_action: HashMap<ActionId, ActionRunnerId> = HashMap::new();
+            let batch = DeprecatedActionBatch::new(ctx, author, &actors_delimited_string).await?;
+            let mut runners: HashMap<DeprecatedActionRunnerId, ActionRunnerItem> = HashMap::new();
+            let mut runners_by_action: HashMap<ActionId, DeprecatedActionRunnerId> = HashMap::new();
 
-            let mut values: Vec<ActionBag> = actions_to_run.values().cloned().collect();
+            let mut values: Vec<DeprecatedActionBag> = actions_to_run.values().cloned().collect();
             values.sort_by_key(|a| a.action.id);
 
-            let mut values: VecDeque<ActionBag> = values.into_iter().collect();
+            let mut values: VecDeque<DeprecatedActionBag> = values.into_iter().collect();
 
             // Runners have to be created in the order we want to display them in the actions history panel
             // So we do extra work here to ensure the order is the execution order
@@ -427,7 +460,7 @@ impl ChangeSet {
                 };
 
                 let component = Component::get_by_id(ctx, bag.component_id).await?;
-                let runner = ActionRunner::new(
+                let runner = DeprecatedActionRunner::new(
                     ctx,
                     batch.id,
                     bag.component_id,
@@ -477,14 +510,18 @@ impl ChangeSet {
         ctx.do_rebase_request(rebase_request).await?;
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
-
+        let user = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_applied(ctx, self.id, user)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         Ok(())
     }
 
     async fn list_actions_to_run(
         ctx: &DalContext,
     ) -> ChangeSetApplyResult<(
-        HashMap<ActionId, ActionBag>,
+        HashMap<ActionId, DeprecatedActionBag>,
         HashMap<ActionId, ActionPrototypeId>,
     )> {
         let mut actions_graph = HashMap::new();
@@ -494,7 +531,7 @@ impl ChangeSet {
         // we are applying to head.
         let applying_to_head = ctx.parent_is_head().await?;
         if applying_to_head {
-            actions_graph = Action::build_graph(ctx).await?;
+            actions_graph = DeprecatedAction::build_graph(ctx).await?;
             let mut at_least_one_deleted = false;
 
             for bag in actions_graph.values() {
@@ -520,8 +557,8 @@ impl ChangeSet {
 
     fn determine_runners_for_parent_actions(
         parent_ids: &[ActionId],
-        runners_by_action: &HashMap<ActionId, ActionRunnerId>,
-    ) -> Option<Vec<ActionRunnerId>> {
+        runners_by_action: &HashMap<ActionId, DeprecatedActionRunnerId>,
+    ) -> Option<Vec<DeprecatedActionRunnerId>> {
         let mut parents = Vec::new();
         for parent_id in parent_ids {
             if let Some(parent_id) = runners_by_action.get(parent_id) {
@@ -555,6 +592,102 @@ impl ChangeSet {
     fn generate_name() -> String {
         Utc::now().format("%Y-%m-%d-%H:%M").to_string()
     }
+
+    pub async fn merge_vote(&mut self, ctx: &DalContext, vote: String) -> ChangeSetResult<()> {
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_merge_vote(ctx, self.id, user_id, vote)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+    pub async fn abandon_vote(&mut self, ctx: &DalContext, vote: String) -> ChangeSetResult<()> {
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_abandon_vote(ctx, self.id, user_id, vote)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn cancel_abandon_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Open).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_cancel_abandon_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+    pub async fn begin_abandon_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::NeedsAbandonApproval)
+            .await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_begin_abandon_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        WsEvent::change_set_abandon_vote(
+            ctx,
+            ctx.visibility().change_set_id,
+            user_id,
+            "Approve".to_string(),
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn begin_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::NeedsApproval)
+            .await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        if let Some(user_pk) = user_id {
+            self.update_merge_requested_by_user_id(ctx, user_pk).await?;
+        }
+        WsEvent::change_set_begin_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn cancel_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Open).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_cancel_approval_process(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+    pub async fn abandon(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        self.update_status(ctx, ChangeSetStatus::Abandoned).await?;
+        let user_id = Self::extract_userid_from_context(ctx).await;
+        WsEvent::change_set_abandoned(ctx, self.id, user_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+
+    async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
+        let user_id = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => {
+                let maybe_user = User::get_by_pk(ctx, *user_pk).await;
+                match maybe_user {
+                    Ok(user_option) => user_option.map(|user| user.pk()),
+                    Err(_) => None,
+                }
+            }
+            HistoryActor::SystemInit => None,
+        };
+        user_id
+    }
 }
 
 impl std::fmt::Debug for ChangeSet {
@@ -570,6 +703,12 @@ impl std::fmt::Debug for ChangeSet {
                 &self
                     .workspace_snapshot_address
                     .map(|wsaddr| wsaddr.to_string()),
+            )
+            .field(
+                "merge_requested_by_user_id",
+                &self
+                    .merge_requested_by_user_id
+                    .map(|user_pk| user_pk.to_string()),
             )
             .finish()
     }

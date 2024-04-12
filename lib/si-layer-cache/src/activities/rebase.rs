@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
 use telemetry::tracing::instrument;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 use tokio_stream::wrappers::BroadcastStream;
 use ulid::Ulid;
 
-use super::{Activity, ActivityId, ActivityPayloadDiscriminants, RebaserRequestsWorkQueueStream};
+use super::{Activity, ActivityId, ActivityPayloadDiscriminants, ActivityRebaseRequest};
 use crate::activity_client::ActivityClient;
 use crate::{error::LayerDbResult, event::LayeredEventMetadata};
 
@@ -138,6 +139,7 @@ impl<'a> ActivityRebase<'a> {
             onto_vector_clock_id,
         );
         let activity = Activity::rebase(payload, metadata);
+        // println!("trigger: sending rebase and waiting for response");
         debug!(?activity, "sending rebase and waiting for response");
 
         // Why is this in two? We want to start listening before the publish call, to ensure we
@@ -149,6 +151,8 @@ impl<'a> ActivityRebase<'a> {
         self.activity_base.publish(&activity).await?;
         let rebase_finished_activity = join_handle.await??;
         debug!(?rebase_finished_activity, elapsed = ?start.elapsed(), "received rebase finished");
+        // println!("trigger: done rebase");
+
         Ok(rebase_finished_activity)
     }
 
@@ -179,7 +183,9 @@ impl<'a> ActivityRebase<'a> {
         Ok(activity)
     }
 
-    pub async fn subscribe_work_queue(&self) -> LayerDbResult<RebaserRequestsWorkQueueStream> {
-        RebaserRequestsWorkQueueStream::create(self.activity_base.nats_client()).await
+    pub async fn subscribe_work_queue(
+        &self,
+    ) -> LayerDbResult<UnboundedReceiver<ActivityRebaseRequest>> {
+        self.activity_base.rebaser_request_work_queue().await
     }
 }

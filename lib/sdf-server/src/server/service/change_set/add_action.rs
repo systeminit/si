@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
-use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, Visibility, WsEvent};
+use dal::{ActionPrototypeId, ChangeSet, ComponentId, DeprecatedAction, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,7 +26,7 @@ pub async fn add_action(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let action = Action::upsert(&ctx, request.prototype_id, request.component_id).await?;
+    let action = DeprecatedAction::upsert(&ctx, request.prototype_id, request.component_id).await?;
     let prototype = action.prototype(&ctx).await?;
     let component = action.component(&ctx).await?;
 
@@ -37,9 +37,8 @@ pub async fn add_action(
         "create_action",
         serde_json::json!({
             "how": "/change_set/add_action",
-            "prototype_id": prototype.id,
-            "prototype_kind": prototype.kind,
-            "component_name": component.name(&ctx).await?,
+            "action_id": action.id.clone(),
+            "action_kind": prototype.kind,
             "component_id": component.id(),
             "change_set_id": ctx.change_set_id(),
         }),

@@ -1,10 +1,12 @@
-use axum::extract::OriginalUri;
-use axum::{response::IntoResponse, Json};
-use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility};
-use serde::{Deserialize, Serialize};
-
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
+use axum::{response::IntoResponse, Json};
+use dal::{
+    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Visibility,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -22,8 +24,8 @@ pub struct UpdatePropertyEditorValueRequest {
 pub async fn update_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -33,46 +35,41 @@ pub async fn update_property_editor_value(
     AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
 
     // Track
-    //    {
-    //        let component = Component::get_by_id(&ctx, request.component_id).await?;
-    //
-    //        let component_schema = component
-    //            .schema(&ctx)
-    //            .await?
-    //            .ok_or(ComponentError::SchemaNotFound)?;
-    //
-    //        let prop = Prop::get_by_id(&ctx, &request.prop_id)
-    //            .await?
-    //            .ok_or(ComponentError::PropNotFound(request.prop_id))?;
-    //
-    //        // In this context, there will always be a parent attribute value id
-    //        let parent_prop = if let Some(att_val_id) = request.parent_attribute_value_id {
-    //            Some(AttributeValue::find_prop_for_value(&ctx, att_val_id).await?)
-    //        } else {
-    //            None
-    //        };
-    //
-    //        track(
-    //            &posthog_client,
-    //            &ctx,
-    //            &original_uri,
-    //            "property_value_updated",
-    //            serde_json::json!({
-    //                "component_id": component.id(),
-    //                "component_schema_name": component_schema.name(),
-    //                "prop_id": prop.id(),
-    //                "prop_name": prop.name(),
-    //                "parent_prop_id": parent_prop.as_ref().map(|prop| prop.id()),
-    //                "parent_prop_name": parent_prop.as_ref().map(|prop| prop.name()),
-    //            }),
-    //        );
-    //    }
-    //
-    //    WsEvent::change_set_written(&ctx)
-    //        .await?
-    //        .publish_on_commit(&ctx)
-    //        .await?;
-    //
+    {
+        let component = Component::get_by_id(&ctx, request.component_id).await?;
+
+        let component_schema = component.schema(&ctx).await?;
+        let prop = Prop::get_by_id(&ctx, request.prop_id).await?;
+
+        // In this context, there will always be a parent attribute value id
+        let parent_prop = if let Some(att_val_id) = request.parent_attribute_value_id {
+            if let Some(prop_id) = AttributeValue::prop_id_for_id(&ctx, att_val_id).await? {
+                Some(Prop::get_by_id(&ctx, prop_id).await?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "property_value_updated",
+            serde_json::json!({
+                "how": "/component/property_value_updated",
+                "component_id": component.id(),
+                "component_schema_name": component_schema.name(),
+                "prop_id": prop.id,
+                "prop_name": prop.name,
+                "parent_prop_id": parent_prop.as_ref().map(|prop| prop.id),
+                "parent_prop_name": parent_prop.as_ref().map(|prop| prop.name.clone()),
+                "change_set_id": ctx.change_set_id(),
+            }),
+        );
+    }
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

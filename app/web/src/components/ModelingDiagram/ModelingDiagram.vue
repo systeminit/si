@@ -5,7 +5,7 @@ overflow hidden */
   <div
     ref="containerRef"
     :style="{ cursor }"
-    class="absolute inset-0 overflow-hidden"
+    class="absolute inset-0 overflow-hidden modeling-diagram"
   >
     <div
       v-if="fetchDiagramReqStatus.isFirstLoad"

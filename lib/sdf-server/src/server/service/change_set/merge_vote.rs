@@ -1,9 +1,10 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::change_set::{ChangeSetError, ChangeSetResult};
+use crate::service::change_set::ChangeSetError;
+use crate::service::change_set::ChangeSetResult;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{HistoryActor, User, Visibility, WsEvent};
+use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,13 +24,10 @@ pub async fn merge_vote(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk)
-            .await?
-            .ok_or(ChangeSetError::InvalidUser(*user_pk))?,
-
-        HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
-    };
+    let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+        .await?
+        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    change_set.merge_vote(&ctx, request.vote.clone()).await?;
 
     track(
         &posthog_client,
@@ -38,23 +36,12 @@ pub async fn merge_vote(
         "merge_vote",
         serde_json::json!({
             "how": "/change_set/merge_vote",
-            "change_set_pk": ctx.visibility().change_set_pk,
-            "user_pk": user.pk(),
+            "change_set_id": ctx.visibility().change_set_id,
             "vote": request.vote,
         }),
     );
 
-    WsEvent::change_set_merge_vote(
-        &ctx,
-        ctx.visibility().change_set_pk,
-        user.pk(),
-        request.vote,
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
-
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
     Ok(Json(()))
 }

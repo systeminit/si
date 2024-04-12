@@ -1,38 +1,75 @@
-use si_std::CanonicalFile;
-use sled::Db;
+use std::{str::FromStr, sync::Arc};
+
+use std::path::PathBuf;
 
 use crate::error::LayerDbResult;
+use crate::event::LayeredEvent;
 
-pub fn default_sled_path() -> LayerDbResult<CanonicalFile> {
-    Ok(tempfile::tempdir()?.into_path().try_into()?)
+#[derive(Debug, Clone)]
+pub struct CaCacheTempFile {
+    pub tempdir: Arc<tempfile::TempDir>,
+}
+
+impl CaCacheTempFile {
+    fn new(tempdir: tempfile::TempDir) -> Self {
+        Self {
+            tempdir: Arc::new(tempdir),
+        }
+    }
+}
+
+pub fn default_cacache_path() -> LayerDbResult<CaCacheTempFile> {
+    let tempdir = tempfile::tempdir()?;
+    Ok(CaCacheTempFile::new(tempdir))
+}
+
+pub fn default_cache_path_for_service(service: impl AsRef<str>) -> PathBuf {
+    let service = service.as_ref();
+    PathBuf::from_str(&format!("/tmp/layerdb-{service}-cacache"))
+        .expect("paths from strings is infallible")
 }
 
 #[derive(Clone, Debug)]
 pub struct DiskCache {
-    tree: sled::Tree,
+    write_path: Arc<PathBuf>,
 }
 
 impl DiskCache {
-    pub fn new(sled_db: Db, tree_name: impl AsRef<[u8]>) -> LayerDbResult<Self> {
-        let tree = sled_db.open_tree(tree_name.as_ref())?;
-        Ok(Self { tree })
+    pub fn new(dir: impl Into<PathBuf>, table_name: impl Into<String>) -> LayerDbResult<Self> {
+        let dir = dir.into();
+        let table_name_string = table_name.into();
+        let write_path = dir.join(table_name_string);
+        Ok(Self {
+            write_path: write_path.into(),
+        })
     }
 
-    pub fn get(&self, key: &str) -> LayerDbResult<Option<Vec<u8>>> {
-        Ok(self.tree.get(key.as_bytes())?.map(|bytes| bytes.to_vec()))
+    pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Vec<u8>> {
+        let data = cacache::read(self.write_path.as_ref(), key).await?;
+        Ok(data)
     }
 
-    pub fn contains_key(&self, key: &str) -> LayerDbResult<bool> {
-        Ok(self.tree.contains_key(key.as_bytes())?)
+    pub async fn contains_key(&self, key: Arc<str>) -> LayerDbResult<bool> {
+        let result = cacache::metadata(self.write_path.as_ref(), key).await?;
+        Ok(result.is_some())
     }
 
-    pub fn insert(&self, key: &str, value: &[u8]) -> LayerDbResult<()> {
-        self.tree.insert(key.as_bytes(), value)?;
+    pub async fn insert(&self, key: Arc<str>, value: Vec<u8>) -> LayerDbResult<()> {
+        cacache::write(self.write_path.as_ref(), key, value).await?;
         Ok(())
     }
 
-    pub fn remove(&self, key: &str) -> LayerDbResult<Option<Vec<u8>>> {
-        let removed_value = self.tree.remove(key.as_bytes())?;
-        Ok(removed_value.map(|v| v.to_vec()))
+    pub async fn remove(&self, key: Arc<str>) -> LayerDbResult<()> {
+        let maybe_metadata = cacache::metadata(self.write_path.as_ref(), key).await?;
+        if let Some(metadata) = maybe_metadata {
+            cacache::remove_hash(self.write_path.as_ref(), &metadata.integrity).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn write_to_disk(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
+        self.insert(event.payload.key.clone(), event.payload.value.to_vec())
+            .await?;
+        Ok(())
     }
 }

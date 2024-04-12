@@ -10,16 +10,17 @@ use strum::EnumDiscriminants;
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum ContentAddress {
-    Action(ContentHash),
-    ActionBatch(ContentHash),
     ActionPrototype(ContentHash),
-    ActionRunner(ContentHash),
     AttributePrototype(ContentHash),
     Component(ContentHash),
+    DeprecatedAction(ContentHash),
+    DeprecatedActionBatch(ContentHash),
+    DeprecatedActionRunner(ContentHash),
     Func(ContentHash),
     FuncArg(ContentHash),
     InputSocket(ContentHash),
     JsonValue(ContentHash),
+    Module(ContentHash),
     OutputSocket(ContentHash),
     Prop(ContentHash),
     Root,
@@ -27,7 +28,8 @@ pub enum ContentAddress {
     SchemaVariant(ContentHash),
     Secret(ContentHash),
     StaticArgumentValue(ContentHash),
-    ValidationPrototype(ContentHash),
+    ValidationOutput(ContentHash),
+    ValidationPrototype(ContentHash), // TODO(victor): Remove this after module index gets new data
 }
 
 impl ContentAddress {
@@ -35,22 +37,24 @@ impl ContentAddress {
         match self {
             ContentAddress::Root => None,
             ContentAddress::ActionPrototype(id)
-            | ContentAddress::ActionBatch(id)
-            | ContentAddress::ActionRunner(id)
-            | ContentAddress::Action(id)
             | ContentAddress::AttributePrototype(id)
             | ContentAddress::Component(id)
+            | ContentAddress::DeprecatedAction(id)
+            | ContentAddress::DeprecatedActionBatch(id)
+            | ContentAddress::DeprecatedActionRunner(id)
             | ContentAddress::OutputSocket(id)
             | ContentAddress::FuncArg(id)
             | ContentAddress::Func(id)
             | ContentAddress::InputSocket(id)
             | ContentAddress::JsonValue(id)
+            | ContentAddress::Module(id)
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)
             | ContentAddress::Secret(id)
             | ContentAddress::StaticArgumentValue(id)
-            | ContentAddress::ValidationPrototype(id) => Some(*id),
+            | ContentAddress::ValidationPrototype(id)
+            | ContentAddress::ValidationOutput(id) => Some(*id),
         }
         .unwrap_or_default()
     }

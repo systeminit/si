@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
 
 use super::FuncError;
-use crate::func::execution::FuncExecutionPk;
+use crate::func::backend::validation::FuncBackendValidation;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
     standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
@@ -35,10 +35,12 @@ use crate::{
 use crate::{DalContext, Tenancy};
 
 use super::{
-    binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    binding::return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     execution::{FuncExecution, FuncExecutionError},
     FuncId,
 };
+
+pub mod return_value;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -123,7 +125,7 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         let row = ctx
             .txns()
@@ -145,28 +147,6 @@ impl FuncBinding {
         Ok(object)
     }
 
-    pub async fn create_with_existing_value(
-        ctx: &DalContext,
-        args: serde_json::Value,
-        value: Option<serde_json::Value>,
-        func_id: FuncId,
-    ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, func_id).await?;
-        let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
-
-        let func_binding_return_value = FuncBindingReturnValue::new(
-            ctx,
-            value.clone(),
-            value,
-            func_id,
-            *func_binding.id(),
-            FuncExecutionPk::NONE,
-        )
-        .await?;
-
-        Ok((func_binding, func_binding_return_value))
-    }
-
     /// Runs [`Self::new()`] and executes.
     ///
     /// Use this function if you would like to receive the
@@ -178,7 +158,7 @@ impl FuncBinding {
         func_id: FuncId,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
         let func_binding = Self::new(ctx, args, func.id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue =
@@ -191,7 +171,8 @@ impl FuncBinding {
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncBindingResult);
     standard_model_accessor!(code_blake3, String, FuncBindingResult);
     standard_model_accessor!(func_id, Pk(FuncId), FuncBindingResult);
-    // For a given [`FuncBinding`](Self), execute using veritech.
+
+    /// Execute using veritech.
     async fn execute(
         &self,
         ctx: &DalContext,
@@ -213,7 +194,7 @@ impl FuncBinding {
 
     /// Perform function execution to veritech for a given [`Func`](crate::Func) and
     /// [`FuncDispatchContext`](crate::func::backend::FuncDispatchContext).
-    pub async fn execute_critical_section(
+    async fn execute_critical_section(
         &self,
         func: Func,
         context: FuncDispatchContext,
@@ -265,7 +246,7 @@ impl FuncBinding {
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
             FuncBackendKind::Unset => Ok((None, None)),
             FuncBackendKind::Validation => {
-                unimplemented!("direct Validation function execution is deprecated")
+                FuncBackendValidation::create_and_execute(context, &func, &self.args, before).await
             }
             FuncBackendKind::JsValidation => {
                 unimplemented!("direct Validation function execution is deprecated")
@@ -290,7 +271,7 @@ impl FuncBinding {
         }
     }
 
-    pub async fn postprocess_execution(
+    async fn postprocess_execution(
         &self,
         ctx: &DalContext,
         output_stream: Vec<OutputStream>,
@@ -323,7 +304,7 @@ impl FuncBinding {
         Ok(func_binding_return_value)
     }
 
-    pub async fn prepare_execution(
+    async fn prepare_execution(
         &self,
         ctx: &DalContext,
     ) -> FuncBindingResult<(
@@ -333,7 +314,7 @@ impl FuncBinding {
         mpsc::Receiver<OutputStream>,
     )> {
         let func_id = self.func_id();
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
         let mut execution = FuncExecution::new(ctx, &func, self).await?;
 

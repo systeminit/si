@@ -29,16 +29,17 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
+pub mod deprecated_action;
 pub mod diagram;
 pub mod func;
 pub mod history_event;
-pub mod installed_pkg;
 pub mod job;
 pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod layer_db_types;
+pub mod module;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;
@@ -48,6 +49,7 @@ pub mod secret;
 pub mod serde_impls;
 pub mod socket;
 pub mod standard_accessors;
+pub mod standard_connection;
 pub mod standard_id;
 pub mod standard_model;
 pub mod standard_pk;
@@ -71,12 +73,7 @@ pub mod ws_event;
 // pub mod status;
 //pub mod tasks;
 
-pub use action::batch::{ActionBatch, ActionBatchError, ActionBatchId};
-pub use action::prototype::{
-    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ActionPrototypeView,
-};
-pub use action::runner::{ActionCompletionStatus, ActionRunner, ActionRunnerError, ActionRunnerId};
-pub use action::{Action, ActionError, ActionId};
+pub use action::ActionPrototypeId;
 pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
@@ -93,6 +90,18 @@ pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, DalLayerDb, RequestContext,
     ServicesContext, Transactions, TransactionsError,
 };
+pub use deprecated_action::batch::{
+    DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionBatchId,
+};
+pub use deprecated_action::prototype::{
+    DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
+    DeprecatedActionPrototypeView,
+};
+pub use deprecated_action::runner::{
+    ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,
+    DeprecatedActionRunnerId,
+};
+pub use deprecated_action::{ActionId, DeprecatedAction, DeprecatedActionError};
 pub use func::{
     backend::{FuncBackendKind, FuncBackendResponseType},
     Func, FuncError, FuncId,
@@ -121,18 +130,23 @@ pub use secret::SecretUpdatedPayload;
 pub use secret::SecretVersion;
 pub use secret::SecretView;
 pub use secret::SecretViewError;
+pub use si_events::ulid::Ulid;
 pub use socket::input::{InputSocket, InputSocketId};
 pub use socket::output::{OutputSocket, OutputSocketId};
 pub use socket::SocketArity;
 pub use socket::SocketKind;
+pub use standard_connection::{HelperError, HelperResult};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
+pub use workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
-pub use workspace_snapshot::WorkspaceSnapshot;
+pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[remain::sorted]

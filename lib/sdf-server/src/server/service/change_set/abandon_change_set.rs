@@ -5,7 +5,7 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set::ChangeSet;
-use dal::{ChangeSetId, ChangeSetStatus};
+use dal::ChangeSetId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -34,9 +34,7 @@ pub async fn abandon_change_set(
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
         .await?;
-    change_set
-        .update_status(&ctx, ChangeSetStatus::Abandoned)
-        .await?;
+    change_set.abandon(&ctx).await?;
 
     track(
         &posthog_client,
@@ -47,19 +45,6 @@ pub async fn abandon_change_set(
             "abandoned_change_set": request.change_set_id,
         }),
     );
-
-    // let user = match ctx.history_actor() {
-    //     HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk)
-    //         .await?
-    //         .ok_or(ChangeSetError::InvalidUser(*user_pk))?,
-    //
-    //     HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
-    // };
-
-    // WsEvent::change_set_abandoned(&ctx, change_set.changeset_pk(), Some(user.pk()))
-    //     .await?
-    //     .publish_on_commit(&ctx)
-    //     .await?;
 
     ctx.commit_no_rebase().await?;
 

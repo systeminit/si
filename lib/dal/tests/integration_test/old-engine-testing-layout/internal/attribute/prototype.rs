@@ -515,8 +515,7 @@ async fn remove_component_specific(ctx: &DalContext) {
                 assert!(
                     AttributePrototype::get_by_id(ctx, confirm_deletion_prototype_id)
                         .await
-                        .expect("could not get attribute prototype by id")
-                        .is_none()
+                        .is_err()
                 );
             }
             for confirm_deletion_value_id in confirm_deletion_value_ids {

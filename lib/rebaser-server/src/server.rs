@@ -12,7 +12,7 @@ use tokio::{
     signal::unix,
     sync::{
         mpsc::{self},
-        oneshot, watch,
+        oneshot,
     },
 };
 use tokio_util::sync::CancellationToken;
@@ -66,7 +66,7 @@ pub struct Server {
     symmetric_crypto_service: SymmetricCryptoService,
     /// An internal shutdown watch receiver handle which can be provided to internal tasks which
     /// want to be notified when a shutdown event is in progress.
-    shutdown_watch_rx: watch::Receiver<()>,
+    shutdown_watch_rx: oneshot::Receiver<()>,
     /// An external shutdown sender handle which can be handed out to external callers who wish to
     /// trigger a server shutdown at will.
     external_shutdown_tx: mpsc::Sender<ShutdownSource>,
@@ -97,7 +97,7 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
-            config.layer_cache_sled_path(),
+            config.layer_cache_disk_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
             token,
@@ -133,7 +133,7 @@ impl Server {
         // A watch channel used to notify internal parts of the server that a shutdown event is in
         // progress. The value passed along is irrelevant--we only care that the event was
         // triggered and react accordingly.
-        let (shutdown_watch_tx, shutdown_watch_rx) = watch::channel(());
+        let (shutdown_watch_tx, shutdown_watch_rx) = oneshot::channel();
 
         dal::init()?;
 
@@ -253,7 +253,7 @@ impl Default for ShutdownSource {
 
 fn prepare_graceful_shutdown(
     mut external_shutdown_rx: mpsc::Receiver<ShutdownSource>,
-    shutdown_watch_tx: watch::Sender<()>,
+    shutdown_watch_tx: oneshot::Sender<()>,
 ) -> ServerResult<oneshot::Receiver<()>> {
     // A oneshot channel signaling the start of a graceful shutdown. Receivers can use this to
     // perform an clean/graceful shutdown work that needs to happen to preserve server integrity.
@@ -265,7 +265,7 @@ fn prepare_graceful_shutdown(
     tokio::spawn(async move {
         fn send_graceful_shutdown(
             graceful_shutdown_tx: oneshot::Sender<()>,
-            shutdown_watch_tx: watch::Sender<()>,
+            shutdown_watch_tx: oneshot::Sender<()>,
         ) {
             // Send shutdown to all long running subscriptions, so they can cleanly terminate
             if shutdown_watch_tx.send(()).is_err() {

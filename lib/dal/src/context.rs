@@ -18,6 +18,7 @@ use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::{
     conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
@@ -36,7 +37,7 @@ use crate::{
 };
 use crate::{EncryptedSecret, Workspace};
 
-pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, String, WorkspaceSnapshotGraph>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -60,7 +61,7 @@ pub struct ServicesContext {
     module_index_url: Option<String>,
     /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
-    /// The layer db (moka-rs, sled and postgres)
+    /// The layer db
     layer_db: DalLayerDb,
 }
 
@@ -628,7 +629,8 @@ impl DalContext {
         new
     }
 
-    /// Clones a new context from this one with a head [`Visibility`].
+    /// Clones a new context from this one with a "head" [`Visibility`] (default [`ChangeSet`] for
+    /// the workspace).
     pub async fn clone_with_head(&self) -> Result<Self, TransactionsError> {
         let mut new = self.clone();
         let default_change_set_id = new.get_workspace_default_change_set_id().await?;
@@ -636,6 +638,21 @@ impl DalContext {
             default_change_set_id,
         )
         .await?;
+        Ok(new)
+    }
+
+    /// Clones a new context from this one with a "base" [`Visibility`].
+    ///
+    /// _Warning:_ this only works if the current [`ChangeSet`] is not an editing [`ChangeSet`].
+    pub async fn clone_with_base(&self) -> Result<Self, TransactionsError> {
+        let change_set = self.change_set()?;
+        let base_change_set_id = change_set
+            .base_change_set_id
+            .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
+
+        let mut new = self.clone();
+        new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(base_change_set_id)
+            .await?;
         Ok(new)
     }
 
@@ -671,8 +688,31 @@ impl DalContext {
         self.txns()
             .await?
             .job_queue
-            .enqueue_dependent_values_update(self.change_set_id(), self.access_builder(), ids)
+            .enqueue_attribute_value_job(
+                self.change_set_id(),
+                self.access_builder(),
+                AttributeValueBasedJobIdentifier::DependentValuesUpdate,
+                ids,
+            )
             .await;
+        Ok(())
+    }
+
+    pub async fn enqueue_compute_validations(
+        &self,
+        attribute_value_id: AttributeValueId,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_attribute_value_job(
+                self.change_set_id(),
+                self.access_builder(),
+                AttributeValueBasedJobIdentifier::ComputeValidation,
+                vec![attribute_value_id],
+            )
+            .await;
+
         Ok(())
     }
 

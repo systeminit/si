@@ -1,5 +1,5 @@
 <template>
-  <div class="inset-0 absolute">
+  <div class="inset-0 absolute asset-palette">
     <template v-if="schemasReqStatus.isPending">
       <div class="w-full p-lg flex flex-col gap-2 items-center">
         <Icon name="loader" size="2xl" />

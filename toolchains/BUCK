@@ -1,3 +1,4 @@
+load(":toolchain.bzl", "toolchain_alias")
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load(
@@ -45,9 +46,40 @@ system_python_bootstrap_toolchain(
 )
 
 system_rust_toolchain(
-    name = "rust",
+    name = "rust_release",
     default_edition = "2021",
     clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_flags = [
+        "-Copt-level=3",
+        "-Cdebuginfo=none",
+        "-Cdebug-assertions=false",
+        "-Coverflow-checks=false",
+        "-Clto=false",
+        "-Ccodegen-units=16"
+    ]
+)
+
+system_rust_toolchain(
+    name = "rust_debug",
+    default_edition = "2021",
+    clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_flags = [
+        "-Copt-level=0",
+        "-Cdebuginfo=full",
+        "-Ccodegen-units=256",
+        "-Cdebug-assertions=true",
+        "-Coverflow-checks=true",
+    ]
+)
+
+toolchain_alias(
+    name = "rust",
+    actual = select({
+        "root//config:build_debug": ":rust_debug",
+        "root//config:build_release": ":rust_release",
+    }),
     visibility = ["PUBLIC"],
 )
 

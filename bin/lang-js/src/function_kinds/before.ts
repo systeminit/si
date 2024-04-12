@@ -21,7 +21,6 @@ export type BeforeResultFailure = ResultFailure;
 
 export type BeforeResult = BeforeResultSuccess | BeforeResultFailure;
 
-// TODO Implement execute and wrap code for Before funcs
 async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,

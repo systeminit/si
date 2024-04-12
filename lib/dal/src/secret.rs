@@ -29,8 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_pg::PgError;
-use si_events::ContentHash;
-use si_events::EncryptedSecretKey;
+use si_events::{ulid::Ulid, ContentHash, EncryptedSecretKey};
 use si_hash::Hash;
 use si_layer_cache::LayerDbError;
 use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
@@ -39,7 +38,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use thiserror::Error;
-use ulid::Ulid;
 use veritech_client::SensitiveContainer;
 
 use crate::key_pair::KeyPairPk;
@@ -49,14 +47,15 @@ use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, ChangeSetError, DalContext, HistoryActor, HistoryEventError, KeyPair, KeyPairError,
-    SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
+    id, implement_add_edge_to, ChangeSetError, DalContext, HelperError, HistoryActor,
+    HistoryEventError, KeyPair, KeyPairError, SchemaVariantError, StandardModelError, Timestamp,
+    TransactionsError, UserPk,
 };
 
 mod algorithm;
@@ -88,6 +87,8 @@ pub enum SecretError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("encrypted secret not found for corresponding secret: {0}")]
     EncryptedSecretNotFound(SecretId),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("key pair error: {0}")]
@@ -169,6 +170,14 @@ impl Secret {
         }
     }
 
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: SecretId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SecretResult,
+    );
+
     /// Creates a new [`Secret`] with a corresponding [`EncryptedSecret`].
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
@@ -223,13 +232,13 @@ impl Secret {
         let secret_category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::Secret)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                secret_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
+        Self::add_category_edge(
+            ctx,
+            secret_category_id,
+            id.into(),
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         let secret = Self::assemble(secret_id, content);
 

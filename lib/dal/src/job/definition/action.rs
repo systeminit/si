@@ -1,37 +1,37 @@
 use std::{collections::HashMap, collections::VecDeque, convert::TryFrom};
 
 use async_trait::async_trait;
-use futures::{stream::FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    action::runner::ActionRunnerError,
-    func::backend::js_action::ActionRunResult,
+    deprecated_action::runner::DeprecatedActionRunnerError,
+    func::backend::js_action::DeprecatedActionRunResult,
     job::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionBatch, ActionBatchId, ActionCompletionStatus, ActionKind, ActionPrototype,
-    ActionPrototypeId, ActionRunner, ActionRunnerId, Component, ComponentId, DalContext,
-    Visibility, WsEvent,
+    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, ComponentId, DalContext,
+    DeprecatedActionBatch, DeprecatedActionBatchId, DeprecatedActionKind,
+    DeprecatedActionPrototype, DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionRunnerItem {
-    pub id: ActionRunnerId,
+    pub id: DeprecatedActionRunnerId,
     pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
-    pub parents: Vec<ActionRunnerId>,
+    pub parents: Vec<DeprecatedActionRunnerId>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ActionsJobArgs {
-    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
+    actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
     started: bool,
 }
 
@@ -47,9 +47,9 @@ impl From<ActionsJob> for ActionsJobArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ActionsJob {
-    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
+    actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
     started: bool,
-    batch_id: ActionBatchId,
+    batch_id: DeprecatedActionBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
@@ -58,16 +58,16 @@ pub struct ActionsJob {
 impl ActionsJob {
     pub fn new(
         ctx: &DalContext,
-        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-        batch_id: ActionBatchId,
+        actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+        batch_id: DeprecatedActionBatchId,
     ) -> Box<Self> {
         Self::new_raw(ctx, actions, batch_id, false)
     }
 
     fn new_raw(
         ctx: &DalContext,
-        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
-        batch_id: ActionBatchId,
+        actions: HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+        batch_id: DeprecatedActionBatchId,
         started: bool,
     ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
@@ -121,7 +121,7 @@ impl JobConsumer for ActionsJob {
 
         // Mark the batch as started if it has not been yet.
         if !self.started {
-            let mut batch = ActionBatch::get_by_id(ctx, self.batch_id).await?;
+            let mut batch = DeprecatedActionBatch::get_by_id(ctx, self.batch_id).await?;
             batch.stamp_started(ctx).await?;
         }
 
@@ -142,7 +142,6 @@ impl JobConsumer for ActionsJob {
                     action_items.push(item.clone());
                 }
             }
-            let should_blocking_commit = actions.len() != action_items.len();
 
             debug!(
                 ?actions,
@@ -171,81 +170,44 @@ impl JobConsumer for ActionsJob {
                 break;
             }
 
-            let mut handles = FuturesUnordered::new();
-
-            // So we don't keep an open transaction while the tasks run, each task has its own transaction
-            // Block just in case
-            ctx.blocking_commit().await?;
-            ctx.update_snapshot_to_visibility().await?;
-
             for action_item in action_items {
-                let task_ctx = ctx
-                    .to_builder()
-                    .build(self.access_builder().build(self.visibility()))
-                    .await?;
-                handles.push(async move {
-                    let id = action_item.id;
-                    let res = tokio::task::spawn(action_task(
-                        task_ctx,
-                        self.batch_id,
-                        action_item,
-                        Span::current(),
-                        should_blocking_commit,
-                    ))
-                    .await;
-                    (id, res)
-                });
-            }
+                let id = action_item.id;
 
-            while let Some((id, future_result)) = handles.next().await {
-                match future_result {
-                    Ok(job_consumer_result) => match job_consumer_result {
-                        Ok((action, logs)) => {
-                            debug!(?action, ?logs, "action job completed");
-                            let completion_status: ActionCompletionStatus = action
-                                .completion_status
-                                .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
-                            if !matches!(completion_status, ActionCompletionStatus::Success) {
-                                process_failed_action(
-                                    ctx,
-                                    &mut actions,
-                                    self.batch_id,
-                                    id,
-                                    action.completion_message
-                                        .as_ref()
-                                        .map(ToOwned::to_owned)
-                                        .unwrap_or_else(|| {
-                                            format!(
-                                                "Action failed with unknown error: {completion_status}"
-                                            )
-                                        }),
-                                    logs,
-                                )
-                                .await;
-                                continue;
-                            }
-
-                            actions.remove(&id);
-
-                            for action in actions.values_mut() {
-                                action.parents.retain(|parent_id| *parent_id != id);
-                            }
-                        }
-                        Err(err) => {
-                            error!("Unable to finish action {id}: {err}");
+                match action_task(ctx, self.batch_id, action_item, Span::current()).await {
+                    Ok((action, logs)) => {
+                        debug!(?action, ?logs, "action job completed");
+                        let completion_status: ActionCompletionStatus = action
+                            .completion_status
+                            .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
+                        if !matches!(completion_status, ActionCompletionStatus::Success) {
                             process_failed_action(
                                 ctx,
                                 &mut actions,
                                 self.batch_id,
                                 id,
-                                format!("Action failed: {err}"),
-                                Vec::new(),
+                                action
+                                    .completion_message
+                                    .as_ref()
+                                    .map(ToOwned::to_owned)
+                                    .unwrap_or_else(|| {
+                                        format!(
+                                            "Action failed with unknown error: {completion_status}"
+                                        )
+                                    }),
+                                logs,
                             )
                             .await;
+                            continue;
                         }
-                    },
+
+                        actions.remove(&id);
+
+                        for action in actions.values_mut() {
+                            action.parents.retain(|parent_id| *parent_id != id);
+                        }
+                    }
                     Err(err) => {
-                        error!(?err, "Failed a action due to an error");
+                        error!("Unable to finish action {id}: {err}");
                         process_failed_action(
                             ctx,
                             &mut actions,
@@ -255,25 +217,9 @@ impl JobConsumer for ActionsJob {
                             Vec::new(),
                         )
                         .await;
-
-                        match err.try_into_panic() {
-                            Ok(panic) => {
-                                std::panic::resume_unwind(panic);
-                            }
-                            Err(err) => {
-                                if err.is_cancelled() {
-                                    warn!("ActionRunner Task {id} was cancelled: {err}");
-                                } else {
-                                    error!("Unknown failure in action task {id}: {err}");
-                                }
-                            }
-                        }
                     }
                 }
             }
-
-            ctx.commit().await?;
-            ctx.update_snapshot_to_visibility().await?;
 
             if actions.is_empty() {
                 finish_batch(ctx, self.batch_id).await?;
@@ -281,7 +227,8 @@ impl JobConsumer for ActionsJob {
             }
         }
 
-        ctx.commit().await?;
+        // This is the only moment we should rebase, once all the actions have executed!
+        ctx.blocking_commit().await?;
         ctx.update_snapshot_to_visibility().await?;
 
         Ok(())
@@ -305,16 +252,14 @@ impl TryFrom<JobInfo> for ActionsJob {
     }
 }
 
-async fn finish_batch(ctx: &mut DalContext, id: ActionBatchId) -> JobConsumerResult<()> {
+async fn finish_batch(ctx: &mut DalContext, id: DeprecatedActionBatchId) -> JobConsumerResult<()> {
     // Mark the batch as completed.
-    let mut batch = ActionBatch::get_by_id(ctx, id).await?;
+    let mut batch = DeprecatedActionBatch::get_by_id(ctx, id).await?;
     let batch_completion_status = batch.stamp_finished(ctx).await?;
     WsEvent::action_batch_return(ctx, batch.id, batch_completion_status)
         .await?
         .publish_on_commit(ctx)
         .await?;
-    ctx.commit().await?;
-    ctx.update_snapshot_to_visibility().await?;
     Ok(())
 }
 
@@ -329,21 +274,17 @@ async fn finish_batch(ctx: &mut DalContext, id: ActionBatchId) -> JobConsumerRes
     )
 )]
 async fn action_task(
-    mut ctx: DalContext,
-    batch_id: ActionBatchId,
+    ctx: &DalContext,
+    batch_id: DeprecatedActionBatchId,
     action_item: ActionRunnerItem,
     parent_span: Span,
-    should_blocking_commit: bool,
-) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
-    // Get the workflow for the action we need to run.
-    let component = Component::get_by_id(&ctx, action_item.component_id).await?;
-
+) -> JobConsumerResult<(DeprecatedActionRunner, Vec<String>)> {
     // Run the action (via the action prototype).
-    let mut action = ActionRunner::get_by_id(&ctx, action_item.id).await?;
-    let resource = action.run(&ctx).await?;
+    let mut action = DeprecatedActionRunner::get_by_id(ctx, action_item.id).await?;
+    let resource = action.run(ctx).await?;
     let completion_status: ActionCompletionStatus = action
         .completion_status
-        .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
+        .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
 
     let logs: Vec<_> = match resource {
         Some(r) => r
@@ -356,7 +297,7 @@ async fn action_task(
     };
 
     WsEvent::action_return(
-        &ctx,
+        ctx,
         action.id,
         batch_id,
         action.action_kind,
@@ -364,32 +305,8 @@ async fn action_task(
         logs.clone(),
     )
     .await?
-    .publish_on_commit(&ctx)
+    .publish_on_commit(ctx)
     .await?;
-
-    // Commit progress so far, and wait for dependent values propagation so we can run
-    // consecutive actions that depend on the /root/resource from the previous action.
-    // `blocking_commit()` will wait for any jobs that have ben created through
-    // `enqueue_job(...)` to finish before moving on.
-    if should_blocking_commit {
-        ctx.blocking_commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-    } else {
-        if ctx.blocking() {
-            warn!("Blocked on commit that should not block of action definition");
-        }
-        ctx.commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-    }
-
-    if matches!(completion_status, ActionCompletionStatus::Success) {
-        if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
-            error!("Unable to refresh component: {err}");
-        }
-        if let Err(err) = ctx.blocking_commit().await {
-            error!("Unable to blocking commit after component refresh: {err}");
-        }
-    }
 
     Ok((action, logs))
 }
@@ -397,9 +314,9 @@ async fn action_task(
 #[instrument(name = "actions_job.process_failed_action", skip_all, level = "info")]
 async fn process_failed_action(
     ctx: &DalContext,
-    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
-    failed_action_id: ActionRunnerId,
+    actions: &mut HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
+    failed_action_id: DeprecatedActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) {
@@ -424,9 +341,9 @@ async fn process_failed_action(
 )]
 async fn process_failed_action_inner(
     ctx: &DalContext,
-    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
-    batch_id: ActionBatchId,
-    failed_action_id: ActionRunnerId,
+    actions: &mut HashMap<DeprecatedActionRunnerId, ActionRunnerItem>,
+    batch_id: DeprecatedActionBatchId,
+    failed_action_id: DeprecatedActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) -> JobConsumerResult<()> {
@@ -437,9 +354,9 @@ async fn process_failed_action_inner(
         info!(%id, "processing failed action");
         actions.remove(&id);
 
-        let mut action = ActionRunner::get_by_id(ctx, id).await?;
+        let mut action = DeprecatedActionRunner::get_by_id(ctx, id).await?;
         // If this was a delete, we need to un-delete ourselves.
-        if matches!(action.action_kind, ActionKind::Delete) {
+        if matches!(action.action_kind, DeprecatedActionKind::Delete) {
             // Component::restore_and_propagate(ctx, action.component_id).await?;
         }
 
@@ -448,7 +365,7 @@ async fn process_failed_action_inner(
         }
 
         if action.finished_at.is_none() {
-            let resource = ActionRunResult {
+            let resource = DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Error),
                 payload: action.resource.clone().and_then(|r| r.payload),
                 message: Some(err.clone()),
@@ -466,7 +383,8 @@ async fn process_failed_action_inner(
                 .await?;
         }
 
-        let prototype = ActionPrototype::get_by_id(ctx, action.action_prototype_id).await?;
+        let prototype =
+            DeprecatedActionPrototype::get_by_id_or_error(ctx, action.action_prototype_id).await?;
 
         WsEvent::action_return(
             ctx,
@@ -491,8 +409,6 @@ async fn process_failed_action_inner(
             }
         }
     }
-
-    ctx.commit().await?;
 
     Ok(())
 }

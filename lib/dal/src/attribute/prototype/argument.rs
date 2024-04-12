@@ -13,18 +13,18 @@ use ulid::Ulid;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
-    pk,
+    id, implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        edge_weight::{EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
         node_weight::{
             AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
             NodeWeightError,
         },
         WorkspaceSnapshotError,
     },
-    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext,
+    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
     OutputSocketId, PropId, Timestamp, TransactionsError,
 };
 
@@ -40,7 +40,7 @@ use super::AttributePrototypeError;
 pub mod static_value;
 pub mod value_source;
 
-pk!(AttributePrototypeArgumentId);
+id!(AttributePrototypeArgumentId);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -55,6 +55,8 @@ pub enum AttributePrototypeArgumentError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("Destination prototype {0} has no function arguments")]
     InterComponentDestinationPrototypeHasNoFuncArgs(AttributePrototypeId),
     #[error("Destination prototype {0} has more than one function argument")]
@@ -157,6 +159,14 @@ impl AttributePrototypeArgument {
         })
     }
 
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: FuncArgumentId,
+        add_fn: add_edge_to_func_argument,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: AttributePrototypeArgumentResult,
+    );
+
     pub async fn get_by_id(
         ctx: &DalContext,
         id: AttributePrototypeArgumentId,
@@ -184,25 +194,21 @@ impl AttributePrototypeArgument {
 
         workspace_snapshot.add_node(node_weight.clone()).await?;
 
-        workspace_snapshot
-            .add_edge(
-                prototype_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
-                id,
-            )
-            .await?;
+        AttributePrototype::add_edge_to_argument(
+            ctx,
+            prototype_id,
+            id.into(),
+            EdgeWeightKind::PrototypeArgument,
+        )
+        .await?;
 
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                arg_id,
-            )
-            .await?;
-
-        Ok(node_weight
+        let argument: Self = node_weight
             .get_attribute_prototype_argument_node_weight()?
-            .into())
+            .into();
+        Self::add_edge_to_func_argument(ctx, argument.id, arg_id, EdgeWeightKind::new_use())
+            .await?;
+
+        Ok(argument)
     }
 
     pub async fn new_inter_component(
@@ -242,25 +248,25 @@ impl AttributePrototypeArgument {
 
             workspace_snapshot.add_node(node_weight.clone()).await?;
 
-            workspace_snapshot
-                .add_edge(
-                    destination_attribute_prototype_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
-                    id,
-                )
-                .await?;
+            AttributePrototype::add_edge_to_argument(
+                ctx,
+                destination_attribute_prototype_id,
+                id.into(),
+                EdgeWeightKind::PrototypeArgument,
+            )
+            .await?;
 
             let prototype_arg: Self = node_weight
                 .get_attribute_prototype_argument_node_weight()?
                 .into();
 
-            workspace_snapshot
-                .add_edge(
-                    prototype_arg.id(),
-                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                    func_arg_id,
-                )
-                .await?;
+            Self::add_edge_to_func_argument(
+                ctx,
+                prototype_arg.id,
+                *func_arg_id,
+                EdgeWeightKind::new_use(),
+            )
+            .await?;
 
             prototype_arg
         };
@@ -381,16 +387,24 @@ impl AttributePrototypeArgument {
                 .await?;
         }
 
-        workspace_snapshot
-            .add_edge(
-                self.id,
-                EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgumentValue)?,
-                value_id,
-            )
-            .await?;
+        Self::add_edge_to_value(
+            ctx,
+            self.id,
+            value_id,
+            EdgeWeightKind::PrototypeArgumentValue,
+        )
+        .await?;
 
         Ok(self)
     }
+
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: Ulid,
+        add_fn: add_edge_to_value,
+        discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        result: AttributePrototypeArgumentResult,
+    );
 
     pub async fn prototype_id_for_argument_id(
         ctx: &DalContext,

@@ -6,7 +6,7 @@ use serde_json::Value;
 use veritech_client::ResourceStatus;
 
 use crate::component::ComponentResult;
-use crate::func::backend::js_action::ActionRunResult;
+use crate::func::backend::js_action::DeprecatedActionRunResult;
 use crate::{Component, ComponentId, DalContext};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -30,7 +30,7 @@ impl ResourceView {
         Ok(resource)
     }
 
-    pub fn assemble(result: ActionRunResult) -> ComponentResult<Self> {
+    pub fn assemble(result: DeprecatedActionRunResult) -> ComponentResult<Self> {
         let payload: Value = match result.payload {
             Some(payload) => serde_json::from_str::<Value>(&payload)?,
             None => Value::Null,

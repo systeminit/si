@@ -1,7 +1,7 @@
 use si_pkg::SiPkg;
 use telemetry::prelude::*;
 
-use crate::installed_pkg::InstalledPkg;
+use crate::module::Module;
 use crate::pkg::{import_pkg_from_pkg, ImportOptions};
 use crate::{BuiltinsError, BuiltinsResult, DalContext};
 
@@ -17,7 +17,7 @@ pub async fn migrate_pkg(
     let pkg = SiPkg::load_from_file(pkg_path).await?;
 
     let root_hash = pkg.hash()?.to_string();
-    if InstalledPkg::find_by_hash(ctx, &root_hash).await?.is_none() {
+    if Module::find_by_root_hash(ctx, root_hash).await?.is_none() {
         import_pkg_from_pkg(
             ctx,
             &pkg,

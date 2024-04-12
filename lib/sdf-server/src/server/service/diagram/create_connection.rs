@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,8 +30,8 @@ pub struct CreateConnectionResponse {
 pub async fn create_connection(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -46,23 +47,20 @@ pub async fn create_connection(
     )
     .await?;
 
-    // TODO(nick): restore posthog, but with new, relevant fields.
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "connection_created",
-    //     serde_json::json!({
-    //                 "from_node_id": request.from_node_id,
-    //                 "from_node_schema_name": &from_component_schema.name(),
-    //                 "from_socket_id": request.from_socket_id,
-    //                 "from_socket_name": &from_socket.name(),
-    //                 "to_node_id": request.to_node_id,
-    //                 "to_node_schema_name": &to_component_schema.name(),
-    //                 "to_socket_id": request.to_socket_id,
-    //                 "to_socket_name":  &to_socket.name(),
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "create_connection",
+        serde_json::json!({
+            "how": "/diagram/create_connection",
+            "from_component_id": request.from_component_id,
+            "from_socket_id": request.from_socket_id,
+            "to_component_id": request.to_component_id,
+            "to_socket_id": request.to_socket_id,
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
 
     ctx.commit().await?;
 

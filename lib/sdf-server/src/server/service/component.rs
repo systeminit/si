@@ -4,12 +4,17 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
-use dal::validation::resolver::ValidationResolverError;
-use dal::{attribute::value::debug::AttributeDebugViewError, component::ComponentId};
+use dal::validation::ValidationError;
+use dal::{
+    attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId, WsEventError,
+};
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
-use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
+use dal::{
+    ComponentError as DalComponentError, DeprecatedActionPrototypeError, StandardModelError,
+};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -18,7 +23,6 @@ pub mod delete_property_editor_value;
 pub mod get_actions;
 pub mod get_diff;
 pub mod get_property_editor_schema;
-pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod get_resource;
 pub mod insert_property_editor_value;
@@ -37,7 +41,7 @@ pub mod set_type;
 #[derive(Debug, Error)]
 pub enum ComponentError {
     #[error("action prototype: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     // #[error("attribute context builder error: {0}")]
     // AttributeContextBuilder(#[from] AttributeContextBuilderError),
     // #[error("attribute prototype error: {0}")]
@@ -92,12 +96,12 @@ pub enum ComponentError {
     NotFound(ComponentId),
     // #[error(transparent)]
     // Pg(#[from] si_data_pg::PgError),
-    // #[error(transparent)]
-    // Prop(#[from] PropError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     #[error("property editor error: {0}")]
     PropertyEditor(#[from] PropertyEditorError),
-    // #[error("prop not found for id: {0}")]
-    // PropNotFound(PropId),
+    #[error("prop not found for id: {0}")]
+    PropNotFound(PropId),
     // #[error("reconciliation prototype: {0}")]
     // ReconciliationPrototype(#[from] ReconciliationPrototypeError),
     // #[error("can't delete attribute value for root prop")]
@@ -116,10 +120,10 @@ pub enum ComponentError {
     // SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
-    // #[error("ws event error: {0}")]
-    // WsEvent(#[from] WsEventError),
     #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
+    ValidationResolver(#[from] ValidationError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
@@ -151,10 +155,6 @@ pub fn routes() -> Router<AppState> {
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
         )
-        //.route(
-        //            "/get_property_editor_validations",
-        //            get(get_property_editor_validations::get_property_editor_validations),
-        //        )
         .route(
             "/list_qualifications",
             get(list_qualifications::list_qualifications),

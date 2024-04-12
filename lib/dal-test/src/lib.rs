@@ -21,13 +21,13 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::CaCacheTempFile;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 use veritech_client::CycloneEncryptionKey;
-use veritech_server::StandardConfig;
 
 pub use color_eyre::{
     self,
@@ -214,8 +214,8 @@ pub struct TestContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// The pg_pool for the layer db
     layer_db_pg_pool: PgPool,
-    /// The sled path for the layer db
-    layer_db_sled_path: String,
+    /// The disk cache path for the layer db
+    layer_db_cache_path: CaCacheTempFile,
 }
 
 impl TestContext {
@@ -290,7 +290,7 @@ impl TestContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
-            self.layer_db_sled_path.clone(),
+            self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             token,
@@ -398,7 +398,7 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
             layer_db_pg_pool,
-            layer_db_sled_path: si_layer_cache::disk_cache::default_sled_path()?.to_string(),
+            layer_db_cache_path: si_layer_cache::disk_cache::default_cacache_path()?,
         })
     }
 
@@ -495,16 +495,6 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
     Ok(key_pair)
 }
 
-/// Configures and builds a [`council_server::Server`] suitable for running alongside DAL object-related
-/// tests.
-pub async fn council_server(nats_config: NatsConfig) -> Result<council_server::Server> {
-    let config = council_server::server::Config::builder()
-        .nats(nats_config)
-        .build()?;
-    let server = council_server::Server::new_with_config(config).await?;
-    Ok(server)
-}
-
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::Server> {
@@ -582,18 +572,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let services_ctx = test_context
         .create_services_context(token.clone(), traker.clone())
         .await;
-
-    // Create a dedicated Council server with a unique subject prefix for each test
-    let council_server = council_server(test_context.config.nats.clone()).await?;
-    let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
-    let (subscriber_started_tx, mut subscriber_started_rx) = tokio::sync::watch::channel(());
-    tokio::spawn(async move {
-        council_server
-            .run(subscriber_started_tx, shutdown_request_rx)
-            .await
-            .unwrap()
-    });
-    subscriber_started_rx.changed().await?;
 
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");
@@ -702,9 +680,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
 
-    info!("shutting down initial migrations Council server");
-    council_shutdown_request_tx.send(())?;
-
     // Cancel and wait for all outstanding tasks to complete
     token.cancel();
     traker.wait().await;
@@ -758,6 +733,9 @@ async fn migrate_local_builtins(
     schemas::migrate_test_exclusive_schema_katy_perry(&ctx).await?;
     schemas::migrate_test_exclusive_schema_pirate(&ctx).await?;
     schemas::migrate_test_exclusive_schema_pet_shop(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_validated_input(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_validated_output(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_bad_validations(&ctx).await?;
 
     ctx.blocking_commit().await?;
 

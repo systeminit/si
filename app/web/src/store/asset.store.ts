@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { FuncVariant } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
@@ -35,20 +35,20 @@ export interface InstalledPkgAssetView {
 
 export type DetachedAttributePrototypeKind =
   | {
-      type: "ExternalProviderSocket";
+      type: "OutputSocketSocket";
       data: {
         name: string;
         kind: "ConfigurationInput" | "ConfigurationOutput";
       };
     }
   | {
-      type: "InternalProviderSocket";
+      type: "InputSocketSocket";
       data: {
         name: string;
         kind: "ConfigurationInput" | "ConfigurationOutput";
       };
     }
-  | { type: "InternalProviderProp"; data: { path: string; kind: PropKind } }
+  | { type: "InputSocketProp"; data: { path: string; kind: PropKind } }
   | { type: "Prop"; data: { path: string; kind: PropKind } };
 
 export interface DetachedAttributePrototype {
@@ -56,7 +56,7 @@ export interface DetachedAttributePrototype {
   funcId: FuncId;
   funcName: string;
   key: string | null;
-  variant: FuncVariant;
+  kind: FuncKind;
   context: DetachedAttributePrototypeKind;
 }
 
@@ -135,7 +135,7 @@ export const useAssetStore = () => {
         detachmentWarnings: [] as {
           message: string;
           funcId: FuncId;
-          variant?: FuncVariant;
+          kind?: FuncKind;
         }[],
       }),
       getters: {
@@ -414,12 +414,6 @@ export const useAssetStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            callback: () => {
-              this.LOAD_ASSET_LIST();
-            },
-          },
-          {
             eventType: "SchemaVariantCreated",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
@@ -490,21 +484,21 @@ export const useAssetStore = () => {
 
                 for (const detached of detachedAttributePrototypes) {
                   if (
-                    detached.context.type === "ExternalProviderSocket" ||
-                    detached.context.type === "InternalProviderSocket"
+                    detached.context.type === "OutputSocketSocket" ||
+                    detached.context.type === "InputSocketSocket"
                   ) {
                     this.detachmentWarnings.push({
                       funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
+                      kind: detached.kind ?? undefined,
                       message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
                     });
                   } else if (
-                    detached.context.type === "InternalProviderProp" ||
+                    detached.context.type === "InputSocketProp" ||
                     detached.context.type === "Prop"
                   ) {
                     this.detachmentWarnings.push({
                       funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
+                      kind: detached.kind ?? undefined,
                       message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
                     });
                   }

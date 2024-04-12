@@ -112,7 +112,7 @@ export const useWorkspacesStore = () => {
         async BEGIN_APPROVAL_PROCESS(moduleId: ModuleId) {
           return new ApiRequest({
             method: "post",
-            url: "/pkg/begin_approval_process",
+            url: "/module/begin_approval_process",
             params: {
               id: moduleId,
               ...visibility,
@@ -126,7 +126,7 @@ export const useWorkspacesStore = () => {
           this.importError = undefined;
           return new ApiRequest<{ id: string }>({
             method: "post",
-            url: "/pkg/install_pkg",
+            url: "/module/install_module",
             params: {
               id: moduleId,
               ...visibility,
@@ -145,7 +145,7 @@ export const useWorkspacesStore = () => {
           this.workspaceImportSummary = null;
           return new ApiRequest({
             method: "post",
-            url: "/pkg/cancel_approval_process",
+            url: "/module/cancel_approval_process",
             params: {
               ...visibility,
             },
@@ -157,7 +157,7 @@ export const useWorkspacesStore = () => {
         async IMPORT_WORKSPACE_VOTE(vote: string) {
           return new ApiRequest({
             method: "post",
-            url: "pkg/import_workspace_vote",
+            url: "/module/import_workspace_vote",
             params: {
               vote,
               ...visibility,

@@ -7,12 +7,13 @@ use ulid::Ulid;
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
+use crate::schema::variant::SchemaVariantCreatedPayload;
 use crate::user::OnlinePayload;
 use crate::{
-    action::prototype::ResourceRefreshedPayload,
-    action::{
-        batch::ActionBatchReturn, runner::ActionRunnerReturn, ActionAddedPayload,
-        ActionRemovedPayload,
+    deprecated_action::prototype::ResourceRefreshedPayload,
+    deprecated_action::{
+        batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn,
+        DeprecatedActionAddedPayload, DeprecatedActionRemovedPayload,
     },
     func::binding::LogLinePayload,
     pkg::ModuleImportedPayload,
@@ -47,10 +48,6 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ActionAdded(ActionAddedPayload),
-    ActionBatchReturn(ActionBatchReturn),
-    ActionRemoved(ActionRemovedPayload),
-    ActionRunnerReturn(ActionRunnerReturn),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
@@ -65,20 +62,23 @@ pub enum WsPayload {
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
     ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
-    // CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
+    DeprecatedActionAdded(DeprecatedActionAddedPayload),
+    DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),
+    DeprecatedActionRemoved(DeprecatedActionRemovedPayload),
+    DeprecatedActionRunnerReturn(ActionRunnerReturn),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
-    // SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
-    // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
-    // SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
-    // SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
+    // SchemaVariantCloned(SchemaVariantClonedPayload),
+    SchemaVariantCreated(SchemaVariantCreatedPayload),
+    // SchemaVariantFinished(FinishSchemaVariantPayload),
+    // SchemaVariantSaved(SchemaVariantSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
     // StatusUpdate(StatusMessage),
@@ -132,6 +132,10 @@ impl WsEvent {
 
     pub fn workspace_pk(&self) -> WorkspacePk {
         self.workspace_pk
+    }
+
+    pub fn set_workspace_pk(&mut self, workspace_pk: WorkspacePk) {
+        self.workspace_pk = workspace_pk;
     }
 
     fn workspace_subject(&self) -> String {

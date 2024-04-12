@@ -35,9 +35,9 @@ impl OpenChangeSetsView {
                 name: change_set.name,
                 status: change_set.status,
                 base_change_set_id: change_set.base_change_set_id,
-                merge_requested_at: None,           // cs.merge_requested_at,
-                merge_requested_by_user_id: None,   // cs.merge_requested_by_user_id,
-                abandon_requested_at: None,         // cs.abandon_requested_at,
+                merge_requested_at: None, // cs.merge_requested_at,
+                merge_requested_by_user_id: change_set.merge_requested_by_user_id,
+                abandon_requested_at: None, // cs.abandon_requested_at,
                 abandon_requested_by_user_id: None, // cs.abandon_requested_by_user_id,
             });
         }

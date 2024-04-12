@@ -84,7 +84,7 @@ pub struct Config {
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
-    layer_cache_sled_path: CanonicalFile,
+    layer_cache_disk_path: PathBuf,
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -165,8 +165,8 @@ impl Config {
     }
 
     #[must_use]
-    pub fn layer_cache_sled_path(&self) -> &Path {
-        self.layer_cache_sled_path.as_path()
+    pub fn layer_cache_disk_path(&self) -> &Path {
+        self.layer_cache_disk_path.as_path()
     }
 }
 
@@ -246,7 +246,7 @@ impl TryFrom<ConfigFile> for Config {
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_sled_path = Some(si_layer_cache::default_sled_path()?);
+        config.layer_cache_disk_path = Some(si_layer_cache::default_cache_path_for_service("sdf"));
         config.build().map_err(Into::into)
     }
 }

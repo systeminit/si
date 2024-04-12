@@ -116,7 +116,7 @@
               size="sm"
               tone="success"
               loadingText="Abandoning Change Set"
-              label="Override Approval And Abandon"
+              label="Abandon Change Set"
               :requestStatus="abandonChangeSetReqStatus"
               :disabled="statusStoreUpdating"
               @click="overrideAbandonChangesetHandler"
@@ -416,7 +416,15 @@ function onSelectChangeSet(newVal: string) {
   }
 
   if (newVal && route.name) {
-    if (newVal === changeSetsStore.headChangeSetId) newVal = "head";
+    // do not allow people to navigate to a changeset that NeedsApproval
+    // unless they were the one that initiated the merge request (avoids dead end)
+    if (
+      changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open &&
+      changeSetsStore.changeSetsById[newVal]?.mergeRequestedByUserId !==
+        authStore.user?.pk
+    ) {
+      return;
+    }
 
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry

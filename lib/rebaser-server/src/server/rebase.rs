@@ -1,16 +1,12 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{
-    DalContext, Tenancy, TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshot, WsEvent,
-    WsEventError,
-};
+use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
 use si_layer_cache::activities::rebase::RebaseStatus;
-use si_layer_cache::activities::AckRebaseRequest;
+use si_layer_cache::activities::ActivityRebaseRequest;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
-use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -35,7 +31,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 
 pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
-    message: &AckRebaseRequest,
+    message: &ActivityRebaseRequest,
 ) -> RebaseResult<RebaseStatus> {
     let start = Instant::now();
     // Gather everything we need to detect conflicts and updates from the inbound message.
@@ -60,11 +56,6 @@ pub(crate) async fn perform_rebase(
         onto_workspace_snapshot.id().await
     );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());
-
-    // Let NATS know we are still working
-    let _ = message
-        .ack_with(si_layer_cache::activities::AckKind::Progress)
-        .await;
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
@@ -122,21 +113,6 @@ pub(crate) async fn perform_rebase(
 
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;
-
-    let change_set_ulid: Ulid = to_rebase_change_set.id.into();
-
-    let to_rebase_ctx = ctx
-        .clone_with_new_visibility(Visibility::new(change_set_ulid.into()))
-        .clone_with_new_tenancy(Tenancy::new(
-            to_rebase_change_set
-                .workspace_id
-                .unwrap_or(WorkspacePk::NONE),
-        ));
-
-    WsEvent::change_set_written(&to_rebase_ctx)
-        .await?
-        .publish_immediately(&to_rebase_ctx)
-        .await?;
 
     Ok(message)
 }

@@ -8,9 +8,8 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-use ulid::Ulid;
 
-use si_events::ContentHash;
+use si_events::{ulid::Ulid, ContentHash};
 
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -31,18 +30,20 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, Action, ActionKind, ActionPrototype,
-    ActionPrototypeError, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
-    DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
-    Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
-    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
+    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
+    DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
+    DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
+    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -67,7 +68,7 @@ pub enum ComponentError {
     #[error("action error: {0}")]
     Action(String),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] Box<ActionPrototypeError>),
+    ActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -80,6 +81,8 @@ pub enum ComponentError {
     CodeView(#[from] CodeViewError),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
+    #[error("component {0} has no attribute value for the root/domain prop")]
+    ComponentMissingDomainValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
     ComponentMissingNameValue(ComponentId),
     #[error("component {0} has no attribute value for the root/resource prop")]
@@ -92,6 +95,8 @@ pub enum ComponentError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("helper error: {0}")]
+    Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
@@ -261,6 +266,49 @@ impl Component {
         Ok(None)
     }
 
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: SchemaVariantId,
+        add_fn: add_edge_to_schema_variant,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: ComponentId,
+        add_fn: add_edge_to_frame,
+        discriminant: EdgeWeightKindDiscriminants::FrameContains,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: ActionId,
+        add_fn: add_edge_to_deprecated_action,
+        discriminant: EdgeWeightKindDiscriminants::Action,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: AttributeValueId,
+        add_fn: add_edge_to_root_attribute_value,
+        discriminant: EdgeWeightKindDiscriminants::Root,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: AttributeValueId,
+        add_fn: add_edge_to_socket_attribute_value,
+        discriminant: EdgeWeightKindDiscriminants::SocketValue,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: Ulid,
+        destination_id: ComponentId,
+        add_fn: add_category_edge,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ComponentResult,
+    );
+
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -299,22 +347,13 @@ impl Component {
         let component_category_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::Component)
             .await?;
-        workspace_snapshot
-            .add_edge(
-                component_category_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                id,
-            )
-            .await?;
-
-        // Component (this) --> Schema Variant
-        workspace_snapshot
-            .add_edge(
-                id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                schema_variant_id,
-            )
-            .await?;
+        Self::add_category_edge(
+            ctx,
+            component_category_id,
+            id.into(),
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
 
         let mut attribute_values = vec![];
 
@@ -404,6 +443,15 @@ impl Component {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id.into()).await?;
         let component = Self::assemble(&node_weight, content);
 
+        // Component (this) --> Schema Variant
+        Component::add_edge_to_schema_variant(
+            ctx,
+            component.id,
+            schema_variant_id,
+            EdgeWeightKind::new_use(),
+        )
+        .await?;
+
         component.set_name(ctx, &name).await?;
 
         let component_graph = DependentValueGraph::for_values(ctx, attribute_values).await?;
@@ -415,12 +463,12 @@ impl Component {
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
-        for prototype in ActionPrototype::for_variant(ctx, schema_variant_id)
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
             .await
             .map_err(Box::new)?
         {
-            if prototype.kind == ActionKind::Create {
-                Action::upsert(ctx, prototype.id, component.id())
+            if prototype.kind == DeprecatedActionKind::Create {
+                DeprecatedAction::upsert(ctx, prototype.id, component.id())
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
             }
@@ -708,25 +756,10 @@ impl Component {
         Ok(())
     }
 
-    pub async fn act(&self, ctx: &DalContext, action: ActionKind) -> ComponentResult<()> {
-        let schema_variant = self.schema_variant(ctx).await?;
-
-        let action = ActionPrototype::for_variant(ctx, schema_variant.id())
-            .await
-            .map_err(Box::new)?
-            .into_iter()
-            .find(|p| p.kind == action);
-        if let Some(action) = action {
-            action.run(ctx, self.id()).await.map_err(Box::new)?;
-        }
-
-        Ok(())
-    }
-
     pub async fn set_resource(
         &self,
         ctx: &DalContext,
-        resource: ActionRunResult,
+        resource: DeprecatedActionRunResult,
     ) -> ComponentResult<()> {
         let av_for_resource = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
@@ -740,7 +773,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<ActionRunResult> {
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<DeprecatedActionRunResult> {
         let value_id = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
             .await?
@@ -752,7 +785,7 @@ impl Component {
 
         Ok(match av.materialized_view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
-            None => ActionRunResult::default(),
+            None => DeprecatedActionRunResult::default(),
         })
     }
 
@@ -905,6 +938,17 @@ impl Component {
         }
 
         Ok(result)
+    }
+
+    pub async fn domain_prop_attribute_value(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<AttributeValueId> {
+        self.attribute_values_for_prop(ctx, &["root", "domain"])
+            .await?
+            .first()
+            .cloned()
+            .ok_or(ComponentError::ComponentMissingDomainValue(self.id))
     }
 
     async fn values_for_all_sockets(
@@ -1132,7 +1176,7 @@ impl Component {
         while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
             let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
+            let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
             let this_tuple = ControllingFuncData {
                 func_id,
@@ -1369,6 +1413,13 @@ pub struct ComponentCreatedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpdatedPayload {
+    component_id: ComponentId,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn component_created(
         ctx: &DalContext,
@@ -1384,16 +1435,7 @@ impl WsEvent {
         )
         .await
     }
-}
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ComponentUpdatedPayload {
-    component_id: ComponentId,
-    change_set_id: ChangeSetId,
-}
-
-impl WsEvent {
     pub async fn component_updated(
         ctx: &DalContext,
         component_id: ComponentId,

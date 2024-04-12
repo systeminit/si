@@ -420,6 +420,7 @@ async fn install_builtins(
         match res {
             Ok(pkg) => {
                 let instant = Instant::now();
+
                 if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,

@@ -1,8 +1,8 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
+use dal::prop::PropPath;
 use dal::schema::variant::leaves::LeafKind;
-use dal::{pkg, prop::PropPath};
 use dal::{BuiltinsResult, DalContext};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
@@ -117,15 +117,7 @@ pub async fn migrate_test_exclusive_schema_dummy_secret(ctx: &DalContext) -> Bui
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        Some(pkg::ImportOptions {
-            schemas: Some(vec![name.into()]),
-            ..Default::default()
-        }),
-    )
-    .await?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(())
 }

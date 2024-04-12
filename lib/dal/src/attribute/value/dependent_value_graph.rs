@@ -1,5 +1,6 @@
 use petgraph::prelude::*;
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncWriteExt};
 use ulid::Ulid;
 
@@ -51,8 +52,24 @@ impl DependentValueGraph {
         > = HashMap::new();
         let mut dependent_value_graph = Self::new();
 
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
         let mut work_queue = VecDeque::from_iter(values);
         while let Some(current_attribute_value_id) = work_queue.pop_front() {
+            // It's possible that one or more of the initial AttributeValueIds provided by the enqueued DependentValuesUpdate job
+            // may have been removed from the snapshot between when the DVU job was created and when we're processing
+            // things now. This could happen if there are other modifications to the snapshot before the DVU job starts
+            // executing, as the job always operates on the current state of the change set's snapshot, not the state at the time
+            // the job was created.
+            if workspace_snapshot
+                .try_get_node_index_by_id(current_attribute_value_id)
+                .await?
+                .is_none()
+            {
+                debug!("Attribute Value {current_attribute_value_id} missing, skipping it in DependentValueGraph");
+                continue;
+            }
+
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value_id).await?;
 
@@ -66,7 +83,7 @@ impl DependentValueGraph {
                     let controlling_func_data =
                         Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
                             .await
-                            .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                            .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
                     let data = controlling_func_data
                         .get(&current_attribute_value_id)
                         .copied();
@@ -120,15 +137,11 @@ impl DependentValueGraph {
                                 let source_component =
                                     Component::get_by_id(ctx, targets.source_component_id)
                                         .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
+                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
                                 let destination_component =
                                     Component::get_by_id(ctx, targets.destination_component_id)
                                         .await
-                                        .map_err(|e| {
-                                            AttributeValueError::Component(e.to_string())
-                                        })?;
+                                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
                                 // Both "deleted" and not deleted Components can feed data into
                                 // "deleted" Components. **ONLY** not deleted Components can feed

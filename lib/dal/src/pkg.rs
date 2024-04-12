@@ -9,16 +9,17 @@ use crate::schema::variant::SchemaVariantError;
 use crate::{
     change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
-    installed_pkg::InstalledPkgError,
     prop::PropError,
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ActionPrototypeError, ChangeSetId, DalContext, FuncBackendKind, FuncBackendResponseType,
-    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
+    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncBackendKind,
+    FuncBackendResponseType, OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
+    WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncId, PropId, PropKind};
 
+use crate::module::ModuleError;
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
@@ -30,7 +31,7 @@ mod import;
 #[derive(Debug, Error)]
 pub enum PkgError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
@@ -55,8 +56,6 @@ pub enum PkgError {
     FuncNotFoundByName(String),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
-    #[error(transparent)]
-    InstalledPkg(#[from] InstalledPkgError),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
@@ -65,6 +64,8 @@ pub enum PkgError {
     MissingInputSocketName(String),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
+    #[error(transparent)]
+    Module(#[from] ModuleError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("output socket {0} missing attribute prototype")]
@@ -289,98 +290,98 @@ pub struct ModuleImportedPayload {
 //     name: String,
 // }
 //
-// impl WsEvent {
-//     pub async fn module_imported(
-//         ctx: &DalContext,
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::ModuleImported(ModuleImportedPayload { schema_variant_ids }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_imported(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImported(WorkspaceImportPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_exported(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceExported(WorkspaceExportPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn import_workspace_vote(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: UserPk,
-//         vote: String,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
-//                 workspace_pk,
-//                 user_pk,
-//                 vote,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_import_begin_approval_process(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//         workspace_export_created_at: DateTime<Utc>,
-//         workspace_export_created_by: String,
-//         workspace_export_name: String,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
-//                 workspace_pk,
-//                 user_pk,
-//                 created_at: workspace_export_created_at,
-//                 created_by: workspace_export_created_by,
-//                 name: workspace_export_name,
-//             }),
-//         )
-//         .await
-//     }
-//
-//     pub async fn workspace_import_cancel_approval_process(
-//         ctx: &DalContext,
-//         workspace_pk: Option<WorkspacePk>,
-//         user_pk: Option<UserPk>,
-//     ) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
-//                 workspace_pk,
-//                 user_pk,
-//             }),
-//         )
-//         .await
-//     }
-// }
+impl WsEvent {
+    pub async fn module_imported(
+        ctx: &DalContext,
+        schema_variant_ids: Vec<SchemaVariantId>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ModuleImported(ModuleImportedPayload { schema_variant_ids }),
+        )
+        .await
+    }
+    //
+    //     pub async fn workspace_imported(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImported(WorkspaceImportPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_exported(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceExported(WorkspaceExportPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn import_workspace_vote(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: UserPk,
+    //         vote: String,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //                 vote,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_import_begin_approval_process(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //         workspace_export_created_at: DateTime<Utc>,
+    //         workspace_export_created_by: String,
+    //         workspace_export_name: String,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //                 created_at: workspace_export_created_at,
+    //                 created_by: workspace_export_created_by,
+    //                 name: workspace_export_name,
+    //             }),
+    //         )
+    //         .await
+    //     }
+    //
+    //     pub async fn workspace_import_cancel_approval_process(
+    //         ctx: &DalContext,
+    //         workspace_pk: Option<WorkspacePk>,
+    //         user_pk: Option<UserPk>,
+    //     ) -> WsEventResult<Self> {
+    //         WsEvent::new(
+    //             ctx,
+    //             WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
+    //                 workspace_pk,
+    //                 user_pk,
+    //             }),
+    //         )
+    //         .await
+    //     }
+}

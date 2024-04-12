@@ -8,7 +8,6 @@ rust_library(
     name = "dal",
     deps = [
         "//lib/si-cbor:si-cbor",
-        "//lib/council-server:council-server",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
         "//lib/si-crypto:si-crypto",
@@ -52,7 +51,6 @@ rust_library(
         "//third-party/rust:serde-aux",
         "//third-party/rust:serde_json",
         "//third-party/rust:serde_with",
-        "//third-party/rust:sled",
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:strum",
         "//third-party/rust:thiserror",
@@ -64,8 +62,8 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
         "src/builtins/func/**",
-        "src/builtins/schema/data/**/*.json",
-        "src/builtins/schema/definitions/**/*.json",
+        "src/func/authoring/data/defaults/*.ts",
+        "src/func/authoring/data/ts_types/*.ts",
         "src/migrations/**/*.sql",
         "src/queries/**/*.sql",
     ]),

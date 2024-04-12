@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 use si_events::{CasValue, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 
+use crate::validation::ValidationStatus;
 use crate::{
     func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
-    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
-    ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
+    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionPrototypeId,
+    ComponentId, ComponentType, DeprecatedActionKind, FuncBackendKind, FuncBackendResponseType,
     FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
 };
 
@@ -22,21 +23,23 @@ use crate::{
 /// Add them to the *END* of the enum *ONLY*.
 #[derive(EnumDiscriminants, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum ContentTypes {
-    Action(ActionContent),
-    ActionBatch(ActionBatchContent),
-    ActionPrototype(ActionPrototypeContent),
-    ActionRunner(ActionRunnerContent),
     Any(CasValue),
     AttributePrototype(AttributePrototypeContent),
     Component(ComponentContent),
+    DeprecatedAction(DeprecatedActionContent),
+    DeprecatedActionBatch(DeprecatedActionBatchContent),
+    DeprecatedActionPrototype(DeprecatedActionPrototypeContent),
+    DeprecatedActionRunner(DeprecatedActionRunnerContent),
     Func(FuncContent),
     FuncArgument(FuncArgumentContent),
     InputSocket(InputSocketContent),
+    Module(ModuleContent),
     Prop(PropContent),
     Schema(SchemaContent),
     SchemaVariant(SchemaVariantContent),
     Secret(SecretContent),
     StaticArgumentValue(StaticArgumentValueContent),
+    Validation(ValidationContent),
     OutputSocket(OutputSocketContent),
 }
 
@@ -75,21 +78,23 @@ macro_rules! impl_into_content_types {
     };
 }
 
-impl_into_content_types!(Action);
-impl_into_content_types!(ActionBatch);
-impl_into_content_types!(ActionPrototype);
-impl_into_content_types!(ActionRunner);
+impl_into_content_types!(DeprecatedActionPrototype);
 impl_into_content_types!(AttributePrototype);
 impl_into_content_types!(Component);
+impl_into_content_types!(DeprecatedAction);
+impl_into_content_types!(DeprecatedActionBatch);
+impl_into_content_types!(DeprecatedActionRunner);
 impl_into_content_types!(Func);
 impl_into_content_types!(FuncArgument);
 impl_into_content_types!(InputSocket);
 impl_into_content_types!(OutputSocket);
+impl_into_content_types!(Module);
 impl_into_content_types!(Prop);
 impl_into_content_types!(Schema);
 impl_into_content_types!(SchemaVariant);
 impl_into_content_types!(Secret);
 impl_into_content_types!(StaticArgumentValue);
+impl_into_content_types!(Validation);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -120,23 +125,23 @@ impl From<ContentTypes> for Option<CasValue> {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionContent {
-    V1(ActionContentV1),
+pub enum DeprecatedActionContent {
+    V1(DeprecatedActionContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionContentV1 {
+pub struct DeprecatedActionContentV1 {
     pub creation_user_pk: Option<UserPk>,
     pub timestamp: Timestamp,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionBatchContent {
-    V1(ActionBatchContentV1),
+pub enum DeprecatedActionBatchContent {
+    V1(DeprecatedActionBatchContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionBatchContentV1 {
+pub struct DeprecatedActionBatchContentV1 {
     pub author: String,
     pub actors: String,
     pub started_at: Option<DateTime<Utc>>,
@@ -146,24 +151,24 @@ pub struct ActionBatchContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionPrototypeContent {
-    V1(ActionPrototypeContentV1),
+pub enum DeprecatedActionPrototypeContent {
+    V1(DeprecatedActionPrototypeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionPrototypeContentV1 {
-    pub kind: ActionKind,
+pub struct DeprecatedActionPrototypeContentV1 {
+    pub kind: DeprecatedActionKind,
     pub name: Option<String>,
     pub timestamp: Timestamp,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionRunnerContent {
-    V1(ActionRunnerContentV1),
+pub enum DeprecatedActionRunnerContent {
+    V1(DeprecatedActionRunnerContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionRunnerContentV1 {
+pub struct DeprecatedActionRunnerContentV1 {
     pub timestamp: Timestamp,
 
     pub component_id: ComponentId,
@@ -171,7 +176,7 @@ pub struct ActionRunnerContentV1 {
     pub schema_name: String,
     pub func_name: String,
     pub action_prototype_id: ActionPrototypeId,
-    pub action_kind: ActionKind,
+    pub action_kind: DeprecatedActionKind,
     pub resource: Option<String>,
 
     pub started_at: Option<DateTime<Utc>>,
@@ -259,6 +264,22 @@ pub struct InputSocketContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ModuleContent {
+    V1(ModuleContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ModuleContentV1 {
+    pub timestamp: Timestamp,
+    pub name: String,
+    pub root_hash: String,
+    pub version: String,
+    pub description: String,
+    pub created_by_email: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum OutputSocketContent {
     V1(OutputSocketContentV1),
 }
@@ -304,6 +325,8 @@ pub struct PropContentV1 {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
+    /// A serialized validation format JSON object for the prop.
+    pub validation_format: Option<String>,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -365,4 +388,16 @@ pub enum StaticArgumentValueContent {
 pub struct StaticArgumentValueContentV1 {
     pub timestamp: Timestamp,
     pub value: si_events::CasValue,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ValidationContent {
+    V1(ValidationContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ValidationContentV1 {
+    pub timestamp: Timestamp,
+    pub status: ValidationStatus,
+    pub message: Option<String>,
 }

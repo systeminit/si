@@ -12,8 +12,8 @@ use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{
-    ActionError, ActionPrototypeError, ChangeSetError, SchemaVariantId, StandardModelError,
-    TransactionsError,
+    ChangeSetError, DeprecatedActionError, DeprecatedActionPrototypeError, SchemaVariantId,
+    StandardModelError, TransactionsError,
 };
 use thiserror::Error;
 
@@ -36,9 +36,9 @@ pub mod remove_delete_intent;
 #[derive(Debug, Error)]
 pub enum DiagramError {
     #[error("action: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] DeprecatedActionError),
     #[error("action: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]

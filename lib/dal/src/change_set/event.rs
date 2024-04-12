@@ -3,15 +3,18 @@ use serde::{Deserialize, Serialize};
 use crate::{ChangeSetId, DalContext, UserPk, WsEvent, WsEventResult, WsPayload};
 
 impl WsEvent {
+    pub async fn change_set_written(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetWritten(change_set_id)).await
+    }
+
     pub async fn change_set_created(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_id)).await
-    }
-
-    pub async fn change_set_written(ctx: &DalContext) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetWritten(ctx.change_set_id())).await
     }
 
     pub async fn change_set_abandoned(
@@ -54,7 +57,7 @@ impl WsEvent {
     pub async fn change_set_merge_vote(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        user_pk: UserPk,
+        user_pk: Option<UserPk>,
         vote: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
@@ -101,7 +104,7 @@ impl WsEvent {
     pub async fn change_set_abandon_vote(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        user_pk: UserPk,
+        user_pk: Option<UserPk>,
         vote: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
@@ -157,6 +160,6 @@ pub struct ChangeSetActorPayload {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetMergeVotePayload {
     change_set_id: ChangeSetId,
-    user_pk: UserPk,
+    user_pk: Option<UserPk>,
     vote: String,
 }

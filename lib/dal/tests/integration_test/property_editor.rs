@@ -1,18 +1,12 @@
-use dal::property_editor::schema::{
-    PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
-};
-use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
-use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use dal::{AttributeValue, Component, ComponentId, DalContext, Schema, SchemaVariant};
+use dal::property_editor::schema::PropertyEditorSchema;
+use dal::property_editor::values::PropertyEditorValues;
+use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::{
     commit_and_update_snapshot, connect_components_with_socket_names,
-    create_component_for_schema_name,
+    create_component_for_schema_name, PropEditorTestView,
 };
-use itertools::enumerate;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
+use serde_json::json;
 
 #[test]
 async fn assemble(ctx: &DalContext) {
@@ -35,13 +29,12 @@ async fn assemble(ctx: &DalContext) {
         .expect("could not create component");
 
     // Assemble both property editor blobs.
-    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)
+    let _property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)
         .await
         .expect("could not assemble property editor schema");
-    let property_editor_values = PropertyEditorValues::assemble(ctx, component.id())
+    let _property_editor_values = PropertyEditorValues::assemble(ctx, component.id())
         .await
         .expect("could not assemble property editor schema");
-    dbg!(property_editor_schema, property_editor_values);
 }
 
 #[test]
@@ -313,23 +306,24 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": original_pirate_name,
-          "canBeSetBySocket": false,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true, // domain/name gets populated from si/name
-          "overridden": false // value comes from the default prototype (schema variant context)
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": original_pirate_name,
+            "validation": null,
+            "canBeSetBySocket": false,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true, // domain/name gets populated from si/name
+            "overridden": false // value comes from the default prototype (schema variant context)
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -342,18 +336,19 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": new_pirate_name,
-          "canBeSetBySocket": false,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": false, // Value now comes from a si:set* function
-          "overridden": true // prototype that points to function is directly for this av (component context)
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": new_pirate_name,
+            "validation": null,
+            "canBeSetBySocket": false,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": false, // Value now comes from a si:set* function
+            "overridden": true // prototype that points to function is directly for this av (component context)
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -364,18 +359,19 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": original_pirate_name,
-          "canBeSetBySocket": false,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false // value goes back to being controlled by the default function
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": original_pirate_name,
+            "validation": null,
+            "canBeSetBySocket": false,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false // value goes back to being controlled by the default function
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -396,23 +392,24 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": null,
-          "canBeSetBySocket": true,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": null,
+            "validation": null,
+            "canBeSetBySocket": true,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -423,18 +420,19 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": [],
-          "canBeSetBySocket": false,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": false,
-          "overridden": true
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": [],
+            "validation": null,
+            "canBeSetBySocket": false,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": false,
+            "overridden": true
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -445,18 +443,19 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": null,
-          "canBeSetBySocket": true,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false // value goes back to being controlled by the default function
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": null,
+            "validation": null,
+            "canBeSetBySocket": true,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false // value goes back to being controlled by the default function
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(name_path)
     );
@@ -477,23 +476,24 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id(ctx, av_id)
+    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": null,
-          "canBeSetBySocket": true, // prop can be set by socket
-          "isFromExternalSource": false, // prop is not getting value through that socket
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": null,
+            "validation": null,
+            "canBeSetBySocket": true, // prop can be set by socket
+            "isFromExternalSource": false, // prop is not getting value through that socket
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(parrots_path)
     );
@@ -512,18 +512,19 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
     commit_and_update_snapshot(ctx).await;
 
     assert_eq!(
-        serde_json::json![{
-          "id": av_id,
-          "propId": prop_id,
-          "key": null,
-          "value": null,
-          "canBeSetBySocket": true, // prop can be set by socket
-          "isFromExternalSource": true, // now that we have a connection, this is true
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+        json![{
+            "id": av_id,
+            "propId": prop_id,
+            "key": null,
+            "value": null,
+            "validation": null,
+            "canBeSetBySocket": true, // prop can be set by socket
+            "isFromExternalSource": true, // now that we have a connection, this is true
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(parrots_path)
     );
@@ -545,23 +546,24 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let parrots_prop_id = AttributeValue::prop_id_for_id(ctx, parrots_av_id)
+    let parrots_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrots_av_id)
         .await
         .expect("get prop_id for attribute value");
 
     assert_eq!(
-        serde_json::json![{
-          "id": parrots_av_id,
-          "propId": parrots_prop_id,
-          "key": null,
-          "value": null,
-          "canBeSetBySocket": true,
-          "isFromExternalSource": false,
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+        json![{
+            "id": parrots_av_id,
+            "propId": parrots_prop_id,
+            "key": null,
+            "value": null,
+            "validation": null,
+            "canBeSetBySocket": true,
+            "isFromExternalSource": false,
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(parrots_path)
     );
@@ -595,18 +597,19 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
 
     // av for array should only change isFromExternalSource, because of the connection
     assert_eq!(
-        serde_json::json![{
-          "id": parrots_av_id,
-          "propId": parrots_prop_id,
-          "key": null,
-          "value": [],
-          "canBeSetBySocket": true, // prop can be set by socket
-          "isFromExternalSource": true, // prop gets value through that socket
-          "isControlledByAncestor": false,
-          "isControlledByDynamicFunc": true,
-          "overridden": false
+        json![{
+            "id": parrots_av_id,
+            "propId": parrots_prop_id,
+            "key": null,
+            "value": [],
+            "validation": null,
+            "canBeSetBySocket": true, // prop can be set by socket
+            "isFromExternalSource": true, // prop gets value through that socket
+            "isControlledByAncestor": false,
+            "isControlledByDynamicFunc": true,
+            "overridden": false
         }], // expected
-        PropEditorView::for_component_id(ctx, pirate_component.id())
+        PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
             .get_value(parrots_path)
     );
@@ -622,150 +625,26 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
 
         let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
 
-        let parrot_entry_prop_id = AttributeValue::prop_id_for_id(ctx, parrot_entry_av_id)
+        let parrot_entry_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrot_entry_av_id)
             .await
             .expect("get prop_id for attribute value");
 
         assert_eq!(
-            serde_json::json![{
-              "id": parrot_entry_av_id,
-              "propId": parrot_entry_prop_id,
-              "key": null,
-              "value": parrot_name,
-              "canBeSetBySocket": false,
-              "isFromExternalSource": false,
-              "isControlledByAncestor": true, // this entry in the array comes from the parents function
-              "isControlledByDynamicFunc": true,
-              "overridden": false
+            json![{
+                "id": parrot_entry_av_id,
+                "propId": parrot_entry_prop_id,
+                "key": null,
+                "value": parrot_name,
+                "validation": null,
+                "canBeSetBySocket": false,
+                "isFromExternalSource": false,
+                "isControlledByAncestor": true, // this entry in the array comes from the parents function
+                "isControlledByDynamicFunc": true,
+                "overridden": false
             }], // expected
-            PropEditorView::for_component_id(ctx, pirate_component.id())
+            PropEditorTestView::for_component_id(ctx, pirate_component.id())
                 .await
                 .get_value(&["root", "domain", "parrot_names", "0"])
         );
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct PropEditorView {
-    pub prop: PropertyEditorProp,
-    pub value: PropertyEditorValue,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub children: Option<HashMap<String, PropEditorView>>,
-}
-#[allow(dead_code)]
-impl PropEditorView {
-    fn get_view(&self, prop_path: &[&str]) -> Value {
-        let mut value = serde_json::to_value(self).expect("convert UnifiedViewItem to json Value");
-
-        // "root" is necessary for compatibility with other prop apis, but we skip it here
-        for &prop_name in prop_path.iter().skip(1) {
-            value = value
-                .get("children")
-                .expect("get children entry of PropEditorView")
-                .get(prop_name)
-                .expect("get child entry of PropEditorView")
-                .clone();
-        }
-
-        value
-    }
-
-    fn get_prop(&self, prop_path: &[&str]) -> Value {
-        let view = self.get_view(prop_path);
-        view.get("prop").expect("get prop field of view").clone()
-    }
-    fn get_value(&self, prop_path: &[&str]) -> Value {
-        let view = self.get_view(prop_path);
-        view.get("value").expect("get prop field of view").clone()
-    }
-
-    async fn for_component_id(ctx: &DalContext, component_id: ComponentId) -> Self {
-        let sv_id = Component::schema_variant_id(ctx, component_id)
-            .await
-            .expect("get schema variant from component");
-
-        let PropertyEditorValues {
-            root_value_id,
-            values,
-            child_values,
-        } = PropertyEditorValues::assemble(ctx, component_id)
-            .await
-            .expect("assemble property editor values");
-
-        let PropertyEditorSchema { props, .. } = PropertyEditorSchema::assemble(ctx, sv_id)
-            .await
-            .expect("assemble property editor schema");
-
-        let root_view = {
-            let value = values
-                .get(&root_value_id)
-                .expect("get property editor root value")
-                .clone();
-
-            let prop = props.get(&value.prop_id).expect("get property editor prop");
-
-            PropEditorView {
-                prop: prop.clone(),
-                value,
-                children: Self::property_editor_compile_children(
-                    root_value_id,
-                    &prop.kind,
-                    &values,
-                    &child_values,
-                    &props,
-                ),
-            }
-        };
-
-        root_view
-    }
-
-    fn property_editor_compile_children(
-        parent_value_id: PropertyEditorValueId,
-        parent_prop_kind: &PropertyEditorPropKind,
-        values: &HashMap<PropertyEditorValueId, PropertyEditorValue>,
-        child_values: &HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
-        props: &HashMap<PropertyEditorPropId, PropertyEditorProp>,
-    ) -> Option<HashMap<String, PropEditorView>> {
-        let mut children = HashMap::new();
-
-        for (index, child_id) in enumerate(
-            child_values
-                .get(&parent_value_id)
-                .expect("get prop editor value children"),
-        ) {
-            let value = values
-                .get(child_id)
-                .expect("get property editor root value")
-                .clone();
-
-            let prop = props.get(&value.prop_id).expect("get property editor prop");
-
-            let key = match parent_prop_kind {
-                PropertyEditorPropKind::Array => index.to_string(),
-                PropertyEditorPropKind::Map => value.key.clone().unwrap_or("ERROR".to_string()),
-                _ => prop.name.clone(),
-            };
-
-            let child = PropEditorView {
-                prop: prop.clone(),
-                value,
-                children: Self::property_editor_compile_children(
-                    *child_id,
-                    &prop.kind,
-                    values,
-                    child_values,
-                    props,
-                ),
-            };
-
-            children.insert(key, child);
-        }
-
-        if children.is_empty() {
-            None
-        } else {
-            Some(children)
-        }
     }
 }

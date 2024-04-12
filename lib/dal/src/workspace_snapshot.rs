@@ -30,18 +30,15 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
-use si_layer_cache::persister::PersistStatus;
 use si_pkg::KeyOrIndex;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use petgraph::prelude::*;
 use si_data_pg::PgError;
-use si_events::ContentHash;
-use si_events::WorkspaceSnapshotAddress;
+use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;
@@ -196,9 +193,11 @@ impl WorkspaceSnapshot {
             graph.add_category_node(change_set, CategoryNodeKind::Component)?;
         let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
         let action_batch_node_index =
-            graph.add_category_node(change_set, CategoryNodeKind::ActionBatch)?;
+            graph.add_category_node(change_set, CategoryNodeKind::DeprecatedActionBatch)?;
         let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
         let secret_node_index = graph.add_category_node(change_set, CategoryNodeKind::Secret)?;
+        let module_node_index = graph.add_category_node(change_set, CategoryNodeKind::Module)?;
+        let action_node_index = graph.add_category_node(change_set, CategoryNodeKind::Action)?;
 
         // Connect them to root.
         graph.add_edge(
@@ -225,6 +224,16 @@ impl WorkspaceSnapshot {
             graph.root(),
             EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
             secret_node_index,
+        )?;
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+            module_node_index,
+        )?;
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+            action_node_index,
         )?;
 
         // We do not care about any field other than "working_copy" because "write" will populate
@@ -254,7 +263,7 @@ impl WorkspaceSnapshot {
             // Mark everything left as seen.
             working_copy.mark_graph_seen(vector_clock_id)?;
 
-            let (new_address, status_reader) = ctx
+            let (new_address, _) = ctx
                 .layer_db()
                 .workspace_snapshot()
                 .write(
@@ -264,10 +273,6 @@ impl WorkspaceSnapshot {
                     ctx.events_actor(),
                 )
                 .await?;
-
-            if let PersistStatus::Error(e) = status_reader.get_status().await? {
-                return Err(e)?;
-            }
 
             new_address
         };
@@ -522,6 +527,14 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub async fn try_get_node_index_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
+        Ok(self.working_copy().await.try_get_node_index_by_id(id)?)
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_latest_node_index(
         &self,
         node_index: NodeIndex,
@@ -539,7 +552,7 @@ impl WorkspaceSnapshot {
         let snapshot = ctx
             .layer_db()
             .workspace_snapshot()
-            .read(&workspace_snapshot_addr)
+            .read_wait_for_memory(&workspace_snapshot_addr)
             .await?
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
                 workspace_snapshot_addr,

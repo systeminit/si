@@ -69,6 +69,8 @@ pub enum EdgeWeightKind {
     Use {
         is_default: bool,
     },
+    /// Edge from attribute value to validation result node
+    ValidationOutput,
 }
 
 impl EdgeWeightKind {

@@ -5,16 +5,14 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct LangServerValidationResultSuccess {
     pub execution_id: String,
-    pub valid: bool,
-    pub message: Option<String>,
+    pub error: Option<String>,
 }
 
 impl From<LangServerValidationResultSuccess> for ValidationResultSuccess {
     fn from(value: LangServerValidationResultSuccess) -> Self {
         Self {
             execution_id: value.execution_id,
-            valid: value.valid,
-            message: value.message,
+            error: value.error,
         }
     }
 }

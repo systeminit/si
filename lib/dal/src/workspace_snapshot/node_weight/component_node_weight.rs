@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
-use ulid::Ulid;
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     change_set::ChangeSet,
@@ -19,7 +18,7 @@ pub struct ComponentNodeWeight {
     id: Ulid,
     lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: ContentHash,
+    merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
@@ -38,7 +37,7 @@ impl ComponentNodeWeight {
             id,
             lineage_id: change_set.generate_ulid()?,
             content_address,
-            merkle_tree_hash: ContentHash::default(),
+            merkle_tree_hash: MerkleTreeHash::default(),
             to_delete: false,
             vector_clock_first_seen: new_vector_clock.clone(),
             vector_clock_recently_seen: new_vector_clock.clone(),
@@ -96,7 +95,7 @@ impl ComponentNodeWeight {
         Ok(())
     }
 
-    pub fn merkle_tree_hash(&self) -> ContentHash {
+    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
@@ -142,7 +141,7 @@ impl ComponentNodeWeight {
         }])
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
     }
 

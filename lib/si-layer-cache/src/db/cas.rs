@@ -12,6 +12,8 @@ use crate::{
     LayerDbError,
 };
 
+use super::serialize;
+
 pub const DBNAME: &str = "cas";
 pub const CACHE_NAME: &str = "cas";
 pub const PARTITION_KEY: &str = "cas";
@@ -43,7 +45,7 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(ContentHash, PersisterStatusReader)> {
-        let postcard_value = postcard::to_stdvec(&value)?;
+        let postcard_value = serialize::to_vec(&value)?;
         let key = ContentHash::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 

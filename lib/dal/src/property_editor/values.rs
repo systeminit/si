@@ -12,6 +12,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::ControllingFuncData;
 use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
+use crate::validation::{ValidationOutput, ValidationOutputNode};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
@@ -49,8 +50,14 @@ impl PropertyEditorValues {
         // Get the root attribute value and load it into the work queue.
         let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
         let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
-        let root_prop_id = AttributeValue::prop_id_for_id(ctx, root_attribute_value_id).await?;
+        let root_prop_id =
+            AttributeValue::prop_id_for_id_or_error(ctx, root_attribute_value_id).await?;
         let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
+
+        let validation =
+            ValidationOutputNode::find_for_attribute_value_id(ctx, root_attribute_value_id)
+                .await?
+                .map(|node| node.validation);
 
         values.insert(
             root_property_editor_value_id,
@@ -62,6 +69,7 @@ impl PropertyEditorValues {
                     .value(ctx)
                     .await?
                     .unwrap_or(Value::Null),
+                validation,
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
                 is_controlled_by_dynamic_func: false,
@@ -131,7 +139,7 @@ impl PropertyEditorValues {
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
                 let child_attribute_value = AttributeValue::get_by_id(ctx, child_av_id).await?;
                 let prop_id_for_child_attribute_value =
-                    AttributeValue::prop_id_for_id(ctx, child_av_id).await?;
+                    AttributeValue::prop_id_for_id_or_error(ctx, child_av_id).await?;
                 let child_property_editor_value_id = PropertyEditorValueId::from(child_av_id);
 
                 let sockets_for_av =
@@ -163,6 +171,11 @@ impl PropertyEditorValues {
                 .await?
                 .is_some();
 
+                let validation =
+                    ValidationOutputNode::find_for_attribute_value_id(ctx, child_av_id)
+                        .await?
+                        .map(|node| node.validation);
+
                 let child_property_editor_value = PropertyEditorValue {
                     id: child_property_editor_value_id,
                     prop_id: prop_id_for_child_attribute_value.into(),
@@ -171,6 +184,7 @@ impl PropertyEditorValues {
                         .value(ctx)
                         .await?
                         .unwrap_or(Value::Null),
+                    validation,
                     can_be_set_by_socket: !sockets_for_av.is_empty(),
                     is_from_external_source,
                     is_controlled_by_ancestor: this_controlling_attribute_value_id != child_av_id,
@@ -269,6 +283,7 @@ pub struct PropertyEditorValue {
     pub prop_id: PropertyEditorPropId,
     pub key: Option<String>,
     pub value: Value,
+    pub validation: Option<ValidationOutput>,
     pub can_be_set_by_socket: bool, // true if this prop value is currently driven by a socket, even if the socket isn't in use
     pub is_from_external_source: bool, // true if this prop has a value provided by a socket
     pub is_controlled_by_ancestor: bool, // if ancestor of prop is set by dynamic func, ID of ancestor that sets it

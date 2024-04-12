@@ -10,6 +10,8 @@ use crate::{
     persister::{PersisterClient, PersisterStatusReader},
 };
 
+use super::serialize;
+
 pub const DBNAME: &str = "workspace_snapshots";
 pub const CACHE_NAME: &str = "workspace_snapshots";
 pub const PARTITION_KEY: &str = "workspace_snapshots";
@@ -41,7 +43,7 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
-        let postcard_value = postcard::to_stdvec(&value)?;
+        let postcard_value = serialize::to_vec(&value)?;
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
@@ -63,6 +65,24 @@ where
     }
 
     pub async fn read(&self, key: &WorkspaceSnapshotAddress) -> LayerDbResult<Option<Arc<V>>> {
+        self.cache.get(key.to_string().into()).await
+    }
+
+    pub async fn read_wait_for_memory(
+        &self,
+        key: &WorkspaceSnapshotAddress,
+    ) -> LayerDbResult<Option<Arc<V>>> {
+        let key: Arc<str> = key.to_string().into();
+        const MAX_TRIES: i32 = 2000;
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));
+        let mut tried = 0;
+        while tried < MAX_TRIES {
+            if let Some(v) = self.cache.memory_cache().get(&key).await {
+                return Ok(Some(v));
+            }
+            tried += 1;
+            interval.tick().await;
+        }
         self.cache.get(key.to_string().into()).await
     }
 }

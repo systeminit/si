@@ -4,19 +4,16 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
-    "bin/council",
     "bin/cyclone",
     "bin/module-index",
     "bin/pinga",
     "bin/rebaser",
     "bin/sdf",
-    "bin/si",
     "bin/veritech",
     "lib/auth-api-client",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
-    "lib/council-server",
     "lib/cyclone-client",
     "lib/cyclone-core",
     "lib/cyclone-server",
@@ -70,6 +67,7 @@ base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
 bytes = "1.6.0"
+cacache = { version = "13.0.0", default-features = false, features = [ "tokio-runtime", "mmap" ] }
 chrono = { version = "0.4.37", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
@@ -91,7 +89,6 @@ derive_builder = "0.20.0"
 derive_more = "0.99.17"
 diff = "0.1.13"
 directories = "5.0.1"
-docker-api = "0.14.0"
 dyn-clone = "1.0.17"
 flate2 = "1.0.28"
 futures = "0.3.30"
@@ -117,6 +114,7 @@ jwt-simple = { version = "0.12.9", default-features = false, features = [
     "pure-rust",
 ] }
 lazy_static = "1.4.0"
+miniz_oxide = { version = "0.7.2", features = ["simd"] }
 moka = { version = "0.12.5", features = ["future"] }
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.27.1", features = ["process", "signal"] }
@@ -140,7 +138,7 @@ pretty_assertions_sorted = "1.2.3"
 proc-macro2 = "1.0.79"
 quote = "1.0.35"
 rand = "0.8.5"
-refinery = { version = "0.8.12", features = ["tokio-postgres"] }
+refinery = { version = "= 0.8.12", features = ["tokio-postgres"] }
 regex = "1.10.4"
 remain = "0.2.13"
 reqwest = { version = "0.12.2", default-features = false, features = [
@@ -168,7 +166,6 @@ serde_json = { version = "1.0.115", features = ["preserve_order"] }
 serde_url_params = "0.2.1"
 serde_with = "3.7.0"
 serde_yaml = "0.9.33" # NOTE(nick): this has been archived upstream
-sled = "0.34.7"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }
@@ -214,6 +211,7 @@ uuid = { version = "1.8.0", features = ["serde", "v4"] }
 vfs = "0.12.0"
 vfs-tar = { version = "0.4.1", features = ["mmap"] }
 webpki-roots = { version = "0.25.4" }
+xxhash-rust = { version = "0.8.10", features = ["xxh3", "const_xxh3"] }
 y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }
 
@@ -221,10 +219,6 @@ yrs = { version = "0.17.4" }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
-# pending a potential merge and release of
-# https://github.com/vv9k/docker-api-rs/issues/69
-# See: https://github.com/systeminit/si/pull/2903
-docker-api = { git = "https://github.com/vv9k/docker-api-rs.git", branch = "master" }
 # pending a potential merge and release of
 # https://github.com/durch/rust-s3/pull/372
 # Note that this helps us to narrow down the number of `ring`/`rustls` versions to 1 each

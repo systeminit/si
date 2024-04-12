@@ -31,7 +31,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
 
     expander.setup_start_veritech_server();
     expander.setup_start_pinga_server();
-    expander.setup_start_council_server();
     expander.setup_start_rebaser_server();
 
     for param in params {
@@ -182,7 +181,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
     //     // a randomized subject prefix
     //     expander.setup_start_veritech_server();
     //     expander.setup_start_pinga_server();
-    //     expander.setup_start_council_server();
     //     expander.setup_start_rebaser_server();
     // }
 
@@ -208,8 +206,6 @@ struct DalTestFnSetupExpander {
     cancellation_token: Option<Rc<Ident>>,
     task_tracker: Option<Rc<Ident>>,
     nats_subject_prefix: Option<Rc<Ident>>,
-    council_server: Option<Rc<Ident>>,
-    start_council_server: Option<()>,
     pinga_server: Option<Rc<Ident>>,
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
@@ -239,8 +235,6 @@ impl DalTestFnSetupExpander {
             cancellation_token: None,
             task_tracker: None,
             nats_subject_prefix: None,
-            council_server: None,
-            start_council_server: None,
             pinga_server: None,
             pinga_shutdown_handle: None,
             start_pinga_server: None,
@@ -314,22 +308,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>) {
         self.nats_subject_prefix = value;
-    }
-
-    fn council_server(&self) -> Option<&Rc<Ident>> {
-        self.council_server.as_ref()
-    }
-
-    fn set_council_server(&mut self, value: Option<Rc<Ident>>) {
-        self.council_server = value;
-    }
-
-    fn start_council_server(&self) -> Option<()> {
-        self.start_council_server
-    }
-
-    fn set_start_council_server(&mut self, value: Option<()>) {
-        self.start_council_server = value;
     }
 
     fn pinga_server(&self) -> Option<&Rc<Ident>> {

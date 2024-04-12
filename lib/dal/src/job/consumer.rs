@@ -8,27 +8,27 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::prop::PropError;
-use crate::validation::resolver::ValidationResolverError;
+use crate::validation::ValidationError;
 use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
-    ActionBatchError, ActionBatchId, ActionPrototypeError, ActionPrototypeId, ActionRunnerError,
-    ComponentError, ComponentId, DalContext, DalContextBuilder, StandardModelError,
-    TransactionsError, Visibility, WsEventError,
+    ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
+    DeprecatedActionBatchError, DeprecatedActionBatchId, DeprecatedActionPrototypeError,
+    DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
     #[error("action batch error: {0}")]
-    ActionBatch(#[from] ActionBatchError),
+    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("action runner error: {0}")]
-    ActionRunner(#[from] ActionRunnerError),
+    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
@@ -39,10 +39,6 @@ pub enum JobConsumerError {
     Component(#[from] ComponentError),
     #[error("component {0} is destroyed")]
     ComponentIsDestroyed(ComponentId),
-    #[error(transparent)]
-    CouncilClient(#[from] council_server::client::ClientError),
-    #[error("Protocol error with council: {0}")]
-    CouncilProtocol(String),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
@@ -52,7 +48,7 @@ pub enum JobConsumerError {
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
     #[error("missing fix execution batch for id: {0}")]
-    MissingActionBatch(ActionBatchId),
+    MissingActionBatch(DeprecatedActionBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
@@ -77,8 +73,8 @@ pub enum JobConsumerError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
-    #[error(transparent)]
-    ValidationResolver(#[from] ValidationResolverError),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }

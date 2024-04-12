@@ -1,13 +1,11 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
+use dal::func::authoring::FuncAuthoringClient;
+use dal::func::view::summary::FuncSummary;
 use dal::{ComponentType, Func, SchemaVariant, SchemaVariantId, Timestamp, Visibility};
 use serde::{Deserialize, Serialize};
 
-// use super::{is_variant_def_locked, SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-// use crate::server::tracking::track;
-use crate::service::func::compile_return_types;
-use crate::service::func::list_funcs::ListedFuncView;
 use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -30,7 +28,7 @@ pub struct GetVariantResponse {
     pub description: Option<String>,
     pub code: String,
     pub component_type: ComponentType,
-    pub funcs: Vec<ListedFuncView>,
+    pub funcs: Vec<FuncSummary>,
     pub types: String,
     pub has_components: bool,
     #[serde(flatten)]
@@ -67,39 +65,23 @@ pub async fn get_variant(
     };
 
     if let Some(authoring_func) = variant.asset_func_id() {
-        let asset_func = Func::get_by_id(&ctx, authoring_func).await?;
+        let asset_func = Func::get_by_id_or_error(&ctx, authoring_func).await?;
 
         response.code = asset_func
             .code_plaintext()?
             .ok_or(SchemaVariantError::FuncIsEmpty(asset_func.id))?;
 
-        response.types =
-            compile_return_types(asset_func.backend_response_type, asset_func.backend_kind)
-                .to_string();
+        response.types = FuncAuthoringClient::compile_return_types(
+            asset_func.backend_response_type,
+            asset_func.backend_kind,
+        )
+        .to_string();
     }
 
     // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
     // response.has_components = has_components;
 
-    response.funcs = SchemaVariant::all_funcs(&ctx, request.id)
-        .await?
-        .iter()
-        .filter_map(|func| match func.try_into() {
-            Ok(func_variant) => Some(ListedFuncView {
-                id: func.id,
-                handler: func.handler.clone().map(|handler| handler.to_owned()),
-                variant: func_variant,
-                name: (*func.name).to_string(),
-                display_name: func
-                    .display_name
-                    .as_ref()
-                    .map(Into::into)
-                    .or_else(|| Some(func.name.to_string())),
-                is_builtin: func.builtin,
-            }),
-            Err(_) => None,
-        })
-        .collect();
+    response.funcs = FuncSummary::list_for_schema_variant_id(&ctx, request.id).await?;
 
     // track(
     //     &posthog_client,

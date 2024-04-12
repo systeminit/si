@@ -115,7 +115,7 @@ async fn async_main() -> Result<()> {
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
     let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-        config.layer_cache_sled_path(),
+        config.layer_cache_disk_path(),
         PgPool::new(config.layer_cache_pg_pool()).await?,
         nats_conn.clone(),
         shutdown_token.clone(),

@@ -14,8 +14,8 @@ use crate::{
 };
 
 use super::{
+    binding::return_value::{FuncBindingReturnValue, FuncBindingReturnValueId},
     binding::{FuncBinding, FuncBindingId},
-    binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueId},
     FuncId,
 };
 

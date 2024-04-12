@@ -7,7 +7,7 @@ use strum::EnumIter;
 use telemetry::prelude::*;
 
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
@@ -15,6 +15,7 @@ use crate::{
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 
 use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
+use crate::prop::PropPath;
 use crate::schema::variant::root_prop::RootPropChild;
 
 use super::{SchemaVariantError, SchemaVariantResult};
@@ -132,12 +133,12 @@ impl LeafInputLocation {
         }
     }
 
-    pub fn prop_path(&self) -> Vec<&'static str> {
-        vec!["root", self.arg_name()]
+    pub fn prop_path(&self) -> PropPath {
+        PropPath::new(["root", self.arg_name()])
     }
 
-    pub fn maybe_from_arg_name(arg_name: &str) -> Option<Self> {
-        Some(match arg_name {
+    pub fn maybe_from_arg_name(arg_name: impl AsRef<str>) -> Option<Self> {
+        Some(match arg_name.as_ref() {
             "domain" => LeafInputLocation::Domain,
             "code" => LeafInputLocation::Code,
             "resource" => LeafInputLocation::Resource,
@@ -204,7 +205,7 @@ impl SchemaVariant {
         inputs: Vec<LeafInput>,
     ) -> SchemaVariantResult<(PropId, AttributePrototypeId)> {
         // Ensure the func matches what we need.
-        let func = Func::get_by_id(ctx, func_id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
         if func.backend_kind != FuncBackendKind::JsAttribute {
             return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id));
         }
@@ -244,13 +245,13 @@ impl SchemaVariant {
 
         let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
 
-        ctx.workspace_snapshot()?
-            .add_edge(
-                item_prop_id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(key))?,
-                attribute_prototype_id,
-            )
-            .await?;
+        Prop::add_edge_to_attribute_prototype(
+            ctx,
+            item_prop_id,
+            attribute_prototype_id,
+            EdgeWeightKind::Prototype(key),
+        )
+        .await?;
 
         for input in inputs {
             let input_prop_id = SchemaVariant::find_root_child_prop_id(
