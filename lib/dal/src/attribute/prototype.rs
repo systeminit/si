@@ -34,7 +34,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, id, implement_add_edge_to,
+    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to, pk,
     AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
@@ -98,7 +98,9 @@ pub enum AttributePrototypeEventualParent {
     SchemaVariantFromProp(SchemaVariantId, PropId),
 }
 
-id!(AttributePrototypeId);
+// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
+// that the argument is a new one.
+pk!(AttributePrototypeId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {

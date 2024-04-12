@@ -10,10 +10,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
-    id, implement_add_edge_to,
+    implement_add_edge_to, pk,
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -40,7 +41,9 @@ use super::AttributePrototypeError;
 pub mod static_value;
 pub mod value_source;
 
-id!(AttributePrototypeArgumentId);
+// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
+// that the argument is a new one.
+pk!(AttributePrototypeArgumentId);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -543,17 +546,47 @@ impl AttributePrototypeArgument {
         Ok(apas)
     }
 
+    /// Removes the [`AttributePrototypeArgument`] corresponding to the provided ID.
     pub async fn remove(
         ctx: &DalContext,
-        apa_id: AttributePrototypeArgumentId,
+        attribute_prototype_argument_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<()> {
-        let apa = Self::get_by_id(ctx, apa_id).await?;
-        let prototype_id = apa.prototype_id(ctx).await?;
+        let attribute_prototype_argument =
+            Self::get_by_id(ctx, attribute_prototype_argument_id).await?;
+        attribute_prototype_argument.remove_inner(ctx).await?;
+        Ok(())
+    }
+
+    /// Removes the [`AttributePrototypeArgument`] corresponding to the provided ID, but is a
+    /// "no-op" if it cannot be found before removal.
+    pub async fn remove_or_no_op(
+        ctx: &DalContext,
+        attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let attribute_prototype_argument =
+            match Self::get_by_id(ctx, attribute_prototype_argument_id).await {
+                Ok(found_attribute_prototype_argument) => found_attribute_prototype_argument,
+                Err(AttributePrototypeArgumentError::WorkspaceSnapshot(
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
+                    ),
+                )) if raw_id == attribute_prototype_argument_id.into() => return Ok(()),
+                Err(err) => return Err(err),
+            };
+
+        attribute_prototype_argument.remove_inner(ctx).await?;
+        Ok(())
+    }
+
+    /// A _private_ method that consumes self and removes the corresponding
+    /// [`AttributePrototypeArgument`].
+    async fn remove_inner(self, ctx: &DalContext) -> AttributePrototypeArgumentResult<()> {
+        let prototype_id = self.prototype_id(ctx).await?;
         // Find all of the "destination" attribute values.
         let mut avs_to_update = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
         // If the argument has targets, then we only care about AVs that are for the same
         // destination component.
-        if let Some(targets) = apa.targets() {
+        if let Some(targets) = self.targets() {
             let mut av_ids_to_keep = HashSet::new();
             for av_id in &avs_to_update {
                 let component_id = AttributeValue::component_id(ctx, *av_id)
@@ -568,7 +601,7 @@ impl AttributePrototypeArgument {
 
         // Remove the argument
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set()?, apa_id)
+            .remove_node_by_id(ctx.change_set()?, self.id)
             .await?;
         // Update the destination attribute values
         for av_id_to_update in &avs_to_update {

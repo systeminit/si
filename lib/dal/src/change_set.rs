@@ -570,6 +570,7 @@ impl ChangeSet {
         Some(parents)
     }
 
+    /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.
     pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetId>> {
         let maybe_fake_pk =
             if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {

@@ -4,6 +4,7 @@ use dal_test::test;
 use dal_test::test_harness::create_empty_action_func;
 use pretty_assertions_sorted::assert_eq;
 
+mod argument;
 mod associations;
 mod authoring;
 

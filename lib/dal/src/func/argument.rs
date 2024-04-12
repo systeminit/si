@@ -8,23 +8,32 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{FuncArgumentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{
+    FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
+    pk, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncArgumentError {
-    #[error(transparent)]
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
+    #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("unable to create func argument with empty name")]
+    EmptyNameDuringCreation,
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("history event error: {0}")]
@@ -120,7 +129,9 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
     }
 }
 
-id!(FuncArgumentId);
+// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
+// that the argument is a new one.
+pk!(FuncArgumentId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncArgument {
@@ -162,6 +173,11 @@ impl FuncArgument {
         element_kind: Option<FuncArgumentKind>,
         func_id: FuncId,
     ) -> FuncArgumentResult<Self> {
+        let name = name.into();
+        if name.is_empty() {
+            return Err(FuncArgumentError::EmptyNameDuringCreation);
+        }
+
         let timestamp = Timestamp::now();
 
         let content = FuncArgumentContentV1 {
@@ -183,7 +199,7 @@ impl FuncArgument {
 
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_func_argument(change_set, id, name.into(), hash)?;
+        let node_weight = NodeWeight::new_func_argument(change_set, id, name, hash)?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -394,12 +410,46 @@ impl FuncArgument {
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
-        let change_set = ctx.change_set()?;
+        // If a func argument is to be deleted, we need to remove all attribute prototype
+        // arguments that use it first.
+        for attribute_prototype_argument_id in
+            Self::list_attribute_prototype_argument_ids(ctx, id).await?
+        {
+            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id)
+                .await
+                .map_err(Box::new)?;
+        }
 
+        // Now, we can remove the argument.
+        let change_set = ctx.change_set()?;
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)
             .await?;
 
         Ok(())
+    }
+
+    /// List all [`AttributePrototypeArguments`](AttributePrototypeArgument) (by ID) using the
+    /// provided [`FuncArgument`] (by ID).
+    pub async fn list_attribute_prototype_argument_ids(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        let mut attribute_prototype_argument_ids = Vec::new();
+        for source in sources {
+            let node_weight = workspace_snapshot.get_node_weight(source).await?;
+            let maybe_attribute_prototype_argument_id = node_weight.id().into();
+            if NodeWeightDiscriminants::AttributePrototypeArgument == node_weight.into() {
+                attribute_prototype_argument_ids.push(maybe_attribute_prototype_argument_id);
+            }
+        }
+
+        Ok(attribute_prototype_argument_ids)
     }
 }

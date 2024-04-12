@@ -1,6 +1,16 @@
 //! This module contains backend functionality for the [`Func`] authoring experience.
 //!
-//! All submodules are private since the [`FuncAuthoringClient`] is the primary interface.
+//! How does the authoring loop work? While metadata fetching and mutation is self-explanatory, the
+//! [`FuncAssociations`] subsystem is less so. Essentially, [`FuncAssociations`] are a "bag" that
+//! come alongside [`FuncView::assemble`](crate::func::view::FuncView::assemble) and are mutated via
+//! [`FuncAuthoringClient::save_func`].
+//!
+//! The existence, difference or absence of an entity or field within a [`FuncAssociations`] bag
+//! dictates what we must do during mutation. New argument? Create one and send it back up. Removed
+//! argument? Delete it and send it back up. Mutated argument? Change it and send it back up. The
+//! payload is the same on both sides.
+//!
+//! _Note_: all submodules are private since the [`FuncAuthoringClient`] is the primary interface.
 
 #![warn(
     bad_style,
@@ -31,15 +41,17 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentError;
-use crate::func::associations::FuncAssociations;
+use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::{
-    DalContext, DeprecatedActionKind, DeprecatedActionPrototypeError, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
-    SchemaVariantId,
+    AttributePrototypeId, ComponentError, DalContext, DeprecatedActionKind,
+    DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
+    OutputSocketId, PropId, SchemaVariantError, SchemaVariantId,
 };
 
 mod create;
@@ -54,12 +66,22 @@ pub enum FuncAuthoringError {
     ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
-    #[error("That attribute is already set by the function named \"{0}\"")]
-    AttributePrototypeAlreadySetByFunc(String),
+    #[error("attribute prototype already set by func (id: {0}) (name: {1})")]
+    AttributePrototypeAlreadySetByFunc(FuncId, String),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found for attribute prototype: {0}")]
+    AttributeValueNotFoundForAttributePrototype(AttributePrototypeId),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("func associations error: {0}")]
+    FuncAssociations(#[from] FuncAssociationsError),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
     #[error("Function options are incompatible with variant")]
@@ -104,7 +126,7 @@ impl FuncAuthoringClient {
         description: Option<String>,
         code: Option<String>,
         associations: Option<FuncAssociations>,
-    ) -> FuncAuthoringResult<(SavedFunc, Func)> {
+    ) -> FuncAuthoringResult<SavedFunc> {
         save::save_func(ctx, id, display_name, name, description, code, associations).await
     }
 
@@ -186,17 +208,17 @@ pub enum CreateFuncOptions {
     QualificationOptions { schema_variant_id: SchemaVariantId },
 }
 
-// /// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and
-// /// [`AttributeValues`](dal::AttributeValue) that are currently associated with a function but
-// /// that are having their association removed.
-// ///
-// /// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that
-// /// value using a builtin value function, like `si:setString`, etc.
-// ///
-// /// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
-// #[remain::sorted]
-// #[derive(Debug)]
-// enum RemovedPrototypeOp {
-//     Delete,
-//     Reset,
-// }
+/// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and
+/// [`AttributeValues`](dal::AttributeValue) that are currently associated with a function but
+/// that are having their association removed.
+///
+/// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that
+/// value using a builtin value function, like `si:setString`, etc.
+///
+/// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
+#[remain::sorted]
+#[derive(Debug, Copy, Clone)]
+enum RemovedPrototypeOp {
+    Delete,
+    Reset,
+}
