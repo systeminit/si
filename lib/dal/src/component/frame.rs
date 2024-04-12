@@ -33,6 +33,7 @@ pub struct Frame;
 
 impl Frame {
     /// Provides the ability to attach a child [`Component`] to a parent frame.
+    #[instrument(level = "info", skip_all)]
     pub async fn attach_child_to_parent(
         ctx: &DalContext,
         parent_id: ComponentId,
@@ -61,6 +62,55 @@ impl Frame {
 
         Ok(())
     }
+    ///Provides an ability to detach a child ['Component'] from one or many parent frames
+    /// If no parent_id is passed in, we will attempt to detach the component from the direct parent
+    #[instrument(level = "info", skip_all)]
+    pub async fn detach_child_from_parents(
+        ctx: &DalContext,
+        parent_ids: Vec<ComponentId>,
+        child_id: ComponentId,
+    ) -> FrameResult<()> {
+        if parent_ids.is_empty() {
+            //get the parent of the one component passed in
+            let component = Component::get_by_id(ctx, child_id).await?;
+            if let Some(parent_id) = component.parent(ctx).await? {
+                let parent = Component::get_by_id(ctx, parent_id).await?;
+                let parent_type = parent.get_type(ctx).await?;
+
+                let (source_id, destination_id) = match parent_type {
+                    ComponentType::AggregationFrame => {
+                        unimplemented!("aggregation frames are untested in the new engine")
+                    }
+                    ComponentType::Component => {
+                        return Err(FrameError::ParentIsNotAFrame(child_id, parent_id))
+                    }
+                    ComponentType::ConfigurationFrameDown => (parent_id, child_id),
+                    ComponentType::ConfigurationFrameUp => (child_id, parent_id),
+                };
+                Self::detach_child_from_parent_symbolic(ctx, parent_id, child_id).await?;
+                Component::disconnect_all(ctx, source_id, destination_id).await?;
+            }
+        } else {
+            for parent_id in parent_ids {
+                let parent = Component::get_by_id(ctx, parent_id).await?;
+                let parent_type = parent.get_type(ctx).await?;
+
+                let (source_id, destination_id) = match parent_type {
+                    ComponentType::AggregationFrame => {
+                        unimplemented!("aggregation frames are untested in the new engine")
+                    }
+                    ComponentType::Component => {
+                        return Err(FrameError::ParentIsNotAFrame(child_id, parent_id))
+                    }
+                    ComponentType::ConfigurationFrameDown => (parent_id, child_id),
+                    ComponentType::ConfigurationFrameUp => (child_id, parent_id),
+                };
+                Self::detach_child_from_parent_symbolic(ctx, parent_id, child_id).await?;
+                Component::disconnect_all(ctx, source_id, destination_id).await?;
+            }
+        }
+        Ok(())
+    }
 
     async fn attach_child_to_parent_symbolic(
         ctx: &DalContext,
@@ -69,6 +119,15 @@ impl Frame {
     ) -> FrameResult<()> {
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
+
+        Ok(())
+    }
+    async fn detach_child_from_parent_symbolic(
+        ctx: &DalContext,
+        parent_id: ComponentId,
+        child_id: ComponentId,
+    ) -> FrameResult<()> {
+        Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
 
         Ok(())
     }

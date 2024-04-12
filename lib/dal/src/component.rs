@@ -1061,6 +1061,22 @@ impl Component {
             attribute_prototype_argument.id(),
         ))
     }
+    pub async fn remove_edge_from_frame(
+        ctx: &DalContext,
+        parent_id: ComponentId,
+        child_id: ComponentId,
+    ) -> ComponentResult<()> {
+        ctx.workspace_snapshot()?
+            .remove_edge_for_ulids(
+                ctx.change_set()?,
+                parent_id,
+                child_id,
+                EdgeWeightKindDiscriminants::FrameContains,
+            )
+            .await?;
+
+        Ok(())
+    }
 
     pub async fn connect(
         ctx: &DalContext,
@@ -1135,6 +1151,56 @@ impl Component {
         // Enqueue all the values from each connection.
         ctx.enqueue_dependent_values_update(to_enqueue).await?;
 
+        Ok(())
+    }
+    /// Disconnect all matching sockets for a given source [`Component`] and a given destination [`Component`].
+    ///
+    /// This is useful when [`detaching`](frame::Frame::detach_child_from_parent) a child [`Component`] from a parent
+    /// frame.
+    pub async fn disconnect_all(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        destination_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let destination_schema_variant_id =
+            Component::schema_variant_id(ctx, destination_component_id).await?;
+
+        let destination_sockets =
+            InputSocket::list_ids_for_schema_variant(ctx, destination_schema_variant_id).await?;
+
+        for destination_input_socket_id in destination_sockets {
+            let destination_attribute_value_ids =
+                InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
+                    .await?;
+
+            // filter the value ids by destination_component_id
+            let mut destination_attribute_value_id: Option<AttributeValueId> = None;
+            for value_id in destination_attribute_value_ids {
+                let component_id = AttributeValue::component_id(ctx, value_id).await?;
+                if component_id == destination_component_id {
+                    destination_attribute_value_id = Some(value_id);
+                    break;
+                }
+            }
+
+            let destination_attribute_value_id = destination_attribute_value_id.ok_or(
+                ComponentError::DestinationComponentMissingAttributeValueForInputSocket(
+                    destination_component_id,
+                    destination_input_socket_id,
+                ),
+            )?;
+
+            let destination_prototype_id =
+                AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
+            let attribute_prototype_argument_ids =
+                AttributePrototypeArgument::list_ids_for_prototype_from_source_component(
+                    ctx,
+                    destination_prototype_id,
+                    source_component_id,
+                )
+                .await?;
+            AttributePrototypeArgument::remove_all(ctx, attribute_prototype_argument_ids).await?;
+        }
         Ok(())
     }
 

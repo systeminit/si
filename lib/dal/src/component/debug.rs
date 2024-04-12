@@ -37,6 +37,7 @@ pub struct ComponentDebugView {
     pub attributes: Vec<AttributeDebugView>,
     pub input_sockets: Vec<SocketDebugView>,
     pub output_sockets: Vec<SocketDebugView>,
+    pub parent_id: Option<ComponentId>,
 }
 /// A generated view for an [`Component`](crate::Component) that contains metadata about each of
 /// the components attributes. Used for constructing a debug view of the component and also for
@@ -49,6 +50,7 @@ pub struct ComponentDebugData {
     pub attribute_tree: HashMap<AttributeValueId, Vec<AttributeValueId>>,
     pub input_sockets: HashMap<InputSocketId, Vec<AttributeValueId>>,
     pub output_sockets: HashMap<OutputSocketId, Vec<AttributeValueId>>,
+    pub parent_id: Option<ComponentId>,
 }
 
 #[remain::sorted]
@@ -108,7 +110,6 @@ impl ComponentDebugView {
     ) -> ComponentDebugViewResult<Self> {
         // get ComponentDebugData
         let component = Component::get_by_id(ctx, component_id).await?;
-
         let component_debug_data = ComponentDebugData::new(ctx, &component).await?;
         let mut attributes = vec![];
         let mut input_sockets = vec![];
@@ -149,6 +150,7 @@ impl ComponentDebugView {
             attributes,
             input_sockets,
             output_sockets,
+            parent_id: component_debug_data.parent_id,
         };
 
         Ok(debug_view)
@@ -159,7 +161,7 @@ impl ComponentDebugData {
     #[instrument(level = "info", skip_all)]
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
-
+        let parent_id = component.parent(ctx).await?;
         let attribute_tree =
             Self::get_attribute_value_tree_for_component(ctx, component.id()).await?;
         let input_sockets = Self::get_input_sockets_for_component(ctx, schema_variant_id).await?;
@@ -175,6 +177,7 @@ impl ComponentDebugData {
             attribute_tree,
             input_sockets,
             output_sockets,
+            parent_id,
         };
 
         Ok(debug_view)

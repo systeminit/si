@@ -405,6 +405,74 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             mama_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
     }
+    //Scenario 7?! No more Country Era Swift, she wants to break freeeeeee
+    Frame::detach_child_from_parents(
+        ctx,
+        vec![new_era_taylor_swift.id()],
+        country_era_taylor_swift.id(),
+    )
+    .await
+    .expect("could not detach child to parent");
+    {
+        let diagram = DiagramByKey::assemble(ctx)
+            .await
+            .expect("could not assemble diagram");
+        assert_eq!(
+            4,                        // expected
+            diagram.components.len()  // actual
+        );
+        assert_eq!(
+            2,                   // expected
+            diagram.edges.len()  // actual
+        );
+
+        let new_era_taylor_swift_assembled = diagram
+            .components
+            .get(new_era_taylor_swift_name)
+            .expect("could not get component by name");
+        let travis_kelce_assembled = diagram
+            .components
+            .get(travis_kelce_component_name)
+            .expect("could not get component by name");
+        let country_era_taylor_swift_assembled = diagram
+            .components
+            .get(country_era_taylor_swift_name)
+            .expect("could not get component by name");
+        let mama_kelce_assembled = diagram
+            .components
+            .get(mama_kelce_name)
+            .expect("could not get component by name");
+
+        assert_eq!(
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
+        );
+        assert_eq!(
+            travis_kelce_component.id(),         // expected
+            travis_kelce_assembled.component_id  // actual
+        );
+        assert_eq!(
+            country_era_taylor_swift.id(),                   // expected
+            country_era_taylor_swift_assembled.component_id  // actual
+        );
+        assert_eq!(
+            mama_kelce.id(),                   // expected
+            mama_kelce_assembled.component_id  // actual
+        );
+
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
+        dbg!(country_era_taylor_swift_assembled.parent_id);
+        assert!(country_era_taylor_swift_assembled.parent_id.is_none());
+
+        assert_eq!(
+            new_era_taylor_swift.id(),                                    // expected
+            travis_kelce_assembled.parent_id.expect("no parent node id")  // actual
+        );
+        assert_eq!(
+            country_era_taylor_swift.id(),                              // expected
+            mama_kelce_assembled.parent_id.expect("no parent node id")  // actual
+        );
+    }
 }
 
 struct DiagramByKey {

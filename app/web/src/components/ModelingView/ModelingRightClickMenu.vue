@@ -147,7 +147,7 @@ const rightClickMenuItems = computed(() => {
       onSelect: () => {
         // TODO: we likely want an endpoint that handles multiple?
         _.each(selectedComponentIds.value, (id) => {
-          componentsStore.DETACH_COMPONENT(id);
+          componentsStore.DETACH_COMPONENT(id, []);
         });
       },
       disabled,

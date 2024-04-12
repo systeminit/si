@@ -164,6 +164,7 @@ export interface ComponentDebugView {
   attributes: AttributeDebugView[];
   inputSockets: SocketDebugView[];
   outputSockets: SocketDebugView[];
+  parentId?: string | null;
 }
 
 type EventBusEvents = {
@@ -857,7 +858,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          async DETACH_COMPONENT(componentId: ComponentId) {
+          async DETACH_COMPONENT(
+            componentId: ComponentId,
+            parentIds: ComponentId[],
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -868,6 +872,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/detach_component",
               params: {
                 componentId,
+                parentIds,
                 ...visibilityParams,
               },
               optimistic: () => {

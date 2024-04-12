@@ -22,6 +22,7 @@ use crate::server::state::AppState;
 mod connect_component_to_frame;
 pub mod create_component;
 pub mod create_connection;
+pub mod detach_component_from_frame;
 pub mod get_diagram;
 pub mod list_schemas;
 pub mod set_component_position;
@@ -150,4 +151,8 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_diagram", get(get_diagram::get_diagram))
         .route("/list_schemas", get(list_schemas::list_schemas))
+        .route(
+            "/detach_component",
+            post(detach_component_from_frame::detach_component_from_frame),
+        )
 }

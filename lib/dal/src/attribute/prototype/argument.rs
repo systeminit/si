@@ -24,8 +24,8 @@ use crate::{
         },
         WorkspaceSnapshotError,
     },
-    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
-    OutputSocketId, PropId, Timestamp, TransactionsError,
+    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
+    DalContext, HelperError, OutputSocketId, PropId, Timestamp, TransactionsError,
 };
 
 use self::{
@@ -542,11 +542,42 @@ impl AttributePrototypeArgument {
 
         Ok(apas)
     }
+    pub async fn list_ids_for_prototype_from_source_component(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+        source_id: ComponentId,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        let mut apas = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-    pub async fn remove(
+        let apa_node_idxs = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                prototype_id,
+                EdgeWeightKindDiscriminants::PrototypeArgument,
+            )
+            .await?;
+
+        for idx in apa_node_idxs {
+            let node_weight = workspace_snapshot.get_node_weight(idx).await?;
+            if let NodeWeight::AttributePrototypeArgument(apa_weight) = &node_weight {
+                if let Some(ArgumentTargets {
+                    source_component_id,
+                    ..
+                }) = apa_weight.targets()
+                {
+                    if source_component_id == source_id {
+                        apas.push(node_weight.id().into())
+                    }
+                }
+            }
+        }
+
+        Ok(apas)
+    }
+    async fn remove_inner(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
-    ) -> AttributePrototypeArgumentResult<()> {
+    ) -> AttributePrototypeArgumentResult<Vec<AttributeValueId>> {
         let apa = Self::get_by_id(ctx, apa_id).await?;
         let prototype_id = apa.prototype_id(ctx).await?;
         // Find all of the "destination" attribute values.
@@ -576,6 +607,26 @@ impl AttributePrototypeArgument {
                 .await
                 .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
         }
+        Ok(avs_to_update)
+    }
+    pub async fn remove_all(
+        ctx: &DalContext,
+        apa_ids: Vec<AttributePrototypeArgumentId>,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let mut all_avs_to_update = vec![];
+        for apa_id in apa_ids {
+            let avs_to_update = Self::remove_inner(ctx, apa_id).await?;
+            all_avs_to_update.extend(avs_to_update);
+        }
+        ctx.enqueue_dependent_values_update(all_avs_to_update)
+            .await?;
+        Ok(())
+    }
+    pub async fn remove(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let avs_to_update = Self::remove_inner(ctx, apa_id).await?;
         // Enqueue a dependent values update with the destination attribute values
         ctx.enqueue_dependent_values_update(avs_to_update).await?;
 
