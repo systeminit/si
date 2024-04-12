@@ -14,7 +14,6 @@ use crate::attribute::prototype::argument::{
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::module::{Module, ModuleId};
-use crate::prop::PropParent;
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::ChangeSetId;
@@ -2052,9 +2051,9 @@ async fn create_socket(
         stash
     };
 
-    let (ip, ep) = match data.kind() {
+    let (input_socket, output_socket) = match data.kind() {
         SocketSpecKind::Input => {
-            let ip = InputSocket::new(
+            let input_socket = InputSocket::new(
                 ctx,
                 schema_variant_id,
                 data.name(),
@@ -2065,10 +2064,10 @@ async fn create_socket(
             )
             .await?;
 
-            (Some(ip), None)
+            (Some(input_socket), None)
         }
         SocketSpecKind::Output => {
-            let ep = OutputSocket::new(
+            let output_socket = OutputSocket::new(
                 ctx,
                 schema_variant_id,
                 data.name(),
@@ -2080,14 +2079,14 @@ async fn create_socket(
             )
             .await?;
 
-            (None, Some(ep))
+            (None, Some(output_socket))
         }
     };
 
     // TODO: add modify_by_id to socket, ui hide frames
     // socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
 
-    Ok((ip, ep))
+    Ok((input_socket, output_socket))
 }
 
 async fn import_socket(
@@ -2097,7 +2096,7 @@ async fn import_socket(
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    let (ip, ep) = match change_set_id {
+    let (input_socket, output_socket) = match change_set_id {
         None => {
             let data = socket_spec
                 .data()
@@ -2139,21 +2138,24 @@ async fn import_socket(
         thing_map.insert(
             change_set_id,
             unique_id.to_owned(),
-            Thing::Socket(Box::new((ip.to_owned(), ep.to_owned()))),
+            Thing::Socket(Box::new((
+                input_socket.to_owned(),
+                output_socket.to_owned(),
+            ))),
         );
     }
 
     match (
         socket_spec.data().and_then(|data| data.func_unique_id()),
-        ep,
-        ip,
+        output_socket,
+        input_socket,
     ) {
-        (Some(func_unique_id), Some(ep), None) => {
+        (Some(func_unique_id), Some(output_socket), None) => {
             import_attr_func_for_output_socket(
                 ctx,
                 change_set_id,
                 schema_variant_id,
-                ep.id(),
+                output_socket.id(),
                 func_unique_id,
                 socket_spec.inputs()?.drain(..).map(Into::into).collect(),
                 thing_map,
@@ -2399,7 +2401,6 @@ async fn create_props(
     let parent_info = ParentPropInfo {
         prop_id: prop_root_prop_id,
         path: PropPath::new(prop_root.path_parts()),
-        kind: PropKind::Object,
     };
 
     variant_spec
@@ -2637,7 +2638,7 @@ async fn import_schema_variant(
                     ctx,
                     "secret_definition",
                     PropKind::Object,
-                    PropParent::OrderedProp(root_prop_id),
+                    root_prop_id,
                 )
                 .await?;
                 let secret_definition_prop_id = secret_definition_prop.id();
@@ -3193,29 +3194,32 @@ async fn create_dal_prop(
     schema_variant_id: SchemaVariantId,
     parent_prop_info: Option<ParentPropInfo>,
 ) -> PkgResult<Prop> {
-    let prop_parent = match parent_prop_info {
-        None => PropParent::SchemaVariant(schema_variant_id),
-        Some(parent_info) => {
-            if parent_info.kind.ordered() {
-                PropParent::OrderedProp(parent_info.prop_id)
-            } else {
-                PropParent::Prop(parent_info.prop_id)
-            }
-        }
+    let prop = match parent_prop_info {
+        Some(parent_info) => Prop::new(
+            ctx,
+            &data.name,
+            kind,
+            data.hidden,
+            data.doc_link.as_ref().map(|l| l.to_string()),
+            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+            data.validation_format.clone(),
+            parent_info.prop_id,
+        )
+        .await
+        .map_err(SiPkgError::visit_prop)?,
+        None => Prop::new_root(
+            ctx,
+            &data.name,
+            kind,
+            data.hidden,
+            data.doc_link.as_ref().map(|l| l.to_string()),
+            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+            data.validation_format.clone(),
+            schema_variant_id,
+        )
+        .await
+        .map_err(SiPkgError::visit_prop)?,
     };
-
-    let prop = Prop::new(
-        ctx,
-        &data.name,
-        kind,
-        data.hidden,
-        data.doc_link.as_ref().map(|l| l.to_string()),
-        Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-        data.validation_format.clone(),
-        prop_parent,
-    )
-    .await
-    .map_err(SiPkgError::visit_prop)?;
 
     Ok(prop)
 }
@@ -3224,7 +3228,6 @@ async fn create_dal_prop(
 struct ParentPropInfo {
     prop_id: PropId,
     path: PropPath,
-    kind: PropKind,
 }
 
 async fn create_prop(
@@ -3351,7 +3354,6 @@ async fn create_prop(
     Ok(Some(ParentPropInfo {
         prop_id: prop.id(),
         path: prop.path(ctx.ctx).await?,
-        kind: prop.kind,
     }))
 }
 

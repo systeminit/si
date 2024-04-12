@@ -290,10 +290,22 @@ impl DeprecatedActionPrototype {
         Ok(Self::assemble(id, inner))
     }
 
+    /// Finds the [`FuncId`](Func) for the [`DeprecatedActionPrototype`].
     pub async fn func_id(&self, ctx: &DalContext) -> DeprecatedActionPrototypeResult<FuncId> {
+        Self::func_id_by_id(ctx, self.id).await
+    }
+
+    /// Finds the [`FuncId`](Func) for a given [`ActionPrototypeId`](DeprecatedActionPrototype).
+    pub async fn func_id_by_id(
+        ctx: &DalContext,
+        action_prototype_id: ActionPrototypeId,
+    ) -> DeprecatedActionPrototypeResult<FuncId> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         for node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .outgoing_targets_for_edge_weight_kind(
+                action_prototype_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
             .await?
         {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
@@ -303,7 +315,9 @@ impl DeprecatedActionPrototype {
             }
         }
 
-        Err(DeprecatedActionPrototypeError::MissingFunction(self.id))
+        Err(DeprecatedActionPrototypeError::MissingFunction(
+            action_prototype_id,
+        ))
     }
 
     pub async fn run(
