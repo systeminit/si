@@ -11,7 +11,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String>;
 
 #[tokio::test]
 async fn activities() {

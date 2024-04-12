@@ -3,6 +3,7 @@ use std::{future::IntoFuture, io, path::Path, sync::Arc};
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
+use si_events::FuncExecution;
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -29,16 +30,15 @@ pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, FuncExecutionValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    FuncExecutionValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
-    func_execution: FuncExecutionDb<FuncExecutionValue>,
+    func_execution: FuncExecutionDb,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     pg_pool: PgPool,
     nats_client: NatsClient,
@@ -47,12 +47,11 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, FuncExecutionValue, WorkspaceSnapshotValue>
-    LayerDb<CasValue, EncryptedSecretValue, FuncExecutionValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    FuncExecutionValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn initialize(
@@ -76,7 +75,7 @@ where
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
             LayerCache::new(encrypted_secret::CACHE_NAME, disk_path, pg_pool.clone())?;
 
-        let func_execution_cache: LayerCache<Arc<FuncExecutionValue>> =
+        let func_execution_cache: LayerCache<Arc<FuncExecution>> =
             LayerCache::new(func_execution::CACHE_NAME, disk_path, pg_pool.clone())?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> =
@@ -148,7 +147,7 @@ where
         &self.encrypted_secret
     }
 
-    pub fn func_execution(&self) -> &FuncExecutionDb<FuncExecutionValue> {
+    pub fn func_execution(&self) -> &FuncExecutionDb {
         &self.func_execution
     }
 

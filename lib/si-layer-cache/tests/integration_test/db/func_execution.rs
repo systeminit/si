@@ -7,7 +7,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<CasValue, String, FuncExecution, String>;
+type TestLayerDb = LayerDb<CasValue, String, String>;
 
 #[tokio::test]
 async fn write() {
@@ -29,7 +29,7 @@ async fn write() {
     let value = FuncExecution::new("funky".to_string(), FuncExecutionState::Create);
     key = ldb
         .func_execution()
-        .write(key.clone(), value.clone())
+        .write(key.clone(), value.clone().into())
         .await
         .expect("failed to write to layerdb");
     assert!(key.func_execution_id().is_some());
@@ -64,7 +64,7 @@ async fn write_with_message() {
     let value = FuncExecution::new("funky".to_string(), FuncExecutionState::Create);
     key = ldb
         .func_execution()
-        .write(key.clone(), value.clone())
+        .write(key.clone(), value.clone().into())
         .await
         .expect("failed to write to layerdb");
     assert!(key.func_execution_id().is_some());
@@ -130,7 +130,7 @@ async fn write_and_read_many() {
         let mut key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), Ulid::new(), Ulid::new());
         key = ldb
             .func_execution()
-            .write(key.clone(), value.clone())
+            .write(key.clone(), value.clone().into())
             .await
             .expect("failed to write to layerdb");
 
@@ -190,7 +190,7 @@ async fn read_by_component_id() {
         let mut key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), component_id, Ulid::new());
         key = ldb
             .func_execution()
-            .write(key.clone(), value.clone())
+            .write(key.clone(), value.clone().into())
             .await
             .expect("failed to write to layerdb");
 
@@ -210,7 +210,7 @@ async fn read_by_component_id() {
     let key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), Ulid::new(), Ulid::new());
     let value = FuncExecution::new("no oath, no spell".to_string(), FuncExecutionState::Create);
     ldb.func_execution()
-        .write(key.clone(), value.clone())
+        .write(key.clone(), value.clone().into())
         .await
         .expect("failed to write to layerdb");
 
@@ -259,7 +259,7 @@ async fn read_by_prototype_id() {
         let mut key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), Ulid::new(), prototype_id);
         key = ldb
             .func_execution()
-            .write(key.clone(), value.clone())
+            .write(key.clone(), value.clone().into())
             .await
             .expect("failed to write to layerdb");
 
@@ -279,7 +279,7 @@ async fn read_by_prototype_id() {
     let key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), Ulid::new(), Ulid::new());
     let value = FuncExecution::new("no oath, no spell".to_string(), FuncExecutionState::Create);
     ldb.func_execution()
-        .write(key.clone(), value.clone())
+        .write(key.clone(), value.clone().into())
         .await
         .expect("failed to write to layerdb");
     let read_values = ldb
@@ -328,7 +328,7 @@ async fn read_by_component_id_and_prototype_id() {
         let mut key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), component_id, prototype_id);
         key = ldb
             .func_execution()
-            .write(key.clone(), value.clone())
+            .write(key.clone(), value.clone().into())
             .await
             .expect("failed to write to layerdb");
 
@@ -348,7 +348,7 @@ async fn read_by_component_id_and_prototype_id() {
     let key = FuncExecutionKey::new(Ulid::new(), Ulid::new(), Ulid::new(), prototype_id);
     let value = FuncExecution::new("no oath, no spell".to_string(), FuncExecutionState::Create);
     ldb.func_execution()
-        .write(key.clone(), value.clone())
+        .write(key.clone(), value.clone().into())
         .await
         .expect("failed to write to layerdb");
 
