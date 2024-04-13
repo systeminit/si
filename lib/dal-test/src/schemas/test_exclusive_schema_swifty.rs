@@ -112,6 +112,18 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
                         )
                         .build()?,
                 )
+                .socket(
+                    SocketSpec::builder()
+                        .name("anything")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("anything")
+                                .connection_annotations(serde_json::to_string(&vec!["anything"])?)
+                                .kind(SocketSpecKind::Output)
+                                .build()?,
+                        )
+                        .build()?,
+                )
                 .action_func(
                     ActionFuncSpec::builder()
                         .kind(&DeprecatedActionKind::Create)
