@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Debug},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -13,7 +8,11 @@ use si_data_nats::{
     NatsClient,
 };
 use strum::EnumDiscriminants;
-use tokio::sync::{broadcast, mpsc::UnboundedReceiver, mpsc::UnboundedSender, RwLock};
+use tokio::sync::{
+    broadcast::{self, error::SendError},
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    Mutex,
+};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::{Ulid, ULID_LEN};
 
@@ -36,6 +35,13 @@ pub use si_data_nats::async_nats::jetstream::AckKind;
 
 pub mod rebase;
 pub mod test;
+
+// Should you have to troubleshoot this code - these are very helpful to have
+// around. I'm leaving them here for future issues. Love, Adam.
+//
+//pub static RECV_NATS_COUNTER: AtomicI32 = AtomicI32::new(0);
+//pub static SENT_BROADCAST_COUNTER: AtomicI32 = AtomicI32::new(0);
+//pub static SENT_BROADCAST_ERROR_COUNTER: AtomicI32 = AtomicI32::new(0);
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ActivityId(Ulid);
@@ -180,7 +186,7 @@ pub struct ActivityMultiplexer {
     nats_client: NatsClient,
     tracker: TaskTracker,
     shutdown_token: CancellationToken,
-    channels: Arc<RwLock<HashMap<String, broadcast::Sender<Activity>>>>,
+    channels: Arc<Mutex<HashMap<String, broadcast::Sender<Activity>>>>,
 }
 
 impl ActivityMultiplexer {
@@ -195,7 +201,7 @@ impl ActivityMultiplexer {
             instance_id,
             nats_client,
             shutdown_token,
-            channels: Arc::new(RwLock::new(HashMap::new())),
+            channels: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -216,11 +222,11 @@ impl ActivityMultiplexer {
         } else {
             ("everything".to_string(), None)
         };
-        {
-            let reader = self.channels.read().await;
-            if let Some(sender) = reader.get(&multiplex_key) {
-                return Ok(sender.subscribe());
-            }
+        let mut channels = self.channels.lock().await;
+        if let Some(sender) = channels.get(&multiplex_key) {
+            let subscriber = sender.subscribe();
+            drop(channels);
+            return Ok(subscriber);
         }
         let activity_stream = ActivityStream::run(
             self.instance_id,
@@ -229,16 +235,14 @@ impl ActivityMultiplexer {
             has_filter_array,
         )
         .await?;
-        let (tx, rx) = broadcast::channel(1_000_000); // the 1_000_000 here is the depth the channel will
-                                                      // keep if a reader is slow
+        let (tx, rx) = broadcast::channel(1000); // the 1_000_000 here is the depth the channel will
+
         let mut amx_task = ActivityMultiplexerTask::new(activity_stream, tx.clone());
         let amx_shutdown_token = self.shutdown_token.clone();
         self.tracker
             .spawn(async move { amx_task.run(amx_shutdown_token).await });
-        {
-            let mut writer = self.channels.write().await;
-            writer.insert(multiplex_key, tx);
-        }
+        channels.insert(multiplex_key, tx);
+        drop(channels);
         Ok(rx)
     }
 }
@@ -273,10 +277,13 @@ impl ActivityMultiplexerTask {
 
     pub async fn process(&mut self) {
         while let Some(activity) = self.activity_stream.recv().await {
-            if let Err(error) = self.tx.send(activity) {
-                trace!(
-                    ?error,
-                    "activity multiplexer skipping message; no receivers listening. this can be totally normal!"
+            //SENT_BROADCAST_COUNTER.fetch_add(1, Ordering::Relaxed);
+            if let Err(SendError(_activity)) = self.tx.send(activity) {
+                //SENT_BROADCAST_ERROR_COUNTER.fetch_add(1, Ordering::Relaxed);
+                let queued_values = self.tx.len();
+                let receiver_count = self.tx.receiver_count();
+                trace!(?queued_values, ?receiver_count,
+                    "activity multiplexer skipping message; no receivers listening. this can be totally normal."
                 );
             }
         }
@@ -327,6 +334,7 @@ impl ActivityStream {
                             "Error sending message ack while processing activity stream"
                         );
                     }
+                    //RECV_NATS_COUNTER.fetch_add(1, Ordering::Relaxed);
                     let tx = tx.clone();
                     tracker.spawn(async move {
                         if let Err(error) = Self::process_message(tx, msg).await {
