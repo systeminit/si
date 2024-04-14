@@ -62,7 +62,7 @@ pub struct Config {
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
-    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
+    #[builder(default = "PgPoolConfig::default()")]
     layer_cache_pg_pool: PgPoolConfig,
 
     #[builder(default = "si_layer_cache::default_cache_path_for_service(\"pinga\")")]
@@ -125,8 +125,8 @@ impl Config {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default)]
-    pg: PgPoolConfig,
-    #[serde(default = "si_layer_cache::default_pg_pool_config")]
+    pg_pool: PgPoolConfig,
+    #[serde(default)]
     layer_cache_pg_pool: PgPoolConfig,
     #[serde(default)]
     nats: NatsConfig,
@@ -143,8 +143,8 @@ pub struct ConfigFile {
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
-            pg: Default::default(),
-            layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
+            pg_pool: Default::default(),
+            layer_cache_pg_pool: Default::default(),
             nats: Default::default(),
             concurrency_limit: default_concurrency_limit(),
             crypto: Default::default(),
@@ -165,7 +165,7 @@ impl TryFrom<ConfigFile> for Config {
         detect_and_configure_development(&mut value)?;
 
         let mut config = Config::builder();
-        config.pg_pool(value.pg);
+        config.pg_pool(value.pg_pool);
         config.layer_cache_pg_pool(value.layer_cache_pg_pool);
         config.nats(value.nats);
         config.crypto(value.crypto);
@@ -237,7 +237,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.pg_pool.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_cache_pg_pool.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())
@@ -270,7 +270,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.pg_pool.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_cache_pg_pool.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())

@@ -122,7 +122,7 @@ impl Server {
 
         let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
             config.layer_cache_disk_path(),
-            PgPool::new(config.layer_cache_pg_pool()).await?,
+            Self::create_pg_pool(config.layer_cache_pg_pool()).await?,
             nats.clone(),
             token,
         )

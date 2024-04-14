@@ -38,4 +38,3 @@ pub mod pg;
 pub use db::LayerDb;
 pub use disk_cache::{default_cacache_path, default_cache_path_for_service, CaCacheTempFile};
 pub use error::LayerDbError;
-pub use pg::{default_pg_pool_config, APPLICATION_NAME, DBNAME};

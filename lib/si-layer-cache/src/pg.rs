@@ -11,19 +11,6 @@ mod embedded {
     embed_migrations!("./src/migrations");
 }
 
-pub const DBNAME: &str = "si_layer_db";
-pub const APPLICATION_NAME: &str = "si-layer-db";
-
-pub fn default_pg_pool_config() -> PgPoolConfig {
-    PgPoolConfig {
-        dbname: DBNAME.into(),
-        application_name: APPLICATION_NAME.into(),
-        hostname: "postgres".to_string(),
-        
-        ..Default::default()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct PgLayer {
     pool: Arc<PgPool>,
