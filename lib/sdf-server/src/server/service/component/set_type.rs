@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 
-use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility};
+use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -36,6 +36,11 @@ pub async fn set_type(
         None => ComponentType::Component,
     };
     component.set_type(&ctx, component_type).await?;
+
+    WsEvent::component_updated(&ctx, component.id())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     let component_schema = component.schema(&ctx).await?;
     track(
