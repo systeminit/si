@@ -334,7 +334,7 @@ impl Diagram {
                 component_type: component.get_type(ctx).await?.to_string(),
                 color: component.color(ctx).await?.unwrap_or("#111111".into()),
                 change_status: ChangeStatus::Added.to_string(),
-                has_resource: false,
+                has_resource: component.resource(ctx).await?.payload.is_some(),
                 sockets,
                 parent_id: component.parent(ctx).await?,
                 updated_info,
