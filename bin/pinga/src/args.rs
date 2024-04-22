@@ -63,15 +63,9 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) pg_dbname: Option<String>,
 
-<<<<<<< HEAD
-    /// PostgresQL connection pool dbname for layer cache [example: layer_cache]
-    #[arg(long)]
-    pub(crate) pg_dbname_layer_cache: Option<String>,
-=======
     /// PostgreSQL connection pool dbname for layer_db [example: melons]
     #[arg(long)]
     pub(crate) layer_cache_pg_dbname: Option<String>,
->>>>>>> main
 
     /// PostgreSQL connection pool hostname [example: prod.db.example.com]
     #[arg(long)]
@@ -140,9 +134,6 @@ impl TryFrom<Args> for Config {
         ConfigFile::layered_load(NAME, |config_map| {
             if let Some(dbname) = args.pg_dbname {
                 config_map.set("pg.dbname", dbname);
-            }
-            if let Some(dbname_layer_cache) = args.pg_dbname_layer_cache {
-                config_map.set("pg.dbname_layer_cache", dbname_layer_cache);
             }
             if let Some(hostname) = args.pg_hostname {
                 config_map.set("pg.hostname", hostname);

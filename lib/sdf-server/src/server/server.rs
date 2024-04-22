@@ -265,8 +265,8 @@ impl Server<(), ()> {
     #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
         services_context.layer_db().pg_migrate().await?;
-        //dal::migrate_all_with_progress(services_context).await?;
-        //migrate_builtins_from_module_index(services_context).await?;
+        dal::migrate_all_with_progress(services_context).await?;
+        migrate_builtins_from_module_index(services_context).await?;
         Ok(())
     }
 

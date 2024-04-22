@@ -31,18 +31,17 @@ services:
       - "SI_SDF__PG__HOSTNAME=postgres"
       - "SI_SDF__NATS__URL=nats"
       - "SI_SDF__PG__DBNAME=si"
-      # TODO(johnrwatson): Still to implement
-      #- "SI_SDF__PG__DBNAME_LAYER_CACHE=si_layer_db"
       - "SI_SDF__PG__USER=si"
       - "SI_SDF__PG__PASSWORD=bugbear"
+      - "SI_SDF__LAYER_CACHE_PG_DBNAME=si-layer-db"
       # Rebaser
       - "SI_REBASER__PG__HOSTNAME=postgres"
       - "SI_REBASER__NATS__URL=nats"
       - "SI_REBASER__PG__DBNAME=si"
       # TODO(johnrwatson): Still to implement
-      #- "SI_REBASER__PG__DBNAME_LAYER_CACHE=si_layer_db"
       - "SI_REBASER__PG__USER=si"
       - "SI_REBASER__PG__PASSWORD=bugbear"
+      - "SI_REBASER__LAYER_CACHE_PG_DBNAME=si-layer-db"
       # Pinga
       - "SI_PINGA__PG__HOSTNAME=postgres"
       - "SI_PINGA__NATS__URL=nats"
@@ -50,6 +49,7 @@ services:
       - "SI_PINGA__PG__DBNAME_LAYER_CACHE=si_layer_db"
       - "SI_PINGA__PG__USER=si"
       - "SI_PINGA__PG__PASSWORD=bugbear"
+      - "SI_PINGA__LAYER_CACHE_PG_DBNAME=si-layer-db"
       # Veritech
       - "SI_VERITECH__NATS__URL=nats"
     working_dir: /workdir
