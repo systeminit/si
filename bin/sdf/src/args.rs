@@ -63,6 +63,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) pg_dbname: Option<String>,
 
+    /// PostgreSQL connection pool dbname for layer_db [example: melons]
+    #[arg(long)]
+    pub(crate) layer_cache_pg_dbname: Option<String>,
+
     /// PostgreSQL connection pool hostname [example: prod.db.example.com]
     #[arg(long)]
     pub(crate) pg_hostname: Option<String>,
@@ -185,6 +189,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(cert) = args.pg_cert_base64 {
                 config_map.set("pg.certificate_base64", cert.to_string());
+            }
+            if let Some(layer_cache_pg_dbname) = args.layer_cache_pg_dbname {
+                config_map.set("layer_cache_pg_dbname", layer_cache_pg_dbname);
             }
             if let Some(migration_mode) = args.migration_mode {
                 config_map.set("migration_mode", migration_mode);
