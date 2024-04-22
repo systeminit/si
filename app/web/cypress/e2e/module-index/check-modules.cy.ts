@@ -1,5 +1,5 @@
 // @ts-check
-///<reference path="../global.d.ts"/>
+///<reference path="../../global.d.ts"/>
 
 describe('module_index', () => {
     it('more_than_40_modules', () => {

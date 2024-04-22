@@ -1,5 +1,5 @@
 // @ts-check
-///<reference path="../global.d.ts"/>
+///<reference path="../../global.d.ts"/>
 
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
 const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
