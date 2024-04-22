@@ -81,8 +81,8 @@ pub struct Config {
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
 
-    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
-    layer_cache_pg_pool: PgPoolConfig,
+    #[builder(default = "default_layer_cache_dbname()")]
+    layer_cache_pg_dbname: String,
 
     layer_cache_disk_path: PathBuf,
 
@@ -160,8 +160,8 @@ impl Config {
     }
 
     #[must_use]
-    pub fn layer_cache_pg_pool(&self) -> &PgPoolConfig {
-        &self.layer_cache_pg_pool
+    pub fn layer_cache_pg_dbname(&self) -> &str {
+        &self.layer_cache_pg_dbname
     }
 
     #[must_use]
@@ -184,8 +184,8 @@ impl ConfigBuilder {
 pub struct ConfigFile {
     #[serde(default)]
     pub pg: PgPoolConfig,
-    #[serde(default = "si_layer_cache::default_pg_pool_config")]
-    layer_cache_pg_pool: PgPoolConfig,
+    #[serde(default = "default_layer_cache_dbname")]
+    layer_cache_pg_dbname: String,
     #[serde(default)]
     pub nats: NatsConfig,
     #[serde(default)]
@@ -210,7 +210,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
-            layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
+            layer_cache_pg_dbname: default_layer_cache_dbname(),
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
@@ -236,7 +236,7 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
-        config.layer_cache_pg_pool(value.layer_cache_pg_pool);
+        config.layer_cache_pg_dbname(value.layer_cache_pg_dbname);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key(value.jwt_signing_public_key);
@@ -294,6 +294,10 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
         active_key_base64: None,
         extra_keys: vec![],
     }
+}
+
+fn default_layer_cache_dbname() -> String {
+    "si_layer_db".to_string()
 }
 
 fn default_module_index_url() -> String {
@@ -372,7 +376,6 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())
@@ -431,7 +434,6 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())
