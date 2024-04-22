@@ -135,15 +135,7 @@ const onKeyDown = async (e: KeyboardEvent) => {
   }
 };
 
-const openCollapsible = ref(true);
 onMounted(() => {
-  if (changeSetStore.headSelected) {
-    openCollapsible.value = !!window.localStorage.getItem("applied-changes");
-    window.localStorage.removeItem("applied-changes");
-  } else {
-    openCollapsible.value = false;
-  }
-
   window.addEventListener("keydown", onKeyDown);
 });
 
