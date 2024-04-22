@@ -62,7 +62,7 @@ rebaser_target = "//bin/rebaser:rebaser"
 local_resource(
     "rebaser",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(rebaser_target),
+    cmd = "buck2 build @//mode/debug {}".format(rebaser_target),
     serve_cmd = "buck2 run {}".format(rebaser_target),
     allow_parallel = True,
     deps = _buck2_dep_inputs(rebaser_target),
@@ -74,7 +74,7 @@ pinga_target = "//bin/pinga:pinga"
 local_resource(
     "pinga",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(pinga_target),
+    cmd = "buck2 build @//mode/debug {}".format(pinga_target),
     serve_cmd = "buck2 run {}".format(pinga_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
@@ -90,7 +90,7 @@ veritech_target = "//bin/veritech:veritech"
 local_resource(
     "veritech",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(veritech_target),
+    cmd = "buck2 build @//mode/debug {}".format(veritech_target),
     serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
@@ -106,7 +106,7 @@ sdf_target = "//bin/sdf:sdf"
 local_resource(
     "sdf",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(sdf_target),
+    cmd = "buck2 build @//mode/debug {}".format(sdf_target),
     serve_cmd = "buck2 run {}".format(sdf_target),
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
@@ -131,7 +131,7 @@ web_target = "//app/web:dev"
 local_resource(
     "web",
     labels = ["frontend"],
-    cmd = "buck2 build {}".format(web_target),
+    cmd = "buck2 build @//mode/debug {}".format(web_target),
     serve_cmd = "buck2 run {}".format(web_target),
     allow_parallel = True,
     resource_deps = [
