@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use serde::{de::DeserializeOwned, Serialize};
 use si_events::ulid::Ulid;
-use si_events::{ContentHash, FuncExecutionKey, FuncExecutionMessage};
+use si_events::{ContentHash, FuncExecution, FuncExecutionKey, FuncExecutionMessage};
 
 use super::serialize;
 use crate::{error::LayerDbResult, layer_cache::LayerCache, LayerDbError};
@@ -18,11 +17,8 @@ pub const EXECUTIONS_TABLE_NAME: &str = KEYWORD_PLURAL;
 pub const MESSAGES_TABLE_NAME: &str = "func_execution_messages";
 
 #[derive(Debug, Clone)]
-pub struct FuncExecutionDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub cache: LayerCache<Arc<V>>,
+pub struct FuncExecutionDb {
+    pub cache: LayerCache<Arc<FuncExecution>>,
     attach_message_query: String,
     get_many_func_execution_by_id_query: String,
     get_many_func_execution_by_where_query: String,
@@ -31,11 +27,8 @@ where
     insert_message_query: String,
 }
 
-impl<V> FuncExecutionDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub fn new(cache: LayerCache<Arc<V>>) -> Self {
+impl FuncExecutionDb {
+    pub fn new(cache: LayerCache<Arc<FuncExecution>>) -> Self {
         FuncExecutionDb { cache ,
             attach_message_query: format!("UPDATE {EXECUTIONS_TABLE_NAME} SET message_id = $1 WHERE key = $2"),
             get_many_func_execution_by_id_query: format!("SELECT * FROM {EXECUTIONS_TABLE_NAME} WHERE key = any($1)"),
@@ -50,7 +43,7 @@ where
     pub async fn write(
         &self,
         mut key: FuncExecutionKey,
-        value: V,
+        value: Arc<FuncExecution>,
     ) -> LayerDbResult<FuncExecutionKey> {
         let postcard_value = serialize::to_vec(&value)?;
         let hash = ContentHash::new(&postcard_value);
@@ -102,7 +95,7 @@ where
     }
 
     // reads a [`FuncExecution`] from the database
-    pub async fn read(&self, key: FuncExecutionKey) -> LayerDbResult<Option<V>> {
+    pub async fn read(&self, key: FuncExecutionKey) -> LayerDbResult<Option<FuncExecution>> {
         Ok(match key.func_execution_id() {
             Some(key) => match self.cache.pg().get(&key.to_string()).await? {
                 Some(value) => Some(serialize::from_bytes(&value)?),
@@ -141,7 +134,10 @@ where
 
     // reads all [`FuncExecution`]s from the database. Note that the [`FuncExecutionKey`]s being
     // supplied MUST include the func_execution_id for retrieval
-    pub async fn read_many(&self, keys: &[FuncExecutionKey]) -> LayerDbResult<Option<Vec<V>>> {
+    pub async fn read_many(
+        &self,
+        keys: &[FuncExecutionKey],
+    ) -> LayerDbResult<Option<Vec<Arc<FuncExecution>>>> {
         let func_keys: Vec<&ContentHash> = keys
             .iter()
             .filter_map(|key| key.func_execution_id())
@@ -160,7 +156,10 @@ where
             }))
     }
 
-    async fn read_many_by_where(&self, where_clause: &str) -> LayerDbResult<Option<Vec<V>>> {
+    async fn read_many_by_where(
+        &self,
+        where_clause: &str,
+    ) -> LayerDbResult<Option<Vec<Arc<FuncExecution>>>> {
         Ok(self
             .cache
             .pg()
@@ -184,7 +183,7 @@ where
     pub async fn read_many_by_component_id(
         &self,
         component_id: &Ulid,
-    ) -> LayerDbResult<Option<Vec<V>>> {
+    ) -> LayerDbResult<Option<Vec<Arc<FuncExecution>>>> {
         self.read_many_by_where(&format!("component_id = '{}'", component_id))
             .await
     }
@@ -193,7 +192,7 @@ where
     pub async fn read_many_by_prototype_id(
         &self,
         prototype_id: &Ulid,
-    ) -> LayerDbResult<Option<Vec<V>>> {
+    ) -> LayerDbResult<Option<Vec<Arc<FuncExecution>>>> {
         self.read_many_by_where(&format!("prototype_id = '{}'", prototype_id))
             .await
     }
@@ -203,7 +202,7 @@ where
         &self,
         component_id: &Ulid,
         prototype_id: &Ulid,
-    ) -> LayerDbResult<Option<Vec<V>>> {
+    ) -> LayerDbResult<Option<Vec<Arc<FuncExecution>>>> {
         self.read_many_by_where(&format!(
             "component_id = '{}' AND prototype_id = '{}'",
             component_id, prototype_id,
