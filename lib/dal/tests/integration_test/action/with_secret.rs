@@ -2,10 +2,11 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{
-    AttributeValue, ChangeSet, Component, DalContext, DeprecatedAction, DeprecatedActionKind,
-    InputSocket, OutputSocket, Prop, Secret,
+    AttributeValue, Component, DalContext, DeprecatedAction, DeprecatedActionKind, InputSocket,
+    OutputSocket, Prop, Secret,
 };
-use dal_test::test_harness::{create_component_for_schema_name, encrypt_message};
+use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{create_component_for_schema_name, encrypt_message};
 use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 
@@ -68,11 +69,9 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     )
     .await
     .expect("cannot create secret");
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Use the secret in the source component and commit.
     let property_values = PropertyEditorValues::assemble(ctx, source_component.id())
@@ -88,11 +87,9 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     )
     .await
     .expect("unable to perform attribute value update");
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Ensure that the qualification is successful on the source component.
     let qualifications = Component::list_qualifications(ctx, source_component.id())
@@ -134,21 +131,9 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .expect("could not perform parent is head"));
 
     // Apply to the base change set and commit.
-    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could apply to base change set");
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    // Observe that the "create" action on the destination component succeeded. We'll use the base
-    // change set id to do so.
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-        applied_change_set
-            .base_change_set_id
-            .expect("base change set not found"),
-    )
-    .await
-    .expect("could not update visibility and snapshot to visibility");
+        .expect("could not apply change set");
 
     assert_eq!(
         serde_json::json![{

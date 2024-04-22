@@ -1,6 +1,6 @@
 use dal::secret::DecryptedSecret;
 use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion};
-use dal_test::{test, test_harness::generate_fake_name, WorkspaceSignup};
+use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 

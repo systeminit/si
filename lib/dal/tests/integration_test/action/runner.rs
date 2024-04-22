@@ -2,8 +2,9 @@ use dal::{
     func::backend::js_action::DeprecatedActionRunResult, ActionCompletionStatus, Component,
     DalContext, DeprecatedActionBatch, DeprecatedActionPrototype, DeprecatedActionRunner,
 };
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -25,12 +26,9 @@ async fn get_by_id(ctx: &mut DalContext) {
             .await
             .expect("unable to create action runner");
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -61,12 +59,9 @@ async fn set_resource(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert_eq!(runner.resource, None);
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let resource = DeprecatedActionRunResult {
         status: None,
@@ -81,12 +76,9 @@ async fn set_resource(ctx: &mut DalContext) {
         .expect("unable to set completion status");
     assert_eq!(runner.resource.as_ref(), Some(&resource));
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -118,12 +110,9 @@ async fn set_completion_message(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert_eq!(runner.completion_message, None);
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     runner
         .set_completion_message(ctx, Some("my-message".to_owned()))
@@ -131,12 +120,9 @@ async fn set_completion_message(ctx: &mut DalContext) {
         .expect("unable to set completion message");
     assert_eq!(runner.completion_message, Some("my-message".to_owned()));
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -168,12 +154,9 @@ async fn set_completion_status(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert_eq!(runner.completion_status, None);
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     runner
         .set_completion_status(ctx, Some(ActionCompletionStatus::Success))
@@ -184,12 +167,9 @@ async fn set_completion_status(ctx: &mut DalContext) {
         Some(ActionCompletionStatus::Success)
     );
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -221,12 +201,9 @@ async fn set_started_at(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert_eq!(runner.started_at, None);
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     runner
         .set_started_at(ctx)
@@ -234,12 +211,9 @@ async fn set_started_at(ctx: &mut DalContext) {
         .expect("unable to set completion status");
     assert!(runner.started_at.is_some());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -268,12 +242,9 @@ async fn set_finished_at(ctx: &mut DalContext) {
             .await
             .expect("unable to create action runner");
     assert!(runner.finished_at.is_none());
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     runner
         .set_finished_at(ctx)
@@ -281,12 +252,9 @@ async fn set_finished_at(ctx: &mut DalContext) {
         .expect("unable to set completion status");
     assert!(runner.finished_at.is_some());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -316,12 +284,9 @@ async fn stamp_started(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert!(runner.started_at.is_none());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     runner
         .stamp_started(ctx)
@@ -329,12 +294,9 @@ async fn stamp_started(ctx: &mut DalContext) {
         .expect("unable to set stamp started");
     assert!(runner.started_at.is_some());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -365,12 +327,9 @@ async fn stamp_finished(ctx: &mut DalContext) {
             .expect("unable to create action runner");
     assert!(runner.started_at.is_none());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert!(runner
         .stamp_finished(
@@ -408,12 +367,9 @@ async fn stamp_finished(ctx: &mut DalContext) {
         .expect("unable to set stamp finished");
     assert!(runner.finished_at.is_some());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let runner = DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -444,12 +400,9 @@ async fn for_batch(ctx: &mut DalContext) {
             .await
             .expect("unable to create action runner");
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let runners = DeprecatedActionRunner::for_batch(ctx, batch.id)
         .await
@@ -477,12 +430,9 @@ async fn run(ctx: &mut DalContext) {
             .await
             .expect("unable to create action runner");
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert!(runner.run(ctx).await.expect("unable to run").is_some());
 }

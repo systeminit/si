@@ -1,10 +1,10 @@
 use dal::component::resource::ResourceView;
 use dal::{
-    ChangeSet, Component, DalContext, DeprecatedAction, DeprecatedActionKind,
-    DeprecatedActionPrototype,
+    Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
 };
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -14,7 +14,9 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("Unable to get schema variant for component");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let mut actions = DeprecatedAction::for_component(ctx, ms_swift.id())
         .await
@@ -38,20 +40,9 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("could not perform parent is head"));
 
-    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could apply to base change set");
-
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-        applied_change_set
-            .base_change_set_id
-            .expect("base change set not found"),
-    )
-    .await
-    .expect("could not update visibility and snapshot to visibility");
+        .expect("could not apply change set");
 
     let resource = ResourceView::get_by_component_id(ctx, ms_swift.id())
         .await
@@ -63,12 +54,9 @@ async fn update_action(ctx: &mut DalContext) {
         panic!("No resource data found for the component after create action");
     }
 
-    let new_change_set = ChangeSet::fork_head(ctx, "new change set")
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
-        .expect("could not create new change set");
-    ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
-        .await
-        .expect("could not update visibility");
+        .expect("could not fork change set");
 
     let actions_available = DeprecatedActionPrototype::for_variant(ctx, swift_schema_variant_id)
         .await
@@ -105,29 +93,23 @@ async fn update_action(ctx: &mut DalContext) {
         action_prototype.kind,       // actual
     );
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // Apply to the base change set and commit.
-    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could apply to base change set");
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-        applied_change_set
-            .base_change_set_id
-            .expect("base change set not found"),
-    )
-    .await
-    .expect("could not update visibility and snapshot to visibility");
+        .expect("could not apply change set");
 
     let queued_actions = DeprecatedAction::for_component(ctx, ms_swift.id())
         .await
         .expect("unable to list actions for component");
     assert!(queued_actions.is_empty());
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let resource = ResourceView::get_by_component_id(ctx, ms_swift.id())
         .await

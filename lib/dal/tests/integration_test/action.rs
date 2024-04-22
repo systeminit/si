@@ -7,8 +7,9 @@ use dal::{
     Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype, Func,
     InputSocket, OutputSocket,
 };
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -34,12 +35,9 @@ async fn prototype(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         action
@@ -72,12 +70,9 @@ async fn component(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         action
@@ -110,12 +105,9 @@ async fn get_by_id(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let action = action.expect("no action found");
     assert_eq!(
@@ -144,12 +136,9 @@ async fn delete(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -170,12 +159,9 @@ async fn delete(ctx: &mut DalContext) {
         .await
         .expect("unable to delete action");
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -204,12 +190,9 @@ async fn for_component(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let list = DeprecatedAction::for_component(ctx, component.id())
         .await
@@ -239,12 +222,9 @@ async fn build_graph(ctx: &mut DalContext) {
         }
     }
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -272,12 +252,9 @@ async fn build_graph(ctx: &mut DalContext) {
     }
     assert!(destination_action.is_some());
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -305,12 +282,9 @@ async fn build_graph(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    let conflicts = ctx.blocking_commit().await.expect("blocking commit failed");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -345,12 +319,7 @@ async fn remove_prototype(ctx: &mut DalContext) {
         .expect("could not remove");
 
     // Ensure that there are no conflicts when _solely_ removing the prototype.
-    let conflicts = ctx
-        .blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to perform blocking commit");
-    assert!(conflicts.is_none());
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("unable to update snapshot to visibility");
+        .expect("could not commit and update snapshot to visibility");
 }

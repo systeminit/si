@@ -5,6 +5,7 @@ use axum::{
 };
 use dal::func::argument::FuncArgumentError;
 use dal::func::authoring::FuncAuthoringError;
+use dal::func::summary::FuncSummaryError;
 use dal::func::view::FuncViewError;
 use dal::schema::variant::SchemaVariantError;
 use dal::{workspace_snapshot::WorkspaceSnapshotError, FuncId, TransactionsError};
@@ -41,6 +42,8 @@ pub enum FuncError {
     FuncCannotBeTurnedIntoVariant(FuncId),
     #[error("The function name \"{0}\" is reserved")]
     FuncNameReserved(String),
+    #[error("func summary error: {0}")]
+    FuncSummary(#[from] FuncSummaryError),
     #[error("func view error: {0}")]
     FuncView(#[from] FuncViewError),
     #[error("hyper error: {0}")]

@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::summary::FuncSummary;
+use dal::func::summary::FuncSummary;
 use dal::{ComponentType, Func, SchemaVariant, SchemaVariantId, Timestamp, Visibility};
 use serde::{Deserialize, Serialize};
 

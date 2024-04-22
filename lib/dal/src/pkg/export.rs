@@ -846,7 +846,7 @@ impl PkgExporter {
         for apa_id in &apas {
             let func_arg_id =
                 AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id).await?;
-            let func_arg = FuncArgument::get_by_id(ctx, func_arg_id).await?;
+            let func_arg = FuncArgument::get_by_id_or_error(ctx, func_arg_id).await?;
             let arg_name = func_arg.name;
 
             let mut builder = AttrFuncInputSpec::builder();

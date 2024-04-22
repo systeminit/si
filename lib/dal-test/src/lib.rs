@@ -1,14 +1,28 @@
-//! This module provides helpers and resources for constructing and running integration tests.
+//! This crate provides a harness for running dal integration tests as well as helpers and resources
+//! when doing so.
 
-use std::{
-    borrow::Cow,
-    env,
-    future::IntoFuture,
-    path::{Path, PathBuf},
-    sync::{Arc, Once},
-};
+#![warn(
+    bad_style,
+    dead_code,
+    improper_ctypes,
+    missing_debug_implementations,
+    missing_docs,
+    no_mangle_generic_items,
+    non_shorthand_field_patterns,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    unconditional_recursion,
+    unreachable_pub,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 
 use buck2_resources::Buck2Resources;
+use dal::builtins::{func, schema};
 use dal::{
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
@@ -23,26 +37,32 @@ use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::CaCacheTempFile;
 use si_std::ResultExt;
+use std::{
+    borrow::Cow,
+    env,
+    future::IntoFuture,
+    path::{Path, PathBuf},
+    sync::{Arc, Once},
+};
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 use veritech_client::CycloneEncryptionKey;
 
+pub mod expand_helpers;
+pub mod helpers;
+mod schemas;
+mod signup;
+
 pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
-use dal::builtins::{func, schema};
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
 pub use tracing_subscriber;
-
-pub mod helpers;
-mod schemas;
-mod signup;
-pub mod test_harness;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
@@ -59,6 +79,7 @@ const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
 const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
 const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 
+#[allow(missing_docs)]
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
 lazy_static! {
@@ -69,6 +90,7 @@ lazy_static! {
 ///
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
+#[derive(Debug)]
 pub struct DalContextHead(pub DalContext);
 
 /// A reference to a [`DalContext`] for a workspace in a visibility which is not in a change
@@ -76,6 +98,7 @@ pub struct DalContextHead(pub DalContext);
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
+#[derive(Debug)]
 pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 
 /// A mutable reference to a [`DalContext`] for a workspace in a visibility which is not in a
@@ -83,14 +106,18 @@ pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
+#[derive(Debug)]
 pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
 
 /// An authentication token, used when making SDF API requests
+#[derive(Debug)]
 pub struct AuthToken(pub String);
 
-/// A referrence to an authentication token, used when making SDF API requests
+/// A reference to an authentication token, used when making SDF API requests
+#[derive(Debug)]
 pub struct AuthTokenRef<'a>(pub &'a str);
 
+#[allow(missing_docs)]
 #[derive(Builder, Clone, Debug)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
@@ -460,7 +487,7 @@ pub fn random_identifier_string() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
-// Returns a JWT public signing key, used to verify claims
+/// Returns a JWT public signing key, which is used to verify claims.
 pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
     let jwt_signing_public_key_path = {
         let context_builder = TEST_CONTEXT_BUILDER.lock().await;
@@ -472,7 +499,7 @@ pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
     Ok(key)
 }
 
-// Returns a JWT private signing key, used to sign claims
+/// Returns a JWT private signing key, which is used to sign claims.
 pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
     let key_path = {
         let context_builder = TEST_CONTEXT_BUILDER.lock().await;

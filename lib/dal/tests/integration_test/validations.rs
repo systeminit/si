@@ -1,17 +1,19 @@
 use dal::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{AttributeValue, Component, DalContext};
-use dal_test::test;
-use dal_test::test_harness::{
-    commit_and_update_snapshot, connect_components_with_socket_names,
-    create_component_for_schema_name, PropEditorTestView,
+use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    connect_components_with_socket_names, create_component_for_schema_name, PropEditorTestView,
 };
+use dal_test::test;
 use serde_json::json;
 
 #[test]
 async fn validation_format_errors(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "BadValidations", "bad").await;
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let bad_json_path = &["root", "domain", "bad_validation_json"];
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
@@ -48,7 +50,9 @@ async fn validation_format_errors(ctx: &mut DalContext) {
 #[test]
 async fn prop_editor_validation(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe").await;
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let prop_path = &["root", "domain", "working_eyes"];
     let av_id = component
@@ -77,7 +81,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
@@ -98,7 +104,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
@@ -142,7 +150,9 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
         .await
@@ -172,7 +182,9 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
         .await
@@ -222,7 +234,9 @@ async fn multiple_changes_single_validation(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // There should be only one ValidationOutput node for attribute value
     {
@@ -256,7 +270,9 @@ async fn multiple_changes_single_validation(ctx: &mut DalContext) {
 async fn validation_qualification(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe").await;
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // Get qualifications, should be failure (required)
     let validation_qualification = Component::list_qualifications(ctx, component.id())
@@ -302,7 +318,9 @@ async fn validation_qualification(ctx: &mut DalContext) {
         .await
         .expect("override attribute value");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // Get qualifications, should be ok
     let validation_qualification = Component::list_qualifications(ctx, component.id())

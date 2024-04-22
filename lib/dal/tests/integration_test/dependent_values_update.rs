@@ -1,6 +1,7 @@
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
@@ -53,13 +54,9 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
             .await
             .expect("Unable to mark for deletion");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -67,25 +64,17 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component 2 creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -98,11 +87,9 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -115,11 +102,9 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
@@ -165,13 +150,9 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
     .await
     .expect("Unable to update domain/image");
 
-    println!("Pre-deleted-update commit");
-    ctx.blocking_commit().await.expect("blocking commit failed");
-    println!("Post-deleted-update commit");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Verify post-update data.
     let units_value_id = royel_component
@@ -244,13 +225,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -258,25 +235,17 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component 2 creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -289,11 +258,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -306,12 +273,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
-
+        .expect("could not commit and update snapshot to visibility");
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
     // Verify pre-delete data.
@@ -340,11 +304,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .await
         .expect("Unable to mark for deletion");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Verify post-delete data.
     let units_value_id = royel_component
@@ -386,13 +348,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     .await
     .expect("Unable to update domain/image");
 
-    println!("Pre-deleted-update commit");
-    ctx.blocking_commit().await.expect("blocking commit failed");
-    println!("Post-deleted-update commit");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Verify post-delete updated data.
     let units_value_id = royel_component

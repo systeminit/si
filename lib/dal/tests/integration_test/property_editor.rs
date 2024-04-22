@@ -1,11 +1,11 @@
 use dal::property_editor::schema::PropertyEditorSchema;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
-use dal_test::test;
-use dal_test::test_harness::{
-    commit_and_update_snapshot, connect_components_with_socket_names,
-    create_component_for_schema_name, PropEditorTestView,
+use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    connect_components_with_socket_names, create_component_for_schema_name, PropEditorTestView,
 };
+use dal_test::test;
 use serde_json::json;
 
 #[test]
@@ -296,7 +296,9 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
     let pirate_component =
         create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let name_path = &["root", "domain", "name"];
     let av_id = pirate_component
@@ -333,7 +335,9 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_pirate_name)))
         .await
         .expect("override domain/name attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         json![{
@@ -356,7 +360,9 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     AttributeValue::use_default_prototype(ctx, av_id)
         .await
         .expect("revert back to default prototype");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         json![{
@@ -382,7 +388,9 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
     let pirate_component =
         create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let name_path = &["root", "domain", "parrot_names"];
     let av_id = pirate_component
@@ -417,7 +425,9 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(serde_json::json!([])))
         .await
         .expect("override domain/parrot_names attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         json![{
@@ -440,7 +450,9 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     AttributeValue::use_default_prototype(ctx, av_id)
         .await
         .expect("revert back to default prototype");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         json![{
@@ -509,7 +521,9 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
     )
     .await;
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(
         json![{
@@ -593,7 +607,9 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
     )
     .await;
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // av for array should only change isFromExternalSource, because of the connection
     assert_eq!(

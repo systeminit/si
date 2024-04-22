@@ -12,7 +12,7 @@ use si_pkg::{
 };
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
-pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
 
     let schema_name = "swifty";

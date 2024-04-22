@@ -5,7 +5,7 @@ use axum::{routing::get, Json, Router};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use dal::func::binding::FuncBindingError;
-use dal::func::view::FuncViewError;
+use dal::func::summary::FuncSummaryError;
 use dal::pkg::PkgError;
 use dal::schema::variant::authoring::VariantAuthoringError;
 use dal::{
@@ -43,8 +43,8 @@ pub enum SchemaVariantError {
     FuncIsEmpty(FuncId),
     #[error("func not found: {0}")]
     FuncNotFound(FuncId),
-    #[error("func view error: {0}")]
-    FuncView(#[from] FuncViewError),
+    #[error("func summary error: {0}")]
+    FuncSummary(#[from] FuncSummaryError),
     #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]

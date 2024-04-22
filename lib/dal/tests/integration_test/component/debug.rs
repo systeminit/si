@@ -1,8 +1,9 @@
 use dal::component::debug::ComponentDebugView;
 use dal::prop::PropPath;
 use dal::{AttributeValue, Component, DalContext, Prop};
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -10,7 +11,9 @@ async fn get_debug_view(ctx: &mut DalContext) {
     //create a new component for starfield schema
     let component: Component =
         create_component_for_schema_name(ctx, "starfield", "new component").await;
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     //get the debug view
     let component_debug_view = ComponentDebugView::new(ctx, component.id())
         .await

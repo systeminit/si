@@ -126,7 +126,7 @@ impl FuncAuthoringClient {
         description: Option<String>,
         code: Option<String>,
         associations: Option<FuncAssociations>,
-    ) -> FuncAuthoringResult<SavedFunc> {
+    ) -> FuncAuthoringResult<()> {
         save::save_func(ctx, id, display_name, name, description, code, associations).await
     }
 
@@ -158,20 +158,6 @@ pub struct CreatedFunc {
     pub name: String,
     /// The code for the created [`Func`].
     pub code: Option<String>,
-}
-
-/// The result of creating a [`Func`] via [`FuncAuthoringClient::save_func`].
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SavedFunc {
-    /// The [associations](FuncAssociations) for a saved [`Func`].
-    pub associations: Option<FuncAssociations>,
-    /// Indicates the success of saving the [`Func`].
-    pub success: bool,
-    /// Indicates if the [`Func`] is ["revertible"](Func::is_revertible).
-    pub is_revertible: bool,
-    /// The compiled types for the saved [`Func`].
-    pub types: String,
 }
 
 #[allow(missing_docs)]

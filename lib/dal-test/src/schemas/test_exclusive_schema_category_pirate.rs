@@ -10,7 +10,7 @@ use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
 
 const CATEGORY: &str = "pirate";
 
-pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "pirate";
@@ -131,7 +131,7 @@ pub async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsR
     Ok(())
 }
 
-pub async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "pet_shop";

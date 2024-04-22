@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::func::view::summary::FuncSummary;
+use dal::func::summary::FuncSummary;
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 

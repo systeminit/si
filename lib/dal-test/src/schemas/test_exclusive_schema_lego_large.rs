@@ -11,7 +11,9 @@ use si_pkg::{
     SocketSpecKind,
 };
 
-pub async fn migrate_test_exclusive_schema_large_odd_lego(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut large_lego_builder = PkgSpec::builder();
 
     let schema_name = "large odd lego";
@@ -274,7 +276,9 @@ pub async fn migrate_test_exclusive_schema_large_odd_lego(ctx: &DalContext) -> B
 
     Ok(())
 }
-pub async fn migrate_test_exclusive_schema_large_even_lego(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut large_lego_builder = PkgSpec::builder();
 
     let schema_name = "large even lego";

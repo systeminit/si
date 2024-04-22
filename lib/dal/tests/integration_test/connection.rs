@@ -3,8 +3,9 @@ use dal::diagram::Diagram;
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
 
 #[test]
 async fn connect_components(ctx: &mut DalContext) {
@@ -53,13 +54,9 @@ async fn connect_components(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -67,25 +64,17 @@ async fn connect_components(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component 2 creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -98,11 +87,9 @@ async fn connect_components(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -115,11 +102,9 @@ async fn connect_components(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
@@ -172,13 +157,9 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
         .expect("find variant id for component");
     create_component_for_schema_name(ctx, "starfield", "not destination").await;
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let output_socket = OutputSocket::find_with_name(ctx, "bethesda", source_sv_id)
         .await
@@ -200,13 +181,9 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let diagram = Diagram::assemble(ctx)
         .await
@@ -266,13 +243,9 @@ async fn remove_connection(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -280,25 +253,17 @@ async fn remove_connection(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after component 2 creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("blocking commit after butane component creation");
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
     let inter_component_attribute_prototype_argument_id = Component::connect(
@@ -312,11 +277,9 @@ async fn remove_connection(ctx: &mut DalContext) {
     .expect("could not connect components")
     .expect("duplicate connection");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -329,11 +292,9 @@ async fn remove_connection(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
@@ -375,10 +336,9 @@ async fn remove_connection(ctx: &mut DalContext) {
         .await
         .expect("Unable to remove inter component attribute prototype argument");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("Unable to update snapshot to visibility");
+        .expect("could not commit and update snapshot to visibility");
 
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
