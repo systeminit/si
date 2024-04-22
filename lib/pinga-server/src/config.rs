@@ -62,13 +62,8 @@ pub struct Config {
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
-<<<<<<< HEAD
-    #[builder(default = "PgPoolConfig::default()")]
-    layer_cache_pg_pool: PgPoolConfig,
-=======
     #[builder(default = "default_layer_cache_dbname()")]
     layer_cache_pg_dbname: String,
->>>>>>> main
 
     #[builder(default = "si_layer_cache::default_cache_path_for_service(\"pinga\")")]
     layer_cache_disk_path: PathBuf,
