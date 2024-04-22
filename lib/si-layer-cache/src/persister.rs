@@ -233,11 +233,18 @@ impl PersistEventTask {
 
         match join![disk_join, pg_join, nats_join] {
             (Ok(Ok(_)), Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
-            (disk_res, Ok(pg_res), Ok(nats_res)) => {
+            (Ok(disk_res), Ok(pg_res), Ok(nats_res)) => {
                 Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
                     disk_error: disk_res.err().map(|e| e.to_string()),
                     pg_error: pg_res.err().map(|e| e.to_string()),
                     nats_error: nats_res.err().map(|e| e.to_string()),
+                }))
+            }
+            (Err(disk_res), Ok(_), Ok(_)) => {
+                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                    disk_error: Some(disk_res.to_string()),
+                    pg_error: None,
+                    nats_error: None,
                 }))
             }
             (Ok(_), Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
