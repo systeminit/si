@@ -56,8 +56,8 @@ pub struct Config {
     #[builder(default)]
     messaging_config: RebaserMessagingConfig,
 
-    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
-    layer_cache_pg_pool: PgPoolConfig,
+    #[builder(default = "default_layer_cache_dbname()")]
+    layer_cache_pg_dbname: String,
 
     layer_cache_disk_path: PathBuf,
 }
@@ -102,8 +102,8 @@ impl Config {
 
     /// Gets a reference to the layer cache's pg pool config.
     #[must_use]
-    pub fn layer_cache_pg_pool(&self) -> &PgPoolConfig {
-        &self.layer_cache_pg_pool
+    pub fn layer_cache_pg_dbname(&self) -> &str {
+        &self.layer_cache_pg_dbname
     }
 
     /// Gets a reference to the layer cache's disk database path
@@ -118,8 +118,8 @@ impl Config {
 pub struct ConfigFile {
     #[serde(default)]
     pg: PgPoolConfig,
-    #[serde(default = "si_layer_cache::default_pg_pool_config")]
-    layer_cache_pg_pool: PgPoolConfig,
+    #[serde(default = "default_layer_cache_dbname")]
+    layer_cache_pg_dbname: String,
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default = "default_cyclone_encryption_key_path")]
@@ -134,7 +134,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
-            layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
+            layer_cache_pg_dbname: default_layer_cache_dbname(),
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
@@ -155,7 +155,7 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
-        config.layer_cache_pg_pool(value.layer_cache_pg_pool);
+        config.layer_cache_pg_dbname(value.layer_cache_pg_dbname);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
@@ -175,6 +175,10 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
         active_key_base64: None,
         extra_keys: vec![],
     }
+}
+
+fn default_layer_cache_dbname() -> String {
+    "si_layer_db".to_string()
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]
@@ -223,8 +227,6 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
-
     Ok(())
 }
 
@@ -256,7 +258,6 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())
 }
