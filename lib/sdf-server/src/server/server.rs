@@ -1,6 +1,7 @@
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::jwt_key::JwtConfig;
+use dal::pkg::PkgError;
 use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
@@ -397,9 +398,7 @@ async fn install_builtins(
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules: Vec<ModuleDetailsResponse> = module_list.modules;
-    // .into_iter()
-    // .filter(|m| m.name == "si-docker-image-builtin-20240130")
-    // .collect();
+
     let total = modules.len();
 
     let mut join_set = JoinSet::new();
@@ -421,7 +420,7 @@ async fn install_builtins(
             Ok(pkg) => {
                 let instant = Instant::now();
 
-                if let Err(err) = dal::pkg::import_pkg_from_pkg(
+                match dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,
                     Some(dal::pkg::ImportOptions {
@@ -433,17 +432,22 @@ async fn install_builtins(
                 )
                 .await
                 {
-                    println!("Pkg {pkg_name} Install failed, {err}");
-                } else {
-                    count += 1;
-                    let elapsed = instant.elapsed().as_secs_f32();
-                    println!(
-                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed. (took {elapsed:.2} seconds)",
-                    );
+                    Ok(_) => {
+                        count += 1;
+                        let elapsed = instant.elapsed().as_secs_f32();
+                        info!(
+                                "pkg {pkg_name} install finished successfully and took {elapsed:.2} seconds ({count} of {total} installed)",
+                            );
+                    }
+                    Err(PkgError::PackageAlreadyInstalled(hash)) => {
+                        count += 1;
+                        warn!(%hash, "pkg {pkg_name} already installed ({count} of {total} installed)");
+                    }
+                    Err(err) => error!(?err, "pkg {pkg_name} install failed"),
                 }
             }
             Err(err) => {
-                println!("Pkg {pkg_name} Install failed, {err}");
+                error!(?err, "pkg {pkg_name} install failed with server error");
             }
         }
     }

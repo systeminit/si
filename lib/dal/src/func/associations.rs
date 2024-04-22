@@ -1,20 +1,24 @@
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeEventualParent};
-use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
+use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::view::FuncArgumentView;
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId, InputSocketId,
-    OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    AttributePrototype, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype,
+    DeprecatedActionPrototypeError, Func, FuncId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId,
 };
+
+mod view;
+
+pub use view::AttributePrototypeArgumentView;
+pub use view::AttributePrototypeView;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -23,113 +27,25 @@ pub enum FuncAssociationsError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("unexpected func associations variant: {0:?} (expected: {1:?})")]
+    UnexpectedFuncAssociationsVariant(FuncAssociationsDiscriminants, FuncAssociationsDiscriminants),
 }
 
 type FuncAssociationsResult<T> = Result<T, FuncAssociationsError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeArgumentView {
-    pub func_argument_id: FuncArgumentId,
-    pub id: AttributePrototypeArgumentId,
-    pub input_socket_id: Option<InputSocketId>,
-}
-
-impl AttributePrototypeArgumentView {
-    pub async fn assemble(
-        ctx: &DalContext,
-        id: AttributePrototypeArgumentId,
-    ) -> FuncAssociationsResult<Self> {
-        let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(ctx, id).await?;
-
-        let input_socket_id =
-            if let Some(value_source) = attribute_prototype_argument.value_source(ctx).await? {
-                match value_source {
-                    ValueSource::InputSocket(input_socket_id) => Some(input_socket_id),
-                    ValueSource::OutputSocket(_)
-                    | ValueSource::Prop(_)
-                    | ValueSource::StaticArgumentValue(_) => None,
-                }
-            } else {
-                None
-            };
-
-        let func_argument_id = AttributePrototypeArgument::func_argument_id_by_id(ctx, id).await?;
-
-        Ok(Self {
-            func_argument_id,
-            id,
-            input_socket_id,
-        })
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeView {
-    pub id: AttributePrototypeId,
-    pub component_id: Option<ComponentId>,
-    pub schema_variant_id: Option<SchemaVariantId>,
-    pub prop_id: Option<PropId>,
-    pub output_socket_id: Option<OutputSocketId>,
-    pub prototype_arguments: Vec<AttributePrototypeArgumentView>,
-}
-
-impl AttributePrototypeView {
-    pub async fn assemble(
-        ctx: &DalContext,
-        id: AttributePrototypeId,
-    ) -> FuncAssociationsResult<Self> {
-        let attribute_prototype_argument_ids =
-            AttributePrototypeArgument::list_ids_for_prototype(ctx, id).await?;
-
-        let eventual_parent = AttributePrototype::eventual_parent(ctx, id).await?;
-        let (component_id, schema_variant_id, prop_id, output_socket_id) = match eventual_parent {
-            AttributePrototypeEventualParent::Component(component_id) => {
-                (Some(component_id), None, None, None)
-            }
-            AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
-                schema_variant_id,
-                _,
-            ) => (None, Some(schema_variant_id), None, None),
-            AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
-                schema_variant_id,
-                output_socket_id,
-            ) => (None, Some(schema_variant_id), None, Some(output_socket_id)),
-            AttributePrototypeEventualParent::SchemaVariantFromProp(schema_variant_id, prop_id) => {
-                (None, Some(schema_variant_id), Some(prop_id), None)
-            }
-        };
-
-        let mut prototype_arguments = Vec::new();
-        for attribute_prototype_argument_id in attribute_prototype_argument_ids {
-            prototype_arguments.push(
-                AttributePrototypeArgumentView::assemble(ctx, attribute_prototype_argument_id)
-                    .await?,
-            );
-        }
-
-        Ok(Self {
-            id,
-            component_id,
-            schema_variant_id,
-            prop_id,
-            output_socket_id,
-            prototype_arguments,
-        })
-    }
-}
-
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, EnumDiscriminants)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Action {
+        kind: DeprecatedActionKind,
         schema_variant_ids: Vec<SchemaVariantId>,
     },
     #[serde(rename_all = "camelCase")]
@@ -166,8 +82,28 @@ impl FuncAssociations {
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
                 let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
+                let action_prototype_ids =
+                    DeprecatedActionPrototype::list_for_func_id(ctx, func.id).await?;
+
+                // TODO(nick): right now, we just grab the first one and it decides the action kind for all of them.
+                // This should be configurable on a "per prototype" basis in the future.
+                let kind = match action_prototype_ids.first() {
+                    Some(action_prototype_id) => {
+                        let action_prototype = DeprecatedActionPrototype::get_by_id_or_error(
+                            ctx,
+                            *action_prototype_id,
+                        )
+                        .await?;
+                        action_prototype.kind
+                    }
+                    None => DeprecatedActionKind::Create,
+                };
+
                 (
-                    Some(Self::Action { schema_variant_ids }),
+                    Some(Self::Action {
+                        kind,
+                        schema_variant_ids,
+                    }),
                     // TODO(nick): ensure the input type is correct.
                     String::new(),
                 )
@@ -303,6 +239,96 @@ impl FuncAssociations {
         };
 
         Ok((associations, input_type))
+    }
+
+    pub fn get_action_internals(
+        &self,
+    ) -> FuncAssociationsResult<(DeprecatedActionKind, Vec<SchemaVariantId>)> {
+        match self {
+            FuncAssociations::Action {
+                kind,
+                schema_variant_ids,
+            } => Ok((*kind, schema_variant_ids.to_owned())),
+            associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
+                associations.into(),
+                FuncAssociationsDiscriminants::Action,
+            )),
+        }
+    }
+
+    pub fn get_attribute_internals(
+        &self,
+    ) -> FuncAssociationsResult<(Vec<AttributePrototypeView>, Vec<FuncArgumentView>)> {
+        match self {
+            FuncAssociations::Attribute {
+                prototypes,
+                arguments,
+            } => Ok((prototypes.to_owned(), arguments.to_owned())),
+            associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
+                associations.into(),
+                FuncAssociationsDiscriminants::Attribute,
+            )),
+        }
+    }
+
+    pub fn get_authentication_internals(&self) -> FuncAssociationsResult<Vec<SchemaVariantId>> {
+        match self {
+            FuncAssociations::Authentication { schema_variant_ids } => {
+                Ok(schema_variant_ids.to_owned())
+            }
+            associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
+                associations.into(),
+                FuncAssociationsDiscriminants::Authentication,
+            )),
+        }
+    }
+
+    pub fn get_code_generation_internals(
+        &self,
+    ) -> FuncAssociationsResult<(
+        Vec<SchemaVariantId>,
+        Vec<ComponentId>,
+        Vec<LeafInputLocation>,
+    )> {
+        match self {
+            FuncAssociations::CodeGeneration {
+                schema_variant_ids,
+                component_ids,
+                inputs,
+            } => Ok((
+                schema_variant_ids.to_owned(),
+                component_ids.to_owned(),
+                inputs.to_owned(),
+            )),
+            associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
+                associations.into(),
+                FuncAssociationsDiscriminants::CodeGeneration,
+            )),
+        }
+    }
+
+    pub fn get_qualification_internals(
+        &self,
+    ) -> FuncAssociationsResult<(
+        Vec<SchemaVariantId>,
+        Vec<ComponentId>,
+        Vec<LeafInputLocation>,
+    )> {
+        match self {
+            FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
+                inputs,
+            } => Ok((
+                schema_variant_ids.to_owned(),
+                component_ids.to_owned(),
+                inputs.to_owned(),
+            )),
+            associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
+                associations.into(),
+                FuncAssociationsDiscriminants::Qualification,
+            )),
+        }
     }
 
     async fn list_leaf_function_inputs(

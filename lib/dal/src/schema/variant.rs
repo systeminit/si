@@ -76,6 +76,8 @@ pub enum SchemaVariantError {
     AttributePrototypeNotFoundForOutputSocket(OutputSocketId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("component context not supported for leaf functions")]
+    ComponentContextNotSupportedForLeafFunctions,
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
@@ -904,7 +906,9 @@ impl SchemaVariant {
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
         if component_id.is_some() {
-            unimplemented!("component context not supported for leaf functions");
+            // NOTE(nick): replaced a "unimplemented" here with an error, but we will need to think
+            // about whether we want this in the future.
+            return Err(SchemaVariantError::ComponentContextNotSupportedForLeafFunctions);
         }
 
         let key = Some(func.name.to_owned());
@@ -939,7 +943,7 @@ impl SchemaVariant {
             }
         }
 
-        Ok(
+        let attribute_prototype_id =
             match AttributePrototype::find_for_prop(ctx, leaf_item_prop_id, &key).await? {
                 Some(existing_proto_id) => {
                     let apas =
@@ -1008,8 +1012,9 @@ impl SchemaVariant {
 
                     new_proto
                 }
-            },
-        )
+            };
+
+        Ok(attribute_prototype_id)
     }
 
     pub async fn list_all_sockets(

@@ -4,7 +4,7 @@ use dal::func::view::FuncArgumentView;
 use dal::func::{AttributePrototypeArgumentView, AttributePrototypeView, FuncAssociations};
 use dal::prop::PropPath;
 use dal::schema::variant::leaves::LeafInputLocation;
-use dal::{AttributePrototype, DalContext, Func, Prop, Schema};
+use dal::{AttributePrototype, DalContext, DeprecatedActionKind, Func, Prop, Schema};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -33,6 +33,7 @@ async fn for_action(ctx: &mut DalContext) {
 
     assert_eq!(
         FuncAssociations::Action {
+            kind: DeprecatedActionKind::Create,
             schema_variant_ids: vec![schema_variant_id],
         }, // expected
         associations.expect("no associations found") // actual

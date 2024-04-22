@@ -210,7 +210,7 @@ async fn create_attribute_func(
                     if let Some(func) = Func::get_by_id(ctx, func_id).await? {
                         if Func::is_dynamic_for_name_string(func.name.as_str()) {
                             return Err(FuncAuthoringError::AttributePrototypeAlreadySetByFunc(
-                                kind.to_string(),
+                                func_id, func.name,
                             ));
                         }
                     }

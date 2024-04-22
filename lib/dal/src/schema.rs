@@ -175,10 +175,9 @@ impl Schema {
     ) -> SchemaResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        info!(
-            "Setting {} as the default schema variant for {}",
-            schema_variant_id.clone(),
-            self.id.clone()
+        debug!(
+            %schema_variant_id, "setting the default schema variant for schema: {}",
+            self.id
         );
 
         // Our system will have edges as follows:

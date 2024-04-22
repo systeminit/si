@@ -35,7 +35,7 @@ pub async fn save_func(
 
     let request_id = request.id;
 
-    let (save_response, _) = FuncAuthoringClient::save_func(
+    let save_response = FuncAuthoringClient::save_func(
         &ctx,
         request.id,
         request.display_name,

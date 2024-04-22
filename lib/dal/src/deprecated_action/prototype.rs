@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
-use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{
@@ -318,6 +318,30 @@ impl DeprecatedActionPrototype {
         Err(DeprecatedActionPrototypeError::MissingFunction(
             action_prototype_id,
         ))
+    }
+
+    /// Lists all [`DeprecatedActionPrototypes`](DeprecatedActionPrototype) for a given
+    /// [`FuncId`](Func).
+    pub async fn list_for_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> DeprecatedActionPrototypeResult<Vec<ActionPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut action_prototype_ids = Vec::new();
+        for node_index in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            if let Some(ContentAddressDiscriminants::ActionPrototype) =
+                node_weight.content_address_discriminants()
+            {
+                action_prototype_ids.push(node_weight.id().into());
+            }
+        }
+
+        Ok(action_prototype_ids)
     }
 
     pub async fn run(
