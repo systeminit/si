@@ -1,4 +1,5 @@
 pkgs_path = "/tmp"
+layer_cache_pg_dbname = "$SI_LAYER_CACHE_DBNAME"
 
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
