@@ -1354,6 +1354,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
             {
+              eventType: "ComponentUpdated",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
               eventType: "ResourceRefreshed",
               callback: (resourceRefreshedEvent) => {
                 if (resourceRefreshedEvent?.componentId) {

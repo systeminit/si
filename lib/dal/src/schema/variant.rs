@@ -1,11 +1,11 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
-use petgraph::{Direction, Incoming, Outgoing};
+use petgraph::{Direction, Incoming};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -20,7 +20,8 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
-    InputSocketContent, OutputSocketContent, SchemaVariantContent, SchemaVariantContentV1,
+    FuncContent, InputSocketContent, OutputSocketContent, SchemaVariantContent,
+    SchemaVariantContentV1,
 };
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
@@ -37,9 +38,9 @@ use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
-    ComponentType, DalContext, DeprecatedActionPrototype, Func, FuncId, HelperError, InputSocket,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload,
+    ComponentType, DalContext, DeprecatedActionPrototype, DeprecatedActionPrototypeError, Func,
+    FuncId, HelperError, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema,
+    SchemaError, SchemaId, Timestamp, TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -69,12 +70,18 @@ pub enum SchemaVariantError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute argument prototype error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute prototype not found for input socket id: {0}")]
+    AttributePrototypeNotFoundForInputSocket(InputSocketId),
+    #[error("attribute prototype not found for output socket id: {0}")]
+    AttributePrototypeNotFoundForOutputSocket(OutputSocketId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -253,27 +260,24 @@ impl SchemaVariant {
         Ok((schema_variant, root_prop))
     }
 
-    pub async fn dump_props_as_list(&self, ctx: &DalContext) -> SchemaVariantResult<Vec<PropPath>> {
-        let mut props = vec![];
+    /// Returns all [`PropIds`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
+    pub async fn all_prop_ids(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<HashSet<PropId>> {
+        let mut prop_ids = HashSet::new();
 
-        let root_prop_id = Self::get_root_prop_id(ctx, self.id()).await?;
-        let mut work_queue = VecDeque::from([(root_prop_id, None::<PropPath>)]);
+        let root_prop_id = Self::get_root_prop_id(ctx, schema_variant_id).await?;
+        let mut work_queue = VecDeque::from([root_prop_id]);
+
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        while let Some((prop_id, maybe_parent_path)) = work_queue.pop_front() {
+        while let Some(prop_id) = work_queue.pop_front() {
             let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id).await?;
 
+            // Find and load any child props.
             match node_weight {
-                NodeWeight::Prop(prop_inner) => {
-                    let name = prop_inner.name();
-
-                    let path = match &maybe_parent_path {
-                        Some(parent_path) => parent_path.join(&PropPath::new([name])),
-                        None => PropPath::new([name]),
-                    };
-
-                    props.push(path.clone());
-
+                NodeWeight::Prop(_) => {
                     if let Some(ordering_node_idx) = workspace_snapshot
                         .outgoing_targets_for_edge_weight_kind(
                             prop_id,
@@ -288,15 +292,18 @@ impl SchemaVariant {
                             .get_ordering_node_weight()?;
 
                         for &id in ordering_node_weight.order() {
-                            work_queue.push_back((id.into(), Some(path.clone())));
+                            work_queue.push_back(id.into());
                         }
                     }
                 }
                 _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id)),
             }
+
+            // Once processed, push onto the list that will be returned.
+            prop_ids.insert(prop_id);
         }
 
-        Ok(props)
+        Ok(prop_ids)
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
@@ -1094,6 +1101,43 @@ impl SchemaVariant {
         Ok((output_sockets, input_sockets))
     }
 
+    pub async fn list_all_socket_ids(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<(Vec<OutputSocketId>, Vec<InputSocketId>)> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let maybe_socket_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+
+        let mut output_socket_ids: Vec<OutputSocketId> = Vec::new();
+        let mut input_socket_ids: Vec<InputSocketId> = Vec::new();
+
+        for maybe_socket_node_index in maybe_socket_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(maybe_socket_node_index)
+                .await?;
+            if let Some(content_address_discriminant) = node_weight.content_address_discriminants()
+            {
+                match content_address_discriminant {
+                    ContentAddressDiscriminants::InputSocket => {
+                        input_socket_ids.push(node_weight.id().into())
+                    }
+                    ContentAddressDiscriminants::OutputSocket => {
+                        output_socket_ids.push(node_weight.id().into())
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok((output_socket_ids, input_socket_ids))
+    }
+
     pub async fn schema(&self, ctx: &DalContext) -> SchemaVariantResult<Schema> {
         Self::schema_for_schema_variant_id(ctx, self.id).await
     }
@@ -1136,58 +1180,102 @@ impl SchemaVariant {
         Ok(Schema::get_by_id(ctx, schema_id).await?)
     }
 
+    /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
+    /// [intrinsics](IntrinsicFunc).
     pub async fn all_funcs(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<Func>> {
+        let func_ids = Self::all_func_ids(ctx, schema_variant_id).await?;
+
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut all_funcs = vec![];
 
-        let sv = Self::get_by_id(ctx, schema_variant_id).await?;
+        let mut node_weights = Vec::new();
+        let mut content_hashes = Vec::new();
+        for func_id in func_ids {
+            let node_weight = workspace_snapshot
+                .get_node_weight_by_id(func_id)
+                .await?
+                .get_func_node_weight()?;
+            content_hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
 
-        let prop_list = sv.dump_props_as_list(ctx).await?;
-        for prop_path in prop_list {
-            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await?;
-            // Let's get the Attribute funcs now
-            if let Some(ap_id) = AttributePrototype::find_for_prop(ctx, prop_id, &None).await? {
-                let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
+        let contents: HashMap<ContentHash, FuncContent> = ctx
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
+            .await?;
 
-                let node_weight = workspace_snapshot
-                    .get_node_weight_by_id(func_id)
-                    .await?
-                    .get_func_node_weight()?;
+        let mut funcs = Vec::new();
+        for node_weight in node_weights {
+            match contents.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick): if we had a v2, then there would be migration logic here.
+                    let FuncContent::V1(inner) = content;
 
-                if node_weight.func_kind() == FuncKind::Attribute {
-                    let func = Func::get_by_id_or_error(ctx, func_id).await?;
-                    all_funcs.push(func);
+                    funcs.push(Func::assemble(&node_weight, inner));
                 }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
             }
+        }
 
-            // Now let's get all of the outgoing edges for the Prop
-            for (edge_weight, _source, _target) in
-                workspace_snapshot.edges_directed(prop_id, Outgoing).await?
+        // Filter out intrinsic funcs.
+        let mut filtered_funcs = Vec::new();
+        for func in &funcs {
+            if IntrinsicFunc::maybe_from_str(&func.name).is_none() {
+                filtered_funcs.push(func.to_owned());
+            }
+        }
+
+        Ok(filtered_funcs)
+    }
+
+    /// Returns all [`FuncIds`](Func) used for a given [`SchemaVariantId`](SchemaVariant).
+    pub async fn all_func_ids(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<HashSet<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut all_func_ids = HashSet::new();
+
+        // Gather all funcs for props.
+        let prop_list = Self::all_prop_ids(ctx, schema_variant_id).await?;
+        for prop_id in prop_list {
+            let keys_and_prototypes = Prop::prototypes_by_key(ctx, prop_id).await?;
+            for (_, attribute_prototype_id) in keys_and_prototypes {
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                all_func_ids.insert(func_id);
+            }
+        }
+
+        // Gather all funcs for sockets.
+        let (output_socket_ids, input_socket_ids) =
+            Self::list_all_socket_ids(ctx, schema_variant_id).await?;
+        for output_socket_id in output_socket_ids {
+            if let Some(attribute_prototype_id) =
+                AttributePrototype::find_for_output_socket(ctx, output_socket_id).await?
             {
-                if let EdgeWeightKind::Prototype(Some(key)) = edge_weight.kind() {
-                    if let Some(func_id) = Func::find_by_name(ctx, key).await? {
-                        let func = Func::get_by_id_or_error(ctx, func_id).await?;
-                        all_funcs.push(func);
-                    }
-                }
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                all_func_ids.insert(func_id);
+            }
+        }
+        for input_socket_id in input_socket_ids {
+            if let Some(attribute_prototype_id) =
+                AttributePrototype::find_for_input_socket(ctx, input_socket_id).await?
+            {
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                all_func_ids.insert(func_id);
             }
         }
 
-        // Let's get all of the Authentication funcs
-        let auth_func_ids =
-            Self::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id).await?;
-        for auth_func_id in auth_func_ids {
-            let auth_func = Func::get_by_id_or_error(ctx, auth_func_id).await?;
-            // We may not need this - the list_auth_func_ids_for_schema_variant returns multiple
-            // of the same type
-            if !all_funcs.contains(&auth_func) {
-                all_funcs.push(auth_func);
-            }
-        }
+        // Gather all auth funcs.
+        let auth_func_ids = Self::list_auth_func_ids_for_id(ctx, schema_variant_id).await?;
+        all_func_ids.extend(auth_func_ids);
 
+        // Gather all action funcs.
         let action_prototype_nodes = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 schema_variant_id,
@@ -1195,50 +1283,48 @@ impl SchemaVariant {
             )
             .await?;
         for action_prototype_node in action_prototype_nodes {
-            let weight = workspace_snapshot
+            let node_weight = workspace_snapshot
                 .get_node_weight(action_prototype_node)
                 .await?;
-            let ap = DeprecatedActionPrototype::get_by_id_or_error(ctx, weight.id().into())
-                .await
-                .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?;
-            let func = Func::get_by_id_or_error(
-                ctx,
-                ap.func_id(ctx)
-                    .await
-                    .map_err(|e| SchemaVariantError::ActionPrototype(e.to_string()))?,
-            )
-            .await?;
-            all_funcs.push(func);
+            if let Some(ContentAddressDiscriminants::ActionPrototype) =
+                node_weight.content_address_discriminants()
+            {
+                let func_id =
+                    DeprecatedActionPrototype::func_id_by_id(ctx, node_weight.id().into())
+                        .await
+                        .map_err(Box::new)?;
+                all_func_ids.insert(func_id);
+            }
         }
 
-        Ok(all_funcs)
+        Ok(all_func_ids)
     }
 
-    pub async fn list_auth_func_ids_for_schema_variant(
+    pub async fn list_auth_func_ids_for_id(
         ctx: &DalContext,
-        variant_id: SchemaVariantId,
+        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<FuncId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut auth_funcs = vec![];
+        let mut auth_func_ids = vec![];
 
-        for node_id in workspace_snapshot
+        for node_index in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
-                variant_id,
+                schema_variant_id,
                 EdgeWeightKindDiscriminants::AuthenticationPrototype,
             )
             .await?
         {
-            auth_funcs.push(
+            auth_func_ids.push(
                 workspace_snapshot
-                    .get_node_weight(node_id)
+                    .get_node_weight(node_index)
                     .await?
                     .id()
                     .into(),
             )
         }
 
-        Ok(auth_funcs)
+        Ok(auth_func_ids)
     }
 
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`PropId`](Prop).

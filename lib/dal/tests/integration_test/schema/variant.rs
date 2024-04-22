@@ -1,12 +1,12 @@
-mod view;
-
 use dal::schema::variant::root_prop::RootPropChild;
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    ComponentType, DalContext, Prop,
+    ComponentType, DalContext, Func, Prop, Schema,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
+
+mod view;
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -97,4 +97,148 @@ async fn list_root_si_child_props(ctx: &DalContext) {
         expected_si_child_prop_ids, // expected
         found_si_child_prop_ids,    // actual
     )
+}
+
+#[test]
+async fn all_prop_ids(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .get_default_schema_variant(ctx)
+        .await
+        .expect("unable to get schema variant")
+        .expect("schema variant not found");
+
+    let all_prop_ids = SchemaVariant::all_prop_ids(ctx, schema_variant_id)
+        .await
+        .expect("could not list all prop ids");
+    let mut prop_paths = Vec::new();
+    for prop_id in all_prop_ids {
+        let prop_path = Prop::path_by_id(ctx, prop_id)
+            .await
+            .expect("could not get path");
+        prop_paths.push(prop_path.with_replaced_sep("/").to_string());
+    }
+    prop_paths.sort();
+
+    // NOTE(nick): this is going to be annoying to maintain if we are frequently changing the props
+    // on the schema variant. We want this test to make sure _every_ prop comes back, as expected,
+    // so maybe there is another way?
+    let expected = [
+        "root",
+        "root/code",
+        "root/code/codeItem",
+        "root/code/codeItem/code",
+        "root/code/codeItem/format",
+        "root/deleted_at",
+        "root/domain",
+        "root/domain/attributes",
+        "root/domain/freestar",
+        "root/domain/hidden_prop",
+        "root/domain/name",
+        "root/domain/possible_world_a",
+        "root/domain/possible_world_a/wormhole_1",
+        "root/domain/possible_world_a/wormhole_1/wormhole_2",
+        "root/domain/possible_world_a/wormhole_1/wormhole_2/wormhole_3",
+        "root/domain/possible_world_a/wormhole_1/wormhole_2/wormhole_3/rigid_designator",
+        "root/domain/possible_world_b",
+        "root/domain/possible_world_b/wormhole_1",
+        "root/domain/possible_world_b/wormhole_1/wormhole_2",
+        "root/domain/possible_world_b/wormhole_1/wormhole_2/wormhole_3",
+        "root/domain/possible_world_b/wormhole_1/wormhole_2/wormhole_3/naming_and_necessity",
+        "root/domain/universe",
+        "root/domain/universe/galaxies",
+        "root/domain/universe/galaxies/galaxy",
+        "root/domain/universe/galaxies/galaxy/planets",
+        "root/domain/universe/galaxies/galaxy/sun",
+        "root/qualification",
+        "root/qualification/qualificationItem",
+        "root/qualification/qualificationItem/message",
+        "root/qualification/qualificationItem/result",
+        "root/resource",
+        "root/resource/last_synced",
+        "root/resource/logs",
+        "root/resource/logs/log",
+        "root/resource/message",
+        "root/resource/payload",
+        "root/resource/status",
+        "root/resource_value",
+        "root/secrets",
+        "root/si",
+        "root/si/color",
+        "root/si/name",
+        "root/si/protected",
+        "root/si/type",
+    ];
+    assert_eq!(
+        expected
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>(), // expected
+        prop_paths // actual
+    );
+}
+
+#[test]
+async fn all_funcs(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "swifty")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .get_default_schema_variant(ctx)
+        .await
+        .expect("unable to get schema variant")
+        .expect("schema variant not found");
+    let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
+        .await
+        .expect("unable to get all funcs");
+
+    let (expected, actual) = prepare_for_assertion(
+        &[
+            "si:resourcePayloadToValue",
+            "test:createActionSwifty",
+            "test:generateCode",
+            "test:refreshActionSwifty",
+            "test:updateActionSwifty",
+        ],
+        all_funcs.as_slice(),
+    );
+    assert_eq!(expected, actual);
+
+    let schema = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .get_default_schema_variant(ctx)
+        .await
+        .expect("unable to get schema variant")
+        .expect("schema variant not found");
+    let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
+        .await
+        .expect("unable to get all funcs");
+
+    let (expected, actual) = prepare_for_assertion(
+        &[
+            "hesperus_is_phosphorus",
+            "si:resourcePayloadToValue",
+            "test:createActionStarfield",
+            "test:falloutEntriesToGalaxies",
+            "test:refreshActionStarfield",
+        ],
+        all_funcs.as_slice(),
+    );
+    assert_eq!(expected, actual);
+}
+
+fn prepare_for_assertion(expected: &[&str], all_funcs: &[Func]) -> (Vec<String>, Vec<String>) {
+    let expected = expected.iter().map(|s| s.to_string()).collect();
+
+    let mut actual: Vec<String> = all_funcs.iter().map(|f| f.name.clone()).collect();
+    actual.sort();
+
+    (expected, actual)
 }

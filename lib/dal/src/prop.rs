@@ -234,10 +234,6 @@ impl From<String> for PropPath {
     }
 }
 
-// const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
-// const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
-// const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql");
-
 #[remain::sorted]
 #[derive(
     AsRefStr,
@@ -324,16 +320,10 @@ impl From<PropKind> for FuncBackendResponseType {
     }
 }
 
-pub enum PropParent {
-    OrderedProp(PropId),
-    Prop(PropId),
-    SchemaVariant(SchemaVariantId),
-}
-
 impl Prop {
-    pub fn assemble(id: PropId, inner: PropContentV1, node_weight: PropNodeWeight) -> Self {
+    pub fn assemble(prop_node_weight: PropNodeWeight, inner: PropContentV1) -> Self {
         Self {
-            id,
+            id: prop_node_weight.id().into(),
             timestamp: inner.timestamp,
             name: inner.name,
             kind: inner.kind,
@@ -345,8 +335,168 @@ impl Prop {
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
             validation_format: inner.validation_format,
-            can_be_used_as_prototype_arg: node_weight.can_be_used_as_prototype_arg(),
+            can_be_used_as_prototype_arg: prop_node_weight.can_be_used_as_prototype_arg(),
         }
+    }
+
+    /// A wrapper around [`Self::new`] that does not populate UI-relevant information. This is most
+    /// useful for [`Props`](Prop) that will be invisible to the user in the property editor.
+    pub async fn new_without_ui_optionals(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        kind: PropKind,
+        parent_prop_id: PropId,
+    ) -> PropResult<Self> {
+        Self::new(
+            ctx,
+            name.as_ref(),
+            kind,
+            false,
+            None,
+            None,
+            None,
+            parent_prop_id,
+        )
+        .await
+    }
+
+    /// Creates a [`Prop`] that is a child of a provided parent [`Prop`].
+    ///
+    /// If you want to create the first, "root" [`Prop`] for a [`SchemaVariant`], use
+    /// [`Self::new_root`].
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: PropKind,
+        hidden: bool,
+        doc_link: Option<String>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        validation_format: Option<String>,
+        parent_prop_id: PropId,
+    ) -> PropResult<Self> {
+        let prop = Self::new_inner(
+            ctx,
+            name,
+            kind,
+            hidden,
+            doc_link,
+            widget_kind_and_options,
+            validation_format,
+        )
+        .await?;
+
+        Self::add_edge_to_prop_ordered(ctx, parent_prop_id, prop.id, EdgeWeightKind::new_use())
+            .await?;
+
+        Ok(prop)
+    }
+
+    /// Creates a root [`Prop`] for a given [`SchemaVariantId`](SchemaVariant).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new_root(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: PropKind,
+        hidden: bool,
+        doc_link: Option<String>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        validation_format: Option<String>,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<Self> {
+        let root_prop = Self::new_inner(
+            ctx,
+            name,
+            kind,
+            hidden,
+            doc_link,
+            widget_kind_and_options,
+            validation_format,
+        )
+        .await?;
+
+        SchemaVariant::add_edge_to_prop(
+            ctx,
+            schema_variant_id,
+            root_prop.id,
+            EdgeWeightKind::new_use(),
+        )
+        .await
+        .map_err(Box::new)?;
+
+        Ok(root_prop)
+    }
+
+    /// This _private_ method creates a new [`Prop`]. It does not handle the parentage of the prop
+    /// and _public_ methods should be used to do so.
+    ///
+    /// A corresponding [`AttributePrototype`] and [`AttributeValue`] will be created when the
+    /// provided [`SchemaVariant`] is [`finalized`](SchemaVariant::finalize).
+    async fn new_inner(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: PropKind,
+        hidden: bool,
+        doc_link: Option<String>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        validation_format: Option<String>,
+    ) -> PropResult<Self> {
+        let ordered = kind.ordered();
+        let name = name.into();
+
+        let timestamp = Timestamp::now();
+        let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
+            match widget_kind_and_options {
+                Some((kind, options)) => (
+                    kind,
+                    match options {
+                        Some(options) => Some(serde_json::from_value(options)?),
+                        None => None,
+                    },
+                ),
+                None => (WidgetKind::from(kind), None),
+            };
+
+        let content = PropContentV1 {
+            timestamp,
+            name: name.clone(),
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            documentation: None,
+            hidden,
+            refers_to_prop_id: None,
+            diff_func_id: None,
+            validation_format,
+        };
+
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(PropContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        let change_set = ctx.change_set()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let prop_node_weight = node_weight.get_prop_node_weight()?;
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        if ordered {
+            workspace_snapshot
+                .add_ordered_node(change_set, node_weight)
+                .await?;
+        } else {
+            workspace_snapshot.add_node(node_weight).await?;
+        }
+
+        Ok(Self::assemble(prop_node_weight, content))
     }
 
     pub fn id(&self) -> PropId {
@@ -492,121 +642,6 @@ impl Prop {
         Ok(result)
     }
 
-    pub async fn new_without_ui_optionals(
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-        kind: PropKind,
-        prop_parent: PropParent,
-    ) -> PropResult<Self> {
-        Self::new(
-            ctx,
-            name.as_ref(),
-            kind,
-            false,
-            None,
-            None,
-            None,
-            prop_parent,
-        )
-        .await
-    }
-
-    /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
-    /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
-    /// [`finalized`](crate::SchemaVariant::finalize).
-    #[allow(clippy::too_many_arguments)]
-    pub async fn new(
-        ctx: &DalContext,
-        name: impl Into<String>,
-        kind: PropKind,
-        hidden: bool,
-        doc_link: Option<String>,
-        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
-        validation_format: Option<String>,
-        prop_parent: PropParent,
-    ) -> PropResult<Self> {
-        let ordered = kind.ordered();
-        let name = name.into();
-
-        let timestamp = Timestamp::now();
-        let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
-            match widget_kind_and_options {
-                Some((kind, options)) => (
-                    kind,
-                    match options {
-                        Some(options) => Some(serde_json::from_value(options)?),
-                        None => None,
-                    },
-                ),
-                None => (WidgetKind::from(kind), None),
-            };
-
-        let content = PropContentV1 {
-            timestamp,
-            name: name.clone(),
-            kind,
-            widget_kind,
-            widget_options,
-            doc_link,
-            documentation: None,
-            hidden,
-            refers_to_prop_id: None,
-            diff_func_id: None,
-            validation_format,
-        };
-
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(PropContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
-
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
-        let prop_node_weight = node_weight.get_prop_node_weight()?;
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        if ordered {
-            workspace_snapshot
-                .add_ordered_node(change_set, node_weight)
-                .await?;
-        } else {
-            workspace_snapshot.add_node(node_weight).await?;
-        }
-
-        match prop_parent {
-            PropParent::OrderedProp(ordered_prop_id) => {
-                Self::add_edge_to_prop_ordered(
-                    ctx,
-                    ordered_prop_id,
-                    id.into(),
-                    EdgeWeightKind::new_use(),
-                )
-                .await?;
-            }
-            PropParent::Prop(prop_id) => {
-                Self::add_edge_to_prop(ctx, prop_id, id.into(), EdgeWeightKind::new_use()).await?;
-            }
-            PropParent::SchemaVariant(schema_variant_id) => {
-                SchemaVariant::add_edge_to_prop(
-                    ctx,
-                    schema_variant_id,
-                    id.into(),
-                    EdgeWeightKind::new_use(),
-                )
-                .await
-                .map_err(Box::new)?;
-            }
-        };
-
-        Ok(Self::assemble(id.into(), content, prop_node_weight))
-    }
-
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ::si_events::ulid::Ulid = id.into();
@@ -627,7 +662,7 @@ impl Prop {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let PropContent::V1(inner) = content;
 
-        Ok(Prop::assemble(id, inner, node_weight))
+        Ok(Prop::assemble(node_weight, inner))
     }
 
     pub async fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {

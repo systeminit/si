@@ -330,19 +330,18 @@ impl Func {
     ///
     /// It's important to note that not all Intrinsic funcs are non-dynamic. Identity, for instance, is dynamic.
     pub fn is_dynamic_for_name_string(name: &str) -> bool {
-        if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(name) {
-            ![
-                IntrinsicFunc::SetArray,
-                IntrinsicFunc::SetBoolean,
-                IntrinsicFunc::SetInteger,
-                IntrinsicFunc::SetMap,
-                IntrinsicFunc::SetObject,
-                IntrinsicFunc::SetString,
-                IntrinsicFunc::Unset,
-            ]
-            .contains(&intrinsic)
-        } else {
-            true
+        match IntrinsicFunc::maybe_from_str(name) {
+            Some(intrinsic) => match intrinsic {
+                IntrinsicFunc::SetArray
+                | IntrinsicFunc::SetBoolean
+                | IntrinsicFunc::SetInteger
+                | IntrinsicFunc::SetMap
+                | IntrinsicFunc::SetObject
+                | IntrinsicFunc::SetString
+                | IntrinsicFunc::Unset => false,
+                IntrinsicFunc::Identity | IntrinsicFunc::Validation => true,
+            },
+            None => true,
         }
     }
 

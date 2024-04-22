@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{EncryptedSecret, Workspace};
 
-pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, String, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -828,23 +828,6 @@ impl DalContext {
             .await?;
 
         Ok(is_in_our_tenancy)
-    }
-
-    /// Copies every single row from `Self::builtin()` to our tenancy on head change-set
-    /// Needed to remove universal tenancy while packages aren't a thing
-    #[instrument(level = "debug", skip_all)]
-    pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
-        // TODO(nick,zack,jacob): restore the ability to "import builtins" via the graph work.
-        // let source_workspace_pk = WorkspacePk::NONE;
-        // self.txns()
-        //     .await?
-        //     .pg()
-        //     .execute(
-        //         "SELECT import_builtins_v1($1, $2)",
-        //         &[self.tenancy(), &source_workspace_pk],
-        //     )
-        //     .await?;
-        Ok(())
     }
 
     // NOTE(nick,zack,jacob): likely a temporary func to get the change set id from the visibility.

@@ -6,6 +6,7 @@ use dal::component::frame::{Connection, Frame};
 use dal::{ChangeSet, ComponentId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 use super::DiagramResult;
 
@@ -30,8 +31,8 @@ pub struct CreateFrameConnectionResponse {
 pub async fn connect_component_to_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateFrameConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -39,6 +40,19 @@ pub async fn connect_component_to_frame(
 
     // Connect children to parent through frame edge
     Frame::attach_child_to_parent(&ctx, request.parent_id, request.child_id).await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "component_attached_to_frame",
+        serde_json::json!({
+            "how": "/diagram/connect_component_to_frame",
+            "child_id": request.child_id,
+            "parent_id": request.parent_id,
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
 
     ctx.commit().await?;
 

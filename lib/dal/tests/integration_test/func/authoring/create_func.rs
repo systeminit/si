@@ -1,6 +1,9 @@
-use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient, FuncAuthoringError};
+use dal::func::authoring::{
+    AttributeOutputLocation, CreateFuncOptions, FuncAuthoringClient, FuncAuthoringError,
+};
 use dal::func::FuncKind;
-use dal::{ChangeSet, DalContext, DeprecatedActionKind, Func, Schema, SchemaVariant};
+use dal::prop::PropPath;
+use dal::{ChangeSet, DalContext, DeprecatedActionKind, Func, Prop, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::commit_and_update_snapshot;
 
@@ -170,6 +173,190 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
     assert_eq!(func_name, func.name);
     assert_eq!(Some("main".to_string()), func.handler);
     assert_eq!(Some("async function main(component: Input): Promise<Output> {\n  return {\n    format: \"json\",\n    code: JSON.stringify(component),\n  };\n}\n".to_string()),  func.code);
+
+    let mut expected_func: Vec<Func> = schema_funcs
+        .into_iter()
+        .filter(|f| f.name == func_name)
+        .collect();
+    assert!(!expected_func.is_empty());
+    assert_eq!(func_name, expected_func.pop().unwrap().name);
+
+    let head_change_set = ctx
+        .get_workspace_default_change_set_id()
+        .await
+        .expect("Unable to find HEAD changeset id");
+
+    ctx.update_visibility_and_snapshot_to_visibility(head_change_set)
+        .await
+        .expect("Unable to go back to HEAD");
+
+    let head_func = Func::find_by_name(ctx, func_name.clone())
+        .await
+        .expect("Unable to get a func");
+    assert!(head_func.is_none());
+}
+
+#[test]
+async fn create_attribute_no_options(ctx: &mut DalContext) {
+    let func_name = "Paul's Test Func".to_string();
+    let func =
+        FuncAuthoringClient::create_func(ctx, FuncKind::Attribute, Some(func_name.clone()), None)
+            .await
+            .expect("unable to create func");
+
+    assert_eq!(FuncKind::Attribute, func.kind);
+    assert_eq!(func_name, func.name);
+    assert_eq!(Some("main".to_string()), func.handler);
+    assert_eq!(
+        Some(
+            "async function main(input: Input): Promise<Output> {\n  return null;\n}\n".to_string()
+        ),
+        func.code
+    );
+
+    let head_change_set = ctx
+        .get_workspace_default_change_set_id()
+        .await
+        .expect("Unable to find HEAD changeset id");
+
+    ctx.update_visibility_and_snapshot_to_visibility(head_change_set)
+        .await
+        .expect("Unable to go back to HEAD");
+
+    let head_func = Func::find_by_name(ctx, func_name.clone())
+        .await
+        .expect("Unable to get a func");
+    assert!(head_func.is_none());
+}
+
+#[test]
+#[ignore]
+// TODO(Paul): Relook at these tests when we decide what we want to do about the ability
+// to override a prop or a socket that is linked with the identity func
+async fn create_attribute_with_prop(ctx: &mut DalContext) {
+    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+        .await
+        .expect("unable to get schema");
+    assert!(maybe_swifty_schema.is_some());
+
+    let swifty_schema = maybe_swifty_schema.unwrap();
+    let maybe_sv_id = swifty_schema
+        .get_default_schema_variant(ctx)
+        .await
+        .expect("unable to get schema variant id");
+    assert!(maybe_sv_id.is_some());
+    let sv_id = maybe_sv_id.unwrap();
+
+    let prop_id = Prop::find_prop_id_by_path(ctx, sv_id, &PropPath::new(["root", "code"]))
+        .await
+        .expect("unable to get prop");
+
+    let func_name = "Paul's Test Func".to_string();
+    let func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Attribute,
+        Some(func_name.clone()),
+        Some(CreateFuncOptions::AttributeOptions {
+            schema_variant_id: Default::default(),
+            output_location: AttributeOutputLocation::Prop { prop_id },
+        }),
+    )
+    .await
+    .expect("unable to create func");
+
+    commit_and_update_snapshot(ctx).await;
+
+    let schema_funcs = SchemaVariant::all_funcs(ctx, sv_id)
+        .await
+        .expect("Unable to get all schema variant funcs");
+
+    assert_eq!(FuncKind::Attribute, func.kind);
+    assert_eq!(func_name, func.name);
+    assert_eq!(Some("main".to_string()), func.handler);
+    assert_eq!(
+        Some(
+            "async function main(input: Input): Promise<Output> {\n  return null;\n}\n".to_string()
+        ),
+        func.code
+    );
+
+    let mut expected_func: Vec<Func> = schema_funcs
+        .into_iter()
+        .filter(|f| f.name == func_name)
+        .collect();
+    assert!(!expected_func.is_empty());
+    assert_eq!(func_name, expected_func.pop().unwrap().name);
+
+    let head_change_set = ctx
+        .get_workspace_default_change_set_id()
+        .await
+        .expect("Unable to find HEAD changeset id");
+
+    ctx.update_visibility_and_snapshot_to_visibility(head_change_set)
+        .await
+        .expect("Unable to go back to HEAD");
+
+    let head_func = Func::find_by_name(ctx, func_name.clone())
+        .await
+        .expect("Unable to get a func");
+    assert!(head_func.is_none());
+}
+
+#[test]
+#[ignore]
+async fn create_attribute_with_socket(ctx: &mut DalContext) {
+    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+        .await
+        .expect("unable to get schema");
+    assert!(maybe_swifty_schema.is_some());
+
+    let swifty_schema = maybe_swifty_schema.unwrap();
+    let maybe_sv_id = swifty_schema
+        .get_default_schema_variant(ctx)
+        .await
+        .expect("unable to get schema variant id");
+    assert!(maybe_sv_id.is_some());
+    let sv_id = maybe_sv_id.unwrap();
+
+    let (output, _input) = SchemaVariant::list_all_sockets(ctx, sv_id)
+        .await
+        .expect("Unable to get the Sockets for the Schema Variant");
+    dbg!(&output);
+
+    assert!(!output.is_empty());
+
+    let first_socket = output
+        .first()
+        .expect("Unable to get a socket from the list");
+
+    let func_name = "Paul's Test Func".to_string();
+    let func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Attribute,
+        Some(func_name.clone()),
+        Some(CreateFuncOptions::AttributeOptions {
+            schema_variant_id: Default::default(),
+            output_location: AttributeOutputLocation::OutputSocket {
+                output_socket_id: first_socket.id(),
+            },
+        }),
+    )
+    .await
+    .expect("unable to create func");
+
+    assert_eq!(FuncKind::Attribute, func.kind);
+    assert_eq!(func_name, func.name);
+    assert_eq!(Some("main".to_string()), func.handler);
+    assert_eq!(
+        Some(
+            "async function main(input: Input): Promise<Output> {\n  return null;\n}\n".to_string()
+        ),
+        func.code
+    );
+
+    let schema_funcs = SchemaVariant::all_funcs(ctx, sv_id)
+        .await
+        .expect("Unable to get all schema variant funcs");
 
     let mut expected_func: Vec<Func> = schema_funcs
         .into_iter()
