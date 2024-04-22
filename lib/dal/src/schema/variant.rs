@@ -421,10 +421,12 @@ impl SchemaVariant {
         let mut schema_variants = vec![];
         let parent_index = workspace_snapshot.get_node_index_by_id(schema_id).await?;
 
+        // We want to use the EdgeWeightKindDiscriminants rather than EdgeWeightKind
+        // this will bring us back all use and default edges!
         let node_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
                 parent_index,
-                EdgeWeightKind::new_use().into(),
+                EdgeWeightKindDiscriminants::Use,
             )
             .await?;
 
@@ -458,10 +460,6 @@ impl SchemaVariant {
                 ))?,
             }
         }
-
-        // Now add the default schema variant to the list as this is a different edge kind
-        let default_schema_variant = Self::get_default_for_schema(ctx, schema_id).await?;
-        schema_variants.push(default_schema_variant);
 
         Ok(schema_variants)
     }
