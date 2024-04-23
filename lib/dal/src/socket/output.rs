@@ -17,13 +17,17 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{implement_add_edge_to, AttributePrototypeId, AttributeValueId, SchemaVariantId};
+use crate::{
+    implement_add_edge_to, AttributePrototypeId, AttributeValueId, ComponentId, InputSocketId,
+    SchemaVariantId,
+};
 use crate::{
     pk, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
     SchemaVariantError, Timestamp, TransactionsError,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
+use super::input::InputSocketError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -36,10 +40,16 @@ pub enum OutputSocketError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("found too many matches for input and socket: {0}, {1}")]
+    FoundTooManyForInputSocketId(InputSocketId, ComponentId),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
+    InputSocketError(#[from] InputSocketError),
+    #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("found multiple input sockets for attribute value: {0}")]
+    MultipleSocketsForAttributeValue(AttributeValueId),
     #[error(
         "found two output sockets ({0} and {1}) of the same name for the same schema variant: {2}"
     )]
@@ -358,6 +368,16 @@ impl OutputSocket {
         }
         Ok(maybe_output_socket)
     }
+    #[instrument(level="info" skip(ctx))]
+    pub async fn fits_input_by_id(
+        ctx: &DalContext,
+        input_socket_id: InputSocketId,
+        output_socket_id: OutputSocketId,
+    ) -> OutputSocketResult<bool> {
+        let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+        let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+        Ok(output_socket.fits_input(&input_socket))
+    }
 
     pub fn fits_input(&self, input: &InputSocket) -> bool {
         let out_annotations = self.connection_annotations();
@@ -371,6 +391,37 @@ impl OutputSocket {
         }
 
         false
+    }
+
+    pub async fn find_for_attribute_value_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> OutputSocketResult<Option<OutputSocketId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut raw_sources = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                attribute_value_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+        let maybe_input_socket = if let Some(raw_parent) = raw_sources.pop() {
+            if !raw_sources.is_empty() {
+                return Err(OutputSocketError::MultipleSocketsForAttributeValue(
+                    attribute_value_id,
+                ));
+            }
+            Some(
+                workspace_snapshot
+                    .get_node_weight(raw_parent)
+                    .await?
+                    .id()
+                    .into(),
+            )
+        } else {
+            None
+        };
+
+        Ok(maybe_input_socket)
     }
 
     // `AttributePrototypeArguemnts` that use this `OutputSocket` as their source of data.

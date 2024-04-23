@@ -40,6 +40,12 @@ impl PropertyEditorValues {
             .iter()
             .map(|c| c.to_input_socket_id)
             .collect();
+        let inferred_sockets_on_components: HashSet<InputSocketId> = component
+            .inferred_connections(ctx)
+            .await?
+            .iter()
+            .map(|c| c.to_input_socket_id)
+            .collect();
 
         let controlling_ancestors_for_av_id =
             Component::list_av_controlling_func_ids_for_id(ctx, component_id).await?;
@@ -147,7 +153,10 @@ impl PropertyEditorValues {
 
                 let is_from_external_source = sockets_for_av
                     .iter()
-                    .any(|s| connected_sockets_on_component.contains(s));
+                    .any(|s| connected_sockets_on_component.contains(s))
+                    || sockets_for_av
+                        .iter()
+                        .any(|s| inferred_sockets_on_components.contains(s));
 
                 let ControllingFuncData {
                     av_id: this_controlling_attribute_value_id,

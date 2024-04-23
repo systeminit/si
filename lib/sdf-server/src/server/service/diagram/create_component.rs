@@ -76,7 +76,7 @@ pub async fn create_component(
         .await?;
 
     if let Some(frame_id) = request.parent_id {
-        Frame::attach_child_to_parent(&ctx, frame_id, component.id()).await?;
+        Frame::upsert_parent(&ctx, component.id(), frame_id).await?;
 
         track(
             &posthog_client,

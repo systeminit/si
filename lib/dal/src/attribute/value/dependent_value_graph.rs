@@ -5,6 +5,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 use ulid::Ulid;
 
 use crate::component::ControllingFuncData;
+use crate::ComponentError;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
@@ -14,7 +15,7 @@ use crate::{
     Component, ComponentId, DalContext, Prop,
 };
 
-use super::{AttributeValue, AttributeValueId, AttributeValueResult};
+use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
@@ -42,6 +43,9 @@ impl DependentValueGraph {
     /// values discovered while walking the graph (e.g., if a value's prototype takes one of the
     /// passed values as an input, we also need to find the values for the other inputs to the
     /// prototype, etc.).
+    /// The graph also includes any inferred dependencies based on parentage, for example if
+    /// a component gets its inputs from a parent frame, and that frame's output sockets change,
+    /// we add those downstream input sockets to the graph.
     pub async fn for_values(
         ctx: &DalContext,
         values: Vec<AttributeValueId>,
@@ -105,7 +109,7 @@ impl DependentValueGraph {
                     continue;
                 }
             }
-
+            let value_is_for = AttributeValue::is_for(ctx, current_attribute_value_id).await?;
             let data_source_id: Ulid = AttributeValue::is_for(ctx, current_attribute_value_id)
                 .await?
                 .into();
@@ -159,6 +163,56 @@ impl DependentValueGraph {
                 relevant_apas
             };
 
+            // If there aren't any relevant AttributePrototypeArguments, check if this value is
+            // an output socket as the attribute value might have implicit dependendcies based on
+            // the ancestry (aka frames/nested frames)
+            if relevant_apas.is_empty() {
+                if let ValueIsFor::OutputSocket(_) = value_is_for {
+                    let maybe_values_depend_on =
+                        match Component::find_inferred_values_using_this_output_socket(
+                            ctx,
+                            current_attribute_value_id,
+                        )
+                        .await
+                        {
+                            Ok(values) => values,
+                            // When we first run dvu, the component type might not be set yet.
+                            // In this case, we can assume there aren't downstream inputs that need to
+                            // be queued up.
+                            Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                                vec![]
+                            }
+                            Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
+                        };
+
+                    for input_socket_match in maybe_values_depend_on {
+                        let source_component =
+                            Component::get_by_id(ctx, input_socket_match.component_id)
+                                .await
+                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+                        let destination_component_id =
+                            AttributeValue::component_id(ctx, current_attribute_value_id).await?;
+                        let destination_component =
+                            Component::get_by_id(ctx, destination_component_id)
+                                .await
+                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+
+                        // Both "deleted" and not deleted Components can feed data into
+                        // "deleted" Components. **ONLY** not deleted Components can feed
+                        // data into not deleted Components.
+                        if destination_component.to_delete()
+                            || (!destination_component.to_delete() && !source_component.to_delete())
+                        {
+                            work_queue.push_back(input_socket_match.attribute_value_id);
+                            dependent_value_graph.value_depends_on(
+                                input_socket_match.attribute_value_id,
+                                current_attribute_value_id,
+                            );
+                        }
+                    }
+                }
+            }
+
             // Find the values that are set by the prototype for the relevant
             // AttributePrototypeArguments, and declare that these values depend
             // on the value of the current value
@@ -198,7 +252,6 @@ impl DependentValueGraph {
                     .value_depends_on(parent_attribute_value_id, current_attribute_value_id);
             }
         }
-
         Ok(dependent_value_graph)
     }
 

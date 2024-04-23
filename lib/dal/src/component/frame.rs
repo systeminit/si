@@ -1,23 +1,31 @@
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
-use crate::diagram::{EdgeId, NodeId};
+use crate::attribute::value::AttributeValueError;
+use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, User,
+    AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket,
+    TransactionsError,
 };
+
+use super::{InputSocketMatch, OutputSocketMatch};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FrameError {
+    #[error("aggregation frames unsupported: {0}")]
+    AggregateFramesUnsupported(ComponentId),
+    #[error("attribute value error: {0}")]
+    AttributeValueError(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("input socket error: {0}")]
+    InputSocketError(#[from] InputSocketError),
     #[error("parent is not a frame (child id: {0}) (parent id: {1})")]
     ParentIsNotAFrame(ComponentId, ComponentId),
     #[error("transactions error: {0}")]
@@ -32,79 +40,158 @@ pub type FrameResult<T> = Result<T, FrameError>;
 pub struct Frame;
 
 impl Frame {
-    /// Provides the ability to attach a child [`Component`] to a parent frame.
-    pub async fn attach_child_to_parent(
+    /// Provides an ability to remove the existing ['Component']'s parent``
+    #[instrument(level = "info", skip_all)]
+    pub async fn orphan_child(ctx: &DalContext, child_id: ComponentId) -> FrameResult<()> {
+        if let Some(parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
+            Self::detach_child_from_parent_inner(ctx, parent_id, child_id).await?;
+        }
+        Ok(())
+    }
+    /// Provides the ability to attach or replace a child [`Component`]'s parent
+    #[instrument(level = "info", skip_all)]
+    pub async fn upsert_parent(
         ctx: &DalContext,
-        parent_id: ComponentId,
         child_id: ComponentId,
+        new_parent_id: ComponentId,
     ) -> FrameResult<()> {
-        let parent = Component::get_by_id(ctx, parent_id).await?;
-        let parent_type = parent.get_type(ctx).await?;
-
-        let (source_id, destination_id) = match parent_type {
-            ComponentType::AggregationFrame => {
-                unimplemented!("aggregation frames are untested in the new engine")
+        match Component::get_type_by_id(ctx, new_parent_id).await? {
+            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
+                Self::orphan_child(ctx, child_id).await?;
+                Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id).await?;
             }
             ComponentType::Component => {
-                return Err(FrameError::ParentIsNotAFrame(child_id, parent_id))
+                return Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id))
             }
-            ComponentType::ConfigurationFrameDown => (parent_id, child_id),
-            ComponentType::ConfigurationFrameUp => (child_id, parent_id),
-        };
-
-        Self::attach_child_to_parent_symbolic(ctx, parent_id, child_id).await?;
-
-        Component::connect_all(ctx, source_id, destination_id).await?;
-
-        // TODO deal with deeply nested frames (connect to all ancestor valid sockets too)
-        // TODO deal with connecting frames to frames (go through children and connect to ancestors)
-
+            ComponentType::AggregationFrame => {
+                return Err(FrameError::AggregateFramesUnsupported(new_parent_id))
+            }
+        }
         Ok(())
     }
 
-    async fn attach_child_to_parent_symbolic(
+    async fn attach_child_to_parent_inner(
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
+        // detect cycles here?
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
 
+        // when detaching a child, need to rerun any attribute prototypes for those impacted sockets then queue up dvu!
+
+        let values_rerun = match Component::get_type_by_id(ctx, child_id).await? {
+            ComponentType::Component
+            | ComponentType::ConfigurationFrameDown
+            | ComponentType::ConfigurationFrameUp => {
+                let mut updated_avs = vec![];
+                for (_, input_socket_match) in
+                    Component::input_socket_attribute_values_for_component_id(ctx, child_id).await?
+                {
+                    if !InputSocket::is_manually_configured(ctx, input_socket_match).await? {
+                        AttributeValue::update_from_prototype_function(
+                            ctx,
+                            input_socket_match.attribute_value_id,
+                        )
+                        .await?;
+                        updated_avs.push(input_socket_match.attribute_value_id);
+                    }
+                }
+                let mut work_queue = vec![parent_id];
+                while let Some(parent) = work_queue.pop() {
+                    if Component::get_type_by_id(ctx, parent).await?
+                        == ComponentType::ConfigurationFrameUp
+                    {
+                        for (_, input_socket_match) in
+                            Component::input_socket_attribute_values_for_component_id(ctx, child_id)
+                                .await?
+                        {
+                            if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
+                            {
+                                AttributeValue::update_from_prototype_function(
+                                    ctx,
+                                    input_socket_match.attribute_value_id,
+                                )
+                                .await?;
+                                updated_avs.push(input_socket_match.attribute_value_id);
+                            }
+                        }
+                    }
+                    if let Some(next_parent) = Component::get_parent_by_id(ctx, parent).await? {
+                        work_queue.push(next_parent);
+                    }
+                }
+                updated_avs
+            }
+            ComponentType::AggregationFrame => vec![],
+        };
+        ctx.enqueue_dependent_values_update(values_rerun).await?;
+
+        Ok(())
+    }
+    async fn detach_child_from_parent_inner(
+        ctx: &DalContext,
+        parent_id: ComponentId,
+        child_id: ComponentId,
+    ) -> FrameResult<()> {
+        //when detaching a child, need to re-run any attribute prototypes for those impacted input sockets then queue up dvu!
+
+        let values_rerun = match Component::get_type_by_id(ctx, child_id).await? {
+            ComponentType::Component
+            | ComponentType::ConfigurationFrameDown
+            | ComponentType::ConfigurationFrameUp => {
+                let mut updated_avs = vec![];
+                for (_, input_socket_match) in
+                    Component::input_socket_attribute_values_for_component_id(ctx, child_id).await?
+                {
+                    if !InputSocket::is_manually_configured(ctx, input_socket_match).await? {
+                        AttributeValue::update_from_prototype_function(
+                            ctx,
+                            input_socket_match.attribute_value_id,
+                        )
+                        .await?;
+                        updated_avs.push(input_socket_match.attribute_value_id);
+                    }
+                }
+                let mut work_queue = vec![parent_id];
+                while let Some(parent) = work_queue.pop() {
+                    if Component::get_type_by_id(ctx, parent).await?
+                        == ComponentType::ConfigurationFrameUp
+                    {
+                        for (_, input_socket_match) in
+                            Component::input_socket_attribute_values_for_component_id(ctx, child_id)
+                                .await?
+                        {
+                            if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
+                            {
+                                AttributeValue::update_from_prototype_function(
+                                    ctx,
+                                    input_socket_match.attribute_value_id,
+                                )
+                                .await?;
+                                updated_avs.push(input_socket_match.attribute_value_id);
+                            }
+                        }
+                    }
+                    if let Some(next_parent) = Component::get_parent_by_id(ctx, parent).await? {
+                        work_queue.push(next_parent);
+                    }
+                }
+                updated_avs
+            }
+            ComponentType::AggregationFrame => vec![],
+        };
+
+        Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
+        ctx.enqueue_dependent_values_update(values_rerun).await?;
         Ok(())
     }
 }
 
-// TODO(nick): replace once the switchover is complete.
-#[remain::sorted]
-#[derive(
-    Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr, Copy,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum EdgeKind {
-    Configuration,
-    Symbolic,
-}
-
-// TODO(nick): replace once the switchover is complete.
-pub type SocketId = Ulid;
-
-// TODO(nick): replace once the switchover is complete.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct Vertex {
-    pub node_id: NodeId,
-    pub socket_id: SocketId,
-}
-
-// TODO(nick): replace once the switchover is complete.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Connection {
-    pub id: EdgeId,
-    pub classification: EdgeKind,
-    pub source: Vertex,
-    pub destination: Vertex,
-    pub created_by: Option<User>,
-    pub deleted_by: Option<User>,
+pub struct InferredConnection {
+    pub input_socket_match: InputSocketMatch,
+    pub output_socket_match: OutputSocketMatch,
 }

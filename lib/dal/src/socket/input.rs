@@ -6,10 +6,15 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
+use crate::component::InputSocketMatch;
 use crate::func::FuncError;
 use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
+
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -19,19 +24,24 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, AttributeValueId,
-    DalContext, FuncId, HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
-    TransactionsError,
+    ComponentError, DalContext, FuncId, HelperError, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Timestamp, TransactionsError,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
+use super::output::OutputSocketError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InputSocketError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgumentError(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error(transparent)]
+    ComponentError(#[from] Box<ComponentError>),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
@@ -42,8 +52,12 @@ pub enum InputSocketError {
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("found multiple input sockets for attribute value: {0}")]
+    MultipleSocketsForAttributeValue(AttributeValueId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant error: {0}")]
+    OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("store error: {0}")]
@@ -100,7 +114,6 @@ impl InputSocket {
             connection_annotations: inner.connection_annotations,
         }
     }
-
     pub fn id(&self) -> InputSocketId {
         self.id
     }
@@ -358,5 +371,65 @@ impl InputSocket {
         }
 
         Ok(result)
+    }
+
+    pub async fn find_for_attribute_value_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> InputSocketResult<Option<InputSocketId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut raw_sources = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                attribute_value_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+        let maybe_input_socket = if let Some(raw_parent) = raw_sources.pop() {
+            if !raw_sources.is_empty() {
+                return Err(InputSocketError::MultipleSocketsForAttributeValue(
+                    attribute_value_id,
+                ));
+            }
+            Some(
+                workspace_snapshot
+                    .get_node_weight(raw_parent)
+                    .await?
+                    .id()
+                    .into(),
+            )
+        } else {
+            None
+        };
+
+        Ok(maybe_input_socket)
+    }
+
+    pub async fn is_manually_configured(
+        ctx: &DalContext,
+        input_socket_match: InputSocketMatch,
+    ) -> InputSocketResult<bool> {
+        // if the input socket has an explicit connection, then we will not gather any implicit
+        // note we could do some weird logic here when it comes to sockets with arrity of many
+        // but let's punt for now
+        if let Some(maybe_attribute_prototype) =
+            AttributePrototype::find_for_input_socket(ctx, input_socket_match.input_socket_id)
+                .await?
+        {
+            // if this socket has an attribute prototype argument,
+            //that means it has an explicit connection and we should not
+            // look for implicits
+            let maybe_apa =
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, maybe_attribute_prototype)
+                    .await?;
+            info!("maybe attribute prototype args: {:?}", maybe_apa);
+            if !maybe_apa.is_empty() {
+                info!(
+                    "attribute prototype argument found for input socket {:?}, no implicit inputs here.",
+                    input_socket_match
+                );
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }

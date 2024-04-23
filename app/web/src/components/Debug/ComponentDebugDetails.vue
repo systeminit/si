@@ -23,6 +23,10 @@
               :data="debugData.schemaVariantId"
               title="Variant Id"
             />
+            <DebugViewItem
+              :data="debugData.parentId ?? 'NULL'"
+              title="Parent Id?"
+            />
           </dl>
         </Collapsible>
 

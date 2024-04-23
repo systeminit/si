@@ -86,8 +86,7 @@ pub async fn paste_components(
 
         if let Some(parent_id) = component.parent(&ctx).await? {
             if let Some(pasted_parent) = pasted_components_by_original.get(&parent_id) {
-                Frame::attach_child_to_parent(&ctx, pasted_parent.id(), pasted_component.id())
-                    .await?;
+                Frame::upsert_parent(&ctx, pasted_component.id(), pasted_parent.id()).await?;
             };
         }
 
@@ -108,7 +107,7 @@ pub async fn paste_components(
         }
 
         if let Some(parent_id) = request.new_parent_component_id {
-            Frame::attach_child_to_parent(&ctx, parent_id, pasted_component.id()).await?;
+            Frame::upsert_parent(&ctx, parent_id, pasted_component.id()).await?;
         }
     }
 
