@@ -32,6 +32,8 @@ services:
     command:
       - --collector.systemd
       - --collector.systemd.unit-include=${SI_SERVICE}.service
+    ports:
+      - 9100:9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
