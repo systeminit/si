@@ -53,6 +53,7 @@ pub struct Config {
     #[builder(default = "CryptoConfig::default()")]
     crypto: CryptoConfig,
 
+    #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
     #[builder(default)]
@@ -169,7 +170,7 @@ impl TryFrom<ConfigFile> for Config {
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     SymmetricCryptoServiceConfigFile {
-        active_key: Some("/run/rebaser/donkey.key".to_owned()),
+        active_key: None,
         active_key_base64: None,
         extra_keys: vec![],
     }
