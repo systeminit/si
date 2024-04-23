@@ -18,6 +18,7 @@ const NATS_ACTIVITIES_STREAM_NAME: &str = "LAYERDB_ACTIVITIES";
 const NATS_ACTIVITIES_STREAM_SUBJECTS: &[&str] = &["si.layerdb.activities.>"];
 
 const NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME: &str = "REBASER_REQUESTS";
+const MAX_BYTES: i64 = 5 * 1024 * 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// Returns a Jetstream Stream and creates it if it doesn't yet exist.
 pub async fn layerdb_events_stream(
@@ -63,6 +64,7 @@ pub async fn layerdb_activities_stream(
             discard: jetstream::stream::DiscardPolicy::Old,
             // TODO(fnichol): this likely needs tuning
             max_age: Duration::from_secs(60 * 60 * 6),
+            max_bytes: MAX_BYTES,
             ..Default::default()
         })
         .await?;
@@ -91,6 +93,7 @@ pub async fn rebaser_requests_work_queue_stream(
             description: Some("Rebaser requests work queue".to_owned()),
             retention: jetstream::stream::RetentionPolicy::WorkQueue,
             sources: Some(vec![source]),
+            max_bytes: MAX_BYTES,
             ..Default::default()
         })
         .await?;
