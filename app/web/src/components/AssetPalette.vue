@@ -40,7 +40,7 @@
           v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
           :key="categoryIndex"
           :label="category.displayName"
-          :icon="getAssetIcon(category.displayName)"
+          :primaryIcon="getAssetIcon(category.displayName)"
           :color="category.schemas[0]?.color || '#000'"
           classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
           labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
