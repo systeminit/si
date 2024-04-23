@@ -104,7 +104,7 @@
         pkgName,
         extraBuildInputs ? [],
         stdBuildPhase ? ''
-          buck2 build "$buck2_target" --verbose 8 --out "build/$name-$system"
+          buck2 build @//mode/release "$buck2_target" --verbose 8 --out "build/$name-$system"
         '',
         extraBuildPhase ? "",
         installPhase,
