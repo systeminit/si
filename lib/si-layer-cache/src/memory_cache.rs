@@ -25,8 +25,10 @@ where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
     pub fn new() -> Self {
+        // hardcoding max cache size to 12gb as a hammer to ensure we don't starve the OS
+        // TODO(scott): make this dynamic based on the the total memory set
         Self {
-            cache: Cache::new(u64::MAX),
+            cache: Cache::new(12 * 1024 * 1024 * 1024),
         }
     }
 
