@@ -676,7 +676,7 @@ impl ChangeSet {
         Ok(())
     }
 
-    async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
+    pub async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
                 let maybe_user = User::get_by_pk(ctx, *user_pk).await;

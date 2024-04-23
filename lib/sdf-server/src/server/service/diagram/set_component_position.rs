@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{Component, ComponentId, InputSocket, Visibility};
+use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -31,29 +31,22 @@ pub async fn set_component_position(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
-    let schema_variant_id = Component::schema_variant_id(&ctx, request.component_id).await?;
+    //let schema_variant_id = Component::schema_variant_id(&ctx, request.component_id).await?;
 
     let (width, height) = {
-        let input_sockets = InputSocket::list(&ctx, schema_variant_id).await?;
-
         let mut size = (None, None);
 
-        for input_socket in input_sockets {
-            // NOTE(nick): the comment below may be out of date, depending on how we handle frames with the new engine.
+        let component_type = component.get_type(&ctx).await?;
 
-            // If component is a frame, we set the size as either the one from the request or the previous one
-            // If we don't do it like this upsert_by_node_id will delete the size on None instead of keeping it as is
-            if input_socket.name() == "Frame" {
-                size = (
-                    request
-                        .width
-                        .or_else(|| component.width().map(|v| v.to_string())),
-                    request
-                        .height
-                        .or_else(|| component.height().map(|v| v.to_string())),
-                );
-                break;
-            }
+        if component_type != ComponentType::Component {
+            size = (
+                request
+                    .width
+                    .or_else(|| component.width().map(|v| v.to_string())),
+                request
+                    .height
+                    .or_else(|| component.height().map(|v| v.to_string())),
+            );
         }
 
         size
@@ -77,6 +70,12 @@ pub async fn set_component_position(
     //             .await?;
     //     };
     // }
+    let user_id = ChangeSet::extract_userid_from_context(&ctx).await;
+
+    WsEvent::set_component_position(&ctx, ctx.change_set_id(), &component, user_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

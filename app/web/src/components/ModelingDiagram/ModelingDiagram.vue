@@ -220,7 +220,9 @@ import {
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useAuthStore } from "@/store/auth.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -277,6 +279,8 @@ import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const realtimeStore = useRealtimeStore();
+const authStore = useAuthStore();
 
 // scroll pan multiplied by this and zoom level when panning
 const ZOOM_PAN_FACTOR = 0.5;
@@ -360,10 +364,11 @@ const gridRect = computed<IRect>(() => ({
 }));
 
 function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
-  return {
+  const r = {
     x: gridMinX.value + v.x / zoomLevel.value,
     y: gridMinY.value + v.y / zoomLevel.value,
   };
+  return r;
 }
 
 /** pointer position in frame of reference of container */
@@ -472,6 +477,37 @@ const onResize: ResizeObserverCallback = (entries) => {
 const debouncedOnResize = _.debounce(onResize, 50);
 const resizeObserver = new ResizeObserver(debouncedOnResize);
 
+// the movedElementPositions and resizedElementSizes are undefined until something is moved or resized
+// lets define them here, so we always can use them
+// i tried this onBeforeMounted and onMounted but the store data was empty, which was unexpected
+// but watching also makes sense, b/c as new components come onto the stage, we need to fill them in here
+watch(
+  () => Object.keys(componentsStore.componentsById),
+  () => {
+    Object.values(componentsStore.componentsById).forEach((n) => {
+      const uniqueKey = n.isGroup
+        ? DiagramGroupData.generateUniqueKey(n.id)
+        : DiagramNodeData.generateUniqueKey(n.id);
+
+      // don't overwrite existing values (this causes elements to return to previous positions)
+      if (!movedElementPositions[uniqueKey]) {
+        movedElementPositions[uniqueKey] = {
+          x: n.position.x,
+          y: n.position.y,
+        };
+      }
+      if (n.isGroup && n.size?.height && n.size.width) {
+        if (!resizedElementSizes[uniqueKey]) {
+          resizedElementSizes[uniqueKey] = {
+            width: n.size.width,
+            height: n.size.height,
+          };
+        }
+      }
+    });
+  },
+);
+
 // this is all a little ugly, but basically we are waiting until custom fonts are loaded to initialize and display the canvas
 // or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
 const isMounted = ref(false);
@@ -511,7 +547,57 @@ function onMountedAndReady() {
   // window.addEventListener("pointerleave", onPointerUp);
 }
 
+let executionKey: string | undefined;
+watch(
+  () => changeSetsStore.selectedChangeSetId,
+  () => {
+    if (executionKey) {
+      // this doesnt seem to fire (see below)
+      realtimeStore.unsubscribe(executionKey);
+    }
+
+    executionKey = new Date().toString() + _.random();
+    realtimeStore.subscribe(
+      executionKey,
+      `changeset/${changeSetsStore.selectedChangeSetId}`,
+      [
+        {
+          eventType: "SetComponentPosition",
+          callback: ({
+            changeSetId,
+            componentId,
+            x,
+            y,
+            width,
+            height,
+            userPk,
+          }) => {
+            if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
+            if (userPk === authStore.userPk) return;
+
+            const gKey = `g-${componentId}`;
+            const nKey = `n-${componentId}`;
+            if (movedElementPositions[gKey]) {
+              movedElementPositions[gKey] = { x, y };
+              if (resizedElementSizes[gKey] && width && height) {
+                resizedElementSizes[gKey] = { width, height };
+              }
+            } else if (movedElementPositions[nKey]) {
+              movedElementPositions[nKey] = { x, y };
+            }
+          },
+        },
+      ],
+    );
+  },
+  { immediate: true },
+);
+
 onBeforeUnmount(() => {
+  // this fires when you change the changeset from the drop down
+  // which feels unexpected that this component is destroyed and recreated?
+  if (executionKey) realtimeStore.unsubscribe(executionKey);
+
   kStage?.off("wheel", onMouseWheel);
   windowListenerManager.removeEventListener("mousemove", onMouseMove);
   windowListenerManager.removeEventListener("mouseup", onMouseUp);
@@ -1198,7 +1284,7 @@ const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 function sendMovedElementPosition(e: {
   element: DiagramElementData;
   position: Vector2d;
-  size?: Vector2d;
+  size?: Size2D;
   isFinal: boolean;
 }) {
   // this gets called many times during a move, with e.isFinal telling you if the drag is in progress or complete
@@ -1212,6 +1298,7 @@ function sendMovedElementPosition(e: {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
       e.element.def.id,
       e.position,
+      e.size,
     );
   }
 }
@@ -1234,6 +1321,11 @@ function endDragElements() {
   // note - we've already filtered out children that are selected along with their parents,
   // so we don't need to worry about accidentally moving them more than once
   _.each(currentSelectionMovableElements.value, (el) => {
+    let fitWithinParent: null | {
+      position: Vector2d;
+      size: Size2D;
+    } = null;
+
     if (!movedElementPositions[el.uniqueKey]) return;
 
     // dragging onto root - ie detach from all parents
@@ -1247,13 +1339,39 @@ function endDragElements() {
       ] as DiagramGroupData;
 
       if (el.def.parentId !== newParent?.def.componentId) {
+        if (newParent?.def.childIds?.length === 0) {
+          if (newParent.def.size) {
+            fitWithinParent = {
+              position:
+                movedElementPositions[newParent.uniqueKey] ??
+                newParent.def.position,
+              size:
+                resizedElementSizes[newParent.uniqueKey] ?? newParent.def.size,
+            };
+          }
+        }
         componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
       }
     }
 
+    // move the element itself
     const movedElementPosition = movedElementPositions[el.uniqueKey];
-    if (movedElementPosition) {
-      // move the element itself
+    // only resize if my parent *currently* has zero children, and i have no children
+    // otherwise let the human deal witht it
+    if (el.def.childIds?.length === 0 && fitWithinParent) {
+      const [position, size] = fitChildInsideParentFrame(
+        fitWithinParent.position,
+        fitWithinParent.size,
+      );
+      movedElementPositions[el.uniqueKey] = { ...position };
+      resizedElementSizes[el.uniqueKey] = { ...size };
+      sendMovedElementPosition({
+        element: el,
+        position,
+        size,
+        isFinal: true,
+      });
+    } else if (movedElementPosition) {
       sendMovedElementPosition({
         element: el,
         position: movedElementPosition,
@@ -1263,11 +1381,8 @@ function endDragElements() {
 
     // move child elements inside a group
     if (el instanceof DiagramGroupData) {
+      const childEls = allChildren(el);
       // for now only dealing with nodes... will be fixed later
-      const childEls = _.filter(
-        [...nodes.value, ...groups.value],
-        (n) => n.def.parentId === el.def.id,
-      );
       _.each(childEls, (childEl) => {
         sendMovedElementPosition({
           element: childEl,
@@ -1282,6 +1397,22 @@ function endDragElements() {
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
+
+// TODO(victor) This can be optimized
+// This needs to be recursive to find child components at all depths
+const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
+  const children: DiagramElementData[] = [];
+  _.map(el.def.childIds, (childId) => {
+    const c = nodes.value.find((n) => n.def.id === childId);
+    if (c) children.push(c);
+    const g = groups.value.find((n) => n.def.id === childId);
+    if (g) {
+      children.push(g);
+      children.push(...allChildren(g));
+    }
+  });
+  return children;
+};
 
 function onDragElementsMove() {
   if (!containerPointerPos.value) return;
@@ -1363,12 +1494,7 @@ function onDragElementsMove() {
         });
       }
 
-      // TODO(victor) This can be optimized
-      const childEls: DiagramNodeData[] = _.compact(
-        _.map(el.def.childIds, (childId) =>
-          nodes.value.find((n) => n.def.id === childId),
-        ),
-      );
+      const childEls = allChildren(el);
 
       const actualParentDelta = vectorBetween(
         draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
@@ -1526,6 +1652,22 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   // TODO: if nudging out of the viewport, pan to give more space
 }
 
+const debounceTracker: Record<
+  DiagramElementUniqueKey,
+  _.DebouncedFunc<
+    (el: DiagramGroupData | DiagramNodeData, newPos: Vector2d) => void
+  >
+> = {};
+const debounceNudge = () => {
+  return _.debounce((el, newPos) => {
+    sendMovedElementPosition({
+      element: el,
+      position: newPos,
+      isFinal: true,
+    });
+  }, 300);
+};
+
 const nudgeOneNode = (
   el: DiagramGroupData | DiagramNodeData,
   nudgeVector: Vector2d,
@@ -1535,11 +1677,11 @@ const nudgeOneNode = (
     nudgeVector,
   );
   movedElementPositions[el.uniqueKey] = newPosition;
-  sendMovedElementPosition({
-    element: el,
-    position: newPosition,
-    isFinal: true,
-  });
+  // we have to debounce *each* element, not one debounce for all elements
+  if (!debounceTracker[el.uniqueKey]) {
+    debounceTracker[el.uniqueKey] = debounceNudge();
+  }
+  debounceTracker[el.uniqueKey]?.(el, newPosition);
 
   const component = componentsStore.componentsById[el.def.componentId];
 
@@ -1598,74 +1740,80 @@ const resizedElementSizesPreResize = reactive<
 const frameBoundingBoxes = ref<Record<string, IRect>>({});
 
 // Calculate content bounding boxes for every group
-watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
-  if (!kStage) return;
+watch(
+  [resizedElementSizes, isMounted, movedElementPositions, stageRef],
+  () => {
+    if (!kStage) return;
 
-  const boxDictionary: Record<string, IRect> = {};
+    const boxDictionary: Record<string, IRect> = {};
 
-  for (const group of groups.value) {
-    const childIds = group.def.childIds;
-    if (!childIds) continue;
+    for (const group of groups.value) {
+      const childIds = group.def.childIds;
+      if (!childIds) continue;
 
-    let top;
-    let bottom;
-    let left;
-    let right;
-    for (const childId of childIds) {
-      const child = _.concat(groups.value, nodes.value).find(
-        (c) => c.def.id === childId,
-      );
-      if (!child) continue;
-      const elShape = kStage.findOne(`#${child.uniqueKey}--bg`);
-      if (!elShape) continue;
+      let top;
+      let bottom;
+      let left;
+      let right;
+      for (const childId of childIds) {
+        const child = _.concat(groups.value, nodes.value).find(
+          (c) => c.def.id === childId,
+        );
+        if (!child) continue;
+        const elShape = kStage.findOne(`#${child.uniqueKey}--bg`);
+        if (!elShape) continue;
 
-      const position =
-        movedElementPositions[child.uniqueKey] ?? child.def.position;
+        const position =
+          movedElementPositions[child.uniqueKey] ?? child.def.position;
+        let size = resizedElementSizes[child.uniqueKey] ?? child.def.size;
+        if (!size) {
+          size = { width: elShape.width(), height: elShape.height() };
+        }
 
-      const geometry = {
-        x: position.x,
-        y: position.y,
-        width: elShape.width(),
-        height: elShape.height(),
-      };
+        const geometry = {
+          ...position,
+          ...size,
+        };
 
-      if (child instanceof DiagramGroupData) {
-        geometry.y -= GROUP_INNER_Y_BOUNDARY_OFFSET;
-        geometry.height += GROUP_INNER_Y_BOUNDARY_OFFSET;
+        if (child instanceof DiagramGroupData) {
+          geometry.y -= GROUP_INNER_Y_BOUNDARY_OFFSET;
+          geometry.height += GROUP_INNER_Y_BOUNDARY_OFFSET;
+        }
+
+        if (!top || geometry.y < top) top = geometry.y;
+
+        const thisLeft = geometry.x - geometry.width / 2;
+        if (!left || thisLeft < left) left = thisLeft;
+
+        const thisRight = geometry.x + geometry.width / 2;
+        if (!right || thisRight > right) right = thisRight;
+
+        const thisBottom = geometry.y + geometry.height;
+        if (!bottom || thisBottom > bottom) bottom = thisBottom;
       }
 
-      if (!top || geometry.y < top) top = geometry.y;
+      if (
+        left === undefined ||
+        right === undefined ||
+        top === undefined ||
+        bottom === undefined
+      )
+        continue;
 
-      const thisLeft = geometry.x - geometry.width / 2;
-      if (!left || thisLeft < left) left = thisLeft;
-
-      const thisRight = geometry.x + geometry.width / 2;
-      if (!right || thisRight > right) right = thisRight;
-
-      const thisBottom = geometry.y + geometry.height;
-      if (!bottom || thisBottom > bottom) bottom = thisBottom;
+      // TODO(Wendy) - Eventually we need to decide what happens if you add a Frame to another Frame that is smaller than it!
+      boxDictionary[group.uniqueKey] = {
+        x: left - GROUP_INTERNAL_PADDING,
+        y: top - GROUP_INTERNAL_PADDING,
+        width: right - left + GROUP_INTERNAL_PADDING * 2,
+        height:
+          bottom - top + GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING,
+      };
     }
 
-    if (
-      left === undefined ||
-      right === undefined ||
-      top === undefined ||
-      bottom === undefined
-    )
-      continue;
-
-    // TODO(Wendy) - Eventually we need to decide what happens if you add a Frame to another Frame that is smaller than it!
-    boxDictionary[group.uniqueKey] = {
-      x: left - GROUP_INTERNAL_PADDING,
-      y: top - GROUP_INTERNAL_PADDING,
-      width: right - left + GROUP_INTERNAL_PADDING * 2,
-      height:
-        bottom - top + GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING,
-    };
-  }
-
-  frameBoundingBoxes.value = boxDictionary;
-});
+    frameBoundingBoxes.value = boxDictionary;
+  },
+  { immediate: true },
+);
 
 function beginResizeElement() {
   if (!lastMouseDownElement.value) return;
@@ -1704,6 +1852,7 @@ function endResizeElement() {
   resizeElement.value = undefined;
 }
 
+const MIN_NODE_DIMENSION = NODE_WIDTH + 20 * 2;
 function onResizeMove() {
   if (!resizeElement.value || !resizeElementDirection.value) return;
   const resizeTargetKey = resizeElement.value.uniqueKey;
@@ -1733,7 +1882,6 @@ function onResizeMove() {
     y: 0,
   };
 
-  const minNodeDimension = NODE_WIDTH + 20 * 2;
   const presentSize = resizedElementSizesPreResize[resizeTargetKey];
   const presentPosition =
     draggedElementsPositionsPreDrag.value[resizeTargetKey];
@@ -1748,7 +1896,7 @@ function onResizeMove() {
     case "bottom":
       {
         sizeDelta.x = 0;
-        const minDelta = minNodeDimension - presentSize.height;
+        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -1758,7 +1906,7 @@ function onResizeMove() {
       {
         sizeDelta.x = 0;
         sizeDelta.y = -sizeDelta.y;
-        const minDelta = minNodeDimension - presentSize.height;
+        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -1769,7 +1917,7 @@ function onResizeMove() {
       {
         sizeDelta.y = 0;
         sizeDelta.x = -sizeDelta.x;
-        const minDelta = minNodeDimension - presentSize.width;
+        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -1779,7 +1927,7 @@ function onResizeMove() {
     case "right":
       {
         sizeDelta.y = 0;
-        const minDelta = minNodeDimension - presentSize.width;
+        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -1788,13 +1936,13 @@ function onResizeMove() {
       break;
     case "bottom-left":
       {
-        const minYDelta = minNodeDimension - presentSize.height;
+        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = minNodeDimension - presentSize.width;
+        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -1803,11 +1951,11 @@ function onResizeMove() {
       break;
     case "bottom-right":
       {
-        const minYDelta = minNodeDimension - presentSize.height;
+        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
-        const minXDelta = minNodeDimension - presentSize.width;
+        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -1817,14 +1965,14 @@ function onResizeMove() {
     case "top-left":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = minNodeDimension - presentSize.height;
+        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = minNodeDimension - presentSize.width;
+        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -1834,13 +1982,13 @@ function onResizeMove() {
     case "top-right":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = minNodeDimension - presentSize.height;
+        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
-        const minXDelta = minNodeDimension - presentSize.width;
+        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2189,17 +2337,36 @@ const insertElementActive = computed(
   () => !!componentsStore.selectedInsertSchemaId,
 );
 
+function fitChildInsideParentFrame(
+  position: Vector2d,
+  size: Size2D,
+): [Vector2d, Size2D] {
+  // position the component within its parent cleanly
+  const HEADER_SIZE = 60; // The height of the compoennt header bar; TODO find a better way to detect this
+  // there is headerTextHeight.value, but we don't have it because the component doesn't exist yet
+  const DEFAULT_GUTTER_SIZE = 10; // leaving room for sockets
+  const createAtPosition = { ...position };
+  createAtPosition.y += HEADER_SIZE + DEFAULT_GUTTER_SIZE;
+  createAtPosition.x += DEFAULT_GUTTER_SIZE;
+
+  const createAtSize = { ...size };
+  // this math isn't working exactly as I would expect, but getting the results I want
+  createAtSize.width -= DEFAULT_GUTTER_SIZE * 6;
+  createAtSize.height -= HEADER_SIZE;
+  createAtSize.height -= DEFAULT_GUTTER_SIZE * 4;
+
+  // enforce minimums
+  createAtSize.width = Math.max(createAtSize.width, MIN_NODE_DIMENSION);
+  createAtSize.height = Math.max(createAtSize.height, MIN_NODE_DIMENSION);
+
+  return [createAtPosition, createAtSize];
+}
+
 async function triggerInsertElement() {
   if (!insertElementActive.value)
     throw new Error("insert element mode must be active");
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
-
-  // TODO - move all of this logic to the store
-  let parentGroupId: string | undefined;
-  if (hoveredElement.value instanceof DiagramGroupData) {
-    parentGroupId = hoveredElement.value.def.id;
-  }
 
   if (!componentsStore.selectedInsertSchemaId)
     throw new Error("missing insert selection metadata");
@@ -2207,12 +2374,17 @@ async function triggerInsertElement() {
   const schemaId = componentsStore.selectedInsertSchemaId;
   componentsStore.selectedInsertSchemaId = null;
 
+  const parentGroupId: string | undefined = cursorWithinGroupKey.value?.replace(
+    "g-",
+    "",
+  );
+
   let parentId;
+  let createAtSize: Size2D | undefined;
+  let createAtPosition = gridPointerPos.value;
 
   if (parentGroupId) {
-    const parentComponent = Object.values(componentsStore.componentsById).find(
-      (c) => c.id === parentGroupId,
-    );
+    const parentComponent = componentsStore.componentsById[parentGroupId];
     if (
       parentComponent &&
       (parentComponent.componentType !== ComponentType.AggregationFrame ||
@@ -2220,9 +2392,30 @@ async function triggerInsertElement() {
     ) {
       parentId = parentGroupId;
     }
+
+    if (parentComponent) {
+      if (parentComponent.childIds.length > 0) {
+        // when there are already children we can't be as smart
+        // leave position as the cursor
+        // backend default is 500 x 500, just make it smaller since there are other children
+        createAtSize = { width: 250, height: 250 };
+      } else if (parentComponent.position && parentComponent.size) {
+        [createAtPosition, createAtSize] = fitChildInsideParentFrame(
+          parentComponent.position,
+          parentComponent.size,
+        );
+      }
+    }
   }
 
-  componentsStore.CREATE_COMPONENT(schemaId, gridPointerPos.value, parentId);
+  // as this stands, the client will send a width/height for non-frames, that the API endpoint ignores
+  // TODO: is there is a good way to determine whether this schemaID is a frame?
+  componentsStore.CREATE_COMPONENT(
+    schemaId,
+    createAtPosition,
+    parentId,
+    createAtSize,
+  );
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
@@ -2275,7 +2468,10 @@ const groups = computed(() => {
       componentsStore.diagramNodes,
       (n) => n.componentType !== ComponentType.Component,
     ),
-    (groupDef) => new DiagramGroupData(groupDef),
+    (groupDef) => {
+      const g = new DiagramGroupData(groupDef);
+      return g;
+    },
   );
   const orderedGroups = _.orderBy(allGroups, (g) => {
     // order by "depth" in frames

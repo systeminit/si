@@ -42,8 +42,8 @@ use crate::{
     DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
     DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -1420,7 +1420,40 @@ pub struct ComponentUpdatedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSetPositionPayload {
+    change_set_id: ChangeSetId,
+    component_id: ComponentId,
+    x: i32,
+    y: i32,
+    width: Option<i32>,
+    height: Option<i32>,
+    user_pk: Option<UserPk>,
+}
+
 impl WsEvent {
+    pub async fn set_component_position(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+        component: &Component,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SetComponentPosition(ComponentSetPositionPayload {
+                change_set_id,
+                component_id: component.id,
+                x: component.x.parse()?,
+                y: component.y.parse()?,
+                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
+                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
+                user_pk,
+            }),
+        )
+        .await
+    }
+
     pub async fn component_created(
         ctx: &DalContext,
         component_id: ComponentId,

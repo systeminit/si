@@ -56,6 +56,16 @@ export type WsEventPayloadMap = {
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
 
+  SetComponentPosition: {
+    changeSetId: ChangeSetId;
+    componentId: ComponentId;
+    userPk: UserId;
+    x: number;
+    y: number;
+    width: number | undefined;
+    height: number | undefined;
+  };
+
   ChangeSetBeginApprovalProcess: {
     changeSetId: ChangeSetId;
     userPk: UserId;

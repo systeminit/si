@@ -19,6 +19,8 @@ pub struct CreateComponentRequest {
     pub parent_id: Option<ComponentId>,
     pub x: String,
     pub y: String,
+    pub height: Option<String>,
+    pub width: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -64,8 +66,12 @@ pub async fn create_component(
             &ctx,
             request.x.clone(),
             request.y.clone(),
-            Some(DEFAULT_COMPONENT_WIDTH),
-            Some(DEFAULT_COMPONENT_HEIGHT),
+            request
+                .width
+                .or_else(|| Some(DEFAULT_COMPONENT_WIDTH.to_string())),
+            request
+                .height
+                .or_else(|| Some(DEFAULT_COMPONENT_HEIGHT.to_string())),
         )
         .await?;
 
