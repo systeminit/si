@@ -18,7 +18,7 @@ const NATS_ACTIVITIES_STREAM_NAME: &str = "LAYERDB_ACTIVITIES";
 const NATS_ACTIVITIES_STREAM_SUBJECTS: &[&str] = &["si.layerdb.activities.>"];
 
 const NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME: &str = "REBASER_REQUESTS";
-const MAX_BYTES: i64 = 5 * 1024 * 1024 * 1024; // mirrors settings in Synadia NATs
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// Returns a Jetstream Stream and creates it if it doesn't yet exist.
 pub async fn layerdb_events_stream(

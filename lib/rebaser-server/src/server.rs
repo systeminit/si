@@ -1,7 +1,7 @@
-use std::{future::IntoFuture, io, path::Path, sync::Arc};
+use std::{future::IntoFuture, io, sync::Arc};
 
 use dal::{DalLayerDb, InitializationError, JobQueueProcessor, NatsProcessor};
-use si_crypto::SymmetricCryptoServiceConfig;
+use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig};
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
@@ -87,8 +87,7 @@ impl Server {
     ) -> ServerResult<Self> {
         dal::init()?;
 
-        let encryption_key =
-            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+        let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
@@ -188,9 +187,11 @@ impl Server {
 
     #[instrument(name = "gobbler.init.load_encryption_key", skip_all)]
     async fn load_encryption_key(
-        path: impl AsRef<Path>,
+        crypto_config: CryptoConfig,
     ) -> ServerResult<Arc<CycloneEncryptionKey>> {
-        Ok(Arc::new(CycloneEncryptionKey::load(path).await?))
+        Ok(Arc::new(
+            CycloneEncryptionKey::from_config(crypto_config).await?,
+        ))
     }
 
     #[instrument(name = "rebaser.init.connect_to_nats", skip_all)]

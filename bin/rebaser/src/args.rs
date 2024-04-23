@@ -1,5 +1,7 @@
 use clap::{ArgAction, Parser};
 use rebaser_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use si_std::SensitiveString;
+use std::path::PathBuf;
 
 const NAME: &str = "rebaser";
 
@@ -76,9 +78,25 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) pg_user: Option<String>,
 
+    /// PostgreSQL connection certification path
+    #[arg(long)]
+    pub(crate) pg_cert_path: Option<PathBuf>,
+
+    /// PostgreSQL connection certification base64 string
+    #[arg(long)]
+    pub(crate) pg_cert_base64: Option<SensitiveString>,
+
     /// NATS connection URL [example: demo.nats.io]
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
+
+    /// NATS credentials string
+    #[arg(long, allow_hyphen_values = true)]
+    pub(crate) nats_creds: Option<SensitiveString>,
+
+    /// NATS credentials file
+    #[arg(long)]
+    pub(crate) nats_creds_path: Option<PathBuf>,
 
     /// Disable OpenTelemetry on startup
     #[arg(long)]
@@ -87,6 +105,14 @@ pub(crate) struct Args {
     /// Cyclone encryption key file location [default: /run/rebaser/cyclone_encryption.key]
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
+
+    /// Cyclone encryption key file contents as a base64 encoded string
+    #[arg(long)]
+    pub(crate) cyclone_encryption_key_base64: Option<SensitiveString>,
+
+    /// Cyclone secret key as base64 string
+    #[arg(long)]
+    pub(crate) cyclone_secret_key_base64: Option<SensitiveString>,
 
     /// The number of concurrent jobs that can be processed [default: 10]
     #[arg(long)]
@@ -120,14 +146,41 @@ impl TryFrom<Args> for Config {
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
             }
+            if let Some(cert_path) = args.pg_cert_path {
+                config_map.set("pg.certificate_path", cert_path.display().to_string());
+            }
+            if let Some(cert) = args.pg_cert_base64 {
+                config_map.set("pg.certificate_base64", cert.to_string());
+            }
             if let Some(layer_cache_pg_dbname) = args.layer_cache_pg_dbname {
                 config_map.set("layer_cache_pg_dbname", layer_cache_pg_dbname);
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
             }
-            if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
-                config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
+            if let Some(creds) = args.nats_creds {
+                config_map.set("nats.creds", creds.to_string());
+            }
+            if let Some(creds_path) = args.nats_creds_path {
+                config_map.set("nats.creds_file", creds_path.display().to_string());
+            }
+            if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
+                config_map.set(
+                    "crypto.encryption_key_file",
+                    cyclone_encryption_key_file.to_string(),
+                );
+            }
+            if let Some(cyclone_encryption_key_base64) = args.cyclone_encryption_key_base64 {
+                config_map.set(
+                    "crypto.encryption_key_base64",
+                    cyclone_encryption_key_base64.to_string(),
+                );
+            }
+            if let Some(secret_string) = args.cyclone_secret_key_base64 {
+                config_map.set(
+                    "symmetric_crypto_service.active_key_base64",
+                    secret_string.to_string(),
+                );
             }
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));

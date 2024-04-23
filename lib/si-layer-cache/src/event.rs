@@ -36,7 +36,7 @@ use crate::nats::NATS_HEADER_KEY;
 use crate::LayerDbError;
 
 const DEFAULT_CHUNK_SIZE: usize = 128 * 1024;
-const MAX_BYTES: i64 = 5 * 1024 * 1024 * 1024; // mirrors settings in Synadia NATs
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 const HEADER_EVENT_ID: &str = "X-EVENT-ID";
 const HEADER_CHECKSUM: &str = "X-CHECKSUM";

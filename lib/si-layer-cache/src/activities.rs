@@ -42,7 +42,7 @@ pub mod test;
 //pub static RECV_NATS_COUNTER: AtomicI32 = AtomicI32::new(0);
 //pub static SENT_BROADCAST_COUNTER: AtomicI32 = AtomicI32::new(0);
 //pub static SENT_BROADCAST_ERROR_COUNTER: AtomicI32 = AtomicI32::new(0);
-const MAX_BYTES: i64 = 5 * 1024 * 1024 * 1024; // mirrors settings in Synadia NATs
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ActivityId(Ulid);

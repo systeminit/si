@@ -11,7 +11,7 @@ use crate::HeaderName;
 pub static REPLY_SUBJECT_HEADER_NAME: HeaderName = HeaderName::from_static("X-Reply-Subject");
 
 const DEFAULT_MAX_MESSAGES: i64 = 10_000;
-const MAX_BYTES: i64 = 5 * 1024 * 1024 * 1024; // mirrors settings in Synadia NATs
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// A wrapper around [`jetstream::Context`].
 #[derive(Debug)]

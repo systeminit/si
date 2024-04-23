@@ -84,6 +84,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build @//mode/release {}".format(rebaser_target),
     serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
         "nats",
