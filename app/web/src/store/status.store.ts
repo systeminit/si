@@ -11,6 +11,8 @@ import UpdatingModel from "../components/toasts/UpdatingModel.vue";
 
 import { ComponentId, SocketId, useComponentsStore } from "./components.store";
 
+const GLOBAL_STATUS_TOAST_TIMEOUT = 1000;
+const GLOBAL_STATUS_TOAST_DEBOUNCE = 300;
 export const GLOBAL_STATUS_TOAST_ID = "global_status_toast";
 
 export type StatusMessageState = "statusStarted" | "statusFinished";
@@ -320,7 +322,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                         timeout:
                           this.globalStatus.isUpdating || timeout
                             ? false
-                            : 1000,
+                            : GLOBAL_STATUS_TOAST_TIMEOUT,
                         closeOnClick: !this.globalStatus.isUpdating,
                         toastClassName: "si-toast-no-defaults",
                       },
@@ -328,7 +330,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                     true,
                   );
                 },
-                200,
+                GLOBAL_STATUS_TOAST_DEBOUNCE,
                 { leading: true },
               )();
             },

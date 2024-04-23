@@ -1,5 +1,7 @@
 <template>
-  <div class="m-xs mt-0 text-xs italic text-neutral-300 grow">
+  <div
+    class="m-xs mt-0 text-xs italic text-neutral-300 grow flex flex-row justify-between"
+  >
     <div
       :class="
         clsx(

@@ -14,11 +14,11 @@
 
       <div
         v-if="currentStatus && currentStatus.isUpdating"
-        class="flex flex-row items-center gap-xs pl-xs pb-xs"
+        class="flex flex-row items-center gap-xs m-xs mt-0"
       >
         <!-- currently updating -->
-        <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
-        <div class="grow truncate py-xs">
+        <Icon name="loader" size="xs" class="text-action-500 shrink-0" />
+        <div class="grow truncate text-xs italic">
           {{ currentStatus.statusMessage }}
         </div>
       </div>
