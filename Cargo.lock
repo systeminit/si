@@ -4104,6 +4104,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "rebaser-server",
+ "si-std",
  "telemetry-application",
  "tokio",
  "tokio-util",

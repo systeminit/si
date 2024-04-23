@@ -42,6 +42,7 @@ pub mod test;
 //pub static RECV_NATS_COUNTER: AtomicI32 = AtomicI32::new(0);
 //pub static SENT_BROADCAST_COUNTER: AtomicI32 = AtomicI32::new(0);
 //pub static SENT_BROADCAST_ERROR_COUNTER: AtomicI32 = AtomicI32::new(0);
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ActivityId(Ulid);
@@ -368,6 +369,7 @@ impl ActivityStream {
             name: Some(name),
             description: Some(description),
             deliver_policy: jetstream::consumer::DeliverPolicy::New,
+            max_bytes: MAX_BYTES,
             ..Default::default()
         };
 
@@ -502,6 +504,7 @@ impl RebaserRequestWorkQueue {
         jetstream::consumer::pull::Config {
             durable_name: Some(Self::CONSUMER_NAME.to_string()),
             description: Some("rebaser requests consumer".to_string()),
+            max_bytes: MAX_BYTES,
             ..Default::default()
         }
     }

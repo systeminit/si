@@ -1,3 +1,4 @@
+use si_crypto::CryptoConfig;
 use std::path::PathBuf;
 use std::{env, path::Path};
 
@@ -9,7 +10,7 @@ use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::error::LayerDbError;
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -49,7 +50,8 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    cyclone_encryption_key_path: CanonicalFile,
+    #[builder(default = "CryptoConfig::default()")]
+    crypto: CryptoConfig,
 
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
@@ -84,10 +86,10 @@ impl Config {
         self.nats.subject_prefix.as_deref()
     }
 
-    /// Gets a reference to the config's cyclone public key path.
+    /// Gets a reference to the config's crypto config.
     #[must_use]
-    pub fn cyclone_encryption_key_path(&self) -> &Path {
-        self.cyclone_encryption_key_path.as_path()
+    pub fn crypto(&self) -> &CryptoConfig {
+        &self.crypto
     }
 
     /// Gets a reference to the symmetric crypto service.
@@ -122,8 +124,8 @@ pub struct ConfigFile {
     layer_cache_pg_dbname: String,
     #[serde(default)]
     nats: NatsConfig,
-    #[serde(default = "default_cyclone_encryption_key_path")]
-    cyclone_encryption_key_path: String,
+    #[serde(default)]
+    crypto: CryptoConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
@@ -136,7 +138,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             layer_cache_pg_dbname: default_layer_cache_dbname(),
             nats: Default::default(),
-            cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
+            crypto: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             messaging_config: Default::default(),
         }
@@ -157,16 +159,12 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.layer_cache_pg_dbname(value.layer_cache_pg_dbname);
         config.nats(value.nats);
-        config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
+        config.crypto(value.crypto);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_cache_disk_path =
             Some(si_layer_cache::default_cache_path_for_service("rebaser"));
         config.build().map_err(Into::into)
     }
-}
-
-fn default_cyclone_encryption_key_path() -> String {
-    "/run/rebaser/cyclone_encryption.key".to_string()
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
@@ -220,7 +218,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,
@@ -251,7 +249,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,

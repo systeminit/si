@@ -11,6 +11,7 @@ use crate::HeaderName;
 pub static REPLY_SUBJECT_HEADER_NAME: HeaderName = HeaderName::from_static("X-Reply-Subject");
 
 const DEFAULT_MAX_MESSAGES: i64 = 10_000;
+const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// A wrapper around [`jetstream::Context`].
 #[derive(Debug)]
@@ -49,6 +50,7 @@ impl Context {
                 name,
                 subjects,
                 max_messages: DEFAULT_MAX_MESSAGES,
+                max_bytes: MAX_BYTES,
                 retention: RetentionPolicy::WorkQueue,
                 ..Default::default()
             })
@@ -91,6 +93,7 @@ impl Context {
                 name.as_str(),
                 jetstream::consumer::pull::Config {
                     durable_name: Some(name.clone()),
+                    max_bytes: MAX_BYTES,
                     ..Default::default()
                 },
             )

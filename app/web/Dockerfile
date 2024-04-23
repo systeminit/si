@@ -1,5 +1,5 @@
 # hadolint ignore=DL3007
-FROM nixos/nix:latest AS builder
+FROM nixos/nix:2.21.2 AS builder
 ARG APP=web
 
 COPY . /workdir

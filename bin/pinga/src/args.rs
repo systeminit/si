@@ -105,7 +105,7 @@ pub(crate) struct Args {
 
     /// Cyclone encryption key file location [default: /run/pinga/cyclone_encryption.key]
     #[arg(long)]
-    pub(crate) cyclone_encryption_key_path: Option<PathBuf>,
+    pub(crate) cyclone_encryption_key_path: Option<String>,
 
     /// Cyclone encryption key file contents as a base64 encoded string
     #[arg(long)]
@@ -168,7 +168,7 @@ impl TryFrom<Args> for Config {
             if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
                 config_map.set(
                     "crypto.encryption_key_file",
-                    cyclone_encryption_key_file.display().to_string(),
+                    cyclone_encryption_key_file.to_string(),
                 );
             }
             if let Some(cyclone_encryption_key_base64) = args.cyclone_encryption_key_base64 {
