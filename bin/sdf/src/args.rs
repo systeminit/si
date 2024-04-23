@@ -123,6 +123,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) jwt_public_signing_key_base64: Option<SensitiveString>,
 
+    /// The path at which the layer db cache is created/used on disk [e.g. /banana/]
+    #[arg(long)]
+    pub(crate) layer_cache_disk_path: Option<String>,
+
     /// Generates cyclone secret key file (does not run server)
     ///
     /// Will error if set when `generate_cyclone_public_key_path` is not set
@@ -225,6 +229,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(jwt) = args.jwt_public_signing_key_base64 {
                 config_map.set("jwt_signing_public_key.key_base64", jwt.to_string());
+            }
+            if let Some(layer_cache_disk_path) = args.layer_cache_disk_path {
+                config_map.set("layer_cache_disk_path", layer_cache_disk_path);
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);

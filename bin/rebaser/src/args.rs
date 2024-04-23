@@ -118,6 +118,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) concurrency: Option<u32>,
 
+    /// The path at which the layer db cache is created/used on disk [e.g. /banana/]
+    #[arg(long)]
+    pub(crate) layer_cache_disk_path: Option<String>,
+
     /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
     ///
     /// And instance ID is used when tracking the execution of jobs in a way that can be traced
@@ -181,6 +185,9 @@ impl TryFrom<Args> for Config {
                     "symmetric_crypto_service.active_key_base64",
                     secret_string.to_string(),
                 );
+            }
+            if let Some(layer_cache_disk_path) = args.layer_cache_disk_path {
+                config_map.set("layer_cache_disk_path", layer_cache_disk_path);
             }
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));
