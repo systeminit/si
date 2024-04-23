@@ -435,7 +435,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 title: component.displayName,
                 subtitle: component.schemaName,
                 isLoading:
-                  !!statusStore.componentStatusById[componentId]?.isUpdating,
+                  statusStore.getComponentStatus(componentId)?.isUpdating ??
+                  false,
                 typeIcon: component?.icon || "logo-si",
                 statusIcons,
               };

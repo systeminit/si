@@ -13,7 +13,6 @@ import {
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
-import { useStatusStore } from "./status.store";
 
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: string;
@@ -287,11 +286,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               return;
             }
 
-            // tell the status store we've begun an update, even if we dont know how big it is yet
-            // TODO: we may rely on backend events instead? although it would not be quite as fast
-            const statusStore = useStatusStore();
-            statusStore.markUpdateStarted();
-
             return new ApiRequest<{ success: true }>({
               method: "post",
               url: isInsert
@@ -301,10 +295,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
               },
-              onFail() {
-                // may not work exactly right with concurrent updates... but I dont think will be a problem
-                statusStore.cancelUpdateStarted();
-              },
             });
           },
           async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
@@ -312,9 +302,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
-
-            const statusStore = useStatusStore();
-            statusStore.markUpdateStarted();
 
             return new ApiRequest<{ success: true }>({
               method: "post",
@@ -324,10 +311,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...visibilityParams,
               },
               // onSuccess() {},
-              onFail() {
-                // may not work exactly right with concurrent updates... but I dont think will be a problem
-                statusStore.cancelUpdateStarted();
-              },
             });
           },
           async RESET_PROPERTY_VALUE(

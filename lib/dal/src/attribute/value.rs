@@ -221,6 +221,7 @@ pub struct AttributeValue {
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
 /// is a particular value the value of/for?
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", tag = "kind", content = "id")]
 pub enum ValueIsFor {
     Prop(PropId),
     InputSocket(InputSocketId),

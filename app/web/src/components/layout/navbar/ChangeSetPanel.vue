@@ -544,11 +544,9 @@ const abandonUser = computed(() => {
   return systemUser;
 });
 
-const statusStoreUpdating = computed(() => {
-  if (statusStore.globalStatus) {
-    return statusStore.globalStatus.isUpdating;
-  } else return false;
-});
+const statusStoreUpdating = computed(
+  () => statusStore.globalStatus?.isUpdating ?? false,
+);
 
 const abandonChangesetApproval = async () => {
   await changeSetsStore.BEGIN_ABANDON_APPROVAL_PROCESS();

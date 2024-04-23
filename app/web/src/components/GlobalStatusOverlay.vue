@@ -2,8 +2,8 @@
   <ProgressBarOverlay
     :title="statusStore.globalStatusMessage"
     :detail="statusStore.globalStatusDetailMessage"
-    :doneCount="statusStore.globalStatus?.componentsCountCurrent"
-    :totalCount="statusStore.globalStatus?.componentsCountTotal"
+    :doneCount="statusStore.globalStatus.updatedComponents"
+    :totalCount="statusStore.globalStatus.totalComponents"
     barLabel="Updated"
     :progressPercent="progressPercent"
   />
@@ -16,11 +16,9 @@ import { useStatusStore } from "@/store/status.store";
 
 const statusStore = useStatusStore();
 
-const progressPercent = computed(() => {
-  if (!statusStore.globalStatus?.stepsCountTotal) return undefined;
-  return (
-    (statusStore.globalStatus?.stepsCountCurrent || 0) /
-    (statusStore.globalStatus?.stepsCountTotal || 1)
-  );
-});
+const progressPercent = computed(
+  () =>
+    (statusStore.globalStatus.totalComponents || 1) /
+    (statusStore.globalStatus.updatedComponents || 1),
+);
 </script>

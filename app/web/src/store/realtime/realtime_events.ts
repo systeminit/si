@@ -1,19 +1,13 @@
 // This is a map of valid websocket events to the shape of their payload
 // used in the subscribe fn to limit valid event names and set callback payload type
 
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
 import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { ActionStatus, DeprecatedActionId } from "../actions.store";
-import {
-  AttributeValueId,
-  AttributeValueKind,
-  AttributeValueStatus,
-  StatusUpdatePk,
-} from "../status.store";
+import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { SecretId } from "../secrets.store";
@@ -189,19 +183,8 @@ export type WsEventPayloadMap = {
     error: string;
   };
 
-  StatusUpdate: {
-    pk: StatusUpdatePk;
-    status: AttributeValueStatus | "statusStarted" | "statusFinished";
-    actor: ActorView;
-    values: {
-      componentId: ComponentId;
-      valueId: AttributeValueId;
-      valueKind: {
-        kind: AttributeValueKind;
-        id?: string;
-      };
-    }[];
-  };
+  StatusUpdate: StatusUpdate;
+
   ActionAdded: {
     componentId: ComponentId;
     actionId: DeprecatedActionId;
