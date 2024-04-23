@@ -136,6 +136,8 @@ pub struct ConfigFile {
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    #[serde(default = "default_layer_cache_disk_path")]
+    layer_cache_disk_path: PathBuf,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
@@ -149,6 +151,7 @@ impl Default for ConfigFile {
             concurrency_limit: default_concurrency_limit(),
             crypto: Default::default(),
             instance_id: random_instance_id(),
+            layer_cache_disk_path: default_layer_cache_disk_path(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
         }
     }
@@ -172,8 +175,7 @@ impl TryFrom<ConfigFile> for Config {
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_disk_path =
-            Some(si_layer_cache::default_cache_path_for_service("pinga"));
+        config.layer_cache_disk_path(value.layer_cache_disk_path);
         config.build().map_err(Into::into)
     }
 }
@@ -196,6 +198,10 @@ fn default_layer_cache_dbname() -> String {
 
 fn default_concurrency_limit() -> usize {
     DEFAULT_CONCURRENCY_LIMIT
+}
+
+fn default_layer_cache_disk_path() -> PathBuf {
+    si_layer_cache::default_cache_path_for_service("pinga")
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

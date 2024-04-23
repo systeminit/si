@@ -62,6 +62,7 @@ pub struct Config {
     #[builder(default = "default_layer_cache_dbname()")]
     layer_cache_pg_dbname: String,
 
+    #[builder(default = "si_layer_cache::default_cache_path_for_service(\"rebaser\")")]
     layer_cache_disk_path: PathBuf,
 }
 
@@ -129,6 +130,8 @@ pub struct ConfigFile {
     crypto: CryptoConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
+    #[serde(default = "default_layer_cache_disk_path")]
+    layer_cache_disk_path: PathBuf,
     #[serde(default)]
     messaging_config: RebaserMessagingConfig,
 }
@@ -141,6 +144,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             crypto: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
+            layer_cache_disk_path: default_layer_cache_disk_path(),
             messaging_config: Default::default(),
         }
     }
@@ -162,8 +166,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.crypto(value.crypto);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_disk_path =
-            Some(si_layer_cache::default_cache_path_for_service("rebaser"));
+        config.layer_cache_disk_path(value.layer_cache_disk_path);
         config.build().map_err(Into::into)
     }
 }
@@ -178,6 +181,10 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
 
 fn default_layer_cache_dbname() -> String {
     "si_layer_db".to_string()
+}
+
+fn default_layer_cache_disk_path() -> PathBuf {
+    si_layer_cache::default_cache_path_for_service("rebaser")
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]
