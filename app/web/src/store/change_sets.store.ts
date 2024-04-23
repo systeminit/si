@@ -2,7 +2,6 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
-import { useRoute } from "vue-router";
 import { useToast } from "vue-toastification";
 import {
   ChangeSet,
@@ -25,7 +24,6 @@ export interface OpenChangeSetsView {
 }
 
 export function useChangeSetsStore() {
-  const route = useRoute();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
@@ -337,7 +335,9 @@ export function useChangeSetsStore() {
                 !this.selectedChangeSetId ||
                 this.selectedChangeSetId === changeSetId
               ) {
-                if (route.name) {
+                const route = useRouterStore().currentRoute;
+
+                if (route?.name) {
                   router.push({
                     name: route.name,
                     params: {
