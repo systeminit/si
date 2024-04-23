@@ -8,6 +8,7 @@ use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload}
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::SchemaVariantCreatedPayload;
+use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
     deprecated_action::prototype::ResourceRefreshedPayload,
@@ -81,7 +82,7 @@ pub enum WsPayload {
     // SchemaVariantSaved(SchemaVariantSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
-    // StatusUpdate(StatusMessage),
+    StatusUpdate(StatusUpdate),
     // WorkspaceExported(WorkspaceExportPayload),
     // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
     // WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),

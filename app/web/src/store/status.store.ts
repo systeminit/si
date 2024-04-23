@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import { ActorView } from "@/api/sdf/dal/history_actor";
+import { addStoreHooks } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -9,66 +8,67 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 
 import { ComponentId, SocketId, useComponentsStore } from "./components.store";
 
-// NOTE - some uncertainty around transition from update finished state ("5/5 update complete") back to idle ("Model is up to date")
-export type GlobalUpdateStatus = {
-  // NOTE - might want an state enum here as well (for example to turn the bar into an error state)
+export type StatusMessageState = "statusStarted" | "statusFinished";
 
+export interface DependentValuesUpdateStatusUpdate {
+  kind: "dependentValueUpdate";
+  status: StatusMessageState;
+  valueId: string;
+  componentId: string;
+  isFor: ValueIsFor;
+  timestamp: Date;
+}
+
+export interface RebaseStatusUpdate {
+  kind: "rebase";
+  status: StatusMessageState;
+  timestamp: Date;
+}
+
+export type StatusUpdate =
+  | DependentValuesUpdateStatusUpdate
+  | RebaseStatusUpdate;
+
+export type GlobalUpdateStatus = {
   isUpdating: boolean;
 
-  stepsCountCurrent: number;
-  stepsCountTotal: number;
-
-  componentsCountCurrent: number;
-  componentsCountTotal: number;
-
-  // not loving these names...
-  updateStartedAt: Date; // timestamp when this update/batch was kicked off
-  lastStepCompletedAt: Date; // timestamp of latest processed update within this cascade of updates
+  updatedComponents: number;
+  // This is not all the components in the graph, but all the components in the in-flight updates
+  totalComponents: number;
 };
 
 export type ComponentUpdateStatus = {
   componentId: string;
   componentLabel: string;
 
-  isUpdating: boolean; // note - might change to enum if more states appear
-
-  stepsCountCurrent: number;
-  stepsCountTotal: number;
-
-  statusMessage: string; // ex: updating attributes
+  isUpdating: boolean;
 
   lastUpdateAt: Date;
-  lastUpdateBy?: ActorView;
+  statusMessage: string;
+  // lastUpdateBy?: ActorView;
 };
-
-export type StatusUpdatePk = string;
-
-export type AttributeValueStatus = "queued" | "running" | "completed";
 
 export type AttributeValueId = string;
 
-export type UpdateStatusTimestamps = {
-  queuedAt: Date;
-  runningAt?: Date;
-  completedAt?: Date;
-};
+export interface AttributeValueStatus {
+  valueId: AttributeValueId;
+  componentId: string;
+  isFor: ValueIsFor;
+  count: number;
+  startedAt: Date;
+  finishedAt?: Date;
+}
 
-export type AttributeValueKind =
-  | "internal"
-  | "attribute"
-  | "codeGen"
-  | "qualification"
-  | "inputSocket"
-  | "outputSocket";
+export type ValueIsForKind = "prop" | "inputSocket" | "outputSocket";
+export interface ValueIsFor {
+  kind: ValueIsForKind;
+  id?: string;
+}
 
 export type ComponentStatusDetails = {
   lastUpdatedAt?: Date;
-  valueKindByValueId: Record<
-    AttributeValueId,
-    { kind: AttributeValueKind; id?: string }
-  >;
+  valueIsforByValueId: Record<AttributeValueId, ValueIsFor>;
   message: string;
-  timestampsByValueId: Record<AttributeValueId, UpdateStatusTimestamps>;
 };
 
 export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
@@ -90,24 +90,9 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/status`,
       {
         state: () => ({
-          calculatingUpdateSize: false,
-          updateMetadataByPk: {} as Record<
-            StatusUpdatePk,
-            {
-              actor: ActorView;
-            }
-          >,
           rawStatusesByValueId: {} as Record<
             AttributeValueId,
-            {
-              valueId: AttributeValueId;
-              valueKind: { kind: AttributeValueKind; id?: string };
-              componentId: ComponentId;
-              statusTimestampsByUpdatePk: Record<
-                StatusUpdatePk,
-                UpdateStatusTimestamps
-              >;
-            }
+            AttributeValueStatus
           >,
         }),
         getters: {
@@ -117,312 +102,135 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                 state.rawStatusesByValueId,
                 (valueMetadata) =>
                   valueMetadata.componentId === componentId &&
-                  valueMetadata.valueKind.kind.endsWith("Socket") &&
-                  valueMetadata.valueKind.id === socketId,
+                  valueMetadata.isFor.kind.endsWith("Socket") &&
+                  valueMetadata.isFor.id === socketId,
               );
               if (!valueId) return "idle";
-              const timestamps =
-                state.rawStatusesByValueId[valueId]?.statusTimestampsByUpdatePk;
-              if (!timestamps) return "idle";
-              if (
-                _.some(timestamps, (ts) => !ts.completedAt && !ts.runningAt)
-              ) {
-                return "queued";
-              } else if (_.some(timestamps, (ts) => !ts.completedAt)) {
+              const startedAt = state.rawStatusesByValueId[valueId]?.startedAt;
+              const finishedAt =
+                state.rawStatusesByValueId[valueId]?.finishedAt;
+
+              if (!(startedAt || finishedAt)) return "idle";
+              if (!finishedAt) {
                 return "running";
               } else {
                 return "completed";
               }
             },
 
-          // helper to condense value timestamps down to a single status
-          // statusesByValueId: (state) => {
-          //   return _.mapValues(state.rawStatusesByValueId, (rawStatus) => {
-          //     let status: AttributeValueStatus;
-          //     const timestampsArray = _.values(
-          //       rawStatus.statusTimestampsByUpdatePk,
-          //     );
-          //     if (
-          //       _.some(
-          //         timestampsArray,
-          //         (ts) => ts.queuedAt && !ts.runningAt && !ts.completedAt,
-          //       )
-          //     ) {
-          //       status = "queued";
-          //     } else if (
-          //       _.some(
-          //         timestampsArray,
-          //         (ts) => ts.queuedAt && ts.runningAt && !ts.completedAt,
-          //       )
-          //     ) {
-          //       status = "running";
-          //     } else {
-          //       status = "completed";
-          //     }
-
-          //     return {
-          //       valueKind: rawStatus.valueKind,
-          //       componentId: rawStatus.componentId,
-          //       status,
-          //     };
-          //   });
-          // },
-
-          componentStatusById(): Record<ComponentId, ComponentUpdateStatus> {
-            const valueStatusesGroupedByComponentId = _.groupBy(
-              this.rawStatusesByValueId,
-              (valueStatus) => valueStatus.componentId,
-            );
-
-            const componentsStore = useComponentsStore();
-            return _.mapValues(componentsStore.componentsById, (component) => {
-              const valueStatuses =
-                valueStatusesGroupedByComponentId[component.id];
-              const componentLabel = `${component.schemaName} '${component.displayName}'`;
-
-              // creates a dummy status entry for all components in the changeset
-              // using timestamps from the list components endpoint
-              if (!valueStatuses) {
-                return {
-                  componentId: component.id,
-                  componentLabel,
-                  isUpdating: false,
-                  stepsCountCurrent: 0,
-                  stepsCountTotal: 0,
-                  lastUpdateAt: new Date(component.updatedInfo.timestamp),
-                  lastUpdateBy: component.updatedInfo.actor,
-                  statusMessage: "Component updated",
-                };
+          getComponentStatus:
+            (state) =>
+            (componentId: ComponentId): ComponentUpdateStatus | undefined => {
+              const statuses = Object.values(state.rawStatusesByValueId).filter(
+                (status) => status.componentId === componentId,
+              );
+              if (statuses.length === 0) {
+                return undefined;
               }
 
-              let stepsCountCurrent = 0;
-              let stepsCountTotal = 0;
-              let isUpdating = false;
+              const componentStore = useComponentsStore();
+              const component = componentStore.componentsById[componentId];
+              if (!component) {
+                return undefined;
+              }
 
-              // start with date in past
-              let latestChangedTimestamp = new Date(0);
-              let latestChangedValueId = null;
-              let latestUpdatePk: StatusUpdatePk | null = null;
+              const componentStatus: ComponentUpdateStatus = {
+                componentId,
+                isUpdating: true,
+                lastUpdateAt: new Date(0),
+                componentLabel: `${component.displayName} (${component.schemaName})`,
+                statusMessage: "",
+              };
 
-              _.each(valueStatuses, (vs) => {
-                _.each(vs.statusTimestampsByUpdatePk, (ts, updatePk) => {
-                  stepsCountTotal++;
+              const isUpdating =
+                statuses.filter((status) => !status.finishedAt).length > 0;
+              componentStatus.isUpdating = isUpdating;
+              if (isUpdating) {
+                componentStatus.statusMessage = "Updating";
+              } else {
+                componentStatus.statusMessage = "";
+              }
 
-                  if (ts.queuedAt && !ts.runningAt) {
-                    // queued
-                    isUpdating = true;
-                  } else if (ts.runningAt && !ts.completedAt) {
-                    // running
-                    isUpdating = true;
-                    if (
-                      vs.valueKind.kind !== "internal" &&
-                      ts.runningAt > latestChangedTimestamp
-                    ) {
-                      latestChangedTimestamp = ts.runningAt;
-                      latestChangedValueId = vs.valueId;
-                      latestUpdatePk = updatePk;
-                    }
-                  } else if (ts.completedAt) {
-                    // completed
-                    stepsCountCurrent++;
-                    if (
-                      vs.valueKind.kind !== "internal" &&
-                      ts.completedAt > latestChangedTimestamp
-                    ) {
-                      latestChangedTimestamp = ts.completedAt;
-                      latestChangedValueId = vs.valueId;
-                      latestUpdatePk = updatePk;
-                    }
-                  }
-                });
-              });
-
-              let statusMessage = "Updating component";
-              if (latestChangedValueId) {
-                const valueKind =
-                  this.rawStatusesByValueId[latestChangedValueId]?.valueKind
-                    .kind;
-                if (valueKind) {
-                  statusMessage = {
-                    codeGen: "Running code gen",
-                    attribute: "Updating attributes",
-                    qualification: "Running qualifications",
-                    inputSocket: "Updating input socket values",
-                    outputSocket: "Updating output socket values",
-                    internal: "Updating internal wiring",
-                  }[valueKind];
+              for (const status of statuses) {
+                if (status.finishedAt) {
+                  componentStatus.lastUpdateAt =
+                    status.finishedAt > componentStatus.lastUpdateAt
+                      ? status.finishedAt
+                      : componentStatus.lastUpdateAt;
                 }
               }
 
-              if (!isUpdating) statusMessage = "Component updated";
-
-              return {
-                componentId: component.id,
-                componentLabel,
-                isUpdating,
-                stepsCountCurrent,
-                stepsCountTotal,
-                statusMessage,
-                lastUpdateAt: latestChangedTimestamp,
-                ...(latestUpdatePk !== null && {
-                  lastUpdateBy: this.updateMetadataByPk[latestUpdatePk]?.actor,
-                }),
-              };
-            });
-          },
+              return componentStatus;
+            },
 
           latestComponentUpdate(): ComponentUpdateStatus | undefined {
             const sortedUpdates = _.orderBy(
-              _.values(this.componentStatusById),
-              (cu) => cu.lastUpdateAt,
+              _.values(this.rawStatusesByValueId),
+              (cu) => cu.finishedAt,
             );
-            return sortedUpdates.pop();
-          },
-          globalStatus(): GlobalUpdateStatus {
-            const isUpdating = _.some(
-              this.componentStatusById,
-              (status) => status.isUpdating,
-            );
-            const stepsCountCurrent = _.sumBy(
-              _.values(this.componentStatusById),
-              (status) => status.stepsCountCurrent,
-            );
-            const stepsCountTotal = _.sumBy(
-              _.values(this.componentStatusById),
-              (status) => status.stepsCountTotal,
-            );
+            const componentId = sortedUpdates.pop()?.componentId;
 
-            const componentsCountCurrent = _.filter(
-              this.componentStatusById,
-              (status) => status.stepsCountTotal > 0 && !status.isUpdating,
-            ).length;
-
-            // we now have a fake component status for each component, even when no updates are happening
-            // so we must filter for those with some "steps" (value updates)
-            const componentsCountTotal = _.filter(
-              this.componentStatusById,
-              (cs) => cs.stepsCountTotal > 0,
-            ).length;
-
-            // handle special case for when update just began but we have not gotten details from backend yet
-            if (this.calculatingUpdateSize && !isUpdating) {
-              return {
-                isUpdating: true,
-                stepsCountCurrent: 1,
-                stepsCountTotal: 100,
-                componentsCountCurrent: 0,
-                componentsCountTotal: Infinity,
-                // TODO(wendy) - can we remove these?
-                updateStartedAt: new Date(),
-                lastStepCompletedAt: new Date(),
-              };
+            if (componentId) {
+              return this.getComponentStatus(componentId);
             }
+          },
+
+          globalStatus(): GlobalUpdateStatus {
+            const isUpdating = _.some(this.rawStatusesByValueId, (status) => {
+              const nowMs = Date.now();
+              const startedAt = Number(status.startedAt);
+              // don't consider an update live after 15 seconds
+              if (nowMs - startedAt > 1000 * 15) {
+                // We could emit an error here for the attribute value or the
+                // component
+                return false;
+              }
+
+              return !status.finishedAt;
+            });
+
+            // Reap the status values if they're all finished
+            if (!isUpdating && this.rawStatusesByValueId.length) {
+              this.rawStatusesByValueId = {};
+            }
+
+            const updatedComponents = _.keys(
+              _.groupBy(
+                _.filter(
+                  this.rawStatusesByValueId,
+                  (status) => !!status.finishedAt,
+                ),
+                (status) => status.componentId,
+              ),
+            ).length;
+
+            const totalComponents = _.keys(
+              _.groupBy(
+                this.rawStatusesByValueId,
+                (status) => status.componentId,
+              ),
+            ).length;
 
             return {
               isUpdating,
-              stepsCountCurrent,
-              stepsCountTotal,
-              componentsCountCurrent,
-              componentsCountTotal,
-              // TODO(wendy) - can we remove these?
-              updateStartedAt: new Date(),
-              lastStepCompletedAt: new Date(),
+              updatedComponents,
+              totalComponents,
             };
           },
           globalStatusMessage(): string {
-            if (this.globalStatus.isUpdating || this.calculatingUpdateSize) {
-              return "Updating & testing the model";
+            if (this.globalStatus.isUpdating) {
+              return "Updating the model";
             }
             return "Model is up to date";
           },
           globalStatusDetailMessage(): string | undefined {
-            if (this.calculatingUpdateSize)
-              return "Calculating scope of update";
             if (!this.globalStatus.isUpdating) return;
             const latestUpdate = this.latestComponentUpdate;
             if (!latestUpdate) return;
-            return `${latestUpdate.statusMessage} - ${latestUpdate.componentLabel}`;
+            return `Updating ${latestUpdate.componentLabel}`;
           },
         },
         actions: {
-          async FETCH_CURRENT_STATUS() {
-            return new ApiRequest<
-              {
-                pk: StatusUpdatePk;
-                data: {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  actor: ActorView;
-                  attributeValueId: AttributeValueId; // id of attribute that kicked off the update
-                  dependendValuesMetadata: Record<
-                    AttributeValueId,
-                    {
-                      valuedId: AttributeValueId;
-                      componentId: ComponentId;
-                      valueKind: { kind: AttributeValueKind; id?: string };
-                    }
-                  >;
-                  queuedDependentValueIds: AttributeValueId[];
-                  runningDependentValueIds: AttributeValueId[];
-                  completedDependentValueIds: AttributeValueId[];
-                };
-              }[]
-            >({
-              url: "status/list-active-statuses",
-              params: {
-                changeSetPk: changeSetId,
-              },
-              onSuccess: (allUpdates) => {
-                const now = new Date();
-                // can have multiple updates in progress
-                _.each(allUpdates, (singleUpdate) => {
-                  // record some info about the update itself
-                  this.updateMetadataByPk[singleUpdate.pk] = {
-                    actor: singleUpdate.data.actor,
-                  };
-
-                  // fill in data for each value
-                  _.each(
-                    singleUpdate.data.dependendValuesMetadata,
-                    (valueMetadata, valueId) => {
-                      const {
-                        runningDependentValueIds,
-                        completedDependentValueIds,
-                      } = singleUpdate.data;
-
-                      const rawStatus = this.rawStatusesByValueId[valueId] ?? {
-                        valueId,
-                        valueKind: valueMetadata.valueKind,
-                        componentId: valueMetadata.componentId,
-                        statusTimestampsByUpdatePk: {},
-                      };
-
-                      // use fake timestamps based on their status
-                      const timestamps = {
-                        queuedAt: now,
-                        ...(runningDependentValueIds.includes(valueId) && {
-                          runningAt: now,
-                        }),
-                        ...(completedDependentValueIds.includes(valueId) && {
-                          completedAt: now,
-                        }),
-                      };
-                      rawStatus.statusTimestampsByUpdatePk[singleUpdate.pk] =
-                        timestamps;
-                      this.rawStatusesByValueId[valueId] = rawStatus;
-                    },
-                  );
-                });
-              },
-            });
-          },
-
-          markUpdateStarted() {
-            this.calculatingUpdateSize = true;
-          },
-          cancelUpdateStarted() {
-            this.calculatingUpdateSize = false;
-          },
-
           checkCompletedCleanup() {
             if (!this.globalStatus.isUpdating) {
               // if we're done updating, clear the timestamps
@@ -433,7 +241,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         onActivated() {
           if (!changeSetId) return;
 
-          this.FETCH_CURRENT_STATUS();
+          // this.FETCH_CURRENT_STATUS();
 
           const realtimeStore = useRealtimeStore();
           let cleanupTimeout: Timeout;
@@ -442,73 +250,39 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "StatusUpdate",
               callback: (update, _metadata) => {
-                if (!update?.pk) {
-                  return;
-                }
+                if (update.kind === "dependentValueUpdate") {
+                  let currentStatusForValue =
+                    this.rawStatusesByValueId[update.valueId];
+                  if (update.status === "statusStarted") {
+                    if (
+                      !currentStatusForValue ||
+                      currentStatusForValue.finishedAt !== undefined
+                    ) {
+                      currentStatusForValue = {
+                        valueId: update.valueId,
+                        componentId: update.componentId,
+                        isFor: update.isFor,
+                        startedAt: update.timestamp,
+                        count: 0,
+                      };
+                    }
 
-                // fill in update metadata if this the first time we're seeing this specific update
-                if (!this.updateMetadataByPk[update.pk]) {
-                  this.updateMetadataByPk[update.pk] = { actor: update.actor };
-                }
-
-                if (update.status === "statusStarted") {
-                  // not sure if we need to do anything?
-                  return;
-                } else if (update.status === "statusFinished") {
-                  if (cleanupTimeout) {
-                    clearTimeout(cleanupTimeout);
-                  }
-                  cleanupTimeout = setTimeout(this.checkCompletedCleanup, 2000);
-                  return;
-                }
-
-                const now = new Date();
-                update.values.forEach(({ componentId, valueId, valueKind }) => {
-                  const valueStatusData = this.rawStatusesByValueId[
-                    valueId
-                  ] ?? {
-                    valueId,
-                    valueKind,
-                    componentId,
-                    statusTimestampsByUpdatePk: {
-                      [update.pk]: {
-                        queuedAt: now,
-                      },
-                    },
-                  };
-
-                  const statusUpdate = valueStatusData
-                    .statusTimestampsByUpdatePk[update.pk] ?? {
-                    queuedAt: now,
-                  };
-
-                  switch (update.status) {
-                    case "completed":
-                      statusUpdate.completedAt = now;
-                      statusUpdate.runningAt ||= now;
-                      break;
-                    case "running":
-                      statusUpdate.runningAt = now;
-                      break;
-                    case "queued":
-                    default:
-                      statusUpdate.runningAt = undefined;
-                      statusUpdate.completedAt = undefined;
-                      statusUpdate.runningAt = now;
-                      break;
+                    currentStatusForValue.count++;
+                  } else if (update.status === "statusFinished") {
+                    // If we get a finished message for a value we didn't get a
+                    // start message, just ignore it
+                    if (currentStatusForValue) {
+                      currentStatusForValue.count--;
+                      if (currentStatusForValue.count <= 0) {
+                        currentStatusForValue.finishedAt = update.timestamp;
+                      }
+                    }
                   }
 
-                  this.rawStatusesByValueId[valueId] = {
-                    ...valueStatusData,
-                    statusTimestampsByUpdatePk: {
-                      ...valueStatusData.statusTimestampsByUpdatePk,
-                      [update.pk]: statusUpdate,
-                    },
-                  };
-                });
-                // if we are receiving the queued event, we'll clear our locally stored loading state we set when the attribute was updated
-                if (update.status === "queued" && this.calculatingUpdateSize) {
-                  this.calculatingUpdateSize = false;
+                  if (currentStatusForValue) {
+                    this.rawStatusesByValueId[update.valueId] =
+                      currentStatusForValue;
+                  }
                 }
               },
             },

@@ -107,9 +107,7 @@ const socketStatus = computed(() =>
 );
 
 const fillColor = computed(() => {
-  if (socketStatus.value === "queued") return "#F00";
   if (socketStatus.value === "running") return "#0F0";
-  if (socketStatus.value === "completed") return "#00F";
   return colors.value.fill;
 });
 

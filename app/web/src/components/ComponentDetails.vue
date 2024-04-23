@@ -242,7 +242,7 @@ const selectedComponentActionsCount = computed(() => {
 const statusStore = useStatusStore();
 const currentStatus = computed(() =>
   selectedComponentId.value
-    ? statusStore.componentStatusById[selectedComponentId.value]
+    ? statusStore.getComponentStatus(selectedComponentId.value)
     : undefined,
 );
 

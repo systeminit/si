@@ -20,11 +20,15 @@ use crate::{
     attribute::value::{
         dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
     },
-    job::consumer::{
-        JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+    job::{
+        consumer::{
+            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+        },
+        producer::{JobProducer, JobProducerResult},
     },
-    job::producer::{JobProducer, JobProducerResult},
+    status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
+    WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -32,10 +36,14 @@ use crate::{
 pub enum DependentValueUpdateError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("status update error: {0}")]
+    StatusUpdate(#[from] StatusUpdateError),
     #[error(transparent)]
     TokioTask(#[from] JoinError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
@@ -199,6 +207,17 @@ impl DependentValuesUpdate {
                             dependency_graph.cycle_on_self(finished_value_id);
                         }
                     }
+
+                    if let Err(err) = send_update_message(
+                        ctx,
+                        finished_value_id,
+                        StatusMessageState::StatusFinished,
+                        self.set_value_lock.clone(),
+                    )
+                    .await
+                    {
+                        error!("status update finished event send failed for AttributeValue {finished_value_id}: {err}");
+                    };
                 }
             }
 
@@ -229,12 +248,45 @@ async fn values_from_prototype_function_execution(
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
 ) -> (Ulid, DependentValueUpdateResult<PrototypeExecutionResult>) {
+    if let Err(err) = send_update_message(
+        &ctx,
+        attribute_value_id,
+        StatusMessageState::StatusStarted,
+        set_value_lock.clone(),
+    )
+    .await
+    {
+        return (task_id, Err(err));
+    }
+
     let result =
         AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
             .await
             .map_err(Into::into);
 
     (task_id, result)
+}
+
+async fn send_update_message(
+    ctx: &DalContext,
+    attribute_value_id: AttributeValueId,
+    status: StatusMessageState,
+    set_value_lock: Arc<RwLock<()>>,
+) -> DependentValueUpdateResult<()> {
+    let read_lock = set_value_lock.read().await;
+
+    let status_update =
+        StatusUpdate::new_for_attribute_value_id(ctx, attribute_value_id, status).await?;
+
+    WsEvent::status_update(ctx, status_update)
+        .await?
+        .publish_immediately(ctx)
+        .await?;
+
+    // We explicitly drop so that we don't have an unused variable
+    drop(read_lock);
+
+    Ok(())
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {

@@ -53,6 +53,7 @@ pub mod standard_connection;
 pub mod standard_id;
 pub mod standard_model;
 pub mod standard_pk;
+pub mod status;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
@@ -70,7 +71,6 @@ pub mod ws_event;
 // pub mod prop_tree;
 // pub mod prototype_context;
 // pub mod reconciliation_prototype;
-// pub mod status;
 //pub mod tasks;
 
 pub use action::ActionPrototypeId;
