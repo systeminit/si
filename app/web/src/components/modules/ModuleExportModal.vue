@@ -91,7 +91,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { format as dateFormat } from "date-fns";
 import { useComponentsStore } from "@/store/components.store";
-import { useModuleStore, PkgExportRequest } from "@/store/module.store";
+import { useModuleStore, ModuleExportRequest } from "@/store/module.store";
 
 const moduleStore = useModuleStore();
 const componentStore = useComponentsStore();
@@ -114,7 +114,7 @@ const props = withDefaults(
 
 const emits = defineEmits(["exportSuccess"]);
 
-const emptyExportPackageReq: PkgExportRequest = {
+const emptyExportPackageReq: ModuleExportRequest = {
   name: "",
   description: undefined,
   version: "",
@@ -124,7 +124,7 @@ const emptyExportPackageReq: PkgExportRequest = {
 const selectedSchemaVariant = ref();
 const schemaVariantsForExport = ref<string[]>([]);
 
-const packageExportReq = ref<PkgExportRequest>({ ...emptyExportPackageReq });
+const packageExportReq = ref<ModuleExportRequest>({ ...emptyExportPackageReq });
 
 const addSchemaVariantToExport = () => {
   if (!selectedSchemaVariant.value) {

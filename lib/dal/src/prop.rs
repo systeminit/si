@@ -95,7 +95,6 @@ pub struct WidgetOption {
     label: String,
     pub value: String,
 }
-
 pub type WidgetOptions = Vec<WidgetOption>;
 
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).

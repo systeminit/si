@@ -38,6 +38,7 @@ pub struct ContentNodeWeight {
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
+    to_delete: bool,
 }
 
 impl ContentNodeWeight {
@@ -54,6 +55,7 @@ impl ContentNodeWeight {
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
+            to_delete: false,
         })
     }
 
@@ -67,6 +69,9 @@ impl ContentNodeWeight {
 
     pub fn id(&self) -> Ulid {
         self.id
+    }
+    pub fn to_delete(&self) -> bool {
+        self.to_delete
     }
 
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
@@ -167,6 +172,10 @@ impl ContentNodeWeight {
 
     pub fn node_hash(&self) -> ContentHash {
         self.content_hash()
+    }
+    pub fn set_to_delete(&mut self, to_delete: bool) -> bool {
+        self.to_delete = to_delete;
+        self.to_delete
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

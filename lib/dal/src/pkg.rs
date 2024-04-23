@@ -2,9 +2,14 @@ use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 use std::collections::HashMap;
 use thiserror::Error;
+use url::ParseError;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
+use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     change_set::ChangeSetError,
@@ -15,17 +20,16 @@ use crate::{
     workspace_snapshot::WorkspaceSnapshotError,
     ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncBackendKind,
     FuncBackendResponseType, OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
-    WsEvent, WsEventResult, WsPayload,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{FuncId, PropId, PropKind};
+use crate::{AttributePrototypeId, FuncId, PropId, PropKind};
 
 use crate::module::ModuleError;
 use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
-mod import;
-
-// mod export;
+pub mod export;
+pub mod import;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -40,9 +44,13 @@ pub enum PkgError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attrbute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error(transparent)]
+    #[error("AttributePrototypeArgument {0} missing FuncArgument {1}")]
+    AttributePrototypeArgumentMissingFuncArgument(AttributePrototypeArgumentId, FuncArgumentId),
+    #[error("attribute value error: {0}")]
+    AttributeValueError(#[from] AttributeValueError),
+    #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error(transparent)]
+    #[error("connection annotation error: {0}")]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
@@ -56,12 +64,18 @@ pub enum PkgError {
     FuncNotFoundByName(String),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("Missing Func {1} for AttributePrototype {0}")]
+    MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
+    #[error("Func {0} missing from exported funcs")]
+    MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
     #[error("Cannot find InputSocket for name: {0}")]
     MissingInputSocketName(String),
+    #[error("Intrinsic function {0} not found")]
+    MissingIntrinsicFunc(String),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
     #[error(transparent)]
@@ -80,6 +94,10 @@ pub enum PkgError {
     Prop(#[from] PropError),
     #[error("prop {0} missing attribute prototype")]
     PropMissingPrototype(PropId),
+    #[error("prop {0} not found")]
+    PropNotFoundByName(String),
+    #[error("prop spec structure is invalid: {0}")]
+    PropSpecChildrenInvalid(String),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -90,6 +108,12 @@ pub enum PkgError {
     TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("url parse error: {0}")]
+    Url(#[from] ParseError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("Workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error(transparent)]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
 }
@@ -196,23 +220,22 @@ pub struct ChangeSetThingMap<Key, Thing> {
     default_change_set_id: ChangeSetId,
 }
 
-// TODO(nick): we need a better strategy for tracking the head change set in the thing map.
 impl<Key, Thing> ChangeSetThingMap<Key, Thing>
 where
     Key: Eq + PartialEq + std::hash::Hash,
 {
-    pub async fn new(ctx: &DalContext) -> PkgResult<Self> {
+    pub fn new(default_change_set_id: ChangeSetId) -> Self {
         let head_thing_map = HashMap::new();
-
-        let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-
         let mut change_set_map = HashMap::new();
         change_set_map.insert(default_change_set_id, head_thing_map);
 
-        Ok(Self {
+        Self {
             inner: change_set_map,
             default_change_set_id,
-        })
+        }
+    }
+    pub fn get_change_set_map(&self, change_set_id: ChangeSetId) -> Option<&HashMap<Key, Thing>> {
+        self.inner.get(&change_set_id)
     }
 
     pub fn get(&self, change_set_id: Option<ChangeSetId>, key: &Key) -> Option<&Thing> {

@@ -13,13 +13,14 @@ use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
-use crate::ChangeSetId;
-use crate::{func::intrinsics::IntrinsicFunc, SocketKind};
+use crate::SocketKind;
+use crate::{func, ChangeSetId};
 use crate::{
-    func::{self, argument::FuncArgument},
+    func::argument::FuncArgument,
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     DalContext, DeprecatedActionPrototype, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket,
@@ -30,7 +31,7 @@ use crate::{AttributePrototype, AttributePrototypeId};
 use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
-pub(crate) enum Thing {
+pub enum Thing {
     ActionPrototype(DeprecatedActionPrototype),
     AuthPrototype(AuthenticationPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
@@ -77,6 +78,7 @@ async fn import_change_set(
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
+    // let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
     for func_spec in funcs {
         let unique_id = func_spec.unique_id().to_string();
 
@@ -1386,8 +1388,6 @@ pub async fn import_pkg_from_pkg(
     Vec<SchemaVariantId>,
     Option<Vec<bool /*ImportSkips*/>>,
 )> {
-    // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
-    // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
 
     let options = options.unwrap_or_default();
@@ -1414,8 +1414,8 @@ pub async fn import_pkg_from_pkg(
             .await?,
         )
     };
-
-    let mut change_set_things = ThingMap::new(ctx).await?;
+    let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+    let mut change_set_things = ThingMap::new(default_change_set_id);
 
     match metadata.kind() {
         SiPkgKind::Module => {
@@ -2038,18 +2038,38 @@ async fn create_socket(
 ) -> PkgResult<(Option<InputSocket>, Option<OutputSocket>)> {
     let identity_func_id = get_identity_func(ctx).await?;
 
-    // Connection annotations are stored as a serialized json array of strings
-    let connection_annotations = {
-        let mut stash = vec![];
+    let connection_annotations: Vec<ConnectionAnnotation> =
+        if data.connection_annotations().contains("tokens") {
+            // This is the new format of connection annotations and will be
+            // in the format [{\"tokens\":[\"region\"]}]
+            // So we can deserialize this directly to Vec<ConnectionAnnotations>
+            let mut stash = vec![];
 
-        let raw_cas = serde_json::from_str::<Vec<String>>(data.connection_annotations())?;
+            let raw_cas_values =
+                serde_json::from_str::<Vec<ConnectionAnnotation>>(data.connection_annotations())?;
 
-        for raw_ca in raw_cas {
-            stash.push(ConnectionAnnotation::try_from(raw_ca)?)
-        }
+            for raw_ca in raw_cas_values {
+                stash.push(raw_ca);
+            }
 
-        stash
-    };
+            stash
+        } else {
+            // This is now the old format and we need to change how we
+            // deserialize
+            // The old format is a Vec of strings
+            // "[\"text area\"]"
+            let mut stash = vec![];
+            let raw_cas_values =
+                serde_json::from_str::<Vec<String>>(data.connection_annotations())?;
+            for raw_cas_value in raw_cas_values {
+                let cas_value = ConnectionAnnotation::from_tokens_array(vec![raw_cas_value]);
+                stash.push(cas_value);
+            }
+            // let cas_values = ConnectionAnnotation::from_tokens_array(raw_cas_values);
+            // stash.push(cas_values);
+
+            stash
+        };
 
     let (input_socket, output_socket) = match data.kind() {
         SocketSpecKind::Input => {
@@ -2489,6 +2509,7 @@ async fn import_schema_variant(
                             metadata.link,
                             metadata.description,
                             asset_func_id,
+                            variant_spec.is_builtin(),
                         )
                         .await?
                         .0,

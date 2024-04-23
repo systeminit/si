@@ -22,7 +22,7 @@ const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 // mod approval_process;
 pub mod builtin_module_spec;
-// pub mod export_pkg;
+pub mod export_module;
 // pub mod export_workspace;
 pub mod get_module;
 // pub mod import_workspace_vote;
@@ -203,7 +203,7 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // .route("/export_pkg", post(export_pkg::export_pkg))
+        .route("/export_module", post(export_module::export_module))
         // .route(
         //     "/export_workspace",
         //     post(export_workspace::export_workspace),

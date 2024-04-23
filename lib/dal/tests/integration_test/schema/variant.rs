@@ -23,6 +23,7 @@ async fn new(ctx: &DalContext) {
         None,
         None,
         None,
+        false,
     )
     .await
     .expect("cannot create schema variant");
@@ -43,6 +44,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
         None,
         None,
         None,
+        false,
     )
     .await
     .expect("cannot create schema variant");
@@ -75,6 +77,7 @@ async fn list_root_si_child_props(ctx: &DalContext) {
         None,
         None,
         None,
+        false,
     )
     .await
     .expect("cannot create schema variant");

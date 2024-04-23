@@ -59,6 +59,7 @@ pub struct Schema {
     timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    pub is_builtin: bool,
 }
 
 impl From<Schema> for SchemaContentV1 {
@@ -67,6 +68,7 @@ impl From<Schema> for SchemaContentV1 {
             timestamp: value.timestamp,
             name: value.name,
             ui_hidden: value.ui_hidden,
+            is_builtin: value.is_builtin,
         }
     }
 }
@@ -78,6 +80,7 @@ impl Schema {
             timestamp: inner.timestamp,
             name: inner.name,
             ui_hidden: inner.ui_hidden,
+            is_builtin: inner.is_builtin,
         }
     }
 
@@ -87,6 +90,12 @@ impl Schema {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+    pub fn is_builtin(&self) -> bool {
+        self.is_builtin
+    }
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
     }
 
     implement_add_edge_to!(
@@ -102,6 +111,7 @@ impl Schema {
             timestamp: Timestamp::now(),
             name: name.into(),
             ui_hidden: false,
+            is_builtin: false,
         };
 
         let (hash, _) = ctx
