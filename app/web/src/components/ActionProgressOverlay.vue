@@ -12,6 +12,8 @@
 </template>
 
 <script lang="ts" setup>
+// TODO(WENDY) - this old version of that horrible bar at the top of the diagram should be removed once we're done reproducing its functionality elsewhere
+
 import { computed } from "vue";
 import { useActionsStore } from "@/store/actions.store";
 import ProgressBarOverlay from "@/components/ProgressBarOverlay.vue";

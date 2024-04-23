@@ -39,7 +39,9 @@
     >
       <ReadOnlyBanner show-refresh-all-button />
     </div-->
-    <ActionProgressOverlay />
+    <!-- TODO - this is the old progress bar that was at the top of the diagram, remove when we no longer need it! -->
+    <!-- <ActionProgressOverlay /> -->
+
     <ModelingDiagram
       ref="diagramRef"
       @right-click-element="onRightClickElement"
@@ -84,7 +86,7 @@ import { useComponentsStore, FullComponent } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { usePresenceStore } from "@/store/presence.store";
-import ActionProgressOverlay from "@/components/ActionProgressOverlay.vue";
+// import ActionProgressOverlay from "@/components/ActionProgressOverlay.vue";
 import { useSecretsStore } from "@/store/secrets.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";

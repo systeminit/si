@@ -1,12 +1,17 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks } from "@si/vue-lib/pinia";
+import { POSITION, useToast } from "vue-toastification";
+import { watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import UpdatingModel from "../components/toasts/UpdatingModel.vue";
 
 import { ComponentId, SocketId, useComponentsStore } from "./components.store";
+
+export const GLOBAL_STATUS_TOAST_ID = "global_status_toast";
 
 export type StatusMessageState = "statusStarted" | "statusFinished";
 
@@ -31,6 +36,7 @@ export type StatusUpdate =
 
 export type GlobalUpdateStatus = {
   isUpdating: boolean;
+  timeouts: AttributeValueStatus[];
 
   updatedComponents: number;
   // This is not all the components in the graph, but all the components in the in-flight updates
@@ -84,6 +90,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+  const toast = useToast();
 
   return addStoreHooks(
     defineStore(
@@ -176,6 +183,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           globalStatus(): GlobalUpdateStatus {
+            const timeouts = [] as AttributeValueStatus[];
             const isUpdating = _.some(this.rawStatusesByValueId, (status) => {
               const nowMs = Date.now();
               const startedAt = Number(status.startedAt);
@@ -183,6 +191,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               if (nowMs - startedAt > 1000 * 15) {
                 // We could emit an error here for the attribute value or the
                 // component
+                timeouts.push(status);
                 return false;
               }
 
@@ -213,6 +222,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
             return {
               isUpdating,
+              timeouts,
               updatedComponents,
               totalComponents,
             };
@@ -287,6 +297,42 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
           ]);
+
+          // This watcher updates the GlobalStatus toast
+          watch(
+            () => this.globalStatus.isUpdating,
+            () => {
+              _.debounce(
+                () => {
+                  const timeout = this.globalStatus.timeouts.length > 0;
+
+                  toast.update(
+                    GLOBAL_STATUS_TOAST_ID,
+                    {
+                      content: {
+                        component: UpdatingModel,
+                        props: {
+                          timeout,
+                        },
+                      },
+                      options: {
+                        position: POSITION.TOP_CENTER,
+                        timeout:
+                          this.globalStatus.isUpdating || timeout
+                            ? false
+                            : 1000,
+                        closeOnClick: !this.globalStatus.isUpdating,
+                        toastClassName: "si-toast-no-defaults",
+                      },
+                    },
+                    true,
+                  );
+                },
+                200,
+                { leading: true },
+              )();
+            },
+          );
 
           return () => {
             clearTimeout(cleanupTimeout);
