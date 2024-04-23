@@ -204,11 +204,17 @@ body.dark {
   transition-property: all;
   transition-duration: 400ms;
 }
+.si-toast-no-defaults {
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+}
 
 .Vue-Toastification__container.diagram-toast-container {
   position: absolute; // default is fixed, but we want it positioned within its container, so go absolute
   padding: 0;
-  top: 40vh;
+  top: 70px; // this puts the toasts 10px below the NavBar at the top of the screen
 
   & .Vue-Toastification__toast {
     background-color: var(--toast-bg-color);

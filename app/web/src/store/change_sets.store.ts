@@ -192,8 +192,6 @@ export function useChangeSetsStore() {
             },
           });
         },
-
-        // TODO(Wendy) - these endpoints do not exist yet!
         async APPLY_ABANDON_VOTE(vote: string) {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           return new ApiRequest({
