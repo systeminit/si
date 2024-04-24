@@ -828,6 +828,20 @@ impl Prop {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
+    /// Is this prop set by a function that takes another prop (or socket) as an input?
+    pub async fn is_set_by_dependent_function(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<bool> {
+        let prototype_id = Self::prototype_id(ctx, prop_id).await?;
+        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+
+        Ok(Func::get_by_id(ctx, prototype_func_id)
+            .await?
+            .map(|f| f.is_dynamic())
+            .unwrap_or(false))
+    }
+
     pub async fn set_default_value<T: Serialize>(
         ctx: &DalContext,
         prop_id: PropId,
