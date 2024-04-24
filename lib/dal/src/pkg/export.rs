@@ -1480,7 +1480,6 @@ impl PkgExporter {
     pub async fn export(&mut self, ctx: &DalContext) -> PkgResult<SiPkg> {
         let spec = self.export_as_spec(ctx).await?;
         let pkg = SiPkg::load_from_spec(spec)?;
-        dbg!(&pkg);
 
         Ok(pkg)
     }
