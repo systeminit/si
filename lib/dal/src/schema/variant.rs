@@ -161,6 +161,7 @@ pub struct SchemaVariant {
     description: Option<String>,
     asset_func_id: Option<FuncId>,
     finalized_once: bool,
+    is_builtin: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -201,6 +202,7 @@ impl SchemaVariant {
             asset_func_id: inner.asset_func_id,
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
+            is_builtin: inner.is_builtin,
         }
     }
 
@@ -216,6 +218,7 @@ impl SchemaVariant {
         link: impl Into<Option<String>>,
         description: impl Into<Option<String>>,
         asset_func_id: Option<FuncId>,
+        is_builtin: bool,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -232,6 +235,7 @@ impl SchemaVariant {
             component_type: component_type.into(),
             description: description.into(),
             asset_func_id,
+            is_builtin,
         };
 
         let (hash, _) = ctx
@@ -503,6 +507,9 @@ impl SchemaVariant {
     pub fn asset_func_id(&self) -> Option<FuncId> {
         self.asset_func_id
     }
+    pub fn is_builtin(&self) -> bool {
+        self.is_builtin
+    }
 
     pub async fn get_root_prop_id(
         ctx: &DalContext,
@@ -703,7 +710,25 @@ impl SchemaVariant {
 
         Ok(())
     }
+    pub async fn find_leaf_item_functions(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        leaf_kind: LeafKind,
+    ) -> SchemaVariantResult<Vec<FuncId>> {
+        let mut func_ids = vec![];
+        let leaf_item_prop_id =
+            SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
+        for (maybe_key, _proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
+            if let Some(key) = maybe_key {
+                if let Some(func_id) = Func::find_by_name(ctx, key).await? {
+                    func_ids.push(func_id)
+                }
+            }
+        }
+
+        Ok(func_ids)
+    }
     pub async fn new_authentication_prototype(
         ctx: &DalContext,
         func_id: FuncId,

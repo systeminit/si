@@ -30,7 +30,7 @@ export interface ModuleFuncView {
   description?: string;
 }
 
-export interface PkgExportRequest {
+export interface ModuleExportRequest {
   name: string;
   version: string;
   description?: string;
@@ -401,7 +401,7 @@ export const useModuleStore = () => {
             this.exportingWorkspaceOperationError = undefined;
           },
 
-          async EXPORT_MODULE(exportRequest: PkgExportRequest) {
+          async EXPORT_MODULE(exportRequest: ModuleExportRequest) {
             return new ApiRequest({
               method: "post",
               url: "/module/export_module",

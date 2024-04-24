@@ -491,18 +491,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const schemaVariants = [];
             for (const schema of this.schemas) {
               for (const variant of schema.variants) {
-                schemaVariants.push({
-                  id: variant.id,
-                  name: variant.name,
-                  builtin: variant.builtin,
+                if (!_.find(schemaVariants, { id: variant.id })) {
+                  schemaVariants.push({
+                    id: variant.id,
+                    name: variant.name,
+                    builtin: variant.builtin,
 
-                  color: variant.color,
-                  category: variant.category,
-                  inputSockets: variant.inputSockets,
-                  outputSockets: variant.outputSockets,
+                    color: variant.color,
+                    category: variant.category,
+                    inputSockets: variant.inputSockets,
+                    outputSockets: variant.outputSockets,
 
-                  schemaName: schema.name,
-                });
+                    schemaName: schema.name,
+                  });
+                }
               }
             }
             return schemaVariants;

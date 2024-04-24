@@ -339,6 +339,7 @@ pub struct SchemaContentV1 {
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    pub is_builtin: bool,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -359,6 +360,7 @@ pub struct SchemaVariantContentV1 {
     pub description: Option<String>,
     pub asset_func_id: Option<FuncId>,
     pub finalized_once: bool,
+    pub is_builtin: bool,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

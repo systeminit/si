@@ -76,6 +76,10 @@ impl ConnectionAnnotation {
 
         true
     }
+
+    pub fn from_tokens_array(tokens: Vec<String>) -> Self {
+        Self { tokens }
+    }
 }
 
 impl Display for ConnectionAnnotation {
