@@ -28,7 +28,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     Func::get_by_id_or_error(ctx, func.id)
         .await
@@ -118,7 +118,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     Func::get_by_id_or_error(ctx, func.id)
         .await
@@ -150,7 +150,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity again");
+        .expect("unable to update snapshot to visibility again");
 
     let modified_func = Func::get_by_id_or_error(ctx, func.id)
         .await
@@ -192,7 +192,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity again");
+        .expect("unable to update snapshot to visibility again");
     let args = FuncArgument::list_for_func(ctx, func.id)
         .await
         .expect("able to list args again");
@@ -235,7 +235,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let snapshot_id_before_deletion = ctx.workspace_snapshot().expect("get snap").id().await;
 
@@ -254,7 +254,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let snapshot_id_after_deletion = ctx.workspace_snapshot().expect("get snap").id().await;
 

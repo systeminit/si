@@ -13,7 +13,7 @@ async fn get_code_json_lang(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
         .await
@@ -44,7 +44,7 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
         .await
@@ -84,7 +84,7 @@ async fn get_code_no_codegen_funcs(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, starfield_component.id())
         .await

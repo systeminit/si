@@ -30,7 +30,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -66,7 +66,7 @@ async fn set_resource(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let resource = DeprecatedActionRunResult {
         status: None,
@@ -86,7 +86,7 @@ async fn set_resource(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -123,7 +123,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     runner
         .set_completion_message(ctx, Some("my-message".to_owned()))
@@ -136,7 +136,7 @@ async fn set_completion_message(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -173,7 +173,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     runner
         .set_completion_status(ctx, Some(ActionCompletionStatus::Success))
@@ -189,7 +189,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionRunner::get_by_id(ctx, runner.id)
@@ -226,7 +226,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     runner
         .set_started_at(ctx)
@@ -239,7 +239,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -273,7 +273,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     runner
         .set_finished_at(ctx)
@@ -286,7 +286,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -321,7 +321,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     runner
         .stamp_started(ctx)
@@ -334,7 +334,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -370,7 +370,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(runner
         .stamp_finished(
@@ -413,7 +413,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let runner = DeprecatedActionRunner::get_by_id(ctx, runner.id)
         .await
@@ -449,7 +449,7 @@ async fn for_batch(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let runners = DeprecatedActionRunner::for_batch(ctx, batch.id)
         .await
@@ -482,7 +482,7 @@ async fn run(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(runner.run(ctx).await.expect("unable to run").is_some());
 }

@@ -14,7 +14,7 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let mut diff = Component::get_diff(ctx, starfield_component.id())
         .await
@@ -43,7 +43,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     // Apply the change set and perform a blocking commit.
     let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)

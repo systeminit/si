@@ -39,7 +39,7 @@ async fn prototype(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         action
@@ -77,7 +77,7 @@ async fn component(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         action
@@ -115,7 +115,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let action = action.expect("no action found");
     assert_eq!(
@@ -149,7 +149,7 @@ async fn delete(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -175,7 +175,7 @@ async fn delete(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -209,7 +209,7 @@ async fn for_component(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let list = DeprecatedAction::for_component(ctx, component.id())
         .await
@@ -244,7 +244,7 @@ async fn build_graph(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await
@@ -277,7 +277,7 @@ async fn build_graph(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let graph = DeprecatedAction::build_graph(ctx)
         .await

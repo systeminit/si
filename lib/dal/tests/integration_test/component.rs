@@ -12,6 +12,7 @@ mod debug;
 mod get_code;
 mod get_diff;
 mod set_type;
+
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;
@@ -87,10 +88,9 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
     // Rebase!
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
-
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     dbg!(component
         .materialized_view(ctx)
@@ -138,12 +138,11 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
     assert_eq!(inserted_value, value.clone());
 
     // Rebase again!
-    let conflicts = ctx.commit().await.expect("unable to commit");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
-
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
         .await
@@ -231,13 +230,11 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         .await
         .expect("find variant id for component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after component creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
@@ -333,11 +330,11 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     assert_eq!(rigid_designation, materialized_view);
 
-    ctx.blocking_commit().await.expect("commit");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
         .await
@@ -468,11 +465,11 @@ async fn set_the_universe(ctx: &mut DalContext) {
 
     assert_eq!(universe_json, materialized_view);
 
-    ctx.blocking_commit().await.expect("commit");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
@@ -532,13 +529,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after component creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -546,25 +541,21 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after component 2 creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after butane component creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Connect the components!
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -577,11 +568,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -594,11 +585,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
@@ -631,11 +622,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .expect("Unable to delete oysters component");
     dbg!(oysters_component);
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Verify post-update data.
     let units_value_id = royel_component
@@ -707,13 +698,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after component creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Create a second component for a second source
     let lunch_component =
@@ -721,25 +710,21 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after component 2 creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("blocking commit after butane component creation");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Connect the components!
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -752,11 +737,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Connect component 2
     let _inter_component_attribute_prototype_argument_id = Component::connect(
@@ -769,11 +754,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     .await
     .expect("could not connect components");
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
@@ -806,11 +791,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("Unable to delete oysters component");
     dbg!(oysters_component);
 
-    ctx.blocking_commit().await.expect("blocking commit failed");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Verify post-update data.
     let units_value_id = royel_component
@@ -841,13 +826,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .await
         .expect("Unable to delete royel component");
 
-    ctx.blocking_commit()
-        .await
-        .expect("Unable to blocking_commit");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("Unable to update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Verify post-delete data.
     let units_value_id = royel_component
@@ -876,13 +859,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .await
         .expect("Unable to clear to_delete");
 
-    ctx.blocking_commit()
-        .await
-        .expect("Unable to blocking_commit");
-
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("Unable to update_snapshot_to_visibility");
+        .expect("unable to update snapshot to visibility");
 
     // Verify post clear to_delete data.
     let units_value_id = royel_component

@@ -26,7 +26,7 @@ async fn runners(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(batch
         .runners(ctx)
@@ -43,7 +43,7 @@ async fn runners(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         batch
@@ -66,7 +66,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionBatch::get_by_id(ctx, batch.id)
@@ -88,7 +88,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     batch
         .set_completion_status(ctx, Some(ActionCompletionStatus::Success))
@@ -104,7 +104,7 @@ async fn set_completion_status(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert_eq!(
         DeprecatedActionBatch::get_by_id(ctx, batch.id)
@@ -127,7 +127,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     batch
         .set_started_at(ctx)
@@ -140,7 +140,7 @@ async fn set_started_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
@@ -162,7 +162,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     batch
         .set_finished_at(ctx)
@@ -175,7 +175,7 @@ async fn set_finished_at(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
@@ -209,7 +209,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     batch
         .stamp_started(ctx)
@@ -222,7 +222,7 @@ async fn stamp_started(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
@@ -263,7 +263,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     assert!(batch.stamp_finished(ctx).await.is_err());
     batch
@@ -281,7 +281,7 @@ async fn stamp_finished(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let batch = DeprecatedActionBatch::get_by_id(ctx, batch.id)
         .await
@@ -304,7 +304,7 @@ async fn list(ctx: &mut DalContext) {
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("unable to update snapshot to visibility");
 
     let batches = DeprecatedActionBatch::list(ctx)
         .await
