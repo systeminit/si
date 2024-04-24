@@ -166,7 +166,8 @@ impl Config {
         config.pg.port = env::var(ENV_VAR_PG_PORT)
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
-        config.pg.pool_max_size *= 32;
+        //config.pg.pool_max_size *= 32;
+        config.pg.pool_max_size = 8;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
@@ -179,7 +180,8 @@ impl Config {
         config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
-        config.layer_cache_pg_pool.pool_max_size *= 32;
+        //config.layer_cache_pg_pool.pool_max_size *= 32;
+        config.layer_cache_pg_pool.pool_max_size = 8;
         config.layer_cache_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
 
@@ -254,6 +256,7 @@ impl TestContext {
     ///
     /// This functions wraps over a mutex which ensures that only the first caller will run global
     /// database creation, migrations, and other preparations.
+    #[allow(clippy::disallowed_methods)]
     pub async fn global(
         pg_dbname: &'static str,
         layer_cache_pg_dbname: &'static str,
@@ -266,7 +269,20 @@ impl TestContext {
                     .si_inspect_err(|err| {
                         *mutex_guard = ContextBuilderState::errored(err.to_string())
                     })?;
-                let test_context_builder = TestContextBuilder::create(config)
+
+                // We want to connect directly when we migrate, then connect to the pool after
+                let mut migrate_config = config.clone();
+                if env::var_os("USE_CI_PG_SETUP").is_some() {
+                    migrate_config.pg.hostname = "db-test".to_string();
+                    migrate_config.pg.port = 5432;
+                    migrate_config.layer_cache_pg_pool.hostname = "db-test".to_string();
+                    migrate_config.layer_cache_pg_pool.port = 5432;
+                } else {
+                    migrate_config.pg.port = 8432;
+                    migrate_config.layer_cache_pg_pool.port = 8432;
+                }
+
+                let migrate_test_context_builder = TestContextBuilder::create(migrate_config)
                     .await
                     .si_inspect_err(|err| {
                         *mutex_guard = ContextBuilderState::errored(err.to_string());
@@ -274,13 +290,18 @@ impl TestContext {
 
                 // The stack gets too deep here, so we'll spawn the work as a task with a new
                 // thread stack just for the global setup
-                let handle = tokio::spawn(global_setup(test_context_builder.clone()));
+                let handle = tokio::spawn(global_setup(migrate_test_context_builder));
 
                 // Join this task and wait on its completion
                 match handle.await {
                     // Global setup completed successfully
                     Ok(Ok(())) => {
                         debug!("task global_setup was successful");
+                        let test_context_builder = TestContextBuilder::create(config)
+                            .await
+                            .si_inspect_err(|err| {
+                                *mutex_guard = ContextBuilderState::errored(err.to_string());
+                            })?;
                         *mutex_guard = ContextBuilderState::created(test_context_builder.clone());
                         test_context_builder.build_for_test().await
                     }
@@ -590,6 +611,20 @@ pub async fn veritech_server_for_uds_cyclone(
 async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("running global test setup");
     let test_context = test_context_builer.build_for_global().await?;
+
+    // We need to be the only person connected to the real database. This drops all connections
+    // that aren't this one from the database. This disconnects the PgBouncers, any client
+    // terminals, and anyone else - ensuring we always get the global template to ourselves.
+    //
+    // PG is the best.
+    //
+    // Since we are connected to the same server, we only need to run this on one pool.
+    let conn = test_context.pg_pool.get().await?;
+    conn.query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid();",
+        &[],
+    )
+    .await?;
 
     debug!("initializing crypto");
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
