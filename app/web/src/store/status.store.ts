@@ -79,6 +79,17 @@ export type ComponentStatusDetails = {
   message: string;
 };
 
+export interface RebaseStatus {
+  rebaseStart?: Date;
+  rebaseFinished?: Date;
+  count: number;
+}
+
+export interface StatusStoreState {
+  rawStatusesByValueId: Record<AttributeValueId, AttributeValueStatus>;
+  rebaseStatus: RebaseStatus;
+}
+
 export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -98,11 +109,9 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/status`,
       {
-        state: () => ({
-          rawStatusesByValueId: {} as Record<
-            AttributeValueId,
-            AttributeValueStatus
-          >,
+        state: (): StatusStoreState => ({
+          rawStatusesByValueId: {},
+          rebaseStatus: { count: 0 },
         }),
         getters: {
           getSocketStatus:
@@ -185,24 +194,41 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           globalStatus(): GlobalUpdateStatus {
+            const nowMs = Date.now();
+            const FIFTEEN_SECONDS_MS = 1000 * 15;
             const timeouts = [] as AttributeValueStatus[];
-            const isUpdating = _.some(this.rawStatusesByValueId, (status) => {
-              const nowMs = Date.now();
-              const startedAt = Number(status.startedAt);
-              // don't consider an update live after 15 seconds
-              if (nowMs - startedAt > 1000 * 15) {
-                // We could emit an error here for the attribute value or the
-                // component
-                timeouts.push(status);
-                return false;
-              }
+            const isUpdatingDvus = _.some(
+              this.rawStatusesByValueId,
+              (status) => {
+                const startedAt = Number(status.startedAt);
+                // don't consider an update live after 15 seconds
+                if (nowMs - startedAt > FIFTEEN_SECONDS_MS) {
+                  // We could emit an error here for the attribute value or the
+                  // component
+                  timeouts.push(status);
+                  return false;
+                }
 
-              return !status.finishedAt;
-            });
+                return !status.finishedAt;
+              },
+            );
 
             // Reap the status values if they're all finished
-            if (!isUpdating && this.rawStatusesByValueId.length) {
+            if (!isUpdatingDvus && this.rawStatusesByValueId.length) {
               this.rawStatusesByValueId = {};
+            }
+
+            const isRebasing =
+              !this.rebaseStatus.rebaseFinished &&
+              nowMs - Number(this.rebaseStatus.rebaseStart) >
+                FIFTEEN_SECONDS_MS;
+
+            if (!isRebasing) {
+              this.rebaseStatus = {
+                rebaseStart: undefined,
+                rebaseFinished: undefined,
+                count: 0,
+              };
             }
 
             const updatedComponents = _.keys(
@@ -223,7 +249,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             ).length;
 
             return {
-              isUpdating,
+              isUpdating: isUpdatingDvus || isRebasing,
               timeouts,
               updatedComponents,
               totalComponents,
@@ -294,6 +320,21 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                   if (currentStatusForValue) {
                     this.rawStatusesByValueId[update.valueId] =
                       currentStatusForValue;
+                  }
+                } else if (update.kind === "rebase") {
+                  if (update.status === "statusStarted") {
+                    if (!this.rebaseStatus.rebaseStart) {
+                      this.rebaseStatus.rebaseStart = update.timestamp;
+                    }
+
+                    this.rebaseStatus.count++;
+                  } else if (update.status === "statusFinished") {
+                    if (this.rebaseStatus.rebaseStart) {
+                      this.rebaseStatus.count--;
+                      if (this.rebaseStatus.count <= 0) {
+                        this.rebaseStatus.rebaseFinished = update.timestamp;
+                      }
+                    }
                   }
                 }
               },
