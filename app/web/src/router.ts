@@ -137,6 +137,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/OopsPage.vue"),
   },
 
+  // svg debug page, see all icons and svgs in the system in one place
+  {
+    path: "/svg",
+    name: "svg",
+    meta: { public: true },
+    component: () => import("@/pages/DebugSVG.vue"),
+  },
+
   // 404
   {
     path: "/:catchAll(.*)",

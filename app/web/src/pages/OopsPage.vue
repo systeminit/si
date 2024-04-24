@@ -1,5 +1,7 @@
 <template>
-  <div class="flex flex-col items-center justify-center h-screen bg-black">
+  <div
+    class="flex flex-col items-center justify-center h-screen bg-black overflow-hidden"
+  >
     <meta name="robots" content="noindex" />
     <div class="text-center">
       <RichText>
@@ -18,4 +20,14 @@
 
 <script setup lang="ts">
 import { RichText } from "@si/vue-lib/design-system";
+import { useHead } from "@vueuse/head";
+import { computed } from "vue";
+
+useHead(
+  computed(() => ({
+    bodyAttrs: {
+      class: "overflow-hidden",
+    },
+  })),
+);
 </script>
