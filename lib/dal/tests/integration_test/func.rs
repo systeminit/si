@@ -1,4 +1,6 @@
+use dal::func::authoring::FuncAuthoringClient;
 use dal::func::view::summary::FuncSummary;
+use dal::func::FuncKind;
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::create_empty_action_func;
@@ -98,4 +100,39 @@ async fn revertible(ctx: &mut DalContext) {
         .expect("could not determine if revertible");
     assert!(preexisting_func_is_revertible);
     assert!(created_func_is_revertible);
+}
+
+#[test]
+async fn duplicate(ctx: &mut DalContext) {
+    let func_name = "Paul's Test Func".to_string();
+    let authoring_func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Qualification,
+        Some(func_name.clone()),
+        None,
+    )
+    .await
+    .expect("unable to create func");
+
+    let func = Func::get_by_id_or_error(ctx, authoring_func.id)
+        .await
+        .expect("Unable to get the authored func");
+
+    let duplicated_func_name = "Paul's Test Func Clone".to_string();
+    let duplicated_func = func
+        .duplicate(ctx, duplicated_func_name)
+        .await
+        .expect("Unable to duplicate the func");
+
+    assert_eq!(duplicated_func.display_name, func.display_name);
+    assert_eq!(duplicated_func.description, func.description);
+    assert_eq!(duplicated_func.link, func.link);
+    assert_eq!(duplicated_func.hidden, func.hidden);
+    assert_eq!(duplicated_func.backend_kind, func.backend_kind);
+    assert_eq!(
+        duplicated_func.backend_response_type,
+        func.backend_response_type
+    );
+    assert_eq!(duplicated_func.handler, func.handler);
+    assert_eq!(duplicated_func.code_base64, func.code_base64);
 }

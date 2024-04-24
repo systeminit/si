@@ -55,6 +55,8 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func name already in use {0}")]
+    FuncNameInUse(String),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
@@ -545,6 +547,29 @@ impl Func {
 
         Ok(exists_on_base)
     }
+
+    pub async fn duplicate(&self, ctx: &DalContext, new_name: String) -> FuncResult<Self> {
+        if new_name == self.name.clone() {
+            return Err(FuncError::FuncNameInUse(new_name));
+        }
+
+        let duplicated_func = Self::new(
+            ctx,
+            new_name,
+            self.display_name.clone(),
+            self.description.clone(),
+            self.link.clone(),
+            self.hidden,
+            false,
+            self.backend_kind,
+            self.backend_response_type,
+            self.handler.clone(),
+            self.code_base64.clone(),
+        )
+        .await?;
+
+        Ok(duplicated_func)
+    }
 }
 
 // impl Func {
@@ -573,38 +598,6 @@ impl Func {
 //             .await?;
 //         let object = standard_model::finish_create_from_row(ctx, row).await?;
 //         Ok(object)
-//     }
-
-//     /// Creates a new [`Func`] from [`self`](Func). All relevant fields are duplicated, but rows
-//     /// existing on relationship tables (e.g. "belongs_to" or "many_to_many") are not.
-//     pub async fn duplicate(&self, ctx: &DalContext) -> FuncResult<Self> {
-//         // Generate a unique name and make sure it's not in use
-//         let mut new_unique_name;
-//         loop {
-//             new_unique_name = format!("{}{}", self.name(), generate_unique_id(4));
-//             if Self::find_by_name(ctx, &new_unique_name).await?.is_none() {
-//                 break;
-//             };
-//         }
-
-//         let mut new_func = Self::new(
-//             ctx,
-//             new_unique_name,
-//             *self.backend_kind(),
-//             *self.backend_response_type(),
-//         )
-//         .await?;
-
-//         // Duplicate all fields on the func that do not come in through the constructor.
-//         new_func.set_display_name(ctx, self.display_name()).await?;
-//         new_func.set_description(ctx, self.description()).await?;
-//         new_func.set_link(ctx, self.link()).await?;
-//         new_func.set_hidden(ctx, self.hidden).await?;
-//         new_func.set_builtin(ctx, self.builtin).await?;
-//         new_func.set_handler(ctx, self.handler()).await?;
-//         new_func.set_code_base64(ctx, self.code_base64()).await?;
-
-//         Ok(new_func)
 //     }
 
 //     #[allow(clippy::result_large_err)]
