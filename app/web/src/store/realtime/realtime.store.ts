@@ -11,7 +11,7 @@ type RawConnectionStatus = "open" | "closed";
 
 type SubscriptionId = string;
 type SubscriberId = string;
-type SubscriptionTopic = string;
+type SubscriptionTopic = `workspace/${string}` | `changeset/${string}`;
 
 // some fairly magic TS wizardry happening here...
 // just reshuffling the WsEventPayloadMap into a format usable in our subscribe call
@@ -38,6 +38,7 @@ type RealtimeEventMetadata = {
   version: number;
   workspace_pk: string;
   actor: ActorView;
+  change_set_id: string;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
@@ -100,7 +101,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   // track subscriptions w/ topics, subscribers, etc
   let subCounter = 0;
-  const topicSubscriptionCounter = {} as Record<SubscriptionTopic, number>;
+  // const topicSubscriptionCounter = {} as Record<SubscriptionTopic, number>;
   const subscriptions = reactive(
     {} as Record<SubscriptionId, TrackedSubscription>,
   );
@@ -113,17 +114,17 @@ export const useRealtimeStore = defineStore("realtime", () => {
     topic: SubscriptionTopic,
     typeAndCallback: EventTypeAndCallback,
   ) {
-    if (!topicSubscriptionCounter[topic]) {
+    /* if (!topicSubscriptionCounter[topic]) {
       // TODO: send topic subscription message to server
       topicSubscriptionCounter[topic] = 0;
     }
-    topicSubscriptionCounter[topic]++;
+    topicSubscriptionCounter[topic]++; */
 
     const subscriptionId: SubscriptionId = [
       topic,
       typeAndCallback.eventType,
       subscriberId,
-      subCounter++,
+      subCounter++, // im not quite sure the value of this, with it, we need the `subscriptionsBySubscriberId` indirection
     ].join("%");
 
     const debounceMs =
@@ -158,10 +159,10 @@ export const useRealtimeStore = defineStore("realtime", () => {
   function destroySingleSubscription(id: SubscriptionId) {
     const sub = subscriptions[id];
     if (sub) {
-      topicSubscriptionCounter[sub.topic]--;
+      /* topicSubscriptionCounter[sub.topic] -= 1;
       if (topicSubscriptionCounter[sub.topic] === 0) {
         // TODO: send topic unsubscribe message to server
-      }
+      } */
       delete subscriptions[sub.id];
     }
   }
@@ -187,14 +188,15 @@ export const useRealtimeStore = defineStore("realtime", () => {
       (import.meta.env.VITE_LOG_WS_ONLINE && eventKind === "Online")
     ) {
       /* eslint-disable-next-line no-console */
-      console.log("WS message", eventKind, eventData);
+      console.log("WS message", eventKind, eventData, eventMetadata);
     }
 
+    const topics = [`workspace/${eventMetadata.workspace_pk}`];
+    if (eventMetadata.change_set_id) {
+      topics.push(`changeset/${eventMetadata.change_set_id}`);
+    }
     _.each(subscriptions, (sub) => {
-      // TODO: also filter by topic once we receive this info from the backend
-      if (sub?.eventType === eventKind) {
-        // TODO: probably want to convert the raw metadata into something easier to use
-        // like a boolean that says whether this event came from the auth'd user
+      if (sub?.eventType === eventKind && topics.includes(sub.topic)) {
         sub.callback(eventData, eventMetadata);
       }
     });
