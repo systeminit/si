@@ -93,12 +93,11 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
         getters: {
           // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
           attributesTree: (state): AttributeTreeItem | undefined => {
-            const { schema, values } = state;
-            if (!schema || !values) return;
+            if (!state.schema || !state.values) return;
 
-            const valuesByValueId = values.values;
-            const propsByPropId = schema.props;
-            const rootValueId = values.rootValueId;
+            const valuesByValueId = state.values.values;
+            const propsByPropId = state.schema.props;
+            const rootValueId = state.values.rootValueId;
 
             if (!valuesByValueId || !propsByPropId || !rootValueId) return;
 
@@ -140,7 +139,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 }),
                 propId: value.propId,
                 children: _.compact(
-                  _.map(values?.childValues[valueId], (cvId, index) =>
+                  _.map(state.values?.childValues[valueId], (cvId, index) =>
                     getAttributeValueWithChildren(
                       cvId,
                       valueId,
