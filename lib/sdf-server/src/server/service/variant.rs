@@ -4,19 +4,15 @@ use axum::routing::post;
 use axum::{routing::get, Json, Router};
 use chrono::Utc;
 use convert_case::{Case, Casing};
-use dal::func::binding::{FuncBinding, FuncBindingError};
-use dal::func::intrinsics::IntrinsicFunc;
+use dal::func::binding::FuncBindingError;
 use dal::func::view::FuncViewError;
 use dal::pkg::PkgError;
-use dal::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
+use dal::schema::variant::authoring::VariantAuthoringError;
 use dal::{
-    ChangeSetError, DalContext, Func, FuncError, FuncId, SchemaError, SchemaVariantId,
-    TransactionsError, WsEventError,
+    ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+    WsEventError,
 };
-use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkgError,
-    SpecError,
-};
+use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -67,6 +63,8 @@ pub enum SchemaVariantError {
     Spec(#[from] SpecError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("variant authoring: {0}")]
+    VariantAuthoring(#[from] VariantAuthoringError),
     #[error("schema variant not found: {0}")]
     VariantNotFound(SchemaVariantId),
     #[error("ws event error: {0}")]
@@ -652,86 +650,6 @@ pub fn generate_scaffold_func_name(name: String) -> String {
     let version = Utc::now().format("%Y%m%d%H%M").to_string();
     let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
     generated_name
-}
-
-#[allow(clippy::result_large_err)]
-fn build_asset_func_spec(asset_func: &Func) -> SchemaVariantResult<FuncSpec> {
-    let mut schema_variant_func_spec = FuncSpec::builder();
-    schema_variant_func_spec.name(asset_func.name.clone());
-    schema_variant_func_spec.unique_id(asset_func.id.to_string());
-    let mut func_spec_data_builder = FuncSpecData::builder();
-    func_spec_data_builder
-        .name(asset_func.name.clone())
-        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
-        .hidden(asset_func.hidden);
-    if let Some(code) = asset_func.code_plaintext()? {
-        func_spec_data_builder.code_plaintext(code);
-    }
-    if let Some(handler) = asset_func.handler.clone() {
-        func_spec_data_builder.handler(handler.to_string());
-    }
-    if let Some(description) = asset_func.description.clone() {
-        func_spec_data_builder.description(description.to_string());
-    }
-    if let Some(display_name) = asset_func.display_name.clone() {
-        func_spec_data_builder.display_name(display_name.to_string());
-    }
-    Ok(schema_variant_func_spec
-        .data(func_spec_data_builder.build()?)
-        .build()?)
-}
-async fn execute_asset_func(
-    ctx: &DalContext,
-    asset_func: &Func,
-) -> SchemaVariantResult<SchemaVariantJson> {
-    let (_, return_value) =
-        FuncBinding::create_and_execute(ctx, serde_json::Value::Null, asset_func.id, vec![])
-            .await?;
-    if let Some(error) = return_value
-        .value()
-        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
-        .as_object()
-        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
-        .get("error")
-        .and_then(|e| e.as_str())
-    {
-        return Err(SchemaVariantError::FuncExecutionFailure(error.to_owned()));
-    }
-    let func_resp = return_value
-        .value()
-        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
-        .as_object()
-        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?
-        .get("definition")
-        .ok_or(SchemaVariantError::FuncExecution(asset_func.id))?;
-    Ok(serde_json::from_value::<SchemaVariantJson>(
-        func_resp.to_owned(),
-    )?)
-}
-#[allow(clippy::result_large_err)]
-fn build_pkg_spec_for_variant(
-    definition: SchemaVariantJson,
-    asset_func_spec: &FuncSpec,
-    metadata: &SchemaVariantMetadataJson,
-    user_email: &str,
-) -> SchemaVariantResult<PkgSpec> {
-    // we need to change this to use the PkgImport
-    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
-    let variant_spec = definition.to_spec(
-        metadata.clone(),
-        &identity_func_spec.unique_id,
-        &asset_func_spec.unique_id,
-    )?;
-    let schema_spec = metadata.to_spec(variant_spec)?;
-    Ok(PkgSpec::builder()
-        .name(metadata.clone().name)
-        .created_by(user_email)
-        .func(identity_func_spec)
-        .func(asset_func_spec.clone())
-        .schema(schema_spec)
-        .version("0.0.1")
-        .build()?)
 }
 
 pub fn routes() -> Router<AppState> {

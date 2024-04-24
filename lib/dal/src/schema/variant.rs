@@ -52,6 +52,8 @@ mod metadata_view;
 pub mod root_prop;
 mod value_from;
 
+pub mod authoring;
+
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
