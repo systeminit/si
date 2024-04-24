@@ -11,7 +11,7 @@ use crate::component::{
     ComponentCreatedPayload, ComponentSetPositionPayload, ComponentUpdatedPayload,
 };
 use crate::qualification::QualificationCheckPayload;
-use crate::schema::variant::SchemaVariantCreatedPayload;
+use crate::schema::variant::{SchemaVariantClonedPayload, SchemaVariantCreatedPayload};
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
@@ -82,7 +82,7 @@ pub enum WsPayload {
     Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
-    // SchemaVariantCloned(SchemaVariantClonedPayload),
+    SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(SchemaVariantCreatedPayload),
     // SchemaVariantFinished(FinishSchemaVariantPayload),
     // SchemaVariantSaved(SchemaVariantSavedPayload),
