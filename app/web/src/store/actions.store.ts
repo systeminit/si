@@ -291,62 +291,58 @@ export const useActionsStore = () => {
           this.FETCH_QUEUED_ACTIONS();
 
           const realtimeStore = useRealtimeStore();
-          realtimeStore.subscribe(
-            this.$id,
-            `workspace/${workspaceId}/${changeSetId}`,
-            [
-              {
-                eventType: "ChangeSetWritten",
-                callback: () => {
-                  this.FETCH_QUEUED_ACTIONS();
-                  this.LOAD_ACTION_BATCHES();
-                },
+          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+            {
+              eventType: "ChangeSetWritten",
+              callback: () => {
+                this.FETCH_QUEUED_ACTIONS();
+                this.LOAD_ACTION_BATCHES();
               },
-              {
-                eventType: "ChangeSetApplied",
-                callback: (_update) => {
-                  this.LOAD_ACTION_BATCHES();
-                },
+            },
+            {
+              eventType: "ChangeSetApplied",
+              callback: (_update) => {
+                this.LOAD_ACTION_BATCHES();
               },
-              {
-                eventType: "ActionAdded",
-                callback: () => {
-                  this.FETCH_QUEUED_ACTIONS();
-                },
+            },
+            {
+              eventType: "ActionAdded",
+              callback: () => {
+                this.FETCH_QUEUED_ACTIONS();
               },
-              {
-                eventType: "ActionRemoved",
-                callback: () => {
-                  this.FETCH_QUEUED_ACTIONS();
-                },
+            },
+            {
+              eventType: "ActionRemoved",
+              callback: () => {
+                this.FETCH_QUEUED_ACTIONS();
               },
-              {
-                eventType: "DeprecatedActionRunnerReturn",
-                callback: (update) => {
-                  trackEvent("action_runner_return", {
-                    action_runner: update.action,
-                    action_status: update.status,
-                    action_runner_id: update.id,
-                    action_batch_id: update.batchId,
-                  });
+            },
+            {
+              eventType: "DeprecatedActionRunnerReturn",
+              callback: (update) => {
+                trackEvent("action_runner_return", {
+                  action_runner: update.action,
+                  action_status: update.status,
+                  action_runner_id: update.id,
+                  action_batch_id: update.batchId,
+                });
 
-                  this.LOAD_ACTION_BATCHES();
-                },
+                this.LOAD_ACTION_BATCHES();
               },
-              {
-                eventType: "DeprecatedActionBatchReturn",
-                callback: (update) => {
-                  this.runningActionBatch = undefined;
-                  trackEvent("action_batch_return", {
-                    batch_status: update.status,
-                    batch_id: update.id,
-                  });
+            },
+            {
+              eventType: "DeprecatedActionBatchReturn",
+              callback: (update) => {
+                this.runningActionBatch = undefined;
+                trackEvent("action_batch_return", {
+                  batch_status: update.status,
+                  batch_id: update.id,
+                });
 
-                  this.LOAD_ACTION_BATCHES();
-                },
+                this.LOAD_ACTION_BATCHES();
               },
-            ],
-          );
+            },
+          ]);
 
           return () => {
             realtimeStore.unsubscribe(this.$id);
