@@ -180,6 +180,10 @@ function updateSiProp(key: keyof typeof siValues) {
       value: newVal,
     },
   });
+  if (key === "name") {
+    // TODO; after DVU completes, backend should send updated component object models over WsEvent
+    componentsStore.setComponentDisplayName(component, newVal);
+  }
 }
 
 // color picker

@@ -1320,6 +1320,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+
+          setComponentDisplayName(component: FullComponent, name: string) {
+            const c = this.rawComponentsById[component.id];
+            if (!c) return;
+            c.displayName = name;
+          },
         },
         onActivated() {
           if (!changeSetId) return;
