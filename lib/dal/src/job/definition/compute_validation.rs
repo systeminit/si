@@ -82,7 +82,23 @@ impl JobConsumer for ComputeValidation {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
         for &av_id in &self.attribute_values {
+            // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
+            // may have been removed from the snapshot between when the CV job was created and when we're processing
+            // things now. This could happen if there are other modifications to the snapshot before the CV job starts
+            // executing, as the job always operates on the current state of the change set's snapshot, not the state at the time
+            // the job was created.
+            if workspace_snapshot
+                .try_get_node_index_by_id(av_id)
+                .await?
+                .is_none()
+            {
+                debug!("Attribute Value {av_id} missing, skipping it in ComputeValidations");
+                continue;
+            }
+
             let value = AttributeValue::get_by_id(ctx, av_id)
                 .await?
                 .value(ctx)

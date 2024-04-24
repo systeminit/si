@@ -309,7 +309,8 @@ async fn remove_connection(ctx: &mut DalContext) {
         input_socket.id(),
     )
     .await
-    .expect("could not connect components");
+    .expect("could not connect components")
+    .expect("duplicate connection");
 
     ctx.blocking_commit().await.expect("blocking commit failed");
 

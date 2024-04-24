@@ -4,7 +4,7 @@ use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
 use dal::{ChangeSet, Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::DiagramResult;
+use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
@@ -45,7 +45,8 @@ pub async fn create_connection(
         request.to_component_id,
         request.to_socket_id,
     )
-    .await?;
+    .await?
+    .ok_or(DiagramError::DuplicatedConnection)?;
 
     track(
         &posthog_client,

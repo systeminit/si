@@ -15,11 +15,12 @@ use dal::{
     ChangeSetError, DeprecatedActionError, DeprecatedActionPrototypeError, SchemaVariantId,
     StandardModelError, TransactionsError,
 };
+use std::num::ParseFloatError;
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
-mod connect_component_to_frame;
+pub mod connect_component_to_frame;
 pub mod create_component;
 pub mod create_connection;
 pub mod get_diagram;
@@ -29,7 +30,7 @@ pub mod set_component_position;
 // mod connect_component_to_frame;
 pub mod delete_component;
 pub mod delete_connection;
-// pub mod paste_component;
+pub mod paste_component;
 pub mod remove_delete_intent;
 
 #[remain::sorted]
@@ -63,6 +64,8 @@ pub enum DiagramError {
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("dal schema view error: {0}")]
     DalSchemaView(#[from] dal::schema::view::SchemaViewError),
+    #[error("duplicated connection")]
+    DuplicatedConnection,
     #[error("edge not found")]
     EdgeNotFound,
     #[error("frame socket not found for schema variant id: {0}")]
@@ -81,8 +84,10 @@ pub enum DiagramError {
     NotAuthorized,
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
+    #[error("parse float error: {0}")]
+    ParseFloat(#[from] ParseFloatError),
     #[error("paste failed")]
-    PasteError,
+    Paste,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
@@ -120,6 +125,7 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/paste_components", post(paste_component::paste_components))
         .route(
             "/delete_connection",
             post(delete_connection::delete_connection),

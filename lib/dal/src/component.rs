@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
+use std::num::ParseFloatError;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -16,7 +17,7 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
-use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSource};
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
@@ -39,7 +40,7 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
     AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
-    DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
+    DeprecatedAction, DeprecatedActionError, DeprecatedActionKind, DeprecatedActionPrototype,
     DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
     SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WsEvent,
@@ -89,6 +90,8 @@ pub enum ComponentError {
     ComponentMissingResourceValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/type prop")]
     ComponentMissingTypeValue(ComponentId),
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] Box<DeprecatedActionError>),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
@@ -103,10 +106,14 @@ pub enum ComponentError {
     InputSocketTooManyAttributeValues(InputSocketId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("missing attribute prototype argument source: {0}")]
+    MissingAttributePrototypeArgumentSource(AttributePrototypeArgumentId),
     #[error("component {0} missing attribute value for code")]
     MissingCodeValue(ComponentId),
     #[error("missing controlling func data for parent attribute value id: {0}")]
     MissingControllingFuncDataForParentAttributeValue(AttributeValueId),
+    #[error("missing path for attribute value: {0}")]
+    MissingPathForAttributeValue(AttributeValueId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
     #[error("component {0} missing attribute value for root")]
@@ -127,6 +134,8 @@ pub enum ComponentError {
     OutputSocket(#[from] OutputSocketError),
     #[error("output socket {0} has more than one attribute value")]
     OutputSocketTooManyAttributeValues(OutputSocketId),
+    #[error("parse float error: {0}")]
+    ParseFloat(#[from] ParseFloatError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
@@ -474,7 +483,179 @@ impl Component {
             }
         }
 
+        WsEvent::component_created(ctx, component.id())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
         Ok(component)
+    }
+
+    pub async fn clone_attributes_from(
+        &self,
+        ctx: &DalContext,
+        copied_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
+        let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
+
+        // Paste attribute value "values" from original component (or create them for maps/arrays)
+        //
+        // We could make this more efficient by skipping everything set by non builtins (si:setString, si:setObject, etc), since everything that is propagated will be re-propagated
+        let mut work_queue: VecDeque<(AttributeValueId, AttributeValueId)> =
+            vec![(copied_root_id, pasted_root_id)].into_iter().collect();
+        let mut all_avs = Vec::new();
+        while let Some((copied_av_id, pasted_av_id)) = work_queue.pop_front() {
+            all_avs.push((copied_av_id, pasted_av_id));
+
+            let path = AttributeValue::get_path_for_id(ctx, copied_av_id)
+                .await?
+                .ok_or(ComponentError::MissingPathForAttributeValue(copied_av_id))?;
+            // Must empty resource and keep the name with the "- Copy" suffix
+            if path.starts_with("root/resource") || path == "root/si/name" {
+                continue;
+            }
+
+            if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, copied_av_id).await? {
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                if prop.kind != PropKind::Object
+                    && prop.kind != PropKind::Map
+                    && prop.kind != PropKind::Array
+                {
+                    let copied_av = AttributeValue::get_by_id(ctx, copied_av_id).await?;
+                    let value = copied_av.value(ctx).await?;
+                    AttributeValue::update(ctx, pasted_av_id, value).await?;
+                }
+            }
+
+            // Enqueue children
+            let copied_children = AttributeValue::list_all_children(ctx, copied_av_id).await?;
+            let pasted_children = AttributeValue::list_all_children(ctx, pasted_av_id).await?;
+            let mut pasted_children_paths = HashMap::new();
+
+            for pasted_child_av_id in &pasted_children {
+                let pasted_path = AttributeValue::get_path_for_id(ctx, *pasted_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        *pasted_child_av_id,
+                    ))?;
+                pasted_children_paths.insert(pasted_path, *pasted_child_av_id);
+            }
+
+            for copied_child_av_id in copied_children {
+                let copied_path = AttributeValue::get_path_for_id(ctx, copied_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        copied_child_av_id,
+                    ))?;
+
+                let pasted_child_av_id = if let Some(pasted_child_av_id) =
+                    pasted_children_paths.get(&copied_path).copied()
+                {
+                    pasted_child_av_id
+                } else {
+                    AttributeValue::new(
+                        ctx,
+                        AttributeValue::is_for(ctx, copied_child_av_id).await?,
+                        Some(self.id),
+                        Some(pasted_av_id),
+                        AttributeValue::key_for_id(ctx, copied_child_av_id).await?,
+                    )
+                    .await?
+                    .id
+                };
+                work_queue.push_back((copied_child_av_id, pasted_child_av_id));
+            }
+        }
+
+        // Paste attribute prototypes
+        // - either updates component prototype to a copy of the original component
+        // - or removes component prototype, restoring the schema one (needed because of manual update from the block above)
+        for (copied_av_id, pasted_av_id) in all_avs {
+            if let Some(copied_prototype_id) =
+                AttributeValue::component_prototype_id(ctx, copied_av_id).await?
+            {
+                let func_id = AttributePrototype::func_id(ctx, copied_prototype_id).await?;
+                let prototype = AttributePrototype::new(ctx, func_id).await?;
+
+                for copied_apa_id in
+                    AttributePrototypeArgument::list_ids_for_prototype(ctx, copied_prototype_id)
+                        .await?
+                {
+                    let func_arg_id =
+                        AttributePrototypeArgument::func_argument_id_by_id(ctx, copied_apa_id)
+                            .await?;
+                    let value_source =
+                        AttributePrototypeArgument::value_source_by_id(ctx, copied_apa_id)
+                            .await?
+                            .ok_or(ComponentError::MissingAttributePrototypeArgumentSource(
+                                copied_apa_id,
+                            ))?;
+
+                    let apa =
+                        AttributePrototypeArgument::new(ctx, prototype.id(), func_arg_id).await?;
+
+                    match value_source {
+                        ValueSource::InputSocket(socket_id) => {
+                            apa.set_value_from_input_socket_id(ctx, socket_id).await?;
+                        }
+                        ValueSource::OutputSocket(socket_id) => {
+                            apa.set_value_from_output_socket_id(ctx, socket_id).await?;
+                        }
+                        ValueSource::Prop(prop_id) => {
+                            apa.set_value_from_prop_id(ctx, prop_id).await?;
+                        }
+                        ValueSource::StaticArgumentValue(id) => {
+                            apa.set_value_from_static_value_id(ctx, id).await?;
+                        }
+                    }
+                }
+
+                AttributeValue::set_component_prototype_id(ctx, pasted_av_id, prototype.id).await?;
+
+                let sources = AttributePrototype::input_sources(ctx, prototype.id).await?;
+                for source in sources {
+                    match source {
+                        AttributePrototypeSource::AttributeValue(_, _) => {
+                            continue;
+                        }
+                        AttributePrototypeSource::Prop(prop_id, key) => {
+                            Prop::add_edge_to_attribute_prototype(
+                                ctx,
+                                prop_id,
+                                prototype.id,
+                                EdgeWeightKind::Prototype(key),
+                            )
+                            .await?;
+                        }
+                        AttributePrototypeSource::InputSocket(socket_id, key) => {
+                            InputSocket::add_edge_to_attribute_prototype(
+                                ctx,
+                                socket_id,
+                                prototype.id,
+                                EdgeWeightKind::Prototype(key),
+                            )
+                            .await?;
+                        }
+                        AttributePrototypeSource::OutputSocket(socket_id, key) => {
+                            OutputSocket::add_edge_to_attribute_prototype(
+                                ctx,
+                                socket_id,
+                                prototype.id,
+                                EdgeWeightKind::Prototype(key),
+                            )
+                            .await?;
+                        }
+                    }
+                }
+            } else if let Some(existing_prototype_id) =
+                AttributeValue::component_prototype_id(ctx, pasted_av_id).await?
+            {
+                AttributePrototype::remove(ctx, existing_prototype_id).await?;
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn incoming_connections(
@@ -700,7 +881,7 @@ impl Component {
     }
 
     pub async fn set_geometry(
-        self,
+        &mut self,
         ctx: &DalContext,
         x: impl Into<String>,
         y: impl Into<String>,
@@ -708,14 +889,13 @@ impl Component {
         height: Option<impl Into<String>>,
     ) -> ComponentResult<Self> {
         let id: ComponentId = self.id;
-        let mut component = self;
 
-        let before = ComponentContentV1::from(component.clone());
-        component.x = x.into();
-        component.y = y.into();
-        component.width = width.map(|w| w.into());
-        component.height = height.map(|h| h.into());
-        let updated = ComponentContentV1::from(component);
+        let before = ComponentContentV1::from(self.clone());
+        self.x = x.into();
+        self.y = y.into();
+        self.width = width.map(|w| w.into());
+        self.height = height.map(|h| h.into());
+        let updated = ComponentContentV1::from(self.clone());
 
         if updated != before {
             let (hash, _) = ctx
@@ -738,7 +918,7 @@ impl Component {
         Ok(Self::assemble(&node_weight, content))
     }
 
-    async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
+    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
         let av_for_name = self
             .attribute_values_for_prop(ctx, &["root", "si", "name"])
             .await?
@@ -746,12 +926,7 @@ impl Component {
             .next()
             .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
 
-        AttributeValue::update_no_dependent_values(
-            ctx,
-            av_for_name,
-            Some(serde_json::to_value(name)?),
-        )
-        .await?;
+        AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
 
         Ok(())
     }
@@ -1017,10 +1192,21 @@ impl Component {
     async fn connect_inner(
         ctx: &DalContext,
         source_component_id: ComponentId,
-        source_output_socket_it: OutputSocketId,
+        source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<(AttributeValueId, AttributePrototypeArgumentId)> {
+    ) -> ComponentResult<Option<(AttributeValueId, AttributePrototypeArgumentId)>> {
+        let destination_component = Component::get_by_id(ctx, destination_component_id).await?;
+        for connection in destination_component.incoming_connections(ctx).await? {
+            if connection.from_component_id == source_component_id
+                && connection.from_output_socket_id == source_output_socket_id
+                && connection.to_component_id == destination_component_id
+                && connection.to_input_socket_id == destination_input_socket_id
+            {
+                return Ok(None);
+            }
+        }
+
         let destination_attribute_value_ids =
             InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
                 .await?;
@@ -1048,7 +1234,7 @@ impl Component {
         let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
             source_component_id,
-            source_output_socket_it,
+            source_output_socket_id,
             destination_component_id,
             destination_prototype_id,
         )
@@ -1056,10 +1242,10 @@ impl Component {
 
         AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
 
-        Ok((
+        Ok(Some((
             destination_attribute_value_id,
             attribute_prototype_argument.id(),
-        ))
+        )))
     }
 
     pub async fn connect(
@@ -1068,21 +1254,24 @@ impl Component {
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<AttributePrototypeArgumentId> {
-        let (destination_attribute_value_id, attribute_prototype_argument_id) =
-            Self::connect_inner(
-                ctx,
-                source_component_id,
-                source_output_socket_id,
-                destination_component_id,
-                destination_input_socket_id,
-            )
-            .await?;
+    ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
+        let maybe = Self::connect_inner(
+            ctx,
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        )
+        .await?;
 
-        ctx.enqueue_dependent_values_update(vec![destination_attribute_value_id])
-            .await?;
+        if let Some((destination_attribute_value_id, attribute_prototype_argument_id)) = maybe {
+            ctx.enqueue_dependent_values_update(vec![destination_attribute_value_id])
+                .await?;
 
-        Ok(attribute_prototype_argument_id)
+            Ok(Some(attribute_prototype_argument_id))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Find all matching sockets for a given source [`Component`] and a given destination [`Component`].
@@ -1120,15 +1309,17 @@ impl Component {
             }
 
             if let Some(destination_socket_id) = maybe_dest_id {
-                let (attribute_value_id, _) = Self::connect_inner(
+                if let Some((attribute_value_id, _)) = Self::connect_inner(
                     ctx,
                     source_component_id,
                     src_sock.id(),
                     destination_component_id,
                     destination_socket_id,
                 )
-                .await?;
-                to_enqueue.push(attribute_value_id);
+                .await?
+                {
+                    to_enqueue.push(attribute_value_id);
+                }
             }
         }
 
@@ -1402,6 +1593,46 @@ impl Component {
         }
 
         Ok(results)
+    }
+
+    pub async fn copy_paste(&self, ctx: &DalContext, offset: (f64, f64)) -> ComponentResult<Self> {
+        let schema_variant = self.schema_variant(ctx).await?;
+
+        let mut pasted_comp = Component::new(
+            ctx,
+            format!("{} - Copy", self.name(ctx).await?),
+            schema_variant.id(),
+        )
+        .await?;
+
+        let x: f64 = self.x().parse()?;
+        let y: f64 = self.y().parse()?;
+        pasted_comp
+            .set_geometry(
+                ctx,
+                (x + offset.0).to_string(),
+                (y + offset.1).to_string(),
+                self.width(),
+                self.height(),
+            )
+            .await?;
+
+        pasted_comp.clone_attributes_from(ctx, self.id()).await?;
+
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
+            .await
+            .map_err(Box::new)?
+        {
+            if prototype.kind != DeprecatedActionKind::Create {
+                continue;
+            }
+
+            let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
+                .await
+                .map_err(Box::new)?;
+        }
+
+        Ok(pasted_comp)
     }
 }
 

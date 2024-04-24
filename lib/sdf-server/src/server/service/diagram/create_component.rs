@@ -46,7 +46,7 @@ pub async fn create_component(
 
     let variant = SchemaVariant::get_default_for_schema(&ctx, request.schema_id).await?;
 
-    let component = Component::new(&ctx, &name, variant.id()).await?;
+    let mut component = Component::new(&ctx, &name, variant.id()).await?;
 
     track(
         &posthog_client,
@@ -61,7 +61,7 @@ pub async fn create_component(
         }),
     );
 
-    let component = component
+    component
         .set_geometry(
             &ctx,
             request.x.clone(),

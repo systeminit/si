@@ -206,16 +206,16 @@ pk!(AttributeValueId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeValue {
-    id: AttributeValueId,
+    pub id: AttributeValueId,
     /// The unprocessed return value is the "real" result, unprocessed for any other behavior.
     /// This is potentially-maybe-only-kinda-sort-of(?) useful for non-scalar values.
     /// Example: a populated array.
-    unprocessed_value: Option<ContentAddress>,
+    pub unprocessed_value: Option<ContentAddress>,
     /// The processed return value.
     /// Example: empty array.
-    value: Option<ContentAddress>,
-    materialized_view: Option<ContentAddress>,
-    func_execution_pk: Option<FuncExecutionPk>,
+    pub value: Option<ContentAddress>,
+    pub materialized_view: Option<ContentAddress>,
+    pub func_execution_pk: Option<FuncExecutionPk>,
 }
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
@@ -377,7 +377,6 @@ impl AttributeValue {
             ValueIsFor::Prop(prop_id) => {
                 Self::add_edge_to_prop(ctx, av.id, prop_id, EdgeWeightKind::Prop).await?;
 
-                // Attach value to parent prop (or root to component)
                 match maybe_parent_attribute_value {
                     Some(pav_id) => {
                         Self::add_edge_to_attribute_value_ordered(
@@ -428,26 +427,7 @@ impl AttributeValue {
                 .map_err(Box::new)?;
             }
         }
-
         Ok(av)
-    }
-
-    async fn update_inner(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        value: Option<Value>,
-        spawn_dependent_values_update: bool,
-    ) -> AttributeValueResult<()> {
-        Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
-        Self::set_value(ctx, attribute_value_id, value.clone()).await?;
-        Self::populate_nested_values(ctx, attribute_value_id, value).await?;
-
-        if spawn_dependent_values_update {
-            ctx.enqueue_dependent_values_update(vec![attribute_value_id])
-                .await?;
-        }
-
-        Ok(())
     }
 
     pub async fn update(
@@ -455,21 +435,14 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
         value: Option<Value>,
     ) -> AttributeValueResult<()> {
-        Self::update_inner(ctx, attribute_value_id, value, true).await
-    }
+        Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
+        Self::set_value(ctx, attribute_value_id, value.clone()).await?;
+        Self::populate_nested_values(ctx, attribute_value_id, value).await?;
 
-    /// Directly update an attribute value but do not trigger a dependent values update. Used
-    /// during component creation so that we can ensure only one job is necessary for the many
-    /// values updated when a component is created. Use only when you understand why you don't want
-    /// to trigger a job, because if you don't run a dependent values job update, the materialized
-    /// views for the component will *not* be updated to reflect the new value, nor will any values
-    /// that depend on this value be updated.
-    pub async fn update_no_dependent_values(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        value: Option<Value>,
-    ) -> AttributeValueResult<()> {
-        Self::update_inner(ctx, attribute_value_id, value, false).await
+        ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+            .await?;
+
+        Ok(())
     }
 
     pub async fn is_for(
@@ -2165,15 +2138,12 @@ impl AttributeValue {
             .await?
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
-        let av = Self::get_by_id(ctx, id).await?;
-
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set()?, av.id)
+            .remove_node_by_id(ctx.change_set()?, id)
             .await?;
 
         ctx.enqueue_dependent_values_update(vec![parent_av_id])
             .await?;
-
         Ok(())
     }
 
@@ -2252,5 +2222,88 @@ impl AttributeValue {
             .index_or_key_of_child_entry(id)
             .await?;
         Ok(maybe_key)
+    }
+
+    pub async fn tree_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
+        let mut child_values = HashMap::new();
+        // Get the root attribute value and load it into the work queue.
+        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id)
+            .await
+            .map_err(Box::new)?;
+
+        let mut work_queue = VecDeque::from([root_attribute_value_id]);
+        while let Some(attribute_value_id) = work_queue.pop_front() {
+            let children = Self::list_all_children(ctx, attribute_value_id).await?;
+            child_values.insert(attribute_value_id, children.clone());
+
+            // Load the work queue with the child attribute value.
+            work_queue.extend(children);
+        }
+        Ok(child_values)
+    }
+
+    pub async fn list_all_children(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        // Collect all child attribute values.
+        let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
+
+        let mut child_attribute_values_with_keys_by_id: HashMap<
+            AttributeValueId,
+            (NodeIndex, Option<String>),
+        > = HashMap::new();
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        for (edge_weight, _, target_idx) in workspace_snapshot
+            .edges_directed(id, Direction::Outgoing)
+            .await?
+        {
+            if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
+                let child_id = workspace_snapshot
+                    .get_node_weight(target_idx)
+                    .await?
+                    .id()
+                    .into();
+                child_attribute_values_with_keys_by_id
+                    .insert(child_id, (target_idx, key.to_owned()));
+            }
+        }
+
+        let maybe_ordering = AttributeValue::get_child_av_ids_for_ordered_parent(ctx, id)
+            .await
+            .ok();
+        // Ideally every attribute value with children is connected via an ordering node
+        // We don't error out on ordering not existing here because we don't have that
+        // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
+        for av_id in maybe_ordering.unwrap_or_else(|| {
+            child_attribute_values_with_keys_by_id
+                .keys()
+                .cloned()
+                .collect()
+        }) {
+            let (child_attribute_value_node_index, key) =
+                &child_attribute_values_with_keys_by_id[&av_id];
+            let child_attribute_value_node_weight = workspace_snapshot
+                .get_node_weight(*child_attribute_value_node_index)
+                .await?;
+            let content = child_attribute_value_node_weight.get_attribute_value_node_weight()?;
+            cache.push((content.id().into(), key.clone()));
+        }
+
+        // Now that we have the child props, prepare debug views and load the work queue.
+        let mut child_attribute_value_ids = Vec::new();
+        for (child_attribute_value_id, _key) in cache {
+            let child_attribute_value =
+                AttributeValue::get_by_id(ctx, child_attribute_value_id).await?;
+
+            // Cache the  prop values to eventually insert into the child property editor values map.
+            child_attribute_value_ids.push(child_attribute_value.id());
+        }
+
+        Ok(child_attribute_value_ids)
     }
 }
