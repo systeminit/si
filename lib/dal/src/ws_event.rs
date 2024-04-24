@@ -146,6 +146,14 @@ impl WsEvent {
         self.workspace_pk = workspace_pk;
     }
 
+    pub fn set_change_set_id(&mut self, change_set_id: Option<ChangeSetId>) {
+        self.change_set_id = change_set_id;
+    }
+
+    pub fn change_set_id(&self) -> Option<ChangeSetId> {
+        self.change_set_id
+    }
+
     fn workspace_subject(&self) -> String {
         format!("si.workspace_pk.{}.event", self.workspace_pk)
     }

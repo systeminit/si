@@ -1,6 +1,7 @@
+use dal::status::{StatusMessageState, StatusUpdate};
 use dal::{
-    DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, ServicesContext, Tenancy,
-    TransactionsError, Visibility, WorkspacePk, WsEvent,
+    ChangeSetId, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, ServicesContext,
+    Tenancy, TransactionsError, Visibility, WorkspacePk, WsEvent,
 };
 
 use si_crypto::SymmetricCryptoService;
@@ -168,6 +169,28 @@ async fn core_loop_change_set(
     }
 }
 
+async fn send_update_message_infallible(
+    ctx: &DalContext,
+    status: StatusMessageState,
+    workspace_pk: WorkspacePk,
+    change_set_id: ChangeSetId,
+) {
+    let status_update = StatusUpdate::new_rebase(status);
+
+    match WsEvent::status_update(ctx, status_update).await {
+        Ok(mut ws_event) => {
+            ws_event.set_workspace_pk(workspace_pk);
+            ws_event.set_change_set_id(Some(change_set_id));
+            if let Err(err) = ws_event.publish_immediately(ctx).await {
+                error!(?err, "failed to send wsevent for status update")
+            }
+        }
+        Err(err) => {
+            error!(?err, "failed to create WsEvent for status update");
+        }
+    }
+}
+
 async fn perform_rebase_and_reply_infallible(
     ctx_builder: DalContextBuilder,
     message: &ActivityRebaseRequest,
@@ -183,6 +206,14 @@ async fn perform_rebase_and_reply_infallible(
     };
     ctx.update_visibility_deprecated(Visibility::new_head());
     ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
+
+    send_update_message_infallible(
+        &ctx,
+        StatusMessageState::StatusStarted,
+        message.metadata.tenancy.workspace_pk.into_inner().into(),
+        message.payload.to_rebase_change_set_id.into(),
+    )
+    .await;
 
     let rebase_status = perform_rebase(&mut ctx, message)
         .await
@@ -208,6 +239,14 @@ async fn perform_rebase_and_reply_infallible(
     {
         error!(error = ?e, ?message, "failed to send rebase finished activity");
     }
+
+    send_update_message_infallible(
+        &ctx,
+        StatusMessageState::StatusFinished,
+        message.metadata.tenancy.workspace_pk.into_inner().into(),
+        message.payload.to_rebase_change_set_id.into(),
+    )
+    .await;
 
     match WsEvent::change_set_written(&ctx, message.payload.to_rebase_change_set_id.into()).await {
         Ok(mut event) => {
