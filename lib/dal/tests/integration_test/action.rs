@@ -4,7 +4,7 @@ mod with_secret;
 mod with_update;
 
 use dal::{
-    Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype,
+    Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype, Func,
     InputSocket, OutputSocket,
 };
 use dal_test::test;
@@ -325,4 +325,32 @@ async fn build_graph(ctx: &mut DalContext) {
             assert_eq!(action.parents[0], source_action.id);
         }
     }
+}
+
+#[test]
+async fn remove_prototype(ctx: &mut DalContext) {
+    let func_id = Func::find_by_name(ctx, "test:createActionStarfield")
+        .await
+        .expect("could not perform find by name")
+        .expect("no func found");
+    let action_prototype_id = DeprecatedActionPrototype::list_for_func_id(ctx, func_id)
+        .await
+        .expect("could not list for func id")
+        .pop()
+        .expect("empty action prototype ids");
+
+    // Remove the prototype and commit.
+    DeprecatedActionPrototype::remove(ctx, action_prototype_id)
+        .await
+        .expect("could not remove");
+
+    // Ensure that there are no conflicts when _solely_ removing the prototype.
+    let conflicts = ctx
+        .blocking_commit()
+        .await
+        .expect("unable to perform blocking commit");
+    assert!(conflicts.is_none());
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visibility");
 }
