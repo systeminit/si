@@ -1150,7 +1150,7 @@ impl WorkspaceSnapshotGraph {
                 if to_rebase_item_weight
                     .vector_clock_write()
                     .entry_for(to_rebase_vector_clock_id)
-                    >= onto_last_saw_to_rebase
+                    > onto_last_saw_to_rebase
                 {
                     // Item has been modified in `onto` (`onto` item write vector clock > "seen as
                     // of" for `onto` entry in `to_rebase` root): Conflict (ModifyRemovedItem)
