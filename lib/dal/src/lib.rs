@@ -29,6 +29,7 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
+pub mod dependency_graph;
 pub mod deprecated_action;
 pub mod diagram;
 pub mod func;
