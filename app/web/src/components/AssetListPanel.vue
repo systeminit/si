@@ -25,30 +25,39 @@
         />
       </div>
       <SiSearch autoSearch placeholder="search assets" @search="onSearch" />
-      <div
+      <!-- <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
       >
         Select an asset to view or edit it.
-      </div>
+      </div> -->
     </template>
     <template v-if="assetStore.assetList.length > 0">
-      <ul class="overflow-y-auto min-h-[200px]">
-        <Collapsible
-          v-for="category in Object.keys(categorizedAssets)"
-          :key="category"
-          :label="category"
-          as="li"
-          contentAs="ul"
-          defaultOpen
-          class="select-none"
-        >
-          <AssetListItem
-            v-for="asset in categorizedAssets[category]"
-            :key="asset.id"
-            :a="asset"
+      <TreeNode
+        v-for="category in Object.keys(categorizedAssets)"
+        :key="category"
+        :label="category"
+        :primaryIcon="getAssetIcon(category)"
+        :color="categoryColor(category)"
+        classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
+        labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+        enableGroupToggle
+        alwaysShowArrow
+        clickLabelToToggle
+        indentationSize="none"
+      >
+        <template #icons>
+          <PillCounter
+            :count="categorizedAssets[category]?.length || 0"
+            borderTone="action"
+            class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
           />
-        </Collapsible>
-      </ul>
+        </template>
+        <AssetListItem
+          v-for="asset in categorizedAssets[category]"
+          :key="asset.id"
+          :a="asset"
+        />
+      </TreeNode>
     </template>
     <ModuleExportModal
       ref="contributeAssetModalRef"
@@ -74,14 +83,16 @@ import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  Collapsible,
   ScrollArea,
   VButton,
   Modal,
   RequestStatusMessage,
+  TreeNode,
+  PillCounter,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
+import { getAssetIcon } from "@/store/components.store";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
 
@@ -146,6 +157,16 @@ const categorizedAssets = computed(() =>
       return categorized;
     }, {} as { [key: string]: AssetListEntry[] }),
 );
+
+const categoryColor = (category: string) => {
+  const assets = categorizedAssets.value[category];
+
+  if (assets && assets[0]) {
+    return assets[0].color;
+  }
+
+  return "#000";
+};
 
 const newAsset = async () => {
   const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
