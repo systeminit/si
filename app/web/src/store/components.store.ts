@@ -802,6 +802,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (this.edgesById[tempId]) {
                   const edge = this.edgesById[tempId];
                   if (edge) {
+                    edge.id = response.id;
                     this.edgesById[response.id] = edge;
                     delete this.edgesById[tempId];
                   }
