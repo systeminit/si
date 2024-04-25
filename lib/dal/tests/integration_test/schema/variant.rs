@@ -6,6 +6,7 @@ use dal::{
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
 
+mod authoring;
 mod view;
 
 #[test]
