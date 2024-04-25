@@ -696,28 +696,6 @@ impl WorkspaceSnapshotGraph {
                     potential_to_rebase_node_indexes
                         .retain(|node_index| self.has_path_to_root(*node_index));
                     to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
-
-                    // TODO(nick): detect category nodes with a different lineage. We will likely
-                    // need to check incoming edges in one graph and then look for outgoing edges in
-                    // the other graph.
-                    // // Since category nodes may be created from scratch from a different workspace,
-                    // // they may have different lineage ids. We still want to consider the same
-                    // // category kind as an equivalent node, even though it might have a different
-                    // // lineage id.
-                    // if let NodeWeight::Category(onto_category_node_weight) = onto_node_weight {
-                    //     onto_category_node_weight
-                    // }
-                    //     let category_node_kind = onto_category_node_weight.kind();
-                    //     let (_, to_rebase_category_node_index) =
-                    //         self.get_category_node(Some(onto_category_node_weight.id()), category_node_kind).map_err(|err| {
-                    //             error!(
-                    //                 "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
-                    //                 onto_category_node_weight.kind(), onto, err,
-                    //             );
-                    //             event
-                    //         })?;
-                    //     to_rebase_node_indexes.insert(to_rebase_category_node_index);
-                    // }
                 }
 
                 // If everything with the same `lineage_id` is identical, then we can prune the

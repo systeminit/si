@@ -11,7 +11,9 @@ use si_pkg::{
 };
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
-pub async fn migrate_test_exclusive_schema_katy_perry(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut kp_builder = PkgSpec::builder();
 
     let schema_name = "katy perry";

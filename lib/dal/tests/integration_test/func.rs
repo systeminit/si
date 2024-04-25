@@ -1,9 +1,10 @@
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::summary::FuncSummary;
+use dal::func::summary::FuncSummary;
 use dal::func::FuncKind;
-use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
+use dal::{DalContext, Func, Schema, SchemaVariant};
+use dal_test::helpers::create_empty_action_func;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::create_empty_action_func;
 use pretty_assertions_sorted::assert_eq;
 
 mod argument;
@@ -62,8 +63,9 @@ async fn revertible(ctx: &mut DalContext) {
     assert!(!created_func_is_revertible);
 
     // After committing, ensure the existing func is revertible and that the new func is not revertible.
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
     let preexisting_func_is_revertible = Func::is_revertible_for_id(ctx, func_id)
         .await
         .expect("could not determine if revertible");
@@ -75,19 +77,14 @@ async fn revertible(ctx: &mut DalContext) {
     assert!(!created_func_is_revertible);
 
     // Apply changes to the base change set.
-    ChangeSet::apply_to_base_change_set(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could not apply to base change set");
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
+        .expect("could not apply change set");
 
     // Commit with the created func in the change set and create a new change set.
-    let new_change_set = ChangeSet::fork_head(ctx, "johnqt is the best igl")
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
-        .expect("could not fork head");
-    ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
-        .await
-        .expect("could not update visibility and snapshot to visibility");
+        .expect("could not fork change set");
 
     // In the forked change set, ensure the existing func is still revertible and that the new func
     // is too.

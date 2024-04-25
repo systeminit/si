@@ -29,14 +29,16 @@ pub mod backend;
 pub mod binding;
 pub mod execution;
 pub mod intrinsics;
+pub mod summary;
 pub mod view;
 
 mod associations;
 mod before;
 mod kind;
 
-pub use associations::AttributePrototypeArgumentView;
-pub use associations::AttributePrototypeView;
+pub use associations::AttributePrototypeArgumentBag;
+pub use associations::AttributePrototypeBag;
+pub use associations::FuncArgumentBag;
 pub use associations::FuncAssociations;
 pub use before::before_funcs_for_component;
 pub use before::BeforeFuncError;
@@ -400,7 +402,7 @@ impl Func {
         lambda(&mut func)?;
 
         let (mut node_weight, _) =
-            Func::get_node_weight_and_content_hash_or_error(ctx, func.id).await?;
+            Self::get_node_weight_and_content_hash_or_error(ctx, func.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -440,7 +442,7 @@ impl Func {
                 .await?;
         }
 
-        Ok(Func::assemble(&node_weight, &updated))
+        Ok(Self::assemble(&node_weight, &updated))
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {

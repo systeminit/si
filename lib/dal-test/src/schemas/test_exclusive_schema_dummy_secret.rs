@@ -14,7 +14,9 @@ use si_pkg::{
     SchemaSpecData, SocketSpecArity,
 };
 
-pub async fn migrate_test_exclusive_schema_dummy_secret(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let spec = build_dummy_secret_spec()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
@@ -23,7 +25,7 @@ pub async fn migrate_test_exclusive_schema_dummy_secret(ctx: &DalContext) -> Bui
     Ok(())
 }
 
-pub fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
+fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
     let name = "dummy-secret";
 
     let mut builder = PkgSpec::builder();

@@ -1,8 +1,21 @@
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::func::view::FuncViewResult;
 use crate::func::FuncKind;
-use crate::{DalContext, Func, FuncId, SchemaVariant, SchemaVariantId};
+use crate::{
+    DalContext, Func, FuncError, FuncId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+};
+
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum FuncSummaryError {
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+}
+
+type FuncSummaryResult<T> = Result<T, FuncSummaryError>;
 
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +30,7 @@ pub struct FuncSummary {
 
 impl FuncSummary {
     /// Returns the [summaries](FuncSummary) for all [`Funcs`](Func) in the [`ChangeSet`](crate::ChangeSet).
-    pub async fn list(ctx: &DalContext) -> FuncViewResult<Vec<Self>> {
+    pub async fn list(ctx: &DalContext) -> FuncSummaryResult<Vec<Self>> {
         Self::list_inner(ctx, None).await
     }
 
@@ -25,7 +38,7 @@ impl FuncSummary {
     pub async fn list_for_schema_variant_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> FuncViewResult<Vec<Self>> {
+    ) -> FuncSummaryResult<Vec<Self>> {
         Self::list_inner(ctx, Some(schema_variant_id)).await
     }
 
@@ -35,7 +48,7 @@ impl FuncSummary {
     async fn list_inner(
         ctx: &DalContext,
         schema_variant_id: Option<SchemaVariantId>,
-    ) -> FuncViewResult<Vec<Self>> {
+    ) -> FuncSummaryResult<Vec<Self>> {
         let funcs = match schema_variant_id {
             Some(provided_schema_variant_id) => {
                 SchemaVariant::all_funcs(ctx, provided_schema_variant_id).await?

@@ -10,7 +10,9 @@ use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
 
 const CATEGORY: &str = "validations";
 
-pub async fn migrate_test_exclusive_schema_bad_validations(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "BadValidations";
@@ -85,7 +87,7 @@ pub async fn migrate_test_exclusive_schema_bad_validations(ctx: &DalContext) -> 
     Ok(())
 }
 
-pub async fn migrate_test_exclusive_schema_validated_output(
+pub(crate) async fn migrate_test_exclusive_schema_validated_output(
     ctx: &DalContext,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
@@ -170,7 +172,9 @@ pub async fn migrate_test_exclusive_schema_validated_output(
     Ok(())
 }
 
-pub async fn migrate_test_exclusive_schema_validated_input(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_validated_input(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "ValidatedInput";

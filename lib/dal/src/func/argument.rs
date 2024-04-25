@@ -1,6 +1,6 @@
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::ContentHash;
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -211,9 +211,12 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&func_argument_node_weight, &content))
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<Self> {
+    pub async fn get_by_id_or_error(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncArgumentResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: ::si_events::ulid::Ulid = id.into();
+
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
@@ -223,7 +226,7 @@ impl FuncArgument {
             .cas()
             .try_read_as(&hash)
             .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let FuncArgumentContent::V1(inner) = content;
@@ -254,17 +257,15 @@ impl FuncArgument {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id).await?;
-
         let func_arg_node_idxs = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind_by_index(
-                func_node_idx,
-                EdgeWeightKindDiscriminants::Use,
-            )
+            .outgoing_targets_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
             .await?;
 
         for idx in func_arg_node_idxs {
-            let node_weight = workspace_snapshot.get_node_weight(idx).await?;
+            let node_weight = workspace_snapshot
+                .get_node_weight(idx)
+                .await?
+                .get_func_argument_node_weight()?;
             func_args.push(node_weight.id().into())
         }
 
@@ -273,17 +274,10 @@ impl FuncArgument {
 
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
-        let mut func_args = vec![];
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id).await?;
-
         let func_arg_node_idxs = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind_by_index(
-                func_node_idx,
-                EdgeWeightKindDiscriminants::Use,
-            )
+            .outgoing_targets_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
             .await?;
 
         let mut arg_node_weights = vec![];
@@ -305,12 +299,13 @@ impl FuncArgument {
             .try_read_many_as(arg_content_hashes.as_slice())
             .await?;
 
+        let mut func_args = vec![];
         for weight in arg_node_weights {
             match arg_contents.get(&weight.content_hash()) {
                 Some(arg_content) => {
                     let FuncArgumentContent::V1(inner) = arg_content;
 
-                    func_args.push(FuncArgument::assemble(&weight, inner));
+                    func_args.push(Self::assemble(&weight, inner));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(weight.id()))?,
             }
@@ -343,53 +338,48 @@ impl FuncArgument {
     where
         L: FnOnce(&mut FuncArgument) -> FuncArgumentResult<()>,
     {
-        let ulid: Ulid = id.into();
+        let func_argument = Self::get_by_id_or_error(ctx, id).await?;
+        let modified_func_argument = func_argument.modify(ctx, lambda).await?;
+        Ok(modified_func_argument)
+    }
 
-        let (arg_node_idx, arg_nw) = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> FuncArgumentResult<Self>
+    where
+        L: FnOnce(&mut Self) -> FuncArgumentResult<()>,
+    {
+        let mut func_argument = self;
 
-            let arg_node_idx = workspace_snapshot.get_node_index_by_id(ulid).await?;
-            (
-                arg_node_idx,
-                workspace_snapshot
-                    .get_node_weight(arg_node_idx)
-                    .await?
-                    .to_owned(),
-            )
-        };
+        let before = FuncArgumentContentV1::from(func_argument.clone());
+        lambda(&mut func_argument)?;
 
-        let hash = arg_nw.content_hash();
-
-        let content: FuncArgumentContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
-
-        let FuncArgumentContent::V1(inner) = content;
-
-        let mut func_arg_node_weight = arg_nw.get_func_argument_node_weight()?;
-        let mut func_arg = FuncArgument::assemble(&func_arg_node_weight, &inner);
-
-        lambda(&mut func_arg)?;
+        let (mut node_weight, _) =
+            FuncArgument::get_node_weight_and_content_hash_or_error(ctx, func_argument.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        if func_arg_node_weight.name() != func_arg.name.as_str() {
-            let mut new_func_arg =
-                func_arg_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
-            new_func_arg.set_name(&func_arg.name);
+        // If the name HAS changed, *and* parts of the FuncArgumentContent
+        // have changed, this ends up updating the node for the function twice. This could be
+        // optimized to do it only once.
+        if func_argument.name.as_str() != node_weight.name() {
+            let original_node_index = workspace_snapshot
+                .get_node_index_by_id(func_argument.id)
+                .await?;
+
+            node_weight.set_name(func_argument.name.as_str());
 
             workspace_snapshot
-                .add_node(NodeWeight::FuncArgument(new_func_arg.clone()))
+                .add_node(NodeWeight::FuncArgument(
+                    node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
+                ))
                 .await?;
-            workspace_snapshot.replace_references(arg_node_idx).await?;
-            func_arg_node_weight = new_func_arg;
-        }
 
-        let updated = FuncArgumentContentV1::from(func_arg.clone());
-        if updated != inner {
+            workspace_snapshot
+                .replace_references(original_node_index)
+                .await?;
+        }
+        let updated = FuncArgumentContentV1::from(func_argument.clone());
+
+        if updated != before {
             let (hash, _) = ctx
                 .layer_db()
                 .cas()
@@ -400,13 +390,26 @@ impl FuncArgument {
                     ctx.events_actor(),
                 )
                 .await?;
-
             workspace_snapshot
-                .update_content(ctx.change_set()?, ulid, hash)
+                .update_content(ctx.change_set()?, func_argument.id.into(), hash)
                 .await?;
         }
 
-        Ok(FuncArgument::assemble(&func_arg_node_weight, &updated))
+        Ok(Self::assemble(&node_weight, &updated))
+    }
+
+    async fn get_node_weight_and_content_hash_or_error(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncArgumentResult<(FuncArgumentNodeWeight, ContentHash)> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+
+        let hash = node_weight.content_hash();
+        let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
+        Ok((func_argument_node_weight, hash))
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {

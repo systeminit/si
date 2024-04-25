@@ -6,7 +6,6 @@ use thiserror::Error;
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeEventualParent};
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::view::FuncArgumentView;
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
@@ -15,10 +14,11 @@ use crate::{
     SchemaVariantId,
 };
 
-mod view;
+mod bags;
 
-pub use view::AttributePrototypeArgumentView;
-pub use view::AttributePrototypeView;
+pub use bags::AttributePrototypeArgumentBag;
+pub use bags::AttributePrototypeBag;
+pub use bags::FuncArgumentBag;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -50,8 +50,8 @@ pub enum FuncAssociations {
     },
     #[serde(rename_all = "camelCase")]
     Attribute {
-        prototypes: Vec<AttributePrototypeView>,
-        arguments: Vec<FuncArgumentView>,
+        prototypes: Vec<AttributePrototypeBag>,
+        arguments: Vec<FuncArgumentBag>,
     },
     #[serde(rename_all = "camelCase")]
     Authentication {
@@ -77,8 +77,6 @@ impl FuncAssociations {
         ctx: &DalContext,
         func: &Func,
     ) -> FuncAssociationsResult<(Option<Self>, String)> {
-        let arguments = FuncArgument::list_for_func(ctx, func.id).await?;
-
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
                 let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
@@ -109,13 +107,14 @@ impl FuncAssociations {
                 )
             }
             FuncKind::Attribute => {
-                let attribute_prototype_ids =
-                    AttributePrototype::list_ids_for_func_id(ctx, func.id).await?;
+                let arguments = FuncArgument::list_for_func(ctx, func.id).await?;
 
                 let mut prototypes = Vec::new();
-                for attribute_prototype_id in attribute_prototype_ids {
+                for attribute_prototype_id in
+                    AttributePrototype::list_ids_for_func_id(ctx, func.id).await?
+                {
                     prototypes
-                        .push(AttributePrototypeView::assemble(ctx, attribute_prototype_id).await?);
+                        .push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
                 }
 
                 (
@@ -123,7 +122,7 @@ impl FuncAssociations {
                         prototypes,
                         arguments: arguments
                             .iter()
-                            .map(|arg| FuncArgumentView {
+                            .map(|arg| FuncArgumentBag {
                                 id: arg.id,
                                 name: arg.name.to_owned(),
                                 kind: arg.kind,
@@ -258,7 +257,7 @@ impl FuncAssociations {
 
     pub fn get_attribute_internals(
         &self,
-    ) -> FuncAssociationsResult<(Vec<AttributePrototypeView>, Vec<FuncArgumentView>)> {
+    ) -> FuncAssociationsResult<(Vec<AttributePrototypeBag>, Vec<FuncArgumentBag>)> {
         match self {
             FuncAssociations::Attribute {
                 prototypes,

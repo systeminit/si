@@ -2,8 +2,9 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{AttributeValue, Component, DalContext, OutputSocket, Prop, Secret};
-use dal_test::test_harness::create_component_for_schema_name;
-use dal_test::test_harness::encrypt_message;
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::encrypt_message;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::{test, WorkspaceSignup};
 
 #[test]
@@ -66,11 +67,9 @@ async fn secret_definition_works_with_dummy_qualification(
         .expect("cannot create secret");
 
         // Commit and update snapshot to visibility.
-        let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-        assert!(conflicts.is_none());
-        ctx.update_snapshot_to_visibility()
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
             .await
-            .expect("unable to update snapshot to visibility");
+            .expect("could not commit and update snapshot to visibility");
 
         // Update the reference to secret prop with the secret it that will fail the qualification.
         let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
@@ -91,11 +90,9 @@ async fn secret_definition_works_with_dummy_qualification(
         .expect("unable to perform attribute value update");
 
         // Commit and update snapshot to visibility.
-        let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-        assert!(conflicts.is_none());
-        ctx.update_snapshot_to_visibility()
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
             .await
-            .expect("unable to update snapshot to visibility");
+            .expect("could not commit and update snapshot to visibility");
 
         // Check that the output socket value looks correct.
         let mut output_socket_attribute_value_ids =
@@ -149,11 +146,9 @@ async fn secret_definition_works_with_dummy_qualification(
         .expect("cannot create secret");
 
         // Commit and update snapshot to visibility.
-        let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-        assert!(conflicts.is_none());
-        ctx.update_snapshot_to_visibility()
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
             .await
-            .expect("unable to update snapshot to visibility");
+            .expect("could not commit and update snapshot to visibility");
 
         // Update the reference to secret prop with the secret it that will pass the qualification.
         let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
@@ -174,11 +169,9 @@ async fn secret_definition_works_with_dummy_qualification(
         .expect("unable to perform attribute value update");
 
         // Commit and update snapshot to visibility.
-        let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-        assert!(conflicts.is_none());
-        ctx.update_snapshot_to_visibility()
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
             .await
-            .expect("unable to update snapshot to visibility");
+            .expect("could not commit and update snapshot to visibility");
 
         // Check that the output socket value looks correct.
         let mut output_socket_attribute_value_ids =

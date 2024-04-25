@@ -1,7 +1,8 @@
 use dal::code_view::CodeLanguage;
-use dal::{ChangeSet, Component, ComponentType, DalContext};
+use dal::{Component, ComponentType, DalContext};
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 
@@ -9,12 +10,9 @@ use serde_json::Value;
 async fn get_diff_new_component(ctx: &mut DalContext) {
     let starfield_component =
         create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let mut diff = Component::get_diff(ctx, starfield_component.id())
         .await
@@ -39,30 +37,14 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
 async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     let starfield_component =
         create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
-    // Apply the change set and perform a blocking commit.
-    let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true)
+    // Apply the change set and perform a blocking commit and ensure the diff looks as expected on head.
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could not apply to base change set");
-    let conflicts = ctx
-        .blocking_commit()
-        .await
-        .expect("could not perform commit");
-    assert!(conflicts.is_none());
-
-    // Ensure the diff looks as expected on head.
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-        applied_change_set
-            .base_change_set_id
-            .expect("base change set not found"),
-    )
-    .await
-    .expect("could not update visibility and snapshot to visibility");
+        .expect("could not apply change set");
     let diff = Component::get_diff(ctx, starfield_component.id())
         .await
         .expect("unable to get diff");
@@ -111,35 +93,27 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
 async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     let starfield_component =
         create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
 
     // Apply the change set and perform a blocking commit.
-    ChangeSet::apply_to_base_change_set(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
-        .expect("could not apply to base change set");
-    let conflicts = ctx
-        .blocking_commit()
-        .await
-        .expect("could not perform commit");
-    assert!(conflicts.is_none());
+        .expect("could not apply change set");
 
     // Create a new change set and perform a commit without rebasing.
-    let new_change_set = ChangeSet::fork_head(ctx, "new change set")
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
-        .expect("could not create new change set");
-    ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
-        .await
-        .expect("could not update visibility");
-    ctx.commit_no_rebase()
-        .await
-        .expect("could not perform commit");
+        .expect("could not fork change set");
 
     starfield_component
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
         .await
         .expect("Unable to change comp type");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let mut diff = Component::get_diff(ctx, starfield_component.id())
         .await

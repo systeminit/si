@@ -4,8 +4,8 @@ use dal::func::authoring::{
 use dal::func::FuncKind;
 use dal::prop::PropPath;
 use dal::{ChangeSet, DalContext, DeprecatedActionKind, Func, Prop, Schema, SchemaVariant};
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::commit_and_update_snapshot;
 
 #[test]
 async fn create_qualification_no_options(ctx: &mut DalContext) {
@@ -26,7 +26,9 @@ async fn create_qualification_no_options(ctx: &mut DalContext) {
     .await
     .expect("unable to create func");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     assert_eq!(FuncKind::Qualification, func.kind);
     assert_eq!(func_name, func.name);
@@ -264,7 +266,9 @@ async fn create_attribute_with_prop(ctx: &mut DalContext) {
     .await
     .expect("unable to create func");
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     let schema_funcs = SchemaVariant::all_funcs(ctx, sv_id)
         .await

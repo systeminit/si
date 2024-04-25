@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::func::authoring::FuncAuthoringClient;
+use dal::func::view::FuncView;
 use dal::func::FuncAssociations;
 use dal::{ChangeSet, Func, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,14 @@ pub struct SaveFuncRequest {
     pub visibility: Visibility,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct SaveFuncResponse {
+    is_revertible: bool,
+    types: String,
+    associations: Option<FuncAssociations>,
+}
+
 pub async fn save_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -35,7 +44,7 @@ pub async fn save_func(
 
     let request_id = request.id;
 
-    let save_response = FuncAuthoringClient::save_func(
+    FuncAuthoringClient::save_func(
         &ctx,
         request.id,
         request.display_name,
@@ -47,6 +56,7 @@ pub async fn save_func(
     .await?;
 
     let func = Func::get_by_id_or_error(&ctx, request_id).await?;
+    let func_view = FuncView::assemble(&ctx, &func).await?;
 
     track(
         &posthog_client,
@@ -68,5 +78,9 @@ pub async fn save_func(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response.body(serde_json::to_string(&save_response)?)?)
+    Ok(response.body(serde_json::to_string(&SaveFuncResponse {
+        is_revertible: func_view.is_revertible,
+        types: func_view.types,
+        associations: func_view.associations,
+    })?)?)
 }

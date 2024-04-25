@@ -1,7 +1,7 @@
 use dal::attribute::prototype::argument::AttributePrototypeArgument;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::view::FuncArgumentView;
-use dal::func::{AttributePrototypeArgumentView, AttributePrototypeView, FuncAssociations};
+use dal::func::FuncArgumentBag;
+use dal::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncAssociations};
 use dal::prop::PropPath;
 use dal::schema::variant::leaves::LeafInputLocation;
 use dal::{AttributePrototype, DalContext, DeprecatedActionKind, Func, Prop, Schema};
@@ -110,19 +110,19 @@ async fn for_attribute(ctx: &mut DalContext) {
 
     assert_eq!(
         FuncAssociations::Attribute {
-            prototypes: vec![AttributePrototypeView {
+            prototypes: vec![AttributePrototypeBag {
                 id: attribute_prototype_id,
                 component_id: None,
                 schema_variant_id: Some(schema_variant_id),
                 prop_id: Some(prop.id),
                 output_socket_id: None,
-                prototype_arguments: vec![AttributePrototypeArgumentView {
+                prototype_arguments: vec![AttributePrototypeArgumentBag {
                     func_argument_id,
                     id: attribute_prototype_argument_id,
                     input_socket_id: Some(input_socket_id),
                 }],
             }],
-            arguments: vec![FuncArgumentView {
+            arguments: vec![FuncArgumentBag {
                 id: func_argument_id,
                 name: "entries".to_string(),
                 kind: FuncArgumentKind::Array,

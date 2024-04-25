@@ -3,7 +3,7 @@ use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
     ComponentType, DalContext, Func, Prop, Schema,
 };
-use dal_test::{test, test_harness::create_schema};
+use dal_test::{helpers::create_schema, test};
 use pretty_assertions_sorted::assert_eq;
 
 mod authoring;

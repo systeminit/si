@@ -1,19 +1,17 @@
 use dal::code_view::CodeLanguage;
 use dal::{Component, DalContext};
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn get_code_json_lang(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
         .await
@@ -39,12 +37,9 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
     let component =
         create_component_for_schema_name(ctx, "katy perry", "all codegen and no actions").await;
 
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
         .await
@@ -79,12 +74,9 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
 async fn get_code_no_codegen_funcs(ctx: &mut DalContext) {
     let starfield_component =
         create_component_for_schema_name(ctx, "starfield", "no codegen funcs here").await;
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("unable to update snapshot to visiblity");
+        .expect("could not commit and update snapshot to visibility");
 
     let (codegen_view, has_code) = Component::list_code_generated(ctx, starfield_component.id())
         .await

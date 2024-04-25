@@ -13,7 +13,7 @@ use crate::schemas::schema_helpers::{
     build_action_func, build_resource_payload_to_value_func, create_identity_func,
 };
 
-pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
 
     let schema_name = "fallout";

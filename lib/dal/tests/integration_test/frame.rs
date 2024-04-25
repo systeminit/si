@@ -1,14 +1,11 @@
 use dal::component::frame::{Frame, FrameError};
-use dal::diagram::{
-    Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge,
-    SummaryDiagramInferredEdge,
-};
-use dal::{
-    AttributeValue, Component, ComponentType, DalContext, InputSocket, OutputSocket, Schema,
-    SchemaVariant,
-};
+use dal::diagram::SummaryDiagramInferredEdge;
+use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
+use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
+use dal::{ComponentType, InputSocket, OutputSocket};
+use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
-use dal_test::test_harness::{commit_and_update_snapshot, create_component_for_schema_name};
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
@@ -65,18 +62,18 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
     .await
     .expect("could not update attribute value");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("could not perform blocking commit");
+        .expect("could not commit");
 
     // Now that the parent is a frame, attempt to attach the child.
     Frame::upsert_parent(ctx, fallout_component.id(), starfield_component.id())
         .await
         .expect("could not attach child to parent");
 
-    ctx.blocking_commit()
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("could not perform blocking commit");
+        .expect("could not commit");
 
     // Assemble the diagram and ensure we see the right number of components.
     let diagram = Diagram::assemble(ctx)
@@ -242,7 +239,7 @@ async fn simple_frames(ctx: &mut DalContext) {
         .await
         .expect("couldn't get output sockets");
         assert_eq!(2, output_sockets.keys().len(),);
-        // commit_and_update_snapshot(ctx).await;
+
         // make sure Swifty component matches the travis kelsey frame output sockets
         let swifty_input = InputSocket::find_with_name(ctx, "fallout", swifty_schema_variant_id)
             .await
@@ -334,7 +331,7 @@ async fn simple_frames(ctx: &mut DalContext) {
         .await
         .expect("couldn't get output sockets");
         assert_eq!(2, output_sockets.keys().len(),);
-        // commit_and_update_snapshot(ctx).await;
+
         // make sure Swifty component matches the travis kelsey frame output sockets
         let swifty_input = InputSocket::find_with_name(ctx, "fallout", swifty_schema_variant_id)
             .await
@@ -404,7 +401,9 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!["1"]))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // the output socket value is updated with Jason Mraz
     let even_frame_sv_id = Component::schema_variant_id(ctx, even_frame.id())
         .await
@@ -454,7 +453,9 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         .expect("is some");
     assert_eq!(one_input_mat_view, serde_json::json!("1"));
 
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
@@ -503,7 +504,9 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["5"]))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // the output socket value is updated with 1
     let even_parent_frame_sv_id = Component::schema_variant_id(ctx, even_parent_frame.id())
@@ -569,7 +572,9 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["4"]))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // the component doesn't get the update as the child frame is a closer match and overrides it
     // the component is updated with 5
     let odd_component_sv_id = Component::schema_variant_id(ctx, odd_component.id())
@@ -610,7 +615,9 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["3"]))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // the component gets the update as the child frame is a closer match
     let odd_component_sv_id = Component::schema_variant_id(ctx, odd_component.id())
         .await
@@ -641,7 +648,9 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     Frame::upsert_parent(ctx, odd_component.id(), even_parent_frame.id())
         .await
         .expect("could not upsert parent");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // make sure the parent is right...
     let odd_component = Component::get_by_id(ctx, odd_component.id())
         .await
@@ -730,7 +739,9 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!["1"]))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
 
     // the output socket value is updated with "1"
     let even_component_sv_id = Component::schema_variant_id(ctx, even_component.id())
@@ -797,7 +808,9 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     Frame::upsert_parent(ctx, another_even_component.id(), odd_up_frame.id())
         .await
         .expect("could not upsert parent");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // Change attribute value for three on the component
     let type_attribute_value_id = another_even_component
         .attribute_values_for_prop(ctx, &["root", "domain", "three"])
@@ -810,7 +823,9 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!("3")))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // the output socket value is updated with "3"
     let another_even_component_sv_id =
         Component::schema_variant_id(ctx, another_even_component.id())
@@ -876,7 +891,9 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     Frame::upsert_parent(ctx, odd_up_frame.id(), even_up_frame.id())
         .await
         .expect("could not upsert parent frame");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // Change attribute value for two on the odd up frame
     let odd_up_frame = Component::get_by_id(ctx, odd_up_frame.id())
         .await
@@ -892,7 +909,9 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     AttributeValue::update(ctx, odd_up_frame_two_av_id, Some(serde_json::json!("2")))
         .await
         .expect("could not update attribute value");
-    commit_and_update_snapshot(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     // the output socket value is updated with "2"
     let odd_up_frame_sv_id = Component::schema_variant_id(ctx, odd_up_frame.id())
         .await

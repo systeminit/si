@@ -677,7 +677,7 @@ impl NodeWeight {
         Ok(NodeWeight::FuncArgument(FuncArgumentNodeWeight::new(
             change_set,
             func_arg_id,
-            ContentAddress::Func(content_hash),
+            ContentAddress::FuncArg(content_hash),
             name.as_ref().to_string(),
         )?))
     }

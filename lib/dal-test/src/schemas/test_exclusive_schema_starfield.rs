@@ -10,7 +10,9 @@ use si_pkg::{
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
 
-pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_starfield(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut starfield_builder = PkgSpec::builder();
 
     let schema_name = "starfield";

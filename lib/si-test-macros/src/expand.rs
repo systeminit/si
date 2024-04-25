@@ -139,7 +139,7 @@ fn expand_tracing_init() -> TokenStream {
     let span_events_env_var = SPAN_EVENTS_ENV_VAR;
     let log_env_var = LOG_ENV_VAR;
     quote! {
-        ::dal_test::helpers::tracing_init(#span_events_env_var, #log_env_var);
+        ::dal_test::expand_helpers::tracing_init(#span_events_env_var, #log_env_var);
     }
 }
 
@@ -496,7 +496,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default()
                     .await
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
-                let r = ::dal_test::helpers::workspace_signup(&ctx).await?;
+                let r = ::dal_test::expand_helpers::workspace_signup(&ctx).await?;
                 ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit workspace_signup")?;
@@ -544,7 +544,7 @@ pub(crate) trait FnSetupExpander {
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
-                ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
+                ::dal_test::expand_helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
                 ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit create_change_set_and_update_ctx")?;
@@ -575,7 +575,7 @@ pub(crate) trait FnSetupExpander {
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
-                ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
+                ::dal_test::expand_helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
                 ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit create_change_set_and_update_ctx_mut")?;

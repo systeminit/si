@@ -67,7 +67,6 @@ export interface SaveFuncResponse {
   isRevertible: boolean;
   types: string;
   associations?: FuncAssociations;
-  success: boolean;
 }
 
 export interface DeleteFuncResponse {

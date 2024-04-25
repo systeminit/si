@@ -1,8 +1,11 @@
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
+    use petgraph::prelude::EdgeRef;
+    use petgraph::Outgoing;
     use pretty_assertions_sorted::assert_eq;
     use si_events::ContentHash;
+    use std::collections::HashMap;
 
     use crate::change_set::ChangeSet;
     use crate::workspace_snapshot::conflict::Conflict;
@@ -12,7 +15,7 @@ mod test {
     };
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
-    use crate::WorkspaceSnapshotGraph;
+    use crate::{PropKind, WorkspaceSnapshotGraph};
 
     #[derive(Debug, PartialEq)]
     struct ConflictsAndUpdates {
@@ -2405,6 +2408,190 @@ mod test {
                     edge_weight: ordinal_edge_weight,
                 }
             ],
+            updates
+        );
+    }
+
+    #[test]
+    fn detect_conflicts_and_updates_single_removal_update() {
+        let nodes = ["a", "b", "c"];
+        let edges = [(None, "a"), (None, "b"), (Some("a"), "c"), (Some("c"), "b")];
+
+        let base_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
+        let base_change_set = &base_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        // Add all nodes from the slice and store their references in a hash map.
+        let mut node_id_map = HashMap::new();
+        for node in nodes {
+            // "props" here are just nodes that are easy to create and render the name on the dot
+            // output. there is no domain modeling in this test.
+            let node_id = base_change_set
+                .generate_ulid()
+                .expect("Unable to generate Ulid");
+            let prop_node_weight = NodeWeight::new_prop(
+                base_change_set,
+                node_id,
+                PropKind::Object,
+                node,
+                ContentHash::new(node.as_bytes()),
+            )
+            .expect("create prop node weight");
+            base_graph
+                .add_node(prop_node_weight)
+                .expect("Unable to add prop");
+
+            node_id_map.insert(node, node_id);
+        }
+
+        // Add all edges from the slice.
+        for (source, target) in edges {
+            let source = match source {
+                None => base_graph.root_index,
+                Some(node) => base_graph
+                    .get_node_index_by_id(
+                        node_id_map
+                            .get(node)
+                            .copied()
+                            .expect("source node should have an id"),
+                    )
+                    .expect("get node index by id"),
+            };
+
+            let target = base_graph
+                .get_node_index_by_id(
+                    node_id_map
+                        .get(target)
+                        .copied()
+                        .expect("target node should have an id"),
+                )
+                .expect("get node index by id");
+
+            base_graph
+                .add_edge(
+                    source,
+                    EdgeWeight::new(base_change_set, EdgeWeightKind::new_use())
+                        .expect("create edge weight"),
+                    target,
+                )
+                .expect("add edge");
+        }
+
+        // Clean up the graph before ensuring that it was constructed properly.
+        base_graph.cleanup();
+
+        // Ensure the graph construction worked.
+        for (source, target) in edges {
+            let source_idx = match source {
+                None => base_graph.root_index,
+                Some(node) => base_graph
+                    .get_node_index_by_id(
+                        node_id_map
+                            .get(node)
+                            .copied()
+                            .expect("source node should have an id"),
+                    )
+                    .expect("get node index by id"),
+            };
+
+            let target_idx = base_graph
+                .get_node_index_by_id(
+                    node_id_map
+                        .get(target)
+                        .copied()
+                        .expect("target node should have an id"),
+                )
+                .expect("get node index by id");
+
+            assert!(
+                base_graph
+                    .edges_directed(source_idx, Outgoing)
+                    .any(|edge_ref| edge_ref.target() == target_idx),
+                "An edge from {} to {} should exist",
+                source.unwrap_or("root"),
+                target
+            );
+        }
+        for (_, id) in node_id_map.iter() {
+            let idx_for_node = base_graph
+                .get_node_index_by_id(*id)
+                .expect("able to get idx by id");
+            base_graph
+                .get_node_weight(idx_for_node)
+                .expect("node with weight in graph");
+        }
+
+        // Cache all IDs for later.
+        let a_id = *node_id_map.get("a").expect("could not get node id");
+        let b_id = *node_id_map.get("b").expect("could not get node id");
+        let c_id = *node_id_map.get("c").expect("could not get node id");
+
+        // Prepare the graph for "forking" and fork it. Create a new change set after.
+        base_graph
+            .mark_graph_seen(base_change_set.vector_clock_id())
+            .expect("could not mark as seen");
+        let mut new_graph = base_graph.clone();
+        let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = &new_change_set;
+
+        // Remove the first edge involving "c".
+        let a_idx = new_graph
+            .get_node_index_by_id(a_id)
+            .expect("could not get node index by id");
+        let c_idx = new_graph
+            .get_node_index_by_id(c_id)
+            .expect("could not get node index by id");
+        new_graph
+            .remove_edge(
+                new_change_set,
+                a_idx,
+                c_idx,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .expect("could not remove edge");
+
+        // Remove the second edge involving "c".
+        let b_idx = new_graph
+            .get_node_index_by_id(b_id)
+            .expect("could not get node index by id");
+        let c_idx = new_graph
+            .get_node_index_by_id(c_id)
+            .expect("could not get node index by id");
+        new_graph
+            .remove_edge(
+                new_change_set,
+                c_idx,
+                b_idx,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .expect("could not remove edge");
+
+        // Perform the removal
+        new_graph.remove_node(c_idx);
+        new_graph.remove_node_id(c_id);
+
+        // Prepare for conflicts and updates detection
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("could not mark graph seen");
+        new_graph.cleanup();
+
+        let (conflicts, updates) = base_graph
+            .detect_conflicts_and_updates(
+                base_change_set.vector_clock_id(),
+                &new_graph,
+                new_change_set.vector_clock_id(),
+            )
+            .expect("Unable to detect conflicts and updates");
+
+        assert!(conflicts.is_empty());
+        assert_eq!(
+            vec![Update::RemoveEdge {
+                source: a_idx,
+                destination: c_idx,
+                edge_kind: EdgeWeightKindDiscriminants::Use,
+            }],
             updates
         );
     }

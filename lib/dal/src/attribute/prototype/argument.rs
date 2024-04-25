@@ -294,8 +294,8 @@ impl AttributePrototypeArgument {
                 .await?
                 .get_func_argument_node_weight()
             {
-                Ok(content_node_weight) => {
-                    return Ok(content_node_weight.id().into());
+                Ok(func_argument_node_weight) => {
+                    return Ok(func_argument_node_weight.id().into());
                 }
                 Err(NodeWeightError::UnexpectedNodeWeightVariant(_, _)) => continue,
                 Err(e) => Err(e)?,

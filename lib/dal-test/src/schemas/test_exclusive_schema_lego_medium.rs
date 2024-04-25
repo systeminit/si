@@ -10,7 +10,9 @@ use si_pkg::{
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
 
-pub async fn migrate_test_exclusive_schema_medium_odd_lego(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
     let mut medium_lego_builder = PkgSpec::builder();
 
     let schema_name = "medium odd lego";
@@ -230,7 +232,7 @@ pub async fn migrate_test_exclusive_schema_medium_odd_lego(ctx: &DalContext) -> 
 
     Ok(())
 }
-pub async fn migrate_test_exclusive_schema_medium_even_lego(
+pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
     ctx: &DalContext,
 ) -> BuiltinsResult<()> {
     let mut medium_lego_builder = PkgSpec::builder();

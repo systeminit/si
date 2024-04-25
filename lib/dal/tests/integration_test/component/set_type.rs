@@ -1,6 +1,6 @@
 use dal::{ComponentType, DalContext};
+use dal_test::helpers::create_component_for_schema_name;
 use dal_test::test;
-use dal_test::test_harness::create_component_for_schema_name;
 
 #[test]
 async fn set_type(ctx: &mut DalContext) {

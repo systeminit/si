@@ -1,3 +1,9 @@
+//! This module contains two-way "bag" structs used for the [`Func`](crate::Func) authoring
+//! experience. The addition, mutation, deletion and overall existence of these bags dictates what
+//! the frontend should display as well as what the user would like to change.
+//!
+//! These bags are carried by [`FuncAssociations`](crate::func::FuncAssociations).
+
 use serde::{Deserialize, Serialize};
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -5,7 +11,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::attribute::prototype::AttributePrototypeEventualParent;
-use crate::func::argument::FuncArgumentId;
+use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
 use crate::func::associations::FuncAssociationsResult;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, InputSocketId,
@@ -14,13 +20,22 @@ use crate::{
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeArgumentView {
+pub struct FuncArgumentBag {
+    pub id: FuncArgumentId,
+    pub name: String,
+    pub kind: FuncArgumentKind,
+    pub element_kind: Option<FuncArgumentKind>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeArgumentBag {
     pub func_argument_id: FuncArgumentId,
     pub id: AttributePrototypeArgumentId,
     pub input_socket_id: Option<InputSocketId>,
 }
 
-impl AttributePrototypeArgumentView {
+impl AttributePrototypeArgumentBag {
     pub async fn assemble(
         ctx: &DalContext,
         id: AttributePrototypeArgumentId,
@@ -51,16 +66,16 @@ impl AttributePrototypeArgumentView {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeView {
+pub struct AttributePrototypeBag {
     pub id: AttributePrototypeId,
     pub component_id: Option<ComponentId>,
     pub schema_variant_id: Option<SchemaVariantId>,
     pub prop_id: Option<PropId>,
     pub output_socket_id: Option<OutputSocketId>,
-    pub prototype_arguments: Vec<AttributePrototypeArgumentView>,
+    pub prototype_arguments: Vec<AttributePrototypeArgumentBag>,
 }
 
-impl AttributePrototypeView {
+impl AttributePrototypeBag {
     pub async fn assemble(
         ctx: &DalContext,
         id: AttributePrototypeId,
@@ -89,7 +104,7 @@ impl AttributePrototypeView {
         let mut prototype_arguments = Vec::new();
         for attribute_prototype_argument_id in attribute_prototype_argument_ids {
             prototype_arguments.push(
-                AttributePrototypeArgumentView::assemble(ctx, attribute_prototype_argument_id)
+                AttributePrototypeArgumentBag::assemble(ctx, attribute_prototype_argument_id)
                     .await?,
             );
         }

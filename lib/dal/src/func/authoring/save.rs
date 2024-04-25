@@ -8,12 +8,9 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
-use crate::func::associations::FuncAssociations;
-use crate::func::authoring::{
-    FuncAuthoringError, FuncAuthoringResult, RemovedPrototypeOp, SavedFunc,
-};
-use crate::func::view::{FuncArgumentView, FuncView};
-use crate::func::{AttributePrototypeArgumentView, AttributePrototypeView, FuncKind};
+use crate::func::associations::{FuncArgumentBag, FuncAssociations};
+use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult, RemovedPrototypeOp};
+use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
@@ -30,7 +27,7 @@ pub(crate) async fn save_func(
     description: Option<String>,
     code: Option<String>,
     associations: Option<FuncAssociations>,
-) -> FuncAuthoringResult<SavedFunc> {
+) -> FuncAuthoringResult<()> {
     let func = Func::get_by_id_or_error(ctx, id).await?;
 
     // TODO(nick): we should eventually either return an error or make it a no-op.
@@ -135,18 +132,7 @@ pub(crate) async fn save_func(
         }
     }
 
-    let view = FuncView::assemble(ctx, &func).await?;
-    let associations = view.associations;
-    let types = view.types;
-    let is_revertible = view.is_revertible;
-
-    Ok(SavedFunc {
-        associations,
-        // TODO(nick): check if this is useful in the frontend.
-        success: true,
-        is_revertible,
-        types,
-    })
+    Ok(())
 }
 
 async fn save_action_func_prototypes(
@@ -202,7 +188,7 @@ async fn save_auth_func_prototypes(
 async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
-    prototype_views: Vec<AttributePrototypeView>,
+    prototype_views: Vec<AttributePrototypeBag>,
     removed_protoype_op: RemovedPrototypeOp,
     _key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
@@ -270,7 +256,7 @@ async fn remove_or_reset_attr_prototype(
 async fn save_attr_func_arguments(
     ctx: &DalContext,
     func: &Func,
-    arguments: Vec<FuncArgumentView>,
+    arguments: Vec<FuncArgumentBag>,
 ) -> FuncAuthoringResult<()> {
     let mut id_set = HashSet::new();
     for arg in &arguments {
@@ -329,7 +315,7 @@ async fn save_leaf_prototypes(
             func,
         )
         .await?;
-        views.push(AttributePrototypeView::assemble(ctx, attribute_prototype_id).await?);
+        views.push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
     }
 
     let key = Some(func.name.to_owned());
@@ -342,7 +328,7 @@ async fn save_leaf_prototypes(
 async fn save_attr_func_proto_arguments(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
-    arguments: Vec<AttributePrototypeArgumentView>,
+    arguments: Vec<AttributePrototypeArgumentBag>,
 ) -> FuncAuthoringResult<()> {
     let mut id_set = HashSet::new();
     for arg in &arguments {
@@ -354,7 +340,7 @@ async fn save_attr_func_proto_arguments(
         }
 
         // Ensure the func argument exists before continuing.
-        if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
+        if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
             match err {
                 FuncArgumentError::WorkspaceSnapshot(
                     WorkspaceSnapshotError::WorkspaceSnapshotGraph(
