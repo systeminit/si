@@ -26,7 +26,6 @@ pub struct SaveFuncRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct SaveFuncResponse {
-    is_revertible: bool,
     types: String,
     associations: Option<FuncAssociations>,
 }
@@ -79,7 +78,6 @@ pub async fn save_func(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&SaveFuncResponse {
-        is_revertible: func_view.is_revertible,
         types: func_view.types,
         associations: func_view.associations,
     })?)?)

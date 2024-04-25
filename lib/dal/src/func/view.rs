@@ -28,7 +28,6 @@ pub struct FuncView {
     pub code: Option<String>,
     pub types: String,
     pub is_builtin: bool,
-    pub is_revertible: bool,
     pub associations: Option<FuncAssociations>,
 }
 
@@ -54,7 +53,6 @@ impl FuncView {
             description: func.description.as_ref().map(|d| d.to_owned()),
             code: func.code_plaintext()?,
             is_builtin: func.builtin,
-            is_revertible: func.is_revertible(ctx).await?,
             associations,
             types,
         })

@@ -22,7 +22,6 @@ pub mod save_func;
 // pub mod delete_func;
 // pub mod execute;
 // pub mod list_input_sources;
-// pub mod revert_func;
 // pub mod save_and_exec;
 
 #[remain::sorted]
@@ -128,7 +127,6 @@ pub fn routes() -> Router<AppState> {
     //         .route("/delete_func", post(delete_func::delete_func))
     //         .route("/save_and_exec", post(save_and_exec::save_and_exec))
     //         .route("/execute", post(execute::execute))
-    //         .route("/revert_func", post(revert_func::revert_func))
     //         .route(
     //             "/list_input_sources",
     //             get(list_input_sources::list_input_sources),

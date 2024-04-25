@@ -7,9 +7,8 @@ use dal::property_editor::schema::{
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use dal::{
-    Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    InputSocket, KeyPair, OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserClaim,
-    UserPk,
+    Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Schema, SchemaVariant,
+    SchemaVariantId, User, UserClaim, UserPk,
 };
 use itertools::enumerate;
 use jwt_simple::algorithms::RSAKeyPairLike;
@@ -80,25 +79,6 @@ pub async fn create_user(ctx: &DalContext) -> User {
 pub async fn create_schema(ctx: &DalContext) -> Schema {
     let name = generate_fake_name();
     Schema::new(ctx, &name).await.expect("cannot create schema")
-}
-
-/// Creates an "empty" [`Func`] with [`FuncKind::Action`](dal::func::FuncKind::Action).
-pub async fn create_empty_action_func(ctx: &DalContext) -> Func {
-    Func::new(
-        ctx,
-        generate_fake_name(),
-        None::<String>,
-        None::<String>,
-        None::<String>,
-        false,
-        false,
-        FuncBackendKind::JsAction,
-        FuncBackendResponseType::Action,
-        None::<String>,
-        None::<String>,
-    )
-    .await
-    .expect("could not create func")
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided

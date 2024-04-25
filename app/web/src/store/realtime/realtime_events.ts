@@ -238,10 +238,6 @@ export type WsEventPayloadMap = {
     funcId: FuncId;
     changeSetId: ChangeSetId;
   };
-  FuncReverted: {
-    funcId: FuncId;
-    changeSetId: ChangeSetId;
-  };
   FuncSaved: {
     funcId: FuncId;
     changeSetId: ChangeSetId;

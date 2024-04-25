@@ -62,18 +62,6 @@
               />
 
               <VButton
-                class="--tone-neutral"
-                :disabled="!isRevertible"
-                icon="x"
-                size="md"
-                loadingText="Reverting..."
-                label="Revert"
-                :requestStatus="revertFuncReqStatus"
-                successText="Finished"
-                @click="revertFunc"
-              />
-
-              <VButton
                 v-if="schemaVariantId"
                 :loading="isDetaching"
                 tone="destructive"
@@ -355,10 +343,6 @@ watch(
   },
 );
 
-const isRevertible = computed(() =>
-  funcId.value ? funcStore.funcDetailsById[funcId.value]?.isRevertible : false,
-);
-
 const updateFunc = () => {
   if (
     !editingFunc.value ||
@@ -366,14 +350,6 @@ const updateFunc = () => {
   )
     return;
   funcStore.UPDATE_FUNC(editingFunc.value);
-};
-
-const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
-const revertFunc = async () => {
-  if (!funcId.value) return;
-  await funcStore.REVERT_FUNC(funcId.value);
-  await funcStore.FETCH_FUNC_DETAILS(funcId.value);
-  resetEditingFunc();
 };
 
 const isConnectedToOtherAssetTypes = computed(() => {

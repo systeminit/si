@@ -41,7 +41,6 @@ export type FuncSummary = {
 export type FuncWithDetails = FuncSummary & {
   code: string;
   types: string;
-  isRevertible: boolean;
   associations?: FuncAssociations;
 };
 
@@ -64,7 +63,6 @@ export type FuncExecutionLog = {
 };
 
 export interface SaveFuncResponse {
-  isRevertible: boolean;
   types: string;
   associations?: FuncAssociations;
 }
@@ -424,7 +422,6 @@ export const useFuncStore = () => {
               }
 
               func.associations = response.associations;
-              func.isRevertible = response.isRevertible;
               this.funcDetailsById[func.id] = func;
 
               // Forces a reload if the types have changed (reloads typescript compiler)
@@ -432,19 +429,6 @@ export const useFuncStore = () => {
                 this.FETCH_FUNC_DETAILS(func.id);
               }
             },
-          });
-        },
-
-        async REVERT_FUNC(funcId: FuncId) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
-          return new ApiRequest<{ success: true }>({
-            method: "post",
-            url: "func/revert_func",
-            params: { id: funcId, ...visibility },
           });
         },
 
@@ -470,7 +454,6 @@ export const useFuncStore = () => {
               const func = this.funcDetailsById[funcId];
               if (func) {
                 func.associations = response.associations;
-                func.isRevertible = response.isRevertible;
                 this.funcDetailsById[funcId] = func;
               }
             },
@@ -690,13 +673,6 @@ export const useFuncStore = () => {
           },
           {
             eventType: "FuncDeleted",
-            callback: (data) => {
-              if (data.changeSetId !== selectedChangeSetId) return;
-              this.FETCH_FUNC_LIST();
-            },
-          },
-          {
-            eventType: "FuncReverted",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
