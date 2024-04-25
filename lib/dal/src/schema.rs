@@ -146,7 +146,7 @@ impl Schema {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn get_default_schema_variant(
+    pub async fn get_default_schema_variant_id(
         &self,
         ctx: &DalContext,
     ) -> SchemaResult<Option<SchemaVariantId>> {

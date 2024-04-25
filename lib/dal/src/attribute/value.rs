@@ -88,7 +88,6 @@ use super::prototype::argument::{
 
 pub mod debug;
 pub mod dependent_value_graph;
-pub mod view;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -659,7 +658,7 @@ impl AttributeValue {
         // We need the associated [`ComponentId`] for this function--this is how we resolve and
         // prepare before functions
         let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, &associated_component_id)
+        let before = before_funcs_for_component(ctx, associated_component_id)
             .await
             .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
 
@@ -699,7 +698,7 @@ impl AttributeValue {
         let processed_value = match value_is_for {
             ValueIsFor::Prop(prop_id) => match &unprocessed_value {
                 Some(unprocessed_value) => {
-                    let prop = Prop::get_by_id(ctx, prop_id).await?;
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                     match prop.kind {
                         PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
                         PropKind::Array => Some(serde_json::json!([])),
@@ -1135,7 +1134,7 @@ impl AttributeValue {
                             attribute_value_id,
                         ),
                     )?;
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
                 (prop.kind, prop_id)
             };
@@ -1851,7 +1850,7 @@ impl AttributeValue {
         };
 
         let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, &associated_component_id)
+        let before = before_funcs_for_component(ctx, associated_component_id)
             .await
             .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
 
@@ -2164,7 +2163,7 @@ impl AttributeValue {
 
             let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
 
-            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
+            let parent_prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
             if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
                 return Ok(None);
@@ -2245,7 +2244,7 @@ impl AttributeValue {
         while let Some(mut attribute_value_id) = work_queue.pop_front() {
             let attribute_path = match Self::is_for(ctx, attribute_value_id).await? {
                 ValueIsFor::Prop(prop_id) => {
-                    let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
+                    let prop_name = Prop::get_by_id_or_error(ctx, prop_id).await?.name;
                     let attribute_path = AttributeValuePath::Prop {
                         path: prop_name,
                         key_or_index: None,

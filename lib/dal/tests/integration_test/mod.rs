@@ -9,6 +9,7 @@ mod cycle_check_guard;
 mod dependent_values_update;
 mod frame;
 mod func;
+mod input_sources;
 mod module;
 mod prop;
 mod property_editor;

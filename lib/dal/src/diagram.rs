@@ -23,11 +23,6 @@ use crate::{
     OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, StandardModelError,
 };
 
-//pub(crate) mod summary_diagram;
-
-// TODO(nick): this module eventually goes the way of the dinosaur.
-// pub mod connection;
-
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {

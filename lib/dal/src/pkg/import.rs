@@ -1941,14 +1941,14 @@ async fn set_default_schema_variant_id(
 ) -> PkgResult<()> {
     match (change_set_id, variant_unique_id, spec_default_unique_id) {
         (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
-            if schema.get_default_schema_variant(ctx).await?.is_none() {
+            if schema.get_default_schema_variant_id(ctx).await?.is_none() {
                 schema.set_default_schema_variant(ctx, variant_id).await?;
             }
         }
         (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
             if variant_unique_id == spec_default_unique_id {
                 let current_default_variant_id = schema
-                    .get_default_schema_variant(ctx)
+                    .get_default_schema_variant_id(ctx)
                     .await?
                     .unwrap_or(SchemaVariantId::NONE);
 
@@ -2946,7 +2946,7 @@ async fn get_prototype_for_context(
                 key.to_owned().expect("check above ensures this is some"),
             ))?,
         };
-        let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
+        let map_prop = Prop::get_by_id_or_error(ctx, map_prop_id).await?;
 
         if map_prop.kind != PropKind::Map {
             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
@@ -3288,7 +3288,7 @@ async fn create_prop(
                     )
                     .await?
                 }
-                Some(prop_id) => Prop::get_by_id(ctx.ctx, prop_id).await?,
+                Some(prop_id) => Prop::get_by_id_or_error(ctx.ctx, prop_id).await?,
             }
         }
     };

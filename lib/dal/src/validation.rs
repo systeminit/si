@@ -263,7 +263,7 @@ impl ValidationOutput {
                 .await
                 .map_err(|e| ValidationError::AttributeValue(e.to_string()))?
             {
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 prop.validation_format
             } else {
                 None

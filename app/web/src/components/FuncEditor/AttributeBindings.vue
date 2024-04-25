@@ -200,9 +200,8 @@ const prototypeViews = computed(() =>
 
       const args = proto.prototypeArguments.map((arg) => ({
         name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
-        prop: arg.inputSocketId
-          ? funcStore.inputSocketIdToSourceName(arg.inputSocketId) ?? "none"
-          : "none",
+        // TODO(nick): re-evaluate this when prop id is added back to the attribute prototype argument bag.
+        prop: arg.inputSocketId ?? "none",
       }));
 
       return {

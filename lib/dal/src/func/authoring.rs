@@ -40,23 +40,29 @@
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::OutputStream;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentError;
 use crate::func::associations::{FuncAssociations, FuncAssociationsError};
+use crate::func::binding::FuncBindingError;
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::{
-    AttributePrototypeId, ComponentError, DalContext, DeprecatedActionKind,
+    AttributePrototypeId, ComponentError, ComponentId, DalContext, DeprecatedActionKind,
     DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
-    OutputSocketId, PropId, SchemaVariantError, SchemaVariantId,
+    OutputSocketId, PropId, SchemaVariantError, SchemaVariantId, TransactionsError, WsEventError,
 };
 
 mod create;
+mod dummy_execute;
+mod execute;
 mod save;
-mod types;
+mod ts_types;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -80,8 +86,12 @@ pub enum FuncAuthoringError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument must exist before using it in an attribute prototype argument: {0}")]
+    FuncArgumentMustExist(AttributePrototypeArgumentId),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
     #[error("Function options are incompatible with variant")]
@@ -90,12 +100,18 @@ pub enum FuncAuthoringError {
     FuncView(#[from] FuncViewError),
     #[error("invalid func kind for creation: {0}")]
     InvalidFuncKindForCreation(FuncKind),
-    #[error("func is read-only")]
-    NotWritable,
+    #[error("func ({0}) is not runnable with kind: {1}")]
+    NotRunnable(FuncId, FuncKind),
+    #[error("func is read-only: {0}")]
+    NotWritable(FuncId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("unexpected func kind ({0}) creating attribute func")]
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 type FuncAuthoringResult<T> = Result<T, FuncAuthoringError>;
@@ -116,7 +132,26 @@ impl FuncAuthoringClient {
         create::create_func(ctx, kind, name, options).await
     }
 
-    /// Saves a [`Func`] and returns the [result](SavedFunc).
+    /// Performs a "dummy" [`Func`] execution and returns the [result](DummyExecutionResult).
+    #[instrument(name = "func.authoring.dummy_execute_func", level = "info", skip_all)]
+    pub async fn dummy_execute_func(
+        ctx: &DalContext,
+        id: FuncId,
+        args: serde_json::Value,
+        execution_key: String,
+        code: String,
+        component_id: ComponentId,
+    ) -> FuncAuthoringResult<DummyExecutionResult> {
+        dummy_execute::dummy_execute_func(ctx, id, args, execution_key, code, component_id).await
+    }
+
+    /// Executes a [`Func`].
+    #[instrument(name = "func.authoring.execute_func", level = "info", skip_all)]
+    pub async fn execute_func(ctx: &DalContext, id: FuncId) -> FuncAuthoringResult<()> {
+        execute::execute_func(ctx, id).await
+    }
+
+    /// Saves a [`Func`].
     #[instrument(name = "func.authoring.save_func", level = "info", skip_all)]
     pub async fn save_func(
         ctx: &DalContext,
@@ -132,7 +167,7 @@ impl FuncAuthoringClient {
 
     /// Compiles types corresponding to "lang-js".
     pub fn compile_langjs_types() -> &'static str {
-        types::compile_langjs_types()
+        ts_types::compile_langjs_types()
     }
 
     /// Compiles return types based on a [`FuncBackendResponseType`] and [`FuncBackendKind`].
@@ -140,7 +175,7 @@ impl FuncAuthoringClient {
         response_type: FuncBackendResponseType,
         kind: FuncBackendKind,
     ) -> &'static str {
-        types::compile_return_types(response_type, kind)
+        ts_types::compile_return_types(response_type, kind)
     }
 }
 
@@ -192,6 +227,22 @@ pub enum CreateFuncOptions {
     CodeGenerationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     QualificationOptions { schema_variant_id: SchemaVariantId },
+}
+
+/// The result of a [`dummy execution`](FuncAuthoringClient::dummy_execute).
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DummyExecutionResult {
+    /// The ID of the [`Func`](crate::Func) that was executed.
+    pub id: FuncId,
+    /// The serialized arguments provided as inputs to the [`Func`](crate::Func).
+    pub args: serde_json::Value,
+    /// The serialized output of the execution.
+    pub output: serde_json::Value,
+    /// The key for the execution (e.g. a randomized string that the user keeps track of).
+    pub execution_key: String,
+    /// The logs corresponding to the output stream of the execution.
+    pub logs: Vec<OutputStream>,
 }
 
 /// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and

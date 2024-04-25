@@ -74,6 +74,8 @@ pub enum WorkspaceSnapshotError {
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("ordering not found for node with ordered children: {0}")]
+    OrderingNotFound(Ulid),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("postcard error: {0}")]

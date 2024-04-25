@@ -80,7 +80,7 @@ async fn module_export_simple(ctx: &mut DalContext) {
         .expect("schema not found");
 
     let default_schema_variant = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("Unable to find the default schema variant id");
 

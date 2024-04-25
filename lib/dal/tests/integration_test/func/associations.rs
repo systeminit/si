@@ -15,7 +15,7 @@ async fn for_action(ctx: &mut DalContext) {
         .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
@@ -47,7 +47,7 @@ async fn for_attribute(ctx: &mut DalContext) {
         .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
@@ -140,7 +140,7 @@ async fn for_authentication(ctx: &mut DalContext) {
         .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
@@ -171,7 +171,7 @@ async fn for_code_generation(ctx: &mut DalContext) {
         .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
@@ -204,7 +204,7 @@ async fn for_qualification(ctx: &mut DalContext) {
         .expect("could not perform find by name")
         .expect("no schema found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");

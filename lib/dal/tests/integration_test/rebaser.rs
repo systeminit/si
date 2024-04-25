@@ -230,7 +230,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to get func by id");
 
-    Func::remove(ctx, func.id)
+    Func::delete_by_id(ctx, func.id)
         .await
         .expect("able to remove func");
 

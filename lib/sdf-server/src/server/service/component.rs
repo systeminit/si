@@ -42,72 +42,28 @@ pub mod set_type;
 pub enum ComponentError {
     #[error("action prototype: {0}")]
     ActionPrototype(#[from] DeprecatedActionPrototypeError),
-    // #[error("attribute context builder error: {0}")]
-    // AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    // #[error("attribute prototype error: {0}")]
-    // AttributePrototype(#[from] AttributePrototypeError),
-    // #[error("attribute prototype argument error: {0}")]
-    // AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    // #[error("attribute prototype not found")]
-    // AttributePrototypeNotFound,
     #[error("attribute debug view error: {0}")]
     AttributeDebugViewError(#[from] AttributeDebugViewError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    // #[error("attribute value not found")]
-    // AttributeValueNotFound,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    // #[error("change status error: {0}")]
-    // ChangeStatus(#[from] ChangeStatusError),
-    // #[error("component debug view error: {0}")]
-    // ComponentDebug(String),
     #[error("component debug view error: {0}")]
     ComponentDebugView(#[from] ComponentDebugViewError),
-    // #[error("component name not found")]
-    // ComponentNameNotFound,
-    // #[error("component view error: {0}")]
-    // ComponentView(#[from] ComponentViewError),
     #[error("dal component error: {0}")]
     DalComponent(#[from] DalComponentError),
-    // #[error("dal schema error: {0}")]
-    // DalSchema(#[from] DalSchemaError),
-    // #[error("diagram error: {0}")]
-    // Diagram(#[from] DiagramError),
-    // #[error("func error: {0}")]
-    // Func(#[from] FuncError),
-    // #[error("func binding error: {0}")]
-    // FuncBinding(#[from] FuncBindingError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
-    // #[error("identity func not found")]
-    // IdentityFuncNotFound,
-    // #[error("invalid request")]
-    // InvalidRequest,
     #[error("invalid visibility")]
     InvalidVisibility,
-    // #[error("property value key not found")]
-    // KeyNotFound,
-    // #[error(transparent)]
-    // Nats(#[from] si_data_nats::NatsError),
-    // #[error("node error: {0}")]
-    // Node(#[from] NodeError),
     #[error("component not found for id: {0}")]
     NotFound(ComponentId),
-    // #[error(transparent)]
-    // Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     Prop(#[from] PropError),
     #[error("property editor error: {0}")]
     PropertyEditor(#[from] PropertyEditorError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
-    // #[error("reconciliation prototype: {0}")]
-    // ReconciliationPrototype(#[from] ReconciliationPrototypeError),
-    // #[error("can't delete attribute value for root prop")]
-    // RootPropAttributeValue,
-    // #[error("schema error: {0}")]
-    // Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]
@@ -116,8 +72,6 @@ pub enum ComponentError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    // #[error("system id is required: ident_nil_v1() was provided")]
-    // SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("validation resolver error: {0}")]
@@ -126,7 +80,7 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
+pub type ComponentResult<T> = Result<T, ComponentError>;
 
 impl IntoResponse for ComponentError {
     fn into_response(self) -> Response {

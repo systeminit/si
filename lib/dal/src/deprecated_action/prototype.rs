@@ -358,7 +358,7 @@ impl DeprecatedActionPrototype {
             }
         }
 
-        let before = before_funcs_for_component(ctx, &component_id).await?;
+        let before = before_funcs_for_component(ctx, component_id).await?;
 
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,

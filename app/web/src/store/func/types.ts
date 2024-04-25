@@ -62,13 +62,13 @@ export type FuncAssociations =
   | CodeGenerationAssociations
   | QualificationAssociations;
 
-export interface InputSourceSocket {
+export interface InputSocketView {
   schemaVariantId: string;
   inputSocketId: string;
   name: string;
 }
 
-export interface OutputSocket {
+export interface OutputSocketView {
   schemaVariantId: string;
   outputSocketId: string;
   name: string;
@@ -78,7 +78,6 @@ export interface InputSourceProp {
   propId: string;
   kind: PropKind;
   schemaVariantId: string;
-  inputSocketId?: string;
   path: string;
   name: string;
 }

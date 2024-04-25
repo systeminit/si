@@ -315,7 +315,7 @@ impl PropertyEditorValue {
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
-        let prop = Prop::get_by_id(ctx, self.prop_id.into()).await?;
+        let prop = Prop::get_by_id_or_error(ctx, self.prop_id.into()).await?;
         Ok(prop)
     }
 }

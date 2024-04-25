@@ -43,10 +43,10 @@ type BeforeFuncResult<T> = Result<T, BeforeFuncError>;
 
 pub async fn before_funcs_for_component(
     ctx: &DalContext,
-    component_id: &ComponentId,
+    component_id: ComponentId,
 ) -> BeforeFuncResult<Vec<BeforeFunction>> {
     let secret_props = {
-        let schema_variant = Component::schema_variant_id(ctx, *component_id).await?;
+        let schema_variant = Component::schema_variant_id(ctx, component_id).await?;
         let secrets_prop =
             SchemaVariant::find_root_child_prop_id(ctx, schema_variant, RootPropChild::Secrets)
                 .await?;
@@ -69,7 +69,7 @@ pub async fn before_funcs_for_component(
         let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
         let mut maybe_secret_id = None;
         for av_id in av_ids {
-            if AttributeValue::component_id(ctx, av_id).await? != *component_id {
+            if AttributeValue::component_id(ctx, av_id).await? != component_id {
                 continue;
             }
 
@@ -123,7 +123,7 @@ async fn auth_funcs_for_secret_prop_id(
     secret_definition_path: &PropPath,
     secret_path: &PropPath,
 ) -> BeforeFuncResult<Vec<Func>> {
-    let secret_prop = Prop::get_by_id(ctx, secret_prop_id).await?;
+    let secret_prop = Prop::get_by_id_or_error(ctx, secret_prop_id).await?;
 
     let secret_definition_name = secret_prop
         .widget_options
@@ -144,7 +144,7 @@ async fn auth_funcs_for_secret_prop_id(
         let secrets_prop = Prop::find_prop_by_path(ctx, secret_defining_sv_id, secret_path).await?;
 
         let secret_child_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop.id).await?;
-        let secret_child_prop = Prop::get_by_id(ctx, secret_child_prop_id).await?;
+        let secret_child_prop = Prop::get_by_id_or_error(ctx, secret_child_prop_id).await?;
 
         if secret_child_prop.name != secret_definition_name {
             continue;

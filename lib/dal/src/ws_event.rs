@@ -11,6 +11,7 @@ use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
     ComponentUpdatedPayload,
 };
+use crate::func::FuncWsEventPayload;
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{SchemaVariantClonedPayload, SchemaVariantCreatedPayload};
 use crate::status::StatusUpdate;
@@ -85,6 +86,7 @@ pub enum WsPayload {
     DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),
     DeprecatedActionRemoved(ActionId),
     DeprecatedActionRunnerReturn(ActionRunnerReturn),
+    FuncDeleted(FuncWsEventPayload),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),

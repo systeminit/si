@@ -32,7 +32,7 @@ async fn get_schema_variant(ctx: &DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant");
 
