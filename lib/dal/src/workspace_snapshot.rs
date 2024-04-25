@@ -31,6 +31,7 @@ pub mod update;
 pub mod vector_clock;
 
 use si_pkg::KeyOrIndex;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -125,13 +126,41 @@ pub struct WorkspaceSnapshot {
     /// implemenations of Deref and DerefMut, and their construction in
     /// working_copy()/working_copy_mut()
     working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraph>>>,
+
+    /// Whether we should perform cycle checks on add edge operations
+    cycle_check: Arc<AtomicBool>,
 }
 
+/// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
+/// will reset the cycle check to false on drop, if nothing else is holding onto
+/// the cycle check besides the guard being dropped and the workspace snapshot.
+/// We are not being completely atomic in our check, so in concurrent situations
+/// we might turn off a cycle check that wants to stay enabled. However the main
+/// purpose is to ensure we disable the cycle check automatically on early
+/// returns (for errors, for example), and we only enable the cycle check in
+/// very narrow situations. If we want to support concurrency here better we can
+/// do so in the future.
+#[must_use = "if unused the cycle check will be immediately disabled"]
+pub struct CycleCheckGuard {
+    cycle_check: Arc<AtomicBool>,
+}
+
+impl std::ops::Drop for CycleCheckGuard {
+    fn drop(&mut self) {
+        if Arc::strong_count(&self.cycle_check) <= 2 {
+            self.cycle_check
+                .store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+}
+
+#[must_use = "if unused the lock will be released immediately"]
 struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
     working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
 
+#[must_use = "if unused the lock will be released immediately"]
 struct SnapshotWriteGuard<'a> {
     working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraph>>,
 }
@@ -242,11 +271,34 @@ impl WorkspaceSnapshot {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
             read_only_graph: Arc::new(graph),
             working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
         };
 
         initial.write(ctx, change_set.vector_clock_id()).await?;
 
         Ok(initial)
+    }
+
+    /// Enables cycle checks on calls to [`Self::add_edge`]. Does not force
+    /// cycle checks for every [`WorkspaceSnapshotGrpah::add_edge`] operation if
+    /// there is a consumer of [`WorkspaceSnapshotGraph`] that calls add_edge
+    /// directly. Note that you must hang on to the returned guard or the cycle
+    /// check will be disabled immediately
+    pub async fn enable_cycle_check(&self) -> CycleCheckGuard {
+        self.cycle_check
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        CycleCheckGuard {
+            cycle_check: self.cycle_check.clone(),
+        }
+    }
+
+    pub async fn disable_cycle_check(&self) {
+        self.cycle_check
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub async fn cycle_check(&self) -> bool {
+        self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -320,6 +372,12 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    /// Returns `true` if the graph does not have a cycle in it. This operation
+    /// is relatively expensive but necessary to prevent infinite loops.
+    pub async fn is_acyclic_directed(&self) -> bool {
+        self.working_copy().await.is_acyclic_directed()
+    }
+
     pub async fn add_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy_mut().await.add_node(node)?;
         Ok(new_node_index)
@@ -363,10 +421,17 @@ impl WorkspaceSnapshot {
             .await
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
-        Ok(self
-            .working_copy_mut()
-            .await
-            .add_edge(from_node_index, edge_weight, to_node_index)?)
+        Ok(if self.cycle_check().await {
+            self.working_copy_mut().await.add_edge_with_cycle_check(
+                from_node_index,
+                edge_weight,
+                to_node_index,
+            )?
+        } else {
+            self.working_copy_mut()
+                .await
+                .add_edge(from_node_index, edge_weight, to_node_index)?
+        })
     }
 
     // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
@@ -570,6 +635,7 @@ impl WorkspaceSnapshot {
             address: Arc::new(RwLock::new(workspace_snapshot_addr)),
             read_only_graph: snapshot,
             working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
         })
     }
 

@@ -146,27 +146,16 @@ impl WorkspaceSnapshotGraph {
         self.get_node_index_by_id(node_id)
     }
 
-    pub fn add_edge(
+    fn add_edge_inner(
         &mut self,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
+        cycle_check: bool,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
-        // Temporarily add the edge to the existing tree to see if it would create a cycle.
-        // Configured to run only in tests because it has a major perf impact otherwise
-        #[cfg(test)]
-        {
-            let temp_edge =
-                self.graph
-                    .update_edge(from_node_index, to_node_index, edge_weight.clone());
-
-            let would_create_a_cycle = !self.is_acyclic_directed();
-            self.graph.remove_edge(temp_edge);
-            if would_create_a_cycle {
-                return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
-            }
+        if cycle_check {
+            self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
         }
-
         // Because outgoing edges are part of a node's identity, we create a new "from" node
         // as we are effectively writing to that node (we'll need to update the merkle tree
         // hash), and everything in the graph should be treated as copy-on-write.
@@ -182,6 +171,70 @@ impl WorkspaceSnapshotGraph {
         self.replace_references(from_node_index)?;
 
         Ok(new_edge_index)
+    }
+
+    fn add_temp_edge_cycle_check(
+        &mut self,
+        from_node_index: NodeIndex,
+        edge_weight: EdgeWeight,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let temp_edge = self
+            .graph
+            .update_edge(from_node_index, to_node_index, edge_weight.clone());
+
+        let would_create_a_cycle = !self.is_acyclic_directed();
+        self.graph.remove_edge(temp_edge);
+
+        if would_create_a_cycle {
+            // if you want to find out how the two nodes are already connected,
+            // this will give you that info..
+
+            // let paths: Vec<Vec<NodeIndex>> = petgraph::algo::all_simple_paths(
+            //     &self.graph,
+            //     to_node_index,
+            //     from_node_index,
+            //     0,
+            //     None,
+            // )
+            // .collect();
+
+            // for path in paths {
+            //     for node_index in path {
+            //         let node_weight = self.get_node_weight(node_index).expect("should exist");
+            //         dbg!(node_weight);
+            //     }
+            // }
+
+            Err(WorkspaceSnapshotGraphError::CreateGraphCycle)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn add_edge_with_cycle_check(
+        &mut self,
+        from_node_index: NodeIndex,
+        edge_weight: EdgeWeight,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
+    }
+
+    pub fn add_edge(
+        &mut self,
+        from_node_index: NodeIndex,
+        edge_weight: EdgeWeight,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        // Temporarily add the edge to the existing tree to see if it would create a cycle.
+        // Configured to run only in tests because it has a major perf impact otherwise
+        #[cfg(test)]
+        {
+            self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
+        }
+
+        self.add_edge_inner(from_node_index, edge_weight, to_node_index, false)
     }
 
     pub(crate) fn remove_node_id(&mut self, id: impl Into<Ulid>) {
@@ -1309,8 +1362,7 @@ impl WorkspaceSnapshotGraph {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn is_acyclic_directed(&self) -> bool {
+    pub fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
     }

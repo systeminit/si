@@ -75,9 +75,10 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
-        // detect cycles here?
+        let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
+        drop(cycle_check_guard);
 
         // when detaching a child, need to rerun any attribute prototypes for those impacted sockets then queue up dvu!
 
