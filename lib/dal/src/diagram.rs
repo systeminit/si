@@ -145,6 +145,14 @@ pub struct SummaryDiagramEdge {
     pub deleted_info: serde_json::Value,
     pub to_delete: bool,
 }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramInferredEdge {
+    pub from_component_id: ComponentId,
+    pub from_socket_id: OutputSocketId,
+    pub to_component_id: ComponentId,
+    pub to_socket_id: InputSocketId,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -206,6 +214,7 @@ pub enum DiagramSocketNodeSide {
 pub struct Diagram {
     pub components: Vec<SummaryDiagramComponent>,
     pub edges: Vec<SummaryDiagramEdge>,
+    pub implicit_edges: Vec<SummaryDiagramInferredEdge>,
 }
 
 impl Diagram {
@@ -214,7 +223,7 @@ impl Diagram {
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let mut diagram_sockets: HashMap<SchemaVariantId, serde_json::Value> = HashMap::new();
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
-
+        let mut diagram_implicit_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         let components = Component::list(ctx).await?;
 
         let mut component_views = Vec::with_capacity(components.len());
@@ -234,6 +243,15 @@ impl Diagram {
                     deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
                     to_delete: from_component.to_delete() || component.to_delete(),
                 });
+            }
+
+            for inferred_incoming_connection in component.inferred_connections(ctx).await? {
+                diagram_implicit_edges.push(SummaryDiagramInferredEdge {
+                    from_component_id: inferred_incoming_connection.from_component_id,
+                    from_socket_id: inferred_incoming_connection.from_output_socket_id,
+                    to_component_id: inferred_incoming_connection.to_component_id,
+                    to_socket_id: inferred_incoming_connection.to_input_socket_id,
+                })
             }
 
             let schema_variant = component.schema_variant(ctx).await?;
@@ -350,6 +368,7 @@ impl Diagram {
         Ok(Self {
             edges: diagram_edges,
             components: component_views,
+            implicit_edges: diagram_implicit_edges,
         })
     }
 }

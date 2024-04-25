@@ -40,6 +40,22 @@
           <p v-else>No input sources</p>
         </template>
       </DebugViewItem>
+      <DebugViewItem title="Inferred Connection(s)">
+        <template #data>
+          <ul
+            v-if="data.inferredConnections && data.inferredConnections.length"
+          >
+            <li
+              v-for="connection in data.inferredConnections"
+              :key="connection"
+              :data="connection"
+            >
+              {{ connection }}
+            </li>
+          </ul>
+          <p v-else>No input sources</p>
+        </template>
+      </DebugViewItem>
       <DebugViewItem
         title="Materialized View"
         :data="data.materializedView ?? 'NULL'"

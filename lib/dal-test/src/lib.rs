@@ -736,7 +736,12 @@ async fn migrate_local_builtins(
     schemas::migrate_test_exclusive_schema_validated_input(&ctx).await?;
     schemas::migrate_test_exclusive_schema_validated_output(&ctx).await?;
     schemas::migrate_test_exclusive_schema_bad_validations(&ctx).await?;
-
+    schemas::migrate_test_exclusive_schema_large_odd_lego(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_large_even_lego(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_medium_even_lego(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_medium_odd_lego(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_small_odd_lego(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_small_even_lego(&ctx).await?;
     ctx.blocking_commit().await?;
 
     Ok(())

@@ -6,6 +6,12 @@ pub use test_exclusive_schema_category_validated::migrate_test_exclusive_schema_
 pub use test_exclusive_schema_dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 pub use test_exclusive_schema_fallout::migrate_test_exclusive_schema_fallout;
 pub use test_exclusive_schema_katy_perry::migrate_test_exclusive_schema_katy_perry;
+pub use test_exclusive_schema_lego_large::migrate_test_exclusive_schema_large_even_lego;
+pub use test_exclusive_schema_lego_large::migrate_test_exclusive_schema_large_odd_lego;
+pub use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_medium_even_lego;
+pub use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_medium_odd_lego;
+pub use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_even_lego;
+pub use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_odd_lego;
 pub use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield;
 pub use test_exclusive_schema_swifty::migrate_test_exclusive_schema_swifty;
 
@@ -18,5 +24,8 @@ mod test_exclusive_schema_category_validated;
 mod test_exclusive_schema_dummy_secret;
 mod test_exclusive_schema_fallout;
 mod test_exclusive_schema_katy_perry;
+mod test_exclusive_schema_lego_large;
+mod test_exclusive_schema_lego_medium;
+mod test_exclusive_schema_lego_small;
 mod test_exclusive_schema_starfield;
 mod test_exclusive_schema_swifty;
