@@ -12,7 +12,10 @@ import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { SecretId } from "../secrets.store";
 
-export type WebsocketRequest = CursorRequest | OnlineRequest;
+export type WebsocketRequest =
+  | CursorRequest
+  | OnlineRequest
+  | ComponentPositionRequest;
 
 export interface CursorRequest {
   kind: "Cursor";
@@ -35,6 +38,19 @@ export interface OnlineRequest {
     pictureUrl: string | null;
     idle: boolean;
     changeSetId: string | null;
+  };
+}
+
+export interface ComponentPositionRequest {
+  kind: "ComponentSetPosition";
+  data: {
+    userPk: UserId;
+    componentId: ComponentId;
+    changeSetId: string | null;
+    x: number;
+    y: number;
+    width: number | null;
+    height: number | null;
   };
 }
 

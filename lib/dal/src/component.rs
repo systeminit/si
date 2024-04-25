@@ -44,8 +44,8 @@ use crate::{
     DeprecatedAction, DeprecatedActionError, DeprecatedActionKind, DeprecatedActionPrototype,
     DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WorkspacePk,
+    WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -2159,7 +2159,26 @@ pub struct ComponentSetPositionPayload {
     user_pk: Option<UserPk>,
 }
 
+impl ComponentSetPositionPayload {
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
+    }
+}
+
 impl WsEvent {
+    pub async fn reflect_component_position(
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        payload: ComponentSetPositionPayload,
+    ) -> WsEventResult<Self> {
+        WsEvent::new_raw(
+            workspace_pk,
+            Some(change_set_id),
+            WsPayload::SetComponentPosition(payload),
+        )
+        .await
+    }
+
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,

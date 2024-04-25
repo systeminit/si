@@ -211,7 +211,6 @@ import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
-import { el } from "date-fns/locale";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -1337,8 +1336,24 @@ function sendMovedElementPosition(e: {
       );
     }
 
-    if (e.broadcastToClients) {
-      // TODO
+    if (
+      e.broadcastToClients &&
+      changeSetsStore.selectedChangeSetId &&
+      componentId &&
+      authStore.userPk
+    ) {
+      realtimeStore.sendMessage({
+        kind: "ComponentSetPosition",
+        data: {
+          userPk: authStore.userPk,
+          componentId,
+          changeSetId: changeSetsStore.selectedChangeSetId,
+          x: position.x,
+          y: position.y,
+          width: size?.width || null,
+          height: size?.height || null,
+        },
+      });
     }
   } else {
     throw Error(`${e.uniqueKey} has no position`);
@@ -1549,6 +1564,7 @@ function onDragElementsMove() {
           uniqueKey: childEl.uniqueKey,
           position: newChildPosition,
           writeToChangeSet: false,
+          broadcastToClients: true,
         });
       });
     }
@@ -1558,6 +1574,7 @@ function onDragElementsMove() {
       uniqueKey: el.uniqueKey,
       position: newPosition,
       writeToChangeSet: false,
+      broadcastToClients: true,
     });
   });
 
@@ -2169,6 +2186,7 @@ function onResizeMove() {
     uniqueKey: resizeElement.value.uniqueKey,
     position: newNodePosition,
     size: newNodeSize,
+    broadcastToClients: true,
   });
 }
 

@@ -92,8 +92,8 @@ async fn run_workspace_updates_proto(
 mod workspace_updates {
     use axum::extract::ws::{self, WebSocket};
     use dal::{
-        user::CursorPayload, user::OnlinePayload, ChangeSetId, UserPk, WorkspacePk, WsEvent,
-        WsEventError,
+        component::ComponentSetPositionPayload, user::CursorPayload, user::OnlinePayload,
+        ChangeSetId, UserPk, WorkspacePk, WsEvent, WsEventError,
     };
     use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
     use serde::{Deserialize, Serialize};
@@ -110,6 +110,8 @@ mod workspace_updates {
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(tag = "kind", content = "data")]
     pub enum WebsocketEventRequest {
+        #[serde(rename_all = "camelCase")]
+        ComponentSetPosition(ComponentSetPositionPayload),
         #[serde(rename_all = "camelCase")]
         Cursor {
             user_pk: UserPk,
@@ -226,6 +228,11 @@ mod workspace_updates {
                                             change_set_id,
                                             idle,
                                         }).await?;
+                                        self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;
+                                    }
+                                    WebsocketEventRequest::ComponentSetPosition (payload) => {
+                                        let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
+                                        let event = WsEvent::reflect_component_position(self.workspace_pk, payload.change_set_id(), payload).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;
                                     }
                                 }
