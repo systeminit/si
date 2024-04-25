@@ -33,7 +33,6 @@ use super::{PkgError, PkgResult};
 
 pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;
-// type ComponentMap = super::ChangeSetThingMap<ComponentId, ComponentSpec>;
 
 pub struct PkgExporter {
     name: String,
@@ -44,9 +43,6 @@ pub struct PkgExporter {
     schema_ids: Option<Vec<SchemaId>>,
     func_map: FuncSpecMap,
     variant_map: VariantSpecMap,
-    // component_map: ComponentMap,
-    // is_workspace_export: bool,
-    // include_components: bool,
 }
 
 impl PkgExporter {
@@ -67,32 +63,8 @@ impl PkgExporter {
             schema_ids: Some(schema_ids),
             func_map: FuncSpecMap::new(default_change_set_id),
             variant_map: VariantSpecMap::new(default_change_set_id),
-            // component_map: ComponentMap::new(default_change_set_id),
-            // is_workspace_export: false,
-            // include_components: false,
         }
     }
-
-    // pub fn new_workspace_exporter(
-    //     name: impl Into<String>,
-    //     created_by: impl Into<String>,
-    //     version: impl Into<String>,
-    //     description: impl Into<String>,
-    // ) -> Self {
-    //     Self {
-    //         name: name.into(),
-    //         version: version.into(),
-    //         description: Some(description.into()),
-    //         kind: SiPkgKind::WorkspaceBackup,
-    //         created_by: created_by.into(),
-    //         schema_ids: None,
-    //         func_map: FuncSpecMap::new(),
-    //         variant_map: VariantSpecMap::new(),
-    //         component_map: ComponentMap::new(),
-    //         is_workspace_export: true,
-    //         include_components: true,
-    //     }
-    // }
 
     fn new_standalone_variant_exporter(default_change_set_id: ChangeSetId) -> Self {
         Self::new_module_exporter("", "", None::<String>, "", vec![], default_change_set_id)
@@ -101,7 +73,7 @@ impl PkgExporter {
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
         match self.kind {
             SiPkgKind::Module => info!("Building module package"),
-            SiPkgKind::WorkspaceBackup => info!("Building workspace backup package"),
+            SiPkgKind::WorkspaceBackup => return Err(PkgError::WorkspaceExportNotSupported()),
         }
 
         let pkg = self.export(ctx).await?;
@@ -346,10 +318,6 @@ impl PkgExporter {
                         let mut builder = RootPropFuncSpec::builder();
                         builder.func_unique_id(func_unique_id).prop(root_prop);
 
-                        // if self.is_workspace_export {
-                        //     builder.unique_id(prototype.id().to_string());
-                        // }
-
                         inputs.drain(..).for_each(|input| {
                             builder.input(input);
                         });
@@ -430,9 +398,6 @@ impl PkgExporter {
                 }
 
                 let mut builder = LeafFunctionSpec::builder();
-                // if self.is_workspace_export {
-                //     builder.unique_id(prototype.id().to_string());
-                // }
 
                 specs.push(
                     builder
@@ -461,10 +426,6 @@ impl PkgExporter {
             let mut socket_spec_builder = SocketSpec::builder();
             socket_spec_builder.name(socket.name());
 
-            // if self.is_workspace_export {
-            //     socket_spec_builder.unique_id(input_socket_ip.id().to_string());
-            // }
-
             let mut data_builder = SocketSpecData::builder();
             let connection_annotation_str =
                 serde_json::to_string(&socket.connection_annotations())?;
@@ -476,7 +437,6 @@ impl PkgExporter {
                 .arity(&socket.arity())
                 .ui_hidden(socket.ui_hidden());
 
-            // let mut has_custom_func = false;
             if let Some(attr_proto_id) =
                 AttributePrototype::find_for_input_socket(ctx, input_socket_id).await?
             {
@@ -486,7 +446,6 @@ impl PkgExporter {
                     .export_input_func_and_arguments(ctx, change_set_id, attr_proto_id)
                     .await?
                 {
-                    //has_custom_func = true;
                     data_builder.func_unique_id(func_unique_id);
                     inputs.drain(..).for_each(|input| {
                         socket_spec_builder.input(input);
@@ -531,9 +490,6 @@ impl PkgExporter {
 
             specs.push(socket_spec_builder.build()?);
         }
-        // if self.is_workspace_export {
-        //     socket_spec_builder.unique_id(output_socket_ep.id().to_string());
-        // }
 
         Ok(specs)
     }
@@ -557,10 +513,6 @@ impl PkgExporter {
                 .ok_or(PkgError::MissingExportedFunc(*key))?;
 
             let mut builder = ActionFuncSpec::builder();
-
-            // if self.is_workspace_export {
-            //     builder.unique_id(action_proto.id().to_string());
-            // }
 
             specs.push(
                 builder
@@ -589,10 +541,6 @@ impl PkgExporter {
                 .ok_or(PkgError::MissingExportedFunc(auth_func))?;
 
             let mut builder = AuthenticationFuncSpec::builder();
-
-            // if self.is_workspace_export {
-            //     builder.unique_id(prototype.id().to_string());
-            // }
 
             specs.push(builder.func_unique_id(&func_spec.unique_id).build()?)
         }
@@ -869,9 +817,9 @@ impl PkgExporter {
                     },
                     crate::attribute::prototype::argument::value_source::ValueSource::OutputSocket(_) => {
                         // We don't want to create these on import of schema variants, so we don't care if
-                // we find it or not. But we do need to ensure the input length is correct for when
-                // we do this on *component import*, so that we don't modify the inputs to the
-                // attribute function on the component.
+                        // we find it or not. But we do need to ensure the input length is correct for when
+                        // we do this on *component import*, so that we don't modify the inputs to the
+                        // attribute function on the component.
                     },
                     crate::attribute::prototype::argument::value_source::ValueSource::Prop(prop_id) =>{
                         let prop = Prop::get_by_id(ctx, prop_id)
@@ -907,12 +855,6 @@ impl PkgExporter {
         _change_set_id: Option<ChangeSetId>,
         func: &Func,
     ) -> PkgResult<(FuncSpec, bool)> {
-        // if self.is_workspace_export && func.is_intrinsic() {
-        //     if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(func.name()) {
-        //         return Ok((intrinsic.to_spec()?, true));
-        //     }
-        // }
-
         let mut func_spec_builder = FuncSpec::builder();
 
         func_spec_builder.name(func.name.clone());
@@ -1046,15 +988,6 @@ impl PkgExporter {
                 .map(|schema_ids| schema_ids.contains(&schema.id()))
                 .unwrap_or(true)
             {
-                // Are we a builtin schema with only one variant? If so we don't have a
-                // user-modified variant, so we can skip. This only applies to workspace exports
-                // if self.is_workspace_export
-                //     && schema.is_builtin().await?
-                //     && SchemaVariant::list_for_schema(ctx, &schema.id()).await?.len() == 1
-                // {
-                //     continue;
-                // }
-
                 schemas.push(schema)
             }
         }
@@ -1066,80 +999,6 @@ impl PkgExporter {
             schema_specs.push(schema_spec);
         }
 
-        // if self.is_workspace_export && self.include_components {
-        //     for component in Component::list(ctx).await? {
-        //         let variant = component
-        //             .schema_variant(ctx)
-        //             .await?;
-
-        //         let component_variant = match (
-        //             self.variant_map.get(Some(change_set_id), &variant.id()),
-        //             variant.is_builtin(),
-        //         ) {
-        //             (Some(variant_spec), false) => ComponentSpecVariant::WorkspaceVariant {
-        //                 variant_unique_id: variant_spec
-        //                     .unique_id
-        //                     .as_ref()
-        //                     .unwrap_or(&variant.id().to_string())
-        //                     .to_owned(),
-        //             },
-        //             _ => {
-        //                 let schema = component
-        //                     .schema(ctx)
-        //                     .await?
-        //                     .ok_or(ComponentError::NoSchema(*component.id()))?;
-
-        //                 ComponentSpecVariant::BuiltinVariant {
-        //                     schema_name: schema.name().to_owned(),
-        //                     variant_name: variant.name().to_owned(),
-        //                 }
-        //             }
-        //         };
-
-        //         if let Some((component_spec, component_funcs, component_head_funcs)) = self
-        //             .export_component(ctx, change_set_id, &component, component_variant)
-        //             .await?
-        //         {
-        //             self.component_map.insert(
-        //                 change_set_id,
-        //                 *component.id(),
-        //                 component_spec.to_owned(),
-        //             );
-
-        //             component_specs.push(component_spec);
-        //             func_specs.extend_from_slice(&component_funcs);
-        //             head_funcs.extend_from_slice(&component_head_funcs);
-        //         }
-        //     }
-
-        //     for edge in Edge::list(ctx).await? {
-        //         let to_component_spec = self
-        //             .component_map
-        //             .get(change_set_id, &edge.head_component_id())
-        //             .ok_or(PkgError::EdgeRefersToMissingComponent(
-        //                 edge.head_component_id(),
-        //             ))?
-        //             .clone();
-        //         let from_component_spec = self
-        //             .component_map
-        //             .get(change_set_id, &edge.tail_component_id())
-        //             .ok_or(PkgError::EdgeRefersToMissingComponent(
-        //                 edge.tail_component_id(),
-        //             ))?
-        //             .clone();
-
-        //         // Do not attempt to recreate edges for deleted components
-        //         if to_component_spec.deleted || from_component_spec.deleted {
-        //             continue;
-        //         }
-
-        //         edge_specs.push(
-        //             self.export_edge(ctx, &edge, &to_component_spec, &from_component_spec)
-        //                 .await?,
-        //         );
-        //     }
-        // }
-
         Ok((
             func_specs,
             head_funcs,
@@ -1148,132 +1007,6 @@ impl PkgExporter {
             edge_specs,
         ))
     }
-
-    // pub async fn export_edge(
-    //     &mut self,
-    //     ctx: &DalContext,
-    //     edge: &Edge,
-    //     to_component_spec: &ComponentSpec,
-    //     from_component_spec: &ComponentSpec,
-    // ) -> PkgResult<EdgeSpec> {
-    //     // head = to, tail = from
-    //     let head_explicit_internal_provider =
-    //         InternalProvider::find_explicit_for_socket(ctx, edge.head_socket_id())
-    //             .await?
-    //             .ok_or(EdgeError::InternalProviderNotFoundForSocket(
-    //                 edge.head_socket_id(),
-    //             ))?;
-    //     let tail_external_provider = ExternalProvider::find_for_socket(ctx, edge.tail_socket_id())
-    //         .await?
-    //         .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
-    //             edge.tail_socket_id(),
-    //         ))?;
-
-    //     let mut edge_builder = EdgeSpec::builder();
-
-    //     let to_socket_name = head_explicit_internal_provider.name().to_owned();
-
-    //     let from_socket_name = tail_external_provider.name().to_owned();
-
-    //     edge_builder
-    //         .edge_kind(match edge.kind() {
-    //             EdgeKind::Configuration => EdgeSpecKind::Configuration,
-    //             EdgeKind::Symbolic => EdgeSpecKind::Symbolic,
-    //         })
-    //         .to_component_unique_id(&to_component_spec.unique_id)
-    //         .to_socket_name(to_socket_name)
-    //         .from_component_unique_id(&from_component_spec.unique_id)
-    //         .from_socket_name(from_socket_name)
-    //         .deleted(edge.visibility().is_deleted())
-    //         .creation_user_pk(edge.creation_user_pk().map(|pk| pk.to_string()))
-    //         .deletion_user_pk(edge.deletion_user_pk().map(|pk| pk.to_string()))
-    //         .deleted_implicitly(edge.deleted_implicitly())
-    //         .unique_id(*edge.id());
-
-    //     Ok(edge_builder.build()?)
-    // }
-
-    // pub async fn export_component(
-    //     &mut self,
-    //     ctx: &DalContext,
-    //     change_set_id: ChangeSetId,
-    //     component: &Component,
-    //     component_variant: ComponentSpecVariant,
-    // ) -> PkgResult<Option<(ComponentSpec, Vec<FuncSpec>, Vec<FuncSpec>)>> {
-    //     if component.hidden() {
-    //         return Ok(None);
-    //     }
-
-    //     let mut component_spec_builder = ComponentSpec::builder();
-    //     component_spec_builder
-    //         .name(component.name(ctx).await?)
-    //         .unique_id(*component.id());
-    //     let mut funcs = vec![];
-    //     let mut head_funcs = vec![];
-
-    //     let variant = component
-    //         .schema_variant(ctx)
-    //         .await?
-    //         .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
-
-    //     if variant.visibility().is_deleted() && component.visibility().is_deleted() {
-    //         return Ok(None);
-    //     }
-
-    //     let node = component
-    //         .node(ctx)
-    //         .await?
-    //         .pop()
-    //         .ok_or(PkgError::ComponentMissingNode(*component.id()))?;
-    //     component_spec_builder.variant(component_variant);
-
-    //     let mut position_spec_builder = PositionSpec::builder();
-    //     position_spec_builder.x(node.x());
-    //     position_spec_builder.y(node.y());
-    //     position_spec_builder.height(node.height().map(Into::into));
-    //     position_spec_builder.width(node.width().map(Into::into));
-    //     component_spec_builder.position(position_spec_builder.build()?);
-
-    //     component_spec_builder.needs_destroy(component.needs_destroy());
-
-    //     component_spec_builder
-    //         .deletion_user_pk(component.deletion_user_pk().map(ToString::to_string));
-
-    //     component_spec_builder.deleted(component.visibility().is_deleted());
-
-    //     // ensure we are not in a deleted visibility here
-    //     let new_ctx = ctx.clone_without_deleted_visibility();
-
-    //     let debug_view = ComponentDebugView::new(&new_ctx, component).await?;
-    //     for attribute in debug_view.attributes {
-    //         let (attr_spec, attr_funcs, attr_head_funcs) = self
-    //             .export_attribute_value(ctx, change_set_id, attribute)
-    //             .await?;
-    //         funcs.extend_from_slice(&attr_funcs);
-    //         head_funcs.extend_from_slice(&attr_head_funcs);
-    //         component_spec_builder.attribute(attr_spec);
-    //     }
-
-    //     for attribute in debug_view.input_sockets {
-    //         let (attr_spec, attr_funcs, attr_head_funcs) = self
-    //             .export_attribute_value(ctx, change_set_id, attribute)
-    //             .await?;
-    //         funcs.extend_from_slice(&attr_funcs);
-    //         head_funcs.extend_from_slice(&attr_head_funcs);
-    //         component_spec_builder.input_socket(attr_spec);
-    //     }
-
-    //     for attribute in debug_view.output_sockets {
-    //         let (attr_spec, attr_funcs, attr_head_funcs) = self
-    //             .export_attribute_value(ctx, change_set_id, attribute)
-    //             .await?;
-    //         component_spec_builder.output_socket(attr_spec);
-    //         funcs.extend_from_slice(&attr_funcs);
-    //         head_funcs.extend_from_slice(&attr_head_funcs);
-    //     }
-
-    //     Ok(Some((component_spec_builder.build()?, funcs, head_funcs)))
-    // }
 
     // pub async fn export_attribute_value(
     //     &mut self,
@@ -1434,44 +1167,7 @@ impl PkgExporter {
                 pkg_spec_builder.funcs(funcs);
                 pkg_spec_builder.schemas(schemas);
             }
-            SiPkgKind::WorkspaceBackup => {
-                // let (mut head_funcs, funcs, schemas, components, edges) =
-                //     self.export_change_set(ctx, Some(ChangeSetId::NONE)).await?;
-
-                // head_funcs.extend_from_slice(&funcs);
-
-                // let mut head_builder = ChangeSetSpec::builder();
-                // head_builder
-                //     .name("head")
-                //     .schemas(schemas)
-                //     .components(components)
-                //     .edges(edges);
-
-                // pkg_spec_builder.default_change_set("head");
-
-                // for change_set in ChangeSet::list_open(ctx).await? {
-                //     let (funcs, referenced_head_funcs, schemas, components, edges) =
-                //         self.export_change_set(ctx, Some(change_set.pk)).await?;
-                //     head_funcs.extend_from_slice(&referenced_head_funcs);
-
-                //     pkg_spec_builder.change_set(
-                //         ChangeSetSpec::builder()
-                //             .name(&change_set.name)
-                //             .based_on_change_set("head")
-                //             .funcs(remove_duplicate_func_specs(&funcs))
-                //             .schemas(schemas)
-                //             .components(components)
-                //             .edges(edges)
-                //             .build()?,
-                //     );
-                // }
-
-                // pkg_spec_builder.change_set(
-                //     head_builder
-                //         .funcs(remove_duplicate_func_specs(&head_funcs))
-                //         .build()?,
-                // );
-            }
+            SiPkgKind::WorkspaceBackup => return Err(PkgError::WorkspaceExportNotSupported()),
         }
 
         Ok(pkg_spec_builder.build()?)
