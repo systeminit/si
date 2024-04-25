@@ -1,5 +1,6 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::sync::Arc;
 
 use si_layer_cache::db::serialize;
@@ -8,8 +9,13 @@ use si_layer_cache::layer_cache::LayerCache;
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
 
-    let layer_cache = LayerCache::new("cas", tempdir.path(), super::setup_pg_db(db_name).await)
-        .expect("cannot create layer cache");
+    let layer_cache = LayerCache::new(
+        "cas",
+        tempdir.path(),
+        super::setup_pg_db(db_name).await,
+        MemoryCacheConfig::default(),
+    )
+    .expect("cannot create layer cache");
     layer_cache.pg().migrate().await.expect("migrate");
 
     layer_cache

@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use serde::Deserialize;
+use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,7 +17,7 @@ where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(MemoryCacheConfig::default())
     }
 }
 
@@ -24,9 +25,11 @@ impl<V> MemoryCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
-    pub fn new() -> Self {
+    pub fn new(config: MemoryCacheConfig) -> Self {
         Self {
-            cache: Cache::new(u64::MAX),
+            cache: Cache::builder()
+                .time_to_idle(Duration::from_secs(config.seconds_to_idle))
+                .build(),
         }
     }
 
@@ -44,5 +47,18 @@ where
 
     pub fn contains(&self, key: &str) -> bool {
         self.cache.contains_key(key)
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MemoryCacheConfig {
+    seconds_to_idle: u64,
+}
+
+impl Default for MemoryCacheConfig {
+    fn default() -> Self {
+        Self {
+            seconds_to_idle: 600,
+        }
     }
 }

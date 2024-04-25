@@ -1,6 +1,4 @@
 pkgs_path = "/tmp"
-layer_cache_pg_dbname = "$SI_LAYER_CACHE_DBNAME"
-layer_cache_disk_path = "$SI_LAYER_CACHE_DISK_PATH"
 
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
@@ -34,3 +32,24 @@ port = 5156
 
 [symmetric_crypto_service]
 active_key_base64 = "$SI_ACTIVE_KEY_BASE64"
+
+[layer_db_config]
+disk_path = "$SI_LAYER_CACHE_DISK_PATH"
+
+[layer_db_config.pg_pool_config]
+user = "si"
+password = "$SI_PG_PASSWORD"
+dbname = "$SI_LAYER_CACHE_DBNAME"
+application_name = "$SI_SERVICE"
+hostname = "localhost"
+port = 5432
+pool_max_size = 500
+
+[layer_db_config.nats_config]
+creds = """
+$SI_NATS_CREDS
+"""
+url = "$SI_NATS_URL"
+
+[layer_db_config.memory_cache_config]
+seconds_to_idle = 900

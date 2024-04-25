@@ -35,6 +35,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use si_layer_cache::CaCacheTempFile;
 use si_std::ResultExt;
 use std::{
@@ -320,6 +321,7 @@ impl TestContext {
             self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
+            MemoryCacheConfig::default(),
             token,
         )
         .await

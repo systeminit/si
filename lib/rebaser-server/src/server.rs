@@ -95,16 +95,8 @@ impl Server {
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
-        let mut pg_layer_db_pool = config.pg_pool().clone();
-        pg_layer_db_pool.dbname = config.layer_cache_pg_dbname().to_string();
-
-        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
-            config.layer_cache_disk_path(),
-            PgPool::new(&pg_layer_db_pool).await?,
-            nats.clone(),
-            token,
-        )
-        .await?;
+        let (layer_db, layer_db_graceful_shutdown) =
+            DalLayerDb::from_config(config.layer_db_config().clone(), token).await?;
         tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         Self::from_services(

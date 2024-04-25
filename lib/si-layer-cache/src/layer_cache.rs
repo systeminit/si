@@ -3,12 +3,12 @@ use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_pg::{PgPool, PgPoolConfig};
+use si_data_pg::PgPool;
 
 use crate::db::serialize;
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
-use crate::memory_cache::MemoryCache;
+use crate::memory_cache::{MemoryCache, MemoryCacheConfig};
 use crate::pg::PgLayer;
 use crate::LayerDbError;
 
@@ -26,13 +26,18 @@ impl<V> LayerCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(name: &str, disk_path: impl Into<PathBuf>, pg_pool: PgPool) -> LayerDbResult<Self> {
+    pub fn new(
+        name: &str,
+        disk_path: impl Into<PathBuf>,
+        pg_pool: PgPool,
+        memory_cache_config: MemoryCacheConfig,
+    ) -> LayerDbResult<Self> {
         let disk_cache = DiskCache::new(disk_path, name)?;
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 
         Ok(LayerCache {
-            memory_cache: MemoryCache::new(),
+            memory_cache: MemoryCache::new(memory_cache_config),
             disk_cache,
             pg,
         })
@@ -162,21 +167,4 @@ where
         self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
             .await
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct LayerCacheDependencies {
-    pub disk_path: PathBuf,
-    pub pg_pool: PgPool,
-}
-
-pub async fn make_layer_cache_dependencies(
-    disk_path: impl Into<PathBuf>,
-    pg_pool_config: &PgPoolConfig,
-) -> LayerDbResult<LayerCacheDependencies> {
-    let disk_path = disk_path.into();
-    Ok(LayerCacheDependencies {
-        disk_path,
-        pg_pool: PgPool::new(pg_pool_config).await?,
-    })
 }
