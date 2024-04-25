@@ -8,7 +8,8 @@ use ulid::Ulid;
 
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{
-    ComponentCreatedPayload, ComponentSetPositionPayload, ComponentUpdatedPayload,
+    ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
+    ComponentUpdatedPayload,
 };
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{SchemaVariantClonedPayload, SchemaVariantCreatedPayload};
@@ -17,19 +18,26 @@ use crate::user::OnlinePayload;
 use crate::{
     deprecated_action::prototype::ResourceRefreshedPayload,
     deprecated_action::{
-        batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn,
-        DeprecatedActionAddedPayload, DeprecatedActionRemovedPayload,
+        batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn, ActionId, ActionView,
+        DeprecatedActionError,
     },
     func::binding::LogLinePayload,
     pkg::ModuleImportedPayload,
     user::CursorPayload,
-    ChangeSetId, DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
+    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncError, PropId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 use crate::{SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WsEventError {
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] Box<DeprecatedActionError>),
+    #[error("deprecated action error: {0}")]
+    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
+    #[error("func error: {0}")]
+    Func(#[from] Box<FuncError>),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("no user in context")]
@@ -70,11 +78,12 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
     ComponentCreated(ComponentCreatedPayload),
+    ComponentDeleted(ComponentDeletedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
-    DeprecatedActionAdded(DeprecatedActionAddedPayload),
+    DeprecatedActionAdded(ActionView),
     DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),
-    DeprecatedActionRemoved(DeprecatedActionRemovedPayload),
+    DeprecatedActionRemoved(ActionId),
     DeprecatedActionRunnerReturn(ActionRunnerReturn),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),

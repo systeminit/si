@@ -84,6 +84,7 @@ rust_test(
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-pkg:si-pkg",
         "//lib/veritech-client:veritech-client",
+        "//third-party/rust:chrono",
         "//third-party/rust:base64",
         "//third-party/rust:itertools",
         "//third-party/rust:petgraph",

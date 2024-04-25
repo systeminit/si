@@ -62,7 +62,7 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("Unable to get action prototypes");
 
-    assert_eq!(3, actions_available.len());
+    assert_eq!(4, actions_available.len());
 
     let mut update_actions: Vec<&DeprecatedActionPrototype> = actions_available
         .iter()

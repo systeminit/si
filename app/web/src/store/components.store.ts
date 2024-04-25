@@ -1043,7 +1043,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            return new ApiRequest({
+            return new ApiRequest<RawComponent | null>({
               method: "post",
               url: "diagram/delete_component",
               keyRequestStatusBy: componentId,
@@ -1052,7 +1052,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                // this.componentDiffsById[componentId] = response.componentDiff;
+                if (!response) {
+                  delete this.rawComponentsById[componentId];
+                }
               },
               optimistic: () => {
                 const component = this.rawComponentsById[componentId];
@@ -1131,13 +1133,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            return new ApiRequest({
+            return new ApiRequest<Record<ComponentId, boolean>>({
               method: "post",
               url: "diagram/delete_components",
               keyRequestStatusBy: componentIds,
               params: {
                 componentIds,
                 ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                for (const [componentId, hasResource] of _.entries(response)) {
+                  if (!hasResource) {
+                    delete this.rawComponentsById[componentId];
+                  }
+                }
               },
               optimistic: () => {
                 for (const componentId of componentIds) {
@@ -1146,6 +1155,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     this.rawComponentsById[componentId] = {
                       ...component,
                       changeStatus: "deleted",
+                      toDelete: true,
                       deletedInfo: {
                         timestamp: new Date().toISOString(),
                         actor: { kind: "user", label: "You" },
@@ -1164,6 +1174,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       this.rawComponentsById[componentId] = {
                         ...component,
                         changeStatus: originalStatus,
+                        toDelete: false,
                         deletedInfo: undefined,
                       };
                     }
@@ -1187,8 +1198,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 componentIds,
                 ...visibilityParams,
               },
-              onSuccess: (response) => {
-                // this.componentDiffsById[componentId] = response.componentDiff;
+              onSuccess: () => {
+                for (const componentId of componentIds) {
+                  const component = this.rawComponentsById[componentId];
+                  if (component) {
+                    this.rawComponentsById[componentId] = {
+                      ...component,
+                      changeStatus: "unmodified",
+                      toDelete: false,
+                      deletedInfo: undefined,
+                    };
+                  }
+                }
               },
             });
           },
@@ -1358,6 +1379,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
                 this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
+              eventType: "ComponentDeleted",
+              callback: (data) => {
+                if (data.changeSetId !== changeSetId) return;
+                delete this.rawComponentsById[data.componentId];
+
+                // remove invalid component IDs from the selection
+                const validComponentIds = _.intersection(
+                  this.selectedComponentIds,
+                  _.keys(this.rawComponentsById),
+                );
+                this.setSelectedComponentId(validComponentIds);
               },
             },
             {

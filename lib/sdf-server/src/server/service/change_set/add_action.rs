@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
-use dal::{ActionPrototypeId, ChangeSet, ComponentId, DeprecatedAction, Visibility, WsEvent};
+use dal::{ActionPrototypeId, ChangeSet, ComponentId, DeprecatedAction, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -43,11 +43,6 @@ pub async fn add_action(
             "change_set_id": ctx.change_set_id(),
         }),
     );
-
-    WsEvent::action_added(&ctx, component.id(), action.id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

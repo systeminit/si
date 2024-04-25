@@ -43,13 +43,14 @@ async fn get_schema_variant(ctx: &DalContext) {
         .await
         .expect("Unable to get all schema variant funcs");
 
-    assert_eq!(5, sv_funcs.len());
+    assert_eq!(6, sv_funcs.len());
 
     let mut func_names: Vec<String> = sv_funcs.iter().map(|f| f.name.clone()).collect();
     func_names.sort();
     let expected: Vec<String> = vec![
         "si:resourcePayloadToValue".to_string(),
         "test:createActionSwifty".to_string(),
+        "test:deleteActionSwifty".to_string(),
         "test:generateCode".to_string(),
         "test:refreshActionSwifty".to_string(),
         "test:updateActionSwifty".to_string(),

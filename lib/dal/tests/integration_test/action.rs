@@ -3,6 +3,8 @@ mod runner;
 mod with_secret;
 mod with_update;
 
+use chrono::Utc;
+use dal::func::backend::js_action::DeprecatedActionRunResult;
 use dal::{
     Component, DalContext, DeprecatedAction, DeprecatedActionKind, DeprecatedActionPrototype, Func,
     InputSocket, OutputSocket,
@@ -11,6 +13,7 @@ use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use veritech_client::ResourceStatus;
 
 #[test]
 async fn prototype(ctx: &mut DalContext) {
@@ -198,6 +201,60 @@ async fn for_component(ctx: &mut DalContext) {
         .await
         .expect("unable to list actions for component");
     assert_eq!(list, actions);
+}
+
+#[test]
+async fn remove_resource(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "1",
+                    }))
+                    .expect("unable to serialize resource"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to set resource");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    component
+        .delete(ctx)
+        .await
+        .expect("unable to delete component")
+        .expect("component got fully deleted");
+
+    let list = DeprecatedAction::build_graph(ctx)
+        .await
+        .expect("unable to list actions for component");
+    assert_eq!(list.len(), 1);
+    assert_eq!(
+        list.values()
+            .next()
+            .expect("no actions")
+            .action
+            .prototype(ctx)
+            .await
+            .expect("unable to get prototype")
+            .kind,
+        DeprecatedActionKind::Delete
+    );
 }
 
 #[test]

@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { trackEvent } from "@/utils/tracking";
-import { Resource } from "@/api/sdf/dal/resource";
+import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -303,43 +303,98 @@ export const useActionsStore = () => {
               eventType: "ChangeSetApplied",
               callback: (_update) => {
                 this.LOAD_ACTION_BATCHES();
+                // Short term fix for reactivity issue on apply, since the
+                // first load won't have the actions since the rebaser isnt done
+                setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
               },
             },
             {
-              eventType: "ActionAdded",
-              callback: () => {
-                this.FETCH_QUEUED_ACTIONS();
+              eventType: "DeprecatedActionAdded",
+              callback: (action) => {
+                this.rawProposedActionsById[action.id] = action;
               },
             },
             {
-              eventType: "ActionRemoved",
-              callback: () => {
-                this.FETCH_QUEUED_ACTIONS();
+              eventType: "DeprecatedActionRemoved",
+              callback: (actionId) => {
+                delete this.rawProposedActionsById[actionId];
               },
             },
             {
               eventType: "DeprecatedActionRunnerReturn",
-              callback: (update) => {
+              callback: async (update) => {
+                const status = update.resource
+                  ? update.resource.status ?? ResourceHealth.Unknown
+                  : ResourceHealth.Error;
                 trackEvent("action_runner_return", {
                   action_runner: update.action,
-                  action_status: update.status,
+                  action_status: status,
                   action_runner_id: update.id,
                   action_batch_id: update.batchId,
                 });
 
-                this.LOAD_ACTION_BATCHES();
+                const batchIndex = this.actionBatches.findIndex(
+                  (batch) => batch.id === update.batchId,
+                );
+                const batch = this.actionBatches[batchIndex];
+                if (!batch) {
+                  // Short term fix for reactivity issue on apply, since the
+                  // first load won't have the actions since the rebaser isnt done
+                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  return;
+                }
+
+                const index = batch.actions.findIndex(
+                  (runner) => runner.id === update.id,
+                );
+                const runner = batch.actions[index];
+                if (!runner) {
+                  // Short term fix for reactivity issue on apply, since the
+                  // first load won't have the actions since the rebaser isnt done
+                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  return;
+                }
+
+                switch (status) {
+                  case ResourceHealth.Ok:
+                    runner.status = "success";
+                    break;
+                  case ResourceHealth.Warning:
+                    runner.status = "error";
+                    break;
+                  case ResourceHealth.Error:
+                    runner.status = "error";
+                    break;
+                  case ResourceHealth.Unknown:
+                    runner.status = "unstarted";
+                    break;
+                  default:
+                    runner.status = "unstarted";
+                    break;
+                }
+                runner.resource = update.resource;
               },
             },
             {
               eventType: "DeprecatedActionBatchReturn",
-              callback: (update) => {
+              callback: async (update) => {
                 this.runningActionBatch = undefined;
                 trackEvent("action_batch_return", {
                   batch_status: update.status,
                   batch_id: update.id,
                 });
 
-                this.LOAD_ACTION_BATCHES();
+                const batchIndex = this.actionBatches.findIndex(
+                  (batch) => batch.id === update.id,
+                );
+                const batch = this.actionBatches[batchIndex];
+                if (!batch) {
+                  // Short term fix for reactivity issue on apply, since the
+                  // first load won't have the actions since the rebaser isnt done
+                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  return;
+                }
+                batch.status = update.status;
               },
             },
           ]);

@@ -32,6 +32,14 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
     let fn_name = "test:createActionSwifty";
     let create_action_func = build_action_func(create_action_code, fn_name).await?;
 
+    // Build Delete Action Func
+    let delete_action_code = "async function main() {
+                return { payload: undefined, status: \"ok\" };
+            }";
+
+    let fn_name = "test:deleteActionSwifty";
+    let delete_action_func = build_action_func(delete_action_code, fn_name).await?;
+
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
               return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
@@ -132,6 +140,12 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 )
                 .action_func(
                     ActionFuncSpec::builder()
+                        .kind(&DeprecatedActionKind::Delete)
+                        .func_unique_id(&delete_action_func.unique_id)
+                        .build()?,
+                )
+                .action_func(
+                    ActionFuncSpec::builder()
                         .kind(&DeprecatedActionKind::Refresh)
                         .func_unique_id(&refresh_action_func.unique_id)
                         .build()?,
@@ -157,6 +171,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
         .func(identity_func_spec)
         .func(refresh_action_func)
         .func(create_action_func)
+        .func(delete_action_func)
         .func(update_action_func)
         .func(swifty_authoring_schema_func)
         .func(resource_payload_to_value_func)

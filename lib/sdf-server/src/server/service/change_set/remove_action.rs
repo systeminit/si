@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{ActionId, DeprecatedAction, Visibility, WsEvent};
+use dal::{ActionId, DeprecatedAction, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,11 +24,6 @@ pub async fn remove_action(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let action = DeprecatedAction::get_by_id(&ctx, request.id).await?;
-    let id = action.id;
-    let component_id = action.component(&ctx).await?.id();
-    let action_kind = action.prototype(&ctx).await?.kind;
-
-    action.delete(&ctx).await?;
 
     track(
         &posthog_client,
@@ -37,17 +32,14 @@ pub async fn remove_action(
         "remove_action",
         serde_json::json!({
             "how": "/change_set/remove_action",
-            "action_id": id.clone(),
-            "action_kind": action_kind,
-            "component_id": component_id.clone(),
+            "action_id": action.id,
+            "action_kind": action.prototype(&ctx).await?.kind,
+            "component_id": action.component(&ctx).await?.id(),
             "change_set_id": ctx.change_set_id(),
         }),
     );
 
-    WsEvent::action_removed(&ctx, component_id, id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    action.delete(&ctx).await?;
 
     ctx.commit().await?;
 

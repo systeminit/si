@@ -204,6 +204,7 @@ async fn all_funcs(ctx: &DalContext) {
         &[
             "si:resourcePayloadToValue",
             "test:createActionSwifty",
+            "test:deleteActionSwifty",
             "test:generateCode",
             "test:refreshActionSwifty",
             "test:updateActionSwifty",
