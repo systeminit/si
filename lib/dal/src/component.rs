@@ -1303,6 +1303,8 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<Option<(AttributeValueId, AttributePrototypeArgumentId)>> {
+        let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
+
         let destination_component = Component::get_by_id(ctx, destination_component_id).await?;
         for connection in destination_component.incoming_connections(ctx).await? {
             if connection.from_component_id == source_component_id
@@ -1348,6 +1350,8 @@ impl Component {
         .await?;
 
         AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
+
+        drop(cycle_check_guard);
 
         Ok(Some((
             destination_attribute_value_id,

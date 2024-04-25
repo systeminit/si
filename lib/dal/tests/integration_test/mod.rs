@@ -5,6 +5,7 @@ mod builtins;
 mod change_set;
 mod component;
 mod connection;
+mod cycle_check_guard;
 mod dependent_values_update;
 mod frame;
 mod func;
