@@ -112,6 +112,8 @@ pub enum PkgError {
     Url(#[from] ParseError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("workspace export not supported")]
+    WorkspaceExportNotSupported(),
     #[error("Workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error(transparent)]
