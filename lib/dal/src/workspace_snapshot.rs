@@ -314,6 +314,12 @@ impl WorkspaceSnapshot {
         }
     }
 
+    pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
+        Ok(si_layer_cache::db::serialize::to_vec(
+            &self.working_copy().await.clone(),
+        )?)
+    }
+
     pub async fn add_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy_mut().await.add_node(node)?;
         Ok(new_node_index)

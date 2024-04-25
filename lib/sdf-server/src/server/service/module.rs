@@ -8,9 +8,10 @@ use convert_case::{Case, Casing};
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, SchemaVariantError,
     SchemaVariantId, StandardModelError, TenancyError, TransactionsError, UserError, UserPk,
-    WorkspaceError, WorkspacePk, WsEventError,
+    WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
+use si_layer_cache::LayerDbError;
 use si_pkg::{SiPkg, SiPkgError};
 use si_std::{canonical_file::safe_canonically_join, CanonicalFileError};
 use std::path::{Path, PathBuf};
@@ -26,6 +27,7 @@ pub mod export_module;
 // pub mod export_workspace;
 pub mod get_module;
 // pub mod import_workspace_vote;
+mod export_workspace;
 pub mod install_module;
 pub mod list_modules;
 pub mod reject_module;
@@ -42,6 +44,8 @@ pub enum ModuleError {
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
+    #[error("Trying to export from system actor. This can only be done by a user actor")]
+    ExportingFromSystemActor,
     #[error(transparent)]
     Hyper(#[from] hyper::http::Error),
     // add error for matching hash
@@ -53,6 +57,8 @@ pub enum ModuleError {
     InvalidUserSystemInit,
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("LayerDb error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error(transparent)]
     Module(#[from] dal::module::ModuleError),
     #[error("Module hash not be found: {0}")]
@@ -105,6 +111,8 @@ pub enum ModuleError {
     Workspace(#[from] WorkspaceError),
     #[error("Could not find current workspace {0}")]
     WorkspaceNotFound(WorkspacePk),
+    #[error("transparent")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -204,10 +212,10 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/export_module", post(export_module::export_module))
-        // .route(
-        //     "/export_workspace",
-        //     post(export_workspace::export_workspace),
-        // )
+        .route(
+            "/export_workspace",
+            post(export_workspace::export_workspace),
+        )
         .route("/get_module_by_hash", get(get_module::get_module_by_hash))
         .route("/install_module", post(install_module::install_module))
         .route("/list_modules", get(list_modules::list_modules))

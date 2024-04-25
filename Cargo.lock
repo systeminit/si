@@ -2991,6 +2991,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-data-pg",
+ "si-hash",
  "si-pkg",
  "si-posthog",
  "si-settings",
