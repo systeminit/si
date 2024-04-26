@@ -403,7 +403,7 @@ impl InputSocket {
 
         Ok(maybe_input_socket)
     }
-
+    #[instrument(level = "debug", skip(ctx))]
     pub async fn is_manually_configured(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
@@ -421,12 +421,7 @@ impl InputSocket {
             let maybe_apa =
                 AttributePrototypeArgument::list_ids_for_prototype(ctx, maybe_attribute_prototype)
                     .await?;
-            info!("maybe attribute prototype args: {:?}", maybe_apa);
             if !maybe_apa.is_empty() {
-                info!(
-                    "attribute prototype argument found for input socket {:?}, no implicit inputs here.",
-                    input_socket_match
-                );
                 return Ok(true);
             }
         }

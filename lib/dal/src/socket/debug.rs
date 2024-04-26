@@ -135,20 +135,21 @@ impl SocketDebugView {
             None => String::new(),
         };
         let materialized_view = attribute_value.materialized_view(ctx).await?;
-        let inferred_connections = match Component::find_inferred_connection_to_input_socket(
-            ctx,
-            InputSocketMatch {
-                component_id,
-                input_socket_id,
-                attribute_value_id,
-            },
-        )
-        .await?
-        .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
-        {
-            Some(output_id) => vec![output_id],
-            None => vec![],
-        };
+        let inferred_connections =
+            match Component::find_potential_inferred_connection_to_input_socket(
+                ctx,
+                InputSocketMatch {
+                    component_id,
+                    input_socket_id,
+                    attribute_value_id,
+                },
+            )
+            .await?
+            .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
+            {
+                Some(output_id) => vec![output_id],
+                None => vec![],
+            };
 
         Ok(SocketDebugView {
             prototype_id,

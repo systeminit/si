@@ -138,21 +138,16 @@ impl DependentValueGraph {
                         None => relevant_apas.push(apa),
                         Some(targets) => {
                             if targets.source_component_id == current_component_id {
-                                let source_component =
-                                    Component::get_by_id(ctx, targets.source_component_id)
-                                        .await
-                                        .map_err(Box::new)?;
-                                let destination_component =
-                                    Component::get_by_id(ctx, targets.destination_component_id)
-                                        .await
-                                        .map_err(Box::new)?;
-
                                 // Both "deleted" and not deleted Components can feed data into
                                 // "deleted" Components. **ONLY** not deleted Components can feed
                                 // data into not deleted Components.
-                                if destination_component.to_delete()
-                                    || (!destination_component.to_delete()
-                                        && !source_component.to_delete())
+                                if Component::should_data_flow_between_components(
+                                    ctx,
+                                    targets.destination_component_id,
+                                    targets.source_component_id,
+                                )
+                                .await
+                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
                                 {
                                     relevant_apas.push(apa)
                                 }
@@ -163,52 +158,46 @@ impl DependentValueGraph {
                 relevant_apas
             };
 
-            // If there aren't any relevant AttributePrototypeArguments, check if this value is
-            // an output socket as the attribute value might have implicit dependendcies based on
-            // the ancestry (aka frames/nested frames)
-            if relevant_apas.is_empty() {
-                if let ValueIsFor::OutputSocket(_) = value_is_for {
-                    let maybe_values_depend_on =
-                        match Component::find_inferred_values_using_this_output_socket(
-                            ctx,
-                            current_attribute_value_id,
-                        )
-                        .await
-                        {
-                            Ok(values) => values,
-                            // When we first run dvu, the component type might not be set yet.
-                            // In this case, we can assume there aren't downstream inputs that need to
-                            // be queued up.
-                            Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                                vec![]
-                            }
-                            Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
-                        };
-
-                    for input_socket_match in maybe_values_depend_on {
-                        let source_component =
-                            Component::get_by_id(ctx, input_socket_match.component_id)
-                                .await
-                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
-                        let destination_component_id =
-                            AttributeValue::component_id(ctx, current_attribute_value_id).await?;
-                        let destination_component =
-                            Component::get_by_id(ctx, destination_component_id)
-                                .await
-                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
-
-                        // Both "deleted" and not deleted Components can feed data into
-                        // "deleted" Components. **ONLY** not deleted Components can feed
-                        // data into not deleted Components.
-                        if destination_component.to_delete()
-                            || (!destination_component.to_delete() && !source_component.to_delete())
-                        {
-                            work_queue.push_back(input_socket_match.attribute_value_id);
-                            dependent_value_graph.value_depends_on(
-                                input_socket_match.attribute_value_id,
-                                current_attribute_value_id,
-                            );
+            // Also check if this value is an output socket as the attribute value
+            // might have implicit dependendcies based on the ancestry (aka frames/nested frames)
+            // note: we filter out non-deleted targets if the source component is set to be deleted
+            if let ValueIsFor::OutputSocket(_) = value_is_for {
+                let maybe_values_depend_on =
+                    match Component::find_inferred_values_using_this_output_socket(
+                        ctx,
+                        current_attribute_value_id,
+                    )
+                    .await
+                    {
+                        Ok(values) => values,
+                        // When we first run dvu, the component type might not be set yet.
+                        // In this case, we can assume there aren't downstream inputs that need to
+                        // be queued up.
+                        Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                            vec![]
                         }
+                        Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
+                    };
+
+                for input_socket_match in maybe_values_depend_on {
+                    // Both "deleted" and not deleted Components can feed data into
+                    // "deleted" Components. **ONLY** not deleted Components can feed
+                    // data into not deleted Components.
+                    let destination_component_id =
+                        AttributeValue::component_id(ctx, current_attribute_value_id).await?;
+                    if Component::should_data_flow_between_components(
+                        ctx,
+                        destination_component_id,
+                        input_socket_match.component_id,
+                    )
+                    .await
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                    {
+                        work_queue.push_back(input_socket_match.attribute_value_id);
+                        dependent_value_graph.value_depends_on(
+                            input_socket_match.attribute_value_id,
+                            current_attribute_value_id,
+                        );
                     }
                 }
             }
