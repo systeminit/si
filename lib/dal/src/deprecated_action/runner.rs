@@ -537,8 +537,7 @@ pub struct ActionRunnerReturn {
     id: DeprecatedActionRunnerId,
     batch_id: DeprecatedActionBatchId,
     action: DeprecatedActionKind,
-    status: ActionCompletionStatus,
-    output: Vec<String>,
+    resource: Option<DeprecatedActionRunResult>,
 }
 
 impl WsEvent {
@@ -547,8 +546,7 @@ impl WsEvent {
         id: DeprecatedActionRunnerId,
         batch_id: DeprecatedActionBatchId,
         action: DeprecatedActionKind,
-        status: ActionCompletionStatus,
-        output: Vec<String>,
+        resource: Option<DeprecatedActionRunResult>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
@@ -556,8 +554,7 @@ impl WsEvent {
                 id,
                 batch_id,
                 action,
-                status,
-                output,
+                resource,
             }),
         )
         .await

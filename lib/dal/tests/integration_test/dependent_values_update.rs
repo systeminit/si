@@ -1,8 +1,11 @@
+use chrono::Utc;
+use dal::func::backend::js_action::DeprecatedActionRunResult;
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
+use veritech_client::ResourceStatus;
 
 #[test]
 async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
@@ -49,10 +52,31 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
     let oysters_component =
         Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
             .await
-            .expect("could not create component")
-            .delete(ctx)
-            .await
-            .expect("Unable to mark for deletion");
+            .expect("could not create component");
+    oysters_component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "value",
+                    }))
+                    .expect("unable to serialize payload"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to ser resource");
+
+    let oysters_component = oysters_component
+        .delete(ctx)
+        .await
+        .expect("Unable to mark for deletion")
+        .expect("component got fully deleted");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -298,11 +322,31 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
 
+    royel_component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "value",
+                    }))
+                    .expect("unable to serialize payload"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to ser resource");
+
     // "Delete" the Butane component
     let royel_component = royel_component
         .delete(ctx)
         .await
-        .expect("Unable to mark for deletion");
+        .expect("Unable to mark for deletion")
+        .expect("component got fully deleted");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

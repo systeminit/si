@@ -4,9 +4,14 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { Resource } from "@/api/sdf/dal/resource";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
-import { ActionStatus, DeprecatedActionId } from "../actions.store";
+import {
+  ActionStatus,
+  DeprecatedActionId,
+  ProposedAction,
+} from "../actions.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
@@ -146,8 +151,7 @@ export type WsEventPayloadMap = {
     batchId: string;
     attributeValueId: string;
     action: string;
-    output: string[];
-    status: ActionStatus;
+    resource: Resource | null;
   };
   DeprecatedActionBatchReturn: {
     id: string;
@@ -156,6 +160,10 @@ export type WsEventPayloadMap = {
   ComponentCreated: {
     success: boolean;
     componentId: string;
+    changeSetId: string;
+  };
+  ComponentDeleted: {
+    componentId: ComponentId;
     changeSetId: string;
   };
   ComponentUpdated: {
@@ -205,6 +213,8 @@ export type WsEventPayloadMap = {
     actionId: DeprecatedActionId;
     changeSetId: ChangeSetId;
   };
+  DeprecatedActionAdded: ProposedAction;
+  DeprecatedActionRemoved: DeprecatedActionId;
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;

@@ -3,23 +3,11 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    deprecated_action::DeprecatedActionBag, history_event, ActionId, ActionPrototypeId, ActorView,
-    ComponentId, DeprecatedAction, DeprecatedActionKind, Func, Visibility,
+    deprecated_action::{ActionView, DeprecatedActionBag},
+    history_event, ActionId, ActorView, DeprecatedAction, DeprecatedActionKind, Func, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ActionView {
-    pub id: ActionId,
-    pub action_prototype_id: ActionPrototypeId,
-    pub kind: DeprecatedActionKind,
-    pub name: String,
-    pub component_id: ComponentId,
-    pub actor: Option<String>,
-    pub parents: Vec<ActionId>,
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

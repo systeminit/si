@@ -1580,11 +1580,45 @@ impl Component {
         Ok(Component::assemble(&component_node_weight, updated))
     }
 
-    pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Self> {
-        self.set_to_delete(ctx, true).await
+    pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
+        let change_set = ctx.change_set()?;
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, id)
+            .await?;
+
+        WsEvent::component_deleted(ctx, id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
+        let actions = DeprecatedAction::build_graph(ctx)
+            .await
+            .map_err(|err| ComponentError::Action(err.to_string()))?;
+        for bag in actions.values() {
+            if bag.component_id == self.id {
+                bag.action
+                    .clone()
+                    .delete(ctx)
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        }
+
+        if self.resource(ctx).await?.payload.is_none() {
+            Self::remove(ctx, self.id).await?;
+            Ok(None)
+        } else {
+            Ok(Some(self.set_to_delete(ctx, true).await?))
+        }
     }
 
     pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
+        let component_id = self.id;
         let modified = self
             .modify(ctx, |component| {
                 component.to_delete = to_delete;
@@ -1627,6 +1661,37 @@ impl Component {
         }
         ctx.enqueue_dependent_values_update(downstream_av_ids)
             .await?;
+
+        if to_delete {
+            // Enqueue delete actions for component
+            for prototype in DeprecatedActionPrototype::for_variant(
+                ctx,
+                Self::schema_variant_id(ctx, modified.id).await?,
+            )
+            .await
+            .map_err(Box::new)?
+            {
+                if prototype.kind == DeprecatedActionKind::Delete {
+                    DeprecatedAction::upsert(ctx, prototype.id, modified.id)
+                        .await
+                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            }
+        } else {
+            // Remove delete actions for component
+            let actions = DeprecatedAction::build_graph(ctx)
+                .await
+                .map_err(|err| ComponentError::Action(err.to_string()))?;
+            for bag in actions.values() {
+                if bag.component_id == component_id {
+                    bag.action
+                        .clone()
+                        .delete(ctx)
+                        .await
+                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            }
+        }
 
         Ok(modified)
     }
@@ -2076,7 +2141,7 @@ impl Component {
     }
 
     /// Find all [`InputSocketMatch`]es in the descendant tree for a [`Component`] with the provided [`ComponentId`]
-    /// This searches for matches in the component's children and down the entire lineage tree   
+    /// This searches for matches in the component's children and down the entire lineage tree
     #[instrument(level = "debug", skip(ctx))]
     pub async fn find_inferred_values_using_this_output_socket(
         ctx: &DalContext,
@@ -2153,6 +2218,13 @@ pub struct ComponentUpdatedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct ComponentDeletedPayload {
+    component_id: ComponentId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentSetPositionPayload {
     change_set_id: ChangeSetId,
     component_id: ComponentId,
@@ -2207,6 +2279,20 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::ComponentUpdated(ComponentUpdatedPayload {
+                component_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn component_deleted(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentDeleted(ComponentDeletedPayload {
                 component_id,
                 change_set_id: ctx.change_set_id(),
             }),

@@ -23,9 +23,9 @@ use crate::{
     layer_db_types::{
         DeprecatedActionContent, DeprecatedActionContentV1, DeprecatedActionPrototypeContent,
     },
-    ActionPrototypeId, ChangeSetId, Component, ComponentError, ComponentId, DalContext,
+    ActionPrototypeId, ActorView, ChangeSetId, Component, ComponentError, ComponentId, DalContext,
     DeprecatedActionBatchError, DeprecatedActionKind, DeprecatedActionPrototype,
-    DeprecatedActionPrototypeError, HelperError, HistoryActor, HistoryEventError, Timestamp,
+    DeprecatedActionPrototypeError, Func, HelperError, HistoryActor, HistoryEventError, Timestamp,
     TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
@@ -171,7 +171,7 @@ impl DeprecatedAction {
         )
         .await?;
 
-        WsEvent::action_added(ctx, component_id, id.into())
+        WsEvent::action_added(ctx, &action)
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -180,6 +180,11 @@ impl DeprecatedAction {
     }
 
     pub async fn delete(self, ctx: &DalContext) -> DeprecatedActionResult<()> {
+        WsEvent::action_removed(ctx, self.id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let change_set = ctx.change_set()?;
         workspace_snapshot
@@ -514,14 +519,6 @@ impl DeprecatedAction {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DeprecatedActionAddedPayload {
-    component_id: ComponentId,
-    action_id: ActionId,
-    change_set_id: ChangeSetId,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct DeprecatedActionRemovedPayload {
     component_id: ComponentId,
     action_id: ActionId,
@@ -529,35 +526,74 @@ pub struct DeprecatedActionRemovedPayload {
 }
 
 impl WsEvent {
-    pub async fn action_added(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        action_id: ActionId,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::DeprecatedActionAdded(DeprecatedActionAddedPayload {
-                component_id,
-                action_id,
-                change_set_id: ctx.change_set_id(),
+    pub async fn action_added(ctx: &DalContext, action: &DeprecatedAction) -> WsEventResult<Self> {
+        let mut display_name = None;
+        let prototype = action.prototype(ctx).await.map_err(Box::new)?;
+        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await.map_err(Box::new)?)
+            .await
+            .map_err(Box::new)?;
+        if func.display_name.is_some() {
+            display_name = func.display_name.as_ref().map(|dname| dname.to_string());
+        }
+
+        let mut actor_email: Option<String> = None;
+        {
+            if let Some(created_at_user) = action.creation_user_pk {
+                let history_actor = HistoryActor::User(created_at_user);
+                let actor = ActorView::from_history_actor(ctx, history_actor).await?;
+                match actor {
+                    ActorView::System { label } => actor_email = Some(label),
+                    ActorView::User { label, email, .. } => {
+                        if let Some(em) = email {
+                            actor_email = Some(em)
+                        } else {
+                            actor_email = Some(label)
+                        }
+                    }
+                };
+            }
+        }
+
+        // Super inneficient, but traversing the graph is required to get the parents
+        let parents = if let Some(action_bag) = DeprecatedAction::build_graph(ctx)
+            .await
+            .map_err(Box::new)?
+            .remove(&action.id)
+        {
+            action_bag.parents
+        } else {
+            Vec::new()
+        };
+        let view = ActionView {
+            id: action.id,
+            action_prototype_id: prototype.id,
+            kind: prototype.kind,
+            name: display_name.unwrap_or_else(|| match prototype.kind {
+                DeprecatedActionKind::Create => "create".to_owned(),
+                DeprecatedActionKind::Delete => "delete".to_owned(),
+                DeprecatedActionKind::Other => "other".to_owned(),
+                DeprecatedActionKind::Refresh => "refresh".to_owned(),
             }),
-        )
-        .await
+            component_id: action.component(ctx).await.map_err(Box::new)?.id(),
+            actor: actor_email,
+            parents,
+        };
+
+        WsEvent::new(ctx, WsPayload::DeprecatedActionAdded(view)).await
     }
 
-    pub async fn action_removed(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        action_id: ActionId,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::DeprecatedActionRemoved(DeprecatedActionRemovedPayload {
-                component_id,
-                action_id,
-                change_set_id: ctx.change_set_id(),
-            }),
-        )
-        .await
+    pub async fn action_removed(ctx: &DalContext, action_id: ActionId) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::DeprecatedActionRemoved(action_id)).await
     }
+}
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionView {
+    pub id: ActionId,
+    pub action_prototype_id: ActionPrototypeId,
+    pub kind: DeprecatedActionKind,
+    pub name: String,
+    pub component_id: ComponentId,
+    pub actor: Option<String>,
+    pub parents: Vec<ActionId>,
 }

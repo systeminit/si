@@ -1,6 +1,8 @@
+use chrono::Utc;
 use dal::attribute::value::DependentValueGraph;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
+use dal::func::backend::js_action::DeprecatedActionRunResult;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId, InputSocket, OutputSocket};
@@ -9,6 +11,7 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use veritech_client::ResourceStatus;
 
 mod debug;
 mod get_code;
@@ -592,11 +595,31 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
+    oysters_component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "value",
+                    }))
+                    .expect("unable to serialize payload"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to ser resource");
+
     // Delete component.
     let oysters_component = oysters_component
         .delete(ctx)
         .await
-        .expect("Unable to delete oysters component");
+        .expect("Unable to delete oysters component")
+        .expect("component fully deleted");
     dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -749,11 +772,31 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
+    oysters_component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "value",
+                    }))
+                    .expect("unable to serialize payload"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to ser resource");
+
     // Delete component.
     let oysters_component = oysters_component
         .delete(ctx)
         .await
-        .expect("Unable to delete oysters component");
+        .expect("Unable to delete oysters component")
+        .expect("component fully deleted");
     dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -782,12 +825,32 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
+    royel_component
+        .set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "key": "value",
+                    }))
+                    .expect("unable to serialize payload"),
+                ),
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await
+        .expect("unable to ser resource");
+
     // Delete the destination component, so it pulls data from both the deleted & not deleted
     // components.
     let royel_component = royel_component
         .delete(ctx)
         .await
-        .expect("Unable to delete royel component");
+        .expect("Unable to delete royel component")
+        .expect("component got deleted");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -922,4 +985,19 @@ async fn paste_component(ctx: &mut DalContext) {
             },
         })
     );
+}
+
+#[test]
+async fn delete(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    assert!(component
+        .delete(ctx)
+        .await
+        .expect("unable to delete component")
+        .is_none());
 }

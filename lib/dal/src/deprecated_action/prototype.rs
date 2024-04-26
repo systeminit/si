@@ -10,7 +10,8 @@ use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{
@@ -290,36 +291,6 @@ impl DeprecatedActionPrototype {
         Ok(Self::assemble(id, inner))
     }
 
-    /// Finds the [`FuncId`](Func) for the [`DeprecatedActionPrototype`].
-    pub async fn func_id(&self, ctx: &DalContext) -> DeprecatedActionPrototypeResult<FuncId> {
-        Self::func_id_by_id(ctx, self.id).await
-    }
-
-    /// Finds the [`FuncId`](Func) for a given [`ActionPrototypeId`](DeprecatedActionPrototype).
-    pub async fn func_id_by_id(
-        ctx: &DalContext,
-        action_prototype_id: ActionPrototypeId,
-    ) -> DeprecatedActionPrototypeResult<FuncId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                action_prototype_id,
-                EdgeWeightKindDiscriminants::Use,
-            )
-            .await?
-        {
-            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-            let id = node_weight.id();
-            if NodeWeightDiscriminants::Func == node_weight.into() {
-                return Ok(id.into());
-            }
-        }
-
-        Err(DeprecatedActionPrototypeError::MissingFunction(
-            action_prototype_id,
-        ))
-    }
-
     /// Lists all [`DeprecatedActionPrototypes`](DeprecatedActionPrototype) for a given
     /// [`FuncId`](Func).
     pub async fn list_for_func_id(
@@ -344,13 +315,48 @@ impl DeprecatedActionPrototype {
         Ok(action_prototype_ids)
     }
 
+    pub async fn func_id_by_id(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> DeprecatedActionPrototypeResult<FuncId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        for node_index in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            let id = node_weight.id();
+            if NodeWeightDiscriminants::Func == node_weight.into() {
+                return Ok(id.into());
+            }
+        }
+
+        Err(DeprecatedActionPrototypeError::MissingFunction(id))
+    }
+
+    pub async fn func_id(&self, ctx: &DalContext) -> DeprecatedActionPrototypeResult<FuncId> {
+        Self::func_id_by_id(ctx, self.id).await
+    }
+
     pub async fn run(
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
         let component = Component::get_by_id(ctx, component_id).await?;
-        let component_view = component.materialized_view(ctx).await?;
+        let mut component_view = component.materialized_view(ctx).await?;
+        // Postcard doesn't store serde_json::Value well, so we use a String for the resource
+        // payload, but all action functions were written expecting a payload object, so we
+        // manually cast it here, it's horrifying, but func editing is not 100% in a place where we
+        // can just update all actions
+        if let Some(payload) = component_view
+            .as_mut()
+            .and_then(|v| v.pointer_mut("/resource/payload"))
+        {
+            if let serde_json::Value::String(string) = payload.clone() {
+                *payload = serde_json::from_str::<serde_json::Value>(&string)?;
+            }
+        }
         let before = before_funcs_for_component(ctx, &component_id).await?;
 
         let (_, return_value) = FuncBinding::create_and_execute(
@@ -378,18 +384,15 @@ impl DeprecatedActionPrototype {
                     serde_json::from_value(value.clone())?;
                 run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
 
-                let component = if component.to_delete() && run_result.payload.is_none() {
-                    component.set_to_delete(ctx, false).await?
-                } else {
-                    component
-                };
+                component.set_resource(ctx, run_result.clone()).await?;
 
-                if component.resource(ctx).await? != run_result {
-                    component.set_resource(ctx, run_result.clone()).await?;
-                    WsEvent::resource_refreshed(ctx, component.id())
-                        .await?
-                        .publish_on_commit(ctx)
-                        .await?;
+                WsEvent::resource_refreshed(ctx, component.id())
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
+
+                if component.to_delete() && run_result.payload.is_none() {
+                    Component::remove(ctx, component.id()).await?;
                 }
 
                 Some(run_result)
