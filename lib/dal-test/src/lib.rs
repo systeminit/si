@@ -547,7 +547,7 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
 
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::Server> {
+pub fn pinga_server(services_context: ServicesContext) -> Result<pinga_server::Server> {
     let config: pinga_server::Config = {
         let mut config_file = pinga_server::ConfigFile::default();
         pinga_server::detect_and_configure_development(&mut config_file)
@@ -560,7 +560,7 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
     let server = pinga_server::Server::from_services(
         config.instance_id(),
         config.concurrency(),
-        services_context.clone(),
+        services_context,
     )
     .wrap_err("failed to create Pinga server")?;
 
@@ -569,15 +569,18 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
 
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_server::Server> {
+pub fn rebaser_server(
+    services_context: ServicesContext,
+    shutdown_token: CancellationToken,
+) -> Result<rebaser_server::Server> {
+    let config: rebaser_server::Config = rebaser_server::ConfigFile::default()
+        .try_into()
+        .wrap_err("failed to build Rebaser server config")?;
+
     let server = rebaser_server::Server::from_services(
-        services_context.encryption_key(),
-        services_context.nats_conn().clone(),
-        services_context.pg_pool().clone(),
-        services_context.veritech().clone(),
-        services_context.job_processor(),
-        services_context.symmetric_crypto_service().clone(),
-        services_context.layer_db().clone(),
+        config.instance_id(),
+        services_context,
+        shutdown_token,
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -630,32 +633,12 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
 
     let token = CancellationToken::new();
-    let traker = TaskTracker::new();
+    let tracker = TaskTracker::new();
 
     // Create a `ServicesContext`
     let services_ctx = test_context
-        .create_services_context(token.clone(), traker.clone())
+        .create_services_context(token.clone(), tracker.clone())
         .await;
-
-    // Start up a Pinga server as a task exclusively to allow the migrations to run
-    info!("starting Pinga server for initial migrations");
-    let pinga_server = pinga_server(&services_ctx)?;
-    let pinga_server_handle = pinga_server.shutdown_handle();
-    traker.spawn(pinga_server.run());
-
-    // Start up a Rebaser server for migrations
-    info!("starting Rebaser server for initial migrations");
-    let rebaser_server = rebaser_server(&services_ctx)?;
-    let rebaser_server_handle = rebaser_server.shutdown_handle();
-    traker.spawn(rebaser_server.run());
-
-    // Start up a Veritech server as a task exclusively to allow the migrations to run
-    info!("starting Veritech server for initial migrations");
-    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
-    let veritech_server_handle = veritech_server.shutdown_handle();
-    traker.spawn(veritech_server.run());
-
-    traker.close();
 
     info!("creating client with pg pool for global Content Store test database");
 
@@ -706,6 +689,31 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to migrate layerdb")?;
 
+    // Start up a Pinga server as a task exclusively to allow the migrations to run
+    info!("starting Pinga server for initial migrations");
+    let srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone())
+        .await;
+    let pinga_server = pinga_server(srv_services_ctx)?;
+    let pinga_server_handle = pinga_server.shutdown_handle();
+    tracker.spawn(pinga_server.run());
+
+    // Start up a Rebaser server for migrations
+    info!("starting Rebaser server for initial migrations");
+    let srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone())
+        .await;
+    let rebaser_server = rebaser_server(srv_services_ctx, token.clone())?;
+    tracker.spawn(rebaser_server.run());
+
+    // Start up a Veritech server as a task exclusively to allow the migrations to run
+    info!("starting Veritech server for initial migrations");
+    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
+    let veritech_server_handle = veritech_server.shutdown_handle();
+    tracker.spawn(veritech_server.run());
+
+    tracker.close();
+
     // Check if the user would like to skip migrating schemas. This is helpful for boosting
     // performance when running integration tests that do not rely on builtin schemas.
     // let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
@@ -734,19 +742,17 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("shutting down initial migrations Pinga server");
     pinga_server_handle.shutdown().await;
 
-    // Shutdown the Rebaser server (each test gets their own server instance with an exclusively
-    // unique subject prefix)
-    info!("shutting down initial migrations Rebaser server");
-    rebaser_server_handle.shutdown().await;
-
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)
     info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
 
+    // Rebaser shutdown is signaled with the `token` and tracked/awaited with the `tracker`
+    info!("shutting down initial migrations Rebaser server");
+
     // Cancel and wait for all outstanding tasks to complete
     token.cancel();
-    traker.wait().await;
+    tracker.wait().await;
 
     info!("global test setup complete");
     Ok(())

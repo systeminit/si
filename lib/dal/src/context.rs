@@ -1002,6 +1002,11 @@ impl DalContextBuilder {
         &self.services_context
     }
 
+    /// Gets a reference to the LayerDb.
+    pub fn layer_db(&self) -> &DalLayerDb {
+        &self.services_context.layer_db
+    }
+
     /// Set blocking flag
     pub fn set_blocking(&mut self) {
         self.blocking = true;

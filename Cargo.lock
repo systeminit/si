@@ -4107,13 +4107,9 @@ name = "rebaser"
 version = "0.1.0"
 dependencies = [
  "clap",
- "color-eyre",
  "rebaser-server",
  "si-service",
  "si-std",
- "telemetry-application",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -4135,6 +4131,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "naxum",
  "rebaser-core",
  "remain",
  "serde",
@@ -4142,6 +4139,7 @@ dependencies = [
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
+ "si-events",
  "si-layer-cache",
  "si-settings",
  "si-std",
@@ -4151,6 +4149,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
+ "tower",
  "ulid",
  "veritech-client",
 ]
