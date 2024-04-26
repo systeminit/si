@@ -531,25 +531,6 @@ impl Func {
         Ok(funcs)
     }
 
-    /// Checks if the [`Func`] is "revertible".
-    pub async fn is_revertible(&self, ctx: &DalContext) -> FuncResult<bool> {
-        Self::is_revertible_for_id(ctx, self.id).await
-    }
-
-    /// Checks if the [`Func`] corresponding to the provided id is "revertible".
-    pub async fn is_revertible_for_id(ctx: &DalContext, id: FuncId) -> FuncResult<bool> {
-        if Func::get_by_id(ctx, id).await?.is_none() {
-            return Ok(false);
-        }
-
-        let exists_on_base = {
-            let base_ctx = ctx.clone_with_base().await?;
-            Func::get_by_id(&base_ctx, id).await?.is_some()
-        };
-
-        Ok(exists_on_base)
-    }
-
     pub async fn duplicate(&self, ctx: &DalContext, new_name: String) -> FuncResult<Self> {
         if new_name == self.name.clone() {
             return Err(FuncError::FuncNameInUse(new_name));

@@ -65,7 +65,6 @@ async fn save_func_setup(ctx: &mut DalContext, func_name: impl AsRef<str>) -> (F
     let after = FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
-    assert!(after.is_revertible);
     assert_eq!(
         func_id,   // expected
         before.id  // actual
