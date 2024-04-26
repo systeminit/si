@@ -49,6 +49,8 @@ pub enum SchemaVariantError {
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]
     NoAssetCreated,
+    #[error("no default schema variant found for schema")]
+    NoDefaultSchemaVariantFoundForSchema,
     #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
     #[error("schema error: {0}")]
