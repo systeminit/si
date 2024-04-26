@@ -48,7 +48,7 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("unable to get the Resource view");
 
-    if let Some(payload) = resource.data {
+    if let Some(payload) = resource.payload {
         pretty_assertions_sorted::assert_eq!(serde_json::json![{"poop":true}], payload);
     } else {
         panic!("No resource data found for the component after create action");
@@ -115,7 +115,7 @@ async fn update_action(ctx: &mut DalContext) {
         .await
         .expect("unable to get the Resource view");
 
-    if let Some(payload) = resource.data {
+    if let Some(payload) = resource.payload {
         pretty_assertions_sorted::assert_eq!(serde_json::json![{"poonami":true}], payload);
     } else {
         panic!("No resource data found for the component after update action");

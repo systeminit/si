@@ -15,9 +15,11 @@ import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const actionsStore = useActionsStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -153,7 +155,10 @@ const rightClickMenuItems = computed(() => {
       disabled,
     });
   }
-  if (selectedComponent.value?.hasResource) {
+  if (
+    selectedComponent.value?.hasResource &&
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
+  ) {
     items.push({
       label: "Refresh resource",
       icon: "refresh",

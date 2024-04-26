@@ -4,7 +4,7 @@ use dal::job::definition::compute_validation::ComputeValidation;
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{ActionsJob, DependentValuesUpdate},
+        definition::{ActionsJob, DependentValuesUpdate, RefreshJob},
         producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
@@ -480,6 +480,9 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
         }
         stringify!(ActionsJob) => {
             Box::new(ActionsJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
+        }
+        stringify!(RefreshJob) => {
+            Box::new(RefreshJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
         }
         stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
             as Box<dyn JobConsumer + Send + Sync>,

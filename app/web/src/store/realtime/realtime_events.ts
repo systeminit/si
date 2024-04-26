@@ -164,6 +164,7 @@ export type WsEventPayloadMap = {
 
   DeprecatedActionRunnerReturn: {
     id: string;
+    componentId: string;
     batchId: string;
     attributeValueId: string;
     action: string;

@@ -539,6 +539,7 @@ impl Component {
             let path = AttributeValue::get_path_for_id(ctx, copied_av_id)
                 .await?
                 .ok_or(ComponentError::MissingPathForAttributeValue(copied_av_id))?;
+
             // Must empty resource and keep the name with the "- Copy" suffix
             if path.starts_with("root/resource") || path == "root/si/name" {
                 continue;
@@ -622,7 +623,6 @@ impl Component {
 
                     let apa =
                         AttributePrototypeArgument::new(ctx, prototype.id(), func_arg_id).await?;
-
                     match value_source {
                         ValueSource::InputSocket(socket_id) => {
                             apa.set_value_from_input_socket_id(ctx, socket_id).await?;

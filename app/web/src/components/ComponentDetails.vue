@@ -31,7 +31,11 @@
         />
         <div class="pr-xs shrink-0">
           <VButton
-            v-if="selectedComponent.hasResource"
+            v-if="
+              selectedComponent.hasResource &&
+              changeSetStore.selectedChangeSetId ===
+                changeSetStore.headChangeSetId
+            "
             icon="refresh"
             size="sm"
             variant="ghost"

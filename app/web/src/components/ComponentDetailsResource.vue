@@ -8,10 +8,10 @@
       v-else-if="resourceReqStatus.isSuccess && selectedComponentResource"
     >
       <CodeViewer
-        v-if="selectedComponentResource.data !== null"
+        v-if="selectedComponentResource.payload !== null"
         :code="
-          selectedComponentResource.data
-            ? JSON.stringify(selectedComponentResource.data, null, 2)
+          selectedComponentResource.payload
+            ? JSON.stringify(selectedComponentResource.payload, null, 2)
             : ''
         "
         class="dark:text-neutral-50 text-neutral-900 pt-4"
