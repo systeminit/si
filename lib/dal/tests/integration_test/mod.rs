@@ -10,7 +10,6 @@ mod dependent_values_update;
 mod frame;
 mod func;
 mod module;
-mod pkgs;
 mod prop;
 mod property_editor;
 mod rebaser;
