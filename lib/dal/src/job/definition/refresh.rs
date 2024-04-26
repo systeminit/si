@@ -7,7 +7,8 @@ use telemetry::prelude::*;
 use crate::{
     job::{
         consumer::{
-            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
+            JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
@@ -81,7 +82,7 @@ impl JobConsumer for RefreshJob {
             component_ids = ?self.component_ids,
         )
     )]
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         for component_id in &self.component_ids {
             let variant = Component::schema_variant_for_component_id(ctx, *component_id).await?;
             for prototype in DeprecatedActionPrototype::for_variant(ctx, variant.id()).await? {
@@ -99,7 +100,7 @@ impl JobConsumer for RefreshJob {
             ctx.commit().await?;
         }
 
-        Ok(())
+        Ok(JobCompletionState::Done)
     }
 }
 
