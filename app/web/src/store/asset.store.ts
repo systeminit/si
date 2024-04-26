@@ -72,6 +72,7 @@ export interface DetachedValidationPrototype {
 
 export interface ListedVariant {
   id: AssetId;
+  defaultSchemaVariantId: string;
   name: string;
   displayName?: string;
   category: string;
@@ -243,6 +244,7 @@ export const useAssetStore = () => {
         createNewAsset(): Asset {
           return {
             id: nilId(),
+            defaultSchemaVariantId: "",
             name: `new asset ${Math.floor(Math.random() * 10000)}`,
             code: "",
             color: this.generateMockColor(),
