@@ -5,7 +5,8 @@ use std::sync::Arc;
 use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
-    activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata, LayerDb,
+    activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
+    memory_cache::MemoryCacheConfig, LayerDb,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -29,6 +30,7 @@ async fn activities() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -40,6 +42,7 @@ async fn activities() {
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -89,6 +92,7 @@ async fn activities_subscribe_partial() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -100,6 +104,7 @@ async fn activities_subscribe_partial() {
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await

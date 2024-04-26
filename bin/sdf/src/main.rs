@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
-use sdf_server::server::{LayerDb, PgPool, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
+use sdf_server::server::{LayerDb, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
     ServicesContext,
@@ -114,16 +114,8 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
-    let mut pg_layer_db_pool = config.pg_pool().clone();
-    pg_layer_db_pool.dbname = config.layer_cache_pg_dbname().to_string();
-
-    let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-        config.layer_cache_disk_path(),
-        PgPool::new(&pg_layer_db_pool).await?,
-        nats_conn.clone(),
-        shutdown_token.clone(),
-    )
-    .await?;
+    let (layer_db, layer_db_graceful_shutdown) =
+        LayerDb::from_config(config.layer_db_config().clone(), shutdown_token.clone()).await?;
     task_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
     let services_context = ServicesContext::new(

@@ -62,6 +62,8 @@ pub enum LayerDbError {
     NatsAck(#[source] si_data_nats::async_nats::Error),
     #[error("raw ack error: {0}")]
     NatsAckRaw(String),
+    #[error("nats client: {0}")]
+    NatsClient(#[from] si_data_nats::Error),
     #[error("stream consumer error: {0}")]
     NatsConsumer(#[from] jetstream::stream::ConsumerError),
     #[error("error while fetching or creating a nats jetsream: {0}")]

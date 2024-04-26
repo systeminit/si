@@ -4,7 +4,9 @@ use std::sync::{
 };
 
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk, WorkspaceSnapshotAddress};
-use si_layer_cache::{activities::ActivityId, event::LayeredEventMetadata, LayerDb};
+use si_layer_cache::{
+    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
+};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
@@ -28,6 +30,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -39,6 +42,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -50,6 +54,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         tempdir_duff,
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -156,6 +161,7 @@ async fn rebase_and_wait() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -167,6 +173,7 @@ async fn rebase_and_wait() {
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -244,6 +251,7 @@ async fn rebase_requests_work_queue_stress() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -255,6 +263,7 @@ async fn rebase_requests_work_queue_stress() {
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -266,6 +275,7 @@ async fn rebase_requests_work_queue_stress() {
         tempdir_duff,
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -405,6 +415,7 @@ async fn rebase_and_wait_stress() {
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -416,6 +427,7 @@ async fn rebase_and_wait_stress() {
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await

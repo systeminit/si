@@ -65,7 +65,7 @@ pub(crate) struct Args {
 
     /// PostgreSQL connection pool dbname for layer_db [example: melons]
     #[arg(long)]
-    pub(crate) layer_cache_pg_dbname: Option<String>,
+    pub(crate) layer_db_pg_dbname: Option<String>,
 
     /// PostgreSQL connection pool hostname [example: prod.db.example.com]
     #[arg(long)]
@@ -125,7 +125,11 @@ pub(crate) struct Args {
 
     /// The path at which the layer db cache is created/used on disk [e.g. /banana/]
     #[arg(long)]
-    pub(crate) layer_cache_disk_path: Option<String>,
+    pub(crate) layer_db_disk_path: Option<String>,
+
+    /// The time to idle for items in the layercache
+    #[arg(long)]
+    pub(crate) layer_db_seconds_to_idle: Option<u64>,
 
     /// Generates cyclone secret key file (does not run server)
     ///
@@ -176,38 +180,62 @@ impl TryFrom<Args> for Config {
             if let Some(dbname) = args.pg_dbname {
                 config_map.set("pg.dbname", dbname);
             }
+            if let Some(layer_cache_pg_dbname) = args.layer_db_pg_dbname {
+                config_map.set(
+                    "layer_db_config.pg_pool_config.dbname",
+                    layer_cache_pg_dbname,
+                );
+            }
             if let Some(hostname) = args.pg_hostname {
-                config_map.set("pg.hostname", hostname);
+                config_map.set("pg.hostname", hostname.clone());
+                config_map.set("layer_db_config.pg_pool_config.hostname", hostname);
             }
             if let Some(pool_max_size) = args.pg_pool_max_size {
                 config_map.set("pg.pool_max_size", i64::from(pool_max_size));
+                config_map.set(
+                    "layer_db_config.pg_pool_config.pool_max_size",
+                    i64::from(pool_max_size),
+                );
             }
             if let Some(port) = args.pg_port {
                 config_map.set("pg.port", i64::from(port));
+                config_map.set("layer_db_config.pg_pool_config.port", i64::from(port));
             }
             if let Some(user) = args.pg_user {
-                config_map.set("pg.user", user);
+                config_map.set("pg.user", user.clone());
+                config_map.set("layer_db_config.pg_pool_config.user", user);
             }
             if let Some(cert_path) = args.pg_cert_path {
                 config_map.set("pg.certificate_path", cert_path.display().to_string());
+                config_map.set(
+                    "layer_db_config.pg_pool_config.certificate_path",
+                    cert_path.display().to_string(),
+                );
             }
             if let Some(cert) = args.pg_cert_base64 {
                 config_map.set("pg.certificate_base64", cert.to_string());
-            }
-            if let Some(layer_cache_pg_dbname) = args.layer_cache_pg_dbname {
-                config_map.set("layer_cache_pg_dbname", layer_cache_pg_dbname);
+                config_map.set(
+                    "layer_db_config.pg_pool_config.certificate_base64",
+                    cert.to_string(),
+                );
             }
             if let Some(migration_mode) = args.migration_mode {
                 config_map.set("migration_mode", migration_mode);
             }
             if let Some(url) = args.nats_url {
-                config_map.set("nats.url", url);
+                config_map.set("nats.url", url.clone());
+                config_map.set("layer_db_config.nats_config.url", url);
             }
             if let Some(creds) = args.nats_creds {
                 config_map.set("nats.creds", creds.to_string());
+                config_map.set("layer_db_config.nats_config.creds", creds.to_string());
             }
             if let Some(creds_file) = args.nats_creds_path {
                 config_map.set("nats.creds_file", creds_file.display().to_string());
+                config_map.set(
+                    "layer_db_config.nats_config.creds_file",
+                    creds_file.display().to_string(),
+                );
             }
             if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
                 config_map.set(
@@ -230,8 +258,8 @@ impl TryFrom<Args> for Config {
             if let Some(jwt) = args.jwt_public_signing_key_base64 {
                 config_map.set("jwt_signing_public_key.key_base64", jwt.to_string());
             }
-            if let Some(layer_cache_disk_path) = args.layer_cache_disk_path {
-                config_map.set("layer_cache_disk_path", layer_cache_disk_path);
+            if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
+                config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);
@@ -242,6 +270,8 @@ impl TryFrom<Args> for Config {
 
             config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);
+            config_map.set("layer_db_config.pg_pool_config.application_name", NAME);
+            config_map.set("layer_db_config.nats_config.connection_name", NAME);
         })?
         .try_into()
     }

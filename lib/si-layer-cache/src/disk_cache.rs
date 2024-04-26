@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use std::path::PathBuf;
 
@@ -21,12 +21,6 @@ impl CaCacheTempFile {
 pub fn default_cacache_path() -> LayerDbResult<CaCacheTempFile> {
     let tempdir = tempfile::tempdir()?;
     Ok(CaCacheTempFile::new(tempdir))
-}
-
-pub fn default_cache_path_for_service(service: impl AsRef<str>) -> PathBuf {
-    let service = service.as_ref();
-    PathBuf::from_str(&format!("/tmp/layerdb-{service}-cacache"))
-        .expect("paths from strings is infallible")
 }
 
 #[derive(Clone, Debug)]

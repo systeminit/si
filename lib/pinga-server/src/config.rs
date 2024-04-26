@@ -1,7 +1,4 @@
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -9,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_layer_cache::error::LayerDbError;
+use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -62,11 +59,8 @@ pub struct Config {
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
-    #[builder(default = "default_layer_cache_dbname()")]
-    layer_cache_pg_dbname: String,
-
-    #[builder(default = "si_layer_cache::default_cache_path_for_service(\"pinga\")")]
-    layer_cache_disk_path: PathBuf,
+    #[builder(default = "default_layer_db_config()")]
+    layer_db_config: LayerDbConfig,
 }
 
 impl StandardConfig for Config {
@@ -112,13 +106,8 @@ impl Config {
     }
 
     #[must_use]
-    pub fn layer_cache_pg_dbname(&self) -> &str {
-        &self.layer_cache_pg_dbname
-    }
-
-    #[must_use]
-    pub fn layer_cache_disk_path(&self) -> &Path {
-        self.layer_cache_disk_path.as_path()
+    pub fn layer_db_config(&self) -> &LayerDbConfig {
+        &self.layer_db_config
     }
 }
 
@@ -126,8 +115,6 @@ impl Config {
 pub struct ConfigFile {
     #[serde(default)]
     pg: PgPoolConfig,
-    #[serde(default = "default_layer_cache_dbname")]
-    layer_cache_pg_dbname: String,
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
@@ -136,8 +123,8 @@ pub struct ConfigFile {
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
-    #[serde(default = "default_layer_cache_disk_path")]
-    layer_cache_disk_path: PathBuf,
+    #[serde(default = "default_layer_db_config")]
+    layer_db_config: LayerDbConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
@@ -146,12 +133,11 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
-            layer_cache_pg_dbname: default_layer_cache_dbname(),
             nats: Default::default(),
             concurrency_limit: default_concurrency_limit(),
             crypto: Default::default(),
             instance_id: random_instance_id(),
-            layer_cache_disk_path: default_layer_cache_disk_path(),
+            layer_db_config: default_layer_db_config(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
         }
     }
@@ -169,13 +155,12 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
-        config.layer_cache_pg_dbname(value.layer_cache_pg_dbname);
         config.nats(value.nats);
         config.crypto(value.crypto);
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_disk_path(value.layer_cache_disk_path);
+        config.layer_db_config(value.layer_db_config);
         config.build().map_err(Into::into)
     }
 }
@@ -192,16 +177,12 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     }
 }
 
-fn default_layer_cache_dbname() -> String {
-    "si_layer_db".to_string()
-}
-
 fn default_concurrency_limit() -> usize {
     DEFAULT_CONCURRENCY_LIMIT
 }
 
-fn default_layer_cache_disk_path() -> PathBuf {
-    si_layer_cache::default_cache_path_for_service("pinga")
+fn default_layer_db_config() -> LayerDbConfig {
+    LayerDbConfig::default_for_service("pinga")
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
@@ -248,6 +229,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
 
     Ok(())
 }
@@ -280,6 +263,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
 
     Ok(())
 }

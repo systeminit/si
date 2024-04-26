@@ -2,6 +2,7 @@ use si_events::ulid::Ulid;
 use si_events::{
     CasValue, FuncExecution, FuncExecutionKey, FuncExecutionMessage, FuncExecutionState,
 };
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use si_layer_cache::LayerDb;
 use tokio_util::sync::CancellationToken;
 
@@ -19,6 +20,7 @@ async fn write() {
         dbfile,
         setup_pg_db("fe_write").await,
         setup_nats_client(Some("fe_write".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -54,6 +56,7 @@ async fn write_with_message() {
         dbfile,
         setup_pg_db("fe_write_with_maessage").await,
         setup_nats_client(Some("fe_write_with_message".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -112,6 +115,7 @@ async fn write_and_read_many() {
         dbfile,
         setup_pg_db("fe_write_and_read_many").await,
         setup_nats_client(Some("fe_write_and_read_many".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -171,6 +175,7 @@ async fn read_by_component_id() {
         dbfile,
         setup_pg_db("fe_by_component_id").await,
         setup_nats_client(Some("fe_by_component_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -240,6 +245,7 @@ async fn read_by_prototype_id() {
         dbfile,
         setup_pg_db("fe_by_prototype_id").await,
         setup_nats_client(Some("fe_by_prototype_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -307,6 +313,7 @@ async fn read_by_component_id_and_prototype_id() {
         dbfile,
         setup_pg_db("fe_by_component_id_and_prototype_id").await,
         setup_nats_client(Some("fe_by_component_id_and_prototype_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
