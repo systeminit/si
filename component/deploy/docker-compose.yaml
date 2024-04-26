@@ -32,12 +32,17 @@ services:
     command:
       - --collector.systemd
       - --collector.systemd.unit-include=${SI_SERVICE}.service
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
     ports:
       - 9100:9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
 
   pgbouncer:
     container_name: pgbouncer
