@@ -41,6 +41,10 @@ export class DiagramNodeData extends DiagramElementData {
   static generateUniqueKey(id: string | number) {
     return `n-${id}`;
   }
+
+  static componentIdFromUniqueKey(uniqueKey: string): string {
+    return uniqueKey.replace("n-", "");
+  }
 }
 
 export class DiagramGroupData extends DiagramElementData {
@@ -58,6 +62,10 @@ export class DiagramGroupData extends DiagramElementData {
 
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;
+  }
+
+  static componentIdFromUniqueKey(uniqueKey: string): string {
+    return uniqueKey.replace("g-", "");
   }
 }
 
