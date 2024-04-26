@@ -55,6 +55,13 @@ impl Frame {
         child_id: ComponentId,
         new_parent_id: ComponentId,
     ) -> FrameResult<()> {
+        // let's see if we need to even do anything
+        if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
+            if current_parent_id == new_parent_id {
+                return Ok(());
+            }
+        }
+
         match Component::get_type_by_id(ctx, new_parent_id).await? {
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
                 Self::orphan_child(ctx, child_id).await?;
@@ -80,7 +87,7 @@ impl Frame {
             .await?;
         drop(cycle_check_guard);
 
-        // when detaching a child, need to rerun any attribute prototypes for those impacted sockets then queue up dvu!
+        // when attaching a child, need to rerun any attribute prototypes for those impacted sockets then queue up dvu!
 
         let values_rerun = match Component::get_type_by_id(ctx, child_id).await? {
             ComponentType::Component

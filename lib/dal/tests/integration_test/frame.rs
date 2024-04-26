@@ -3,8 +3,8 @@ use dal::diagram::SummaryDiagramInferredEdge;
 use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal::{ComponentType, InputSocket, OutputSocket};
-use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
@@ -255,10 +255,12 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match =
-                    Component::find_inferred_connection_to_input_socket(ctx, input_socket_match)
-                        .await
-                        .expect("couldn't find implicit inputs");
+                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
+                    ctx,
+                    input_socket_match,
+                )
+                .await
+                .expect("couldn't find implicit inputs");
                 assert!(possible_match.is_some());
                 let travis_output_match = possible_match.expect("has a value");
                 //maybe_travis_output_socket = Some(travis_output);
@@ -346,10 +348,12 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match =
-                    Component::find_inferred_connection_to_input_socket(ctx, input_socket_match)
-                        .await
-                        .expect("couldn't find implicit inputs");
+                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
+                    ctx,
+                    input_socket_match,
+                )
+                .await
+                .expect("couldn't find implicit inputs");
                 assert!(possible_match.is_none());
             }
         }
@@ -374,6 +378,99 @@ async fn simple_frames(ctx: &mut DalContext) {
         assert!(maybe_ins.is_empty());
         assert_eq!(diagram.get_all_implicit_edges().len(), 0);
     }
+}
+
+#[test]
+async fn output_sockets_can_have_both(ctx: &mut DalContext) {
+    // create an even frame
+    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even").await;
+
+    let _ = even_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd1").await;
+    let _ = odd_component.set_type(ctx, ComponentType::Component).await;
+    Frame::upsert_parent(ctx, odd_component.id(), even_frame.id())
+        .await
+        .expect("could not upsert parent");
+    // Change attribute value for one
+    let type_attribute_value_id = even_frame
+        .attribute_values_for_prop(ctx, &["root", "domain", "one"])
+        .await
+        .expect("could not find attribute values for prop")
+        .into_iter()
+        .next()
+        .expect("could not get type attribute value id");
+
+    AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!["1"]))
+        .await
+        .expect("could not update attribute value");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // create another odd component, but manually connect to the frame (not a child!)
+    let odd_component_2 = create_component_for_schema_name(ctx, "large odd lego", "odd2").await;
+    let _ = odd_component_2
+        .set_type(ctx, ComponentType::Component)
+        .await;
+
+    connect_components_with_socket_names(ctx, even_frame.id(), "one", odd_component_2.id(), "one")
+        .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = DiagramByKey::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+    assert_eq!(
+        1,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        2,                                      // expected
+        diagram.get_all_implicit_edges().len()  // actual
+    );
+    let odd_component = Component::get_by_id(ctx, odd_component.id())
+        .await
+        .expect("got component");
+    let odd_component_1_av = odd_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "one"])
+        .await
+        .expect("got avs")
+        .into_iter()
+        .next()
+        .expect("got av");
+    let odd_component_1_mat_view = AttributeValue::get_by_id(ctx, odd_component_1_av)
+        .await
+        .expect("got av")
+        .materialized_view(ctx)
+        .await
+        .expect("got mat view")
+        .expect("has value");
+    assert_eq!(odd_component_1_mat_view, serde_json::json!("1"));
+    let odd_component_2 = Component::get_by_id(ctx, odd_component_2.id())
+        .await
+        .expect("got component");
+    let odd_component_2_av = odd_component_2
+        .attribute_values_for_prop(ctx, &["root", "domain", "one"])
+        .await
+        .expect("got avs")
+        .into_iter()
+        .next()
+        .expect("got av");
+    let odd_component_2_mat_view = AttributeValue::get_by_id(ctx, odd_component_2_av)
+        .await
+        .expect("got av")
+        .materialized_view(ctx)
+        .await
+        .expect("got mat view")
+        .expect("has value");
+    assert_eq!(odd_component_2_mat_view, serde_json::json!("1"));
 }
 
 #[test]
@@ -697,10 +794,11 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .expect("could not find materialized view")
         .expect("is some");
     assert_eq!(one_output_mat_view, serde_json::json!("4"));
-    let maybe_match = Component::find_inferred_connection_to_input_socket(ctx, one_input_match)
-        .await
-        .expect("could not find inferred input socket")
-        .expect("is some");
+    let maybe_match =
+        Component::find_potential_inferred_connection_to_input_socket(ctx, one_input_match)
+            .await
+            .expect("could not find inferred input socket")
+            .expect("is some");
     assert_eq!(
         maybe_match.attribute_value_id,
         three_av_id.attribute_value_id
@@ -960,10 +1058,11 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .get(&even_up_frame_input_socket.id())
         .expect("could not get input socket");
 
-    let output_match = Component::find_inferred_connection_to_input_socket(ctx, *one_input_match)
-        .await
-        .expect("could not get inferred connection")
-        .expect("inferred connection is some");
+    let output_match =
+        Component::find_potential_inferred_connection_to_input_socket(ctx, *one_input_match)
+            .await
+            .expect("could not get inferred connection")
+            .expect("inferred connection is some");
     assert_eq!(odd_up_frame_output_av, output_match.attribute_value_id);
 
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)

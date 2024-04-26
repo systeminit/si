@@ -1160,7 +1160,10 @@ async fn rebase(
         )
         .await?;
     info!("got response from rebaser: {:?}", start.elapsed());
-
+    info!(
+        "rebaser response payload: {:?}",
+        rebase_finished_activity.payload
+    );
     match rebase_finished_activity.payload {
         ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
             RebaseStatus::Success { .. } => Ok(None),

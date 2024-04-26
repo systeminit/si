@@ -152,6 +152,8 @@ pub struct SummaryDiagramInferredEdge {
     pub from_socket_id: OutputSocketId,
     pub to_component_id: ComponentId,
     pub to_socket_id: InputSocketId,
+    // this is inferred by if either the to or from component is marked to_delete
+    pub to_delete: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -251,6 +253,7 @@ impl Diagram {
                     from_socket_id: inferred_incoming_connection.from_output_socket_id,
                     to_component_id: inferred_incoming_connection.to_component_id,
                     to_socket_id: inferred_incoming_connection.to_input_socket_id,
+                    to_delete: inferred_incoming_connection.to_delete,
                 })
             }
 
@@ -364,7 +367,6 @@ impl Diagram {
             component_views.push(component_view);
         }
 
-        // TODO(nick): restore the ability to show edges.
         Ok(Self {
             edges: diagram_edges,
             components: component_views,

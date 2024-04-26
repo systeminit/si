@@ -531,10 +531,6 @@ impl AttributeValue {
         let destination_component_id =
             AttributeValue::component_id(ctx, attribute_value_id).await?;
         let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-        info!(
-            "Attribute value Id {} value is for {:?}",
-            attribute_value_id, value_is_for
-        );
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
         let mut func_binding_args: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
         if apa_ids.is_empty() {
@@ -722,7 +718,7 @@ impl AttributeValue {
         })
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     async fn get_inferred_input_value(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
@@ -744,42 +740,37 @@ impl AttributeValue {
             input_socket_id,
             attribute_value_id: input_attribute_value_id,
         };
-        info!(
-            " AV: Finding inferred input value for input value {}",
-            input_attribute_value_id
-        );
-
         Ok(
-            match Component::find_inferred_connection_to_input_socket(ctx, input_socket_match).await
+            match Component::find_potential_inferred_connection_to_input_socket(
+                ctx,
+                input_socket_match,
+            )
+            .await
             {
                 Ok(Some(output_match)) => {
                     // Both deleted and non deleted components can feed data into deleted components.
                     // ** ONLY ** non-deleted components can feed data into non-deleted components
-                    let source_component =
-                        Component::get_by_id(ctx, input_socket_match.component_id)
-                            .await
-                            .map_err(Box::new)?;
-                    let destination_component =
-                        Component::get_by_id(ctx, output_match.component_id)
-                            .await
-                            .map_err(Box::new)?;
-
-                    if destination_component.to_delete()
-                        || (!destination_component.to_delete() && !source_component.to_delete())
+                    if !Component::should_data_flow_between_components(
+                        ctx,
+                        input_socket_match.component_id,
+                        output_match.component_id,
+                    )
+                    .await
+                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?
                     {
-                        // XXX: We need to properly handle the difference between "there is
-                        // XXX: no value" vs "the value is null", but right now we collapse
-                        // XXX: the two to just be "null" when passing these to a function.
-                        let output_av =
-                            AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                        let mat_view = output_av
-                            .materialized_view(ctx)
-                            .await?
-                            .unwrap_or(Value::Null);
-                        Some(mat_view)
-                    } else {
-                        None
+                        return Ok(None);
                     }
+
+                    // XXX: We need to properly handle the difference between "there is
+                    // XXX: no value" vs "the value is null", but right now we collapse
+                    // XXX: the two to just be "null" when passing these to a function.
+                    let output_av =
+                        AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
+                    let mat_view = output_av
+                        .materialized_view(ctx)
+                        .await?
+                        .unwrap_or(Value::Null);
+                    Some(mat_view)
                 }
                 _ => None,
             },
