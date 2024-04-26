@@ -193,12 +193,12 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             }
           },
 
-          globalStatus(): GlobalUpdateStatus {
+          globalStatus(state): GlobalUpdateStatus {
             const nowMs = Date.now();
             const FIFTEEN_SECONDS_MS = 1000 * 15;
             const timeouts = [] as AttributeValueStatus[];
             const isUpdatingDvus = _.some(
-              this.rawStatusesByValueId,
+              state.rawStatusesByValueId,
               (status) => {
                 const startedAt = Number(status.startedAt);
                 // don't consider an update live after 15 seconds
@@ -213,28 +213,15 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               },
             );
 
-            // Reap the status values if they're all finished
-            if (!isUpdatingDvus && this.rawStatusesByValueId.length) {
-              this.rawStatusesByValueId = {};
-            }
-
             const isRebasing =
-              !this.rebaseStatus.rebaseFinished &&
-              nowMs - Number(this.rebaseStatus.rebaseStart) >
+              !state.rebaseStatus.rebaseFinished &&
+              nowMs - Number(state.rebaseStatus.rebaseStart) >
                 FIFTEEN_SECONDS_MS;
-
-            if (!isRebasing) {
-              this.rebaseStatus = {
-                rebaseStart: undefined,
-                rebaseFinished: undefined,
-                count: 0,
-              };
-            }
 
             const updatedComponents = _.keys(
               _.groupBy(
                 _.filter(
-                  this.rawStatusesByValueId,
+                  state.rawStatusesByValueId,
                   (status) => !!status.finishedAt,
                 ),
                 (status) => status.componentId,
@@ -243,7 +230,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
             const totalComponents = _.keys(
               _.groupBy(
-                this.rawStatusesByValueId,
+                state.rawStatusesByValueId,
                 (status) => status.componentId,
               ),
             ).length;
@@ -268,14 +255,6 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             return `Updating ${latestUpdate.componentLabel}`;
           },
         },
-        actions: {
-          checkCompletedCleanup() {
-            if (!this.globalStatus.isUpdating) {
-              // if we're done updating, clear the timestamps
-              this.rawStatusesByValueId = {};
-            }
-          },
-        },
         onActivated() {
           if (!changeSetId) return;
 
@@ -288,6 +267,16 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "StatusUpdate",
               callback: (update, _metadata) => {
+                if (!this.globalStatus.isUpdating) {
+                  // if we're done updating, clear the old data
+                  this.rawStatusesByValueId = {};
+                  this.rebaseStatus = {
+                    rebaseStart: undefined,
+                    rebaseFinished: undefined,
+                    count: 0,
+                  };
+                }
+
                 if (update.kind === "dependentValueUpdate") {
                   let currentStatusForValue =
                     this.rawStatusesByValueId[update.valueId];
