@@ -604,9 +604,9 @@ impl PkgExporter {
                 .hidden(child_prop.hidden)
                 .widget_kind(child_prop.widget_kind);
 
-            // if let Some(widget_options) = child_prop.widget_options {
-            //     builder.widget_options(serde_json::to_value(widget_options)?);
-            // }
+            if let Some(widget_options) = child_prop.widget_options {
+                builder.widget_options(serde_json::to_value(widget_options)?);
+            }
 
             if let Some(doc_link) = child_prop.doc_link {
                 builder.try_doc_link(doc_link.as_str())?;
