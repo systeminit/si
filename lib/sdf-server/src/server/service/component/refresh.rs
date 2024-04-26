@@ -1,12 +1,10 @@
 use axum::extract::OriginalUri;
 use axum::Json;
 
-use dal::{
-    job::definition::RefreshJob, Component, ComponentId, StandardModel, Visibility, WsEvent,
-};
+use dal::{job::definition::RefreshJob, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::{ComponentError, ComponentResult};
+use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
@@ -33,49 +31,16 @@ pub async fn refresh(
 ) -> ComponentResult<Json<RefreshResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component_id = request.component_id;
-    let result = ctx
-        .run_with_deleted_visibility(|ctx| async move {
-            // If a component does not exist on head, we should just consider it "refreshed" right away.
-            if let Some(component_id) = component_id {
-                let bailout =
-                    if let Some(component) = Component::get_by_id(&ctx, &component_id).await? {
-                        component.is_destroyed()
-                    } else {
-                        false
-                    };
-
-                if bailout {
-                    WsEvent::resource_refreshed(&ctx, component_id)
-                        .await?
-                        .publish_on_commit(&ctx)
-                        .await?;
-                    ctx.commit().await?;
-
-                    return Ok::<_, ComponentError>(Some(Json(RefreshResponse { success: true })));
-                }
-            }
-            Ok(None)
-        })
-        .await?;
-
-    if let Some(result) = result {
-        return Ok(result);
-    }
-
     let component_ids = if let Some(component_id) = request.component_id {
         vec![component_id]
     } else {
-        ctx.run_with_deleted_visibility(|ctx| async move {
-            let component_ids = Component::list(&ctx)
-                .await?
-                .into_iter()
-                .filter(|c| c.visibility().deleted_at.is_none() || c.needs_destroy())
-                .map(|c| *c.id())
-                .collect();
-            Ok::<_, ComponentError>(component_ids)
-        })
-        .await?
+        let mut component_ids = Vec::new();
+        for component in Component::list(&ctx).await? {
+            if component.resource(&ctx).await?.payload.is_some() {
+                component_ids.push(component.id());
+            }
+        }
+        component_ids
     };
 
     track(
@@ -88,12 +53,15 @@ pub async fn refresh(
         }),
     );
 
-    ctx.enqueue_refresh(RefreshJob::new(
-        ctx.access_builder(),
-        *ctx.visibility(),
-        component_ids,
-    ))
-    .await?;
+    // Parallelizes resource refreshing
+    for component_id in component_ids {
+        ctx.enqueue_refresh(RefreshJob::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![component_id],
+        ))
+        .await?;
+    }
 
     ctx.commit().await?;
 

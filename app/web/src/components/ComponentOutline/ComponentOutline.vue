@@ -7,6 +7,18 @@
             <div class="flex flex-row gap-xs items-center">
               <div>Diagram Outline</div>
               <PillCounter :count="componentCount" borderTone="action" />
+              <VButton
+                v-if="
+                  changeSetsStore.selectedChangeSetId ===
+                  changeSetsStore.headChangeSetId
+                "
+                icon="refresh"
+                variant="ghost"
+                loadingIcon="refresh-active"
+                loadingText=""
+                :loading="refreshing"
+                @click="onClickRefreshButton"
+              ></VButton>
             </div>
           </template>
           <Icon
@@ -107,6 +119,7 @@ import {
   Icon,
   PillCounter,
   ScrollArea,
+  VButton,
 } from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import {
@@ -114,6 +127,7 @@ import {
   useComponentsStore,
   FullComponent,
 } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
@@ -121,6 +135,8 @@ import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 defineProps<{ actionsAreRunning: boolean }>();
+
+const changeSetsStore = useChangeSetsStore();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const outlineRef = ref<HTMLElement>();
@@ -358,8 +374,10 @@ onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
 });
 
+let timeout: Timeout;
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
+  clearTimeout(timeout);
 });
 
 const onKeyDown = (e: KeyboardEvent) => {
@@ -391,5 +409,14 @@ const onKeyDown = (e: KeyboardEvent) => {
       componentsStore.setSelectedComponentId(toSelect);
     }
   }
+};
+
+const refreshing = ref(false);
+const onClickRefreshButton = () => {
+  refreshing.value = true;
+  componentsStore.REFRESH_ALL_RESOURCE_INFO();
+  timeout = setTimeout(() => {
+    refreshing.value = false;
+  }, 3000);
 };
 </script>

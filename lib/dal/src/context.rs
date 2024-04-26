@@ -26,7 +26,7 @@ use crate::workspace_snapshot::{
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
-        definition::ActionsJob,
+        definition::{ActionsJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
@@ -676,10 +676,10 @@ impl DalContext {
         Ok(())
     }
 
-    // pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
-    //     self.txns().await?.job_queue.enqueue_job(job).await;
-    //     Ok(())
-    // }
+    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
 
     pub async fn enqueue_dependent_values_update(
         &self,

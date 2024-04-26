@@ -357,6 +357,7 @@ impl DeprecatedActionPrototype {
                 *payload = serde_json::from_str::<serde_json::Value>(&string)?;
             }
         }
+
         let before = before_funcs_for_component(ctx, &component_id).await?;
 
         let (_, return_value) = FuncBinding::create_and_execute(

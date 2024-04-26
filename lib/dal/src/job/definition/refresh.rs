@@ -11,8 +11,8 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionKind, Component, ComponentId, DalContext, StandardModel, Visibility,
-    WsEvent,
+    AccessBuilder, Component, ComponentId, DalContext, DeprecatedActionKind,
+    DeprecatedActionPrototype, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -82,19 +82,18 @@ impl JobConsumer for RefreshJob {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
-        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
-        ctx.update_with_deleted_visibility();
-
         for component_id in &self.component_ids {
-            let component = Component::get_by_id(ctx, component_id)
-                .await?
-                .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
-            component.act(ctx, ActionKind::Refresh).await?;
+            let variant = Component::schema_variant_for_component_id(ctx, *component_id).await?;
+            for prototype in DeprecatedActionPrototype::for_variant(ctx, variant.id()).await? {
+                if prototype.kind == DeprecatedActionKind::Refresh {
+                    prototype.run(ctx, *component_id).await?;
 
-            WsEvent::resource_refreshed(ctx, *component.id())
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
+                    WsEvent::resource_refreshed(ctx, *component_id)
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
+                }
+            }
 
             // Save the refreshed resource for the component
             ctx.commit().await?;

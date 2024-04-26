@@ -30,7 +30,7 @@ pub mod json;
 pub mod list_qualifications;
 pub mod update_property_editor_value;
 // pub mod list_resources;
-// pub mod refresh;
+pub mod refresh;
 // pub mod resource_domain_diff;
 pub mod debug;
 pub mod get_code;
@@ -179,7 +179,7 @@ pub fn routes() -> Router<AppState> {
             post(restore_default_function::restore_default_function),
         )
         .route("/set_type", post(set_type::set_type))
-        // .route("/refresh", post(refresh::refresh))
+        .route("/refresh", post(refresh::refresh))
         // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))

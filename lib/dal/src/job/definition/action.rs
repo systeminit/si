@@ -14,9 +14,10 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, ComponentId, DalContext,
-    DeprecatedActionBatch, DeprecatedActionBatchId, DeprecatedActionPrototype,
-    DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility, WsEvent,
+    AccessBuilder, ActionCompletionStatus, ActionPrototypeId, Component, ComponentId, DalContext,
+    DeprecatedActionBatch, DeprecatedActionBatchId, DeprecatedActionKind,
+    DeprecatedActionPrototype, DeprecatedActionRunner, DeprecatedActionRunnerId, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -273,7 +274,7 @@ async fn finish_batch(ctx: &mut DalContext, id: DeprecatedActionBatchId) -> JobC
     )
 )]
 async fn action_task(
-    ctx: &DalContext,
+    ctx: &mut DalContext,
     batch_id: DeprecatedActionBatchId,
     action_item: ActionRunnerItem,
     parent_span: Span,
@@ -281,6 +282,9 @@ async fn action_task(
     // Run the action (via the action prototype).
     let mut action = DeprecatedActionRunner::get_by_id(ctx, action_item.id).await?;
     let resource = action.run(ctx).await?;
+    let completion_status = action
+        .completion_status
+        .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
 
     let logs: Vec<_> = match &resource {
         Some(r) => r
@@ -292,10 +296,37 @@ async fn action_task(
         None => vec![],
     };
 
-    WsEvent::action_return(ctx, action.id, batch_id, action.action_kind, resource)
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+    WsEvent::action_return(
+        ctx,
+        action.id,
+        batch_id,
+        action.action_kind,
+        action.component_id,
+        resource,
+    )
+    .await?
+    .publish_on_commit(ctx)
+    .await?;
+
+    if matches!(completion_status, ActionCompletionStatus::Success)
+        && action.action_kind == DeprecatedActionKind::Create
+    {
+        ctx.blocking_commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
+
+        let variant =
+            Component::schema_variant_for_component_id(ctx, action_item.component_id).await?;
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, variant.id()).await? {
+            if prototype.kind == DeprecatedActionKind::Refresh {
+                prototype.run(ctx, action_item.component_id).await?;
+
+                WsEvent::resource_refreshed(ctx, action_item.component_id)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
+            }
+        }
+    }
 
     Ok((action, logs))
 }
@@ -370,10 +401,17 @@ async fn process_failed_action_inner(
         let prototype =
             DeprecatedActionPrototype::get_by_id_or_error(ctx, action.action_prototype_id).await?;
 
-        WsEvent::action_return(ctx, action.id, batch_id, prototype.kind, Some(resource))
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
+        WsEvent::action_return(
+            ctx,
+            action.id,
+            batch_id,
+            prototype.kind,
+            action.component_id,
+            Some(resource),
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
 
         for action in actions.values() {
             if action.parents.contains(&id) {

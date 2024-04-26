@@ -453,7 +453,7 @@ impl DeprecatedActionRunner {
                 Some(ResourceView {
                     status: resource.status,
                     message: resource.message,
-                    data: resource
+                    payload: resource
                         .payload
                         .as_deref()
                         .map(serde_json::from_str)
@@ -535,6 +535,7 @@ impl ActionHistoryView {
 #[serde(rename_all = "camelCase")]
 pub struct ActionRunnerReturn {
     id: DeprecatedActionRunnerId,
+    component_id: ComponentId,
     batch_id: DeprecatedActionBatchId,
     action: DeprecatedActionKind,
     resource: Option<DeprecatedActionRunResult>,
@@ -546,6 +547,7 @@ impl WsEvent {
         id: DeprecatedActionRunnerId,
         batch_id: DeprecatedActionBatchId,
         action: DeprecatedActionKind,
+        component_id: ComponentId,
         resource: Option<DeprecatedActionRunResult>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
@@ -554,6 +556,7 @@ impl WsEvent {
                 id,
                 batch_id,
                 action,
+                component_id,
                 resource,
             }),
         )

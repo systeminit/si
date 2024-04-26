@@ -1,11 +1,11 @@
 mod action;
 pub mod compute_validation;
 pub mod dependent_values_update;
-//mod refresh;
+mod refresh;
 
 pub use action::{ActionRunnerItem, ActionsJob};
 pub use dependent_values_update::DependentValuesUpdate;
-//pub use refresh::RefreshJob;
+pub use refresh::RefreshJob;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum AttributeValueBasedJobIdentifier {
