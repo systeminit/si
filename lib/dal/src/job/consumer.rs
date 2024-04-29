@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
@@ -64,6 +67,8 @@ pub enum JobConsumerError {
     Prop(#[from] PropError),
     // #[error(transparent)]
     // PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
+    #[error("execution of job {0} failed after {1} retry attempts")]
+    RetriesFailed(String, u32),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -101,6 +106,18 @@ pub struct JobInfo {
     pub blocking: bool,
 }
 
+pub enum RetryBackoff {
+    Exponential,
+    None,
+}
+
+/// Jobs that return a state of `JobCompletionState::Retry` will be retried
+/// with the requested backoff and limit
+pub enum JobCompletionState {
+    Retry { limit: u32, backoff: RetryBackoff },
+    Done,
+}
+
 #[async_trait]
 pub trait JobConsumerMetadata: std::fmt::Debug + Sync {
     fn type_name(&self) -> String;
@@ -112,21 +129,47 @@ pub trait JobConsumerMetadata: std::fmt::Debug + Sync {
 // Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
 pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
     /// Intended to be defined by implementations of this trait.
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()>;
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState>;
 
     /// Called on the trait object to set up the data necessary to run the job,
     /// and in-turn calls the `run` method. Can be overridden by an implementation
     /// of the trait if you need more control over how the `DalContext` is managed
     /// during the lifetime of the job.
     async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
-        let mut ctx = ctx_builder
-            .build(self.access_builder().build(self.visibility()))
-            .await?;
+        let mut retries = 0;
+        loop {
+            let mut ctx = ctx_builder
+                .build(self.access_builder().build(self.visibility()))
+                .await?;
 
-        self.run(&mut ctx).await?;
+            match self.run(&mut ctx).await? {
+                JobCompletionState::Retry { limit, backoff } => {
+                    if retries >= limit {
+                        return Err(JobConsumerError::RetriesFailed(self.type_name(), retries));
+                    }
 
-        ctx.commit().await?;
+                    if let RetryBackoff::Exponential = backoff {
+                        tokio::time::sleep(calculate_exponential_sleep_ms(retries, 2)).await;
+                    };
+                }
+                JobCompletionState::Done => {
+                    break;
+                }
+            }
+
+            retries = retries.saturating_add(1);
+        }
 
         Ok(())
     }
+}
+
+fn calculate_exponential_sleep_ms(retry_no: u32, base: u32) -> Duration {
+    let sleep_micros = base.pow(retry_no).saturating_mul(1000);
+    let mut rng = rand::thread_rng();
+    // "full" jitter, to prevent "thundering herd". On average this still gives
+    // us an exponential distribution
+    let jittered_micros = rng.gen_range(1000..=sleep_micros);
+
+    Duration::from_micros(jittered_micros.into())
 }

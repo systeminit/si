@@ -22,7 +22,8 @@ use crate::{
     },
     job::{
         consumer::{
-            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
+            JobConsumerResult, JobInfo, RetryBackoff,
         },
         producer::{JobProducer, JobProducerResult},
     },
@@ -30,6 +31,8 @@ use crate::{
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
     WsEvent, WsEventError,
 };
+
+const MAX_RETRIES: u32 = 8;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -119,13 +122,16 @@ impl JobConsumer for DependentValuesUpdate {
             attribute_values = ?self.attribute_values,
         )
     )]
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         Ok(self.inner_run(ctx).await?)
     }
 }
 
 impl DependentValuesUpdate {
-    async fn inner_run(&self, ctx: &mut DalContext) -> DependentValueUpdateResult<()> {
+    async fn inner_run(
+        &self,
+        ctx: &mut DalContext,
+    ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
 
         let mut dependency_graph =
@@ -226,9 +232,15 @@ impl DependentValuesUpdate {
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
-        ctx.commit().await?;
-
-        Ok(())
+        Ok(if ctx.commit().await?.is_some() {
+            debug!("retrying DependentValueUpdate because of conflicts");
+            JobCompletionState::Retry {
+                limit: MAX_RETRIES,
+                backoff: RetryBackoff::Exponential,
+            }
+        } else {
+            JobCompletionState::Done
+        })
     }
 }
 

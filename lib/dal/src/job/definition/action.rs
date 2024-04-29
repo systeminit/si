@@ -10,7 +10,8 @@ use crate::{
     func::backend::js_action::DeprecatedActionRunResult,
     job::{
         consumer::{
-            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
+            JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
@@ -116,7 +117,7 @@ impl JobConsumer for ActionsJob {
             job=?self.job,
         )
     )]
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         let mut actions = self.actions.clone();
 
         // Mark the batch as started if it has not been yet.
@@ -126,7 +127,8 @@ impl JobConsumer for ActionsJob {
         }
 
         if actions.is_empty() {
-            return finish_batch(ctx, self.batch_id).await;
+            finish_batch(ctx, self.batch_id).await?;
+            return Ok(JobCompletionState::Done);
         }
 
         // Please, let this maybe go away. If you do more than 1000 in a single apply, that's bad.
@@ -231,7 +233,7 @@ impl JobConsumer for ActionsJob {
         ctx.blocking_commit().await?;
         ctx.update_snapshot_to_visibility().await?;
 
-        Ok(())
+        Ok(JobCompletionState::Done)
     }
 }
 
