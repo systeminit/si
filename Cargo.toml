@@ -32,7 +32,6 @@ members = [
     "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
-    "lib/si-cbor",
     "lib/si-crypto",
     "lib/si-data-nats",
     "lib/si-data-pg",
