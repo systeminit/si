@@ -44,7 +44,7 @@
       <template v-else>
         <!-- filtered / search mode -->
         <template v-if="filterModeActive">
-          <ComponentOutlineNode
+          <DiagramOutlineNode
             v-for="component in filteredComponents"
             :key="component.id"
             :componentId="component.id"
@@ -70,7 +70,7 @@
             </div>
           </div>
           <template v-else>
-            <ComponentOutlineNode
+            <DiagramOutlineNode
               v-for="component in rootComponents"
               :key="component.id"
               :componentId="component.id"
@@ -83,19 +83,19 @@
 </template>
 
 <script lang="ts">
-type ComponentOutlineRootCtx = {
+type DiagramOutlineRootCtx = {
   filterModeActive: ComputedRef<boolean>;
   itemClickHandler: (e: MouseEvent, id: ComponentId, tabSlug?: string) => void;
 };
 
-export const ComponentOutlineCtxInjectionKey: InjectionKey<ComponentOutlineRootCtx> =
-  Symbol("ComponentOutlineContext");
+export const DiagramOutlineCtxInjectionKey: InjectionKey<DiagramOutlineRootCtx> =
+  Symbol("DiagramOutlineContext");
 
-export function useComponentOutlineContext() {
-  const ctx = inject(ComponentOutlineCtxInjectionKey, null);
+export function useDiagramOutlineContext() {
+  const ctx = inject(DiagramOutlineCtxInjectionKey, null);
   if (!ctx)
     throw new Error(
-      "<ComponentOutlineNode> should only be used within a <ComponentOutline>",
+      "<DiagramOutlineNode> should only be used within a <DiagramOutline>",
     );
   return ctx;
 }
@@ -131,7 +131,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
-import ComponentOutlineNode from "./ComponentOutlineNode.vue";
+import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 defineProps<{ actionsAreRunning: boolean }>();
@@ -362,13 +362,13 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
   }
 }
 
-// this object gets provided to all child ComponentOutlineNode instances
+// this object gets provided to all child DiagramOutlineNode instances
 // so we dont have to deal with propogating stuff through the tree
 const rootCtx = {
   filterModeActive,
   itemClickHandler,
 };
-provide(ComponentOutlineCtxInjectionKey, rootCtx);
+provide(DiagramOutlineCtxInjectionKey, rootCtx);
 
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
@@ -389,10 +389,10 @@ const onKeyDown = (e: KeyboardEvent) => {
     if (!selectedComponentId) return;
     e.preventDefault();
 
-    const componentOutlineNodes = outlineRef.value?.querySelectorAll(
+    const diagramOutlineNodes = outlineRef.value?.querySelectorAll(
       ".component-outline-node",
     );
-    const componentIds = _.map(componentOutlineNodes, (node) =>
+    const componentIds = _.map(diagramOutlineNodes, (node) =>
       node.getAttribute("data-component-id"),
     );
     const selectedIndex = componentIds.indexOf(selectedComponentId);

@@ -132,7 +132,7 @@
     </div>
     <!-- children -->
     <div v-if="enableGroupToggle && isOpen" class="pl-xs">
-      <ComponentOutlineNode
+      <DiagramOutlineNode
         v-for="child in childComponents"
         :key="child.id"
         :componentId="child.id"
@@ -150,16 +150,16 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 
-import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
+import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
-import { useComponentOutlineContext } from "./ComponentOutline.vue";
+import { useDiagramOutlineContext } from "./DiagramOutline.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
 });
 
-const rootCtx = useComponentOutlineContext();
+const rootCtx = useDiagramOutlineContext();
 const { filterModeActive } = rootCtx;
 
 const nodeRef = ref<HTMLElement>();
