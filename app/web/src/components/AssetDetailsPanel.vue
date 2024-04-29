@@ -7,7 +7,7 @@
     <ScrollArea v-else-if="editingAsset && props.assetId">
       <template #top>
         <div
-          class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
+          class="flex flex-row items-center gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
             :loading="executeAssetTaskRunning"

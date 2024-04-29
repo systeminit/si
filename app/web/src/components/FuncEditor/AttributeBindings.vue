@@ -2,7 +2,7 @@
   <div>
     <div
       v-if="!schemaVariantId"
-      class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
+      class="w-full flex p-xs gap-1 border-b dark:border-neutral-600"
     >
       <VButton
         :disabled="disabled"
@@ -46,7 +46,7 @@
             <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
           </li>
         </ul>
-        <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+        <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
           <VButton
             :disabled="disabled"
             tone="neutral"

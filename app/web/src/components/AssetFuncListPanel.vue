@@ -22,41 +22,11 @@
         </div>
       </template>
 
-      <ul
+      <FuncList
         v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
-        class="overflow-y-auto min-h-[200px]"
-      >
-        <Collapsible
-          v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
-          :key="kind"
-          as="li"
-          class="w-full"
-          contentAs="ul"
-          defaultOpen
-        >
-          <template #label>
-            <div class="flex items-center gap-2">
-              <FuncSkeleton />
-              <span> {{ label.pluralLabel }} </span>
-            </div>
-          </template>
-
-          <template #default>
-            <li
-              v-for="func in funcsByKind[
-                customizableFuncKindToFuncKind(kind)
-              ] ?? []"
-              :key="func.id"
-            >
-              <SiFuncListItem
-                :func="func"
-                color="#921ed6"
-                context="workspace-lab-assets"
-              />
-            </li>
-          </template>
-        </Collapsible>
-      </ul>
+        :funcsByKind="funcsByKind"
+        context="workspace-lab-assets"
+      />
     </ScrollArea>
     <AssetFuncAttachModal
       ref="attachModalRef"
@@ -69,21 +39,12 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
-import {
-  Collapsible,
-  RequestStatusMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
-import {
-  CUSTOMIZABLE_FUNC_TYPES,
-  customizableFuncKindToFuncKind,
-} from "@/api/sdf/dal/func";
+import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
-import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import FuncSkeleton from "./FuncSkeleton.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
+import FuncList from "./FuncEditor/FuncList.vue";
 
 const props = defineProps<{ assetId?: string }>();
 

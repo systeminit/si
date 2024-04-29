@@ -11,12 +11,10 @@
       />
 
       <div
-        v-if="
-          !changeSetStore.headSelected && componentsStore.allComponents.length
-        "
+        v-if="!changeSetStore.headSelected"
         :class="
           clsx(
-            'flex flex-row items-center justify-center text-neutral-400 gap-2 p-xs border-b shrink-0',
+            'flex flex-row items-center justify-center text-neutral-400 gap-xs p-xs border-b shrink-0',
             themeClasses('border-neutral-200', 'border-neutral-600'),
           )
         "
@@ -34,7 +32,12 @@
     </template>
 
     <div class="absolute inset-0">
-      <TabGroup startSelectedTabSlug="changes" marginTop="2xs">
+      <TabGroup
+        startSelectedTabSlug="changes"
+        marginTop="2xs"
+        rememberSelectedTabKey="no-selection-details-panel"
+        trackingSlug="no-selection-details-panel"
+      >
         <TabGroupItem label="Changes" slug="changes">
           <ChangesPanel />
         </TabGroupItem>

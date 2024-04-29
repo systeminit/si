@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex flex-row items-center gap-2 flex-none">
+    <div class="flex flex-row items-center gap-xs flex-none">
       <Icon name="component" />
       <div class="text-3xl font-bold truncate">
         {{

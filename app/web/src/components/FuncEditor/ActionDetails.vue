@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 flex flex-col gap-2">
+  <div class="p-3 flex flex-col gap-xs">
     <ErrorMessage :requestStatus="props.requestStatus" />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox

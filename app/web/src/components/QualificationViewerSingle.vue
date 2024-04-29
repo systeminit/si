@@ -36,7 +36,7 @@
 
         <div
           v-if="failedSubchecks.length"
-          class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+          class="flex flex-col my-2 p-xs border border-destructive-600 text-destructive-500 rounded"
         >
           <b>Qualification Failures:</b>
           <ul>
@@ -99,7 +99,7 @@
 
       <div
         v-if="failedSubchecks.length"
-        class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+        class="flex flex-col my-2 p-xs border border-destructive-600 text-destructive-500 rounded"
       >
         <b>Qualification Failures:</b>
         <ul>

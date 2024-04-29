@@ -2,7 +2,7 @@
   <div class="flex flex-col w-full max-h-full overflow-hidden">
     <div
       v-if="showTitle"
-      class="flex flex-row items-center justify-between p-2 text-base align-middle"
+      class="flex flex-row items-center justify-between p-xs text-base align-middle"
       :class="titleClasses"
     >
       <slot name="title"

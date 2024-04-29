@@ -9,7 +9,7 @@
   >
     <template #top>
       <div class="p-sm">
-        <div class="flex flex-row items-center gap-2 pb-sm">
+        <div class="flex flex-row items-center gap-xs pb-sm">
           <NodeSkeleton :color="`#${selectedAsset.color}`" />
           <div class="text-3xl font-bold truncate">
             {{ assetDisplayName(selectedAsset) }}

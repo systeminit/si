@@ -395,6 +395,9 @@ function fixOverflowDropdown() {
   showOverflowDropdown.value = tabListEl.scrollWidth > tabListEl.clientWidth;
 }
 onMounted(fixOverflowDropdown);
+onMounted(() => {
+  selectTab(selectedTabSlug.value);
+});
 onUpdated(fixOverflowDropdown);
 const debounceForResize = _.debounce(fixOverflowDropdown, 50);
 const resizeObserver = new ResizeObserver(debounceForResize);
