@@ -53,6 +53,7 @@
           python3
           ripgrep
           rust-toolchain
+          minica
 
           # breakpointHook
         ]
