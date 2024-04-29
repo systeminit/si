@@ -6,6 +6,7 @@ use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
 use dal_test::test;
+use petgraph::graph::Edge;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
@@ -1462,7 +1463,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
 struct DiagramByKey {
     pub components: HashMap<String, (SummaryDiagramComponent, Vec<SummaryDiagramInferredEdge>)>,
-    pub edges: HashMap<EdgeId, SummaryDiagramEdge>,
+    pub edges: HashMap<String, SummaryDiagramEdge>,
 }
 
 impl DiagramByKey {
@@ -1485,7 +1486,10 @@ impl DiagramByKey {
 
         let mut edges = HashMap::new();
         for edge in &diagram.edges {
-            edges.insert(edge.edge_id, edge.to_owned());
+            edges.insert(
+                "{edge.to_socket_id}_{edge.from_socket_id}".to_string(),
+                edge.to_owned(),
+            );
         }
 
         Ok(Self { components, edges })

@@ -4,7 +4,6 @@ use std::collections::{hash_map, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
-use telemetry::tracing::instrument;
 use thiserror::Error;
 
 use crate::actor_view::ActorView;
@@ -132,8 +131,6 @@ pub struct SummaryDiagramComponent {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramEdge {
-    pub id: EdgeId,
-    pub edge_id: EdgeId,
     pub from_component_id: ComponentId,
     pub from_socket_id: OutputSocketId,
     pub to_component_id: ComponentId,
@@ -233,8 +230,6 @@ impl Diagram {
                 let from_component =
                     Component::get_by_id(ctx, incoming_connection.from_component_id).await?;
                 diagram_edges.push(SummaryDiagramEdge {
-                    id: incoming_connection.attribute_prototype_argument_id,
-                    edge_id: incoming_connection.attribute_prototype_argument_id,
                     from_component_id: incoming_connection.from_component_id,
                     from_socket_id: incoming_connection.from_output_socket_id,
                     to_component_id: incoming_connection.to_component_id,

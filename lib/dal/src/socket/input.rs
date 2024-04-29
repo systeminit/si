@@ -10,6 +10,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
 use crate::func::FuncError;
@@ -23,9 +24,9 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, AttributeValueId,
-    ComponentError, DalContext, FuncId, HelperError, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, Timestamp, TransactionsError,
+    implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, AttributeValue,
+    AttributeValueId, ComponentError, ComponentId, DalContext, FuncId, HelperError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
@@ -38,6 +39,8 @@ pub enum InputSocketError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgumentError(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
@@ -52,6 +55,10 @@ pub enum InputSocketError {
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Input Socket ({0}) Missing Attribute Value for Component: {1}")]
+    MissingAttributeValueForComponent(InputSocketId, ComponentId),
+    #[error("Input Socket Missing Prototype: {0}")]
+    MissingPrototype(InputSocketId),
     #[error("found multiple input sockets for attribute value: {0}")]
     MultipleSocketsForAttributeValue(AttributeValueId),
     #[error("node weight error: {0}")]
@@ -371,6 +378,28 @@ impl InputSocket {
         }
 
         Ok(result)
+    }
+
+    pub async fn component_attribute_value_for_input_socket_id(
+        ctx: &DalContext,
+        input_socket_id: InputSocketId,
+        component_id: ComponentId,
+    ) -> InputSocketResult<AttributeValueId> {
+        for attribute_value_id in
+            Self::attribute_values_for_input_socket_id(ctx, input_socket_id).await?
+        {
+            if AttributeValue::component_id(ctx, attribute_value_id)
+                .await
+                .map_err(Box::new)?
+                == component_id
+            {
+                return Ok(attribute_value_id);
+            }
+        }
+        Err(InputSocketError::MissingAttributeValueForComponent(
+            input_socket_id,
+            component_id,
+        ))
     }
 
     pub async fn find_for_attribute_value_id(

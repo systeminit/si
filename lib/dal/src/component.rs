@@ -2,6 +2,7 @@
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
 use itertools::Itertools;
+use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
@@ -2268,6 +2269,95 @@ impl Component {
         };
 
         Ok(maybe_target_sockets)
+    }
+
+    pub async fn remove_connection(
+        ctx: &DalContext,
+        to_socket_id: InputSocketId,
+        from_socket_id: OutputSocketId,
+        to_component_id: ComponentId,
+        from_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let attribute_prototype_id = AttributePrototype::find_for_input_socket(&ctx, to_socket_id)
+            .await?
+            .ok_or_else(|| InputSocketError::MissingPrototype(to_socket_id))?;
+
+        let attribute_prototype_arguments = ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                attribute_prototype_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::PrototypeArgument,
+            )
+            .await?;
+
+        for (_, _, attribute_prototype_arg_idx) in attribute_prototype_arguments {
+            let node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(attribute_prototype_arg_idx)
+                .await?;
+            let attribute_prototype_argument_node_weight =
+                node_weight.get_attribute_prototype_argument_node_weight()?;
+            if let Some(targets) = attribute_prototype_argument_node_weight.targets() {
+                if targets.source_component_id == from_component_id
+                    && targets.destination_component_id == to_component_id
+                {
+                    let data_sources = ctx
+                        .workspace_snapshot()?
+                        .edges_directed_for_edge_weight_kind(
+                            attribute_prototype_argument_node_weight.id(),
+                            Outgoing,
+                            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+                        )
+                        .await?;
+
+                    for (_, _, data_source_idx) in data_sources {
+                        let node_weight = ctx
+                            .workspace_snapshot()?
+                            .get_node_weight(data_source_idx)
+                            .await?;
+                        if let Ok(output_socket_node_weight) = node_weight
+                            .get_content_node_weight_of_kind(
+                                ContentAddressDiscriminants::OutputSocket,
+                            )
+                        {
+                            if output_socket_node_weight.id() == from_socket_id.into() {
+                                AttributePrototypeArgument::remove(
+                                    &ctx,
+                                    attribute_prototype_argument_node_weight.id().into(),
+                                )
+                                .await?;
+
+                                let component_attribute_value_id =
+                                    InputSocket::component_attribute_value_for_input_socket_id(
+                                        &ctx,
+                                        to_socket_id,
+                                        to_component_id,
+                                    )
+                                    .await?;
+
+                                AttributeValue::update_from_prototype_function(
+                                    ctx,
+                                    component_attribute_value_id,
+                                )
+                                .await?;
+                                ctx.enqueue_dependent_values_update(vec![
+                                    component_attribute_value_id,
+                                ])
+                                .await?;
+                                return Ok(());
+                            }
+                        }
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        Ok(())
     }
 }
 

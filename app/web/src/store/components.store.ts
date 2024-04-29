@@ -77,19 +77,21 @@ export type FullComponent = RawComponent & {
   isGroup: false;
 };
 
-type Edge = {
-  id: EdgeId;
+type RawEdge = {
   fromComponentId: ComponentId;
   fromSocketId: SocketId;
   toComponentId: ComponentId;
   toSocketId: SocketId;
-  isInvisible?: boolean;
+  toDelete: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdInfo: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
-  toDelete: boolean;
+};
+
+type Edge = RawEdge & {
+  id: EdgeId;
 };
 
 export interface ActorAndTimestamp {
@@ -209,6 +211,12 @@ export const getAssetIcon = (name: string) => {
   }
 
   return (icon || "logo-si") as IconNames; // fallback to SI logo
+};
+
+const edgeFromRawEdge = (e: RawEdge): Edge => {
+  const edge = structuredClone(e) as Edge;
+  edge.id = `${edge.toSocketId}_${edge.fromSocketId}`;
+  return edge;
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -621,7 +629,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async FETCH_DIAGRAM_DATA() {
             return new ApiRequest<{
               components: RawComponent[];
-              edges: Edge[];
+              edges: RawEdge[];
+              implicitEdges: RawEdge[];
             }>({
               url: "diagram/get_diagram",
               params: {
@@ -629,7 +638,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
-                this.edgesById = _.keyBy(response.edges, "id");
+                const edges =
+                  response.edges && response.edges.length > 0
+                    ? response.edges.map(edgeFromRawEdge)
+                    : [];
+                const implicit =
+                  response.implicitEdges && response.implicitEdges.length > 0
+                    ? response.implicitEdges.map(edgeFromRawEdge)
+                    : [];
+                this.edgesById = _.keyBy([...edges, ...implicit], "id");
 
                 // remove invalid component IDs from the selection
                 const validComponentIds = _.intersection(
@@ -956,7 +973,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async DELETE_EDGE(edgeId: EdgeId) {
+          async DELETE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+            toComponentId: ComponentId,
+            fromComponentId: ComponentId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -967,7 +990,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/delete_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1008,7 +1034,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async RESTORE_EDGE(edgeId: EdgeId) {
+          /* async RESTORE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -1019,7 +1049,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/restore_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                toSocketId,
+                fromSocketId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1043,7 +1074,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 };
               },
             });
-          },
+          }, */
 
           async DELETE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
