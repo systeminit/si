@@ -180,6 +180,13 @@ pub struct SchemaVariantClonedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantUpdatedPayload {
+    schema_variant_id: SchemaVariantId,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
@@ -202,6 +209,20 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::SchemaVariantCloned(SchemaVariantClonedPayload {
+                schema_variant_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn schema_variant_update_finished(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload {
                 schema_variant_id,
                 change_set_id: ctx.change_set_id(),
             }),
@@ -363,6 +384,26 @@ impl SchemaVariant {
         let SchemaVariantContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn get_components_on_graph(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<ComponentId>> {
+        let mut comp_ids: Vec<ComponentId> = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let incoming_nodes_indices = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+        for incoming_node_idx in incoming_nodes_indices {
+            if let NodeWeight::Component(comp) = workspace_snapshot
+                .get_node_weight(incoming_node_idx)
+                .await?
+            {
+                comp_ids.push(comp.id().into());
+            }
+        }
+        Ok(comp_ids)
     }
 
     pub async fn get_authoring_func(
@@ -1215,8 +1256,10 @@ impl SchemaVariant {
                 .await?;
 
             let mut schema_id: Option<SchemaId> = None;
-            for (edge_weight, source_index, _) in maybe_schema_indices {
-                if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
+            for (edge_weight, source_index, _target_index) in maybe_schema_indices {
+                if *edge_weight.kind() == EdgeWeightKind::new_use()
+                    || *edge_weight.kind() == EdgeWeightKind::new_use_default()
+                {
                     if let NodeWeight::Content(content) =
                         workspace_snapshot.get_node_weight(source_index).await?
                     {

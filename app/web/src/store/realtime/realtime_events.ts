@@ -248,10 +248,9 @@ export type WsEventPayloadMap = {
     schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantFinished: {
+  SchemaVariantUpdateFinished: {
     taskId: string;
     schemaVariantId: string;
-    detachedAttributePrototypes: DetachedAttributePrototype[];
   };
   SchemaVariantSaved: {
     schemaVariantId: string;

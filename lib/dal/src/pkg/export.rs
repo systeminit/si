@@ -155,6 +155,7 @@ impl PkgExporter {
         exporter
             .export_funcs_for_variant(ctx, Some(current_changeset), variant.id())
             .await?;
+        exporter.export_intrinsics(ctx).await?;
         let variant_spec = exporter
             .export_variant(ctx, Some(current_changeset), variant, false)
             .await?;
@@ -1178,6 +1179,21 @@ impl PkgExporter {
         let pkg = SiPkg::load_from_spec(spec)?;
 
         Ok(pkg)
+    }
+
+    async fn export_intrinsics(&mut self, ctx: &DalContext) -> PkgResult<Vec<FuncSpec>> {
+        let mut funcs = vec![];
+        for instrinsic in IntrinsicFunc::iter() {
+            let intrinsic_func_id = Func::find_by_name(ctx, instrinsic.name()).await?.ok_or(
+                PkgError::MissingIntrinsicFunc(instrinsic.name().to_string()),
+            )?;
+
+            let spec = instrinsic.to_spec()?;
+            funcs.push(spec.clone());
+            self.func_map
+                .insert(Some(ctx.change_set_id()), intrinsic_func_id, spec.clone());
+        }
+        Ok(funcs)
     }
 
     async fn export_funcs_for_variant(

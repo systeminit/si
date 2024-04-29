@@ -399,7 +399,7 @@ export const useAssetStore = () => {
             AssetSaveRequest
           >({
             method: "post",
-            url: "/variant/exec_variant",
+            url: "/variant/update_variant",
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
@@ -474,11 +474,10 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantFinished",
+            eventType: "SchemaVariantUpdateFinished",
             callback: async ({
               taskId,
               schemaVariantId,
-              detachedAttributePrototypes,
             }) => {
               if (taskId === this.executeAssetTaskId) {
                 this.executeAssetTaskRunning = false;

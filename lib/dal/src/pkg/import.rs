@@ -952,7 +952,41 @@ async fn create_props(
     })
 }
 
-async fn import_schema_variant(
+/// Duplicate all the functions, and return a thing_map with them included, so
+/// that we can import a standalone schema variant.
+pub async fn clone_and_import_funcs(
+    ctx: &DalContext,
+    funcs: Vec<SiPkgFunc<'_>>,
+) -> PkgResult<ThingMap> {
+    let mut thing_map = ThingMap::new(ctx.get_workspace_default_change_set_id().await?);
+
+    for func_spec in funcs {
+        let func = if func::is_intrinsic(func_spec.name())
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
+        {
+            let func_id = Func::find_by_name(ctx, &func_spec.name())
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_owned()))?;
+
+            Func::get_by_id_or_error(ctx, func_id).await?
+        } else {
+            let func = create_func(ctx, &func_spec, false).await?;
+
+            if !func_spec.arguments()?.is_empty() {
+                import_func_arguments(ctx, None, func.id, &func_spec.arguments()?, &mut thing_map)
+                    .await?;
+            }
+
+            func
+        };
+
+        thing_map.insert(None, func_spec.unique_id().into(), Thing::Func(func));
+    }
+
+    Ok(thing_map)
+}
+
+pub(crate) async fn import_schema_variant(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
     schema: &mut Schema,
