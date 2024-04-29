@@ -1,5 +1,6 @@
 use dal::{prop::PropPath, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::test;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn prop_path(ctx: &DalContext) {
@@ -39,7 +40,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
         .to_owned();
 
     let pirate_default_variant_id = pirate_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("should be able to get default")
         .expect("should have a default schema variant");
@@ -60,7 +61,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     ];
 
     for container_prop_path in &container_props {
-        let container_prop = Prop::get_by_id(
+        let container_prop = Prop::get_by_id_or_error(
             ctx,
             Prop::find_prop_id_by_path(
                 ctx,
@@ -81,7 +82,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     }
 
     for item_prop_path in &item_props {
-        let item_prop = Prop::get_by_id(
+        let item_prop = Prop::get_by_id_or_error(
             ctx,
             Prop::find_prop_id_by_path(
                 ctx,
@@ -100,4 +101,54 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
             item_prop_path
         );
     }
+}
+
+#[test]
+async fn ordered_child_props(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("could not perform find by name")
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("could not perform get default schema variant")
+        .expect("schema variant not found");
+
+    let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)
+        .await
+        .expect("could not get root prop id");
+    let ordered_child_props = Prop::direct_child_props_ordered(ctx, root_prop_id)
+        .await
+        .expect("could not get direct child props ordered");
+    let domain_prop = ordered_child_props
+        .iter()
+        .find(|p| p.name == "domain")
+        .expect("could not find prop");
+    let ordered_child_props = Prop::direct_child_props_ordered(ctx, domain_prop.id)
+        .await
+        .expect("could not get direct child props ordered");
+    let ordered_child_prop_names: Vec<String> = ordered_child_props
+        .iter()
+        .map(|p| p.name.to_owned())
+        .collect();
+
+    let expected_child_prop_names = [
+        "name",
+        "hidden_prop",
+        "freestar",
+        "attributes",
+        "possible_world_a",
+        "possible_world_b",
+        "universe",
+    ];
+    let expected_child_prop_names: Vec<String> = expected_child_prop_names
+        .iter()
+        .map(|n| n.to_string())
+        .collect();
+
+    assert_eq!(
+        expected_child_prop_names, // expected
+        ordered_child_prop_names   // actual
+    );
 }

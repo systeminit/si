@@ -71,7 +71,7 @@ impl SecretDefinitionView {
         // Assemble the form data views.
         let mut form_data_views = Vec::new();
         for field_prop_id in field_prop_ids {
-            let field_prop = Prop::get_by_id(ctx, field_prop_id).await?;
+            let field_prop = Prop::get_by_id_or_error(ctx, field_prop_id).await?;
             form_data_views.push(SecretFormDataView {
                 name: field_prop.name,
                 kind: field_prop.kind.to_string(),
@@ -88,7 +88,7 @@ impl SecretDefinitionView {
                 .await?;
 
         let entry_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop_id).await?;
-        let entry_prop = Prop::get_by_id(ctx, entry_prop_id).await?;
+        let entry_prop = Prop::get_by_id_or_error(ctx, entry_prop_id).await?;
 
         Ok(Self {
             secret_definition: entry_prop.name,

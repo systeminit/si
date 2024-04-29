@@ -49,7 +49,7 @@ pub async fn get_variant(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;
-    if let Some(default_schema_variant_id) = schema.get_default_schema_variant(&ctx).await? {
+    if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(&ctx).await? {
         let variant = SchemaVariant::get_by_id(&ctx, default_schema_variant_id).await?;
 
         let mut response: GetVariantResponse = GetVariantResponse {

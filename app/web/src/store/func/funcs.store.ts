@@ -20,10 +20,10 @@ import {
   AttributePrototypeView,
   CreateFuncOptions,
   FuncAssociations,
+  InputSocketView,
   InputSourceProp,
-  InputSourceSocket,
   OutputLocation,
-  OutputSocket,
+  OutputSocketView,
 } from "./types";
 import { useRouterStore } from "../router.store";
 
@@ -79,8 +79,8 @@ export interface OutputLocationOption {
 const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
 
 export type InputSourceProps = { [key: string]: InputSourceProp[] };
-export type InputSourceSockets = { [key: string]: InputSourceSocket[] };
-export type OutputSockets = { [key: string]: OutputSocket[] };
+export type InputSocketViews = { [key: string]: InputSocketView[] };
+export type OutputSocketViews = { [key: string]: OutputSocketView[] };
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -105,9 +105,9 @@ export const useFuncStore = () => {
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
         // map from schema variant ids to the input sources
-        inputSourceSockets: {} as InputSourceSockets,
+        inputSourceSockets: {} as InputSocketViews,
         inputSourceProps: {} as InputSourceProps,
-        outputSockets: {} as OutputSockets,
+        outputSockets: {} as OutputSocketViews,
         openFuncIds: [] as FuncId[],
         lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
       }),
@@ -147,23 +147,9 @@ export const useFuncStore = () => {
             return undefined;
           },
 
-        proprForInputSocketId:
+        inputSocketForId:
           (state) =>
-          (inputSocketId: string): InputSourceProp | undefined => {
-            for (const props of Object.values(state.inputSourceProps)) {
-              const inputSourceProp = props.find(
-                (prop) => prop.inputSocketId === inputSocketId,
-              );
-              if (inputSourceProp) {
-                return inputSourceProp;
-              }
-            }
-            return undefined;
-          },
-
-        inputSocketForInputSocketId:
-          (state) =>
-          (inputSocketId: string): InputSourceSocket | undefined => {
+          (inputSocketId: string): InputSocketView | undefined => {
             for (const sockets of Object.values(state.inputSourceSockets)) {
               const inputSourceSocket = sockets.find(
                 (socket) => socket.inputSocketId === inputSocketId,
@@ -177,7 +163,7 @@ export const useFuncStore = () => {
 
         outputSocketForId:
           (state) =>
-          (outputSocketId: string): OutputSocket | undefined => {
+          (outputSocketId: string): OutputSocketView | undefined => {
             for (const sockets of Object.values(state.outputSockets)) {
               const outputSocket = sockets.find(
                 (socket) => socket.outputSocketId === outputSocketId,
@@ -219,20 +205,6 @@ export const useFuncStore = () => {
       },
 
       actions: {
-        inputSocketIdToSourceName(inputSocketId: string) {
-          const socket = this.inputSocketForInputSocketId(inputSocketId);
-          if (socket) {
-            return `Input Socket: ${socket.name}`;
-          }
-
-          const prop = this.proprForInputSocketId(inputSocketId);
-          if (prop) {
-            return `Attribute: ${prop.path}${prop.name}`;
-          }
-
-          return undefined;
-        },
-
         propIdToSourceName(propId: string) {
           const prop = this.propForId(propId);
           if (prop) {
@@ -525,8 +497,8 @@ export const useFuncStore = () => {
 
         async FETCH_INPUT_SOURCE_LIST(schemaVariantId?: string) {
           return new ApiRequest<{
-            inputSockets: InputSourceSocket[];
-            outputSockets: OutputSocket[];
+            inputSockets: InputSocketView[];
+            outputSockets: OutputSocketView[];
             props: InputSourceProp[];
           }>({
             url: "func/list_input_sources",

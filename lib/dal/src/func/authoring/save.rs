@@ -16,7 +16,7 @@ use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, ComponentId, DalContext,
     DeprecatedActionKind, DeprecatedActionPrototype, Func, FuncBackendResponseType, FuncId,
-    SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
+    SchemaVariant, SchemaVariantId, WorkspaceSnapshotError, WsEvent,
 };
 
 pub(crate) async fn save_func(
@@ -128,9 +128,14 @@ pub(crate) async fn save_func(
             }
         }
         FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {
-            return Err(FuncAuthoringError::NotWritable)
+            return Err(FuncAuthoringError::NotWritable(func.id))
         }
     }
+
+    WsEvent::func_saved(ctx, func.id)
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
 
     Ok(())
 }
@@ -331,15 +336,16 @@ async fn save_attr_func_proto_arguments(
     arguments: Vec<AttributePrototypeArgumentBag>,
 ) -> FuncAuthoringResult<()> {
     let mut id_set = HashSet::new();
+
     for arg in &arguments {
-        // TODO(nick): don't use the nil id in the future.
-        if AttributePrototypeArgumentId::NONE != arg.id {
-            // The attribute prototype argument may have been deleted when deleting func arguments,
-            // so we want to remove or no-op.
-            AttributePrototypeArgument::remove_or_no_op(ctx, arg.id).await?;
+        // Ensure that the user is not also requesting a new func argument inside the attribute
+        // prototype argument request. They should use the func argument bag to do that.
+        if arg.func_argument_id == FuncArgumentId::NONE {
+            return Err(FuncAuthoringError::FuncArgumentMustExist(arg.id));
         }
 
-        // Ensure the func argument exists before continuing.
+        // Ensure the func argument exists before continuing. By continuing, we will not add the
+        // attribute prototype to the id set and will be deleted.
         if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
             match err {
                 FuncArgumentError::WorkspaceSnapshot(
@@ -351,29 +357,31 @@ async fn save_attr_func_proto_arguments(
             }
         }
 
-        // NOTE(nick): we always re-create attribute prototype arguments because we do not easily
-        // know if the input socket has been changed (or removed) in addition to the func argument
-        // existing or moving. However, it is probable that we can refactor this in the future to be
-        // more atomic and abstracted while removing foot-guns.
-        let new_or_recreated_attribute_prototype_argument =
+        // Always remove and recreate the argument because the func argument or input socket
+        // could have changed.
+        if AttributePrototypeArgumentId::NONE != arg.id {
+            AttributePrototypeArgument::remove_or_no_op(ctx, arg.id).await?;
+        }
+
+        let attribute_prototype_argument =
             AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
                 .await?;
-        let new_or_recreated_attribute_prototype_argument_id =
-            new_or_recreated_attribute_prototype_argument.id();
+        let attribute_prototype_argument_id = attribute_prototype_argument.id();
         if let Some(input_socket_id) = arg.input_socket_id {
-            new_or_recreated_attribute_prototype_argument
+            attribute_prototype_argument
                 .set_value_from_input_socket_id(ctx, input_socket_id)
                 .await?;
         }
 
-        id_set.insert(new_or_recreated_attribute_prototype_argument_id);
+        id_set.insert(attribute_prototype_argument_id);
     }
 
     for attribute_prototype_argument_id in
         AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?
     {
         if !id_set.contains(&attribute_prototype_argument_id) {
-            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id).await?;
+            AttributePrototypeArgument::remove_or_no_op(ctx, attribute_prototype_argument_id)
+                .await?;
         }
     }
 

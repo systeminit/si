@@ -39,12 +39,12 @@ pub async fn update_property_editor_value(
         let component = Component::get_by_id(&ctx, request.component_id).await?;
 
         let component_schema = component.schema(&ctx).await?;
-        let prop = Prop::get_by_id(&ctx, request.prop_id).await?;
+        let prop = Prop::get_by_id_or_error(&ctx, request.prop_id).await?;
 
         // In this context, there will always be a parent attribute value id
         let parent_prop = if let Some(att_val_id) = request.parent_attribute_value_id {
             if let Some(prop_id) = AttributeValue::prop_id_for_id(&ctx, att_val_id).await? {
-                Some(Prop::get_by_id(&ctx, prop_id).await?)
+                Some(Prop::get_by_id_or_error(&ctx, prop_id).await?)
             } else {
                 None
             }

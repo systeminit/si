@@ -34,7 +34,7 @@ pub async fn clone_variant(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;
-    if let Some(default_schema_variant_id) = schema.get_default_schema_variant(&ctx).await? {
+    if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(&ctx).await? {
         let (cloned_schema_variant, schema) =
             VariantAuthoringClient::clone_variant(&ctx, default_schema_variant_id).await?;
 

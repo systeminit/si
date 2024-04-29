@@ -19,8 +19,6 @@ use crate::{
 pub mod schema;
 pub mod values;
 
-// pub mod validations;
-
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropertyEditorError {

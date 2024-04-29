@@ -90,7 +90,7 @@ impl AttributeDebugView {
 
         let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, attribute_value_id).await?;
 
-        let prop = Prop::get_by_id(ctx, prop_id).await?;
+        let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
         let path = AttributeValue::get_path_for_id(ctx, attribute_value_id)
             .await?
             .unwrap_or_else(String::new);

@@ -179,19 +179,13 @@ const inputSourceOptions = computed<Option[]>(() => {
       value: socket.inputSocketId,
     })) ?? [];
 
+  // TODO(nick): restore the true idea behind this. Likely requires more refactoring of prototype
+  // arguments in the backend to support both inputSocketId and propId.
   const propOptions =
-    funcStore.inputSourceProps[selectedVariantId]
-      ?.filter(
-        (prop) =>
-          prop.inputSocketId &&
-          ("propId" in selectedOutputLocation.value.value
-            ? prop.propId !== selectedOutputLocation.value.value.propId
-            : true),
-      )
-      .map((prop) => ({
-        label: `Attribute: ${prop.path}${prop.name}`,
-        value: prop.inputSocketId ?? nilId(),
-      })) ?? [];
+    funcStore.inputSourceProps[selectedVariantId]?.map((prop) => ({
+      label: `Attribute: ${prop.path}${prop.name}`,
+      value: nilId(),
+    })) ?? [];
 
   return socketOptions.concat(propOptions);
 });

@@ -17,7 +17,7 @@ async fn clone_variant(ctx: &mut DalContext) {
         .expect("schema not found");
 
     let default_schema_variant = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("Unable to find the default schema variant id");
     let existing_schema = SchemaVariant::get_by_id(

@@ -7,11 +7,11 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
 
-use super::FuncError;
+use super::{before_funcs_for_component, BeforeFuncError, FuncError};
 use crate::func::backend::validation::FuncBackendValidation;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
-    standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
+    standard_model_accessor, ComponentId, Func, FuncBackendKind, HistoryEventError, StandardModel,
     StandardModelError, Timestamp, Visibility,
 };
 use crate::{
@@ -45,6 +45,8 @@ pub mod return_value;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingError {
+    #[error("before func error: {0}")]
+    BeforeFunc(#[from] Box<BeforeFuncError>),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func backend error: {0}")]
@@ -79,6 +81,8 @@ pub enum FuncBindingError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("tokio task join error: {0}")]
+    TokioTaskJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ws event error: {0}")]
@@ -351,6 +355,51 @@ impl FuncBinding {
         let (context, rx) = FuncDispatchContext::new(ctx);
         Ok((func, execution, context, rx))
     }
+
+    pub async fn execute_dummy(
+        ctx: &DalContext,
+        func_id: FuncId,
+        func_backend_kind: FuncBackendKind,
+        args: serde_json::Value,
+        execution_key: String,
+        component_id: ComponentId,
+    ) -> FuncBindingResult<(serde_json::Value, Vec<OutputStream>)> {
+        let before = before_funcs_for_component(ctx, component_id)
+            .await
+            .map_err(Box::new)?;
+
+        let func_binding = Self::new(ctx, args, func_id, func_backend_kind).await?;
+
+        let (func, _execution, context, mut rx) = func_binding.prepare_execution(ctx).await?;
+
+        // TODO(nick): if we could do this without a rollback that would be great, especially since
+        // only have to work with the graph in memory.
+        ctx.rollback().await?;
+
+        let (func_id, inner_ctx, execution_key) = (func_id, ctx.clone(), execution_key);
+        let log_handler = tokio::spawn(async move {
+            let (ctx, mut output) = (&inner_ctx, Vec::new());
+
+            while let Some(output_stream) = rx.recv().await {
+                output.push(output_stream.clone());
+
+                let log_line = LogLinePayload {
+                    stream: output_stream,
+                    func_id,
+                    execution_key: execution_key.clone(),
+                };
+                publish_immediately(ctx, WsEvent::log_line(ctx, log_line).await?).await?;
+            }
+            Ok::<_, FuncBindingError>(output)
+        });
+
+        let (value, _unprocessed_value) = func_binding
+            .execute_critical_section(func.clone(), context, before)
+            .await?;
+        let logs = log_handler.await??;
+
+        Ok((value.unwrap_or(serde_json::Value::Null), logs))
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -365,4 +414,12 @@ impl WsEvent {
     pub async fn log_line(ctx: &DalContext, payload: LogLinePayload) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::LogLine(payload)).await
     }
+}
+
+// TODO(nick): centralize this.
+async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> WsEventResult<()> {
+    let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
+    let msg_bytes = serde_json::to_vec(&ws_event)?;
+    ctx.nats_conn().publish(subject, msg_bytes.into()).await?;
+    Ok(())
 }

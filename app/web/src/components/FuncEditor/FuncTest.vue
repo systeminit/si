@@ -369,10 +369,16 @@ const prepareTest = async () => {
     const getJsonPath = () => {
       for (const prototype of prototypes) {
         for (const arg of prototype.prototypeArguments) {
-          const prop = funcStore.proprForInputSocketId(arg.inputSocketId ?? "");
+          // TODO(nick): restore the idea behind how this worked. Now, prototype arguments likely
+          // need to EITHER get an inputSocketId or a propId. Probably, in the old engine, the
+          // "internalProviderId" meant either explicit or implicit. Since implicit internal providers
+          // are dead, we need to use the prop directly.
+          const inputSocket = funcStore.inputSocketForId(
+            arg.inputSocketId ?? "",
+          );
 
-          if (prop) {
-            return `${prop.path}${prop.name}`;
+          if (inputSocket) {
+            return `${inputSocket.name}`;
           }
         }
       }

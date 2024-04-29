@@ -546,7 +546,7 @@ impl Component {
             }
 
             if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, copied_av_id).await? {
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 if prop.kind != PropKind::Object
                     && prop.kind != PropKind::Map
                     && prop.kind != PropKind::Array

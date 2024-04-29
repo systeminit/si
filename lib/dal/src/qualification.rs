@@ -261,7 +261,7 @@ impl QualificationView {
 
                 let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id).await?;
 
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
                 output.push(QualificationOutputStreamView {
                     stream: "stdout".to_owned(),

@@ -33,6 +33,7 @@ pub mod deprecated_action;
 pub mod diagram;
 pub mod func;
 pub mod history_event;
+pub mod input_sources;
 pub mod job;
 pub mod job_failure;
 pub mod jwt_key;
@@ -62,16 +63,6 @@ pub mod visibility;
 pub mod workspace;
 pub mod workspace_snapshot;
 pub mod ws_event;
-
-// TODO(nick,jacob): this should self-destruct once the new engine is in place.
-// pub mod node;
-// pub mod socket;
-// pub mod edge;
-// pub mod index_map;
-// pub mod prop_tree;
-// pub mod prototype_context;
-// pub mod reconciliation_prototype;
-//pub mod tasks;
 
 pub use action::ActionPrototypeId;
 pub use actor_view::ActorView;

@@ -73,6 +73,7 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
           // Force the entries arg to be an Array (and return an empty array if the arg is absent/undefined/null).
           if (entries === undefined) return galaxies;
           if (entries === null) return galaxies;
+          if (entries.length == 0) return galaxies;
           if (!Array.isArray(entries)) entries = [entries];
 
           entries.filter(i => i ?? false).forEach(function (entry) {

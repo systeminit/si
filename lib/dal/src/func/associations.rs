@@ -10,12 +10,13 @@ use crate::func::FuncKind;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
     AttributePrototype, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype,
-    DeprecatedActionPrototypeError, Func, FuncId, SchemaVariant, SchemaVariantError,
+    DeprecatedActionPrototypeError, Func, FuncId, Prop, SchemaVariant, SchemaVariantError,
     SchemaVariantId,
 };
 
 mod bags;
 
+use crate::prop::{PropError, PropPath};
 pub use bags::AttributePrototypeArgumentBag;
 pub use bags::AttributePrototypeBag;
 pub use bags::FuncArgumentBag;
@@ -31,6 +32,8 @@ pub enum FuncAssociationsError {
     DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("unexpected func associations variant: {0:?} (expected: {1:?})")]
@@ -182,14 +185,21 @@ impl FuncAssociations {
                     }
                 }
 
+                let inputs = Self::list_leaf_function_inputs(ctx, func.id).await?;
+                let input_types = Self::compile_leaf_function_input_types(
+                    ctx,
+                    schema_variant_ids.as_slice(),
+                    inputs.as_slice(),
+                )
+                .await?;
+
                 (
                     Some(Self::CodeGeneration {
                         schema_variant_ids,
                         component_ids,
-                        inputs: Self::list_leaf_function_inputs(ctx, func.id).await?,
+                        inputs,
                     }),
-                    // TODO(nick): ensure the input type is correct.
-                    "".to_string(),
+                    input_types,
                 )
             }
             FuncKind::Qualification => {
@@ -221,14 +231,21 @@ impl FuncAssociations {
                     }
                 }
 
+                let inputs = Self::list_leaf_function_inputs(ctx, func.id).await?;
+                let input_types = Self::compile_leaf_function_input_types(
+                    ctx,
+                    schema_variant_ids.as_slice(),
+                    inputs.as_slice(),
+                )
+                .await?;
+
                 (
                     Some(Self::Qualification {
                         schema_variant_ids,
                         component_ids,
-                        inputs: Self::list_leaf_function_inputs(ctx, func.id).await?,
+                        inputs,
                     }),
-                    // TODO(nick): ensure the input type is correct.
-                    "".to_string(),
+                    input_types,
                 )
             }
             FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {
@@ -341,47 +358,47 @@ impl FuncAssociations {
             .collect())
     }
 
-    // async fn compile_leaf_function_input_types(
-    //     ctx: &DalContext,
-    //     schema_variant_ids: &[SchemaVariantId],
-    //     inputs: &[LeafInputLocation],
-    // ) -> FuncViewResult<String> {
-    //     let mut ts_type = "type Input = {\n".to_string();
-    //
-    //     for input_location in inputs {
-    //         let input_property = format!(
-    //             "{}?: {} | null;\n",
-    //             input_location.arg_name(),
-    //             Self::get_per_variant_types_for_prop_path(
-    //                 ctx,
-    //                 schema_variant_ids,
-    //                 &input_location.prop_path(),
-    //             )
-    //             .await?
-    //         );
-    //         ts_type.push_str(&input_property);
-    //     }
-    //     ts_type.push_str("};");
-    //
-    //     Ok(ts_type)
-    // }
-    //
-    // async fn get_per_variant_types_for_prop_path(
-    //     ctx: &DalContext,
-    //     variant_ids: &[SchemaVariantId],
-    //     path: &PropPath,
-    // ) -> FuncViewResult<String> {
-    //     let mut per_variant_types = vec![];
-    //
-    //     for variant_id in variant_ids {
-    //         let prop = Prop::find_prop_by_path(ctx, *variant_id, path).await?;
-    //         let ts_type = prop.ts_type(ctx).await?;
-    //
-    //         if !per_variant_types.contains(&ts_type) {
-    //             per_variant_types.push(ts_type);
-    //         }
-    //     }
-    //
-    //     Ok(per_variant_types.join(" | "))
-    // }
+    async fn compile_leaf_function_input_types(
+        ctx: &DalContext,
+        schema_variant_ids: &[SchemaVariantId],
+        inputs: &[LeafInputLocation],
+    ) -> FuncAssociationsResult<String> {
+        let mut ts_type = "type Input = {\n".to_string();
+
+        for input_location in inputs {
+            let input_property = format!(
+                "{}?: {} | null;\n",
+                input_location.arg_name(),
+                Self::get_per_variant_types_for_prop_path(
+                    ctx,
+                    schema_variant_ids,
+                    &input_location.prop_path(),
+                )
+                .await?
+            );
+            ts_type.push_str(&input_property);
+        }
+        ts_type.push_str("};");
+
+        Ok(ts_type)
+    }
+
+    async fn get_per_variant_types_for_prop_path(
+        ctx: &DalContext,
+        variant_ids: &[SchemaVariantId],
+        path: &PropPath,
+    ) -> FuncAssociationsResult<String> {
+        let mut per_variant_types = vec![];
+
+        for variant_id in variant_ids {
+            let prop = Prop::find_prop_by_path(ctx, *variant_id, path).await?;
+            let ts_type = prop.ts_type(ctx).await?;
+
+            if !per_variant_types.contains(&ts_type) {
+                per_variant_types.push(ts_type);
+            }
+        }
+
+        Ok(per_variant_types.join(" | "))
+    }
 }

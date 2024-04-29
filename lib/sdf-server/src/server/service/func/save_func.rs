@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::func::FuncResult;
+use crate::service::func::{FuncResult, SaveFuncResponse};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -21,13 +21,6 @@ pub struct SaveFuncRequest {
     pub associations: Option<FuncAssociations>,
     #[serde(flatten)]
     pub visibility: Visibility,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct SaveFuncResponse {
-    types: String,
-    associations: Option<FuncAssociations>,
 }
 
 pub async fn save_func(

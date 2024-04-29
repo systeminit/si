@@ -335,6 +335,16 @@ impl SchemaVariant {
         Ok(prop_ids)
     }
 
+    /// Returns all [`Props`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
+    pub async fn all_props(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Prop>> {
+        let all_prop_ids = Self::all_prop_ids(ctx, schema_variant_id).await?;
+        let all_props = Prop::list_content(ctx, all_prop_ids.into_iter().collect()).await?;
+        Ok(all_props)
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -476,9 +486,9 @@ impl SchemaVariant {
 
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
-                Some(func_content) => {
+                Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let SchemaVariantContent::V1(inner) = func_content;
+                    let SchemaVariantContent::V1(inner) = content;
 
                     schema_variants.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
                 }
