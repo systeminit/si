@@ -62,7 +62,7 @@
           "
         />
 
-        <div class="flex flex-col select-none overflow-hidden py-2xs">
+        <div class="flex flex-col select-none overflow-hidden py-2xs w-full">
           <slot name="label">{{ label }}</slot>
         </div>
         <!-- group open/close controls -->

@@ -1,7 +1,7 @@
 <template>
   <svg
-    width="35"
-    height="35"
+    :width="pixelSizes[size]"
+    :height="pixelSizes[size]"
     viewBox="0 0 35 35"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
@@ -31,12 +31,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { PropType, computed } from "vue";
 import { COLOR_PALETTE } from "@si/vue-lib/design-system";
 
-const props = defineProps<{
-  class?: string;
-}>();
+const props = defineProps({
+  size: { type: String as PropType<"sm" | "md" | "lg">, default: "lg" },
+  class: String,
+});
+
+const pixelSizes = {
+  sm: 16,
+  md: 24,
+  lg: 35,
+};
 
 const classes = computed(() => props.class);
 </script>

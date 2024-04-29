@@ -25,44 +25,14 @@
           placeholder="search functions"
           @search="onSearch"
         />
-        <div
+        <!-- <div
           class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
         >
           Select a function to view or edit it.
-        </div>
+        </div> -->
       </template>
 
-      <ul class="overflow-y-auto min-h-[200px]">
-        <Collapsible
-          v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
-          :key="kind"
-          as="li"
-          class="w-full"
-          contentAs="ul"
-          defaultOpen
-        >
-          <template #label>
-            <div class="flex items-center gap-2">
-              <FuncSkeleton />
-              <span> {{ label.pluralLabel }} </span>
-            </div>
-          </template>
-          <template #default>
-            <li
-              v-for="func in funcsByKind[
-                customizableFuncKindToFuncKind(kind)
-              ] ?? []"
-              :key="func.id"
-            >
-              <SiFuncListItem
-                :func="func"
-                color="#921ed6"
-                context="workspace-lab-functions"
-              />
-            </li>
-          </template>
-        </Collapsible>
-      </ul>
+      <FuncList :funcsByKind="funcsByKind" context="workspace-lab-functions" />
     </ScrollArea>
   </div>
 </template>
@@ -72,12 +42,10 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
 import {
-  Collapsible,
   ErrorMessage,
   RequestStatusMessage,
   ScrollArea,
 } from "@si/vue-lib/design-system";
-import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
@@ -87,7 +55,7 @@ import {
 import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
+import FuncList from "./FuncList.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
