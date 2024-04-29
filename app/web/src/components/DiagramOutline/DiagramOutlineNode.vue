@@ -2,7 +2,7 @@
   <div
     v-if="component"
     ref="nodeRef"
-    class="component-outline-node"
+    class="diagram-outline-node"
     :data-component-id="componentId"
   >
     <!-- component info -->

@@ -26,7 +26,7 @@ Cypress.Commands.add("createComponent", (componentName: string) => {
 
   // Validate that the component was created via the DiagramOutline
   // TODO(Wendy) - this version of createComponent only works for placing components directly onto the canvas, not into frames
-  cy.get('.component-outline .component-outline-node', { timeout: 30000 }).last().contains(componentName, { timeout: 30000, matchCase: false }).should('be.visible');
+  cy.get('.diagram-outline .diagram-outline-node', { timeout: 30000 }).last().contains(componentName, { timeout: 30000, matchCase: false }).should('be.visible');
 
   log.snapshot("after");
   log.end();

@@ -1,5 +1,5 @@
 <template>
-  <div ref="outlineRef" class="flex flex-col component-outline">
+  <div ref="outlineRef" class="flex flex-col diagram-outline">
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle icon="bullet-list-indented">
@@ -390,7 +390,7 @@ const onKeyDown = (e: KeyboardEvent) => {
     e.preventDefault();
 
     const diagramOutlineNodes = outlineRef.value?.querySelectorAll(
-      ".component-outline-node",
+      ".diagram-outline-node",
     );
     const componentIds = _.map(diagramOutlineNodes, (node) =>
       node.getAttribute("data-component-id"),
