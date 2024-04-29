@@ -8,6 +8,217 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
+async fn make_multiple_trees(ctx: &mut DalContext) {
+    // create 2 even legos
+    let even_lego_1 = create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
+    let even_lego_2 = create_component_for_schema_name(ctx, "large even lego", "even lego 2").await;
+
+    let even_sv_id = even_lego_1
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant");
+    // get output socket id
+    let output_socket_id = OutputSocket::find_with_name(ctx, "one", even_sv_id.id())
+        .await
+        .expect("found output socket")
+        .expect("output socket exists")
+        .id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    //create 2 odd legos
+    let odd_lego_1 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
+    let odd_lego_2 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    let odd_sv = odd_lego_1
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // get input socket id
+    let input_socket_id = InputSocket::find_with_name(ctx, "one", odd_sv.id())
+        .await
+        .expect("found input socket")
+        .expect("exists")
+        .id();
+
+    //connect each of them
+    let _result = Component::connect(
+        ctx,
+        even_lego_1.id(),
+        output_socket_id,
+        odd_lego_1.id(),
+        input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let _result_2 = Component::connect(
+        ctx,
+        even_lego_2.id(),
+        output_socket_id,
+        odd_lego_2.id(),
+        input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        2,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        4,                        // expected
+        diagram.components.len()  // actual
+    );
+}
+#[test]
+async fn make_chain_remove_middle(ctx: &mut DalContext) {
+    // make chain of odd lego 1 -> even lego 1 -> odd lego 2
+    let odd_component_1 =
+        create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
+    let even_component_1 =
+        create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
+    let odd_component_2 =
+        create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        0,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+
+    // connect first two components
+    let odd_sv_id = odd_component_1
+        .schema_variant(ctx)
+        .await
+        .expect("got schema variant")
+        .id();
+    let odd_output_socket_id = OutputSocket::find_with_name(ctx, "two", odd_sv_id)
+        .await
+        .expect("got output socket")
+        .expect("output socket exists")
+        .id();
+
+    let even_sv_id = even_component_1
+        .schema_variant(ctx)
+        .await
+        .expect("got schema variant")
+        .id();
+
+    let even_input_socket_id = InputSocket::find_with_name(ctx, "two", even_sv_id)
+        .await
+        .expect("found input socket")
+        .expect("input socket exists")
+        .id();
+
+    let result = Component::connect(
+        ctx,
+        odd_component_1.id(),
+        odd_output_socket_id,
+        even_component_1.id(),
+        even_input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        1,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+    let apa = AttributePrototypeArgument::get_by_id(ctx, result)
+        .await
+        .expect("found apa");
+    let targets = apa.targets().expect("targets is some");
+    assert!(targets.destination_component_id == even_component_1.id());
+    assert!(targets.source_component_id == odd_component_1.id());
+    // connect second two components
+
+    let odd_2_sv_id = odd_component_2
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant")
+        .id();
+    let even_output_socket_id = OutputSocket::find_with_name(ctx, "one", even_sv_id)
+        .await
+        .expect("found output socket")
+        .expect("output socket exists")
+        .id();
+    let odd_input_socket_id = InputSocket::find_with_name(ctx, "one", odd_2_sv_id)
+        .await
+        .expect("found input socket")
+        .expect("input socket exists")
+        .id();
+    let apa_id = Component::connect(
+        ctx,
+        even_component_1.id(),
+        even_output_socket_id,
+        odd_component_2.id(),
+        odd_input_socket_id,
+    )
+    .await
+    .expect("created connection")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        2,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+    let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id)
+        .await
+        .expect("found apa");
+    let targets = apa.targets().expect("targets is some");
+    assert!(targets.destination_component_id == odd_component_2.id());
+    assert!(targets.source_component_id == even_component_1.id());
+    // delete even lego 2 component
+    let component = even_component_1.delete(ctx).await.expect("could delete");
+    // no resources here so we shouldn't have a component on the graph still
+    assert!(component.is_none());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    //make sure everything is cleaned up
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        0,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+}
+#[test]
 async fn connect_components(ctx: &mut DalContext) {
     // Get the source schema variant id.
     let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")

@@ -1,12 +1,11 @@
 use dal::component::frame::{Frame, FrameError};
 use dal::diagram::SummaryDiagramInferredEdge;
-use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
+use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
 use dal_test::test;
-use petgraph::graph::Edge;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
