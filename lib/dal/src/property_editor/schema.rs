@@ -42,20 +42,23 @@ impl PropertyEditorSchema {
                 let child_props = Prop::direct_child_props_ordered(ctx, prop_id).await?;
 
                 for child_prop in child_props {
-                    // Skip anything at and under "/root/secret_definition"
-                    if prop_id == root_prop_id && child_prop.name == "secret_definition" {
+                    // Skip anything at and under "/root/secret_definition",
+                    // also skip hidden props
+                    if (prop_id == root_prop_id && child_prop.name == "secret_definition")
+                        || child_prop.hidden
+                    {
                         continue;
                     }
-                    cache.push(child_prop.id);
+                    cache.push(child_prop);
                 }
             }
 
             // Now that we have the child props, prepare the property editor props and load the work queue.
             let mut child_property_editor_prop_ids = Vec::new();
-            for child_prop_id in cache {
+            for child_prop in cache {
+                let child_prop_id = child_prop.id;
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let child_prop = Prop::get_by_id_or_error(ctx, child_prop_id).await?;
                 let child_property_editor_prop = PropertyEditorProp::new(ctx, child_prop).await?;
 
                 // Load the work queue with the child prop.

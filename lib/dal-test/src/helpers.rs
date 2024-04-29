@@ -1,5 +1,6 @@
 //! This module contains helpers for use when authoring dal integration tests.
 
+use async_recursion::async_recursion;
 use dal::key_pair::KeyPairPk;
 use dal::property_editor::schema::{
     PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
@@ -7,8 +8,8 @@ use dal::property_editor::schema::{
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use dal::{
-    Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Schema, SchemaVariant,
-    SchemaVariantId, User, UserClaim, UserPk,
+    Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Prop, Schema,
+    SchemaVariant, SchemaVariantId, User, UserClaim, UserPk,
 };
 use itertools::enumerate;
 use jwt_simple::algorithms::RSAKeyPairLike;
@@ -236,19 +237,23 @@ impl PropEditorTestView {
                 prop: prop.clone(),
                 value,
                 children: Self::property_editor_compile_children(
+                    ctx,
                     root_value_id,
                     &prop.kind,
                     &values,
                     &child_values,
                     &props,
-                ),
+                )
+                .await,
             }
         };
 
         root_view
     }
 
-    fn property_editor_compile_children(
+    #[async_recursion]
+    async fn property_editor_compile_children(
+        ctx: &DalContext,
         parent_value_id: PropertyEditorValueId,
         parent_prop_kind: &PropertyEditorPropKind,
         values: &HashMap<PropertyEditorValueId, PropertyEditorValue>,
@@ -266,6 +271,12 @@ impl PropEditorTestView {
                 .get(child_id)
                 .expect("get property editor root value")
                 .clone();
+            let real_prop = Prop::get_by_id_or_error(ctx, value.prop_id.into_inner().into())
+                .await
+                .expect("prop should exist");
+            if real_prop.hidden {
+                continue;
+            }
 
             let prop = props.get(&value.prop_id).expect("get property editor prop");
 
@@ -279,12 +290,14 @@ impl PropEditorTestView {
                 prop: prop.clone(),
                 value,
                 children: Self::property_editor_compile_children(
+                    ctx,
                     *child_id,
                     &prop.kind,
                     values,
                     child_values,
                     props,
-                ),
+                )
+                .await,
             };
 
             children.insert(key, child);

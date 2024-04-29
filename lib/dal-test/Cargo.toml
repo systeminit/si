@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+async-recursion = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
 dal = { path = "../../lib/dal" }

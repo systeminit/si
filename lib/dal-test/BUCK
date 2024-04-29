@@ -18,6 +18,7 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",
         "//lib/veritech-server:veritech-server",
+        "//third-party/rust:async-recursion",
         "//third-party/rust:color-eyre",
         "//third-party/rust:derive_builder",
         "//third-party/rust:itertools",
