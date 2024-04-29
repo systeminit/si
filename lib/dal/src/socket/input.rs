@@ -418,9 +418,12 @@ impl InputSocket {
             // if this socket has an attribute prototype argument,
             //that means it has an explicit connection and we should not
             // look for implicits
-            let maybe_apa =
-                AttributePrototypeArgument::list_ids_for_prototype(ctx, maybe_attribute_prototype)
-                    .await?;
+            let maybe_apa = AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                maybe_attribute_prototype,
+                input_socket_match.component_id,
+            )
+            .await?;
             if !maybe_apa.is_empty() {
                 return Ok(true);
             }

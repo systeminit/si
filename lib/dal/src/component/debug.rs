@@ -21,6 +21,8 @@ use crate::{
     SchemaVariantError,
 };
 
+use super::{InputSocketMatch, OutputSocketMatch};
+
 type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
 
 /// A generated view for an [`Component`](crate::Component) that contains metadata about each of
@@ -45,8 +47,8 @@ pub struct ComponentDebugData {
     pub name: String,
     pub schema_variant_id: SchemaVariantId,
     pub attribute_tree: HashMap<AttributeValueId, Vec<AttributeValueId>>,
-    pub input_sockets: HashMap<InputSocketId, Vec<AttributeValueId>>,
-    pub output_sockets: HashMap<OutputSocketId, Vec<AttributeValueId>>,
+    pub input_sockets: HashMap<InputSocketId, InputSocketMatch>,
+    pub output_sockets: HashMap<OutputSocketId, OutputSocketMatch>,
     pub parent_id: Option<ComponentId>,
 }
 
@@ -132,12 +134,12 @@ impl ComponentDebugView {
         //sort alphabetically by path for the view
         attributes.sort_by_key(|view| view.path.to_lowercase());
 
-        for (input_socket, _) in component_debug_data.input_sockets {
-            let avd = SocketDebugView::new_for_input_socket(ctx, input_socket).await?;
+        for (_, input_socket_match) in component_debug_data.input_sockets {
+            let avd = SocketDebugView::new_for_input_socket(ctx, input_socket_match).await?;
             input_sockets.push(avd);
         }
-        for (output_socket, _) in component_debug_data.output_sockets {
-            let avd = SocketDebugView::new_for_output_socket(ctx, output_socket).await?;
+        for (_, output_socket_match) in component_debug_data.output_sockets {
+            let avd = SocketDebugView::new_for_output_socket(ctx, output_socket_match).await?;
             output_sockets.push(avd);
         }
 
@@ -161,8 +163,10 @@ impl ComponentDebugData {
         let parent_id = component.parent(ctx).await?;
         let attribute_tree =
             Self::get_attribute_value_tree_for_component(ctx, component.id()).await?;
-        let input_sockets = Self::get_input_sockets_for_component(ctx, schema_variant_id).await?;
-        let output_sockets = Self::get_output_sockets_for_component(ctx, schema_variant_id).await?;
+        let input_sockets =
+            Self::get_input_sockets_for_component(ctx, schema_variant_id, component.id()).await?;
+        let output_sockets =
+            Self::get_output_sockets_for_component(ctx, schema_variant_id, component.id()).await?;
         let name = component
             .name(ctx)
             .await
@@ -184,13 +188,16 @@ impl ComponentDebugData {
     pub async fn get_input_sockets_for_component(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> ComponentDebugViewResult<HashMap<InputSocketId, Vec<AttributeValueId>>> {
+        component_id: ComponentId,
+    ) -> ComponentDebugViewResult<HashMap<InputSocketId, InputSocketMatch>> {
         let mut input_sockets = HashMap::new();
         let sockets = InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?;
         for socket in sockets {
-            let attribute_values_for_socket =
-                InputSocket::attribute_values_for_input_socket_id(ctx, socket).await?;
-            input_sockets.insert(socket, attribute_values_for_socket);
+            if let Some(input_socket_match) =
+                Component::input_socket_match(ctx, component_id, socket).await?
+            {
+                input_sockets.insert(socket, input_socket_match);
+            }
         }
         Ok(input_sockets)
     }
@@ -199,14 +206,18 @@ impl ComponentDebugData {
     pub async fn get_output_sockets_for_component(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> ComponentDebugViewResult<HashMap<OutputSocketId, Vec<AttributeValueId>>> {
+        component_id: ComponentId,
+    ) -> ComponentDebugViewResult<HashMap<OutputSocketId, OutputSocketMatch>> {
         let mut output_sockets = HashMap::new();
         let sockets = OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?;
         for socket in sockets {
-            let attribute_values_for_socket =
-                OutputSocket::attribute_values_for_output_socket_id(ctx, socket).await?;
-            output_sockets.insert(socket, attribute_values_for_socket);
+            if let Some(output_socket_match) =
+                Component::output_socket_match(ctx, component_id, socket).await?
+            {
+                output_sockets.insert(socket, output_socket_match);
+            }
         }
+
         Ok(output_sockets)
     }
 

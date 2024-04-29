@@ -3,6 +3,8 @@ use si_data_pg::PgError;
 use std::collections::{hash_map, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use telemetry::prelude::*;
+use telemetry::tracing::instrument;
 use thiserror::Error;
 
 use crate::actor_view::ActorView;
@@ -218,6 +220,7 @@ pub struct Diagram {
 impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
+    #[instrument(level = "debug", skip(ctx))]
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let mut diagram_sockets: HashMap<SchemaVariantId, serde_json::Value> = HashMap::new();
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];

@@ -432,7 +432,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         diagram.edges.len()  // actual
     );
     assert_eq!(
-        2,                                      // expected
+        3,                                      // expected
         diagram.get_all_implicit_edges().len()  // actual
     );
     let odd_component = Component::get_by_id(ctx, odd_component.id())
@@ -1494,6 +1494,7 @@ impl DiagramByKey {
         let mut all = vec![];
         for component in self.components.values() {
             for edge in component.1.clone() {
+                dbg!(&edge);
                 all.push(edge);
             }
         }

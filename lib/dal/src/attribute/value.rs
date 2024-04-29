@@ -2233,7 +2233,7 @@ impl AttributeValue {
     /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_path_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,

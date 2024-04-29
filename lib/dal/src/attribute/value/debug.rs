@@ -5,7 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::debug::{
-    AttributePrototypeDebugView, AttributePrototypeDebugViewError,
+    AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
 };
 use crate::attribute::prototype::{
     argument::{value_source::ValueSourceError, AttributePrototypeArgumentError},
@@ -37,8 +37,7 @@ pub struct AttributeDebugView {
     pub prototype_id: Option<AttributePrototypeId>,
     pub key: Option<String>,
     pub func_name: String,
-    pub func_args: HashMap<String, Vec<serde_json::Value>>,
-    pub arg_sources: HashMap<String, Option<String>>,
+    pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
     pub value: Option<serde_json::Value>,
     pub prop_kind: Option<PropKind>,
     pub materialized_view: Option<serde_json::Value>,
@@ -96,7 +95,7 @@ impl AttributeDebugView {
             .unwrap_or_else(String::new);
         let prop_opt: Option<Prop> = Some(prop);
         let attribute_prototype_debug_view =
-            AttributePrototypeDebugView::assemble(ctx, attribute_value_id).await?;
+            AttributePrototypeDebugView::new(ctx, attribute_value_id).await?;
         let materialized_view = attribute_value.materialized_view(ctx).await?;
         let prop_kind = prop_opt.clone().map(|prop| prop.kind);
         let value = match attribute_value.unprocessed_value(ctx).await? {
@@ -115,7 +114,6 @@ impl AttributeDebugView {
             value_is_for,
             func_name: attribute_prototype_debug_view.func_name,
             func_args: attribute_prototype_debug_view.func_args,
-            arg_sources: attribute_prototype_debug_view.arg_sources,
             value,
             prop_kind,
             materialized_view,

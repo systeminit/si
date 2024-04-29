@@ -142,8 +142,7 @@ export interface AttributeDebugView {
   proxyFor?: string | null;
   funcName: string;
   funcId: string;
-  funcArgs: object;
-  argSources: { [key: string]: string | null } | null;
+  funcArgs: { [key: string]: FuncArgDebugView[] } | null;
   visibility: {
     visibility_change_set_pk: string;
     visibility_deleted_at: Date | undefined | null;
@@ -152,6 +151,15 @@ export interface AttributeDebugView {
   prototypeId: string;
   kind: string;
   materializedView?: string;
+}
+export interface FuncArgDebugView {
+  value: object | string | number | boolean | null;
+  name: string;
+  valueSource: string;
+  valueSourceId: string;
+  socketSourceKind: string | null;
+  path: string | null;
+  isUsed: boolean;
 }
 export interface SocketDebugView extends AttributeDebugView {
   socketId: string;
@@ -1403,6 +1411,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
                 this.FETCH_DIAGRAM_DATA();
+                if (this.selectedComponentId === data.componentId)
+                  this.FETCH_COMPONENT_DEBUG_VIEW(data.componentId);
               },
             },
             {

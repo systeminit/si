@@ -1850,7 +1850,7 @@ impl Component {
     /// and finds the closest matching [`OutputSocket`]
     ///
     /// Note: this does not check for whether data should actually flow between components
-    #[instrument(level = "debug", skip(ctx))]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn find_potential_inferred_connection_to_input_socket(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
@@ -1858,7 +1858,7 @@ impl Component {
         if InputSocket::is_manually_configured(ctx, input_socket_match).await? {
             //if the input socket is being manually driven (the user has drawn an edge)
             // there will be no inferred connections to it
-            debug!("input socket is manually configured");
+            info!("input socket is manually configured");
             return Ok(None);
         }
         let maybe_source_socket =
@@ -1890,7 +1890,7 @@ impl Component {
                 }
                 ComponentType::AggregationFrame => None,
             };
-        debug!(
+        info!(
             "Source socket for input socket {:?} is: {:?}",
             input_socket_match, maybe_source_socket
         );
