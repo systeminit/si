@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::{future::IntoFuture, io, path::Path, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -278,11 +277,11 @@ pub struct LayerDbConfig {
 }
 
 impl LayerDbConfig {
-    pub fn default_for_service(service: impl AsRef<str>) -> Self {
-        let service = service.as_ref();
+    pub fn default_for_service(service: &str) -> Self {
         Self {
-            disk_path: PathBuf::from_str(&format!("/tmp/layerdb-{service}-cacache"))
-                .expect("paths from strings is infallible"),
+            disk_path: tempfile::TempDir::with_prefix(format!("{service}-cache-"))
+                .expect("unable to create tmp dir for layerdb")
+                .into_path(),
             pg_pool_config: Default::default(),
             nats_config: Default::default(),
             memory_cache_config: Default::default(),
