@@ -8,7 +8,7 @@
     <ScrollArea v-if="funcList.length">
       <template #top>
         <div
-          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
+          class="w-full p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
         >
           <NewFuncDropdown
             label="Function"
@@ -26,7 +26,7 @@
           @search="onSearch"
         />
         <!-- <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
         >
           Select a function to view or edit it.
         </div> -->

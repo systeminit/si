@@ -14,7 +14,7 @@
         v-if="!changeSetStore.headSelected"
         :class="
           clsx(
-            'flex flex-row items-center justify-center text-neutral-400 gap-2 p-xs border-b shrink-0',
+            'flex flex-row items-center justify-center text-neutral-400 gap-xs p-xs border-b shrink-0',
             themeClasses('border-neutral-200', 'border-neutral-600'),
           )
         "

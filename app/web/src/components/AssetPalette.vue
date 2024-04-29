@@ -1,7 +1,7 @@
 <template>
   <div class="inset-0 absolute asset-palette">
     <template v-if="schemasReqStatus.isPending">
-      <div class="w-full p-lg flex flex-col gap-2 items-center">
+      <div class="w-full p-lg flex flex-col gap-xs items-center">
         <Icon name="loader" size="2xl" />
         <h2>Loading Asset Palette...</h2>
       </div>

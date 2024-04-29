@@ -134,7 +134,7 @@
                   </ul>
                 </div>
               </template>
-              <div class="flex w-full text-xs justify-center pt-4 gap-2">
+              <div class="flex w-full text-xs justify-center pt-4 gap-xs">
                 <Icon name="tools" tone="warning" size="sm" /> Importing a
                 workspace means replacing all the changesets in this workspace.
                 They cannot be recovered. If you want to save current work
@@ -191,7 +191,7 @@
             </template>
             <template v-else>
               <template v-if="!successfullyVoted">
-                <div class="flex w-full justify-center pt-2 gap-2">
+                <div class="flex w-full justify-center pt-2 gap-xs">
                   <VButton
                     icon="thumbs-up"
                     variant="ghost"
@@ -211,7 +211,7 @@
                 </div>
               </template>
               <template v-if="successfullyVoted">
-                <div class="flex gap-4 w-full p-2">
+                <div class="flex gap-4 w-full p-xs">
                   <Icon name="lock" size="lg" tone="warning" />
                   <span class="text-sm align-middle"
                     >This workspace locked until all users in it have voted on
