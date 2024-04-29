@@ -124,6 +124,7 @@ pub struct SummaryDiagramComponent {
     pub updated_info: serde_json::Value,
     pub deleted_info: serde_json::Value,
     pub to_delete: bool,
+    pub can_be_upgraded: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -303,6 +304,9 @@ impl Diagram {
             let schema =
                 SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
 
+            let default_schema_variant =
+                SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+
             let position = GridPoint {
                 x: component.x().parse::<f64>()?.round() as isize,
                 y: component.y().parse::<f64>()?.round() as isize,
@@ -357,6 +361,7 @@ impl Diagram {
                 created_info,
                 deleted_info: serde_json::Value::Null,
                 to_delete: component.to_delete(),
+                can_be_upgraded: default_schema_variant.id() != schema_variant.id(),
             };
 
             component_views.push(component_view);
