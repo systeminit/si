@@ -1,6 +1,82 @@
+use std::collections::HashMap;
+
+use si_events::{ulid::Ulid, ContentHash};
+
+use crate::{
+    workspace_snapshot::node_weight::NodeWeight, ChangeSet, EdgeWeight, EdgeWeightKind, PropKind,
+    WorkspaceSnapshotGraph,
+};
+
 mod attribute_value_build_view;
 mod detect_conflicts_and_updates;
 mod rebase;
+
+#[allow(dead_code)]
+fn add_prop_nodes_to_graph<'a, 'b>(
+    graph: &'a mut WorkspaceSnapshotGraph,
+    change_set: &'a ChangeSet,
+    nodes: &'a [&'b str],
+) -> HashMap<&'b str, Ulid> {
+    let mut node_id_map = HashMap::new();
+    for node in nodes {
+        // "props" here are just nodes that are easy to create and render the name on the dot
+        // output. there is no domain modeling in this test.
+        let node_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let prop_node_weight = NodeWeight::new_prop(
+            change_set,
+            node_id,
+            PropKind::Object,
+            node,
+            ContentHash::new(node.as_bytes()),
+        )
+        .expect("create prop node weight");
+        graph
+            .add_node(prop_node_weight)
+            .expect("Unable to add prop");
+
+        node_id_map.insert(*node, node_id);
+    }
+    node_id_map
+}
+
+#[allow(dead_code)]
+fn add_edges(
+    graph: &mut WorkspaceSnapshotGraph,
+    node_id_map: &HashMap<&str, Ulid>,
+    change_set: &ChangeSet,
+    edges: &[(Option<&str>, &str)],
+) {
+    for (source, target) in edges {
+        let source = match source {
+            None => graph.root_index,
+            Some(node) => graph
+                .get_node_index_by_id(
+                    node_id_map
+                        .get(node)
+                        .copied()
+                        .expect("source node should have an id"),
+                )
+                .expect("get node index by id"),
+        };
+
+        let target = graph
+            .get_node_index_by_id(
+                node_id_map
+                    .get(target)
+                    .copied()
+                    .expect("target node should have an id"),
+            )
+            .expect("get node index by id");
+
+        graph
+            .add_edge(
+                source,
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("create edge weight"),
+                target,
+            )
+            .expect("add edge");
+    }
+}
 
 #[allow(clippy::panic)]
 #[cfg(test)]
@@ -11,7 +87,6 @@ mod test {
     use pretty_assertions_sorted::assert_eq;
     use si_events::merkle_tree_hash::MerkleTreeHash;
     use si_events::ContentHash;
-    use std::collections::HashMap;
     use std::collections::HashSet;
     use std::str::FromStr;
 
@@ -23,7 +98,10 @@ mod test {
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
     use crate::WorkspaceSnapshotGraph;
-    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
+
+    use super::add_edges;
+    use super::add_prop_nodes_to_graph;
 
     #[test]
     fn new() {
@@ -105,58 +183,8 @@ mod test {
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let mut node_id_map = HashMap::new();
-
-        for node in nodes {
-            // "props" here are just nodes that are easy to create and render the name on the dot
-            // output. there is no domain modeling in this test.
-            let node_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-            let prop_node_weight = NodeWeight::new_prop(
-                change_set,
-                node_id,
-                PropKind::Object,
-                node,
-                ContentHash::new(node.as_bytes()),
-            )
-            .expect("create prop node weight");
-            graph
-                .add_node(prop_node_weight)
-                .expect("Unable to add prop");
-
-            node_id_map.insert(node, node_id);
-        }
-
-        for (source, target) in edges {
-            let source = match source {
-                None => graph.root_index,
-                Some(node) => graph
-                    .get_node_index_by_id(
-                        node_id_map
-                            .get(node)
-                            .copied()
-                            .expect("source node should have an id"),
-                    )
-                    .expect("get node index by id"),
-            };
-
-            let target = graph
-                .get_node_index_by_id(
-                    node_id_map
-                        .get(target)
-                        .copied()
-                        .expect("target node should have an id"),
-                )
-                .expect("get node index by id");
-
-            graph
-                .add_edge(
-                    source,
-                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())
-                        .expect("create edge weight"),
-                    target,
-                )
-                .expect("add edge");
-        }
+        let node_id_map = add_prop_nodes_to_graph(&mut graph, change_set, &nodes);
+        add_edges(&mut graph, &node_id_map, change_set, &edges);
 
         graph.cleanup();
 

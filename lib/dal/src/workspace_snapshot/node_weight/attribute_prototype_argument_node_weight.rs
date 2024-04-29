@@ -7,7 +7,7 @@ use crate::{
     workspace_snapshot::{
         graph::LineageId, node_weight::NodeWeightResult, vector_clock::VectorClock,
     },
-    ComponentId, Timestamp,
+    ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -155,6 +155,13 @@ impl AttributePrototypeArgumentNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[
+            EdgeWeightKindDiscriminants::Use,
+            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        ]
     }
 }
 

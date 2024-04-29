@@ -11,6 +11,7 @@ use crate::{
         node_weight::NodeWeightResult,
         vector_clock::{VectorClock, VectorClockId},
     },
+    EdgeWeightKindDiscriminants,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -181,6 +182,15 @@ impl AttributeValueNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[
+            EdgeWeightKindDiscriminants::Contain,
+            EdgeWeightKindDiscriminants::Prototype,
+            EdgeWeightKindDiscriminants::Prop,
+            EdgeWeightKindDiscriminants::Socket,
+        ]
     }
 }
 

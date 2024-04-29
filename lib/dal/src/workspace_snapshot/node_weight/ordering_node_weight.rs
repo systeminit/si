@@ -6,6 +6,7 @@ use super::NodeWeightError;
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
+use crate::EdgeWeightKindDiscriminants;
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
@@ -181,6 +182,10 @@ impl OrderingNodeWeight {
             .ok_or(NodeWeightError::MissingKeytForChildEntry(id))?;
         let ret: i64 = index.try_into().map_err(NodeWeightError::TryFromIntError)?;
         Ok(ret)
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
 }
 

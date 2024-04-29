@@ -9,7 +9,6 @@ use si_events::{
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     change_set::{ChangeSet, ChangeSetError},
@@ -19,6 +18,7 @@ use crate::{
     },
     PropKind,
 };
+use crate::{func::execution::FuncExecutionPk, EdgeWeightKindDiscriminants};
 
 use crate::func::FuncKind;
 pub use action_node_weight::ActionNodeWeight;
@@ -455,6 +455,36 @@ impl NodeWeight {
             NodeWeight::Ordering(weight) => weight.vector_clock_write(),
             NodeWeight::Prop(weight) => weight.vector_clock_write(),
         }
+    }
+
+    /// Many node kinds need to have complete control of their outgoing edges
+    /// relative to another changeset in order to have a correctly constructed
+    /// graph. For example, only one set of children of a given attribute value
+    /// should "win" in a rebase operation, otherwise there could be duplicate
+    /// child values for an attribute value. This method will be called during
+    /// conflict detection in order to produce a conflict if the change set
+    /// being rebased has unseen edges of this type for a given "container"
+    /// node. If edge kinds are not returned here, those unseen edges will be
+    /// silently merged with the `onto` changeset's edges. This a "business"
+    /// logic problem, rather than a purely graph-theoretical one.
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        match self {
+            NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::ActionPrototype(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributeValue(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Category(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Component(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Content(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Func(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::FuncArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
+        }
+    }
+
+    pub fn is_exclusive_outgoing_edge(&self, edge_kind: EdgeWeightKindDiscriminants) -> bool {
+        self.exclusive_outgoing_edges().contains(&edge_kind)
     }
 
     pub fn get_action_node_weight(&self) -> NodeWeightResult<ActionNodeWeight> {
