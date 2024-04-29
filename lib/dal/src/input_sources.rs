@@ -144,14 +144,8 @@ impl InputSources {
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop);
 
-        // NOTE(nick): we may or may not need DFS-traversal with a corresponding action. Ye be warned!
         let mut input_socket_props = Vec::new();
         while let Some(prop) = work_queue.pop_front() {
-            // TODO(nick): determine if we need to skip hidden props.
-            // if prop.hidden {
-            //     continue;
-            // }
-
             // Only descend on object props.
             if PropKind::Object == prop.kind {
                 work_queue.extend(Prop::direct_child_props_ordered(ctx, prop.id).await?);
@@ -162,7 +156,7 @@ impl InputSources {
                 prop_id: prop.id,
                 kind: prop.kind,
                 name: prop.name.to_owned(),
-                path: prop.path(ctx).await?.with_replaced_sep("/"),
+                path: prop.path(ctx).await?.with_replaced_sep_and_prefix("/"),
             })
         }
 

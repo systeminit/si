@@ -15,8 +15,8 @@ use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, ComponentId, DalContext,
-    DeprecatedActionKind, DeprecatedActionPrototype, Func, FuncBackendResponseType, FuncId,
-    SchemaVariant, SchemaVariantId, WorkspaceSnapshotError, WsEvent,
+    DeprecatedActionKind, DeprecatedActionPrototype, EdgeWeightKind, Func, FuncBackendResponseType,
+    FuncId, OutputSocket, Prop, SchemaVariant, SchemaVariantId, WorkspaceSnapshotError, WsEvent,
 };
 
 pub(crate) async fn save_func(
@@ -193,7 +193,7 @@ async fn save_auth_func_prototypes(
 async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
-    prototype_views: Vec<AttributePrototypeBag>,
+    prototype_bags: Vec<AttributePrototypeBag>,
     removed_protoype_op: RemovedPrototypeOp,
     _key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
@@ -201,19 +201,24 @@ async fn save_attr_func_prototypes(
     let mut computed_backend_response_type = func.backend_response_type;
 
     // Update all prototypes using the func.
-    for prototype_view in prototype_views {
+    for prototype_bag in prototype_bags {
         // TODO(nick): don't use the nil id in the future.
-        let attribute_prototype_id = if AttributePrototypeId::NONE == prototype_view.id {
-            let attribute_prototype = AttributePrototype::new(ctx, func.id).await?;
-            attribute_prototype.id
+        let attribute_prototype_id = if AttributePrototypeId::NONE == prototype_bag.id {
+            create_new_attribute_prototype(ctx, &prototype_bag, func.id).await?
         } else {
-            AttributePrototype::update_func_by_id(ctx, prototype_view.id, func.id).await?;
-            prototype_view.id
+            AttributePrototype::update_func_by_id(ctx, prototype_bag.id, func.id).await?;
+            prototype_bag.id
         };
         id_set.insert(attribute_prototype_id);
 
-        save_attr_func_proto_arguments(ctx, prototype_view.id, prototype_view.prototype_arguments)
-            .await?;
+        // Use the attribute prototype id variable rather than the one off the iterator so that we
+        // don't use the nil one by accident.
+        save_attr_func_proto_arguments(
+            ctx,
+            attribute_prototype_id,
+            prototype_bag.prototype_arguments,
+        )
+        .await?;
     }
 
     // Remove or reset all prototypes not included in the views that use the func.
@@ -367,10 +372,20 @@ async fn save_attr_func_proto_arguments(
             AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
                 .await?;
         let attribute_prototype_argument_id = attribute_prototype_argument.id();
+
         if let Some(input_socket_id) = arg.input_socket_id {
             attribute_prototype_argument
                 .set_value_from_input_socket_id(ctx, input_socket_id)
                 .await?;
+        } else if let Some(prop_id) = arg.prop_id {
+            attribute_prototype_argument
+                .set_value_from_prop_id(ctx, prop_id)
+                .await?;
+        } else {
+            return Err(FuncAuthoringError::NoInputLocationGiven(
+                attribute_prototype_id,
+                arg.func_argument_id,
+            ));
         }
 
         id_set.insert(attribute_prototype_argument_id);
@@ -386,4 +401,73 @@ async fn save_attr_func_proto_arguments(
     }
 
     Ok(())
+}
+
+async fn create_new_attribute_prototype(
+    ctx: &DalContext,
+    prototype_bag: &AttributePrototypeBag,
+    func_id: FuncId,
+) -> FuncAuthoringResult<AttributePrototypeId> {
+    let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
+    let mut affected_attribute_value_ids = Vec::new();
+
+    if let Some(prop_id) = prototype_bag.prop_id {
+        if let Some(component_id) = prototype_bag.component_id {
+            let attribute_value_ids = Prop::attribute_values_for_prop_id(ctx, prop_id).await?;
+
+            for attribute_value_id in attribute_value_ids {
+                if component_id == AttributeValue::component_id(ctx, attribute_value_id).await? {
+                    AttributeValue::set_component_prototype_id(
+                        ctx,
+                        attribute_value_id,
+                        attribute_prototype.id,
+                    )
+                    .await?;
+                    affected_attribute_value_ids.push(attribute_value_id);
+                }
+            }
+        } else {
+            Prop::add_edge_to_attribute_prototype(
+                ctx,
+                prop_id,
+                attribute_prototype.id,
+                EdgeWeightKind::Prototype(None),
+            )
+            .await?;
+        }
+    } else if let Some(output_socket_id) = prototype_bag.output_socket_id {
+        if let Some(component_id) = prototype_bag.component_id {
+            let attribute_value_ids =
+                OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket_id).await?;
+            for attribute_value_id in attribute_value_ids {
+                if component_id == AttributeValue::component_id(ctx, attribute_value_id).await? {
+                    AttributeValue::set_component_prototype_id(
+                        ctx,
+                        attribute_value_id,
+                        attribute_prototype.id,
+                    )
+                    .await?;
+                    affected_attribute_value_ids.push(attribute_value_id);
+                }
+            }
+        } else {
+            OutputSocket::add_edge_to_attribute_prototype(
+                ctx,
+                output_socket_id,
+                attribute_prototype.id,
+                EdgeWeightKind::Prototype(None),
+            )
+            .await?;
+        }
+    } else {
+        return Err(FuncAuthoringError::NoOutputLocationGiven(func_id));
+    }
+
+    if !affected_attribute_value_ids.is_empty() {
+        ctx.enqueue_dependent_values_update(affected_attribute_value_ids)
+            .await?;
+    }
+
+    Ok(attribute_prototype.id)
 }

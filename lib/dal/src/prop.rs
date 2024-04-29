@@ -188,6 +188,12 @@ impl PropPath {
         self.0.to_owned().replace(PROP_PATH_SEPARATOR, sep)
     }
 
+    pub fn with_replaced_sep_and_prefix(&self, sep: &str) -> String {
+        let mut path = self.with_replaced_sep(sep);
+        path.insert_str(0, sep);
+        path
+    }
+
     /// Returns true if this PropPath is a descendant (at any depth) of `maybe_parent`
     pub fn is_descendant_of(&self, maybe_parent: &PropPath) -> bool {
         let this_parts = self.as_parts();

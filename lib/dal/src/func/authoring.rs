@@ -47,11 +47,13 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
-use crate::func::argument::FuncArgumentError;
+use crate::func::argument::{FuncArgumentError, FuncArgumentId};
 use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::binding::FuncBindingError;
 use crate::func::view::FuncViewError;
-use crate::func::FuncKind;
+use crate::func::{BeforeFuncError, FuncKind};
+use crate::prop::PropError;
+use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototypeId, ComponentError, ComponentId, DalContext, DeprecatedActionKind,
     DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
@@ -59,9 +61,9 @@ use crate::{
 };
 
 mod create;
-mod dummy_execute;
 mod execute;
 mod save;
+mod test_execute;
 mod ts_types;
 
 #[allow(missing_docs)]
@@ -80,6 +82,8 @@ pub enum FuncAuthoringError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for attribute prototype: {0}")]
     AttributeValueNotFoundForAttributePrototype(AttributePrototypeId),
+    #[error("before func error: {0}")]
+    BeforeFunc(#[from] BeforeFuncError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("func error: {0}")]
@@ -100,12 +104,22 @@ pub enum FuncAuthoringError {
     FuncView(#[from] FuncViewError),
     #[error("invalid func kind for creation: {0}")]
     InvalidFuncKindForCreation(FuncKind),
+    #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
+    NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
+    #[error("no output location given for func: {0}")]
+    NoOutputLocationGiven(FuncId),
     #[error("func ({0}) is not runnable with kind: {1}")]
     NotRunnable(FuncId, FuncKind),
     #[error("func is read-only: {0}")]
     NotWritable(FuncId),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("tokio task join error: {0}")]
+    TokioTaskJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("unexpected func kind ({0}) creating attribute func")]
@@ -132,17 +146,17 @@ impl FuncAuthoringClient {
         create::create_func(ctx, kind, name, options).await
     }
 
-    /// Performs a "dummy" [`Func`] execution and returns the [result](DummyExecutionResult).
-    #[instrument(name = "func.authoring.dummy_execute_func", level = "info", skip_all)]
-    pub async fn dummy_execute_func(
+    /// Performs a "test" [`Func`] execution and returns the [result](TestExecuteFuncResult).
+    #[instrument(name = "func.authoring.test_execute_func", level = "info", skip_all)]
+    pub async fn test_execute_func(
         ctx: &DalContext,
         id: FuncId,
         args: serde_json::Value,
         execution_key: String,
         code: String,
         component_id: ComponentId,
-    ) -> FuncAuthoringResult<DummyExecutionResult> {
-        dummy_execute::dummy_execute_func(ctx, id, args, execution_key, code, component_id).await
+    ) -> FuncAuthoringResult<TestExecuteFuncResult> {
+        test_execute::test_execute_func(ctx, id, args, execution_key, code, component_id).await
     }
 
     /// Executes a [`Func`].
@@ -229,19 +243,19 @@ pub enum CreateFuncOptions {
     QualificationOptions { schema_variant_id: SchemaVariantId },
 }
 
-/// The result of a [`dummy execution`](FuncAuthoringClient::dummy_execute).
+/// The result of a [`test execution`](FuncAuthoringClient::dummy_execute).
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct DummyExecutionResult {
-    /// The ID of the [`Func`](crate::Func) that was executed.
+pub struct TestExecuteFuncResult {
+    /// The ID of the [`Func`](crate::Func) that was "test" executed.
     pub id: FuncId,
-    /// The serialized arguments provided as inputs to the [`Func`](crate::Func).
+    /// The serialized arguments provided as inputs to the [`Func`](crate::Func) for test execution.
     pub args: serde_json::Value,
-    /// The serialized output of the execution.
+    /// The serialized output of the test execution.
     pub output: serde_json::Value,
-    /// The key for the execution (e.g. a randomized string that the user keeps track of).
+    /// The key for the test execution (e.g. a randomized string that the user keeps track of).
     pub execution_key: String,
-    /// The logs corresponding to the output stream of the execution.
+    /// The logs corresponding to the output stream of the test execution.
     pub logs: Vec<OutputStream>,
 }
 

@@ -3,10 +3,13 @@ use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeEventualParent};
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::FuncKind;
+use crate::prop::{PropError, PropPath};
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
     AttributePrototype, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype,
@@ -16,7 +19,7 @@ use crate::{
 
 mod bags;
 
-use crate::prop::{PropError, PropPath};
+use crate::attribute::prototype::argument::value_source::ValueSource;
 pub use bags::AttributePrototypeArgumentBag;
 pub use bags::AttributePrototypeBag;
 pub use bags::FuncArgumentBag;
@@ -38,6 +41,8 @@ pub enum FuncAssociationsError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("unexpected func associations variant: {0:?} (expected: {1:?})")]
     UnexpectedFuncAssociationsVariant(FuncAssociationsDiscriminants, FuncAssociationsDiscriminants),
+    #[error("unexpected value source ({0:?}) for attribute prototype argument: {1}")]
+    UnexpectedValueSource(ValueSource, AttributePrototypeArgumentId),
 }
 
 type FuncAssociationsResult<T> = Result<T, FuncAssociationsError>;

@@ -34,24 +34,25 @@ export interface QualificationAssociations {
   inputs: LeafInputLocation[];
 }
 
-export interface AttributePrototypeArgumentView {
+export interface AttributePrototypeArgumentBag {
   funcArgumentId: string;
   id?: string;
+  propId?: string;
   inputSocketId?: string;
 }
 
-export interface AttributePrototypeView {
+export interface AttributePrototypeBag {
   id: string;
   componentId?: string;
   schemaVariantId?: string;
   propId?: string;
   outputSocketId?: string;
-  prototypeArguments: AttributePrototypeArgumentView[];
+  prototypeArguments: AttributePrototypeArgumentBag[];
 }
 
 export interface AttributeAssociations {
   type: "attribute";
-  prototypes: AttributePrototypeView[];
+  prototypes: AttributePrototypeBag[];
   arguments: FuncArgument[];
 }
 

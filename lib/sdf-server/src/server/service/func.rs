@@ -19,12 +19,12 @@ use crate::server::{impl_default_error_into_response, state::AppState};
 
 pub mod create_func;
 pub mod delete_func;
-pub mod execute;
 pub mod get_func;
 pub mod list_funcs;
 pub mod list_input_sources;
 pub mod save_and_exec;
 pub mod save_func;
+pub mod test_execute;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -69,7 +69,6 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/create_func", post(create_func::create_func))
         .route("/delete_func", post(delete_func::delete_func))
-        .route("/execute", post(execute::execute))
         .route("/get_func", get(get_func::get_func))
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route(
@@ -78,6 +77,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
         .route("/save_func", post(save_func::save_func))
+        .route("/test_execute", post(test_execute::execute))
 }
 
 #[derive(Deserialize, Serialize, Debug)]

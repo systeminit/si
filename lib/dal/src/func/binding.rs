@@ -5,32 +5,17 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
+use veritech_client::{BeforeFunction, OutputStream};
 
-use super::{before_funcs_for_component, BeforeFuncError, FuncError};
-use crate::func::backend::validation::FuncBackendValidation;
+use super::{BeforeFuncError, FuncError};
+use crate::func::binding::critical_section::execute_critical_section;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
-    standard_model_accessor, ComponentId, Func, FuncBackendKind, HistoryEventError, StandardModel,
+    standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
     StandardModelError, Timestamp, Visibility,
 };
 use crate::{
-    func::backend::{
-        array::FuncBackendArray,
-        boolean::FuncBackendBoolean,
-        diff::FuncBackendDiff,
-        identity::FuncBackendIdentity,
-        integer::FuncBackendInteger,
-        js_action::FuncBackendJsAction,
-        js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-        js_reconciliation::FuncBackendJsReconciliation,
-        js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
-        json::FuncBackendJson,
-        map::FuncBackendMap,
-        object::FuncBackendObject,
-        string::FuncBackendString,
-        FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
-    },
+    func::backend::{FuncDispatchContext, InvalidResolverFunctionTypeError},
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use crate::{DalContext, Tenancy};
@@ -41,6 +26,7 @@ use super::{
     FuncId,
 };
 
+pub(crate) mod critical_section;
 pub mod return_value;
 
 #[remain::sorted]
@@ -197,84 +183,17 @@ impl FuncBinding {
             .await
     }
 
-    /// Perform function execution to veritech for a given [`Func`](crate::Func) and
-    /// [`FuncDispatchContext`](crate::func::backend::FuncDispatchContext).
+    /// Perform function execution to veritech for a given [`Func`] and [`FuncDispatchContext`]
+    /// using arguments provided by the [`binding`](FuncBinding).
     async fn execute_critical_section(
         &self,
         func: Func,
         context: FuncDispatchContext,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        let execution_result = match self.backend_kind() {
-            FuncBackendKind::JsAction => {
-                FuncBackendJsAction::create_and_execute(context, &func, &self.args, before).await
-            }
-            FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args, before)
-                    .await
-            }
-            FuncBackendKind::JsAttribute => {
-                let args = FuncBackendJsAttributeArgs {
-                    component: ResolverFunctionComponent {
-                        data: veritech_client::ComponentView {
-                            properties: self.args.clone(),
-                            ..Default::default()
-                        },
-                        parents: Vec::new(),
-                    },
-                    response_type: func.backend_response_type.try_into()?,
-                };
-                FuncBackendJsAttribute::create_and_execute(
-                    context,
-                    &func,
-                    &serde_json::to_value(args)?,
-                    before,
-                )
-                .await
-            }
-            FuncBackendKind::JsSchemaVariantDefinition => {
-                FuncBackendJsSchemaVariantDefinition::create_and_execute(
-                    context,
-                    &func,
-                    &serde_json::Value::Null,
-                    before,
-                )
-                .await
-            }
-            FuncBackendKind::Json => FuncBackendJson::create_and_execute(&self.args).await,
-            FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
-            FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
-            FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
-            FuncBackendKind::Diff => FuncBackendDiff::create_and_execute(&self.args).await,
-            FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
-            FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
-            FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,
-            FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
-            FuncBackendKind::Unset => Ok((None, None)),
-            FuncBackendKind::Validation => {
-                FuncBackendValidation::create_and_execute(context, &func, &self.args, before).await
-            }
-            FuncBackendKind::JsValidation => {
-                unimplemented!("direct Validation function execution is deprecated")
-            }
-            FuncBackendKind::JsAuthentication => unimplemented!(
-                "direct JsAuthentication function execution is not currently supported"
-            ),
-        };
-
-        match execution_result {
-            Ok(value) => Ok(value),
-            Err(FuncBackendError::ResultFailure {
-                kind,
-                message,
-                backend,
-            }) => Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }),
-            Err(err) => Err(err)?,
-        }
+        let (value, unprocessed_value) =
+            execute_critical_section(func.clone(), &self.args, context, before).await?;
+        Ok((value, unprocessed_value))
     }
 
     async fn postprocess_execution(
@@ -358,51 +277,6 @@ impl FuncBinding {
         let (context, rx) = FuncDispatchContext::new(ctx);
         Ok((func, execution, context, rx))
     }
-
-    pub async fn execute_dummy(
-        ctx: &DalContext,
-        func_id: FuncId,
-        func_backend_kind: FuncBackendKind,
-        args: serde_json::Value,
-        execution_key: String,
-        component_id: ComponentId,
-    ) -> FuncBindingResult<(serde_json::Value, Vec<OutputStream>)> {
-        let before = before_funcs_for_component(ctx, component_id)
-            .await
-            .map_err(Box::new)?;
-
-        let func_binding = Self::new(ctx, args, func_id, func_backend_kind).await?;
-
-        let (func, _execution, context, mut rx) = func_binding.prepare_execution(ctx).await?;
-
-        // TODO(nick): if we could do this without a rollback that would be great, especially since
-        // only have to work with the graph in memory.
-        ctx.rollback().await?;
-
-        let (func_id, inner_ctx, execution_key) = (func_id, ctx.clone(), execution_key);
-        let log_handler = tokio::spawn(async move {
-            let (ctx, mut output) = (&inner_ctx, Vec::new());
-
-            while let Some(output_stream) = rx.recv().await {
-                output.push(output_stream.clone());
-
-                let log_line = LogLinePayload {
-                    stream: output_stream,
-                    func_id,
-                    execution_key: execution_key.clone(),
-                };
-                publish_immediately(ctx, WsEvent::log_line(ctx, log_line).await?).await?;
-            }
-            Ok::<_, FuncBindingError>(output)
-        });
-
-        let (value, _unprocessed_value) = func_binding
-            .execute_critical_section(func.clone(), context, before)
-            .await?;
-        let logs = log_handler.await??;
-
-        Ok((value.unwrap_or(serde_json::Value::Null), logs))
-    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -417,12 +291,4 @@ impl WsEvent {
     pub async fn log_line(ctx: &DalContext, payload: LogLinePayload) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::LogLine(payload)).await
     }
-}
-
-// TODO(nick): centralize this.
-async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> WsEventResult<()> {
-    let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
-    let msg_bytes = serde_json::to_vec(&ws_event)?;
-    ctx.nats_conn().publish(subject, msg_bytes.into()).await?;
-    Ok(())
 }
