@@ -4,6 +4,7 @@ use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::{ulid::Ulid, ContentHash};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::EdgeWeightKindDiscriminants;
 use crate::{
     change_set::ChangeSet,
     workspace_snapshot::{
@@ -201,6 +202,10 @@ impl ContentNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
 }
 

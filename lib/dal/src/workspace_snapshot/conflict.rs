@@ -2,6 +2,8 @@ use petgraph::stable_graph::NodeIndex;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::EdgeWeightKindDiscriminants;
+
 /// Describe the type of conflict between the given locations in a
 /// workspace graph.
 #[remain::sorted]
@@ -10,6 +12,11 @@ pub enum Conflict {
     ChildOrder {
         onto: NodeIndex,
         to_rebase: NodeIndex,
+    },
+    ExclusiveEdgeMismatch {
+        source: NodeIndex,
+        destination: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
     },
     ModifyRemovedItem(NodeIndex),
     NodeContent {

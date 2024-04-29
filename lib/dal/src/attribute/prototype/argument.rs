@@ -170,6 +170,14 @@ impl AttributePrototypeArgument {
         result: AttributePrototypeArgumentResult,
     );
 
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: Ulid,
+        add_fn: add_edge_to_value,
+        discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        result: AttributePrototypeArgumentResult,
+    );
+
     pub async fn get_by_id(
         ctx: &DalContext,
         id: AttributePrototypeArgumentId,
@@ -400,14 +408,6 @@ impl AttributePrototypeArgument {
 
         Ok(self)
     }
-
-    implement_add_edge_to!(
-        source_id: AttributePrototypeArgumentId,
-        destination_id: Ulid,
-        add_fn: add_edge_to_value,
-        discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-        result: AttributePrototypeArgumentResult,
-    );
 
     pub async fn prototype_id_for_argument_id(
         ctx: &DalContext,

@@ -5,13 +5,13 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use crate::{
     change_set::ChangeSet,
     workspace_snapshot::{
-        content_address::ContentAddress,
-        content_address::ContentAddressDiscriminants,
+        content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::LineageId,
         node_weight::NodeWeightResult,
         vector_clock::{VectorClock, VectorClockId},
         NodeWeightError,
     },
+    EdgeWeightKindDiscriminants,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -164,6 +164,10 @@ impl FuncArgumentNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
 }
 
