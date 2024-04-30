@@ -1126,8 +1126,8 @@ pub struct RebaseRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Conflicts {
-    conflicts_found: Vec<Conflict>,
-    updates_found_and_skipped: Vec<Update>,
+    pub conflicts_found: Vec<Conflict>,
+    pub updates_found_and_skipped: Vec<Update>,
 }
 
 // TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into

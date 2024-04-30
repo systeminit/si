@@ -28,6 +28,8 @@ pub enum ChangeSetTestHelpersError {
     ChangeSetApply(#[from] ChangeSetApplyError),
     #[error("change set not found by id: {0}")]
     ChangeSetNotFound(ChangeSetId),
+    #[error("found conflicts after apply: {0:?}")]
+    ConflictsFoundAfterApply(Conflicts),
     #[error("found conflicts after commit: {0:?}")]
     ConflictsFoundAfterCommit(Conflicts),
     #[error("transactions error: {0}")]
@@ -58,7 +60,13 @@ impl ChangeSetTestHelpers {
     /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
     /// snapshot is "HEAD" without an editing [`ChangeSet`].
     pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> ChangeSetTestHelpersResult<()> {
-        let applied_change_set = ChangeSet::apply_to_base_change_set(ctx, true).await?;
+        let applied_change_set = match ChangeSet::apply_to_base_change_set(ctx, true).await {
+            Err(ChangeSetApplyError::ConflictsOnApply(conflicts)) => Err(
+                ChangeSetTestHelpersError::ConflictsFoundAfterApply(conflicts),
+            )?,
+            err @ Err(_) => err?,
+            Ok(change_set) => change_set,
+        };
 
         Self::commit_and_error_on_conflicts(ctx).await?;
 
@@ -84,7 +92,9 @@ impl ChangeSetTestHelpers {
     /// The name of the forked [`ChangeSet`] will be random.
     ///
     /// If you'd like to provide a name, use [`Self::fork_from_head_change_set_with_name`].
-    pub async fn fork_from_head_change_set(ctx: &mut DalContext) -> ChangeSetTestHelpersResult<()> {
+    pub async fn fork_from_head_change_set(
+        ctx: &mut DalContext,
+    ) -> ChangeSetTestHelpersResult<ChangeSet> {
         Self::fork_from_head_change_set_inner(ctx, generate_fake_name()).await
     }
 
@@ -95,20 +105,20 @@ impl ChangeSetTestHelpers {
     pub async fn fork_from_head_change_set_with_name(
         ctx: &mut DalContext,
         name: impl AsRef<str>,
-    ) -> ChangeSetTestHelpersResult<()> {
+    ) -> ChangeSetTestHelpersResult<ChangeSet> {
         Self::fork_from_head_change_set_inner(ctx, name).await
     }
 
     async fn fork_from_head_change_set_inner(
         ctx: &mut DalContext,
         name: impl AsRef<str>,
-    ) -> ChangeSetTestHelpersResult<()> {
+    ) -> ChangeSetTestHelpersResult<ChangeSet> {
         let new_change_set = ChangeSet::fork_head(ctx, name).await?;
 
         ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
             .await?;
 
-        Ok(())
+        Ok(new_change_set)
     }
 
     async fn commit_and_error_on_conflicts(ctx: &DalContext) -> ChangeSetTestHelpersResult<()> {

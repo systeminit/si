@@ -1010,13 +1010,15 @@ impl WorkspaceSnapshotGraph {
             let to_rebase_item_weight =
                 self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
 
-            // If `onto` has never seen this edge, then it's new, and there are no conflicts, and
-            // no updates.
             if to_rebase_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(to_rebase_vector_clock_id)
                 <= onto_last_saw_to_rebase
             {
+                // Onto has seen this edge before, but the edge doesn't exist in
+                // onto. If the container has been modified since we last saw
+                // it, then we have a conflict. Otherwise, we should remove the
+                // edge.
                 if to_rebase_item_weight
                     .vector_clock_write()
                     .entry_for(to_rebase_vector_clock_id)
@@ -1036,8 +1038,12 @@ impl WorkspaceSnapshotGraph {
                     });
                 }
             } else {
+                // Onto has never seen this edge, so it was added by another
+                // rebase. Conflict here if the node weight specifies this edge
+                // as exclusive to us.
+                let container_weight = self.get_node_weight(to_rebase_container_index)?;
                 let edge_kind = only_to_rebase_edge_info.edge_kind;
-                if to_rebase_item_weight.is_exclusive_outgoing_edge(edge_kind) {
+                if container_weight.is_exclusive_outgoing_edge(edge_kind) {
                     conflicts.push(Conflict::ExclusiveEdgeMismatch {
                         source: only_to_rebase_edge_info.source_node_index,
                         destination: only_to_rebase_edge_info.target_node_index,
