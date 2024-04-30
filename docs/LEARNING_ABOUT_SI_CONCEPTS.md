@@ -1,6 +1,6 @@
 # Learning About SI Concepts
 
-As referenced in [CODE_DOCUMENTATION](./CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
+As referenced in [our code documentation guide](./CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
 into learning about the Rust modules and structs that back many SI concepts.
 
 Let's say you want to learn about what a `Component` is.

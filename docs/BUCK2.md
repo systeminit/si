@@ -106,7 +106,7 @@ For complex introspection and interaction with graphs, `bxl` files are Starlark 
 
 ## How do I run Rust tests with `buck2`?
 
-Check out the [RUNNING_RUST_TESTS](./RUNNING_RUST_TESTS.md) guide!
+Check out the [guide for running rust tests](./RUNNING_RUST_TESTS.md)!
 Essentially, you'll use the following pattern:
 
 ```shell
