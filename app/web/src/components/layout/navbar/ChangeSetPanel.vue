@@ -28,10 +28,6 @@
         variant="ghost"
         icon="git-branch-plus"
         size="sm"
-        :disabled="
-          actionsStore.actionsAreInProgress &&
-          featureFlagStore.DONT_BLOCK_ON_ACTIONS
-        "
         @click="openCreateModal"
       />
 
@@ -43,12 +39,7 @@
         variant="ghost"
         icon="trash"
         size="sm"
-        :disabled="
-          (actionsStore.actionsAreInProgress &&
-            featureFlagStore.DONT_BLOCK_ON_ACTIONS) ||
-          !selectedChangeSetName ||
-          changeSetsStore.headSelected
-        "
+        :disabled="!selectedChangeSetName || changeSetsStore.headSelected"
         @click="abandonConfirmationModalRef.open()"
       />
     </div>
@@ -330,8 +321,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useActionsStore } from "@/store/actions.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
@@ -351,8 +340,6 @@ const statusStore = useStatusStore();
 const authStore = useAuthStore();
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagStore = useFeatureFlagsStore();
-const actionsStore = useActionsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 const selectedChangeSetName = computed(
