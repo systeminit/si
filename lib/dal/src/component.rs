@@ -1,6 +1,7 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use chrono::Utc;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,7 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
+use veritech_client::ResourceStatus;
 
 use si_events::{ulid::Ulid, ContentHash};
 
@@ -533,19 +535,7 @@ impl Component {
         // We could make this more efficient by skipping everything set by non builtins (si:setString, si:setObject, etc), since everything that is propagated will be re-propagated
         let mut work_queue: VecDeque<(AttributeValueId, AttributeValueId)> =
             vec![(copied_root_id, pasted_root_id)].into_iter().collect();
-        let mut all_avs = Vec::new();
         while let Some((copied_av_id, pasted_av_id)) = work_queue.pop_front() {
-            all_avs.push((copied_av_id, pasted_av_id));
-
-            let path = AttributeValue::get_path_for_id(ctx, copied_av_id)
-                .await?
-                .ok_or(ComponentError::MissingPathForAttributeValue(copied_av_id))?;
-
-            // Must empty resource and keep the name with the "- Copy" suffix
-            if path.starts_with("root/resource") || path == "root/si/name" {
-                continue;
-            }
-
             if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, copied_av_id).await? {
                 let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 if prop.kind != PropKind::Object
@@ -598,10 +588,29 @@ impl Component {
             }
         }
 
+        self.set_resource(
+            ctx,
+            DeprecatedActionRunResult {
+                status: Some(ResourceStatus::Ok),
+                payload: None,
+                message: None,
+                logs: Vec::new(),
+                last_synced: Some(Utc::now().to_rfc3339()),
+            },
+        )
+        .await?;
+        self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
+            .await?;
+
+        let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
+        let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
+        let mut work_queue: VecDeque<(AttributeValueId, AttributeValueId)> =
+            vec![(copied_root_id, pasted_root_id)].into_iter().collect();
+
         // Paste attribute prototypes
         // - either updates component prototype to a copy of the original component
         // - or removes component prototype, restoring the schema one (needed because of manual update from the block above)
-        for (copied_av_id, pasted_av_id) in all_avs {
+        while let Some((copied_av_id, pasted_av_id)) = work_queue.pop_front() {
             if let Some(copied_prototype_id) =
                 AttributeValue::component_prototype_id(ctx, copied_av_id).await?
             {
@@ -681,6 +690,45 @@ impl Component {
                 AttributeValue::component_prototype_id(ctx, pasted_av_id).await?
             {
                 AttributePrototype::remove(ctx, existing_prototype_id).await?;
+            }
+
+            // Enqueue children
+            let copied_children = AttributeValue::list_all_children(ctx, copied_av_id).await?;
+            let pasted_children = AttributeValue::list_all_children(ctx, pasted_av_id).await?;
+            let mut pasted_children_paths = HashMap::new();
+
+            for pasted_child_av_id in &pasted_children {
+                let pasted_path = AttributeValue::get_path_for_id(ctx, *pasted_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        *pasted_child_av_id,
+                    ))?;
+                pasted_children_paths.insert(pasted_path, *pasted_child_av_id);
+            }
+
+            for copied_child_av_id in copied_children {
+                let copied_path = AttributeValue::get_path_for_id(ctx, copied_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        copied_child_av_id,
+                    ))?;
+
+                let pasted_child_av_id = if let Some(pasted_child_av_id) =
+                    pasted_children_paths.get(&copied_path).copied()
+                {
+                    pasted_child_av_id
+                } else {
+                    AttributeValue::new(
+                        ctx,
+                        AttributeValue::is_for(ctx, copied_child_av_id).await?,
+                        Some(self.id),
+                        Some(pasted_av_id),
+                        AttributeValue::key_for_id(ctx, copied_child_av_id).await?,
+                    )
+                    .await?
+                    .id
+                };
+                work_queue.push_back((copied_child_av_id, pasted_child_av_id));
             }
         }
 
