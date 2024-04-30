@@ -117,7 +117,8 @@ Every service should eventually have a green checkmark next to them, which ensur
 
 _Please note: database migrations may take some time to complete._
 
-If you would like to learn more on what's running, check out the [Architecture](./docs/ARCHITECTURE.md) section.
+If you would like to learn more on what's running, check out our [ARCHITECTURE](./docs/ARCHITECTURE.md) documentation.
+If you would like to learn more about running the stack locally, check out our [DEVELOPMENT_ENVIRONMENT](./docs/DEVELOPMENT_ENVIRONMENT.md) and [RUNNING_THE_STACK_LOCALLY](./docs/RUNNING_THE_STACK_LOCALLY.md) documentation.
 
 ### (6) Troubleshooting in Tilt
 
