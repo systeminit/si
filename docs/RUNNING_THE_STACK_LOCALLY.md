@@ -1,7 +1,7 @@
 # Running the Stack Locally
 
 This document provides additional information on running the System Initiative software stack locally.
-Readers should first refer to the [README](../README.md) and [DEVELOPMENT_ENVIRONMENT](./DEVELOPMENT_ENVIRONMENT.md) before reading this document.
+Readers should first refer to the [README](../README.md) and [the development environment documentation](./DEVELOPMENT_ENVIRONMENT.md) before reading this document.
 
 ## Advanced Options
 
