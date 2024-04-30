@@ -7,6 +7,8 @@ use ulid::Ulid;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum IndexClientError {
+    #[error("Deserialization error: {0}")]
+    Deserialization(serde_json::Error),
     #[error("Request error: {0}")]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
     #[error("Request error: {0}")]
@@ -78,9 +80,18 @@ impl WorkspaceExport {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceExportContentV0 {
-    pub workspace_snapshots_for_changeset_id: HashMap<Ulid, Vec<u8>>,
+    // We store changesets keyed by the cs id they depend on, so we can import in the right order
+    pub change_sets: HashMap<Ulid, Vec<WorkspaceExportChangeSetV0>>,
     pub content_store_values: Vec<u8>,
     pub metadata: WorkspaceExportMetadataV0,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceExportChangeSetV0 {
+    pub id: Ulid,
+    pub name: String,
+    pub base_change_set_id: Option<Ulid>,
+    pub workspace_snapshot_serialized_data: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +101,8 @@ pub struct WorkspaceExportMetadataV0 {
     pub description: String,
     pub created_at: DateTime<Utc>,
     pub created_by: String,
-    pub default_change_set: Option<String>,
-    pub workspace_pk: Option<String>,
-    pub workspace_name: Option<String>,
+    pub default_change_set: Ulid,
+    pub default_change_set_base: Ulid,
+    pub workspace_pk: Ulid,
+    pub workspace_name: String,
 }
