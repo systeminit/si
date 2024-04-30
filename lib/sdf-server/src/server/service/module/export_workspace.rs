@@ -8,8 +8,7 @@ use ulid::Ulid;
 
 use dal::workspace_snapshot::graph::Direction;
 use dal::{
-    ChangeSet, DalContext, HistoryActor, User, Visibility, Workspace, WorkspacePk,
-    WorkspaceSnapshot, WsEvent,
+    ChangeSet, DalContext, HistoryActor, User, Visibility, Workspace, WorkspaceSnapshot, WsEvent,
 };
 use module_index_client::types::{
     WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
@@ -99,7 +98,6 @@ pub async fn export_workspace_inner(
     RawAccessToken(raw_access_token): RawAccessToken,
 ) -> ModuleResult<()> {
     info!("Exporting workspace backup");
-
     let version = Utc::now().format("%Y-%m-%d_%H:%M:%S").to_string();
 
     let index_client = {
@@ -188,8 +186,6 @@ pub async fn export_workspace_inner(
         workspace_pk: workspace.pk().into_inner(),
         workspace_name: workspace.name().clone(),
     };
-
-    dbg!(metadata.default_change_set);
 
     let workspace_payload = {
         WorkspaceExport::new(WorkspaceExportContentV0 {

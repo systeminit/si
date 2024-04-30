@@ -72,6 +72,8 @@ pub async fn install_workspace(
     Ok(Json(InstallWorkspaceResponse { id }))
 }
 
+// The import code (and export code in the adjacent file) should be moved to their own place
+// All the functionality is concentrated in here, for now
 async fn install_module_inner(
     ctx: &DalContext,
     request: InstallWorkspaceRequest,
@@ -162,7 +164,7 @@ async fn install_module_inner(
                     .tenancy()
                     .workspace_pk()
                     .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
-                let mut workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+                let mut workspace = Workspace::get_by_pk(ctx, &workspace_pk)
                     .await?
                     .ok_or(ModuleError::WorkspaceNotFound(workspace_pk))?;
 

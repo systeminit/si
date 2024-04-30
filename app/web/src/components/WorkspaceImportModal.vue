@@ -9,7 +9,6 @@
     <Stack>
       <template v-if="successfulImport">
         <p>This workspace has been replaced!</p>
-        <p>Please reload your browser</p>
 
         <VButton icon="refresh" @click="refreshHandler">Reload</VButton>
       </template>
