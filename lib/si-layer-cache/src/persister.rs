@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
 use tokio::{
@@ -113,7 +113,7 @@ impl PersisterTask {
     ) -> LayerDbResult<Self> {
         let tracker = TaskTracker::new();
 
-        let context = jetstream::new(nats_client.as_inner().clone());
+        let context = si_data_nats::jetstream::new(nats_client.clone());
         // Ensure the Jetstream is created
         let _stream =
             layerdb_events_stream(&context, nats_client.metadata().subject_prefix()).await?;

@@ -1,8 +1,7 @@
 use std::time::Duration;
 
-use si_data_nats::async_nats::jetstream;
+use si_data_nats::{async_nats::jetstream, jetstream::Context};
 use si_events::{ChangeSetId, WorkspacePk};
-use ulid::Ulid;
 
 pub const NATS_HEADER_DB_NAME: &str = "X-DB-NAME";
 pub const NATS_HEADER_KEY: &str = "X-KEY";
@@ -24,7 +23,7 @@ const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// Returns a Jetstream Stream and creates it if it doesn't yet exist.
 pub async fn layerdb_events_stream(
-    context: &jetstream::Context,
+    context: &Context,
     prefix: Option<&str>,
 ) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
     let subjects: Vec<_> = NATS_EVENT_STREAM_SUBJECTS
@@ -49,7 +48,7 @@ pub async fn layerdb_events_stream(
 }
 
 pub async fn layerdb_activities_stream(
-    context: &jetstream::Context,
+    context: &Context,
     prefix: Option<&str>,
 ) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
     let subjects: Vec<_> = NATS_ACTIVITIES_STREAM_SUBJECTS
@@ -75,7 +74,7 @@ pub async fn layerdb_activities_stream(
 }
 
 pub async fn rebaser_requests_work_queue_stream(
-    context: &jetstream::Context,
+    context: &Context,
     prefix: Option<&str>,
 ) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
     let requests_subject = subject::for_activity_discriminate(
@@ -117,7 +116,7 @@ fn rebaser_change_set_requests_work_queue_stream_name(
 }
 
 pub async fn rebaser_change_set_requests_work_queue_stream(
-    context: &jetstream::Context,
+    context: &Context,
     prefix: Option<&str>,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,

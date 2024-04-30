@@ -3,9 +3,8 @@ use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{
-    async_nats::jetstream::{self, Message},
-    jetstream::Stream,
-    NatsClient,
+    async_nats::jetstream::{self, consumer::pull::Stream, Message},
+    jetstream::Context,
 };
 use strum::EnumDiscriminants;
 use tokio::sync::{
@@ -155,11 +154,11 @@ impl ActivityPayloadDiscriminants {
 #[derive(Debug, Clone)]
 pub struct ActivityPublisher {
     prefix: Option<Arc<str>>,
-    context: jetstream::context::Context,
+    context: Context,
 }
 
 impl ActivityPublisher {
-    pub(crate) fn new(context: jetstream::Context, prefix: Option<Arc<str>>) -> ActivityPublisher {
+    pub(crate) fn new(context: Context, prefix: Option<Arc<str>>) -> ActivityPublisher {
         ActivityPublisher { context, prefix }
     }
 
@@ -182,7 +181,7 @@ impl ActivityPublisher {
 #[derive(Debug, Clone)]
 pub struct ActivityMultiplexer {
     instance_id: Ulid,
-    context: jetstream::Context,
+    context: Context,
     subject_prefix: Option<Arc<str>>,
     tracker: TaskTracker,
     shutdown_token: CancellationToken,
@@ -192,7 +191,7 @@ pub struct ActivityMultiplexer {
 impl ActivityMultiplexer {
     pub fn new(
         instance_id: Ulid,
-        context: jetstream::Context,
+        context: Context,
         subject_prefix: Option<Arc<str>>,
         shutdown_token: CancellationToken,
     ) -> Self {
@@ -298,7 +297,7 @@ pub struct ActivityStream;
 impl ActivityStream {
     pub(crate) async fn run(
         instance_id: Ulid,
-        context: &jetstream::Context,
+        context: &Context,
         subject_prefix: Option<Arc<str>>,
         tracker: TaskTracker,
         filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
@@ -364,7 +363,7 @@ impl ActivityStream {
         let mut config = jetstream::consumer::pull::Config {
             name: Some(name),
             description: Some(description),
-            deliver_policy: jetstream::consumer::DeliverPolicy::New,
+            deliver_policy: jetstream::consumer::DeliverPolicy::All,
             max_bytes: MAX_BYTES,
             ..Default::default()
         };
@@ -418,7 +417,7 @@ impl RebaserRequestWorkQueue {
     const CONSUMER_NAME: &'static str = "rebaser-requests";
 
     pub async fn create(
-        context: jetstream::Context,
+        context: Context,
         subject_prefix: Option<Arc<str>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<(Self, UnboundedReceiver<ActivityRebaseRequest>)> {

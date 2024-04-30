@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::{async_nats::jetstream, jetstream::Context, NatsClient};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use tokio::{pin, sync::mpsc::UnboundedReceiver};
@@ -22,7 +22,7 @@ use crate::{
 #[allow(dead_code)]
 pub struct ActivityClient {
     instance_id: Ulid,
-    context: jetstream::Context,
+    context: Context,
     subject_prefix: Option<Arc<str>>,
     activity_publisher: ActivityPublisher,
     activity_multiplexer: ActivityMultiplexer,
@@ -36,7 +36,7 @@ impl ActivityClient {
         shutdown_token: CancellationToken,
     ) -> ActivityClient {
         let subject_prefix = nats_client.metadata().subject_prefix().map(|s| s.into());
-        let context = jetstream::new(nats_client.as_inner().clone());
+        let context = si_data_nats::jetstream::new(nats_client);
 
         let activity_publisher = ActivityPublisher::new(context.clone(), subject_prefix.clone());
         let activity_multiplexer = ActivityMultiplexer::new(
