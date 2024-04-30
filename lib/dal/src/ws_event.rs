@@ -152,6 +152,16 @@ impl WsEvent {
         Self::new_raw(workspace_pk, Some(change_set_pk), payload).await
     }
 
+    pub async fn new_for_workspace(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
+        let workspace_pk = match ctx.tenancy().workspace_pk() {
+            Some(pk) => pk,
+            None => {
+                return Err(WsEventError::NoWorkspaceInTenancy);
+            }
+        };
+        Self::new_raw(workspace_pk, None, payload).await
+    }
+
     pub fn workspace_pk(&self) -> WorkspacePk {
         self.workspace_pk
     }
@@ -216,5 +226,8 @@ impl WsEvent {
     }
     pub async fn async_finish(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
+    }
+    pub async fn async_finish_workspace(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
+        WsEvent::new_for_workspace(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
     }
 }

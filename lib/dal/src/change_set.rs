@@ -191,6 +191,16 @@ impl ChangeSet {
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
     ) -> ChangeSetResult<Self> {
+        let id: ChangeSetId = Ulid::new().into();
+        Self::new_with_id(ctx, id, name, base_change_set_id).await
+    }
+
+    pub async fn new_with_id(
+        ctx: &DalContext,
+        id: ChangeSetId,
+        name: impl AsRef<str>,
+        base_change_set_id: Option<ChangeSetId>,
+    ) -> ChangeSetResult<Self> {
         let workspace_id = ctx.tenancy().workspace_pk();
         let name = name.as_ref();
         let row = ctx
@@ -198,8 +208,8 @@ impl ChangeSet {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO change_set_pointers (name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4) RETURNING *",
-                &[&name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
+                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
             )
             .await?;
         let change_set = Self::try_from(row)?;

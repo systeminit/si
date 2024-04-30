@@ -59,6 +59,22 @@ impl AttributeValueNodeWeight {
         })
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        let mut hashes = vec![];
+
+        if let Some(hash) = self.unprocessed_value {
+            hashes.push(hash.content_hash());
+        }
+        if let Some(hash) = self.value {
+            hashes.push(hash.content_hash());
+        }
+        if let Some(hash) = self.materialized_view {
+            hashes.push(hash.content_hash());
+        }
+
+        hashes
+    }
+
     pub fn id(&self) -> Ulid {
         self.id
     }

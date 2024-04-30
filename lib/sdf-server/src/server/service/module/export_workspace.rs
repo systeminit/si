@@ -12,7 +12,8 @@ use dal::{
     WorkspaceSnapshot, WsEvent,
 };
 use module_index_client::types::{
-    WorkspaceExport, WorkspaceExportContentV0, WorkspaceExportMetadataV0,
+    WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
+    WorkspaceExportMetadataV0,
 };
 use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
@@ -47,7 +48,10 @@ pub async fn export_workspace(
 
     let task_id = Ulid::new();
 
-    let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+    let workspace_pk = ctx
+        .tenancy()
+        .workspace_pk()
+        .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
     let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
         .await?
         .ok_or(ModuleError::WorkspaceNotFound(workspace_pk))?;
@@ -108,7 +112,8 @@ pub async fn export_workspace_inner(
     };
 
     let mut content_hashes = vec![];
-    let mut workspace_snapshots_for_changeset_id = HashMap::new();
+    let mut change_sets: HashMap<Ulid, Vec<WorkspaceExportChangeSetV0>> = HashMap::new();
+    let mut default_change_set_base = Ulid::nil();
     for change_set in ChangeSet::list_open(ctx).await? {
         let snap = WorkspaceSnapshot::find_for_change_set(ctx, change_set.id).await?;
 
@@ -117,7 +122,11 @@ pub async fn export_workspace_inner(
 
         while let Some(this_node_idx) = queue.pop_front() {
             // Queue contents
-            content_hashes.push(snap.get_node_weight(this_node_idx).await?.content_hash());
+            content_hashes.extend(
+                snap.get_node_weight(this_node_idx)
+                    .await?
+                    .content_store_hashes(),
+            );
 
             let children = snap
                 .edges_directed_by_index(this_node_idx, Direction::Outgoing)
@@ -129,16 +138,35 @@ pub async fn export_workspace_inner(
             queue.extend(children)
         }
 
-        // compress and store snap
-        workspace_snapshots_for_changeset_id
-            .insert(change_set.id.into_inner(), snap.serialized().await?);
+        let base_changeset = change_set
+            .base_change_set_id
+            .map(|id| id.into_inner())
+            .unwrap_or(Ulid::nil());
+
+        if change_set.id == workspace.default_change_set_id() {
+            default_change_set_base = base_changeset
+        }
+
+        change_sets
+            .entry(base_changeset)
+            .or_default()
+            .push(WorkspaceExportChangeSetV0 {
+                id: change_set.id.into_inner(),
+                name: change_set.name.clone(),
+                base_change_set_id: change_set.base_change_set_id.map(|id| id.into_inner()),
+                workspace_snapshot_serialized_data: snap.serialized().await?,
+            })
     }
 
     let store_values_map = ctx
         .layer_db()
         .cas()
         .read_many(content_hashes.as_ref())
-        .await?;
+        .await?
+        .into_iter()
+        .map(|(hash, content)| (hash, (content, "postcard".to_string())))
+        .collect::<HashMap<_, _>>();
+
     let content_store_values = serialize::to_vec(&store_values_map)?;
 
     let HistoryActor::User(user_pk) = ctx.history_actor() else {
@@ -155,14 +183,17 @@ pub async fn export_workspace_inner(
         description: "Workspace Backup".to_string(), // TODO Get this from the user
         created_at: Default::default(),
         created_by: user.email().clone(),
-        default_change_set: Some(workspace.default_change_set_id().to_string()),
-        workspace_pk: Some(workspace.pk().to_string()),
-        workspace_name: Some(workspace.name().clone()),
+        default_change_set: workspace.default_change_set_id().into_inner(),
+        default_change_set_base,
+        workspace_pk: workspace.pk().into_inner(),
+        workspace_name: workspace.name().clone(),
     };
+
+    dbg!(metadata.default_change_set);
 
     let workspace_payload = {
         WorkspaceExport::new(WorkspaceExportContentV0 {
-            workspace_snapshots_for_changeset_id,
+            change_sets,
             content_store_values,
             metadata,
         })

@@ -95,6 +95,25 @@ impl Workspace {
         self.default_change_set_id
     }
 
+    pub async fn update_default_change_set_id(
+        &mut self,
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE workspaces SET default_change_set_id = $2 WHERE pk = $1",
+                &[&self.pk, &change_set_id],
+            )
+            .await?;
+
+        self.default_change_set_id = change_set_id;
+
+        Ok(())
+    }
+
     /// Find or create the builtin [`Workspace`].
     #[instrument(skip_all)]
     pub async fn setup_builtin(ctx: &mut DalContext) -> WorkspaceResult<()> {

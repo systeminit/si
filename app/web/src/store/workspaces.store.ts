@@ -38,13 +38,11 @@ export type WorkspaceImportSummary = {
 
 const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 
+// Note(victor): The workspace import exists outside a changeset context
+// (since change sets exists inside tenancies) - So no endpoints in this store
+// should use a visibility. If one seems like it should, then it belongs
+// in a different store.
 export const useWorkspacesStore = () => {
-  // TODO(nick): this is fine for now since workspaces are handled outside of the snapshots, but we will need to change
-  // this once the old change set concept is gone.
-  const visibility: Visibility = {
-    visibility_change_set_pk: nilId(),
-  };
-
   return addStoreHooks(
     defineStore("workspaces", {
       state: () => ({
@@ -109,16 +107,6 @@ export const useWorkspacesStore = () => {
             },
           });
         },
-        async BEGIN_APPROVAL_PROCESS(moduleId: ModuleId) {
-          return new ApiRequest({
-            method: "post",
-            url: "/module/begin_approval_process",
-            params: {
-              id: moduleId,
-              ...visibility,
-            },
-          });
-        },
         async BEGIN_WORKSPACE_IMPORT(moduleId: ModuleId) {
           this.workspaceApprovals = {};
           this.importId = null;
@@ -126,10 +114,9 @@ export const useWorkspacesStore = () => {
           this.importError = undefined;
           return new ApiRequest<{ id: string }>({
             method: "post",
-            url: "/module/install_module",
+            url: "/module/install_workspace",
             params: {
               id: moduleId,
-              ...visibility,
             },
             onSuccess: (data) => {
               this.workspaceImportSummary = null;
@@ -141,14 +128,21 @@ export const useWorkspacesStore = () => {
             },
           });
         },
+        async BEGIN_APPROVAL_PROCESS(moduleId: ModuleId) {
+          return new ApiRequest({
+            method: "post",
+            url: "/module/begin_approval_process",
+            params: {
+              id: moduleId,
+            },
+          });
+        },
         async CANCEL_APPROVAL_PROCESS() {
           this.workspaceImportSummary = null;
           return new ApiRequest({
             method: "post",
             url: "/module/cancel_approval_process",
-            params: {
-              ...visibility,
-            },
+            params: {},
             onSuccess: (_response) => {
               this.workspaceImportSummary = null;
             },
@@ -160,7 +154,6 @@ export const useWorkspacesStore = () => {
             url: "/module/import_workspace_vote",
             params: {
               vote,
-              ...visibility,
             },
           });
         },
@@ -223,6 +216,8 @@ export const useWorkspacesStore = () => {
             {
               eventType: "AsyncFinish",
               callback: ({ id }: { id: string }) => {
+                console.log("AsyncFinish on workspaces store");
+                console.log(this.importId);
                 if (id === this.importId) {
                   this.importLoading = false;
                   this.importError = undefined;
@@ -242,7 +237,8 @@ export const useWorkspacesStore = () => {
             },
           ],
         );
-        // NOTE - dont need to clean up here, since there is only one workspace store and it will always be loaded
+        // NOTE - don't need to clean up here, since there is only one workspace
+        // store, and it will always be loaded
       },
     }),
   )();
