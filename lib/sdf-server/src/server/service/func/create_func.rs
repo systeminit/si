@@ -48,10 +48,11 @@ pub async fn create_func(
         &original_uri,
         "created_func",
         serde_json::json!({
-                    "func_id": created_func.id,
-                    "func_handler": created_func.handler.as_ref().map(|h| h.to_owned()),
-                    "func_name": created_func.name.to_owned(),
-                    "func_kind": created_func.kind,
+            "how": "/func/created_func",
+            "func_id": created_func.id,
+            "func_handler": created_func.handler.as_ref().map(|h| h.to_owned()),
+            "func_name": created_func.name.to_owned(),
+            "func_kind": created_func.kind,
         }),
     );
 

@@ -24,15 +24,6 @@ pub async fn get_property_editor_schema(
 ) -> ComponentResult<Json<GetPropertyEditorSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // TODO(nick): restore this functionality with the new graph,
-    // let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
-    // let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
-    //     .await?
-    //     .is_some();
-    // if is_component_in_tenancy && !is_component_in_visibility {
-    //     return Err(ComponentError::InvalidVisibility);
-    // }
-
     let schema_variant =
         Component::schema_variant_for_component_id(&ctx, request.component_id).await?;
 

@@ -9,6 +9,7 @@ use module_index_client::IndexClient;
 use si_pkg::{SiPkg, SiPkgKind};
 
 use crate::server::extract::RawAccessToken;
+use crate::server::tracking::track;
 use crate::service::async_route::handle_error;
 use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -85,8 +86,8 @@ pub async fn install_module(
 async fn install_module_inner(
     ctx: &DalContext,
     request: InstallModuleRequest,
-    _original_uri: &Uri,
-    PosthogClient(_posthog_client): PosthogClient,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): PosthogClient,
     raw_access_token: String,
 ) -> ModuleResult<()> {
     let module_index_url = match ctx.module_index_url() {
@@ -101,15 +102,15 @@ async fn install_module_inner(
     let metadata = pkg.metadata()?;
     let (_, svs, _import_skips) = import_pkg_from_pkg(ctx, &pkg, None).await?;
 
-    // track(
-    //     &posthog_client,
-    //     ctx,
-    //     original_uri,
-    //     "install_pkg",
-    //     serde_json::json!({
-    //                 "pkg_name": metadata.name().to_owned(),
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        ctx,
+        original_uri,
+        "install_module",
+        serde_json::json!({
+            "pkg_name": metadata.name().to_owned(),
+        }),
+    );
     //
     // let user_pk = match ctx.history_actor() {
     //     HistoryActor::User(user_pk) => {

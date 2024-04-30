@@ -38,7 +38,7 @@ pub async fn connect_component_to_frame(
         &posthog_client,
         &ctx,
         &original_uri,
-        "component_attached_to_frame",
+        "connect_component_to_frame",
         serde_json::json!({
             "how": "/diagram/connect_component_to_frame",
             "child_id": request.child_id,

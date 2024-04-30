@@ -98,7 +98,7 @@ pub async fn export_module(
         &posthog_client,
         &ctx,
         &original_uri,
-        "export_pkg",
+        "export_module",
         serde_json::json!({
                     "pkg_name": request.name,
                     "pkg_version": request.version,

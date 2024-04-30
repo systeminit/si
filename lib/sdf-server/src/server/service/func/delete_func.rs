@@ -40,8 +40,9 @@ pub async fn delete_func(
         &original_uri,
         "deleted_func",
         serde_json::json!({
-                    "func_id": request.id,
-                    "func_name": func_name,
+            "how": "/func/deleted_func",
+            "func_id": request.id,
+            "func_name": func_name,
         }),
     );
 

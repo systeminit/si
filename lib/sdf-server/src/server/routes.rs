@@ -42,7 +42,6 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/secret", crate::server::service::secret::routes())
         .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/ws", crate::server::service::ws::routes())
-        // .nest("/api/fix", crate::server::service::fix::routes())
         .nest("/api/module", crate::server::service::module::routes())
         // .nest("/api/status", crate::server::service::status::routes())
         .nest("/api/variant", crate::server::service::variant::routes())

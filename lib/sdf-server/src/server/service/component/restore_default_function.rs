@@ -1,5 +1,7 @@
 use super::ComponentResult;
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::{AttributeValue, AttributeValueId, ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
@@ -13,6 +15,8 @@ pub struct RestoreDefaultFunctionRequest {
 }
 
 pub async fn restore_default_function(
+    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RestoreDefaultFunctionRequest>,
@@ -22,6 +26,18 @@ pub async fn restore_default_function(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     AttributeValue::use_default_prototype(&ctx, request.attribute_value_id).await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "restore_default_function",
+        serde_json::json!({
+            "how": "/component/restore_default_function",
+            "attribute_value_id": request.attribute_value_id.clone(),
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
 
     ctx.commit().await?;
 

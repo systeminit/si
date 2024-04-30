@@ -27,6 +27,7 @@ async fn paste_single_component(
         original_uri,
         "paste_component",
         serde_json::json!({
+            "how": "/diagram/paste_component",
             "component_id": pasted_comp.id(),
             "component_schema_name": schema.name(),
         }),
