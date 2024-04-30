@@ -17,7 +17,7 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
 import {
-  AttributePrototypeView,
+  AttributePrototypeBag,
   CreateFuncOptions,
   FuncAssociations,
   InputSocketView,
@@ -181,7 +181,7 @@ export const useFuncStore = () => {
             ? _.flatten(Object.values(state.inputSourceProps))
             : state.inputSourceProps[schemaVariantId]
           )?.map((prop) => ({
-            label: `${prop.path}${prop.name}`,
+            label: prop.path,
             value: prop.propId,
           })) ?? [],
 
@@ -208,7 +208,7 @@ export const useFuncStore = () => {
         propIdToSourceName(propId: string) {
           const prop = this.propForId(propId);
           if (prop) {
-            return `Attribute: ${prop.path}${prop.name}`;
+            return `Attribute: ${prop.path}`;
           }
         },
 
@@ -220,9 +220,7 @@ export const useFuncStore = () => {
           return undefined;
         },
 
-        schemaVariantIdForAttributePrototype(
-          prototype: AttributePrototypeView,
-        ) {
+        schemaVariantIdForAttributePrototype(prototype: AttributePrototypeBag) {
           if (prototype.propId) {
             return this.propForId(prototype.propId)?.schemaVariantId;
           }
@@ -234,7 +232,7 @@ export const useFuncStore = () => {
         },
 
         outputLocationForAttributePrototype(
-          prototype: AttributePrototypeView,
+          prototype: AttributePrototypeBag,
         ): OutputLocation | undefined {
           if (prototype.propId) {
             return {
@@ -442,7 +440,7 @@ export const useFuncStore = () => {
           });
         },
 
-        async EXECUTE(executeRequest: {
+        async TEST_EXECUTE(executeRequest: {
           id: FuncId;
           args: unknown;
           executionKey: string;
@@ -470,7 +468,7 @@ export const useFuncStore = () => {
             }[];
           }>({
             method: "post",
-            url: "func/execute",
+            url: "func/test_execute",
             params: { ...executeRequest, ...visibility },
           });
         },

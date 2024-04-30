@@ -1160,7 +1160,7 @@ async fn rebase(
         )
         .await?;
     info!("got response from rebaser: {:?}", start.elapsed());
-    info!(
+    debug!(
         "rebaser response payload: {:?}",
         rebase_finished_activity.payload
     );

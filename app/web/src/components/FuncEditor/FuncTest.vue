@@ -297,7 +297,7 @@ const testComponentDisplayName = computed(() => {
 });
 
 const testStatus = computed(() => {
-  const status = funcStore.getRequestStatus("EXECUTE").value;
+  const status = funcStore.getRequestStatus("TEST_EXECUTE").value;
 
   if (status.isPending) return "running";
   else if (status.isSuccess) return "success";
@@ -357,8 +357,7 @@ const prepareTest = async () => {
 
   const res = await componentsStore.FETCH_COMPONENT_JSON(testAttribute.value);
   if (!res.result.success) {
-    // TODO(Wendy) - handle a failure properly instead of just bailing!
-    return;
+    throw new Error("could not fetch component json needed for preparing test");
   }
 
   const json = res.result.data.json;
@@ -366,45 +365,38 @@ const prepareTest = async () => {
   if (selectedFunc?.associations?.type === "attribute") {
     const prototypes = selectedFunc.associations.prototypes;
 
-    const getJsonPath = () => {
+    const getPropPath = () => {
       for (const prototype of prototypes) {
         for (const arg of prototype.prototypeArguments) {
-          // TODO(nick): restore the idea behind how this worked. Now, prototype arguments likely
-          // need to EITHER get an inputSocketId or a propId. Probably, in the old engine, the
-          // "internalProviderId" meant either explicit or implicit. Since implicit internal providers
-          // are dead, we need to use the prop directly.
-          const inputSocket = funcStore.inputSocketForId(
-            arg.inputSocketId ?? "",
-          );
+          const prop = funcStore.propForId(arg.propId ?? "");
 
-          if (inputSocket) {
-            return `${inputSocket.name}`;
+          if (prop) {
+            return prop.path;
           }
         }
       }
     };
-    const jsonPath = getJsonPath();
-    if (!jsonPath) {
-      // TODO(Wendy) - handle a failure properly instead of just bailing!
-      return;
+    const propPath = getPropPath();
+    if (!propPath) {
+      throw new Error("could not find path for prop");
     }
     // We remove the first two strings because they will always be an empty string and "root"
-    const jsonPathArray = jsonPath.split("/").splice(2);
+    const propPathArray = propPath.split("/").splice(2);
     const props: Record<string, unknown> | null = json as Record<
       string,
       unknown
     >;
 
     let properties: Record<string, unknown> | null = {};
-    for (const key of jsonPathArray) {
+    for (const key of propPathArray) {
       if (!properties[key]) {
         properties = null;
         break;
       }
       properties = properties[key] as Record<string, unknown>;
     }
-    if (jsonPathArray[jsonPathArray.length - 1]) {
-      const last = jsonPathArray[jsonPathArray.length - 1] as string;
+    if (propPathArray[propPathArray.length - 1]) {
+      const last = propPathArray[propPathArray.length - 1] as string;
       properties = { [last]: properties };
     }
 
@@ -494,7 +486,7 @@ const startTest = async () => {
     args = { kind: "standard", properties: args };
   }
 
-  const output = await funcStore.EXECUTE({
+  const output = await funcStore.TEST_EXECUTE({
     id: funcStore.selectedFuncDetails.id,
     args,
     code: funcStore.selectedFuncDetails.code,

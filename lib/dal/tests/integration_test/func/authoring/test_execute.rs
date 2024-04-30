@@ -7,7 +7,7 @@ use dal_test::test;
 use veritech_client::ResourceStatus;
 
 #[test]
-async fn dummy_execute_action_func(ctx: &mut DalContext) {
+async fn test_execute_action_func(ctx: &mut DalContext) {
     let component_name = "Just a Girl";
     let execution_key = "No Doubt";
     let func_name = "test:createActionStarfield";
@@ -28,7 +28,7 @@ async fn dummy_execute_action_func(ctx: &mut DalContext) {
     let func_view = FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
-    let result = FuncAuthoringClient::dummy_execute_func(
+    let result = FuncAuthoringClient::test_execute_func(
         ctx,
         func_view.id,
         serde_json::Value::Null,
@@ -37,7 +37,7 @@ async fn dummy_execute_action_func(ctx: &mut DalContext) {
         component.id(),
     )
     .await
-    .expect("could not perform dummy execution for func");
+    .expect("could not perform test execution for func");
 
     assert_eq!(
         func_id,   // expected
@@ -56,7 +56,7 @@ async fn dummy_execute_action_func(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn dummy_execute_attribute_func(ctx: &mut DalContext) {
+async fn test_execute_attribute_func(ctx: &mut DalContext) {
     let component_name = "Pushit";
     let execution_key = "Tool";
     let func_name = "test:falloutEntriesToGalaxies";
@@ -77,7 +77,7 @@ async fn dummy_execute_attribute_func(ctx: &mut DalContext) {
     let func_view = FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
-    let result = FuncAuthoringClient::dummy_execute_func(
+    let result = FuncAuthoringClient::test_execute_func(
         ctx,
         func_view.id,
         serde_json::Value::Array(Vec::new()),
@@ -86,7 +86,7 @@ async fn dummy_execute_attribute_func(ctx: &mut DalContext) {
         component.id(),
     )
     .await
-    .expect("could not perform dummy execution for func");
+    .expect("could not perform test execution for func");
 
     assert_eq!(
         func_id,   // expected
@@ -96,6 +96,4 @@ async fn dummy_execute_attribute_func(ctx: &mut DalContext) {
         execution_key,                 // expected
         result.execution_key.as_str()  // actual
     );
-
-    // TODO(nick): we should ensure that the dummy execution did not affect the actual component.
 }
