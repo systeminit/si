@@ -5,6 +5,8 @@ name: Deploy Module Index
 env:
   MODULE_INDEX_CLUSTER: module-index-server-51059bf
   MODULE_INDEX_SERVICE: module-index
+  MODULE_INDEX_IMAGE: systeminit/module-index:stable
+  ECR_IMAGE: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-module-index:stable
 
 jobs:
   deploy:
@@ -17,6 +19,13 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_ECS_REGION }}
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@62f4f872db3836360b72999f4b87f1ff13310f3a
+      - name: Pull latest, tag, push to ECR
+        run: |
+          docker pull --platform=linux/amd64 ${{ env.MODULE_INDEX_IMAGE }}
+          docker tag ${{ env.MODULE_INDEX_IMAGE }} ${{ env.ECR_IMAGE }}
+          docker push ${{ env.ECR_IMAGE }} 
       - name: Trigger ECS Deploy
         run: |
           aws ecs update-service --region ${{ secrets.AWS_ECS_REGION }} --cluster ${{ env.MODULE_INDEX_CLUSTER }} --service ${{ env.MODULE_INDEX_SERVICE }} --force-new-deployment
