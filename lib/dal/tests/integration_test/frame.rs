@@ -290,7 +290,7 @@ async fn simple_frames(ctx: &mut DalContext) {
         .expect("found one");
         assert!(!maybe_ins.is_empty());
         assert_eq!(maybe_ins.len(), 1);
-        assert_eq!(diagram.get_all_implicit_edges().len(), 1);
+        assert_eq!(diagram.get_all_inferred_edges().len(), 1);
     }
     // scenario 3 - detach and make sure nothing implicit passes
 
@@ -376,7 +376,7 @@ async fn simple_frames(ctx: &mut DalContext) {
         .await
         .expect("could not find inferred values");
         assert!(maybe_ins.is_empty());
-        assert_eq!(diagram.get_all_implicit_edges().len(), 0);
+        assert_eq!(diagram.get_all_inferred_edges().len(), 0);
     }
 }
 
@@ -433,7 +433,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
     );
     assert_eq!(
         3,                                      // expected
-        diagram.get_all_implicit_edges().len()  // actual
+        diagram.get_all_inferred_edges().len()  // actual
     );
     let odd_component = Component::get_by_id(ctx, odd_component.id())
         .await
@@ -1152,7 +1152,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
         assert_eq!(
             1,                                      // expected
-            diagram.get_all_implicit_edges().len()  // actual
+            diagram.get_all_inferred_edges().len()  // actual
         );
 
         let new_era_taylor_swift_assembled = diagram
@@ -1202,7 +1202,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
         assert_eq!(
             1,                                      // expected
-            diagram.get_all_implicit_edges().len()  // actual
+            diagram.get_all_inferred_edges().len()  // actual
         );
 
         let new_era_taylor_swift_assembled = diagram
@@ -1263,7 +1263,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
         assert_eq!(
             2,                                      // expected
-            diagram.get_all_implicit_edges().len()  // actual
+            diagram.get_all_inferred_edges().len()  // actual
         );
 
         let new_era_taylor_swift_assembled = diagram
@@ -1334,7 +1334,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
         assert_eq!(
             2,                                      // expected
-            diagram.get_all_implicit_edges().len()  // actual
+            diagram.get_all_inferred_edges().len()  // actual
         );
 
         let new_era_taylor_swift_assembled = diagram
@@ -1405,7 +1405,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
         assert_eq!(
             2,                                      // expected
-            diagram.get_all_implicit_edges().len()  // actual
+            diagram.get_all_inferred_edges().len()  // actual
         );
 
         let new_era_taylor_swift_assembled = diagram
@@ -1471,15 +1471,15 @@ impl DiagramByKey {
 
         let mut components = HashMap::new();
         for component in &diagram.components {
-            let mut implicit_edges = vec![];
-            for implicit_edge in &diagram.implicit_edges {
-                if implicit_edge.to_component_id == component.id {
-                    implicit_edges.push(implicit_edge.to_owned());
+            let mut inferred_edges = vec![];
+            for inferred_edge in &diagram.inferred_edges {
+                if inferred_edge.to_component_id == component.id {
+                    inferred_edges.push(inferred_edge.to_owned());
                 }
             }
             components.insert(
                 component.display_name.clone(),
-                (component.to_owned(), implicit_edges.to_owned()),
+                (component.to_owned(), inferred_edges.to_owned()),
             );
         }
 
@@ -1493,7 +1493,7 @@ impl DiagramByKey {
 
         Ok(Self { components, edges })
     }
-    pub fn get_all_implicit_edges(&self) -> Vec<SummaryDiagramInferredEdge> {
+    pub fn get_all_inferred_edges(&self) -> Vec<SummaryDiagramInferredEdge> {
         let mut all = vec![];
         for component in self.components.values() {
             for edge in component.1.clone() {

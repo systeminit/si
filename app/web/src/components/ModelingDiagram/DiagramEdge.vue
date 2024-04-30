@@ -28,7 +28,7 @@
         stroke: strokeColor,
         strokeWidth: 2,
         hitStrokeWidth: 10,
-        listening: !edge.def.isInvisible,
+        listening: !edge.def.isInferred,
         opacity: mainLineOpacity,
         dash: [10, 10],
         dashEnabled: isDeleted,
@@ -43,7 +43,7 @@
 
     <v-group
       v-if="
-        !edge.def.isInvisible &&
+        !edge.def.isInferred &&
         (isAdded || isDeleted || willDeleteIfPendingEdgeCreated)
       "
       :config="{
@@ -134,7 +134,7 @@ const defaultStrokeColor = computed(() =>
 );
 
 const strokeColor = computed(() => {
-  if (isDevMode && props.edge.def.isInvisible) {
+  if (isDevMode && props.edge.def.isInferred) {
     return "rgba(100,50,255,0.1)";
   }
 
@@ -199,7 +199,7 @@ function onMouseDown(_e: KonvaEventObject<MouseEvent>) {
 }
 
 const shouldDraw = computed(() =>
-  isDevMode ? true : !props.edge.def.isInvisible,
+  isDevMode ? true : !props.edge.def.isInferred,
 );
 
 // defineExpose({ recalculatePoints });

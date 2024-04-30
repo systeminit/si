@@ -211,7 +211,7 @@ pub enum DiagramSocketNodeSide {
 pub struct Diagram {
     pub components: Vec<SummaryDiagramComponent>,
     pub edges: Vec<SummaryDiagramEdge>,
-    pub implicit_edges: Vec<SummaryDiagramInferredEdge>,
+    pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
 }
 
 impl Diagram {
@@ -221,7 +221,7 @@ impl Diagram {
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let mut diagram_sockets: HashMap<SchemaVariantId, serde_json::Value> = HashMap::new();
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
-        let mut diagram_implicit_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         let components = Component::list(ctx).await?;
 
         let mut component_views = Vec::with_capacity(components.len());
@@ -242,7 +242,7 @@ impl Diagram {
             }
 
             for inferred_incoming_connection in component.inferred_connections(ctx).await? {
-                diagram_implicit_edges.push(SummaryDiagramInferredEdge {
+                diagram_inferred_edges.push(SummaryDiagramInferredEdge {
                     from_component_id: inferred_incoming_connection.from_component_id,
                     from_socket_id: inferred_incoming_connection.from_output_socket_id,
                     to_component_id: inferred_incoming_connection.to_component_id,
@@ -368,7 +368,7 @@ impl Diagram {
         Ok(Self {
             edges: diagram_edges,
             components: component_views,
-            implicit_edges: diagram_implicit_edges,
+            inferred_edges: diagram_inferred_edges,
         })
     }
 }
