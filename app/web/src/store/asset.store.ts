@@ -10,7 +10,6 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
-import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -386,9 +385,6 @@ export const useAssetStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
-          this.executeAssetTaskRunning = true;
-          this.executeAssetTaskError = undefined;
-          this.executeAssetTaskId = undefined;
           this.detachmentWarnings = [];
 
           const asset = this.assetsById[assetId];
@@ -440,16 +436,7 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantUpdateFinished",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
-              if (data.schemaVariantId !== nilId() && this.selectedAssetId) {
-                this.setSchemaVariantIdForAsset(
-                  this.selectedAssetId,
-                  data.schemaVariantId,
-                );
-                // We need to reload both schemas and assets since they're stored separately
-                this.LOAD_ASSET(this.selectedAssetId);
-                useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
-                useFuncStore().FETCH_INPUT_SOURCE_LIST(data.schemaVariantId); // a new asset means new input sources
-              }
+              this.LOAD_ASSET_LIST();
             },
           },
           {
