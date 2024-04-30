@@ -2,7 +2,6 @@
 // used in the subscribe fn to limit valid event names and set callback payload type
 
 import { FuncId } from "@/store/func/funcs.store";
-import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Resource } from "@/api/sdf/dal/resource";
 import { ComponentId } from "../components.store";
@@ -248,10 +247,9 @@ export type WsEventPayloadMap = {
     schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantFinished: {
+  SchemaVariantUpdateFinished: {
     taskId: string;
     schemaVariantId: string;
-    detachedAttributePrototypes: DetachedAttributePrototype[];
   };
   SchemaVariantSaved: {
     schemaVariantId: string;

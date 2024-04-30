@@ -399,7 +399,7 @@ export const useAssetStore = () => {
             AssetSaveRequest
           >({
             method: "post",
-            url: "/variant/exec_variant",
+            url: "/variant/update_variant",
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
@@ -474,37 +474,11 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantFinished",
-            callback: async ({
-              taskId,
-              schemaVariantId,
-              detachedAttributePrototypes,
-            }) => {
+            eventType: "SchemaVariantUpdateFinished",
+            callback: async ({ taskId, schemaVariantId }) => {
               if (taskId === this.executeAssetTaskId) {
                 this.executeAssetTaskRunning = false;
                 this.executeAssetTaskError = undefined;
-
-                for (const detached of detachedAttributePrototypes) {
-                  if (
-                    detached.context.type === "OutputSocketSocket" ||
-                    detached.context.type === "InputSocketSocket"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      kind: detached.kind ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
-                    });
-                  } else if (
-                    detached.context.type === "InputSocketProp" ||
-                    detached.context.type === "Prop"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      kind: detached.kind ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
-                    });
-                  }
-                }
 
                 if (schemaVariantId !== nilId() && this.selectedAssetId) {
                   this.setSchemaVariantIdForAsset(

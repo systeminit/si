@@ -222,37 +222,40 @@ impl Schema {
                 )
                 .await?;
 
-            Self::add_edge_to_variant(ctx, self.id, schema_variant_id, EdgeWeightKind::new_use())
-                .await?;
-        }
-
-        for (edge_weight, source_index, target_index) in workspace_snapshot
-            .edges_directed_for_edge_weight_kind(
-                self.id,
-                Outgoing,
-                EdgeWeightKind::new_use().into(),
-            )
-            .await?
-        {
-            // We have found the existing Use edge between schema and schema variant
-            // we now need to update that edge to be a Default
-            workspace_snapshot
-                .remove_edge(
-                    ctx.change_set()?,
-                    source_index,
-                    target_index,
-                    edge_weight.kind().into(),
-                )
-                .await?;
-
             Self::add_edge_to_variant(
                 ctx,
                 self.id,
-                schema_variant_id,
-                EdgeWeightKind::new_use_default(),
+                workspace_snapshot
+                    .get_node_weight(target_index)
+                    .await?
+                    .id()
+                    .into(),
+                EdgeWeightKind::new_use(),
             )
             .await?;
         }
+
+        let source_index = workspace_snapshot.get_node_index_by_id(self.id).await?;
+        let target_index = workspace_snapshot
+            .get_node_index_by_id(schema_variant_id)
+            .await?;
+
+        workspace_snapshot
+            .remove_edge(
+                ctx.change_set()?,
+                source_index,
+                target_index,
+                EdgeWeightKind::new_use().into(),
+            )
+            .await?;
+
+        Self::add_edge_to_variant(
+            ctx,
+            self.id,
+            schema_variant_id,
+            EdgeWeightKind::new_use_default(),
+        )
+        .await?;
 
         Ok(())
     }

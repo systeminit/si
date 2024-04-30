@@ -13,7 +13,10 @@ use crate::component::{
 };
 use crate::func::FuncWsEventPayload;
 use crate::qualification::QualificationCheckPayload;
-use crate::schema::variant::{SchemaVariantClonedPayload, SchemaVariantCreatedPayload};
+use crate::schema::variant::{
+    SchemaVariantClonedPayload, SchemaVariantCreatedPayload, SchemaVariantSavedPayload,
+    SchemaVariantUpdatedPayload,
+};
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
@@ -95,8 +98,8 @@ pub enum WsPayload {
     // SchemaCreated(SchemaPk),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(SchemaVariantCreatedPayload),
-    // SchemaVariantFinished(FinishSchemaVariantPayload),
-    // SchemaVariantSaved(SchemaVariantSavedPayload),
+    SchemaVariantSaved(SchemaVariantSavedPayload),
+    SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
     SetComponentPosition(ComponentSetPositionPayload),
