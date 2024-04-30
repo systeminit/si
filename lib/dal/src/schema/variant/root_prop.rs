@@ -340,7 +340,7 @@ impl RootProp {
         let _resource_payload_prop = Prop::new(
             ctx,
             "payload",
-            PropKind::String,
+            PropKind::Json,
             true,
             None,
             None,

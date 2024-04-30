@@ -453,11 +453,7 @@ impl DeprecatedActionRunner {
                 Some(ResourceView {
                     status: resource.status,
                     message: resource.message,
-                    payload: resource
-                        .payload
-                        .as_deref()
-                        .map(serde_json::from_str)
-                        .transpose()?,
+                    payload: resource.payload,
                     logs: resource.logs,
                     last_synced: resource.last_synced,
                 })

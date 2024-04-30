@@ -216,12 +216,9 @@ async fn remove_resource(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "1",
-                    }))
-                    .expect("unable to serialize resource"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "1",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),

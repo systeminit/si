@@ -44,7 +44,7 @@ impl From<&PropSpec> for PropSpecWidgetKind {
         match node {
             PropSpec::Array { .. } => Self::Array,
             PropSpec::Boolean { .. } => Self::Checkbox,
-            PropSpec::String { .. } | PropSpec::Number { .. } => Self::Text,
+            PropSpec::String { .. } | PropSpec::Number { .. } | PropSpec::Json { .. } => Self::Text,
             PropSpec::Object { .. } => Self::Header,
             PropSpec::Map { .. } => Self::Map,
         }
@@ -79,6 +79,12 @@ pub enum PropSpec {
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
+        name: String,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Json {
         name: String,
         data: Option<PropSpecData>,
         unique_id: Option<String>,
@@ -206,6 +212,7 @@ impl PropSpec {
             Self::Array { name, .. }
             | Self::Boolean { name, .. }
             | Self::Map { name, .. }
+            | Self::Json { name, .. }
             | Self::Number { name, .. }
             | Self::Object { name, .. }
             | Self::String { name, .. } => name.as_str(),
@@ -216,6 +223,7 @@ impl PropSpec {
         match self {
             Self::Array { .. } => PropSpecKind::Array,
             Self::Boolean { .. } => PropSpecKind::Boolean,
+            Self::Json { .. } => PropSpecKind::Json,
             Self::Map { .. } => PropSpecKind::Map,
             Self::Number { .. } => PropSpecKind::Number,
             Self::Object { .. } => PropSpecKind::Object,
@@ -230,6 +238,7 @@ impl PropSpec {
             | Self::Map { data, .. }
             | Self::Number { data, .. }
             | Self::Object { data, .. }
+            | Self::Json { data, .. }
             | Self::String { data, .. } => data.as_ref(),
         }
     }
@@ -245,7 +254,10 @@ impl PropSpec {
     pub fn direct_children(&self) -> Vec<&PropSpec> {
         // would be better to just produce an iterator here
         match self {
-            Self::Boolean { .. } | Self::Number { .. } | Self::String { .. } => vec![],
+            Self::Json { .. }
+            | Self::Boolean { .. }
+            | Self::Number { .. }
+            | Self::String { .. } => vec![],
             Self::Object { entries, .. } => entries.iter().collect(),
             Self::Map { type_prop, .. } | Self::Array { type_prop, .. } => vec![type_prop.as_ref()],
         }
@@ -460,6 +472,7 @@ impl PropSpec {
 pub enum PropSpecKind {
     Array,
     Boolean,
+    Json,
     Map,
     Number,
     Object,
@@ -666,6 +679,11 @@ impl PropSpecBuilder {
         Ok(match self.kind {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: maybe_data,
+                },
+                PropSpecKind::Json => PropSpec::Json {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
                     data: maybe_data,

@@ -595,6 +595,7 @@ impl PkgExporter {
             builder
                 .name(child_prop.name)
                 .kind(match child_prop.kind {
+                    PropKind::Json => PropSpecKind::Json,
                     PropKind::Array => PropSpecKind::Array,
                     PropKind::Boolean => PropSpecKind::Boolean,
                     PropKind::Integer => PropSpecKind::Number,
@@ -671,7 +672,10 @@ impl PkgExporter {
                             entry.builder.type_prop(type_prop);
                             maybe_type_prop_id = Some(type_prop_id);
                         }
-                        PropSpecKind::String | PropSpecKind::Number | PropSpecKind::Boolean => {
+                        PropSpecKind::Json
+                        | PropSpecKind::String
+                        | PropSpecKind::Number
+                        | PropSpecKind::Boolean => {
                             return Err(PkgError::PropSpecChildrenInvalid(format!(
                                 "primitve prop type should have no children for prop id {}",
                                 entry.prop_id,
@@ -835,7 +839,7 @@ impl PkgExporter {
                                 .build()?,
                         );
                     }, // get the prop name and add to the list
-                    crate::attribute::prototype::argument::value_source::ValueSource::StaticArgumentValue(_) => {}, // do nothing as this is irrelevant for the schema variant! 
+                    crate::attribute::prototype::argument::value_source::ValueSource::StaticArgumentValue(_) => {}, // do nothing as this is irrelevant for the schema variant!
                 }
             }
         }

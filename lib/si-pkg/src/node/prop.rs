@@ -27,6 +27,7 @@ const KEY_VALIDATION_FORMAT_STR: &str = "validation_format";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
 
 const PROP_TY_STRING: &str = "string";
+const PROP_TY_JSON: &str = "json";
 const PROP_TY_INTEGER: &str = "integer";
 const PROP_TY_BOOLEAN: &str = "boolean";
 const PROP_TY_MAP: &str = "map";
@@ -64,6 +65,11 @@ pub enum PropNode {
         data: Option<PropNodeData>,
         unique_id: Option<String>,
     },
+    Json {
+        name: String,
+        data: Option<PropNodeData>,
+        unique_id: Option<String>,
+    },
     Map {
         name: String,
         data: Option<PropNodeData>,
@@ -85,6 +91,7 @@ impl PropNode {
     fn kind_str(&self) -> &'static str {
         match self {
             Self::String { .. } => PROP_TY_STRING,
+            Self::Json { .. } => PROP_TY_JSON,
             Self::Integer { .. } => PROP_TY_INTEGER,
             Self::Boolean { .. } => PROP_TY_BOOLEAN,
             Self::Map { .. } => PROP_TY_MAP,
@@ -98,6 +105,7 @@ impl NameStr for PropNode {
     fn name(&self) -> &str {
         match self {
             Self::String { name, .. }
+            | Self::Json { name, .. }
             | Self::Integer { name, .. }
             | Self::Boolean { name, .. }
             | Self::Map { name, .. }
@@ -114,6 +122,7 @@ impl WriteBytes for PropNode {
 
         if let Some(data) = match &self {
             Self::String { data, .. }
+            | Self::Json { data, .. }
             | Self::Integer { data, .. }
             | Self::Boolean { data, .. }
             | Self::Map { data, .. }
@@ -168,6 +177,7 @@ impl WriteBytes for PropNode {
         if let Some(unique_id) = match &self {
             Self::String { unique_id, .. }
             | Self::Integer { unique_id, .. }
+            | Self::Json { unique_id, .. }
             | Self::Boolean { unique_id, .. }
             | Self::Map { unique_id, .. }
             | Self::Array { unique_id, .. }
@@ -249,6 +259,11 @@ impl ReadBytes for PropNode {
                 data,
                 unique_id,
             },
+            PROP_TY_JSON => Self::Json {
+                name,
+                data,
+                unique_id,
+            },
             PROP_TY_INTEGER => Self::Integer {
                 name,
                 data,
@@ -295,6 +310,11 @@ impl NodeChild for PropSpec {
                 data,
                 unique_id,
                 ..
+            }
+            | Self::Json {
+                name,
+                data,
+                unique_id,
             }
             | Self::Boolean {
                 name,
@@ -357,6 +377,18 @@ impl NodeChild for PropSpec {
             Self::String { .. } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::String {
+                    name,
+                    data,
+                    unique_id,
+                }),
+                vec![Box::new(PropChild::AttrFuncInputs(
+                    inputs.to_owned().unwrap_or(vec![]),
+                ))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>],
+            ),
+            Self::Json { .. } => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::Prop(PropNode::Json {
                     name,
                     data,
                     unique_id,

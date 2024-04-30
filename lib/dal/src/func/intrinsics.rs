@@ -15,6 +15,7 @@ pub enum IntrinsicFunc {
     SetArray,
     SetBoolean,
     SetInteger,
+    SetJson,
     SetMap,
     SetObject,
     SetString,
@@ -120,6 +121,19 @@ impl IntrinsicFunc {
                         .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
             }
+            Self::SetJson => {
+                builder
+                    .unique_id("c48ahif4739799f3ab84bcb88495f93b27b47c31a341f8005a60ca39308909fd");
+                data_builder.backend_kind(FuncSpecBackendKind::Json);
+                data_builder.response_type(FuncSpecBackendResponseType::Json);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Json)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
+            }
             Self::SetObject => {
                 builder
                     .unique_id("cb9bf94739799f3a8b84bcb88495f93b27b47c31a341f8005a60ca39308909fd");
@@ -185,6 +199,7 @@ impl IntrinsicFunc {
             Self::SetInteger => "si:setInteger",
             Self::SetMap => "si:setMap",
             Self::SetObject => "si:setObject",
+            Self::SetJson => "si:setJson",
             Self::SetString => "si:setString",
             Self::Unset => "si:unset",
             Self::Validation => "si:validation",
@@ -199,6 +214,7 @@ impl IntrinsicFunc {
             "si:setInteger" => Self::SetInteger,
             "si:setMap" => Self::SetMap,
             "si:setObject" => Self::SetObject,
+            "si:setJson" => Self::SetJson,
             "si:setString" => Self::SetString,
             "si:unset" => Self::Unset,
             "si:validation" => Self::Validation,
@@ -215,6 +231,7 @@ impl From<PropKind> for IntrinsicFunc {
             PropKind::Array => IntrinsicFunc::SetArray,
             PropKind::Boolean => IntrinsicFunc::SetBoolean,
             PropKind::Integer => IntrinsicFunc::SetInteger,
+            PropKind::Json => IntrinsicFunc::SetJson,
             PropKind::Map => IntrinsicFunc::SetMap,
             PropKind::Object => IntrinsicFunc::SetObject,
             PropKind::String => IntrinsicFunc::SetString,

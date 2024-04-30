@@ -481,6 +481,12 @@ async fn create_prop_stack(
                 builder.default_value(dv);
             }
         }
+        SiPkgProp::Json { .. } => {
+            builder.kind(PropSpecKind::Json);
+            if let Some(dv) = default_value {
+                builder.default_value(serde_json::to_value(dv)?);
+            }
+        }
         SiPkgProp::Boolean { .. } => {
             builder.kind(PropSpecKind::Boolean);
             if let Some(dv) = default_value {
@@ -509,6 +515,7 @@ async fn create_prop_stack(
 
     match &spec {
         SiPkgProp::String { name, data, .. }
+        | SiPkgProp::Json { name, data, .. }
         | SiPkgProp::Map { name, data, .. }
         | SiPkgProp::Array { name, data, .. }
         | SiPkgProp::Number { name, data, .. }

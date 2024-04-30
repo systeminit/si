@@ -253,6 +253,7 @@ pub enum PropKind {
     Array,
     Boolean,
     Integer,
+    Json,
     Map,
     Object,
     String,
@@ -266,7 +267,7 @@ impl PropKind {
     pub fn empty_value(&self) -> Option<serde_json::Value> {
         match self {
             Self::Array => Some(serde_json::json!([])),
-            Self::Map | Self::Object => Some(serde_json::json!({})),
+            Self::Map | Self::Object | Self::Json => Some(serde_json::json!({})),
             _ => None,
         }
     }
@@ -286,6 +287,7 @@ impl From<PropKind> for PropSpecKind {
             PropKind::Boolean => Self::Boolean,
             PropKind::String => Self::String,
             PropKind::Integer => Self::Number,
+            PropKind::Json => PropSpecKind::Json,
             PropKind::Object => Self::Object,
             PropKind::Map => Self::Map,
         }
@@ -299,7 +301,7 @@ impl From<PropKind> for WidgetKind {
         match prop {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Checkbox,
-            PropKind::String | PropKind::Integer => Self::Text,
+            PropKind::Json | PropKind::String | PropKind::Integer => Self::Text,
             PropKind::Object => Self::Header,
             PropKind::Map => Self::Map,
         }
@@ -313,6 +315,7 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
             PropKind::Object => Self::Object,
+            PropKind::Json => Self::Object,
             PropKind::Map => Self::Map,
             PropKind::String => Self::String,
         }
@@ -955,7 +958,7 @@ impl Prop {
             .kind();
 
         let ordered_child_props = match kind {
-            PropKind::Boolean | PropKind::Integer | PropKind::String => Vec::new(),
+            PropKind::Json | PropKind::Boolean | PropKind::Integer | PropKind::String => Vec::new(),
             PropKind::Array | PropKind::Map | PropKind::Object => {
                 let ordered_child_prop_ids = workspace_snapshot
                     .ordered_children_for_node(prop_id)
@@ -1001,6 +1004,7 @@ impl Prop {
                     work_queue.push_back((array_element_type.id, array_element_type.kind));
                     format!("{ts_type}[] | null | undefined")
                 }
+                PropKind::Json => "unknown".into(),
                 PropKind::Boolean => "boolean | null | undefined".into(),
                 PropKind::Integer => "number | null | undefined".into(),
                 PropKind::Object => {
