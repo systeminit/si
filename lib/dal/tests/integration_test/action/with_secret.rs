@@ -187,7 +187,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
                     "Setting dummySecretString to requestStorage",
                      "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}",
                 ],
-                "payload": "{\"poop\":true}",
+                "payload": { "poop" :true },
                 "status": "ok",
             },
             "resource_value": {},

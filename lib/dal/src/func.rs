@@ -347,6 +347,7 @@ impl Func {
                 IntrinsicFunc::SetArray
                 | IntrinsicFunc::SetBoolean
                 | IntrinsicFunc::SetInteger
+                | IntrinsicFunc::SetJson
                 | IntrinsicFunc::SetMap
                 | IntrinsicFunc::SetObject
                 | IntrinsicFunc::SetString

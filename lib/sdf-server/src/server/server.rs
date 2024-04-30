@@ -45,7 +45,7 @@ use crate::server::config::CycloneKeyPair;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error("intrinsics installation error")]
+    #[error("intrinsics installation error: {0}")]
     Builtins(#[from] BuiltinsError),
     #[error("cyclone public key already set")]
     CyclonePublicKeyAlreadySet,

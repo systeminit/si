@@ -109,7 +109,7 @@ pub struct DeprecatedActionRunResult {
     pub status: Option<ResourceStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub payload: Option<String>,
+    pub payload: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub message: Option<String>,
@@ -125,11 +125,7 @@ impl ExtractPayload for ActionRunResultSuccess {
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
         Ok(DeprecatedActionRunResult {
-            payload: self
-                .payload
-                .as_ref()
-                .map(serde_json::to_string)
-                .transpose()?,
+            payload: self.payload,
             status: Some(self.status),
             message: self.message.or(self.error),
             logs: Default::default(),

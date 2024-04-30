@@ -39,6 +39,13 @@ pub enum SiPkgProp<'a> {
         hash: Hash,
         source: Source<'a>,
     },
+    Json {
+        name: String,
+        data: Option<SiPkgPropData>,
+        unique_id: Option<String>,
+        hash: Hash,
+        source: Source<'a>,
+    },
     Map {
         name: String,
         data: Option<SiPkgPropData>,
@@ -75,6 +82,7 @@ macro_rules! impl_prop_child_from_graph {
             Ok(match self {
                 SiPkgProp::Map { source, .. }
                 | SiPkgProp::Array { source, .. }
+                | SiPkgProp::Json { source, .. }
                 | SiPkgProp::String { source, .. }
                 | SiPkgProp::Number { source, .. }
                 | SiPkgProp::Object { source, .. }
@@ -131,6 +139,11 @@ impl<'a> SiPkgProp<'a> {
 
         let (name, data, unique_id) = match &prop_node {
             PropNode::Array {
+                name,
+                data,
+                unique_id,
+            }
+            | PropNode::Json {
                 name,
                 data,
                 unique_id,
@@ -205,6 +218,14 @@ impl<'a> SiPkgProp<'a> {
                 hash,
                 source,
             },
+            PropNode::Json { .. } => Self::Json {
+                name,
+                data,
+                unique_id,
+
+                hash,
+                source,
+            },
             PropNode::Boolean { .. } => Self::Boolean {
                 name,
                 data,
@@ -244,6 +265,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             SiPkgProp::Array { data, .. }
             | SiPkgProp::Boolean { data, .. }
+            | SiPkgProp::Json { data, .. }
             | SiPkgProp::Map { data, .. }
             | SiPkgProp::Number { data, .. }
             | SiPkgProp::Object { data, .. }
@@ -255,6 +277,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             SiPkgProp::Array { unique_id, .. }
             | SiPkgProp::Boolean { unique_id, .. }
+            | SiPkgProp::Json { unique_id, .. }
             | SiPkgProp::Map { unique_id, .. }
             | SiPkgProp::Number { unique_id, .. }
             | SiPkgProp::Object { unique_id, .. }
@@ -266,6 +289,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             Self::String { name, .. }
             | Self::Number { name, .. }
+            | Self::Json { name, .. }
             | Self::Boolean { name, .. }
             | Self::Map { name, .. }
             | Self::Array { name, .. }
@@ -277,6 +301,7 @@ impl<'a> SiPkgProp<'a> {
         match self {
             Self::String { hash, .. }
             | Self::Number { hash, .. }
+            | Self::Json { hash, .. }
             | Self::Boolean { hash, .. }
             | Self::Map { hash, .. }
             | Self::Array { hash, .. }
@@ -287,6 +312,7 @@ impl<'a> SiPkgProp<'a> {
     pub fn source(&self) -> &Source<'a> {
         match self {
             Self::String { source, .. }
+            | Self::Json { source, .. }
             | Self::Number { source, .. }
             | Self::Boolean { source, .. }
             | Self::Map { source, .. }

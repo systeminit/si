@@ -42,6 +42,7 @@ impl FuncKind {
                 Ok(FuncKind::Unknown)
             }
             FuncBackendKind::Array
+            | FuncBackendKind::Json
             | FuncBackendKind::Boolean
             | FuncBackendKind::Diff
             | FuncBackendKind::Identity

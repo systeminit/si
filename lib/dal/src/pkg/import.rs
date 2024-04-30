@@ -1542,6 +1542,7 @@ fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
     match pkg_prop {
         SiPkgProp::Array { .. } => PropKind::Array,
         SiPkgProp::Boolean { .. } => PropKind::Boolean,
+        SiPkgProp::Json { .. } => PropKind::Json,
         SiPkgProp::Map { .. } => PropKind::Map,
         SiPkgProp::Number { .. } => PropKind::Integer,
         SiPkgProp::Object { .. } => PropKind::Object,

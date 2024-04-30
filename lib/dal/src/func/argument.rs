@@ -84,6 +84,7 @@ pub enum FuncArgumentKind {
     Array,
     Boolean,
     Integer,
+    Json,
     Map,
     Object,
     String,
@@ -92,6 +93,7 @@ pub enum FuncArgumentKind {
 impl From<PropKind> for FuncArgumentKind {
     fn from(prop_kind: PropKind) -> Self {
         match prop_kind {
+            PropKind::Json => FuncArgumentKind::Json,
             PropKind::Array => FuncArgumentKind::Array,
             PropKind::Boolean => FuncArgumentKind::Boolean,
             PropKind::Integer => FuncArgumentKind::Integer,
@@ -106,6 +108,7 @@ impl From<PkgFuncArgumentKind> for FuncArgumentKind {
     fn from(value: PkgFuncArgumentKind) -> Self {
         match value {
             PkgFuncArgumentKind::Any => FuncArgumentKind::Any,
+            PkgFuncArgumentKind::Json => FuncArgumentKind::Json,
             PkgFuncArgumentKind::Array => FuncArgumentKind::Array,
             PkgFuncArgumentKind::Boolean => FuncArgumentKind::Boolean,
             PkgFuncArgumentKind::Integer => FuncArgumentKind::Integer,
@@ -125,6 +128,7 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
             FuncArgumentKind::Integer => PkgFuncArgumentKind::Integer,
             FuncArgumentKind::Map => PkgFuncArgumentKind::Map,
             FuncArgumentKind::Object => PkgFuncArgumentKind::Object,
+            FuncArgumentKind::Json => PkgFuncArgumentKind::Json,
             FuncArgumentKind::String => PkgFuncArgumentKind::String,
         }
     }

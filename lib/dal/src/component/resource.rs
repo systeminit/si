@@ -32,7 +32,7 @@ impl ResourceView {
 
     pub fn assemble(result: DeprecatedActionRunResult) -> ComponentResult<Self> {
         let payload: Value = match result.payload {
-            Some(payload) => serde_json::from_str::<Value>(&payload)?,
+            Some(payload) => payload,
             None => Value::Null,
         };
 

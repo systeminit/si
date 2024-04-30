@@ -58,12 +58,9 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -327,12 +324,9 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),

@@ -600,12 +600,9 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -777,12 +774,9 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -830,12 +824,9 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),

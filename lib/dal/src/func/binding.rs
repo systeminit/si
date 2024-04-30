@@ -25,6 +25,7 @@ use crate::{
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
         js_reconciliation::FuncBackendJsReconciliation,
         js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
+        json::FuncBackendJson,
         map::FuncBackendMap,
         object::FuncBackendObject,
         string::FuncBackendString,
@@ -240,6 +241,7 @@ impl FuncBinding {
                 )
                 .await
             }
+            FuncBackendKind::Json => FuncBackendJson::create_and_execute(&self.args).await,
             FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
             FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
             FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
@@ -328,6 +330,7 @@ impl FuncBinding {
             | FuncBackendKind::Identity
             | FuncBackendKind::Diff
             | FuncBackendKind::Integer
+            | FuncBackendKind::Json
             | FuncBackendKind::Map
             | FuncBackendKind::Object
             | FuncBackendKind::String

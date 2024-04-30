@@ -344,19 +344,7 @@ impl DeprecatedActionPrototype {
         component_id: ComponentId,
     ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
         let component = Component::get_by_id(ctx, component_id).await?;
-        let mut component_view = component.materialized_view(ctx).await?;
-        // Postcard doesn't store serde_json::Value well, so we use a String for the resource
-        // payload, but all action functions were written expecting a payload object, so we
-        // manually cast it here, it's horrifying, but func editing is not 100% in a place where we
-        // can just update all actions
-        if let Some(payload) = component_view
-            .as_mut()
-            .and_then(|v| v.pointer_mut("/resource/payload"))
-        {
-            if let serde_json::Value::String(string) = payload.clone() {
-                *payload = serde_json::from_str::<serde_json::Value>(&string)?;
-            }
-        }
+        let component_view = component.materialized_view(ctx).await?;
 
         let before = before_funcs_for_component(ctx, component_id).await?;
 
