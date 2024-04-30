@@ -328,6 +328,51 @@ impl VariantAuthoringClient {
             return Err(VariantAuthoringError::NoAssetCreated);
         }
     }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(
+        name = "variant.authoring.save_variant_content",
+        level = "info",
+        skip_all
+    )]
+    pub async fn save_variant_content(
+        ctx: &DalContext,
+        current_sv_id: SchemaVariantId,
+        name: String,
+        menu_name: Option<String>,
+        link: Option<String>,
+        code: String,
+        description: Option<String>,
+    ) -> VariantAuthoringResult<()> {
+        let current_sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+
+        if let Some(asset_func_id) = current_sv.asset_func_id {
+            let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
+
+            let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            current_func
+                .modify(ctx, |func| {
+                    func.name = name;
+                    func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
+                    func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
+                    func.display_name = menu_name
+                        .clone()
+                        .map(|display_name| display_name.to_owned());
+                    func.code_base64 = Some(code_base64);
+                    func.description = description.clone();
+                    func.handler = Some("main".to_string());
+                    func.hidden = false;
+                    func.link = link.clone();
+                    Ok(())
+                })
+                .await?;
+            Ok(())
+        } else {
+            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
+                current_sv_id,
+            ));
+        }
+    }
 }
 
 async fn build_variant_spec_based_on_existing_variant(

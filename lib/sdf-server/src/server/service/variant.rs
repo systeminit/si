@@ -19,8 +19,8 @@ pub mod clone_variant;
 pub mod create_variant;
 pub mod get_variant;
 pub mod list_variants;
+pub mod save_variant;
 pub mod update_variant;
-// pub mod save_variant_def;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -89,11 +89,8 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_variants", get(list_variants::list_variants))
         .route("/get_variant", get(get_variant::get_variant))
-        // .route(
-        //     "/save_variant_def",
-        //     post(save_variant_def::save_variant_def),
-        // )
         .route("/create_variant", post(create_variant::create_variant))
         .route("/update_variant", post(update_variant::update_variant))
         .route("/clone_variant", post(clone_variant::clone_variant))
+        .route("/save_variant", post(save_variant::save_variant))
 }

@@ -1,16 +1,17 @@
-use super::SchemaVariantDefinitionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::variant::SchemaVariantResult;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::ComponentType;
-use dal::{schema::variant::definition::SchemaVariantDefinitionId, ChangeSet, Visibility, WsEvent};
+use dal::schema::variant::authoring::VariantAuthoringClient;
+use dal::{ChangeSet, ComponentType, SchemaId, SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct SaveVariantDefRequest {
-    pub id: SchemaVariantDefinitionId,
+pub struct SaveVariantRequest {
+    pub id: SchemaId,
+    pub default_schema_variant_id: SchemaVariantId,
     pub name: String,
     pub menu_name: Option<String>,
     pub category: String,
@@ -25,37 +26,46 @@ pub struct SaveVariantDefRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SaveVariantDefResponse {
+pub struct SaveVariantResponse {
     pub success: bool,
 }
 
-pub async fn save_variant_def(
+pub async fn save_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<SaveVariantDefRequest>,
-) -> SchemaVariantDefinitionResult<impl IntoResponse> {
+    Json(request): Json<SaveVariantRequest>,
+) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    super::save_variant_def(&ctx, &request, None).await?;
+    VariantAuthoringClient::save_variant_content(
+        &ctx,
+        request.default_schema_variant_id,
+        request.name.clone(),
+        request.menu_name.clone(),
+        request.link.clone(),
+        request.code.clone(),
+        request.description.clone(),
+    )
+    .await?;
 
     track(
         &posthog_client,
         &ctx,
         &original_uri,
-        "save_variant_def",
+        "save_variant",
         serde_json::json!({
-                    "variant_def_category": request.category,
-                    "variant_def_name": request.name,
-                    "variant_def_menu_name": request.menu_name,
-                    // "variant_def_definition":  request.definition,
+                "variant_id": request.id,
+                "variant_category": request.category,
+                "variant_name": request.name,
+                "variant_menu_name": request.menu_name,
         }),
     );
 
-    WsEvent::schema_variant_definition_saved(&ctx, request.id)
+    WsEvent::schema_variant_saved(&ctx, request.default_schema_variant_id)
         .await?
         .publish_on_commit(&ctx)
         .await?;
@@ -68,9 +78,7 @@ pub async fn save_variant_def(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(
-        response.body(serde_json::to_string(&SaveVariantDefResponse {
-            success: true,
-        })?)?,
-    )
+    Ok(response.body(serde_json::to_string(&SaveVariantResponse {
+        success: true,
+    })?)?)
 }
