@@ -947,12 +947,13 @@ async fn paste_component(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let view = pasted_pirate_component
+    let mut view = pasted_pirate_component
         .materialized_view(ctx)
         .await
         .expect("unable to get materialized view of component")
         .expect("no view found");
 
+    *view.pointer_mut("/resource/last_synced").expect("no last synced found") = serde_json::Value::Null;
     assert_eq!(
         view,
         serde_json::json!({
@@ -967,8 +968,11 @@ async fn paste_component(ctx: &mut DalContext) {
                 //     "Captain Flint",
                 // ],
             },
-            "resource": {},
-            "resource_value": {},
+            "resource": {
+                "last_synced": null,
+                "logs": [],
+                "status": "ok",
+            },
             "si": {
                 "color": "#ff00ff",
                 "name": "Long John Silver - Copy",
