@@ -12,7 +12,7 @@ use si_data_pg::{PgError, PgRow};
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
-use crate::context::RebaseRequest;
+use crate::context::{Conflicts, RebaseRequest};
 use crate::deprecated_action::DeprecatedActionBag;
 use crate::job::definition::{ActionRunnerItem, ActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -93,6 +93,8 @@ pub enum ChangeSetApplyError {
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("could not apply to head because of merge conflicts")]
+    ConflictsOnApply(Conflicts),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -396,9 +398,14 @@ impl ChangeSet {
             .ok_or(ChangeSetApplyError::ChangeSetNotFound(ctx.change_set_id()))?;
         ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(ctx.change_set_id())
             .await?;
-        change_set_to_be_applied
+        if let Some(conflicts) = change_set_to_be_applied
             .apply_to_base_change_set_inner(ctx)
-            .await?;
+            .await?
+        {
+            return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
+        }
+
+        // do we need this commit?
         ctx.blocking_commit().await?;
         let change_set_that_was_applied = change_set_to_be_applied;
 
@@ -495,7 +502,10 @@ impl ChangeSet {
     ///
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
-    async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+    async fn apply_to_base_change_set_inner(
+        &mut self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<Option<Conflicts>> {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
@@ -507,7 +517,10 @@ impl ChangeSet {
             onto_vector_clock_id: self.vector_clock_id(),
             to_rebase_change_set_id,
         };
-        ctx.do_rebase_request(rebase_request).await?;
+
+        if let Some(conflicts) = ctx.do_rebase_request(rebase_request).await? {
+            return Ok(Some(conflicts));
+        }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;
@@ -515,7 +528,8 @@ impl ChangeSet {
             .await?
             .publish_on_commit(ctx)
             .await?;
-        Ok(())
+
+        Ok(None)
     }
 
     async fn list_actions_to_run(
