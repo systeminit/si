@@ -24,6 +24,7 @@ pub struct CategoryNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
     kind: CategoryNodeKind,
+    // TODO This should not be a content hash, since it does not point to a value in cas
     content_hash: ContentHash,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -34,6 +35,10 @@ pub struct CategoryNodeWeight {
 impl CategoryNodeWeight {
     pub fn content_hash(&self) -> ContentHash {
         self.content_hash
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
     }
 
     pub fn id(&self) -> Ulid {

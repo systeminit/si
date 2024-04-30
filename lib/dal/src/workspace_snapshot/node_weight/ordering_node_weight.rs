@@ -26,6 +26,10 @@ impl OrderingNodeWeight {
         self.content_hash
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
+    }
+
     pub fn id(&self) -> Ulid {
         self.id
     }

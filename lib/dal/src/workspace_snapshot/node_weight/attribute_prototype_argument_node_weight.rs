@@ -68,6 +68,10 @@ impl AttributePrototypeArgumentNodeWeight {
         ContentHash::new(target_string.as_bytes())
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
+    }
+
     pub fn node_hash(&self) -> ContentHash {
         self.content_hash()
     }

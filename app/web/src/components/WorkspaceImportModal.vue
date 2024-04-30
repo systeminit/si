@@ -1,15 +1,14 @@
 <template>
   <Modal
     ref="modalRef"
-    title="Import Workspace"
-    size="xl"
     :noExit="blockExit"
     noAutoFocus
+    size="xl"
+    title="Import Workspace"
   >
     <Stack>
       <template v-if="successfulImport">
         <p>This workspace has been replaced!</p>
-        <p>Please reload your browser</p>
 
         <VButton icon="refresh" @click="refreshHandler">Reload</VButton>
       </template>
@@ -30,11 +29,11 @@
           <template v-if="loadExportsReqStatus.isSuccess">
             <VormInput
               v-model="selectedExportId"
-              type="dropdown"
               label="Select workspace"
               placeholder="- Select a workspace -"
               required
               requiredMessage="Select a workspace to continue"
+              type="dropdown"
             >
               <VormInputOption
                 v-for="item in exportsList"
@@ -46,7 +45,7 @@
             </VormInput>
           </template>
           <template v-else-if="loadExportsReqStatus.isPending">
-            <VormInput type="container" label="Select workspace">
+            <VormInput label="Select workspace" type="container">
               <Inline alignY="center">
                 <Icon name="loader" />
                 <div>Loading your workspace exports</div>
@@ -56,10 +55,10 @@
 
           <VormInput
             v-model="confirmedDataLoss"
-            type="checkbox"
             noLabel
             required
             requiredMessage="You must check this box to continue"
+            type="checkbox"
           >
             I understand my local workspace data will be overwritten
           </VormInput>
@@ -68,17 +67,17 @@
           <ErrorMessage :message="workspaceStore.importError" />
 
           <VButton
-            icon="cloud-download"
             :label="
               requiresVoting ? 'Begin Approval Process' : 'Import workspace'
             "
+            :loading="workspaceStore.importLoading"
             :loadingText="
               requiresVoting ? 'Beginning Approval Process' : 'Importing...'
             "
             :requestStatus="
               requiresVoting ? beginApprovalProcessReqStatus : importReqStatus
             "
-            :loading="workspaceStore.importLoading"
+            icon="cloud-download"
             @click="
               requiresVoting ? beginApprovalHandler() : importWorkspaceHandler()
             "
@@ -106,9 +105,9 @@
               </template>
               <template v-else>
                 <div class="pt-4">
-                  <span class="text-sm"
-                    >The following workspace will be imported:</span
-                  >
+                  <span class="text-sm">
+                    The following workspace will be imported:
+                  </span>
                   <ul class="text-xs indent-4">
                     <li>
                       Workspace Name:
@@ -135,7 +134,7 @@
                 </div>
               </template>
               <div class="flex w-full text-xs justify-center pt-4 gap-xs">
-                <Icon name="tools" tone="warning" size="sm" /> Importing a
+                <Icon name="tools" size="sm" tone="warning" /> Importing a
                 workspace means replacing all the changesets in this workspace.
                 They cannot be recovered. If you want to save current work
                 please export your workspace now.
@@ -147,10 +146,10 @@
               <div class="flex w-full justify-center pb-2">
                 <VButton
                   icon="tools"
+                  label="Override vote and apply"
+                  loadingText="Importing Workspace"
                   size="sm"
                   tone="success"
-                  loadingText="Importing Workspace"
-                  label="Override vote and apply"
                   @click="importWorkspaceHandler"
                 />
               </div>
@@ -174,17 +173,17 @@
                     v-if="
                       workspaceStore.workspaceApprovals[user.pk] === 'Approve'
                     "
+                    class="text-success-400"
                     name="thumbs-up"
                     size="lg"
-                    class="text-success-400"
                   />
                   <Icon
                     v-else-if="
                       workspaceStore.workspaceApprovals[user.pk] === 'Reject'
                     "
+                    class="text-destructive-500"
                     name="thumbs-down"
                     size="lg"
-                    class="text-destructive-500"
                   />
                 </div>
               </div>
@@ -194,18 +193,18 @@
                 <div class="flex w-full justify-center pt-2 gap-xs">
                   <VButton
                     icon="thumbs-up"
-                    variant="ghost"
-                    tone="success"
-                    loadingText="Approving"
                     label="Go ahead"
+                    loadingText="Approving"
+                    tone="success"
+                    variant="ghost"
                     @click="importApprovalVote('Approve')"
                   />
                   <VButton
                     icon="thumbs-down"
-                    variant="ghost"
-                    tone="error"
-                    loadingText="Rejecting"
                     label="No"
+                    loadingText="Rejecting"
+                    tone="error"
+                    variant="ghost"
                     @click="importApprovalVote('Reject')"
                   />
                 </div>
@@ -213,11 +212,11 @@
               <template v-if="successfullyVoted">
                 <div class="flex gap-4 w-full p-xs">
                   <Icon name="lock" size="lg" tone="warning" />
-                  <span class="text-sm align-middle"
-                    >This workspace locked until all users in it have voted on
+                  <span class="text-sm align-middle">
+                    This workspace locked until all users in it have voted on
                     the import or {{ importUser?.name }} has taken further
-                    action.</span
-                  >
+                    action.
+                  </span>
                 </div>
               </template>
             </template>
@@ -238,17 +237,17 @@
           </template>
         </template>
         <template v-if="rejectedWorkflow && importedByYou">
-          <span class="text-sm pb-2"
-            >One of the users in this workspace has rejected the import. You can
+          <span class="text-sm pb-2">
+            One of the users in this workspace has rejected the import. You can
             either override and continue the import, above or 'Cancel' the
-            import flow</span
-          >
+            import flow
+          </span>
           <VButton
             label="Cancel Import Flow"
-            variant="ghost"
+            loadingText="Cancelling Import Flow"
             size="sm"
             tone="warning"
-            loadingText="Cancelling Import Flow"
+            variant="ghost"
             @click="cancelApprovalHandler()"
           />
         </template>
@@ -257,7 +256,7 @@
   </Modal>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import {
   ErrorMessage,

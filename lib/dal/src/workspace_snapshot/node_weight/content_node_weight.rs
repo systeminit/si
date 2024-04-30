@@ -68,6 +68,10 @@ impl ContentNodeWeight {
         self.content_address.content_hash()
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![self.content_address.content_hash()]
+    }
+
     pub fn id(&self) -> Ulid {
         self.id
     }

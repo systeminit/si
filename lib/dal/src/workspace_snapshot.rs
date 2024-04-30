@@ -374,6 +374,17 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    pub async fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
+        let graph: WorkspaceSnapshotGraph = si_layer_cache::db::serialize::from_bytes(bytes)?;
+
+        Ok(Self {
+            address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
+            read_only_graph: Arc::new(graph),
+            working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
     /// Returns `true` if the graph does not have a cycle in it. This operation
     /// is relatively expensive but necessary to prevent infinite loops.
     pub async fn is_acyclic_directed(&self) -> bool {

@@ -110,6 +110,22 @@ impl NodeWeight {
         }
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        match self {
+            NodeWeight::Action(weight) => weight.content_store_hashes(),
+            NodeWeight::ActionPrototype(weight) => weight.content_store_hashes(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.content_store_hashes(),
+            NodeWeight::AttributeValue(weight) => weight.content_store_hashes(),
+            NodeWeight::Category(weight) => weight.content_store_hashes(),
+            NodeWeight::Component(weight) => weight.content_store_hashes(),
+            NodeWeight::Content(weight) => weight.content_store_hashes(),
+            NodeWeight::Func(weight) => weight.content_store_hashes(),
+            NodeWeight::FuncArgument(weight) => weight.content_store_hashes(),
+            NodeWeight::Ordering(weight) => weight.content_store_hashes(),
+            NodeWeight::Prop(weight) => weight.content_store_hashes(),
+        }
+    }
+
     pub fn content_address_discriminants(&self) -> Option<ContentAddressDiscriminants> {
         match self {
             NodeWeight::Content(weight) => Some(weight.content_address().into()),

@@ -60,6 +60,10 @@ impl PropNodeWeight {
         self.content_address
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![self.content_address.content_hash()]
+    }
+
     pub fn content_hash(&self) -> ContentHash {
         self.content_address.content_hash()
     }
