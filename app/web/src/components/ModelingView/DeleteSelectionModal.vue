@@ -121,8 +121,18 @@ function open() {
 
 async function onConfirmDelete() {
   close();
-  if (componentsStore.selectedEdgeId) {
-    await componentsStore.DELETE_EDGE(componentsStore.selectedEdgeId);
+  if (
+    componentsStore.selectedEdgeId &&
+    componentsStore.selectedEdge?.toSocketId &&
+    componentsStore.selectedEdge?.fromSocketId
+  ) {
+    await componentsStore.DELETE_EDGE(
+      componentsStore.selectedEdgeId,
+      componentsStore.selectedEdge?.toSocketId,
+      componentsStore.selectedEdge?.fromSocketId,
+      componentsStore.selectedEdge?.toComponentId,
+      componentsStore.selectedEdge?.fromComponentId,
+    );
   } else if (componentsStore.selectedComponentIds) {
     await componentsStore.DELETE_COMPONENTS(
       componentsStore.selectedComponentIds,

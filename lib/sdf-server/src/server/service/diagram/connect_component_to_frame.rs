@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
-use dal::{ChangeSet, ComponentId, Visibility};
+use dal::{ChangeSet, ComponentId, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -33,6 +33,11 @@ pub async fn connect_component_to_frame(
 
     // Connect children to parent through frame edge
     Frame::upsert_parent(&ctx, request.child_id, request.parent_id).await?;
+
+    WsEvent::component_updated(&ctx, request.child_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     track(
         &posthog_client,

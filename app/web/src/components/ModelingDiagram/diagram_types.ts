@@ -247,7 +247,7 @@ export type DiagramEdgeDef = {
   toComponentId: DiagramElementId;
   toSocketId: DiagramElementId;
   isBidirectional?: boolean;
-  isInvisible?: boolean;
+  isInferred?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdAt?: Date;

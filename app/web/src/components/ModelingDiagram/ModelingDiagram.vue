@@ -2331,31 +2331,16 @@ async function endDrawEdge() {
   const toComponentId = adjustedTo.parent.def.id;
   const toSocketId = adjustedTo.def.id;
 
-  const equivalentEdge = _.find(
-    edges.value,
-    (e) =>
-      e.def.fromComponentId === fromComponentId &&
-      e.def.fromSocketId === fromSocketId &&
-      e.def.toComponentId === toComponentId &&
-      e.def.toSocketId === toSocketId,
+  await componentsStore.CREATE_COMPONENT_CONNECTION(
+    {
+      componentId: fromComponentId,
+      socketId: fromSocketId,
+    },
+    {
+      componentId: toComponentId,
+      socketId: toSocketId,
+    },
   );
-
-  // TODO: probably move this to the store?
-  // and the backend should probably handle it correctly on the create edge route
-  if (equivalentEdge) {
-    await componentsStore.RESTORE_EDGE(equivalentEdge.def.id);
-  } else {
-    await componentsStore.CREATE_COMPONENT_CONNECTION(
-      {
-        componentId: fromComponentId,
-        socketId: fromSocketId,
-      },
-      {
-        componentId: toComponentId,
-        socketId: toSocketId,
-      },
-    );
-  }
 }
 
 const pasteElementsActive = computed(() => {

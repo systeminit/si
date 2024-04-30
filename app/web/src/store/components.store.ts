@@ -77,19 +77,22 @@ export type FullComponent = RawComponent & {
   isGroup: false;
 };
 
-type Edge = {
-  id: EdgeId;
+type RawEdge = {
   fromComponentId: ComponentId;
   fromSocketId: SocketId;
   toComponentId: ComponentId;
   toSocketId: SocketId;
-  isInvisible?: boolean;
+  toDelete: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdInfo: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
-  toDelete: boolean;
+};
+
+type Edge = RawEdge & {
+  id: EdgeId;
+  isInferred: boolean;
 };
 
 export interface ActorAndTimestamp {
@@ -210,6 +213,15 @@ export const getAssetIcon = (name: string) => {
 
   return (icon || "logo-si") as IconNames; // fallback to SI logo
 };
+
+const edgeFromRawEdge =
+  (isInferred: boolean) =>
+  (e: RawEdge): Edge => {
+    const edge = structuredClone(e) as Edge;
+    edge.id = `${edge.toSocketId}_${edge.fromSocketId}`;
+    edge.isInferred = isInferred;
+    return edge;
+  };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
@@ -457,36 +469,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           diagramEdges(): DiagramEdgeDef[] {
-            const validEdges = _.filter(this.allEdges, (edge) => {
+            return _.filter(this.allEdges, (edge) => {
               return (
                 !!this.componentsById[edge.toComponentId] &&
                 !!this.componentsById[edge.fromComponentId]
               );
-            });
-
-            // If edge connects inside ancestry, don't show
-            return _.map(validEdges, (edge) => {
-              const fromComponent = this.componentsById[edge.fromComponentId];
-              if (!fromComponent)
-                throw Error(`Not finding from node for edge ${edge.id}`);
-              const fromParentage = [
-                fromComponent.id,
-                ...(fromComponent.ancestorIds ?? []),
-              ];
-
-              const toComponent = this.componentsById[edge.toComponentId];
-              if (!toComponent)
-                throw Error(`Not finding to node for edge ${edge.id}`);
-              const toParentage = [
-                toComponent.id,
-                ...(toComponent.ancestorIds ?? []),
-              ];
-
-              const isInvisible =
-                fromParentage.includes(toComponent.id) ||
-                toParentage.includes(fromComponent.id);
-
-              return { ...edge, isInvisible };
             });
           },
 
@@ -621,7 +608,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async FETCH_DIAGRAM_DATA() {
             return new ApiRequest<{
               components: RawComponent[];
-              edges: Edge[];
+              edges: RawEdge[];
+              inferredEdges: RawEdge[];
             }>({
               url: "diagram/get_diagram",
               params: {
@@ -629,7 +617,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
-                this.edgesById = _.keyBy(response.edges, "id");
+                const edges =
+                  response.edges && response.edges.length > 0
+                    ? response.edges.map(edgeFromRawEdge(false))
+                    : [];
+                const inferred =
+                  response.inferredEdges && response.inferredEdges.length > 0
+                    ? response.inferredEdges.map(edgeFromRawEdge(true))
+                    : [];
+                this.edgesById = _.keyBy([...edges, ...inferred], "id");
 
                 // remove invalid component IDs from the selection
                 const validComponentIds = _.intersection(
@@ -827,6 +823,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   toSocketId: to.socketId,
                   changeStatus: "added",
                   toDelete: false,
+                  isInferred: false,
                   createdInfo: {
                     timestamp: nowTs,
                     actor: { kind: "user", label: "You" },
@@ -882,8 +879,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               optimistic: () => {
                 const component = this.rawComponentsById[childId];
                 if (!component) return;
+                const full_component = this.componentsById[childId];
                 const prevParentId = component?.parentId;
                 delete component.parentId;
+
+                // remove inferred edges between children and parents
+                for (const edge of _.filter(
+                  _.values(this.edgesById),
+                  (edge) =>
+                    !!(
+                      edge.isInferred &&
+                      edge.toComponentId === component.id &&
+                      full_component?.ancestorIds?.includes(
+                        edge.fromComponentId,
+                      )
+                    ),
+                )) {
+                  delete this.edgesById[edge.id];
+                }
+
                 return () => {
                   component.parentId = prevParentId;
                 };
@@ -956,7 +970,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async DELETE_EDGE(edgeId: EdgeId) {
+          async DELETE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+            toComponentId: ComponentId,
+            fromComponentId: ComponentId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -967,7 +987,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/delete_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1008,7 +1031,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async RESTORE_EDGE(edgeId: EdgeId) {
+          /* async RESTORE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -1019,7 +1046,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/restore_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                toSocketId,
+                fromSocketId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1043,7 +1071,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 };
               },
             });
-          },
+          }, */
 
           async DELETE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
