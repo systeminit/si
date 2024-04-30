@@ -3,7 +3,6 @@
 [![Discord Server](https://img.shields.io/badge/discord-gray?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/system-init)
 [![Build dashboard](https://img.shields.io/badge/build%20dashboard-gray?style=for-the-badge&logo=buildkite&logoColor=white)](https://buildkite.com/system-initiative)
 [![Main status](https://img.shields.io/buildkite/ecdbcb0ae243a74976f62a95826ec1fce62707e6fe07e4b973?style=for-the-badge&logo=buildkite&label=main)](https://buildkite.com/system-initiative/si-merge-main)
-[![Nightly status](https://img.shields.io/buildkite/311961055d5366e6b7d0bfb95cc01a513a103e8b39c8a42d33?style=for-the-badge&logo=buildkite&label=nightly)](https://buildkite.com/system-initiative/si-nightly)
 
 This is a monolithic repository containing the System Initiative software.
 
