@@ -1,3 +1,5 @@
+use core::fmt;
+
 use thiserror::Error;
 
 use crate::{
@@ -75,5 +77,15 @@ impl ValueSource {
         }
 
         Ok(result)
+    }
+}
+impl fmt::Display for ValueSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValueSource::InputSocket(_) => write!(f, "Input Socket"),
+            ValueSource::OutputSocket(_) => write!(f, "Output Socket"),
+            ValueSource::Prop(_) => write!(f, "Prop"),
+            ValueSource::StaticArgumentValue(_) => write!(f, "Static Argument"),
+        }
     }
 }
