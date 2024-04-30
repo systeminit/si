@@ -10,7 +10,7 @@
           class="flex flex-row items-center gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :loading="executeAssetTaskRunning"
+            :loading="execAssetReqStatus.isPending"
             :loadingText="
               editingAsset.id ? 'Updating Asset...' : 'Creating Asset...'
             "
@@ -62,10 +62,7 @@
         </ErrorMessage>
 
         <div>
-          <!-- For now, using v-if inside a <Stack> is breaking the VormInputs below so we add indirection -->
-          <ErrorMessage v-if="executeAssetTaskError">
-            {{ executeAssetTaskError }}
-          </ErrorMessage>
+          <ErrorMessage :requestStatus="execAssetReqStatus" />
         </div>
 
         <VormInput
@@ -171,7 +168,6 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
-import { storeToRefs } from "pinia";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
@@ -245,27 +241,15 @@ const disabledWarning = computed(() => {
   return "";
 });
 
-const { executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError } =
-  storeToRefs(assetStore);
+const execAssetReqStatus = assetStore.getRequestStatus(
+  "EXEC_ASSET",
+  assetStore.selectedAssetId,
+);
 const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
   }
 };
-
-watch(
-  [executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError],
-  () => {
-    // If stopped running task and have ID, we finished saving. Open notification modal.
-    if (
-      !executeAssetTaskRunning.value &&
-      executeAssetTaskId.value !== undefined &&
-      !executeAssetTaskError.value?.length
-    ) {
-      executeAssetModalRef.value?.open();
-    }
-  },
-);
 
 const closeHandler = () => {
   assetStore.executeAssetTaskId = undefined;

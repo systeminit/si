@@ -437,6 +437,22 @@ export const useAssetStore = () => {
             },
           },
           {
+            eventType: "SchemaVariantUpdateFinished",
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              if (data.schemaVariantId !== nilId() && this.selectedAssetId) {
+                this.setSchemaVariantIdForAsset(
+                  this.selectedAssetId,
+                  data.schemaVariantId,
+                );
+                // We need to reload both schemas and assets since they're stored separately
+                this.LOAD_ASSET(this.selectedAssetId);
+                useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
+                useFuncStore().FETCH_INPUT_SOURCE_LIST(data.schemaVariantId); // a new asset means new input sources
+              }
+            },
+          },
+          {
             eventType: "ChangeSetApplied",
             callback: () => {
               this.LOAD_ASSET_LIST();
@@ -470,26 +486,6 @@ export const useAssetStore = () => {
                   }
                 }
                 this.executeAssetTaskError = errorMessage;
-              }
-            },
-          },
-          {
-            eventType: "SchemaVariantUpdateFinished",
-            callback: async ({ taskId, schemaVariantId }) => {
-              if (taskId === this.executeAssetTaskId) {
-                this.executeAssetTaskRunning = false;
-                this.executeAssetTaskError = undefined;
-
-                if (schemaVariantId !== nilId() && this.selectedAssetId) {
-                  this.setSchemaVariantIdForAsset(
-                    this.selectedAssetId,
-                    schemaVariantId,
-                  );
-                  // We need to reload both schemas and assets since they're stored separately
-                  await this.LOAD_ASSET(this.selectedAssetId);
-                  await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
-                  await useFuncStore().FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
-                }
               }
             },
           },

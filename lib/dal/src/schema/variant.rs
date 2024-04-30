@@ -1,6 +1,6 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
-use petgraph::{Direction, Incoming};
+use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
@@ -1618,5 +1618,27 @@ impl SchemaVariant {
         }
 
         Ok(schema_variant_ids)
+    }
+
+    pub async fn remove_direct_connected_edges(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let maybe_schema_indices = workspace_snapshot.edges_directed(self.id, Outgoing).await?;
+
+        for (_edge_weight, _source_index, target_index) in maybe_schema_indices {
+            workspace_snapshot
+                .remove_node_by_id(
+                    ctx.change_set()?,
+                    workspace_snapshot.get_node_weight(target_index).await?.id(),
+                )
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn rebuild_variant_root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        RootProp::new(ctx, self.id).await?;
+        Ok(())
     }
 }

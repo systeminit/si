@@ -52,6 +52,8 @@ pub enum VariantAuthoringError {
     SchemaVariantAssetNotFound(SchemaVariantId),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
+    #[error("schema variant not updated: {0}")]
+    SchemaVariantUpdatedFailed(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si pkg error: {0}")]
@@ -214,6 +216,133 @@ impl VariantAuthoringClient {
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(
+        name = "variant.authoring.update_existing_variant_and_regenerate",
+        level = "info",
+        skip_all
+    )]
+    pub async fn update_existing_variant_and_regenerate(
+        ctx: &DalContext,
+        current_sv_id: SchemaVariantId,
+        name: String,
+        menu_name: Option<String>,
+        category: String,
+        color: String,
+        link: Option<String>,
+        code: String,
+        description: Option<String>,
+        component_type: ComponentType,
+    ) -> VariantAuthoringResult<()> {
+        // Ok we need to delete the first level of outgoing children for the schema variant
+        let sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        // then we can build the package and reimport ALL but the schema variant itself
+        if let Some(asset_func_id) = sv.asset_func_id {
+            let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
+
+            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            asset_func
+                .clone()
+                .modify(ctx, |func| {
+                    func.name = name.clone();
+                    func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
+                    func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
+                    func.display_name = menu_name
+                        .clone()
+                        .map(|display_name| display_name.to_owned());
+                    func.code_base64 = Some(code_base64);
+                    func.description = description.clone();
+                    func.handler = Some("main".to_string());
+                    func.hidden = false;
+                    func.link = link.clone();
+                    Ok(())
+                })
+                .await?;
+            let asset_func_spec = build_asset_func_spec(&asset_func)?;
+            let definition = execute_asset_func(ctx, &asset_func).await?;
+            let metadata = SchemaVariantMetadataJson {
+                name: name.clone(),
+                menu_name: menu_name.clone(),
+                category,
+                color,
+                component_type,
+                link: link.clone(),
+                description: description.clone(),
+            };
+
+            let (new_variant_spec, _skips, variant_funcs) =
+                build_variant_spec_based_on_existing_variant(
+                    ctx,
+                    definition,
+                    &asset_func_spec,
+                    &metadata,
+                    current_sv_id,
+                )
+                .await?;
+
+            let schema_spec = metadata.to_spec(new_variant_spec)?;
+            //TODO @stack72 - figure out how we get the current user in this!
+            let pkg_spec = PkgSpec::builder()
+                .name(&metadata.name)
+                .created_by("sally@systeminit.com")
+                .funcs(variant_funcs.clone())
+                .func(asset_func_spec)
+                .schema(schema_spec)
+                .version("0")
+                .build()?;
+            let pkg = SiPkg::load_from_spec(pkg_spec)?;
+
+            let pkg_schemas = pkg.schemas()?;
+            let pkg_variants = pkg_schemas
+                .first()
+                .ok_or(VariantAuthoringError::PkgMissingSchema)?
+                .variants()?;
+
+            let schema_spec = pkg_schemas
+                .first()
+                .ok_or(VariantAuthoringError::PkgMissingSchema)?;
+            let variant_pkg_spec = pkg_variants
+                .first()
+                .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
+
+            let mut schema = SchemaVariant::get_by_id(ctx, current_sv_id)
+                .await?
+                .schema(ctx)
+                .await?;
+
+            // We need to clean up the old graph before we re-import the new parts!
+            sv.remove_direct_connected_edges(ctx).await?;
+            sv.rebuild_variant_root_prop(ctx).await?;
+
+            // Now we can reimport all parts of the schema variant in place!
+            let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
+            if let Some(new_schema_variant) = import_schema_variant(
+                ctx,
+                None,
+                &mut schema,
+                schema_spec.clone(),
+                variant_pkg_spec,
+                None,
+                &mut thing_map,
+                Some(sv),
+            )
+            .await?
+            {
+                if new_schema_variant.id != current_sv_id {
+                    return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
+                        current_sv_id,
+                    ));
+                }
+            }
+
+            Ok(())
+        } else {
+            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
+                current_sv_id,
+            ));
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(
         name = "variant.authoring.update_and_generate_variant_with_new_version",
         level = "info",
         skip_all
@@ -317,6 +446,7 @@ impl VariantAuthoringClient {
             variant_pkg_spec,
             None,
             &mut thing_map,
+            None,
         )
         .await?
         {

@@ -248,7 +248,7 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
   };
   SchemaVariantUpdateFinished: {
-    taskId: string;
+    changeSetId: string;
     schemaVariantId: string;
   };
   SchemaVariantSaved: {

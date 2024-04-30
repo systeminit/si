@@ -515,6 +515,7 @@ async fn import_schema(
                 variant_spec,
                 installed_module.clone(),
                 thing_map,
+                None,
             )
             .await?;
 
@@ -986,6 +987,7 @@ pub async fn clone_and_import_funcs(
     Ok(thing_map)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn import_schema_variant(
     ctx: &DalContext,
     change_set_id: Option<ChangeSetId>,
@@ -994,6 +996,7 @@ pub(crate) async fn import_schema_variant(
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
+    installed_schema_variant: Option<SchemaVariant>,
 ) -> PkgResult<Option<SchemaVariant>> {
     let schema_variant = match change_set_id {
         None => {
@@ -1009,6 +1012,10 @@ pub(crate) async fn import_schema_variant(
                 if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
                     existing_schema_variant = Some(matching_schema_variant);
                 }
+            }
+
+            if let Some(existing_sv) = installed_schema_variant {
+                existing_schema_variant = Some(existing_sv);
             }
 
             let (variant, created) = match existing_schema_variant {
