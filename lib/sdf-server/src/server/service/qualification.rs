@@ -41,8 +41,6 @@ pub enum QualificationError {
     FuncNotFound,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("not writable")]
-    NotWritable,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error("qualification summary error: {0}")]

@@ -3,6 +3,7 @@
 use base64::engine::general_purpose;
 use base64::Engine;
 use std::collections::HashSet;
+use telemetry::prelude::debug;
 
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
@@ -30,12 +31,6 @@ pub(crate) async fn save_func(
 ) -> FuncAuthoringResult<()> {
     let func = Func::get_by_id_or_error(ctx, id).await?;
 
-    // TODO(nick): we should eventually either return an error or make it a no-op.
-    // For now, we need configurable builtins to ensure that the system is working.
-    // if func.builtin {
-    //     return Err(FuncAuthoringError::NotWritable);
-    // }
-
     Func::modify_by_id(ctx, func.id, |func| {
         func.display_name = display_name.to_owned();
         func.name = name.to_owned();
@@ -48,6 +43,9 @@ pub(crate) async fn save_func(
     })
     .await?;
 
+    // TODO(nick): perform func kind and associations matching. If they do not match, we should
+    // error. We should also error if the func kind should not have associations, but the user
+    // provided them (e.g. FuncKind::SchemaVariantDefinition).
     match func.kind {
         FuncKind::Action => {
             if let Some(FuncAssociations::Action {
@@ -127,9 +125,7 @@ pub(crate) async fn save_func(
                 .await?;
             }
         }
-        FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {
-            return Err(FuncAuthoringError::NotWritable(func.id))
-        }
+        func_kind => debug!(%func.id, %func_kind, "no associations for func kind"),
     }
 
     WsEvent::func_saved(ctx, func.id)
