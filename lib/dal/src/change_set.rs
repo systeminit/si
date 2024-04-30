@@ -347,7 +347,15 @@ impl ChangeSet {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(
+        name = "change_set.find",
+        level = "debug",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.pk = Empty,
+        ),
+    )]
     pub async fn find(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
@@ -363,7 +371,16 @@ impl ChangeSet {
             .await?;
 
         match row {
-            Some(row) => Ok(Some(Self::try_from(row)?)),
+            Some(row) => {
+                let span = Span::current();
+
+                let change_set = Self::try_from(row)?;
+
+                if let Some(workspace_id) = change_set.workspace_id {
+                    span.record("si.workspace.pk", workspace_id.to_string());
+                }
+                Ok(Some(change_set))
+            }
             None => Ok(None),
         }
     }

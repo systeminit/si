@@ -29,7 +29,7 @@ pub(crate) enum RebaseError {
 
 type RebaseResult<T> = Result<T, RebaseError>;
 
-#[instrument(level = "info", skip_all)]
+#[instrument(name = "perform_rebase", level = "debug", skip_all, fields())]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
     message: &ActivityRebaseRequest,

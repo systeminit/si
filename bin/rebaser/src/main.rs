@@ -29,6 +29,7 @@ async fn async_main() -> Result<()> {
             .log_env_var_prefix("SI")
             .app_modules(vec!["rebaser", "rebaser_server"])
             .interesting_modules(vec![
+                "dal",
                 "naxum",
                 "si_data_nats",
                 "si_data_pg",

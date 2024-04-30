@@ -58,13 +58,15 @@ where
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
+    #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
         config: LayerDbConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let pg_pool = PgPool::new(&config.pg_pool_config).await?;
         let nats_client = NatsClient::new(&config.nats_config).await?;
-        Self::initialize(
+
+        Self::from_services(
             config.disk_path,
             pg_pool,
             nats_client,
@@ -74,7 +76,8 @@ where
         .await
     }
 
-    pub async fn initialize(
+    #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
+    pub async fn from_services(
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,
         nats_client: NatsClient,

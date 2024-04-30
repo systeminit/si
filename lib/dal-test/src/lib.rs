@@ -338,7 +338,7 @@ impl TestContext {
     ) -> ServicesContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
-        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
+        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
             self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),

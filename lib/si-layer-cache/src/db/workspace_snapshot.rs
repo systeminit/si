@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_events::{Actor, Tenancy, WebEvent, WorkspaceSnapshotAddress};
+use telemetry::prelude::*;
 
 use crate::{
     error::LayerDbResult,
@@ -64,25 +65,55 @@ where
         Ok((key, reader))
     }
 
+    #[instrument(
+        name = "workspace_snapshot.read",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot.address = %key,
+        )
+    )]
     pub async fn read(&self, key: &WorkspaceSnapshotAddress) -> LayerDbResult<Option<Arc<V>>> {
         self.cache.get(key.to_string().into()).await
     }
 
+    #[instrument(
+        name = "workspace_snapshot.read_wait_for_memory",
+        level = "debug",
+        skip_all,
+        fields(
+            si.layer_cache.memory_cache.hit = Empty,
+            si.layer_cache.memory_cache.read_wait_ms = Empty,
+            si.layer_cache.memory_cache.retries = Empty,
+            si.workspace_snapshot.address = %key,
+        )
+    )]
     pub async fn read_wait_for_memory(
         &self,
         key: &WorkspaceSnapshotAddress,
     ) -> LayerDbResult<Option<Arc<V>>> {
+        let span = Span::current();
+
         let key: Arc<str> = key.to_string().into();
         const MAX_TRIES: i32 = 2000;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));
         let mut tried = 0;
+        let read_wait = Instant::now();
         while tried < MAX_TRIES {
             if let Some(v) = self.cache.memory_cache().get(&key).await {
+                span.record("si.layer_cache.memory_cache.hit", true);
+                span.record(
+                    "si.layer_cache.memory_cache.read_wait_ms",
+                    read_wait.elapsed().as_millis(),
+                );
+                span.record("si.layer_cache.memory_cache.retries", tried);
                 return Ok(Some(v));
             }
             tried += 1;
             interval.tick().await;
         }
+
+        span.record("si.layer_cache.memory_cache.hit", false);
         self.cache.get(key.to_string().into()).await
     }
 }

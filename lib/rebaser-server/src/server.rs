@@ -25,9 +25,6 @@ use crate::{
     change_set_requests::ChangeSetRequestsTask, Config, ServerError as Error, ServerResult,
 };
 
-const SQL_OPEN_CHANGE_SETS: &str =
-    "SELECT id, workspace_id from change_set_pointers WHERE status IN ($1, $2, $3)";
-
 const CONSUMER_NAME: &str = "rebaser-requests";
 
 /// Server metadata, used with telemetry.
@@ -200,12 +197,14 @@ impl Server {
             // A rebase request implies a work queue should be set up for the associated change
             // set, so we'll launch a task to process from this queue.
             ActivityPayload::RebaseRequest(req) => {
-                trace!("processing rebase request activity");
-                self.launch_change_set_task(
-                    activity.metadata.tenancy.workspace_pk,
-                    req.to_rebase_change_set_id.into(),
-                )
-                .await?;
+                let workspace_id = activity.metadata.tenancy.workspace_pk;
+                let change_set_id = req.to_rebase_change_set_id.into();
+                trace!(%workspace_id, %change_set_id, "processing rebase request activity");
+
+                if !self.running_change_set_task(change_set_id) {
+                    self.launch_change_set_task(workspace_id, change_set_id)
+                        .await?;
+                }
             }
             // Exhaustively match variants so we catch future new variants
             ActivityPayload::RebaseFinished(_)
@@ -243,6 +242,15 @@ impl Server {
         Ok(())
     }
 
+    #[instrument(
+        name = "rebaser.launch_change_set_task",
+        level = "debug",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.pk = %workspace_id,
+        )
+    )]
     async fn launch_change_set_task(
         &mut self,
         workspace_id: WorkspacePk,
@@ -320,6 +328,7 @@ impl Server {
         Ok(task.handle.into_future())
     }
 
+    #[instrument(name = "rebaser.all_open_change_sets", level = "debug", skip_all)]
     async fn all_open_change_sets(
         pg: &InstrumentedClient,
     ) -> ServerResult<HashSet<(WorkspacePk, ChangeSetId)>> {
