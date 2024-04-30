@@ -16,10 +16,7 @@
       />
     </template>
     <template #subpanel2>
-      <AssetPalette
-        class="border-t dark:border-neutral-600"
-        :actionsAreRunning="actionsAreRunning"
-      />
+      <AssetPalette class="border-t dark:border-neutral-600" />
     </template>
   </component>
 
