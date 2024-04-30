@@ -51,24 +51,9 @@ pub async fn set_component_position(
         size
     };
 
-    // TODO(nick): handle the "deleted" case with the new engine.
     component
         .set_geometry(&ctx, request.x, request.y, width, height)
         .await?;
-    // {
-    //     if node.visibility().deleted_at.is_some() {
-    //         node.set_geometry(&ctx, &request.x, &request.y, width, height)
-    //             .await?;
-    //     } else {
-    //         let ctx_without_deleted = &ctx.clone_with_new_visibility(Visibility::new_change_set(
-    //             ctx.visibility().change_set_pk,
-    //             false,
-    //         ));
-    //
-    //         node.set_geometry(ctx_without_deleted, &request.x, &request.y, width, height)
-    //             .await?;
-    //     };
-    // }
     let user_id = ChangeSet::extract_userid_from_context(&ctx).await;
 
     WsEvent::set_component_position(&ctx, ctx.change_set_id(), &component, user_id)

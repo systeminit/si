@@ -1,10 +1,12 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::func::authoring::{FuncAuthoringClient, TestExecuteFuncResult};
 use dal::{ComponentId, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::FuncResult;
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +25,8 @@ pub type ExecuteResponse = TestExecuteFuncResult;
 pub async fn execute(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(req): Json<ExecuteRequest>,
 ) -> FuncResult<Json<ExecuteResponse>> {
     let ctx = builder.build(request_ctx.build(req.visibility)).await?;
@@ -36,6 +40,18 @@ pub async fn execute(
         req.component_id,
     )
     .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "test_execute",
+        serde_json::json!({
+            "how": "/func/test_execute",
+            "id": req.id,
+            "component_id": req.component_id,
+        }),
+    );
 
     Ok(Json(response))
 }

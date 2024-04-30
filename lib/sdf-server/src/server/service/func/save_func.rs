@@ -56,10 +56,11 @@ pub async fn save_func(
         &original_uri,
         "save_func",
         serde_json::json!({
-                    "func_id": func.id,
-                    "func_name": func.name.as_str(),
-                    "func_variant": func.backend_response_type,
-                    "func_is_builtin": func.builtin,
+            "how": "/func/save_func",
+            "func_id": func.id,
+            "func_name": func.name.as_str(),
+            "func_variant": func.backend_response_type,
+            "func_is_builtin": func.builtin,
         }),
     );
 

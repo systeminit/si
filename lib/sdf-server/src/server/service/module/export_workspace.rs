@@ -18,6 +18,7 @@ use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
+use crate::server::tracking::track;
 use crate::service::async_route::handle_error;
 use crate::service::module::{ModuleError, ModuleResult};
 
@@ -89,8 +90,8 @@ pub async fn export_workspace(
 pub async fn export_workspace_inner(
     ctx: &DalContext,
     workspace: Workspace,
-    _original_uri: &Uri,
-    PosthogClient(_posthog_client): PosthogClient,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): PosthogClient,
     RawAccessToken(raw_access_token): RawAccessToken,
 ) -> ModuleResult<()> {
     info!("Exporting workspace backup");
@@ -171,19 +172,17 @@ pub async fn export_workspace_inner(
         .upload_workspace(workspace.name().as_str(), &version, workspace_payload)
         .await?;
 
-    // track(
-    //     &posthog_client,
-    //     ctx,
-    //     original_uri,
-    //     "export_workspace",
-    //     serde_json::json!({
-    //                 "pkg_name": workspace.name().to_owned(),
-    //                 "pkg_version": version,
-    //                 "pkg_created_by_name": created_by_name,
-    //                 "pkg_created_by_email": created_by_email,
-    //                 "pkg_hash": response.latest_hash,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        ctx,
+        original_uri,
+        "export_workspace",
+        serde_json::json!({
+            "pkg_name": workspace.name().to_owned(),
+            "pkg_version": version,
+            "pkg_created_by_email": user.email().clone(),
+        }),
+    );
 
     ctx.commit().await?;
 

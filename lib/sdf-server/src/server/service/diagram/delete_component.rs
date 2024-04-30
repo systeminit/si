@@ -27,6 +27,7 @@ async fn delete_single_component(
         original_uri,
         "delete_component",
         serde_json::json!({
+            "how": "/diagram/delete_component",
             "component_id": id,
             "component_schema_name": comp_schema.name(),
             "change_set_id": ctx.change_set_id(),

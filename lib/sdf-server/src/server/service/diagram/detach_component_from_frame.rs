@@ -1,4 +1,5 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::diagram::DiagramResult;
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
@@ -18,8 +19,8 @@ pub struct DetachComponentRequest {
 pub async fn detach_component_from_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<DetachComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -27,16 +28,16 @@ pub async fn detach_component_from_frame(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     Frame::orphan_child(&ctx, request.child_id).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "detach_component_from_frame",
-    //     serde_json::json!({
-    //         "child_component_id": &request.component_id,
-    //         "parent_component_ids": &request.parent_ids,
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "detach_component_from_frame",
+        serde_json::json!({
+            "how": "/diagram/detach_component_from_frame",
+            "child_id": &request.child_id,
+        }),
+    );
 
     ctx.commit().await?;
 
