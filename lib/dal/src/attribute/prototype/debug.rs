@@ -34,6 +34,7 @@ pub struct AttributePrototypeDebugView {
     pub func_name: String,
     pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
     pub attribute_values: Vec<AttributeValueId>,
+    pub is_component_specific: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +94,10 @@ impl AttributePrototypeDebugView {
         attribute_value_id: AttributeValueId,
     ) -> AttributePrototypeDebugViewResult<AttributePrototypeDebugView> {
         let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
+        let has_component_prototype =
+            AttributeValue::component_prototype_id(ctx, attribute_value_id)
+                .await?
+                .is_some();
         let destination_component_id =
             AttributeValue::component_id(ctx, attribute_value_id).await?;
         let mut func_binding_args: HashMap<String, Vec<FuncArgDebugView>> = HashMap::new();
@@ -327,6 +332,7 @@ impl AttributePrototypeDebugView {
             func_execution,
             id: prototype_id,
             attribute_values,
+            is_component_specific: has_component_prototype,
         };
         info!("AttributePrototype Debug View: {:?}", view);
         Ok(view)
