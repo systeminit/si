@@ -13,12 +13,12 @@ use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
+use crate::func;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::SocketKind;
-use crate::{func, ChangeSetId};
 use crate::{
     func::argument::FuncArgument,
     prop::PropPath,
@@ -64,7 +64,6 @@ const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normaliz
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     metadata: &SiPkgMetadata,
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
@@ -92,14 +91,9 @@ async fn import_change_set(
             if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
-                thing_map.insert(
-                    change_set_id,
-                    unique_id.to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
             } else if let Some(func) = import_func(
                 ctx,
-                None,
                 func_spec,
                 installed_pkg.clone(),
                 thing_map,
@@ -110,7 +104,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
+                    import_func_arguments(ctx, func.id, &args, thing_map).await?;
                 }
             }
         } else {
@@ -127,7 +121,6 @@ async fn import_change_set(
 
                 // We're not going to import this func but we need it in the map for lookups later
                 thing_map.insert(
-                    change_set_id,
                     func_spec.unique_id().to_owned(),
                     Thing::Func(func.to_owned()),
                 );
@@ -136,7 +129,6 @@ async fn import_change_set(
             } else {
                 import_func(
                     ctx,
-                    change_set_id,
                     func_spec,
                     installed_pkg.clone(),
                     thing_map,
@@ -146,11 +138,7 @@ async fn import_change_set(
             };
 
             if let Some(func) = func {
-                thing_map.insert(
-                    change_set_id,
-                    unique_id.to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
 
                 if let Some(module) = installed_pkg.clone() {
                     module.create_association(ctx, func.id.into()).await?;
@@ -159,7 +147,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    import_func_arguments(ctx, change_set_id, func.id, &args, thing_map).await?;
+                    import_func_arguments(ctx, func.id, &args, thing_map).await?;
                 }
             }
         };
@@ -194,14 +182,8 @@ async fn import_change_set(
             metadata.name(),
         );
 
-        let (_, schema_variant_ids) = import_schema(
-            ctx,
-            change_set_id,
-            schema_spec,
-            installed_pkg.clone(),
-            thing_map,
-        )
-        .await?;
+        let (_, schema_variant_ids) =
+            import_schema(ctx, schema_spec, installed_pkg.clone(), thing_map).await?;
 
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
@@ -256,14 +238,12 @@ pub async fn import_pkg_from_pkg(
             .await?,
         )
     };
-    let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-    let mut change_set_things = ThingMap::new(default_change_set_id);
+    let mut change_set_things = ThingMap::new();
 
     match metadata.kind() {
         SiPkgKind::Module => {
             let (installed_schema_variant_ids, _, _) = import_change_set(
                 ctx,
-                None,
                 &metadata,
                 &pkg.funcs()?,
                 &pkg.schemas()?,
@@ -350,55 +330,49 @@ async fn update_func(
 
 pub async fn import_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_spec: &SiPkgFunc<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     is_builtin: bool,
 ) -> PkgResult<Option<Func>> {
-    let func = match change_set_id {
-        None => {
-            let mut existing_func: Option<Func> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
-                let mut maybe_matching_func: Vec<Func> = associated_funcs
-                    .into_iter()
-                    .filter(|f| f.name.clone() == func_spec.name())
-                    .collect();
-                if let Some(matching_func) = maybe_matching_func.pop() {
-                    existing_func = Some(matching_func);
-                }
-            }
-
-            let (func, created) = match existing_func {
-                None => (create_func(ctx, func_spec, is_builtin).await?, true),
-                Some(installed_func_record) => (installed_func_record, true),
-            };
-
-            if let Some(installed_pkg) = installed_module {
-                installed_pkg
-                    .create_association(ctx, func.id.into())
-                    .await?;
-            }
-
-            thing_map.insert(
-                change_set_id,
-                func_spec.unique_id().to_owned(),
-                Thing::Func(func.to_owned()),
-            );
-
-            if created {
-                Some(func)
-            } else {
-                None
+    let func = {
+        let mut existing_func: Option<Func> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
+            let mut maybe_matching_func: Vec<Func> = associated_funcs
+                .into_iter()
+                .filter(|f| f.name.clone() == func_spec.name())
+                .collect();
+            if let Some(matching_func) = maybe_matching_func.pop() {
+                existing_func = Some(matching_func);
             }
         }
-        Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
+
+        let (func, created) = match existing_func {
+            None => (create_func(ctx, func_spec, is_builtin).await?, true),
+            Some(installed_func_record) => (installed_func_record, true),
+        };
+
+        if let Some(installed_pkg) = installed_module {
+            installed_pkg
+                .create_association(ctx, func.id.into())
+                .await?;
+        }
+
+        thing_map.insert(
+            func_spec.unique_id().to_owned(),
+            Thing::Func(func.to_owned()),
+        );
+
+        if created {
+            Some(func)
+        } else {
+            None
+        }
     };
 
     if let Some(func) = func.as_ref() {
         thing_map.insert(
-            change_set_id,
             func_spec.unique_id().to_owned(),
             Thing::Func(func.to_owned()),
         );
@@ -424,18 +398,12 @@ async fn create_func_argument(
 
 async fn import_func_arguments(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_id: FuncId,
     func_arguments: &[SiPkgFuncArgument<'_>],
     _thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match change_set_id {
-        None => {
-            for arg in func_arguments {
-                create_func_argument(ctx, func_id, arg).await?;
-            }
-        }
-        Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
+    for arg in func_arguments {
+        create_func_argument(ctx, func_id, arg).await?;
     }
 
     Ok(())
@@ -454,62 +422,53 @@ async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> 
 
 async fn import_schema(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_spec: &SiPkgSchema<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-    let schema_and_category = match change_set_id {
-        None => {
-            let mut existing_schema: Option<Schema> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
-                let mut maybe_matching_schema: Vec<Schema> = associated_schemas
-                    .into_iter()
-                    .filter(|s| s.name.clone() == schema_spec.name())
-                    .collect();
-                if let Some(matching_schema) = maybe_matching_schema.pop() {
-                    existing_schema = Some(matching_schema);
-                }
+    let schema_and_category = {
+        let mut existing_schema: Option<Schema> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
+            let mut maybe_matching_schema: Vec<Schema> = associated_schemas
+                .into_iter()
+                .filter(|s| s.name.clone() == schema_spec.name())
+                .collect();
+            if let Some(matching_schema) = maybe_matching_schema.pop() {
+                existing_schema = Some(matching_schema);
             }
-            let data = schema_spec
-                .data()
-                .ok_or(PkgError::DataNotFound("schema".into()))?;
-
-            // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
-            // to pull it off here, even if we find an existing schema.
-            let category = data.category.clone();
-
-            let schema = match existing_schema {
-                None => create_schema(ctx, data).await?,
-                Some(installed_schema_record) => installed_schema_record,
-            };
-
-            // Even if the asset is already installed, we write a record of the asset installation so that
-            // we can track the installed packages that share schemas.
-            if let Some(module) = installed_module.clone() {
-                module.create_association(ctx, schema.id().into()).await?;
-            }
-
-            Some((schema, category))
         }
-        Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
+        let data = schema_spec
+            .data()
+            .ok_or(PkgError::DataNotFound("schema".into()))?;
+
+        // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
+        // to pull it off here, even if we find an existing schema.
+        let category = data.category.clone();
+
+        let schema = match existing_schema {
+            None => create_schema(ctx, data).await?,
+            Some(installed_schema_record) => installed_schema_record,
+        };
+
+        // Even if the asset is already installed, we write a record of the asset installation so that
+        // we can track the installed packages that share schemas.
+        if let Some(module) = installed_module.clone() {
+            module.create_association(ctx, schema.id().into()).await?;
+        }
+
+        Some((schema, category))
     };
 
     if let Some((mut schema, _category)) = schema_and_category {
         if let Some(unique_id) = schema_spec.unique_id() {
-            thing_map.insert(
-                change_set_id,
-                unique_id.to_owned(),
-                Thing::Schema(schema.to_owned()),
-            );
+            thing_map.insert(unique_id.to_owned(), Thing::Schema(schema.to_owned()));
         }
 
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
             let variant = import_schema_variant(
                 ctx,
-                change_set_id,
                 &mut schema,
                 schema_spec.clone(),
                 variant_spec,
@@ -524,7 +483,6 @@ async fn import_schema(
 
                 set_default_schema_variant_id(
                     ctx,
-                    change_set_id,
                     &mut schema,
                     schema_spec
                         .data()
@@ -545,19 +503,18 @@ async fn import_schema(
 
 async fn set_default_schema_variant_id(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema: &mut Schema,
     spec_default_unique_id: Option<&str>,
     variant_unique_id: Option<&str>,
     variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    match (change_set_id, variant_unique_id, spec_default_unique_id) {
-        (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
+    match (variant_unique_id, spec_default_unique_id) {
+        (None, _) | (Some(_), None) => {
             if schema.get_default_schema_variant_id(ctx).await?.is_none() {
                 schema.set_default_schema_variant(ctx, variant_id).await?;
             }
         }
-        (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
+        (Some(variant_unique_id), Some(spec_default_unique_id)) => {
             if variant_unique_id == spec_default_unique_id {
                 let current_default_variant_id = schema
                     .get_default_schema_variant_id(ctx)
@@ -606,12 +563,10 @@ struct PropVisitContext<'a> {
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
     pub default_values: Mutex<Vec<DefaultValueInfo>>,
     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-    pub change_set_id: Option<ChangeSetId>,
 }
 
 async fn import_leaf_function(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     leaf_func: SiPkgLeafFunction<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
@@ -624,7 +579,7 @@ async fn import_leaf_function(
 
     let kind: LeafKind = leaf_func.leaf_kind().into();
 
-    match thing_map.get(change_set_id, &leaf_func.func_unique_id().to_owned()) {
+    match thing_map.get(&leaf_func.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
                 .await?;
@@ -721,25 +676,20 @@ async fn create_socket(
 
 async fn import_socket(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     socket_spec: SiPkgSocket<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    let (input_socket, output_socket) = match change_set_id {
-        None => {
-            let data = socket_spec
-                .data()
-                .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
+    let (input_socket, output_socket) = {
+        let data = socket_spec
+            .data()
+            .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
 
-            create_socket(ctx, data, schema_variant_id).await?
-        }
-        Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
+        create_socket(ctx, data, schema_variant_id).await?
     };
 
     if let Some(unique_id) = socket_spec.unique_id() {
         thing_map.insert(
-            change_set_id,
             unique_id.to_owned(),
             Thing::Socket(Box::new((
                 input_socket.to_owned(),
@@ -756,7 +706,6 @@ async fn import_socket(
         (Some(func_unique_id), Some(output_socket), None) => {
             import_attr_func_for_output_socket(
                 ctx,
-                change_set_id,
                 schema_variant_id,
                 output_socket.id(),
                 func_unique_id,
@@ -792,67 +741,64 @@ async fn create_action_protoype(
 
 async fn import_action_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     action_func_spec: &SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
 ) -> PkgResult<Option<DeprecatedActionPrototype>> {
-    let prototype =
-        match thing_map.get(change_set_id, &action_func_spec.func_unique_id().to_owned()) {
-            Some(Thing::Func(func)) => {
-                let func_id = func.id;
+    let prototype = match thing_map.get(&action_func_spec.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            let func_id = func.id;
 
-                if let Some(unique_id) = action_func_spec.unique_id() {
-                    match thing_map.get(change_set_id, &unique_id.to_owned()) {
-                        Some(Thing::ActionPrototype(_prototype)) => {
-                            return Err(PkgError::WorkspaceExportNotSupported())
-                        }
-                        _ => {
-                            if action_func_spec.deleted() {
-                                None
-                            } else {
-                                Some(
-                                    create_action_protoype(
-                                        ctx,
-                                        action_func_spec,
-                                        func_id,
-                                        schema_variant_id,
-                                    )
-                                    .await?,
+            if let Some(unique_id) = action_func_spec.unique_id() {
+                match thing_map.get(&unique_id.to_owned()) {
+                    Some(Thing::ActionPrototype(_prototype)) => {
+                        return Err(PkgError::WorkspaceExportNotSupported())
+                    }
+                    _ => {
+                        if action_func_spec.deleted() {
+                            None
+                        } else {
+                            Some(
+                                create_action_protoype(
+                                    ctx,
+                                    action_func_spec,
+                                    func_id,
+                                    schema_variant_id,
                                 )
-                            }
+                                .await?,
+                            )
                         }
                     }
-                } else {
-                    Some(
-                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
-                            .await?,
-                    )
                 }
+            } else {
+                Some(
+                    create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
+                        .await?,
+                )
             }
-            _ => {
-                return Err(PkgError::MissingFuncUniqueId(
-                    action_func_spec.func_unique_id().into(),
-                ));
-            }
-        };
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                action_func_spec.func_unique_id().into(),
+            ));
+        }
+    };
 
     Ok(prototype)
 }
 
 async fn import_auth_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_spec: &SiPkgAuthFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
 ) -> PkgResult<Option<AuthenticationPrototype>> {
-    let prototype = match thing_map.get(change_set_id, &func_spec.func_unique_id().to_owned()) {
+    let prototype = match thing_map.get(&func_spec.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             let func_id = func.id;
 
             if let Some(unique_id) = func_spec.unique_id() {
-                match thing_map.get(change_set_id, &unique_id.to_owned()) {
+                match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::AuthPrototype(_prototype)) => {
                         return Err(PkgError::WorkspaceExportNotSupported())
                     }
@@ -922,7 +868,6 @@ impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
 
 async fn create_props(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     variant_spec: &SiPkgSchemaVariant<'_>,
     prop_root: SchemaVariantSpecPropRoot,
     prop_root_prop_id: PropId,
@@ -934,12 +879,10 @@ async fn create_props(
         attr_funcs: Mutex::new(vec![]),
         default_values: Mutex::new(vec![]),
         map_key_funcs: Mutex::new(vec![]),
-        change_set_id,
     };
 
     let parent_info = ParentPropInfo {
         prop_id: prop_root_prop_id,
-        path: PropPath::new(prop_root.path_parts()),
     };
 
     variant_spec
@@ -959,7 +902,7 @@ pub async fn clone_and_import_funcs(
     ctx: &DalContext,
     funcs: Vec<SiPkgFunc<'_>>,
 ) -> PkgResult<ThingMap> {
-    let mut thing_map = ThingMap::new(ctx.get_workspace_default_change_set_id().await?);
+    let mut thing_map = ThingMap::new();
 
     for func_spec in funcs {
         let func = if func::is_intrinsic(func_spec.name())
@@ -974,14 +917,14 @@ pub async fn clone_and_import_funcs(
             let func = create_func(ctx, &func_spec, false).await?;
 
             if !func_spec.arguments()?.is_empty() {
-                import_func_arguments(ctx, None, func.id, &func_spec.arguments()?, &mut thing_map)
+                import_func_arguments(ctx, func.id, &func_spec.arguments()?, &mut thing_map)
                     .await?;
             }
 
             func
         };
 
-        thing_map.insert(None, func_spec.unique_id().into(), Thing::Func(func));
+        thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
     }
 
     Ok(thing_map)
@@ -990,7 +933,6 @@ pub async fn clone_and_import_funcs(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn import_schema_variant(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema: &mut Schema,
     schema_spec: SiPkgSchema<'_>,
     variant_spec: &SiPkgSchemaVariant<'_>,
@@ -998,74 +940,70 @@ pub(crate) async fn import_schema_variant(
     thing_map: &mut ThingMap,
     installed_schema_variant: Option<SchemaVariant>,
 ) -> PkgResult<Option<SchemaVariant>> {
-    let schema_variant = match change_set_id {
-        None => {
-            let mut existing_schema_variant: Option<SchemaVariant> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_schema_variants =
-                    installed_pkg.list_associated_schema_variants(ctx).await?;
-                let mut maybe_matching_schema_variant: Vec<SchemaVariant> =
-                    associated_schema_variants
-                        .into_iter()
-                        .filter(|s| s.name() == schema_spec.name())
-                        .collect();
-                if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
-                    existing_schema_variant = Some(matching_schema_variant);
-                }
-            }
-
-            if let Some(existing_sv) = installed_schema_variant {
-                existing_schema_variant = Some(existing_sv);
-            }
-
-            let (variant, created) = match existing_schema_variant {
-                None => {
-                    let spec = schema_spec.to_spec().await?;
-                    let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
-
-                    let mut asset_func_id: Option<FuncId> = None;
-                    if let Some(variant_spec_data) = variant_spec.data() {
-                        let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-                        if let Thing::Func(asset_func) = thing_map
-                            .get(change_set_id, &func_unique_id)
-                            .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-                        {
-                            asset_func_id = Some(asset_func.id)
-                        }
-                    }
-                    (
-                        SchemaVariant::new(
-                            ctx,
-                            schema.id(),
-                            variant_spec.name(),
-                            metadata.menu_name,
-                            metadata.category,
-                            metadata.color,
-                            metadata.component_type,
-                            metadata.link,
-                            metadata.description,
-                            asset_func_id,
-                            variant_spec.is_builtin(),
-                        )
-                        .await?
-                        .0,
-                        true,
-                    )
-                }
-                Some(installed_variant) => (installed_variant, true),
-            };
-
-            if let Some(module) = installed_module.clone() {
-                module.create_association(ctx, variant.id().into()).await?;
-            }
-
-            if created {
-                Some(variant)
-            } else {
-                None
+    let schema_variant = {
+        let mut existing_schema_variant: Option<SchemaVariant> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_schema_variants =
+                installed_pkg.list_associated_schema_variants(ctx).await?;
+            let mut maybe_matching_schema_variant: Vec<SchemaVariant> = associated_schema_variants
+                .into_iter()
+                .filter(|s| s.name() == schema_spec.name())
+                .collect();
+            if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
+                existing_schema_variant = Some(matching_schema_variant);
             }
         }
-        Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
+
+        if let Some(existing_sv) = installed_schema_variant {
+            existing_schema_variant = Some(existing_sv);
+        }
+
+        let (variant, created) = match existing_schema_variant {
+            None => {
+                let spec = schema_spec.to_spec().await?;
+                let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
+
+                let mut asset_func_id: Option<FuncId> = None;
+                if let Some(variant_spec_data) = variant_spec.data() {
+                    let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+                    if let Thing::Func(asset_func) = thing_map
+                        .get(&func_unique_id)
+                        .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                    {
+                        asset_func_id = Some(asset_func.id)
+                    }
+                }
+                (
+                    SchemaVariant::new(
+                        ctx,
+                        schema.id(),
+                        variant_spec.name(),
+                        metadata.menu_name,
+                        metadata.category,
+                        metadata.color,
+                        metadata.component_type,
+                        metadata.link,
+                        metadata.description,
+                        asset_func_id,
+                        variant_spec.is_builtin(),
+                    )
+                    .await?
+                    .0,
+                    true,
+                )
+            }
+            Some(installed_variant) => (installed_variant, true),
+        };
+
+        if let Some(module) = installed_module.clone() {
+            module.create_association(ctx, variant.id().into()).await?;
+        }
+
+        if created {
+            Some(variant)
+        } else {
+            None
+        }
     };
 
     let schema_variant = match schema_variant {
@@ -1073,7 +1011,6 @@ pub(crate) async fn import_schema_variant(
         Some(schema_variant) => {
             if let Some(unique_id) = variant_spec.unique_id() {
                 thing_map.insert(
-                    change_set_id,
                     unique_id.to_owned(),
                     Thing::SchemaVariant(schema_variant.to_owned()),
                 );
@@ -1104,7 +1041,6 @@ pub(crate) async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::Domain,
                     domain_prop_id,
@@ -1123,7 +1059,6 @@ pub(crate) async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::ResourceValue,
                     resource_value_prop_id,
@@ -1142,7 +1077,6 @@ pub(crate) async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::Secrets,
                     secrets_prop_id,
@@ -1168,7 +1102,6 @@ pub(crate) async fn import_schema_variant(
                 side_effects.extend(
                     create_props(
                         ctx,
-                        change_set_id,
                         variant_spec,
                         SchemaVariantSpecPropRoot::SecretDefinition,
                         secret_definition_prop_id,
@@ -1181,56 +1114,29 @@ pub(crate) async fn import_schema_variant(
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
             for socket in variant_spec.sockets()? {
-                import_socket(ctx, change_set_id, socket, schema_variant.id(), thing_map).await?;
+                import_socket(ctx, socket, schema_variant.id(), thing_map).await?;
             }
 
             for action_func in &variant_spec.action_funcs()? {
-                let prototype = import_action_func(
-                    ctx,
-                    change_set_id,
-                    action_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                let prototype =
+                    import_action_func(ctx, action_func, schema_variant.id(), thing_map).await?;
 
                 if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-                    thing_map.insert(
-                        change_set_id,
-                        unique_id.to_owned(),
-                        Thing::ActionPrototype(prototype),
-                    );
+                    thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));
                 }
             }
 
             for auth_func in &variant_spec.auth_funcs()? {
-                let prototype = import_auth_func(
-                    ctx,
-                    change_set_id,
-                    auth_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                let prototype =
+                    import_auth_func(ctx, auth_func, schema_variant.id(), thing_map).await?;
 
                 if let (Some(prototype), Some(unique_id)) = (prototype, auth_func.unique_id()) {
-                    thing_map.insert(
-                        change_set_id,
-                        unique_id.to_owned(),
-                        Thing::AuthPrototype(prototype),
-                    );
+                    thing_map.insert(unique_id.to_owned(), Thing::AuthPrototype(prototype));
                 }
             }
 
             for leaf_func in variant_spec.leaf_functions()? {
-                import_leaf_function(
-                    ctx,
-                    change_set_id,
-                    leaf_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                import_leaf_function(ctx, leaf_func, schema_variant.id(), thing_map).await?;
             }
 
             // Default values must be set before attribute functions are configured so they don't
@@ -1265,7 +1171,6 @@ pub(crate) async fn import_schema_variant(
                 .await?;
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     AttrFuncInfo {
                         func_unique_id: si_prop_func.func_unique_id().to_owned(),
@@ -1296,7 +1201,6 @@ pub(crate) async fn import_schema_variant(
                 .await?;
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     AttrFuncInfo {
                         func_unique_id: root_prop_func.func_unique_id().to_owned(),
@@ -1317,21 +1221,13 @@ pub(crate) async fn import_schema_variant(
             }
 
             for attr_func in side_effects.attr_funcs {
-                import_attr_func_for_prop(
-                    ctx,
-                    change_set_id,
-                    schema_variant.id(),
-                    attr_func,
-                    None,
-                    thing_map,
-                )
-                .await?;
+                import_attr_func_for_prop(ctx, schema_variant.id(), attr_func, None, thing_map)
+                    .await?;
             }
 
             for (key, map_key_func) in side_effects.map_key_funcs {
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     map_key_func,
                     Some(key),
@@ -1374,7 +1270,6 @@ async fn set_default_value(
 
 async fn import_attr_func_for_prop(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_variant_id: SchemaVariantId,
     AttrFuncInfo {
         func_unique_id,
@@ -1384,11 +1279,10 @@ async fn import_attr_func_for_prop(
     key: Option<String>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match thing_map.get(change_set_id, &func_unique_id.to_owned()) {
+    match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
                 ctx,
-                change_set_id,
                 AttrFuncContext::Prop(prop_id),
                 key,
                 schema_variant_id,
@@ -1406,18 +1300,16 @@ async fn import_attr_func_for_prop(
 
 async fn import_attr_func_for_output_socket(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_variant_id: SchemaVariantId,
     output_socket_id: OutputSocketId,
     func_unique_id: &str,
     inputs: Vec<SiPkgAttrFuncInputView>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match thing_map.get(change_set_id, &func_unique_id.to_owned()) {
+    match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
                 ctx,
-                change_set_id,
                 AttrFuncContext::OutputSocket(output_socket_id),
                 None,
                 schema_variant_id,
@@ -1551,7 +1443,6 @@ pub enum AttrFuncContext {
 #[allow(clippy::too_many_arguments)]
 async fn import_attr_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     context: AttrFuncContext,
     key: Option<String>,
     schema_variant_id: SchemaVariantId,
@@ -1568,12 +1459,7 @@ async fn import_attr_func(
     }
 
     for input in &inputs {
-        match change_set_id {
-            None => {
-                create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
-            }
-            Some(_) => return Err(PkgError::WorkspaceExportNotSupported()),
-        }
+        create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
     }
 
     Ok(())
@@ -1631,7 +1517,6 @@ async fn create_dal_prop(
 #[derive(Debug, Clone)]
 struct ParentPropInfo {
     prop_id: PropId,
-    path: PropPath,
 }
 
 async fn create_prop(
@@ -1639,41 +1524,16 @@ async fn create_prop(
     parent_prop_info: Option<ParentPropInfo>,
     ctx: &PropVisitContext<'_>,
 ) -> PkgResult<Option<ParentPropInfo>> {
-    let prop = match ctx.change_set_id {
-        None => {
-            let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-            create_dal_prop(
-                ctx.ctx,
-                data,
-                prop_kind_for_pkg_prop(&spec),
-                ctx.schema_variant_id,
-                parent_prop_info,
-            )
-            .await?
-        }
-        Some(_) => {
-            let parent_path = parent_prop_info
-                .as_ref()
-                .map(|info| info.path.to_owned())
-                .unwrap_or(PropPath::new(["root"]));
-
-            let path = parent_path.join(&PropPath::new([spec.name()]));
-
-            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path).await? {
-                None => {
-                    let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-                    create_dal_prop(
-                        ctx.ctx,
-                        data,
-                        prop_kind_for_pkg_prop(&spec),
-                        ctx.schema_variant_id,
-                        parent_prop_info,
-                    )
-                    .await?
-                }
-                Some(prop_id) => Prop::get_by_id_or_error(ctx.ctx, prop_id).await?,
-            }
-        }
+    let prop = {
+        let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+        create_dal_prop(
+            ctx.ctx,
+            data,
+            prop_kind_for_pkg_prop(&spec),
+            ctx.schema_variant_id,
+            parent_prop_info,
+        )
+        .await?
     };
 
     let prop_id = prop.id();
@@ -1755,10 +1615,7 @@ async fn create_prop(
         });
     }
 
-    Ok(Some(ParentPropInfo {
-        prop_id: prop.id(),
-        path: prop.path(ctx.ctx).await?,
-    }))
+    Ok(Some(ParentPropInfo { prop_id: prop.id() }))
 }
 
 pub async fn attach_resource_payload_to_value(

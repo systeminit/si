@@ -814,11 +814,10 @@ impl SchemaVariant {
         let leaf_item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
-        for (maybe_key, _proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
-            if let Some(key) = maybe_key {
-                if let Some(func_id) = Func::find_by_name(ctx, key).await? {
-                    func_ids.push(func_id)
-                }
+        for (maybe_key, proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
+            if maybe_key.is_some() {
+                let func_id = AttributePrototype::func_id(ctx, proto).await?;
+                func_ids.push(func_id);
             }
         }
 

@@ -316,7 +316,6 @@ impl VariantAuthoringClient {
             let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
             if let Some(new_schema_variant) = import_schema_variant(
                 ctx,
-                None,
                 &mut schema,
                 schema_spec.clone(),
                 variant_pkg_spec,
@@ -440,7 +439,6 @@ impl VariantAuthoringClient {
 
         if let Some(new_schema_variant) = import_schema_variant(
             ctx,
-            None,
             &mut schema,
             schema_spec.clone(),
             variant_pkg_spec,

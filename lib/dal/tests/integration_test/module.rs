@@ -96,9 +96,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
         Some(description.clone()),
         &user,
         vec![schema.id()],
-        ctx.get_workspace_default_change_set_id()
-            .await
-            .expect("unable to get default changeset id"),
     );
 
     let exported_pkg = exporter

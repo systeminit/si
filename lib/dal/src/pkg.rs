@@ -18,9 +18,9 @@ use crate::{
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncBackendKind,
-    FuncBackendResponseType, OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
-    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    DalContext, DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType,
+    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError, WorkspaceError, WorkspacePk,
+    WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributePrototypeId, FuncId, PropId, PropKind};
 
@@ -219,56 +219,38 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
 /// A generic hash map of hash maps for tracking the presence of a thing in each change set. If a
 /// thing is asked for in a specific change set, and not found, the HEAD change set will be
 /// checked.
+#[derive(Debug)]
 pub struct ChangeSetThingMap<Key, Thing> {
-    inner: HashMap<ChangeSetId, HashMap<Key, Thing>>,
-    default_change_set_id: ChangeSetId,
+    inner: HashMap<Key, Thing>,
+}
+
+impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>
+where
+    Key: Eq + PartialEq + std::hash::Hash,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<Key, Thing> ChangeSetThingMap<Key, Thing>
 where
     Key: Eq + PartialEq + std::hash::Hash,
 {
-    pub fn new(default_change_set_id: ChangeSetId) -> Self {
-        let head_thing_map = HashMap::new();
-        let mut change_set_map = HashMap::new();
-        change_set_map.insert(default_change_set_id, head_thing_map);
+    pub fn new() -> Self {
+        let change_set_map = HashMap::new();
 
         Self {
             inner: change_set_map,
-            default_change_set_id,
-        }
-    }
-    pub fn get_change_set_map(&self, change_set_id: ChangeSetId) -> Option<&HashMap<Key, Thing>> {
-        self.inner.get(&change_set_id)
-    }
-
-    pub fn get(&self, change_set_id: Option<ChangeSetId>, key: &Key) -> Option<&Thing> {
-        match self
-            .inner
-            .get(&change_set_id.unwrap_or(self.default_change_set_id))
-        {
-            Some(change_set_map) => change_set_map.get(key).or_else(|| {
-                self.inner
-                    .get(&self.default_change_set_id)
-                    .and_then(|things| things.get(key))
-            }),
-            None => self
-                .inner
-                .get(&self.default_change_set_id)
-                .and_then(|things| things.get(key)),
         }
     }
 
-    pub fn insert(
-        &mut self,
-        change_set_id: Option<ChangeSetId>,
-        key: Key,
-        thing: Thing,
-    ) -> Option<Thing> {
-        self.inner
-            .entry(change_set_id.unwrap_or(self.default_change_set_id))
-            .or_default()
-            .insert(key, thing)
+    pub fn get(&self, key: &Key) -> Option<&Thing> {
+        self.inner.get(key)
+    }
+
+    pub fn insert(&mut self, key: Key, thing: Thing) -> Option<Thing> {
+        self.inner.insert(key, thing)
     }
 }
 

@@ -22,8 +22,8 @@ use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
     func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
     prop::PropPath,
-    AttributePrototype, AttributeValue, ChangeSetId, DalContext, Func, FuncId, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Workspace,
+    AttributePrototype, AttributeValue, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariant, SchemaVariantId, Workspace,
 };
 use crate::{
     AttributePrototypeId, ComponentType, DeprecatedActionPrototype, InputSocket, OutputSocket,
@@ -52,7 +52,6 @@ impl PkgExporter {
         description: Option<impl Into<String>>,
         created_by: impl Into<String>,
         schema_ids: Vec<SchemaId>,
-        default_change_set_id: ChangeSetId,
     ) -> Self {
         Self {
             name: name.into(),
@@ -61,13 +60,13 @@ impl PkgExporter {
             kind: SiPkgKind::Module,
             created_by: created_by.into(),
             schema_ids: Some(schema_ids),
-            func_map: FuncSpecMap::new(default_change_set_id),
-            variant_map: VariantSpecMap::new(default_change_set_id),
+            func_map: FuncSpecMap::new(),
+            variant_map: VariantSpecMap::new(),
         }
     }
 
-    fn new_standalone_variant_exporter(default_change_set_id: ChangeSetId) -> Self {
-        Self::new_module_exporter("", "", None::<String>, "", vec![], default_change_set_id)
+    fn new_standalone_variant_exporter() -> Self {
+        Self::new_module_exporter("", "", None::<String>, "", vec![])
     }
 
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
@@ -86,7 +85,6 @@ impl PkgExporter {
     async fn export_schema(
         &mut self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         schema: &Schema,
     ) -> PkgResult<(SchemaSpec, Vec<FuncSpec>)> {
         let variant = SchemaVariant::list_for_schema(ctx, schema.id()).await?;
@@ -106,16 +104,14 @@ impl PkgExporter {
             let variant_is_builtin = variant.is_builtin();
             let variant_category = variant.clone().category().to_owned();
 
-            let variant_funcs = self
-                .export_funcs_for_variant(ctx, change_set_id, variant.id())
-                .await?;
+            let variant_funcs = self.export_funcs_for_variant(ctx, variant.id()).await?;
             funcs.extend(variant_funcs);
 
             let variant_spec = self
-                .export_variant(ctx, change_set_id, &variant, variant_is_builtin)
+                .export_variant(ctx, &variant, variant_is_builtin)
                 .await?;
             self.variant_map
-                .insert(change_set_id, variant.id(), variant_spec.to_owned());
+                .insert(variant.id(), variant_spec.to_owned());
             if variant_spec.unique_id.is_some() {
                 if let Some(default_variant_id) = default_variant_id {
                     if variant.id() == default_variant_id {
@@ -148,25 +144,18 @@ impl PkgExporter {
         ctx: &DalContext,
         variant: &SchemaVariant,
     ) -> PkgResult<(SchemaVariantSpec, Vec<FuncSpec>)> {
-        let default_changeset_id = ctx.get_workspace_default_change_set_id().await?;
-        let current_changeset = ctx.change_set_id();
-        let mut exporter = Self::new_standalone_variant_exporter(default_changeset_id);
+        let mut exporter = Self::new_standalone_variant_exporter();
 
-        exporter
-            .export_funcs_for_variant(ctx, Some(current_changeset), variant.id())
-            .await?;
+        exporter.export_funcs_for_variant(ctx, variant.id()).await?;
         exporter.export_intrinsics(ctx).await?;
-        let variant_spec = exporter
-            .export_variant(ctx, Some(current_changeset), variant, false)
-            .await?;
+        let variant_spec = exporter.export_variant(ctx, variant, false).await?;
 
-        let funcs = match exporter
-            .func_spec_map()
-            .get_change_set_map(current_changeset)
-        {
-            Some(funcs) => funcs.values().map(ToOwned::to_owned).collect(),
-            None => vec![],
-        };
+        let funcs = exporter
+            .func_map
+            .inner
+            .values()
+            .map(ToOwned::to_owned)
+            .collect();
 
         Ok((variant_spec, funcs))
     }
@@ -174,7 +163,6 @@ impl PkgExporter {
     async fn export_variant(
         &mut self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant: &SchemaVariant,
         variant_is_builtin: bool,
     ) -> PkgResult<SchemaVariantSpec> {
@@ -197,7 +185,7 @@ impl PkgExporter {
         if let Some(authoring_func_id) = variant.asset_func_id() {
             let asset_func_unique_id = self
                 .func_map
-                .get(change_set_id, &authoring_func_id)
+                .get(&authoring_func_id)
                 .ok_or(PkgError::MissingFuncUniqueId(authoring_func_id.to_string()))?
                 .unique_id
                 .to_owned();
@@ -208,7 +196,6 @@ impl PkgExporter {
 
         self.export_prop_tree(
             ctx,
-            change_set_id,
             variant,
             &mut variant_spec_builder,
             SchemaVariantSpecPropRoot::Domain,
@@ -218,7 +205,6 @@ impl PkgExporter {
 
         self.export_prop_tree(
             ctx,
-            change_set_id,
             variant,
             &mut variant_spec_builder,
             SchemaVariantSpecPropRoot::ResourceValue,
@@ -228,7 +214,6 @@ impl PkgExporter {
 
         self.export_prop_tree(
             ctx,
-            change_set_id,
             variant,
             &mut variant_spec_builder,
             SchemaVariantSpecPropRoot::Secrets,
@@ -238,7 +223,6 @@ impl PkgExporter {
 
         self.export_prop_tree(
             ctx,
-            change_set_id,
             variant,
             &mut variant_spec_builder,
             SchemaVariantSpecPropRoot::SecretDefinition,
@@ -246,42 +230,42 @@ impl PkgExporter {
         )
         .await?;
 
-        self.export_leaf_funcs(ctx, change_set_id, variant.id())
+        self.export_leaf_funcs(ctx, variant.id())
             .await?
             .drain(..)
             .for_each(|leaf_func_spec| {
                 variant_spec_builder.leaf_function(leaf_func_spec);
             });
 
-        self.export_sockets(ctx, change_set_id, variant.id())
+        self.export_sockets(ctx, variant.id())
             .await?
             .drain(..)
             .for_each(|socket_spec| {
                 variant_spec_builder.socket(socket_spec);
             });
 
-        self.export_action_funcs(ctx, change_set_id, variant.id())
+        self.export_action_funcs(ctx, variant.id())
             .await?
             .drain(..)
             .for_each(|action_func_spec| {
                 variant_spec_builder.action_func(action_func_spec);
             });
 
-        self.export_auth_funcs(ctx, change_set_id, variant.id())
+        self.export_auth_funcs(ctx, variant.id())
             .await?
             .drain(..)
             .for_each(|spec| {
                 variant_spec_builder.auth_func(spec);
             });
 
-        self.export_si_prop_funcs(ctx, change_set_id, variant.id())
+        self.export_si_prop_funcs(ctx, variant.id())
             .await?
             .drain(..)
             .for_each(|si_prop_func_spec| {
                 variant_spec_builder.si_prop_func(si_prop_func_spec);
             });
 
-        self.export_root_prop_funcs(ctx, change_set_id, variant)
+        self.export_root_prop_funcs(ctx, variant)
             .await?
             .drain(..)
             .for_each(|root_prop_func_spec| {
@@ -296,7 +280,6 @@ impl PkgExporter {
     async fn export_root_prop_funcs(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant: &SchemaVariant,
     ) -> PkgResult<Vec<RootPropFuncSpec>> {
         let mut specs = vec![];
@@ -313,7 +296,7 @@ impl PkgExporter {
                     AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
                 {
                     if let Some((func_unique_id, mut inputs)) = self
-                        .export_input_func_and_arguments(ctx, change_set_id, prototype_id)
+                        .export_input_func_and_arguments(ctx, prototype_id)
                         .await?
                     {
                         let mut builder = RootPropFuncSpec::builder();
@@ -335,7 +318,6 @@ impl PkgExporter {
     async fn export_si_prop_funcs(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<SiPropFuncSpec>> {
         let _variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
@@ -349,7 +331,7 @@ impl PkgExporter {
                 AttributePrototype::find_for_prop(ctx, prop.id, &None).await?
             {
                 if let Some((func_unique_id, mut inputs)) = self
-                    .export_input_func_and_arguments(ctx, change_set_id, prototype_id)
+                    .export_input_func_and_arguments(ctx, prototype_id)
                     .await?
                 {
                     let mut builder = SiPropFuncSpec::builder();
@@ -372,7 +354,6 @@ impl PkgExporter {
     async fn export_leaf_funcs(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<LeafFunctionSpec>> {
         let mut specs = vec![];
@@ -383,7 +364,7 @@ impl PkgExporter {
             {
                 let func_spec = self
                     .func_map
-                    .get(change_set_id, &leaf_func_id)
+                    .get(&leaf_func_id)
                     .ok_or(PkgError::MissingExportedFunc(leaf_func_id))?;
 
                 let mut inputs = vec![];
@@ -416,7 +397,6 @@ impl PkgExporter {
     async fn export_sockets(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<SocketSpec>> {
         let mut specs = vec![];
@@ -444,7 +424,7 @@ impl PkgExporter {
                 let _proto = AttributePrototype::get_by_id(ctx, attr_proto_id).await?;
 
                 if let Some((func_unique_id, mut inputs)) = self
-                    .export_input_func_and_arguments(ctx, change_set_id, attr_proto_id)
+                    .export_input_func_and_arguments(ctx, attr_proto_id)
                     .await?
                 {
                     data_builder.func_unique_id(func_unique_id);
@@ -478,7 +458,7 @@ impl PkgExporter {
             {
                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id).await?;
                 if let Some((func_unique_id, mut inputs)) = self
-                    .export_input_func_and_arguments(ctx, change_set_id, proto.id())
+                    .export_input_func_and_arguments(ctx, proto.id())
                     .await?
                 {
                     data_builder.func_unique_id(func_unique_id);
@@ -498,7 +478,6 @@ impl PkgExporter {
     async fn export_action_funcs(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         schema_variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<ActionFuncSpec>> {
         let mut specs = vec![];
@@ -510,7 +489,7 @@ impl PkgExporter {
             let key = &action_proto.func_id(ctx).await?;
             let func_spec = self
                 .func_map
-                .get(change_set_id, key)
+                .get(key)
                 .ok_or(PkgError::MissingExportedFunc(*key))?;
 
             let mut builder = ActionFuncSpec::builder();
@@ -529,7 +508,6 @@ impl PkgExporter {
     async fn export_auth_funcs(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         schema_variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<AuthenticationFuncSpec>> {
         let mut specs = vec![];
@@ -538,7 +516,7 @@ impl PkgExporter {
         for auth_func in auth_funcs {
             let func_spec = self
                 .func_map
-                .get(change_set_id, &auth_func)
+                .get(&auth_func)
                 .ok_or(PkgError::MissingExportedFunc(auth_func))?;
 
             let mut builder = AuthenticationFuncSpec::builder();
@@ -552,7 +530,6 @@ impl PkgExporter {
     async fn export_prop_tree(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         variant: &SchemaVariant,
         variant_spec: &mut SchemaVariantSpecBuilder,
         prop_root: SchemaVariantSpecPropRoot,
@@ -692,9 +669,8 @@ impl PkgExporter {
                 if let Some(type_prop_id) = maybe_type_prop_id {
                     for (maybe_key, proto) in Prop::prototypes_by_key(ctx, type_prop_id).await? {
                         if let Some(key) = maybe_key {
-                            if let Some((func_unique_id, mut inputs)) = self
-                                .export_input_func_and_arguments(ctx, change_set_id, proto)
-                                .await?
+                            if let Some((func_unique_id, mut inputs)) =
+                                self.export_input_func_and_arguments(ctx, proto).await?
                             {
                                 let mut map_key_func_builder = MapKeyFuncSpec::builder();
                                 map_key_func_builder.key(key);
@@ -712,9 +688,8 @@ impl PkgExporter {
             if let Some(prototype) =
                 AttributePrototype::find_for_prop(ctx, entry.prop_id, &None).await?
             {
-                if let Some((func_unique_id, mut inputs)) = self
-                    .export_input_func_and_arguments(ctx, change_set_id, prototype)
-                    .await?
+                if let Some((func_unique_id, mut inputs)) =
+                    self.export_input_func_and_arguments(ctx, prototype).await?
                 {
                     entry.builder.has_data(true);
 
@@ -772,7 +747,6 @@ impl PkgExporter {
     async fn export_input_func_and_arguments(
         &self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         prototype_id: AttributePrototypeId,
     ) -> PkgResult<Option<(String, Vec<AttrFuncInputSpec>)>> {
         let _proto = AttributePrototype::get_by_id(ctx, prototype_id).await?;
@@ -846,20 +820,14 @@ impl PkgExporter {
 
         let func_spec = self
             .func_map
-            .get(change_set_id, &func_id)
+            .get(&func_id)
             .ok_or(PkgError::MissingExportedFunc(func_id))?;
 
         let func_unique_id = func_spec.unique_id.to_owned();
-
         Ok(Some((func_unique_id, inputs)))
     }
 
-    async fn export_func(
-        &self,
-        ctx: &DalContext,
-        _change_set_id: Option<ChangeSetId>,
-        func: &Func,
-    ) -> PkgResult<(FuncSpec, bool)> {
+    async fn export_func(&self, ctx: &DalContext, func: &Func) -> PkgResult<(FuncSpec, bool)> {
         let mut func_spec_builder = FuncSpec::builder();
 
         func_spec_builder.name(func.name.clone());
@@ -918,7 +886,6 @@ impl PkgExporter {
     async fn add_func_to_map(
         &mut self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         func: &Func,
     ) -> PkgResult<(FuncSpec, bool)> {
         let (spec, include) = match IntrinsicFunc::maybe_from_str(&func.name) {
@@ -927,10 +894,10 @@ impl PkgExporter {
 
                 (spec, true)
             }
-            None => self.export_func(ctx, change_set_id, func).await?,
+            None => self.export_func(ctx, func).await?,
         };
 
-        self.func_map.insert(change_set_id, func.id, spec.clone());
+        self.func_map.insert(func.id, spec.clone());
 
         Ok((spec, include))
     }
@@ -945,7 +912,6 @@ impl PkgExporter {
     async fn export_change_set(
         &mut self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
     ) -> PkgResult<(
         Vec<FuncSpec>,
         Vec<FuncSpec>,
@@ -959,30 +925,22 @@ impl PkgExporter {
         let component_specs = vec![];
         let edge_specs = vec![];
 
-        let new_ctx = match change_set_id {
-            None => ctx.clone(),
-            Some(_change_set_id) => ctx.clone_with_new_visibility(*ctx.visibility()),
-        };
+        let new_ctx = ctx.clone();
         let ctx = &new_ctx;
 
-        // Intrinsic funcs should be immutable. They're not, but we don't provide any interfaces to
-        // modify them via a the standard model. We only add them to the func map if the func map
-        // is HEAD (or if we're doing a module export)
-        if change_set_id.is_none() {
-            for intrinsic in crate::func::intrinsics::IntrinsicFunc::iter() {
-                let intrinsic_name = intrinsic.name();
-                // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
-                // mapping one prop to another via si:identity)
-                let intrinsic_func_id = Func::find_by_name(ctx, intrinsic_name)
-                    .await?
-                    .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
+        for intrinsic in IntrinsicFunc::iter() {
+            let intrinsic_name = intrinsic.name();
+            // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
+            // mapping one prop to another via si:identity)
+            let intrinsic_func_id = Func::find_by_name(ctx, intrinsic_name)
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
-                let intrinsic_func = Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
+            let intrinsic_func = Func::get_by_id_or_error(ctx, intrinsic_func_id).await?;
 
-                let (spec, _) = self.add_func_to_map(ctx, None, &intrinsic_func).await?;
+            let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
 
-                func_specs.push(spec);
-            }
+            func_specs.push(spec);
         }
 
         let mut schemas = vec![];
@@ -998,7 +956,7 @@ impl PkgExporter {
         }
 
         for schema in &schemas {
-            let (schema_spec, funcs) = self.export_schema(ctx, change_set_id, schema).await?;
+            let (schema_spec, funcs) = self.export_schema(ctx, schema).await?;
 
             func_specs.extend_from_slice(&funcs);
             schema_specs.push(schema_spec);
@@ -1012,139 +970,6 @@ impl PkgExporter {
             edge_specs,
         ))
     }
-
-    // pub async fn export_attribute_value(
-    //     &mut self,
-    //     ctx: &DalContext,
-    //     change_set_id: ChangeSetId,
-    //     view: AttributeDebugView,
-    // ) -> PkgResult<(AttributeValueSpec, Vec<FuncSpec>, Vec<FuncSpec>)> {
-    //     let mut builder = AttributeValueSpec::builder();
-    //     let mut funcs = vec![];
-    //     let mut head_funcs = vec![];
-
-    //     if let Some(parent_info) = view.parent_info {
-    //         let parent_av = parent_info.value;
-    //         let prop_id = parent_av.context.prop_id();
-    //         if prop_id.is_some() {
-    //             let parent_prop = Prop::get_by_id(ctx, &prop_id)
-    //                 .await?
-    //                 .ok_or(PropError::NotFound(prop_id, *ctx.visibility()))?;
-
-    //             builder.parent_path(AttributeValuePath::Prop {
-    //                 path: parent_prop.path().to_string(),
-    //                 key: parent_info.key,
-    //                 index: parent_info.array_index,
-    //             });
-    //         }
-    //     }
-
-    //     if let Some(prop) = &view.prop {
-    //         let (key, index) = match &view.array_index {
-    //             Some(index) => (None, Some(*index)),
-    //             None => (view.attribute_value.key.to_owned(), None),
-    //         };
-
-    //         builder.path(AttributeValuePath::Prop {
-    //             path: prop.path().to_string(),
-    //             key,
-    //             index,
-    //         });
-    //     } else if let Some(ip) = &view.internal_provider {
-    //         builder.path(AttributeValuePath::InputSocket(ip.name().into()));
-    //     } else if let Some(ep) = &view.external_provider {
-    //         builder.path(AttributeValuePath::OutputSocket(ep.name().into()));
-    //     }
-
-    //     let func_id = *view.func.id();
-
-    //     let func_unique_id = match self.func_map.get(change_set_id, &func_id) {
-    //         Some(func_spec) => {
-    //             let func = Func::get_by_id(ctx, &func_id)
-    //                 .await?
-    //                 .ok_or(FuncError::NotFound(func_id))?;
-
-    //             if func.visibility().change_set_id == ChangeSetId::NONE {
-    //                 head_funcs.push(func_spec.to_owned());
-    //             } else {
-    //                 funcs.push(func_spec.to_owned());
-    //             }
-
-    //             func_spec.unique_id.to_owned()
-    //         }
-    //         None => {
-    //             let func = Func::get_by_id(ctx, &func_id)
-    //                 .await?
-    //                 .ok_or(FuncError::NotFound(func_id))?;
-
-    //             if func.visibility().change_set_id == ChangeSetId::NONE {
-    //                 let (func_spec, _) = self
-    //                     .add_func_to_map(ctx, Some(ChangeSetId::NONE), &func)
-    //                     .await?;
-
-    //                 let unique_id = func_spec.unique_id.clone();
-
-    //                 head_funcs.push(func_spec);
-
-    //                 unique_id
-    //             } else {
-    //                 let (func_spec, _) = self.add_func_to_map(ctx, change_set_id, &func).await?;
-    //                 let unique_id = func_spec.unique_id.clone();
-    //                 funcs.push(func_spec);
-
-    //                 unique_id
-    //             }
-    //         }
-    //     };
-    //     builder.func_unique_id(func_unique_id);
-    //     builder.func_binding_args(view.func_execution.func_binding_args().to_owned());
-
-    //     if let Some(handler) = view.func_execution.handler().as_deref() {
-    //         builder.handler(handler);
-    //     }
-
-    //     builder.backend_kind(*view.func_execution.backend_kind());
-    //     builder.response_type(*view.func_execution.backend_response_type());
-
-    //     if let Some(code) = view.func_execution.code_base64().as_deref() {
-    //         builder.code_base64(code);
-    //     }
-
-    //     if let Some(unprocessed_value) = view.func_binding_return_value.unprocessed_value() {
-    //         builder.unprocessed_value(unprocessed_value.to_owned());
-    //     }
-    //     if let Some(value) = view.func_binding_return_value.value() {
-    //         builder.value(value.to_owned());
-    //     }
-    //     if let Some(implicit_value) = view.implicit_attribute_value {
-    //         if let Some(value) = implicit_value.get_value(ctx).await? {
-    //             builder.implicit_value(value);
-    //         }
-    //     }
-    //     if let Some(output_stream) = view.func_execution.output_stream() {
-    //         builder.output_stream(serde_json::to_value(output_stream)?);
-    //     }
-    //     builder.is_proxy(
-    //         view.attribute_value
-    //             .proxy_for_attribute_value_id()
-    //             .is_some(),
-    //     );
-    //     builder.sealed_proxy(view.attribute_value.sealed_proxy());
-
-    //     if view.prototype.context.component_id().is_some() {
-    //         builder.component_specific(true);
-    //     }
-
-    //     let inputs = self
-    //         .export_input_func_and_arguments(ctx, change_set_id, &view.prototype)
-    //         .await?;
-
-    //     if let Some((_, inputs)) = inputs {
-    //         builder.inputs(inputs);
-    //     }
-
-    //     Ok((builder.build()?, funcs, head_funcs))
-    // }
 
     pub async fn export_as_spec(&mut self, ctx: &DalContext) -> PkgResult<PkgSpec> {
         let mut pkg_spec_builder = PkgSpec::builder();
@@ -1168,7 +993,7 @@ impl PkgExporter {
 
         match self.kind {
             SiPkgKind::Module => {
-                let (funcs, _, schemas, _, _) = self.export_change_set(ctx, None).await?;
+                let (funcs, _, schemas, _, _) = self.export_change_set(ctx).await?;
                 pkg_spec_builder.funcs(funcs);
                 pkg_spec_builder.schemas(schemas);
             }
@@ -1194,8 +1019,7 @@ impl PkgExporter {
 
             let spec = instrinsic.to_spec()?;
             funcs.push(spec.clone());
-            self.func_map
-                .insert(Some(ctx.change_set_id()), intrinsic_func_id, spec.clone());
+            self.func_map.insert(intrinsic_func_id, spec.clone());
         }
         Ok(funcs)
     }
@@ -1203,14 +1027,13 @@ impl PkgExporter {
     async fn export_funcs_for_variant(
         &mut self,
         ctx: &DalContext,
-        change_set_id: Option<ChangeSetId>,
         schema_variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<FuncSpec>> {
         let related_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
         let mut funcs = vec![];
 
         for func in &related_funcs {
-            let (func_spec, include) = self.add_func_to_map(ctx, change_set_id, func).await?;
+            let (func_spec, include) = self.add_func_to_map(ctx, func).await?;
 
             if include {
                 funcs.push(func_spec);
@@ -1222,9 +1045,7 @@ impl PkgExporter {
             // Asset Funcs are not stored in the FuncMap
             // So we need to look it up directly then store it!
             let asset_func = Func::get_by_id_or_error(ctx, authoring_func_id).await?;
-            let (func_spec, include) = self
-                .add_func_to_map(ctx, change_set_id, &asset_func)
-                .await?;
+            let (func_spec, include) = self.add_func_to_map(ctx, &asset_func).await?;
 
             if include {
                 funcs.push(func_spec);
@@ -1234,22 +1055,6 @@ impl PkgExporter {
         Ok(funcs)
     }
 }
-
-// fn remove_duplicate_func_specs(func_specs: &[FuncSpec]) -> Vec<FuncSpec> {
-//     let mut unique_id_set = HashSet::new();
-//
-//     func_specs
-//         .iter()
-//         .filter_map(|spec| {
-//             if unique_id_set.contains(&spec.unique_id) {
-//                 None
-//             } else {
-//                 unique_id_set.insert(spec.unique_id.to_owned());
-//                 Some(spec.to_owned())
-//             }
-//         })
-//         .collect()
-// }
 
 pub async fn get_component_type(
     ctx: &DalContext,
