@@ -953,7 +953,9 @@ async fn paste_component(ctx: &mut DalContext) {
         .expect("unable to get materialized view of component")
         .expect("no view found");
 
-    *view.pointer_mut("/resource/last_synced").expect("no last synced found") = serde_json::Value::Null;
+    *view
+        .pointer_mut("/resource/last_synced")
+        .expect("no last synced found") = serde_json::Value::Null;
     assert_eq!(
         view,
         serde_json::json!({

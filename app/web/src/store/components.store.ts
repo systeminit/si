@@ -180,6 +180,20 @@ export interface ComponentDebugView {
   parentId?: string | null;
 }
 
+export interface ComponentPositions {
+  componentId: string;
+  position: Vector2d;
+  size?: Size2D;
+}
+
+type APIComponentPositions = {
+  componentId: string;
+  x: string;
+  y: string;
+  width?: string;
+  height?: string;
+};
+
 type EventBusEvents = {
   deleteSelection: void;
   restoreSelection: void;
@@ -650,8 +664,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 _.each(pendingComponentIdsThatAreComplete, (id) => {
                   const tempId = pendingInsertsByComponentId[id]?.tempId;
                   if (tempId) delete this.pendingInsertedComponents[tempId];
-                });
-                // and set the selection to the new component
+                }); // and set the selection to the new component
                 if (pendingComponentIdsThatAreComplete[0]) {
                   this.setSelectedComponentId(
                     pendingComponentIdsThatAreComplete[0],
@@ -688,26 +701,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async SET_COMPONENT_DIAGRAM_POSITION(
-            componentId: ComponentId,
-            position: Vector2d,
-            size?: Size2D,
+            positions: ComponentPositions[],
           ) {
-            let width;
-            let height;
-            if (size) {
-              width = Math.round(size.width).toString();
-              height = Math.round(size.height).toString();
-            }
+            const rounded_positions = positions.map((p) => {
+              const pos = {
+                componentId: p.componentId,
+              } as APIComponentPositions;
+              pos.x = Math.round(p.position.x).toString();
+              pos.y = Math.round(p.position.y).toString();
+              if (p.size?.width)
+                pos.width = Math.round(p.size?.width).toString();
+              if (p.size?.height)
+                pos.height = Math.round(p.size?.height).toString();
+              return pos;
+            });
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
               url: "diagram/set_component_position",
               params: {
-                componentId,
-                x: Math.round(position.x).toString(),
-                y: Math.round(position.y).toString(),
-                width,
-                height,
+                positions: rounded_positions,
                 diagramKind: "configuration",
                 ...visibilityParams,
               },
