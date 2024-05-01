@@ -1,0 +1,52 @@
+name: Deploy Service
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        type: choice
+        required: true
+        description: "service to deploy"
+        options:
+          - all
+          - pinga
+          - rebaser
+          - sdf
+          - veritech
+
+jobs:
+  deploy:
+    name: Deploy Service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for shared-prod
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
+          aws-region: us-east-1
+      - name: Invalidate Artifacts Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id E2HW6000JEVIPB --paths "/*"
+
+      - name: Configure AWS credentials for tools-prod
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_TOOLS_PROD_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_TOOLS_PROD_SECRET_KEY }}
+          aws-region: us-east-1
+      - name: Instance Refresh for chosen services
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          if [ "$SERVICE" = "all" ]; then
+            echo "Deploying errything!"
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-pinga
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-rebaser
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-sdf
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-veritech
+          else
+            echo "Deploying $SERVICE!"
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
+          fi
+
+
