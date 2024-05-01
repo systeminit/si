@@ -152,6 +152,7 @@ export interface AttributeDebugView {
   };
   value: object | string | number | boolean | null;
   prototypeId: string;
+  prototypeIsComponentSpecific: boolean;
   kind: string;
   materializedView?: string;
 }
