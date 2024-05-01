@@ -22,9 +22,7 @@
         <ApplyChangeSetButton class="grow" />
         <PillCounter
           tone="action"
-          :count="
-            1 + diffs.length + _.keys(actionsStore.proposedActions).length
-          "
+          :count="1 + _.keys(actionsStore.proposedActions).length"
           size="xl"
           class="bg-action-100 dark:bg-action-800 px-3 font-bold"
         />
@@ -51,7 +49,6 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed } from "vue";
 import {
   TabGroup,
   TabGroupItem,
@@ -61,7 +58,6 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
-import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useActionsStore } from "@/store/actions.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
@@ -69,29 +65,5 @@ import ChangesPanel from "./ChangesPanel.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
-const componentsStore = useComponentsStore();
 const actionsStore = useActionsStore();
-
-const diffs = computed(() => {
-  const arr = Object.values(componentsStore.componentsById)
-    .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => {
-      let updatedAt = c.updatedInfo.timestamp;
-      if (c.changeStatus === "added") {
-        updatedAt = c.createdInfo.timestamp;
-      } else if (c.changeStatus === "deleted" && c.deletedInfo) {
-        updatedAt = c.deletedInfo.timestamp;
-      }
-
-      return {
-        componentId: c.id,
-        status: c.changeStatus,
-        updatedAt,
-      };
-    });
-  arr.sort(
-    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-  );
-  return arr;
-});
 </script>
