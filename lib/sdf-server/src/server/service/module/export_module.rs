@@ -83,7 +83,6 @@ pub async fn export_module(
         request.description.as_ref(),
         &created_by_email,
         schema_ids,
-        ctx.get_workspace_default_change_set_id().await?,
     );
 
     let module_payload = exporter.export_as_bytes(&ctx).await?;
