@@ -1443,7 +1443,6 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
-        dbg!(country_era_taylor_swift_assembled.0.parent_id);
         assert!(country_era_taylor_swift_assembled.0.parent_id.is_none());
 
         assert_eq!(
@@ -1497,7 +1496,6 @@ impl DiagramByKey {
         let mut all = vec![];
         for component in self.components.values() {
             for edge in component.1.clone() {
-                dbg!(&edge);
                 all.push(edge);
             }
         }

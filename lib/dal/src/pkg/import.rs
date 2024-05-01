@@ -1815,7 +1815,6 @@ pub async fn attach_resource_payload_to_value(
 
     match rv_input_apa_id {
         Some(apa_id) => {
-            dbg!("existing apa");
             if !{
                 if let Some(ValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?

@@ -18,8 +18,6 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
         .await
         .expect("unable to get diff");
 
-    dbg!(&diff);
-
     assert_eq!(starfield_component.id(), diff.component_id);
     assert_eq!(
         Some("{\n  \"si\": {\n    \"color\": \"#ffffff\",\n    \"name\": \"this is a new component\",\n    \"type\": \"component\"\n  },\n  \"domain\": {\n    \"name\": \"this is a new component\",\n    \"possible_world_a\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {}\n        }\n      }\n    },\n    \"possible_world_b\": {\n      \"wormhole_1\": {\n        \"wormhole_2\": {\n          \"wormhole_3\": {\n            \"naming_and_necessity\": \"not hesperus\"\n          }\n        }\n      }\n    },\n    \"universe\": {\n      \"galaxies\": []\n    }\n  }\n}".to_string()),

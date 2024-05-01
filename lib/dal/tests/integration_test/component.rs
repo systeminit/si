@@ -571,8 +571,6 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     // Verify data.
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
@@ -591,7 +589,6 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -612,12 +609,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .expect("unable to ser resource");
 
     // Delete component.
-    let oysters_component = oysters_component
+    let _oysters_component = oysters_component
         .delete(ctx)
         .await
         .expect("Unable to delete oysters component")
         .expect("component fully deleted");
-    dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -641,7 +637,6 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }
@@ -745,8 +740,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     // Verify data.
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
@@ -765,7 +758,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -786,12 +778,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("unable to ser resource");
 
     // Delete component.
-    let oysters_component = oysters_component
+    let _oysters_component = oysters_component
         .delete(ctx)
         .await
         .expect("Unable to delete oysters component")
         .expect("component fully deleted");
-    dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -815,7 +806,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -865,7 +855,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -896,7 +885,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }

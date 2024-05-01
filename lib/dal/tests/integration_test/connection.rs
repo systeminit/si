@@ -317,8 +317,6 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
         .await
@@ -334,11 +332,6 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("able to get units materialized_view")
         .expect("units has a materialized_view");
-
-    dbg!(lunch_component
-        .materialized_view(ctx)
-        .await
-        .expect("get docker image materialized_view"));
 
     assert!(matches!(materialized_view, serde_json::Value::Array(_)));
 
@@ -507,8 +500,6 @@ async fn remove_connection(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
         .await
@@ -524,11 +515,6 @@ async fn remove_connection(ctx: &mut DalContext) {
         .await
         .expect("able to get units materialized_view")
         .expect("units has a materialized_view");
-
-    dbg!(lunch_component
-        .materialized_view(ctx)
-        .await
-        .expect("get docker image materialized_view"));
 
     assert!(matches!(materialized_view, serde_json::Value::Array(_)));
 
@@ -566,11 +552,6 @@ async fn remove_connection(ctx: &mut DalContext) {
         .await
         .expect("able to get units materialized_view")
         .expect("units has a materialized_view");
-
-    dbg!(lunch_component
-        .materialized_view(ctx)
-        .await
-        .expect("get docker image materialized_view"));
 
     assert!(matches!(materialized_view, serde_json::Value::Array(_)));
 
