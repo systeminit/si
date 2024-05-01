@@ -16,6 +16,8 @@
             "
             :label="editingAsset.id ? 'Update Asset' : 'Create Asset'"
             :disabled="disabled"
+            successText="Successful"
+            :requestStatus="execAssetReqStatus"
             tone="action"
             icon="bolt"
             size="md"
