@@ -77,7 +77,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
         .route("/save_func", post(save_func::save_func))
-        .route("/test_execute", post(test_execute::execute))
+        .route("/test_execute", post(test_execute::test_execute))
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -10,7 +10,7 @@ use crate::server::tracking::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ExecuteRequest {
+pub struct TestExecuteFuncRequest {
     pub id: FuncId,
     pub args: serde_json::Value,
     pub execution_key: String,
@@ -20,15 +20,15 @@ pub struct ExecuteRequest {
     pub visibility: Visibility,
 }
 
-pub type ExecuteResponse = TestExecuteFuncResult;
+pub type TestExecuteFuncResponse = TestExecuteFuncResult;
 
-pub async fn execute(
+pub async fn test_execute(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(req): Json<ExecuteRequest>,
-) -> FuncResult<Json<ExecuteResponse>> {
+    Json(req): Json<TestExecuteFuncRequest>,
+) -> FuncResult<Json<TestExecuteFuncResponse>> {
     let ctx = builder.build(request_ctx.build(req.visibility)).await?;
 
     let response = FuncAuthoringClient::test_execute_func(

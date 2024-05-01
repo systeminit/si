@@ -406,7 +406,6 @@ export const useFuncStore = () => {
             },
           });
         },
-
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
           const func = this.funcById(funcId);
           if (func) {
@@ -434,17 +433,6 @@ export const useFuncStore = () => {
             },
           });
         },
-        async GET_FUNC_LAST_EXECUTION(funcId: FuncId) {
-          return new ApiRequest({
-            method: "get",
-            url: "func/get_func_last_execution",
-            params: { id: funcId, ...visibility },
-            onSuccess: (response) => {
-              this.lastFuncExecutionLogByFuncId[funcId] = response;
-            },
-          });
-        },
-
         async TEST_EXECUTE(executeRequest: {
           id: FuncId;
           args: unknown;
@@ -477,7 +465,6 @@ export const useFuncStore = () => {
             params: { ...executeRequest, ...visibility },
           });
         },
-
         async CREATE_FUNC(createFuncRequest: {
           kind: FuncKind;
           name?: string;
@@ -497,7 +484,6 @@ export const useFuncStore = () => {
             },
           });
         },
-
         async FETCH_INPUT_SOURCE_LIST(schemaVariantId?: string) {
           return new ApiRequest<{
             inputSockets: InputSocketView[];
@@ -540,6 +526,17 @@ export const useFuncStore = () => {
               }
               this.outputSockets = outputSockets;
             },
+          });
+        },
+        async FETCH_PROTOTYPE_ARGUMENTS(
+          propId?: string,
+          outputSocketId?: string,
+        ) {
+          return new ApiRequest<{
+            preparedArguments: Record<string, unknown>;
+          }>({
+            url: "attribute/get_prototype_arguments",
+            params: { propId, outputSocketId, ...visibility },
           });
         },
 

@@ -32,12 +32,7 @@
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
             <div class="flex gap-1 flex-wrap">
               <VButton
-                v-if="
-                  testPanelEnabled &&
-                  funcStore.selectedFuncDetails &&
-                  funcStore.selectedFuncDetails?.associations?.type !==
-                    'authentication'
-                "
+                v-if="enableTestPanel"
                 class="--tone-action"
                 icon="save"
                 size="md"
@@ -229,15 +224,7 @@
         />
       </TabGroupItem>
 
-      <TabGroupItem
-        v-if="
-          testPanelEnabled &&
-          funcStore.selectedFuncDetails &&
-          funcStore.selectedFuncDetails?.associations?.type !== 'authentication'
-        "
-        label="Test"
-        slug="test"
-      >
+      <TabGroupItem v-if="enableTestPanel" label="Test" slug="test">
         <FuncTest />
       </TabGroupItem>
     </TabGroup>
@@ -280,7 +267,7 @@ const props = defineProps<{
   funcId?: FuncId;
   schemaVariantId?: string;
   singleModelScreen?: boolean;
-  testPanelEnabled?: boolean;
+  allowTestPanel?: boolean;
 }>();
 
 const funcDetailsTabGroupRef = ref();
@@ -420,15 +407,14 @@ const expandTestPanel = (selectedTabSlug: string | undefined) => {
   }
 };
 
-// const getExecutionReqStatus = funcStore.getRequestStatus(
-//   "GET_FUNC_LAST_EXECUTION",
-//   funcId,
-// );
-// function getLastExecution() {
-//   if (!funcId.value) return;
-//   funcStore.GET_FUNC_LAST_EXECUTION(funcId.value);
-// }
-// const lastExecutionLog = computed(
-//   () => funcStore.lastFuncExecutionLogByFuncId[funcId?.value || ""],
-// );
+// The parent component can allow the test panel to be enabled, but we need to dynamically enable
+// it based on the func kind.
+const enableTestPanel = computed((): boolean => {
+  return (
+    props.allowTestPanel &&
+    (funcStore.selectedFuncDetails?.associations?.type === "attribute" ||
+      funcStore.selectedFuncDetails?.associations?.type === "codeGeneration" ||
+      funcStore.selectedFuncDetails?.associations?.type === "qualification")
+  );
+});
 </script>

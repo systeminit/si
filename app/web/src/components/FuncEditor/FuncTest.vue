@@ -27,27 +27,16 @@
           </span>
           component to use as the input for your test:
         </div>
-        <div class="flex flex-row items-center gap-sm">
-          <VormInput
-            v-model="testAttribute"
-            class="flex-grow"
-            type="dropdown"
-            placeholder="no component selected"
-            noLabel
-            :options="componentAttributeOptions"
-            @update:model-value="loadInput"
-          />
-          <VButton
-            label="Run Test"
-            size="sm"
-            :loading="testStatus === 'running'"
-            loadingText="Running"
-            loadingIcon="loader"
-            icon="play"
-            :disabled="!testAttribute || !readyToTest"
-            @click="startTest"
-          />
-        </div>
+        <FuncTestSelector
+          v-if="selectedAsset"
+          ref="funcTestSelectorRef"
+          :testStatus="testStatus"
+          :schemaVariantId="selectedAsset?.defaultSchemaVariantId"
+          :isAttributeFunc="isAttributeFunc"
+          :readyToTest="readyToTest"
+          @startTest="startTest"
+          @loadInput="loadInput"
+        />
       </div>
       <!-- DRY RUN SECTION -->
       <div
@@ -82,7 +71,7 @@
     </template>
 
     <TabGroup
-      v-if="testAttribute"
+      v-if="enableTestTabGroup"
       ref="funcTestTabsRef"
       startSelectedTabSlug="input"
       growTabsToFillWidth
@@ -225,7 +214,6 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import {
-  VButton,
   VormInput,
   ScrollArea,
   TabGroupItem,
@@ -239,8 +227,11 @@ import { useComponentsStore } from "@/store/components.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { FuncKind } from "@/api/sdf/dal/func";
+import FuncTestSelector from "./FuncTestSelector.vue";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon, { Status } from "../StatusIndicatorIcon.vue";
+
+export type TestStatus = "running" | "success" | "failure";
 
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
@@ -248,15 +239,34 @@ const assetStore = useAssetStore();
 const realtimeStore = useRealtimeStore();
 const changeSetStore = useChangeSetsStore();
 
-const asset = computed(() => assetStore.selectedAsset);
-
-const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
-const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
-
 const additionalOutputInfoModalRef = ref();
+const funcTestSelectorRef = ref<InstanceType<typeof FuncTestSelector>>();
+
+const selectedAsset = computed(() => assetStore.selectedAsset);
+const editingFuncDetails = computed(() => funcStore.selectedFuncDetails);
+const editingFunc = ref(_.cloneDeep(editingFuncDetails.value));
+
+const isAttributeFunc = computed(() => {
+  if (!funcStore.selectedFuncId) return false;
+  return funcStore.selectedFuncDetails?.associations?.type === "attribute";
+});
+const enableTestTabGroup = computed((): boolean => {
+  if (isAttributeFunc.value) {
+    if (
+      funcTestSelectorRef.value?.selectedComponentId &&
+      funcTestSelectorRef.value?.selectedPrototypeId
+    ) {
+      return true;
+    }
+    return false;
+  }
+  if (funcTestSelectorRef.value?.selectedComponentId) {
+    return true;
+  }
+  return false;
+});
 
 const funcTestTabsRef = ref();
-const testAttribute = ref(undefined);
 const dryRun = ref(true);
 const testInputCode = ref("");
 const testInputProperties = ref<Record<string, unknown> | null>();
@@ -278,25 +288,15 @@ const dryRunConfig = computed(() => {
   }
 });
 
-const components = computed(() => {
-  return componentsStore.allComponents.filter(
-    (c) => c.schemaVariantId === asset.value?.defaultSchemaVariantId,
-  );
-});
-
-const componentAttributeOptions = computed(() => {
-  return components.value.map((c) => {
-    return { value: c.id, label: c.displayName };
-  });
-});
-
 const testComponentDisplayName = computed(() => {
-  if (testAttribute.value) {
-    return componentsStore.componentsById[testAttribute.value]?.displayName;
+  if (funcTestSelectorRef.value?.selectedComponentId) {
+    return componentsStore.componentsById[
+      funcTestSelectorRef.value.selectedComponentId
+    ]?.displayName;
   } else return "ERROR";
 });
 
-const testStatus = computed(() => {
+const testStatus = computed((): TestStatus => {
   const status = funcStore.getRequestStatus("TEST_EXECUTE").value;
 
   if (status.isPending) return "running";
@@ -351,69 +351,64 @@ const loadInput = async () => {
 };
 
 const prepareTest = async () => {
-  if (!funcStore.selectedFuncId || !testAttribute.value) return;
+  if (
+    !funcStore.selectedFuncId ||
+    !funcTestSelectorRef.value?.selectedComponentId
+  )
+    return;
 
   resetTestData();
 
-  const res = await componentsStore.FETCH_COMPONENT_JSON(testAttribute.value);
-  if (!res.result.success) {
-    throw new Error("could not fetch component json needed for preparing test");
-  }
-
-  const json = res.result.data.json;
   const selectedFunc = funcStore.selectedFuncDetails;
+
   if (selectedFunc?.associations?.type === "attribute") {
-    const prototypes = selectedFunc.associations.prototypes;
-
-    const getPropPath = () => {
-      for (const prototype of prototypes) {
-        for (const arg of prototype.prototypeArguments) {
-          const prop = funcStore.propForId(arg.propId ?? "");
-
-          if (prop) {
-            return prop.path;
-          }
-        }
-      }
-    };
-    const propPath = getPropPath();
-    if (!propPath) {
-      throw new Error("could not find path for prop");
-    }
-    // We remove the first two strings because they will always be an empty string and "root"
-    const propPathArray = propPath.split("/").splice(2);
-    const props: Record<string, unknown> | null = json as Record<
-      string,
-      unknown
-    >;
-
-    let properties: Record<string, unknown> | null = {};
-    for (const key of propPathArray) {
-      if (!properties[key]) {
-        properties = null;
-        break;
-      }
-      properties = properties[key] as Record<string, unknown>;
-    }
-    if (propPathArray[propPathArray.length - 1]) {
-      const last = propPathArray[propPathArray.length - 1] as string;
-      properties = { [last]: properties };
+    if (!funcTestSelectorRef.value.selectedPrototypeId) {
+      throw new Error(
+        "cannot prepare test for attribute func without a selected prototype",
+      );
     }
 
-    testInputCode.value = JSON.stringify(properties, null, 2);
-    testInputProperties.value = properties;
-  } else if (selectedFunc?.associations?.type === "action") {
-    const properties: Record<string, unknown> | null = json as Record<
-      string,
-      unknown
-    >;
+    const prototype = _.find(
+      selectedFunc.associations.prototypes,
+      (p) => p.id === funcTestSelectorRef.value?.selectedPrototypeId,
+    );
+    if (!prototype) {
+      throw new Error(
+        "could not find prototype for selected prototype id when preparing test",
+      );
+    }
 
+    const res = await funcStore.FETCH_PROTOTYPE_ARGUMENTS(
+      prototype.propId,
+      prototype.outputSocketId,
+    );
+    if (!res.result.success) {
+      throw new Error(
+        "could not fetch prototype arguments needed for preparing test",
+      );
+    }
+
+    const preparedArguments = res.result.data.preparedArguments;
+
+    let properties: Record<string, unknown> = {};
+    properties = preparedArguments;
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
   } else if (
     selectedFunc?.associations?.type === "codeGeneration" ||
     selectedFunc?.associations?.type === "qualification"
   ) {
+    const res = await componentsStore.FETCH_COMPONENT_JSON(
+      funcTestSelectorRef.value.selectedComponentId,
+    );
+    if (!res.result.success) {
+      throw new Error(
+        "could not fetch component json needed for preparing test",
+      );
+    }
+
+    const json = res.result.data.json;
+
     const props: Record<string, unknown> | null = json as Record<
       string,
       unknown
@@ -443,7 +438,7 @@ const prepareTest = async () => {
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
   } else {
-    // TODO(Wendy) - handle a failure properly instead of just bailing!
+    // This should not be possible since we should only prepare tests for valid func kinds.
     return;
   }
 
@@ -453,7 +448,7 @@ const prepareTest = async () => {
 const startTest = async () => {
   if (
     !funcStore.selectedFuncDetails ||
-    !testAttribute.value ||
+    !funcTestSelectorRef.value?.selectedComponentId ||
     !readyToTest.value
   )
     return;
@@ -481,17 +476,14 @@ const startTest = async () => {
   rawTestLogs.value = [];
   funcTestTabsRef.value.selectTab("logs");
 
-  let args = testInputProperties.value;
-  if (funcStore.selectedFuncDetails.associations?.type === "action") {
-    args = { kind: "standard", properties: args };
-  }
+  const args = testInputProperties.value;
 
   const output = await funcStore.TEST_EXECUTE({
     id: funcStore.selectedFuncDetails.id,
     args,
     code: funcStore.selectedFuncDetails.code,
     executionKey,
-    componentId: testAttribute.value,
+    componentId: funcTestSelectorRef.value?.selectedComponentId,
   });
 
   realtimeStore.unsubscribe(executionKey);

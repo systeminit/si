@@ -509,6 +509,7 @@ impl AttributeValue {
         )
         .into())
     }
+
     #[instrument(level = "info" skip(ctx, read_lock))]
     pub async fn execute_prototype_function(
         ctx: &DalContext,
@@ -525,13 +526,88 @@ impl AttributeValue {
         // execution result is being written to the graph.
 
         let read_guard = read_lock.read().await;
-        let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
+
+        // Prepare arguments for prototype function execution.
+        let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
+        let (prototype_func_id, prepared_func_binding_args) =
+            Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
+                .await?;
+
+        // We need the associated [`ComponentId`] for this function--this is how we resolve and
+        // prepare before functions
+        let associated_component_id = Self::component_id(ctx, attribute_value_id).await?;
+        let before = before_funcs_for_component(ctx, associated_component_id)
+            .await
+            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
+
+        // We have gathered all our inputs and so no longer need a lock on the graph. Be sure not to
+        // add graph walk operations below this drop.
+        drop(read_guard);
+
+        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
+            ctx,
+            prepared_func_binding_args.clone(),
+            prototype_func_id,
+            before,
+        )
+        .instrument(debug_span!(
+            "Func execution",
+            "func.id" = %prototype_func_id,
+            ?prepared_func_binding_args,
+        ))
+        .await
+        {
+            Ok(function_return_value) => function_return_value,
+            Err(FuncBindingError::FuncBackendResultFailure {
+                kind,
+                message,
+                backend,
+            }) => {
+                return Err(AttributeValueError::FuncBackendResultFailure {
+                    kind,
+                    message,
+                    backend,
+                });
+            }
+            Err(err) => Err(err)?,
+        };
+
+        let unprocessed_value = func_binding_return_value.unprocessed_value().cloned();
+        let processed_value = match value_is_for {
+            ValueIsFor::Prop(prop_id) => match &unprocessed_value {
+                Some(unprocessed_value) => {
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    match prop.kind {
+                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
+                        PropKind::Array => Some(serde_json::json!([])),
+                        _ => Some(unprocessed_value.to_owned()),
+                    }
+                }
+                None => None,
+            },
+            _ => func_binding_return_value.value().cloned(),
+        };
+
+        Ok(PrototypeExecutionResult {
+            value: processed_value,
+            unprocessed_value,
+            func_execution_pk: func_binding_return_value.func_execution_pk(),
+        })
+    }
+
+    #[instrument(level = "info" skip(ctx))]
+    pub async fn prepare_arguments_for_prototype_function_execution(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<(FuncId, Value)> {
+        // Cache the values we need for preparing arguments for execution.
+        let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        let destination_component_id =
-            AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
+        let destination_component_id = Self::component_id(ctx, attribute_value_id).await?;
+
+        // Gather the raw func bindings args into a map.
+        let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-        let mut func_binding_args: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
         if apa_ids.is_empty() {
             if let Some(implicit_input) =
                 Self::get_inferred_input_value(ctx, attribute_value_id).await?
@@ -653,68 +729,10 @@ impl AttributeValue {
                 }
             }
         }
+
+        // Serialize the raw args and we're good to go.
         let prepared_func_binding_args = serde_json::to_value(args_map)?;
-
-        // We need the associated [`ComponentId`] for this function--this is how we resolve and
-        // prepare before functions
-        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, associated_component_id)
-            .await
-            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
-
-        // We have gathered up all our inputs and so no longer need a lock on
-        // the graph. Be sure not to add graph walk operations below this drop
-        drop(read_guard);
-
-        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
-            ctx,
-            prepared_func_binding_args.clone(),
-            prototype_func_id,
-            before,
-        )
-        .instrument(debug_span!(
-            "Func execution",
-            "func.id" = %prototype_func_id,
-            ?prepared_func_binding_args,
-        ))
-        .await
-        {
-            Ok(function_return_value) => function_return_value,
-            Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }) => {
-                return Err(AttributeValueError::FuncBackendResultFailure {
-                    kind,
-                    message,
-                    backend,
-                });
-            }
-            Err(err) => Err(err)?,
-        };
-
-        let unprocessed_value = func_binding_return_value.unprocessed_value().cloned();
-        let processed_value = match value_is_for {
-            ValueIsFor::Prop(prop_id) => match &unprocessed_value {
-                Some(unprocessed_value) => {
-                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
-                    match prop.kind {
-                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
-                        PropKind::Array => Some(serde_json::json!([])),
-                        _ => Some(unprocessed_value.to_owned()),
-                    }
-                }
-                None => None,
-            },
-            _ => func_binding_return_value.value().cloned(),
-        };
-
-        Ok(PrototypeExecutionResult {
-            value: processed_value,
-            unprocessed_value,
-            func_execution_pk: func_binding_return_value.func_execution_pk(),
-        })
+        Ok((prototype_func_id, prepared_func_binding_args))
     }
 
     #[instrument(level = "debug", skip_all)]

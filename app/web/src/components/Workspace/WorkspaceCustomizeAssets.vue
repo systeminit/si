@@ -51,7 +51,7 @@
           :funcId="assetStore.selectedFuncId"
           :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
           singleModelScreen
-          testPanelEnabled
+          allowTestPanel
           @detached="onDetach"
           @expand-panel="rightResizablePanelRef?.maximize()"
         />
