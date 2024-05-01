@@ -1,8 +1,8 @@
 use petgraph::prelude::*;
+use si_events::ulid::Ulid;
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncWriteExt};
-use ulid::Ulid;
 
 use crate::component::ControllingFuncData;
 use crate::ComponentError;
@@ -12,7 +12,7 @@ use crate::{
         value::ValueIsFor,
     },
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, ComponentId, DalContext, Prop,
+    Component, DalContext, Prop,
 };
 
 use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
@@ -37,52 +37,65 @@ impl DependentValueGraph {
         }
     }
 
-    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`] whose values depend on
-    /// the value of the values in [`values`]. This includes the entire parent tree of each value
-    /// discovered, up to the root for every value's component, as well as any dependencies of
-    /// values discovered while walking the graph (e.g., if a value's prototype takes one of the
-    /// passed values as an input, we also need to find the values for the other inputs to the
-    /// prototype, etc.).
-    /// The graph also includes any inferred dependencies based on parentage, for example if
-    /// a component gets its inputs from a parent frame, and that frame's output sockets change,
-    /// we add those downstream input sockets to the graph.
+    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`]
+    /// whose values depend on the value of the values in [`values`]. This
+    /// includes the entire parent tree of each value discovered, up to the root
+    /// for every value's component, as well as any dependencies of values
+    /// discovered while walking the graph (e.g., if a value's prototype takes
+    /// one of the passed values as an input, we also need to find the values
+    /// for the other inputs to the prototype, etc.).  The graph also includes
+    /// any inferred dependencies based on parentage, for example if a component
+    /// gets its inputs from a parent frame, and that frame's output sockets
+    /// change, we add those downstream input sockets to the graph.
     pub async fn for_values(
         ctx: &DalContext,
-        values: Vec<AttributeValueId>,
+        initial_values: Vec<AttributeValueId>,
     ) -> AttributeValueResult<Self> {
-        let mut controlling_funcs_for_component: HashMap<
-            ComponentId,
-            HashMap<AttributeValueId, ControllingFuncData>,
-        > = HashMap::new();
-        let mut dependent_value_graph = Self::new();
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut work_queue = VecDeque::from_iter(values);
-        while let Some(current_attribute_value_id) = work_queue.pop_front() {
-            // It's possible that one or more of the initial AttributeValueIds provided by the enqueued DependentValuesUpdate job
-            // may have been removed from the snapshot between when the DVU job was created and when we're processing
-            // things now. This could happen if there are other modifications to the snapshot before the DVU job starts
-            // executing, as the job always operates on the current state of the change set's snapshot, not the state at the time
-            // the job was created.
+        // We need to pre-process the attribute values here to add any object
+        // child values. We do this before the work loop instead of during so
+        // that we only add the child values of the values we have been
+        // explicitly asked to calculate the graph for, not any objects
+        // encountered while walking the prototype chain
+        let mut values = vec![];
+        for value_id in initial_values {
+            // It's possible that one or more of the initial AttributeValueIds
+            // provided by the enqueued DependentValuesUpdate job may have been
+            // removed from the snapshot between when the DVU job was created
+            // and when we're processing things now. This could happen if there
+            // are other modifications to the snapshot before the DVU job starts
+            // executing, as the job always operates on the current state of the
+            // change set's snapshot, not the state at the time the job was
+            // created.
             if workspace_snapshot
-                .try_get_node_index_by_id(current_attribute_value_id)
+                .try_get_node_index_by_id(value_id)
                 .await?
                 .is_none()
             {
-                debug!("Attribute Value {current_attribute_value_id} missing, skipping it in DependentValueGraph");
+                debug!("Attribute Value {value_id} missing, skipping it in DependentValueGraph");
                 continue;
             }
 
+            let child_values = AttributeValue::all_object_children_to_leaves(ctx, value_id).await?;
+            values.push(value_id);
+            values.extend(child_values);
+        }
+
+        let mut dependent_value_graph = Self::new();
+        let mut controlling_funcs_for_component = HashMap::new();
+        let mut work_queue = VecDeque::from_iter(values);
+
+        while let Some(current_attribute_value_id) = work_queue.pop_front() {
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value_id).await?;
 
-            // We should NOT add "controlled" avs to the dependency graph, since they should
-            // be considered only side effects of the av that is controlling them
+            // We should NOT add "controlled" avs to the dependency graph, since
+            // they should be considered only side effects of the av that is
+            // controlling them
             let maybe_controlling_func_data = match controlling_funcs_for_component
                 .entry(current_component_id)
             {
-                Entry::Occupied(entry) => entry.get().get(&current_attribute_value_id).copied(),
                 Entry::Vacant(entry) => {
                     let controlling_func_data =
                         Component::list_av_controlling_func_ids_for_id(ctx, current_component_id)
@@ -96,6 +109,7 @@ impl DependentValueGraph {
 
                     data
                 }
+                Entry::Occupied(entry) => entry.get().get(&current_attribute_value_id).copied(),
             };
 
             // None is okay, because the av would refer to an input or output socket,
@@ -110,18 +124,13 @@ impl DependentValueGraph {
                 }
             }
             let value_is_for = AttributeValue::is_for(ctx, current_attribute_value_id).await?;
-            let data_source_id: Ulid = AttributeValue::is_for(ctx, current_attribute_value_id)
-                .await?
-                .into();
 
             // Gather the Attribute Prototype Arguments that take the thing the
             // current value is for (prop, or socket) as an input
             let relevant_apas = {
-                let workspace_snapshot = ctx.workspace_snapshot()?;
-
                 let attribute_prototype_argument_idxs = workspace_snapshot
                     .incoming_sources_for_edge_weight_kind(
-                        data_source_id,
+                        value_is_for,
                         EdgeWeightKindDiscriminants::PrototypeArgumentValue,
                     )
                     .await?;
@@ -158,9 +167,10 @@ impl DependentValueGraph {
                 relevant_apas
             };
 
-            // Also check if this value is an output socket as the attribute value
-            // might have implicit dependendcies based on the ancestry (aka frames/nested frames)
-            // note: we filter out non-deleted targets if the source component is set to be deleted
+            // Check if this value is an output socket as the attribute
+            // value might have implicit dependendcies based on the ancestry
+            // (aka frames/nested frames) note: we filter out non-deleted
+            // targets if the source component is set to be deleted
             if let ValueIsFor::OutputSocket(_) = value_is_for {
                 let maybe_values_depend_on =
                     match Component::find_inferred_values_using_this_output_socket(
@@ -290,11 +300,7 @@ impl DependentValueGraph {
             &label_value_fn,
         );
 
-        let filename_no_extension = format!(
-            "{}-{}",
-            Ulid::new().to_string(),
-            suffix.unwrap_or("depgraph")
-        );
+        let filename_no_extension = format!("{}-{}", Ulid::new(), suffix.unwrap_or("depgraph"));
         let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
             .await
             .expect("could not create file");

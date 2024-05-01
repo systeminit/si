@@ -399,6 +399,167 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 }
 
 #[test]
+async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
+    let name = "across the universe";
+    let component = create_component_for_schema_name(ctx, "starfield", name).await;
+    let variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("find variant id for component");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_a_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new(["root", "domain", "possible_world_a"]),
+    )
+    .await
+    .expect("able to find 'possible_world' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    assert_eq!(1, possible_world_values.len());
+
+    let possible_world_a_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    assert_eq!(
+        component.id(),
+        AttributeValue::component_id(ctx, possible_world_a_value_id)
+            .await
+            .expect("able to get component id for universe value")
+    );
+
+    let naming_and_necessity_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new([
+            "root",
+            "domain",
+            "possible_world_b",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+            "naming_and_necessity",
+        ]),
+    )
+    .await
+    .expect("able to find 'naming_and_necessity' prop");
+
+    let naming_and_necessity_value_id =
+        Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
+            .await
+            .expect("able to get values for naming_and_necessity")
+            .first()
+            .copied()
+            .expect("get first value id");
+
+    let update_graph = DependentValueGraph::for_values(ctx, vec![possible_world_a_value_id])
+        .await
+        .expect("able to generate update graph");
+
+    assert!(
+        update_graph.contains_value(naming_and_necessity_value_id),
+        "update graph has the value we aren't setting but which depends on the value we are setting"
+    );
+
+    let possible_world_a = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "hesperus"
+                }
+            }
+        }
+    });
+
+    AttributeValue::update(
+        ctx,
+        possible_world_a_value_id,
+        Some(possible_world_a.clone()),
+    )
+    .await
+    .expect("able to set universe value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
+        .await
+        .expect("get av")
+        .materialized_view(ctx)
+        .await
+        .expect("get view")
+        .expect("has a view");
+
+    assert_eq!(possible_world_a, materialized_view);
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
+        .await
+        .expect("able to get attribute value for `naming_and_necessity_value_id`")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get materialized_view for `naming_and_necessity_value_id`")
+        .expect("naming and necessity has a value");
+
+    // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
+    // phosphorus if it receives hesperus)
+    assert_eq!("phosphorus", naming_and_necessity_view);
+
+    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(["root"]))
+        .await
+        .expect("able to find root prop");
+
+    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+        .await
+        .expect("get root prop value id")
+        .first()
+        .copied()
+        .expect("a value exists for the root prop");
+
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
+        .await
+        .expect("able to get the value for the root prop attriburte value id");
+
+    let root_view = root_value
+        .materialized_view(ctx)
+        .await
+        .expect("able to fetch materialized_view for root value")
+        .expect("there is a value for the root value materialized_view");
+
+    assert_eq!(
+        serde_json::json!({
+                "si": { "name": name, "color": "#ffffff", "type": "component" },
+                "resource": {},
+                "resource_value": {},
+                "domain": {
+                    "name": name,
+                    "possible_world_a": possible_world_a,
+                    "possible_world_b": {
+                        "wormhole_1": {
+                            "wormhole_2": {
+                                "wormhole_3": {
+                                    "naming_and_necessity": "phosphorus"
+                                }
+                            }
+                        }
+                    },
+                    "universe": { "galaxies": [] },
+                }
+            }
+        ),
+        root_view
+    );
+}
+
+#[test]
 async fn set_the_universe(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -958,6 +1119,7 @@ async fn paste_component(ctx: &mut DalContext) {
                 //     "Captain Flint",
                 // ],
             },
+            "resource_value": {},
             "resource": {
                 "last_synced": null,
                 "logs": [],
