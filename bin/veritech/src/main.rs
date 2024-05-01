@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_server::{Config, CycloneSpec, Server};
@@ -30,6 +31,8 @@ async fn main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    startup::startup("veritech").await?;
 
     if args.verbose > 0 {
         telemetry

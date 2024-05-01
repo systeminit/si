@@ -1,5 +1,6 @@
 use color_eyre::Result;
 use cyclone_server::{Config, Runnable as _, Server};
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -30,6 +31,8 @@ async fn main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    startup::startup("cyclone").await?;
 
     if args.verbose > 0 {
         telemetry

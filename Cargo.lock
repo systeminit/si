@@ -1208,6 +1208,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "cyclone-server",
+ "si-service",
  "telemetry-application",
  "tokio",
  "tokio-util",
@@ -3650,6 +3651,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "pinga-server",
+ "si-service",
  "si-std",
  "telemetry-application",
  "tokio",
@@ -4105,6 +4107,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "rebaser-server",
+ "si-service",
  "si-std",
  "telemetry-application",
  "tokio",
@@ -4646,6 +4649,7 @@ dependencies = [
  "color-eyre",
  "nats-multiplexer",
  "sdf-server",
+ "si-service",
  "si-std",
  "telemetry-application",
  "tokio",
@@ -5204,6 +5208,7 @@ name = "si-service"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "glob",
  "telemetry",
  "telemetry-application",
  "thiserror",
@@ -6590,6 +6595,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "si-service",
  "si-std",
  "telemetry-application",
  "tokio",

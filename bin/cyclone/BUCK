@@ -31,6 +31,7 @@ rust_binary(
     name = "cyclone",
     deps = [
         "//lib/cyclone-server:cyclone-server",
+        "//lib/si-service:si-service",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",

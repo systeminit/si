@@ -1,8 +1,8 @@
 use color_eyre::Result;
 use rebaser_server::{Config, Server};
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-
 mod args;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
@@ -45,6 +45,8 @@ async fn async_main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    startup::startup("rebaser").await?;
 
     if args.verbose > 0 {
         telemetry
