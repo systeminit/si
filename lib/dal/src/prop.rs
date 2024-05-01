@@ -321,7 +321,7 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
             PropKind::Object => Self::Object,
-            PropKind::Json => Self::Object,
+            PropKind::Json => Self::Json,
             PropKind::Map => Self::Map,
             PropKind::String => Self::String,
         }
@@ -1010,7 +1010,9 @@ impl Prop {
                     work_queue.push_back((array_element_type.id, array_element_type.kind));
                     format!("{ts_type}[] | null | undefined")
                 }
-                PropKind::Json => "unknown".into(),
+                PropKind::Json => {
+                    "object | array | string | number | boolean | null | undefined".into()
+                }
                 PropKind::Boolean => "boolean | null | undefined".into(),
                 PropKind::Integer => "number | null | undefined".into(),
                 PropKind::Object => {

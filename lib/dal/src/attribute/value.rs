@@ -44,11 +44,11 @@ use std::sync::Arc;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_events::ulid::Ulid;
 use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{RwLock, TryLockError};
-use ulid::Ulid;
 
 pub use dependent_value_graph::DependentValueGraph;
 
@@ -220,7 +220,7 @@ pub struct AttributeValue {
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
 /// is a particular value the value of/for?
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "kind", content = "id")]
 pub enum ValueIsFor {
     Prop(PropId),
@@ -2318,6 +2318,35 @@ impl AttributeValue {
             work_queue.extend(children);
         }
         Ok(child_values)
+    }
+
+    /// Walk the tree below `id` and gather up all children if the children are
+    /// children of an object. The returned list is in breadth-first pre-order
+    pub async fn all_object_children_to_leaves(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let mut values = vec![];
+        let mut work_queue = VecDeque::from([id]);
+
+        while let Some(attribute_value_id) = work_queue.pop_front() {
+            if let ValueIsFor::Prop(prop_id) =
+                AttributeValue::is_for(ctx, attribute_value_id).await?
+            {
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                if prop.kind == PropKind::Object {
+                    for child_value_id in
+                        AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                            .await?
+                    {
+                        values.push(child_value_id);
+                        work_queue.push_back(child_value_id);
+                    }
+                }
+            }
+        }
+
+        Ok(values)
     }
 
     pub async fn list_all_children(
