@@ -46,7 +46,7 @@ services:
 
   pgbouncer:
     container_name: pgbouncer
-    image: edoburu/pgbouncer:1.22.0-p0
+    image: systeminit/pgbouncer:stable
     profiles: [rebaser, pinga, sdf]
     ports:
       - 5432:5432

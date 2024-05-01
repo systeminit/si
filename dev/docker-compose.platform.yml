@@ -1,6 +1,6 @@
 ---
 services:
-  postgres:
+  db:
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -9,14 +9,14 @@ services:
       - "POSTGRES_DB=si"
       - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_module_index"
     ports:
-      - "5432:5432"
+      - "7432:5432"
     healthcheck:
       test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
       interval: 5s
       timeout: 10s
       retries: 5
 
-  postgres-test:
+  db-test:
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -30,12 +30,48 @@ services:
       - "-c"
       - "full_page_writes=off"
     ports:
-      - "6432:5432"
+      - "8432:5432"
     healthcheck:
       test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
       interval: 5s
       timeout: 10s
       retries: 5
+
+  postgres:
+    image: systeminit/pgbouncer:stable
+    environment:
+      - "DB_USER=si"
+      - "DB_PASSWORD=bugbear"
+      - "DB_HOST=db"
+      - "ADMIN_USERS=postgres,dbuser,si"
+      - "AUTH_TYPE=scram-sha-256"
+      - "MAX_CLIENT_CONN=100000"
+      - "MAX_PREPARED_STATEMENTS=10000"
+      - "DEFAULT_POOL_SIZE=250"
+      - "MIN_POOL_SIZE=200"
+      - "POOL_MODE=transaction"
+    ports:
+      - "5432:5432"
+    depends_on:
+      - db
+
+  postgres-test:
+    image: systeminit/pgbouncer:stable
+    environment:
+      - "DB_USER=si_test"
+      - "DB_PASSWORD=bugbear"
+      - "DB_HOST=db-test"
+      - "ADMIN_USERS=postgres,dbuser,si_test"
+      - "AUTH_TYPE=scram-sha-256"
+      - "MAX_CLIENT_CONN=100000"
+      - "DEFAULT_POOL_SIZE=10"
+      - "SERVER_IDLE_TIMEOUT=10"
+      - "POOL_MODE=transaction"
+      - "MAX_PREPARED_STATEMENTS=10000"
+    ports:
+      - "6432:5432"
+    depends_on:
+      - db-test
 
   nats:
     image: systeminit/nats:stable

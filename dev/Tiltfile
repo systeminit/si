@@ -11,6 +11,8 @@ groups = {
         "jaeger",
         "nats",
         "otelcol",
+        "db",
+        "db-test",
         "postgres",
         "postgres-test",
     ],
@@ -86,7 +88,7 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test"]
 for service in compose_services:
     if service == "jaeger":
         links = [
