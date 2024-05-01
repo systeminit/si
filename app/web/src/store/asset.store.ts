@@ -178,13 +178,6 @@ export const useAssetStore = () => {
         },
       },
       actions: {
-        setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
-          const asset = this.assetsById[assetId];
-          if (asset) {
-            asset.id = schemaVariantId;
-            this.assetsById[assetId] = asset;
-          }
-        },
         getLastSelectedAssetId(): AssetId | undefined {
           return storage.getItem(
             LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
@@ -234,10 +227,6 @@ export const useAssetStore = () => {
             "00FFAA",
             "00AAFF",
           ])}`;
-        },
-
-        generateMockAssets() {
-          return {} as Record<AssetId, Asset>;
         },
 
         createNewAsset(): Asset {

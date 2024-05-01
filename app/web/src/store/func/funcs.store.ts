@@ -377,17 +377,22 @@ export const useFuncStore = () => {
                   response.associations.schemaVariantIds,
                 );
 
+                const assetStore = useAssetStore();
                 for (const schemaVariantId of _.concat(
                   addedVariantIds,
                   removedVariantIds,
                 )) {
-                  const assetStore = useAssetStore();
                   const asset =
                     assetStore.assetBySchemaVariantId[schemaVariantId];
 
                   if (asset) {
                     useAssetStore().LOAD_ASSET(asset.id);
                   }
+                }
+                const asset = assetStore.getLastSelectedAssetId();
+                if (asset) {
+                  useAssetStore().LOAD_ASSET(asset);
+                  this.recoverOpenFuncIds();
                 }
               }
 

@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::view::FuncView;
 use dal::func::FuncAssociations;
-use dal::{ChangeSet, Func, FuncId, Visibility};
+use dal::{ChangeSet, Func, FuncId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -63,6 +63,11 @@ pub async fn save_func(
             "func_is_builtin": func.builtin,
         }),
     );
+
+    WsEvent::func_saved(&ctx, func.id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
