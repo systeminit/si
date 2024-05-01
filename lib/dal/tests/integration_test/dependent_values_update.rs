@@ -127,8 +127,6 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     // Verify data.
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
@@ -147,7 +145,6 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -193,7 +190,6 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(!units_json_string.contains("docker.io/library/oysters on the floor\\n"));
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
@@ -297,7 +293,6 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
 
     // Verify pre-delete data.
     let units_value_id = royel_component
@@ -408,6 +403,5 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .expect("units has a materialized_view");
     let units_json_string =
         serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
     assert!(units_json_string.contains("docker.io/library/oysters on the floor\\n"));
 }

@@ -495,7 +495,7 @@ impl TestContextBuilder {
         // (or displayed) during tests, while `println!(...)` will be captured the same as
         // "normal" test output, meaning it respects --nocapture and being displayed for
         // failing tests.
-        println!("Test database: {}", &dbname);
+        info!("Test database: {}", &dbname);
 
         // Return new PG pool that uess the new datatbase
         new_pg_pool_config.dbname = dbname;

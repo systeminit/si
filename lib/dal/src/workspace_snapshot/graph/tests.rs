@@ -1298,7 +1298,6 @@ mod test {
             .expect("Failed to detect conflicts and updates");
 
         assert!(conflicts.is_empty());
-        dbg!(&updates);
         assert_eq!(1, updates.len());
 
         assert!(matches!(

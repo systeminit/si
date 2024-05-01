@@ -184,7 +184,6 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -225,7 +224,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -285,7 +283,6 @@ mod test {
             .expect("Unable to add root -> component edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -315,7 +312,6 @@ mod test {
             .expect("Unable to add root -> component edge");
 
         new_graph.cleanup();
-        println!("Updated new graph (Root: {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -406,7 +402,6 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -447,7 +442,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let new_onto_component_id = base_change_set
@@ -484,7 +478,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -602,7 +595,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -618,7 +610,6 @@ mod test {
             .expect("Unable to update Component A");
 
         new_graph.cleanup();
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         base_graph
@@ -630,7 +621,6 @@ mod test {
             .expect("Unable to update Component A");
 
         base_graph.cleanup();
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -743,7 +733,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -762,7 +751,6 @@ mod test {
             .expect("Unable to remove Component A");
 
         base_graph.cleanup();
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         new_graph
@@ -774,7 +762,6 @@ mod test {
             .expect("Unable to update Component A");
 
         new_graph.cleanup();
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -1181,7 +1168,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         // Create a new change set to cause some problems!
@@ -1241,9 +1227,7 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        println!("base graph current root: {:?}", base_graph.root_index);
         base_graph.dot();
-        println!("new graph current root: {:?}", new_graph.root_index);
         new_graph.dot();
 
         let expected_conflicts = vec![

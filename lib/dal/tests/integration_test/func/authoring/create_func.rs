@@ -325,7 +325,6 @@ async fn create_attribute_with_socket(ctx: &mut DalContext) {
     let (output, _input) = SchemaVariant::list_all_sockets(ctx, sv_id)
         .await
         .expect("Unable to get the Sockets for the Schema Variant");
-    dbg!(&output);
 
     assert!(!output.is_empty());
 

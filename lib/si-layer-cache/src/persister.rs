@@ -210,7 +210,6 @@ impl PersistEventTask {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
             Err(e) => {
-                println!("wtf: {:?}", e);
                 status_tx.send(PersistStatus::Error(e));
             }
         }
