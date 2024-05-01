@@ -110,8 +110,6 @@ pub enum FuncAuthoringError {
     NoOutputLocationGiven(FuncId),
     #[error("func ({0}) is not runnable with kind: {1}")]
     NotRunnable(FuncId, FuncKind),
-    #[error("func is read-only: {0}")]
-    NotWritable(FuncId),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]

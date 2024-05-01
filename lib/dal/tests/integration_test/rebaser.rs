@@ -297,7 +297,7 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
         assert_eq!(1, conflicts.conflicts_found.len());
         let conflict = conflicts
             .conflicts_found
-            .get(0)
+            .first()
             .expect("conflict should be there")
             .to_owned();
         assert!(matches!(conflict, Conflict::ExclusiveEdgeMismatch { .. }));
