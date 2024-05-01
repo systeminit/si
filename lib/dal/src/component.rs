@@ -2459,13 +2459,31 @@ pub struct ComponentDeletedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentSetPositionPayload {
-    change_set_id: ChangeSetId,
-    component_id: ComponentId,
+pub struct ComponentPosition {
     x: i32,
     y: i32,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSize {
     width: Option<i32>,
     height: Option<i32>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSetPosition {
+    component_id: ComponentId,
+    position: ComponentPosition,
+    size: Option<ComponentSize>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSetPositionPayload {
+    change_set_id: ChangeSetId,
+    positions: Vec<ComponentSetPosition>,
     user_pk: Option<UserPk>,
 }
 
@@ -2492,18 +2510,30 @@ impl WsEvent {
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        component: &Component,
+        components: &Vec<Component>,
         user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
+        let mut positions: Vec<ComponentSetPosition> = vec![];
+        for component in components {
+            let position = ComponentPosition {
+                x: component.x.parse()?,
+                y: component.y.parse()?,
+            };
+            let size = ComponentSize {
+                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
+                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
+            };
+            positions.push(ComponentSetPosition {
+                component_id: component.id(),
+                position,
+                size: Some(size),
+            });
+        }
         WsEvent::new(
             ctx,
             WsPayload::SetComponentPosition(ComponentSetPositionPayload {
                 change_set_id,
-                component_id: component.id,
-                x: component.x.parse()?,
-                y: component.y.parse()?,
-                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
-                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
+                positions,
                 user_pk,
             }),
         )

@@ -218,6 +218,7 @@ import {
   EdgeId,
   useComponentsStore,
   FullComponent,
+  ComponentPositions,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
@@ -487,15 +488,18 @@ watch(
       const elm = diagramDataFromNodeDef(n);
 
       // don't overwrite existing values (this causes elements to return to previous positions)
-      const e: updateElementPositionAndSizeArgs = {
+      const e: elementPositionAndSize = {
         uniqueKey: elm.uniqueKey,
         position: { x: n.position.x, y: n.position.y } as Vector2d,
       };
       if (n.isGroup && n.size?.height && n.size.width) {
-        e.size = { width: n.size.width, height: n.size.height } as Size2D;
+        e.size = {
+          width: n.size.width,
+          height: n.size.height,
+        } as Size2D;
       }
       if (!movedElementPositions[elm.uniqueKey]) {
-        updateElementPositionAndSize(e); // and don't save or broadcast
+        updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
       }
     });
   },
@@ -556,35 +560,28 @@ watch(
       [
         {
           eventType: "SetComponentPosition",
-          callback: ({
-            changeSetId,
-            componentId,
-            x,
-            y,
-            width,
-            height,
-            userPk,
-          }) => {
+          callback: ({ changeSetId, userPk, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
             if (userPk === authStore.userPk) return;
 
-            const gKey = DiagramGroupData.generateUniqueKey(componentId);
-            const nKey = DiagramNodeData.generateUniqueKey(componentId);
-            if (movedElementPositions[gKey]) {
-              const e = {
-                uniqueKey: gKey,
-                position: { x, y },
-              } as updateElementPositionAndSizeArgs;
-              if (width && height) {
-                e.size = { width, height };
+            const elements: elementPositionAndSize[] = [];
+            for (const { componentId, position, size } of positions) {
+              const gKey = DiagramGroupData.generateUniqueKey(componentId);
+              const nKey = DiagramNodeData.generateUniqueKey(componentId);
+              if (movedElementPositions[gKey]) {
+                elements.push({
+                  uniqueKey: gKey,
+                  position,
+                  size,
+                } as elementPositionAndSize);
+              } else if (movedElementPositions[nKey]) {
+                elements.push({
+                  uniqueKey: nKey,
+                  position,
+                });
               }
-              updateElementPositionAndSize(e);
-            } else if (movedElementPositions[nKey]) {
-              updateElementPositionAndSize({
-                uniqueKey: nKey,
-                position: { x, y },
-              });
             }
+            updateElementPositionAndSize({ elements });
           },
         },
       ],
@@ -1286,10 +1283,14 @@ const draggedElementsPositionsPreDrag = ref<
 >({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
-interface updateElementPositionAndSizeArgs {
+interface elementPositionAndSize {
   uniqueKey: DiagramElementUniqueKey;
   position?: Vector2d;
   size?: Size2D; // only frames have a size
+}
+
+interface updateElementPositionAndSizeArgs {
+  elements: elementPositionAndSize[];
   writeToChangeSet?: boolean;
   broadcastToClients?: boolean;
 }
@@ -1299,64 +1300,64 @@ function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
     Nearly every instance of `send...` also mutated these two dictionaries, encapsulating that logic
     It will also call `send...`, optionally
   */
-  if (e.position) {
-    movedElementPositions[e.uniqueKey] = { ...e.position };
-  }
-  if (e.size) {
-    resizedElementSizes[e.uniqueKey] = { ...e.size };
-  }
+  _.forEach(e.elements, (e) => {
+    if (e.position) {
+      movedElementPositions[e.uniqueKey] = { ...e.position };
+    }
+    if (e.size) {
+      resizedElementSizes[e.uniqueKey] = { ...e.size };
+    }
+  });
 
   // for convience
   if (e.writeToChangeSet || e.broadcastToClients) {
-    sendMovedElementPosition({ ...e });
+    sendMovedElementPosition({
+      ...e,
+      uniqueKeys: e.elements.map((e) => e.uniqueKey),
+    });
   }
 }
 
 function sendMovedElementPosition(e: {
   // used to send the already existing elements position and size
-  uniqueKey: DiagramElementUniqueKey;
+  uniqueKeys: DiagramElementUniqueKey[];
   writeToChangeSet?: boolean;
   broadcastToClients?: boolean;
 }) {
   if (!e.writeToChangeSet && !e.broadcastToClients) return;
+  if (!e.uniqueKeys) return;
 
-  const position = movedElementPositions[e.uniqueKey];
-  const size = resizedElementSizes[e.uniqueKey];
-  const componentId = DiagramNodeData.componentIdFromUniqueKey(
-    DiagramGroupData.componentIdFromUniqueKey(e.uniqueKey),
-  );
+  const positions: ComponentPositions[] = [];
+  for (const key of e.uniqueKeys) {
+    const position = movedElementPositions[key];
+    const size = resizedElementSizes[key];
+    const componentId = DiagramNodeData.componentIdFromUniqueKey(
+      DiagramGroupData.componentIdFromUniqueKey(key),
+    );
+    if (position && componentId) {
+      positions.push({ componentId, position, size });
+    }
+  }
 
-  // should always be true
-  if (position) {
+  if (positions.length > 0) {
     if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-        componentId,
-        position,
-        size,
-      );
+      componentsStore.SET_COMPONENT_DIAGRAM_POSITION(positions);
     }
 
     if (
       e.broadcastToClients &&
       changeSetsStore.selectedChangeSetId &&
-      componentId &&
       authStore.userPk
     ) {
       realtimeStore.sendMessage({
         kind: "ComponentSetPosition",
         data: {
+          positions,
           userPk: authStore.userPk,
-          componentId,
           changeSetId: changeSetsStore.selectedChangeSetId,
-          x: Math.round(position.x),
-          y: Math.round(position.y),
-          width: size?.width || null,
-          height: size?.height || null,
         },
       });
     }
-  } else {
-    throw Error(`${e.uniqueKey} has no position`);
   }
 }
 
@@ -1377,6 +1378,7 @@ function endDragElements() {
   // fire off final move event
   // note - we've already filtered out children that are selected along with their parents,
   // so we don't need to worry about accidentally moving them more than once
+  const keys_to_save: string[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     let fitWithinParent: null | {
       position: Vector2d;
@@ -1413,35 +1415,33 @@ function endDragElements() {
 
     // only resize if my parent *currently* has zero children, and i have no children
     // otherwise let the human deal witht it
+    keys_to_save.push(el.uniqueKey);
     if (el.def.childIds?.length === 0 && fitWithinParent) {
       const [position, size] = fitChildInsideParentFrame(
         fitWithinParent.position,
         fitWithinParent.size,
       );
       updateElementPositionAndSize({
-        uniqueKey: el.uniqueKey,
-        position,
-        size,
-        writeToChangeSet: true,
-      });
-    } else {
-      sendMovedElementPosition({
-        uniqueKey: el.uniqueKey,
-        writeToChangeSet: true,
+        elements: [
+          {
+            uniqueKey: el.uniqueKey,
+            position,
+            size,
+          },
+        ],
       });
     }
 
-    // move child elements inside a group
     if (el instanceof DiagramGroupData) {
       const childEls = allChildren(el);
-      // for now only dealing with nodes... will be fixed later
-      _.each(childEls, (childEl) => {
-        sendMovedElementPosition({
-          uniqueKey: childEl.uniqueKey,
-          writeToChangeSet: true,
-        });
-      });
+      keys_to_save.push(..._.map(childEls, (childEl) => childEl.uniqueKey));
     }
+  });
+
+  // send one batch of all positions that are being moved
+  sendMovedElementPosition({
+    uniqueKeys: keys_to_save,
+    writeToChangeSet: true,
   });
 }
 
@@ -1492,6 +1492,7 @@ function onDragElementsMove() {
     cursorWithinGroupKey.value || ""
   ] as DiagramGroupData;
 
+  const elements: elementPositionAndSize[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
@@ -1550,7 +1551,6 @@ function onDragElementsMove() {
         newPosition,
       );
 
-      // TODO: this should get simplified once we are storing positions relative to their group parent
       _.each(childEls, (childEl) => {
         if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
 
@@ -1560,22 +1560,20 @@ function onDragElementsMove() {
         );
 
         // track the position locally, so we don't need to rely on parent to store the temporary position
-        updateElementPositionAndSize({
+        elements.push({
           uniqueKey: childEl.uniqueKey,
           position: newChildPosition,
-          writeToChangeSet: false,
-          broadcastToClients: true,
         });
       });
     }
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
-    updateElementPositionAndSize({
-      uniqueKey: el.uniqueKey,
-      position: newPosition,
-      writeToChangeSet: false,
-      broadcastToClients: true,
-    });
+    elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
+  });
+  updateElementPositionAndSize({
+    elements,
+    writeToChangeSet: false,
+    broadcastToClients: true,
   });
 
   // check if dragging to the edge of the screen, which will trigger scrolling
@@ -1670,20 +1668,26 @@ function alignSelection(direction: Direction) {
   else if (direction === "down") alignedY = _.max(yPositions);
   else if (direction === "left") alignedX = _.min(xPositions);
   else if (direction === "right") alignedX = _.max(xPositions);
-  _.each(currentSelectionMovableElements.value, (el) => {
-    const newPosition = {
+  const elements: elementPositionAndSize[] = [];
+  _.forEach(currentSelectionMovableElements.value, (el) => {
+    const position = {
       x: alignedX === undefined ? el.def.position.x : alignedX,
       y: alignedY === undefined ? el.def.position.y : alignedY,
-    };
-    updateElementPositionAndSize({
+    } as Vector2d;
+    elements.push({
+      position,
       uniqueKey: el.uniqueKey,
-      position: newPosition,
-      writeToChangeSet: true,
     });
+  });
+  updateElementPositionAndSize({
+    elements,
+    writeToChangeSet: true,
   });
   // TODO: move viewport to show selection
 }
 
+type VoidFn = () => void;
+let debouncedNudgeFn: _.DebouncedFunc<VoidFn> | null;
 function nudgeSelection(direction: Direction, largeNudge: boolean) {
   if (!currentSelectionMovableElements.value.length) return;
   const nudgeSize = largeNudge ? 10 : 1;
@@ -1694,47 +1698,40 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
 
-  _.each(currentSelectionMovableElements.value, (el) => {
-    nudgeOneNode(el, nudgeVector);
+  const elements = currentSelectionMovableElements.value.reduce<
+    elementPositionAndSize[]
+  >((elms, el) => {
+    const e = recursivePositionCompute(el, nudgeVector);
+    elms.push(...e);
+    return elms;
+  }, []);
+  updateElementPositionAndSize({
+    elements,
+    broadcastToClients: true,
   });
-  // TODO: if nudging out of the viewport, pan to give more space
+  const uniqueKeys = elements.map((e) => e.uniqueKey);
+  if (!debouncedNudgeFn) {
+    debouncedNudgeFn = _.debounce(() => {
+      sendMovedElementPosition({
+        uniqueKeys,
+        writeToChangeSet: true,
+      });
+      debouncedNudgeFn = null;
+    }, 300);
+  }
+  debouncedNudgeFn();
 }
 
-const debounceTracker: Record<
-  DiagramElementUniqueKey,
-  _.DebouncedFunc<
-    (el: DiagramGroupData | DiagramNodeData, newPos: Vector2d) => void
-  >
-> = {};
-const debounceNudge = () => {
-  return _.debounce((el, newPos) => {
-    sendMovedElementPosition({
-      uniqueKey: el.uniqueKey,
-      writeToChangeSet: true,
-    });
-  }, 300);
-};
-
-const nudgeOneNode = (
+const recursivePositionCompute = (
   el: DiagramGroupData | DiagramNodeData,
   nudgeVector: Vector2d,
-) => {
+): elementPositionAndSize[] => {
+  const elements: elementPositionAndSize[] = [];
   const newPosition = vectorAdd(
     movedElementPositions[el.uniqueKey] || el.def.position,
     nudgeVector,
   );
-  // this call updates myself, and other clients through WS
-  updateElementPositionAndSize({
-    uniqueKey: el.uniqueKey,
-    position: newPosition,
-    broadcastToClients: true,
-  });
-
-  // we have to debounce the save for *each* element, not one debounce for all elements
-  if (!debounceTracker[el.uniqueKey]) {
-    debounceTracker[el.uniqueKey] = debounceNudge();
-  }
-  debounceTracker[el.uniqueKey]?.(el, newPosition);
+  elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
 
   const component = componentsStore.componentsById[el.def.componentId];
 
@@ -1748,10 +1745,11 @@ const nudgeOneNode = (
       const node = getElementByKey(key);
 
       if (node instanceof DiagramNodeData || node instanceof DiagramGroupData) {
-        nudgeOneNode(node, nudgeVector);
+        elements.push(...recursivePositionCompute(node, nudgeVector));
       }
     }
   });
+  return elements;
 };
 
 // we calculate which group (if any) the cursor is within without using hover events
@@ -1899,8 +1897,10 @@ function endResizeElement() {
   if (!size || !position) {
     return;
   }
-
-  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(el.def.id, position, size);
+  updateElementPositionAndSize({
+    elements: [{ position, size, uniqueKey: el.uniqueKey }],
+    writeToChangeSet: true,
+  });
 
   resizeElement.value = undefined;
 }
@@ -2183,9 +2183,13 @@ function onResizeMove() {
   }
 
   updateElementPositionAndSize({
-    uniqueKey: resizeElement.value.uniqueKey,
-    position: newNodePosition,
-    size: newNodeSize,
+    elements: [
+      {
+        uniqueKey: resizeElement.value.uniqueKey,
+        position: newNodePosition,
+        size: newNodeSize,
+      },
+    ],
     broadcastToClients: true,
   });
 }

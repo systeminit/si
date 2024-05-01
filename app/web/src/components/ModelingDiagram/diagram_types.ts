@@ -42,7 +42,7 @@ export class DiagramNodeData extends DiagramElementData {
     return `n-${id}`;
   }
 
-  static componentIdFromUniqueKey(uniqueKey: string): string {
+  static componentIdFromUniqueKey(uniqueKey: string): ComponentId {
     return uniqueKey.replace("n-", "");
   }
 }

@@ -4,7 +4,7 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Resource } from "@/api/sdf/dal/resource";
-import { ComponentId } from "../components.store";
+import { ComponentId, ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import {
   ActionStatus,
@@ -49,12 +49,8 @@ export interface ComponentPositionRequest {
   kind: "ComponentSetPosition";
   data: {
     userPk: UserId;
-    componentId: ComponentId;
     changeSetId: string | null;
-    x: number;
-    y: number;
-    width: number | null;
-    height: number | null;
+    positions: ComponentPositions[];
   };
 }
 
@@ -78,12 +74,20 @@ export type WsEventPayloadMap = {
 
   SetComponentPosition: {
     changeSetId: ChangeSetId;
-    componentId: ComponentId;
     userPk: UserId;
-    x: number;
-    y: number;
-    width: number | undefined;
-    height: number | undefined;
+    positions: [
+      {
+        componentId: ComponentId;
+        position: {
+          x: number;
+          y: number;
+        };
+        size?: {
+          width: number | undefined;
+          height: number | undefined;
+        };
+      },
+    ];
   };
 
   ChangeSetBeginApprovalProcess: {
