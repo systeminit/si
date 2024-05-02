@@ -62,14 +62,20 @@
             class="attributes-panel-item__type-icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label">
+          <div class="attributes-panel-item__section-header-label flex-1">
             <div
               ref="headerMainLabelRef"
               v-tooltip="headerMainLabelTooltip"
-              class="attributes-panel-item__section-header-label-main leading-loose"
+              class="attributes-panel-item__section-header-label-main leading-loose flex"
             >
               <template v-if="isChildOfArray">
                 {{ propName }}[{{ attributeDef.arrayIndex }}]
+                <button
+                  class="attributes-panel-item__delete-child-button hover:scale-125 items-center"
+                  @click="removeChildHandler"
+                >
+                  <Icon name="trash" size="xs" />
+                </button>
               </template>
               <template v-else-if="isChildOfMap">
                 {{ attributeDef.mapKey }}
