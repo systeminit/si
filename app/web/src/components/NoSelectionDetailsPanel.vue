@@ -22,9 +22,10 @@
         <ApplyChangeSetButton class="grow" />
         <PillCounter
           tone="action"
-          :count="1 + _.keys(actionsStore.proposedActions).length"
+          :count="displayCount"
           size="xl"
-          class="bg-action-100 dark:bg-action-800 px-3 font-bold"
+          :paddingX="displayCount > 10 ? '2xs' : 'xs'"
+          class="bg-action-100 dark:bg-action-800 font-bold"
         />
       </div>
     </template>
@@ -57,6 +58,7 @@ import {
   PillCounter,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { computed } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useActionsStore } from "@/store/actions.store";
@@ -66,4 +68,8 @@ import SecretsPanel from "./SecretsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();
+
+const displayCount = computed(
+  () => 1 + _.keys(actionsStore.proposedActions).length,
+);
 </script>

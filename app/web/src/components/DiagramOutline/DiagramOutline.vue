@@ -6,7 +6,11 @@
           <template #label>
             <div class="flex flex-row gap-xs items-center">
               <div>Diagram Outline</div>
-              <PillCounter :count="componentCount" borderTone="action" />
+              <PillCounter
+                :count="componentCount"
+                hideIfZero
+                :paddingX="componentCount < 10 ? 'xs' : '2xs'"
+              />
               <VButton
                 v-if="
                   changeSetsStore.selectedChangeSetId ===

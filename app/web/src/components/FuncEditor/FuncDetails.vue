@@ -110,11 +110,29 @@
             </ErrorMessage>
           </Stack>
 
-          <!-- <Collapsible label="Logs">
+          <!-- <TreeNode
+            label="Logs"
+            defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          >
             {{ lastExecutionLog }}
             <VButton @click="getLastExecution">Load</VButton>
-          </Collapsible> -->
-          <Collapsible label="Attributes" defaultOpen>
+          </TreeNode> -->
+
+          <TreeNode
+            label="Attributes"
+            defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            noIndentationOrLeftBorder
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          >
             <Stack class="p-3">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this function a Name, Entrypoint and brief description
@@ -142,7 +160,8 @@
                 @blur="updateFunc"
               />
             </Stack>
-          </Collapsible>
+          </TreeNode>
+
           <ActionDetails
             v-if="editingFunc.associations?.type === 'action'"
             ref="detachRef"
@@ -178,10 +197,16 @@
             @change="updateFunc"
           />
 
-          <Collapsible
+          <TreeNode
             v-if="editingFunc.kind === FuncKind.Attribute"
             label="Arguments"
             defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
           >
             <FuncArguments
               v-if="
@@ -191,12 +216,18 @@
               v-model="editingFunc.associations"
               @change="updateFunc"
             />
-          </Collapsible>
+          </TreeNode>
 
-          <Collapsible
+          <TreeNode
             v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
             label="Binding"
             defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
           >
             <AttributeBindings
               v-if="
@@ -208,7 +239,7 @@
               :schemaVariantId="schemaVariantId"
               @change="updateFunc"
             />
-          </Collapsible>
+          </TreeNode>
         </ScrollArea>
       </TabGroupItem>
 
@@ -255,13 +286,13 @@ import * as _ from "lodash-es";
 import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  Collapsible,
   ErrorMessage,
   LoadingMessage,
   ScrollArea,
   Stack,
   TabGroup,
   TabGroupItem,
+  TreeNode,
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";

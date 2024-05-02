@@ -1,19 +1,23 @@
 <template>
   <div>
-    <Collapsible
+    <TreeNode
       v-for="[funcArgName, funcArgViews] in Object.entries(data)"
       :key="funcArgName"
       :defaultOpen="false"
       :label="funcArgName"
-      as="ul"
-      contentClasses="px-sm"
-      extraBorderAtBottomOfContent
-      xPadding="double"
+      alwaysShowArrow
+      enableGroupToggle
+      indentationSize="xs"
+      leftBorderSize="none"
     >
-      <Collapsible
+      <TreeNode
         v-for="funcView in funcArgViews"
         :key="funcView.valueSourceId"
         :label="funcView.valueSource"
+        alwaysShowArrow
+        enableGroupToggle
+        indentationSize="sm"
+        leftBorderSize="none"
       >
         <DebugViewItem title="Argument Name" :data="funcView.name" />
         <DebugViewItem title="Value Source" :data="funcView.valueSource" />
@@ -28,13 +32,13 @@
           :data="funcView.path ?? 'NULL'"
         />
         <DebugViewItem title="Data Is Used" :data="funcView.isUsed" />
-      </Collapsible>
-    </Collapsible>
+      </TreeNode>
+    </TreeNode>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Collapsible } from "@si/vue-lib/design-system";
+import { TreeNode } from "@si/vue-lib/design-system";
 import { FuncArgDebugView } from "@/store/components.store";
 import DebugViewItem from "./DebugViewItem.vue";
 

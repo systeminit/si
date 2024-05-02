@@ -1,12 +1,18 @@
 <template>
   <div
-    v-if="count !== 0 || showIfZero"
+    v-if="!(hideIfZero && count === 0)"
     :class="
       clsx(
-        'inline-block rounded-2xl px-xs border',
-        borderTone ? getToneBorderColorClass(borderTone) : 'border-current',
+        paddingX !== 'none' && `px-${paddingX}`,
+        'inline-block',
+        altStyle
+          ? 'border rounded-2xl'
+          : 'bg-neutral-200 dark:bg-neutral-600 rounded',
+        altStyle && getToneBorderColorClass(tone),
         getToneTextColorClass(tone),
         size && `text-${size}`,
+        showHoverInsideTreeNode &&
+          'group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800 group-hover/tree:border-action-500 dark:group-hover/tree:border-action-300 border border-transparent',
       )
     "
   >
@@ -19,18 +25,23 @@ import { PropType } from "vue";
 import clsx from "clsx";
 import {
   Tones,
-  getToneTextColorClass,
   getToneBorderColorClass,
+  getToneTextColorClass,
 } from "../utils/color_utils";
+import { SpacingSizes } from "../utils/size_utils";
 
-const props = defineProps({
+defineProps({
   count: Number,
   // TODO: implement color/tone options
   tone: { type: String as PropType<Tones>, default: "shade" },
   size: {
-    type: String as PropType<"xs" | "sm" | "md" | "base" | "lg" | "xl" | "2xl">,
+    type: String as PropType<SpacingSizes>,
   },
-  showIfZero: { type: Boolean },
-  borderTone: { type: String as PropType<Tones> },
+  hideIfZero: { type: Boolean },
+  showHoverInsideTreeNode: { type: Boolean },
+  paddingX: { type: String as PropType<SpacingSizes>, default: "2xs" },
+
+  // an alternative style for PillCounter that is more rounded, removes the background, and keeps a persistent border
+  altStyle: { type: Boolean },
 });
 </script>

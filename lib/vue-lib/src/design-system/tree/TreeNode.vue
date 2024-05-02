@@ -1,39 +1,61 @@
 <template>
-  <div ref="nodeRef" class="tree-node">
+  <div
+    ref="nodeRef"
+    :class="
+      clsx(
+        'tree-node',
+        internalScrolling && 'overflow-hidden flex flex-col',
+        internalScrolling && isOpen ? 'flex-1' : 'flex-none',
+      )
+    "
+  >
     <div
       :class="
         clsx(
-          'relative cursor-pointer group',
-          {
-            none: '',
-            '2xs': 'border-l-[1px]',
-            xs: 'border-l-2',
-            sm: 'border-l-[3px]',
-            md: 'border-l-4',
-            lg: 'border-l-[6px]',
-            xl: 'border-l-8',
-          }[leftBorderSize],
+          'relative cursor-pointer group flex-none',
+          !noIndentationOrLeftBorder &&
+            {
+              none: '',
+              '2xs': 'border-l-[1px]',
+              xs: 'border-l-2',
+              sm: 'border-l-[3px]',
+              md: 'border-l-4',
+              lg: 'border-l-[6px]',
+              xl: 'border-l-8',
+              '2xl': 'border-l-[12px]',
+            }[leftBorderSize],
           isHover &&
             'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1 outline-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
+          showSelection && isSelected
+            ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
+            : 'dark:hover:text-action-300 hover:text-action-500',
           classes,
+          enableDefaultHoverClasses &&
+            'bg-neutral-100 dark:bg-neutral-700 group/tree',
         )
       "
       :style="{
         borderLeftColor: color,
         // backgroundColor: bodyBg,
       }"
-      @click="toggleOpen(clickLabelToToggle)"
+      @click="tryOpen(clickLabelToToggle)"
     >
       <div
         :class="
-          clsx('flex flex-row items-center px-xs w-full gap-1', labelClasses)
+          clsx(
+            'flex flex-row items-center px-xs w-full gap-1',
+            labelClasses,
+            enableDefaultHoverClasses &&
+              'font-bold select-none hover:text-action-500 dark:hover:text-action-300',
+          )
         "
       >
         <Icon
           v-if="enableGroupToggle && alwaysShowArrow"
           :name="isOpen ? 'chevron--down' : 'chevron--right'"
           size="lg"
+          @click.stop="tryOpen()"
         />
         <div
           v-if="slots.primaryIcon"
@@ -63,13 +85,16 @@
         />
 
         <div class="flex flex-col select-none overflow-hidden py-2xs w-full">
-          <slot name="label">{{ label }}</slot>
+          <slot v-if="useDifferentLabelWhenOpen && isOpen" name="openLabel">
+            {{ openLabel }}
+          </slot>
+          <slot v-else name="label">{{ label }}</slot>
         </div>
         <!-- group open/close controls -->
         <div
           v-if="enableGroupToggle && !alwaysShowArrow"
           class="absolute left-[0px] cursor-pointer"
-          @click.stop="toggleOpen()"
+          @click.stop="tryOpen()"
         >
           <Icon
             :name="isOpen ? 'chevron--down' : 'chevron--right'"
@@ -88,15 +113,19 @@
       v-if="enableGroupToggle && isOpen"
       :class="
         clsx(
-          {
-            none: '',
-            '2xs': 'pl-2xs',
-            xs: 'pl-xs',
-            sm: 'pl-sm',
-            md: 'pl-md',
-            lg: 'pl-lg',
-            xl: 'pl-xl',
-          }[indentationSize],
+          !noIndentationOrLeftBorder &&
+            {
+              none: '',
+              '2xs': 'pl-2xs',
+              xs: 'pl-xs',
+              sm: 'pl-sm',
+              md: 'pl-md',
+              lg: 'pl-lg',
+              xl: 'pl-xl',
+              '2xl': 'pl-2xl',
+            }[indentationSize],
+          internalScrolling && 'overflow-auto flex-1',
+          childrenContainerClasses,
         )
       "
     >
@@ -112,37 +141,75 @@
 import { PropType, ref, useSlots } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import { Icon, IconNames, themeClasses } from "..";
+import { Icon, IconNames, SpacingSizes, themeClasses } from "..";
 
 const props = defineProps({
+  // The label can be set via a prop or via a slot
   label: { type: String },
-  clickLabelToToggle: { type: Boolean },
-  color: { type: String, default: "#000" },
-  primaryIcon: { type: String as PropType<IconNames> },
-  isSelected: { type: Boolean },
-  isHover: { type: Boolean },
+
+  // Turn this on if this TreeNode has children inside and can be toggled open/closed
   enableGroupToggle: { type: Boolean },
-  classes: { type: String },
-  labelClasses: { type: String },
-  staticContentClasses: { type: String },
+
+  // All TreeNodes start open by default, set this to false if you want it to start closed
+  defaultOpen: { type: Boolean, default: true },
+
+  // Set this to false if you only want the TreeNode to be toggleable via the arrow
+  clickLabelToToggle: { type: Boolean, default: true },
+
+  // This determines the color of the left border, not used if leftBorderSize is none
+  color: { type: String, default: "#000" },
+
+  // The primary icon on the left side, will merge with the arrow unless alwaysShowArrow is enabled
+  primaryIcon: { type: String as PropType<IconNames> },
+
+  // Prevents the arrow from the default minizing behavior
+  alwaysShowArrow: { type: Boolean },
+
+  // External hooks for showing hover and selection of this TreeNode
+  isSelected: { type: Boolean },
+  showSelection: { type: Boolean },
+  isHover: { type: Boolean },
+
+  // Props to adjust the internal indentation for the TreeNode's children and the thickness of the left border
   indentationSize: {
-    type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md" | "lg" | "xl">,
+    type: String as PropType<SpacingSizes>,
     default: "xs",
   },
   leftBorderSize: {
-    type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md" | "lg" | "xl">,
+    type: String as PropType<SpacingSizes>,
     default: "sm",
   },
-  alwaysShowArrow: { type: Boolean },
-  defaultOpen: { type: Boolean, default: true },
+  noIndentationOrLeftBorder: { type: Boolean },
+
+  // these props allow you to use a different label when open, there is also an openLabel slot as well
+  useDifferentLabelWhenOpen: { type: Boolean },
+  openLabel: { type: String },
+
+  // turn this on if you want to have a list of TreeNodes with internal scrolling on each
+  internalScrolling: { type: Boolean },
+
+  // some default hover styling that can also apply group hover styling to the label, icons, or children of this TreeNode
+  enableDefaultHoverClasses: { type: Boolean },
+
+  // direct class injection into various spots in this component - try to use sparingly!
+  classes: { type: String },
+  labelClasses: { type: String },
+  childrenContainerClasses: { type: String },
+  staticContentClasses: { type: String },
 });
 
 const nodeRef = ref<HTMLElement>();
 const isOpen = ref(props.defaultOpen);
 const slots = useSlots();
 
-const toggleOpen = (enabled = true) => {
+const tryOpen = (enabled = true) => {
   if (!enabled) return;
-  else isOpen.value = !isOpen.value;
+  else toggleIsOpen();
 };
+
+const toggleIsOpen = (state = !isOpen.value) => {
+  isOpen.value = state;
+};
+
+defineExpose({ isOpen, toggleIsOpen });
 </script>

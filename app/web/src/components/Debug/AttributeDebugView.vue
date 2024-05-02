@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden my-xs p-xs border-opacity-10 border-l-2">
+  <div class="overflow-hidden p-xs border-opacity-10 border-l-2">
     <dl class="flex flex-col gap-xs">
       <DebugViewItem title="Attribute Value Id" :data="data.attributeValueId" />
       <DebugViewItem :data="data.kind ?? 'any'" title="Type" />
