@@ -10,6 +10,7 @@ use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
     ServicesContext,
 };
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -56,6 +57,8 @@ async fn async_main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    startup::startup("sdf").await?;
 
     if args.verbose > 0 {
         telemetry

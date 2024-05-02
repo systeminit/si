@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
 sdf-server = { path = "../../lib/sdf-server" }
+si-service = { path = "../../lib/si-service" }
 si-std = { path = "../../lib/si-std" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 

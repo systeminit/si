@@ -9,6 +9,7 @@ rust_binary(
     name = "rebaser",
     deps = [
         "//lib/rebaser-server:rebaser-server",
+        "//lib/si-service:si-service",
         "//lib/si-std:si-std",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",

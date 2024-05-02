@@ -1,5 +1,6 @@
 use color_eyre::Result;
 use pinga_server::{Config, Server};
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -44,6 +45,8 @@ async fn async_main() -> Result<()> {
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    startup::startup("pinga").await?;
 
     if args.verbose > 0 {
         telemetry

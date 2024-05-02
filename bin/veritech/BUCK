@@ -31,6 +31,7 @@ rust_binary(
     edition = "2021",
     deps = [
         "//lib/si-std:si-std",
+        "//lib/si-service:si-service",
         "//lib/telemetry-application-rs:telemetry-application",
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:clap",

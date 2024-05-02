@@ -18,6 +18,7 @@
 
 pub mod rt;
 pub mod shutdown;
+pub mod startup;
 
 pub use color_eyre::{self, eyre::Error, Result};
 pub use telemetry_application;
