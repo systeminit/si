@@ -189,9 +189,12 @@ execute_configuration_management() {
         #   mv $FIRECRACKER_SSH_KEY /firecracker-data/micro-vm-key -f
         # fi
 
+        # Ensure we set the UID max to greater than our desired range
+        sudo sed -i 's/^UID_MAX\t\t*[0-9]\+$/UID_MAX\t\t600000/' /etc/login.defs
+
         # Create a user and group to run firecracker/jailer with & another group for the shared folders
         if ! id jailer-shared >/dev/null 2>&1; then
-          useradd -M jailer-shared
+          useradd -M -u 40000 jailer-shared
           usermod -L jailer-shared
           groupadd -g 10000 jailer-processes
           usermod -a -G jailer-processes jailer-shared
