@@ -261,8 +261,8 @@ impl VariantAuthoringClient {
             let metadata = SchemaVariantMetadataJson {
                 name: name.clone(),
                 menu_name: menu_name.clone(),
-                category,
-                color,
+                category: category.clone(),
+                color: color.clone(),
                 component_type,
                 link: link.clone(),
                 description: description.clone(),
@@ -308,6 +308,14 @@ impl VariantAuthoringClient {
                 .schema(ctx)
                 .await?;
 
+            schema
+                .clone()
+                .modify(ctx, |s| {
+                    s.name = name.clone();
+                    Ok(())
+                })
+                .await?;
+
             // We need to clean up the old graph before we re-import the new parts!
             sv.remove_direct_connected_edges(ctx).await?;
             sv.rebuild_variant_root_prop(ctx).await?;
@@ -330,6 +338,20 @@ impl VariantAuthoringClient {
                         current_sv_id,
                     ));
                 }
+
+                // Let's update the SV struct now to reflect any changes
+                new_schema_variant
+                    .clone()
+                    .modify(ctx, |sv| {
+                        sv.description = description;
+                        sv.link = link;
+                        sv.category = category.clone();
+                        sv.component_type = component_type;
+                        sv.color = color.clone();
+                        sv.display_name = menu_name;
+                        Ok(())
+                    })
+                    .await?;
             }
 
             Ok(())
@@ -435,6 +457,13 @@ impl VariantAuthoringClient {
             .schema(ctx)
             .await?;
 
+        schema
+            .clone()
+            .modify(ctx, |s| {
+                s.name = name.clone();
+                Ok(())
+            })
+            .await?;
         let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
 
         if let Some(new_schema_variant) = import_schema_variant(
