@@ -244,7 +244,7 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
   };
   SchemaVariantCreated: {
-    schemaVariantId: string;
+    schemaId: string;
     changeSetId: ChangeSetId;
   };
   SchemaVariantCloned: {
