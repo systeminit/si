@@ -116,6 +116,8 @@
                     <PillCounter
                       :count="selectedComponentFailingQualificationsCount"
                       tone="destructive"
+                      hideIfZero
+                      altStyle
                     />
                   </Inline>
                 </template>
@@ -147,7 +149,10 @@
             <template #label>
               <Inline noWrap>
                 <span>Actions</span>
-                <PillCounter :count="selectedComponentActionsCount" />
+                <PillCounter
+                  :count="selectedComponentActionsCount"
+                  hideIfZero
+                />
               </Inline>
             </template>
             <AssetActionsDetails :componentId="selectedComponentId" />

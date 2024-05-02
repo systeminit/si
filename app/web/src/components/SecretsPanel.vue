@@ -27,15 +27,19 @@
     <template #top>
       <SecretsPanelTitle title="Secret Definitions" />
     </template>
-    <Collapsible
+
+    <TreeNode
       v-for="definition in secretsStore.secretsByLastCreated"
       :key="definition.id"
-      buttonClasses="bg-neutral-100 dark:bg-neutral-900"
-      :defaultOpen="definition.id === openDefinitionOnLoad"
-      useDifferentLabelWhenOpen
+      alwaysShowArrow
+      enableGroupToggle
+      :defaultOpen="false"
+      classes="bg-neutral-100 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-600"
+      noIndentationOrLeftBorder
+      enableDefaultHoverClasses
     >
       <template #label>
-        <div class="flex-grow text-md font-bold truncate">
+        <div class="flex-grow text-md font-bold truncate leading-loose">
           {{ definition.id }}
         </div>
       </template>
@@ -44,13 +48,13 @@
           {{ definition.id }}
         </div>
       </template>
-      <template #right>
+      <template #icons>
         <div class="flex flex-row flex-none items-center gap-xs pl-xs">
           <PillCounter
             :count="secretsStore.secretsByDefinitionId[definition.id]?.length"
-            showIfZero
+            showHoverInsideTreeNode
             size="md"
-            class="min-w-[27.1px] text-center"
+            class="min-w-[27.1px] text-center py-[1px] font-bold"
           />
           <VButton
             icon="plus"
@@ -77,7 +81,8 @@
           @edit="openAddSecretForm(definition.id, secret)"
         />
       </template>
-    </Collapsible>
+    </TreeNode>
+
     <div
       v-if="secretsStore.secretsByLastCreated.length === 0"
       class="w-full text-center p-sm text-neutral-500 dark:text-neutral-400 italic"
@@ -89,9 +94,9 @@
 
 <script lang="ts" setup>
 import {
-  Collapsible,
   PillCounter,
   ScrollArea,
+  TreeNode,
   VButton,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";

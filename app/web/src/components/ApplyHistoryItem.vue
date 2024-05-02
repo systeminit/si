@@ -4,8 +4,7 @@
     :defaultOpen="!props.collapse"
     enableGroupToggle
     labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-    leftBorderSize="none"
-    indentationSize="none"
+    noIndentationOrLeftBorder
   >
     <template #primaryIcon>
       <StatusIndicatorIcon type="action-runner" :status="actionBatch.status" />

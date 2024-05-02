@@ -1,31 +1,32 @@
 <template>
-  <RouterLink
+  <TreeNode
     v-if="moduleSummary"
-    class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
-    :class="
-      isSelected
-        ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-        : ''
+    :classes="
+      clsx(
+        'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
+        'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
+      )
     "
-    :to="{
-      name: 'workspace-lab-packages',
-      params: {
-        ...route.params,
-        moduleSlug: moduleSummary.hash,
-      },
-    }"
+    showSelection
+    labelClasses="w-full"
+    leftBorderSize="none"
+    :isSelected="isSelected"
+    @mousedown.left.stop="onClick"
   >
-    <Icon name="component" />
-    <div class="w-full truncate">
-      {{ moduleSummary.name }}
-    </div>
-  </RouterLink>
+    <template #primaryIcon><Icon name="component" /></template>
+    <template #label>
+      <div class="w-full truncate text-xs">
+        {{ moduleSummary.name }}
+      </div>
+    </template>
+  </TreeNode>
 </template>
 
 <script setup lang="ts">
 import { computed, PropType } from "vue";
-import { RouterLink, useRoute } from "vue-router";
-import { Icon } from "@si/vue-lib/design-system";
+import { useRoute, useRouter } from "vue-router";
+import { Icon, TreeNode } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { ModuleSlug, useModuleStore } from "@/store/module.store";
 
 const props = defineProps({
@@ -33,6 +34,7 @@ const props = defineProps({
 });
 
 const route = useRoute();
+const router = useRouter();
 const moduleStore = useModuleStore();
 const moduleSummary = computed(() => {
   return (
@@ -44,4 +46,16 @@ const moduleSummary = computed(() => {
 const isSelected = computed(
   () => moduleSummary.value?.hash === moduleStore.urlSelectedModuleSlug,
 );
+
+const onClick = () => {
+  if (moduleSummary.value) {
+    router.push({
+      name: "workspace-lab-packages",
+      params: {
+        ...route.params,
+        moduleSlug: moduleSummary.value.hash,
+      },
+    });
+  }
+};
 </script>

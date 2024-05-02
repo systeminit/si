@@ -3,11 +3,9 @@
     <TreeNode
       v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
       :key="kind"
-      classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
-      labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+      enableDefaultHoverClasses
       enableGroupToggle
       alwaysShowArrow
-      clickLabelToToggle
       indentationSize="none"
       leftBorderSize="none"
       :defaultOpen="funcsForKind(kind).length > 0"
@@ -32,7 +30,10 @@
         There are no functions of this kind.
       </div>
       <template #icons>
-        <PillCounter :count="funcsForKind(kind).length" showIfZero />
+        <PillCounter
+          :count="funcsForKind(kind).length"
+          showHoverInsideTreeNode
+        />
       </template>
     </TreeNode>
   </div>

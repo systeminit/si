@@ -13,7 +13,7 @@
             <template #label>
               <div class="flex flex-row gap-xs">
                 <div>Assets</div>
-                <PillCounter :count="assetCount" borderTone="action" />
+                <PillCounter :count="assetCount" />
               </div>
             </template>
             <div class="flex flex-row items-center gap-xs">
@@ -38,22 +38,20 @@
 
         <TreeNode
           v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
+          ref="collapsibleRefs"
           :key="categoryIndex"
           :label="category.displayName"
           :primaryIcon="getAssetIcon(category.displayName)"
           :color="category.schemas[0]?.color || '#000'"
-          classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
-          labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+          enableDefaultHoverClasses
           enableGroupToggle
           alwaysShowArrow
-          clickLabelToToggle
           indentationSize="none"
         >
           <template #icons>
             <PillCounter
               :count="category.schemas.length"
-              borderTone="action"
-              class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
+              showHoverInsideTreeNode
             />
           </template>
           <TreeNode
@@ -64,12 +62,10 @@
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
                 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-                componentsStore.selectedInsertSchemaId === schema.id
-                  ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
-                  : 'dark:hover:text-action-300 hover:text-action-500',
               )
             "
             :isSelected="componentsStore.selectedInsertSchemaId === schema.id"
+            showSelection
             @mousedown.left.stop="onSelect(schema.id, $event)"
             @click.right.prevent
           >
@@ -105,7 +101,6 @@
 import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import {
-  Collapsible,
   Icon,
   PillCounter,
   ScrollArea,
@@ -129,7 +124,7 @@ const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
 );
 
-const collapsibleRefs = ref<InstanceType<typeof Collapsible>[]>([]);
+const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
 
 const filterString = ref("");
 const filterStringCleaned = computed(() =>

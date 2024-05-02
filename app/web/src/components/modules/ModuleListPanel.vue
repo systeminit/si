@@ -1,77 +1,38 @@
 <template>
-  <ScrollArea>
-    <template #top>
-      <div
-        class="p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-      ></div>
-      <SiSearch
-        v-model="textSearch"
-        autoSearch
-        placeholder="search modules"
-        @search="triggerSearch"
-      />
-    </template>
+  <div class="flex flex-col overflow-hidden h-full relative">
+    <SiSearch
+      v-model="textSearch"
+      class="flex-none"
+      autoSearch
+      placeholder="search modules"
+      @search="triggerSearch"
+    />
 
-    <Collapsible label="Local / Installed" defaultOpen>
-      <ErrorMessage :requestStatus="loadLocalModulesReqStatus" />
-      <template v-if="loadLocalModulesReqStatus.isPending">
-        Loading local modules...
-      </template>
-      <template v-else-if="loadLocalModulesReqStatus.isSuccess">
-        <div
-          v-if="!filteredLocalModules.length"
-          class="p-sm italic text-center text-xs"
-        >
-          {{
-            textSearch
-              ? "No modules match the search criteria"
-              : "No modules installed"
-          }}
-          .
-        </div>
+    <ModuleList
+      label="Local / Installed"
+      :modules="filteredLocalModules"
+      :loading="loadLocalModulesReqStatus"
+      loadingMessage="Loading local modules..."
+      :textSearch="textSearch"
+      noModulesMessage="No modules installed"
+    />
 
-        <ModuleListItem
-          v-for="p in filteredLocalModules"
-          :key="p.hash"
-          :moduleSlug="p.hash"
-        />
-      </template>
-    </Collapsible>
-
-    <Collapsible label="Remote" defaultOpen>
-      <ErrorMessage :requestStatus="searchRemoteModulesReqStatus" />
-      <template v-if="searchRemoteModulesReqStatus.isPending">
-        Loading remote modules...
-      </template>
-      <template v-else-if="searchRemoteModulesReqStatus.isSuccess">
-        <div
-          v-if="!moduleStore.remoteModuleSearchResults.length"
-          class="p-sm italic text-center text-xs"
-        >
-          No modules match your search
-        </div>
-
-        <ModuleListItem
-          v-for="p in moduleStore.remoteModuleSearchResults"
-          :key="p.id"
-          :moduleSlug="p.hash"
-        />
-      </template>
-    </Collapsible>
-  </ScrollArea>
+    <ModuleList
+      label="Remote"
+      :modules="moduleStore.remoteModuleSearchResults"
+      :loading="searchRemoteModulesReqStatus"
+      loadingMessage="Loading remote modules..."
+      :textSearch="textSearch"
+    />
+  </div>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onMounted, ref } from "vue";
-import {
-  Collapsible,
-  ErrorMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useModuleStore } from "@/store/module.store";
-import ModuleListItem from "./ModuleListItem.vue";
+import ModuleList from "./ModuleList.vue";
 
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =

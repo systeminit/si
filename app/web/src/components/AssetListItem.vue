@@ -5,11 +5,10 @@
       clsx(
         'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
         'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-        selectedAssetId === a.id
-          ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
-          : 'dark:hover:text-action-300 hover:text-action-500',
       )
     "
+    :isSelected="selectedAssetId === a.id"
+    showSelection
     @mousedown.left.stop="
       router.push({
         name: 'workspace-lab-assets',
