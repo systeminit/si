@@ -331,14 +331,6 @@ impl DeprecatedAction {
         for (id, parent_ids) in graph {
             let component = Component::get_by_id(ctx, id).await?;
 
-            // XXX: `is_destroyed` in the old engine should be "doesn't exist in the graph anymore"
-            // in the current/new engine, but we should double check that's what this was expecting
-            // to guard against.
-            //
-            // if component.is_destroyed() {
-            //     continue;
-            // }
-
             let actions = Self::for_component(ctx, id).await?;
             actions_by_component
                 .entry(id)

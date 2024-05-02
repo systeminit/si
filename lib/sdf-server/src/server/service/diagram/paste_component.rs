@@ -42,7 +42,7 @@ pub struct PasteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
     pub offset_x: f64,
     pub offset_y: f64,
-    pub new_parent_component_id: Option<ComponentId>,
+    pub new_parent_node_id: Option<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -76,8 +76,6 @@ pub async fn paste_components(
     }
 
     for component_id in &request.component_ids {
-        let component = Component::get_by_id(&ctx, *component_id).await?;
-
         let pasted_component =
             if let Some(component) = pasted_components_by_original.get(&component_id) {
                 component
@@ -85,14 +83,14 @@ pub async fn paste_components(
                 return Err(DiagramError::Paste);
             };
 
+        let component = Component::get_by_id(&ctx, *component_id).await?;
         if let Some(parent_id) = component.parent(&ctx).await? {
             if let Some(pasted_parent) = pasted_components_by_original.get(&parent_id) {
                 Frame::upsert_parent(&ctx, pasted_component.id(), pasted_parent.id()).await?;
             };
         }
 
-        let incoming_connections = component.incoming_connections(&ctx).await?;
-        for connection in incoming_connections {
+        for connection in component.incoming_connections(&ctx).await? {
             if let Some(from_component) =
                 pasted_components_by_original.get(&connection.from_component_id)
             {
@@ -107,8 +105,8 @@ pub async fn paste_components(
             }
         }
 
-        if let Some(parent_id) = request.new_parent_component_id {
-            Frame::upsert_parent(&ctx, parent_id, pasted_component.id()).await?;
+        if let Some(parent_id) = request.new_parent_node_id {
+            Frame::upsert_parent(&ctx, pasted_component.id(), parent_id).await?;
         }
     }
 
