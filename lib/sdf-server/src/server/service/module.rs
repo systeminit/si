@@ -8,12 +8,13 @@ use convert_case::{Case, Casing};
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder,
     SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
+    UserError, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
 use si_pkg::{SiPkg, SiPkgError};
-use si_std::{canonical_file::safe_canonically_join, CanonicalFileError};
+use si_std::canonical_file::safe_canonically_join;
+use si_std::CanonicalFileError;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
@@ -37,8 +38,8 @@ pub mod remote_module_spec;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ModuleError {
-    #[error("Could not canononicalize path: {0}")]
-    Canononicalize(#[from] CanonicalFileError),
+    #[error("Could not canonicalize path: {0}")]
+    Canonicalize(#[from] CanonicalFileError),
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
     #[error("Changeset not found: {0}")]
@@ -47,19 +48,12 @@ pub enum ModuleError {
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
-    #[error("Trying to export from system actor. This can only be done by a user actor")]
-    ExportingFromSystemActor,
     #[error("Trying to export from/import into root tenancy")]
     ExportingImportingWithRootTenancy,
     #[error(transparent)]
     Hyper(#[from] hyper::http::Error),
-    // add error for matching hash
-    #[error("Trying to import a changeset that does not have a valida base: {0}")]
-    ImportingOrphanChangeset(ChangeSetId),
     #[error("Invalid package file name: {0}")]
     InvalidPackageFileName(String),
-    #[error("invalid user {0}")]
-    InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
     #[error("IO Error: {0}")]

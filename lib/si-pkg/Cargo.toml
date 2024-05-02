@@ -17,6 +17,7 @@ si-hash = { path = "../../lib/si-hash" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+ulid = { workspace = true }
 url = { workspace = true }
 
 [dev-dependencies]
