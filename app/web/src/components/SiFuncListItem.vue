@@ -18,11 +18,6 @@
         <div class="truncate">
           {{ func.name }}
         </div>
-        <SiChip
-          :text="func.isBuiltin ? 'builtin' : 'custom'"
-          :variant="func.isBuiltin ? 'warning' : 'neutral'"
-          class="flex-none"
-        />
       </div>
       <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
@@ -40,7 +35,6 @@ import { TreeNode } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";
-import SiChip from "./SiChip.vue";
 
 const props = defineProps<{
   color?: string;
