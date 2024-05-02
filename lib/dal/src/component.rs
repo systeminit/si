@@ -1472,6 +1472,13 @@ impl Component {
                     .or_default()
                     .insert(incoming_connection.from_component_id);
             }
+
+            if let Some(parent_id) = component.parent(ctx).await? {
+                components_map
+                    .entry(component.id)
+                    .or_default()
+                    .insert(parent_id);
+            }
         }
 
         debug!("build graph took {:?}", total_start.elapsed());
