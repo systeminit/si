@@ -5,12 +5,11 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
-use module_index_client::types::WorkspaceExport;
 use s3::error::S3Error;
 use sea_orm::{ActiveModelTrait, DbErr, Set};
 use serde::{Deserialize, Serialize};
 use si_hash::Hash;
-use si_pkg::SiPkgError;
+use si_pkg::{SiPkgError, WorkspaceExport};
 use telemetry::prelude::*;
 use thiserror::Error;
 

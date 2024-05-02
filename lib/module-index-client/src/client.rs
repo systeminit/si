@@ -1,10 +1,9 @@
 use reqwest::StatusCode;
+use si_pkg::WorkspaceExport;
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::{
-    BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse, WorkspaceExport,
-};
+use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
 use crate::{IndexClientError, IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]

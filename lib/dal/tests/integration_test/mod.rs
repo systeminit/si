@@ -17,3 +17,4 @@ mod rebaser;
 mod schema;
 mod secret;
 mod validations;
+mod workspace;

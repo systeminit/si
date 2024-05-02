@@ -1,9 +1,14 @@
 pub(crate) mod node;
 mod pkg;
 mod spec;
+mod workspace;
 
 pub use pkg::*;
 pub use spec::*;
+pub use workspace::{
+    WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
+    WorkspaceExportMetadataV0,
+};
 
 #[cfg(test)]
 mod tests {
