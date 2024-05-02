@@ -18,6 +18,8 @@
         />
         <VButton
           label="New Asset"
+          :requestStatus="createAssetReqStatus"
+          successText="Successful"
           tone="action"
           icon="plus"
           size="sm"
@@ -99,6 +101,7 @@ import ModuleExportModal from "./modules/ModuleExportModal.vue";
 const assetStore = useAssetStore();
 const { assetList } = storeToRefs(assetStore);
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const createAssetReqStatus = assetStore.getRequestStatus("CREATE_ASSET");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
 
