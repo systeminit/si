@@ -1,4 +1,4 @@
-name: Deploy Service
+name: Deploy Service to Tools Prod
 
 on:
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
           - rebaser
           - sdf
           - veritech
+          - web
 
 jobs:
   deploy:
@@ -44,6 +45,9 @@ jobs:
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-rebaser
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-sdf
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-veritech
+            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
+          elif [ "$SERVICE" = "web" ]; then
+            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
           else
             echo "Deploying $SERVICE!"
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
