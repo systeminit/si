@@ -252,6 +252,25 @@ impl WsEvent {
     }
 }
 
+impl From<SchemaVariant> for SchemaVariantContentV1 {
+    fn from(value: SchemaVariant) -> Self {
+        Self {
+            timestamp: value.timestamp,
+            ui_hidden: value.ui_hidden,
+            name: value.name,
+            display_name: value.display_name,
+            category: value.category,
+            color: value.color,
+            component_type: value.component_type,
+            link: value.link,
+            description: value.description,
+            asset_func_id: value.asset_func_id,
+            finalized_once: value.finalized_once,
+            is_builtin: value.is_builtin,
+        }
+    }
+}
+
 impl SchemaVariant {
     pub fn assemble(id: SchemaVariantId, inner: SchemaVariantContentV1) -> Self {
         Self {
@@ -329,6 +348,36 @@ impl SchemaVariant {
 
         let schema_variant = Self::assemble(id.into(), content);
         Ok((schema_variant, root_prop))
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> SchemaVariantResult<Self>
+    where
+        L: FnOnce(&mut Self) -> SchemaVariantResult<()>,
+    {
+        let mut schema_variant = self;
+
+        let before = SchemaVariantContentV1::from(schema_variant.clone());
+        lambda(&mut schema_variant)?;
+        let updated = SchemaVariantContentV1::from(schema_variant.clone());
+
+        if updated != before {
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(SchemaVariantContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set()?, schema_variant.id.into(), hash)
+                .await?;
+        }
+
+        Ok(schema_variant)
     }
 
     /// Returns all [`PropIds`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
