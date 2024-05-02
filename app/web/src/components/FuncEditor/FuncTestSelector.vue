@@ -14,7 +14,7 @@
       v-model="selectedPrototypeId"
       class="flex-grow"
       type="dropdown"
-      placeholder="no prototype selected"
+      placeholder="no binding selected"
       noLabel
       :disabled="!selectedComponentId"
       :options="prototypeAttributeOptions"
