@@ -30,7 +30,11 @@
     </template>
 
     <CodeEditor
-      :id="`asset-${assetId}`"
+      :id="
+        changeSetsStore.headChangeSetId === changeSetsStore.selectedChangeSetId
+          ? undefined
+          : `asset-${assetId}`
+      "
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
       :disabled="isReadOnly"
@@ -52,8 +56,11 @@ import {
 } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import SiChip from "@/components/SiChip.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
+
+const changeSetsStore = useChangeSetsStore();
 
 const props = defineProps<{
   assetId?: string;
@@ -85,10 +92,24 @@ watch(
   { immediate: true },
 );
 
+const updatedHead = ref(false);
+watch(
+  () => changeSetsStore.selectedChangeSetId,
+  () => {
+    updatedHead.value = false;
+  },
+);
+
 const onChange = () => {
-  if (!selectedAsset.value || selectedAsset.value.code === editingAsset.value) {
+  if (
+    !selectedAsset.value ||
+    selectedAsset.value.code === editingAsset.value ||
+    updatedHead.value
+  ) {
     return;
   }
+  updatedHead.value =
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
   assetStore.enqueueAssetSave({
     ...selectedAsset.value,
     code: editingAsset.value,
