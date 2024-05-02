@@ -1,5 +1,6 @@
 pub mod action;
 pub mod async_route;
+pub mod attribute;
 pub mod change_set;
 pub mod component;
 pub mod diagram;
