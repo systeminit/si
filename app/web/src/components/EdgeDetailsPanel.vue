@@ -12,7 +12,7 @@
       </SidebarSubpanelTitle>
 
       <div class="border-b dark:border-neutral-600">
-        <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
+        <div v-if="isDevMode" class="px-xs pt-xs text-2xs italic opacity-30">
           EDGE ID = {{ selectedEdge.id }}
         </div>
 
@@ -56,12 +56,11 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { isDevMode } from "@/utils/debug";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
-
-const DEV_MODE = import.meta.env.DEV;
 
 const componentsStore = useComponentsStore();
 const modelingEventBus = componentsStore.eventBus;
