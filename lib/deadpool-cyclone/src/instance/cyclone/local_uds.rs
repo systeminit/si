@@ -842,7 +842,7 @@ impl LocalFirecrackerRuntime {
             .arg("--exec-file")
             .arg("/usr/bin/firecracker")
             .arg("--uid")
-            .arg(format!("30{}", vm_id))
+            .arg(format!("300{}", vm_id))
             .arg("--gid")
             .arg("10000")
             .arg("--netns")

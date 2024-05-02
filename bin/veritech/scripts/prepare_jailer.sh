@@ -44,7 +44,7 @@ JAILER_NS="jailer-$SB_ID"
 
 # Create a user and group to run the execution via for one micro-vm
 function user_prep() {
-  useradd -M -u 30$SB_ID $JAILER_NS
+  useradd -M -u 300$SB_ID $JAILER_NS
   usermod -L $JAILER_NS
 
   # This group was created earlier on the machine provisioning
@@ -53,7 +53,7 @@ function user_prep() {
   usermod -a -G kvm $JAILER_NS
 }
 
-if ! id 30$SB_ID >/dev/null 2>&1; then
+if ! id 300$SB_ID >/dev/null 2>&1; then
   retry user_prep
 fi
 
