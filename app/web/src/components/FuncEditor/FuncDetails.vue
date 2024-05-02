@@ -1,10 +1,10 @@
 <template>
-  <div
+  <EmptyStateCard
     v-if="!funcId"
-    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
-  >
-    Select a function to view its properties.
-  </div>
+    iconName="funcs"
+    primaryText="No Function Selected"
+    secondaryText="Select a function from the list on the left panel to view its details here."
+  />
   <LoadingMessage
     v-else-if="
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
@@ -293,6 +293,7 @@ import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
+import EmptyStateCard from "../EmptyStateCard.vue";
 
 const props = defineProps<{
   funcId?: FuncId;

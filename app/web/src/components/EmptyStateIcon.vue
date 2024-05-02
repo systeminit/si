@@ -18,6 +18,8 @@ import CustomizeLight from "@/assets/images/customize__light.svg?url";
 import NoComponentsLight from "@/assets/images/no-components__light.svg?url";
 import NoComponentsDark from "@/assets/images/no-components__dark.svg?url";
 import NoChangesDark from "@/assets/images/no-changes__dark.svg?url";
+import FuncsDark from "@/assets/images/funcs__dark.svg?url";
+import CustomizeBigDark from "@/assets/images/customize-big__dark.svg?url";
 
 const { theme: appTheme } = useTheme();
 
@@ -27,14 +29,14 @@ const props = defineProps({
 });
 
 const svgUrl = computed(() => {
-  return ICONS[props.name][
+  return BIG_ICONS[props.name][
     props.fixedTheme ?? appTheme.value
   ] as EMPTY_STATE_ICON_NAMES;
 });
 </script>
 
 <script lang="ts">
-export const ICONS = Object.freeze({
+export const BIG_ICONS = Object.freeze({
   actions: { light: ActionsLight, dark: ActionsDark },
   "apply-changes": { light: ApplyChangesLight, dark: ApplyChangesDark },
   "connect-edges": { light: ConnectEdgesLight, dark: ConnectEdgesDark },
@@ -42,7 +44,9 @@ export const ICONS = Object.freeze({
   "no-assets": { light: NoAssetsLight, dark: NoAssetsDark },
   "no-components": { light: NoComponentsLight, dark: NoComponentsDark },
   "no-changes": { light: NoChangesDark, dark: NoChangesDark }, // currently there is only a dark version of this EmptyStateIcon
+  funcs: { light: FuncsDark, dark: FuncsDark }, // currently there is only a dark version of this EmptyStateIcon
+  "customize-big": { light: CustomizeBigDark, dark: CustomizeBigDark }, // currently there is only a dark version of this EmptyStateIcon
 });
 
-export type EMPTY_STATE_ICON_NAMES = keyof typeof ICONS;
+export type EMPTY_STATE_ICON_NAMES = keyof typeof BIG_ICONS;
 </script>

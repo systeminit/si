@@ -11,16 +11,10 @@
       @update:selected-tab="onTabChange"
     >
       <template #noTabs>
-        <div class="text-center text-neutral-400 dark:text-neutral-300">
-          <RequestStatusMessage
-            v-if="loadAssetsRequestStatus.isPending"
-            :requestStatus="loadAssetsRequestStatus"
-            loadingMessage="Loading assets..."
-          />
-          <template v-else-if="loadAssetsRequestStatus.isSuccess">
-            <div class="text-center p-lg">Select an asset to edit it.</div>
-          </template>
-        </div>
+        <WorkspaceCustomizeEmptyState
+          :requestStatus="loadAssetsRequestStatus"
+          loadingMessage="Loading assets..."
+        />
       </template>
       <TabGroupItem
         v-for="tab in currentTabs"
@@ -58,6 +52,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import AssetEditor from "./AssetEditor.vue";
 import FuncEditor from "./FuncEditor/FuncEditor.vue";
+import WorkspaceCustomizeEmptyState from "./WorkspaceCustomizeEmptyState.vue";
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
