@@ -7,17 +7,15 @@ export const useFeatureFlagsStore = () => {
   return addStoreHooks(
     defineStore("feature-flags", {
       state: () => ({
-        OSS_RELEASE: false,
+        OSS_RELEASE: true, // todo: cleanup consumption of this flag
         CREATE_WORKSPACES: false,
         EDIT_WORKSPACES: false,
-        INVITE_USER: false,
         DELETE_WORKSPACE: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.OSS_RELEASE = flags.includes("featureOssRelease");
           this.CREATE_WORKSPACES = flags.includes("create_workspaces");
-          this.INVITE_USER = flags.includes("invite_user");
           // If you can create workspaces, editing workspaces will also be enabled.
           this.DELETE_WORKSPACE = flags.includes("delete_workspace");
           this.EDIT_WORKSPACES =
