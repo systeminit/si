@@ -1,13 +1,14 @@
-use super::ComponentResult;
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Visibility,
-    WsEvent,
+    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Secret,
+    SecretId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+
+use super::ComponentResult;
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +19,7 @@ pub struct UpdatePropertyEditorValueRequest {
     pub component_id: ComponentId,
     pub value: Option<serde_json::Value>,
     pub key: Option<String>,
+    pub is_for_secret: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -33,7 +35,19 @@ pub async fn update_property_editor_value(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
+    // Determine how to update the value based on whether it corresponds to a secret. The vast
+    // majority of the time, the request will not be for a secret.
+    if request.is_for_secret {
+        if let Some(value) = request.value.as_ref() {
+            let secret_id: SecretId = serde_json::from_value(value.to_owned())?;
+            Secret::attach_for_attribute_value(&ctx, request.attribute_value_id, Some(secret_id))
+                .await?;
+        } else {
+            Secret::attach_for_attribute_value(&ctx, request.attribute_value_id, None).await?;
+        }
+    } else {
+        AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
+    }
 
     // Track
     {

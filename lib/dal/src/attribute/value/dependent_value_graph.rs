@@ -6,6 +6,8 @@ use std::{fs::File, io::Write};
 use telemetry::prelude::*;
 
 use crate::component::ControllingFuncData;
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightDiscriminants};
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
@@ -13,7 +15,7 @@ use crate::{
     },
     dependency_graph::DependencyGraph,
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, DalContext,
+    Component, DalContext, Secret,
 };
 use crate::{ComponentError, ComponentId, Prop, PropKind};
 
@@ -22,12 +24,7 @@ use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValu
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
     inner: DependencyGraph<AttributeValueId>,
-}
-
-impl Default for DependentValueGraph {
-    fn default() -> Self {
-        Self::new()
-    }
+    values_that_need_to_execute_from_prototype_function: HashSet<AttributeValueId>,
 }
 
 // We specifically need to track if the value is one of the child values we
@@ -51,50 +48,112 @@ impl WorkQueueValue {
 }
 
 impl DependentValueGraph {
-    pub fn new() -> Self {
-        Self {
+    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueIds`](AttributeValue) who are
+    /// dependent on the initial ids provided as well as all descending dependencies.
+    pub async fn new(
+        ctx: &DalContext,
+        initial_ids: Vec<impl Into<Ulid>>,
+    ) -> AttributeValueResult<Self> {
+        let mut dependent_value_graph = Self {
             inner: DependencyGraph::new(),
-        }
+            values_that_need_to_execute_from_prototype_function: HashSet::new(),
+        };
+
+        let values = dependent_value_graph
+            .parse_initial_ids(ctx, initial_ids)
+            .await?;
+        dependent_value_graph
+            .populate_for_values(ctx, values)
+            .await?;
+
+        Ok(dependent_value_graph)
     }
 
-    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`]
-    /// whose values depend on the value of the values in [`values`]. This
-    /// includes the entire parent tree of each value discovered, up to the root
-    /// for every value's component, as well as any dependencies of values
-    /// discovered while walking the graph (e.g., if a value's prototype takes
-    /// one of the passed values as an input, we also need to find the values
-    /// for the other inputs to the prototype, etc.).  The graph also includes
-    /// any inferred dependencies based on parentage, for example if a component
-    /// gets its inputs from a parent frame, and that frame's output sockets
-    /// change, we add those downstream input sockets to the graph.
-    pub async fn for_values(
+    /// Parse the set of initial ids in order to construct the list of [`values`](WorkQueueValue).
+    async fn parse_initial_ids(
+        &mut self,
         ctx: &DalContext,
-        initial_values: Vec<AttributeValueId>,
-    ) -> AttributeValueResult<Self> {
+        initial_ids: Vec<impl Into<Ulid>>,
+    ) -> AttributeValueResult<Vec<WorkQueueValue>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut values = vec![];
-        for value_id in initial_values.clone() {
-            // It's possible that one or more of the initial AttributeValueIds
-            // provided by the enqueued DependentValuesUpdate job may have been
-            // removed from the snapshot between when the DVU job was created
-            // and when we're processing things now. This could happen if there
-            // are other modifications to the snapshot before the DVU job starts
-            // executing, as the job always operates on the current state of the
-            // change set's snapshot, not the state at the time the job was
-            // created.
+        let mut values = Vec::new();
+        for initial_id in initial_ids {
+            let initial_id = initial_id.into();
+
+            // It's possible that one or more of the initial ids provided by the enqueued
+            // DependentValuesUpdate job may have been removed from the snapshot between when the
+            // DVU job was created and when we're processing things now. This could happen if there
+            // are other modifications to the snapshot before the DVU job starts executing, as the
+            // job always operates on the current state of the change set's snapshot, not the state
+            // at the time the job was created.
             if workspace_snapshot
-                .try_get_node_index_by_id(value_id)
+                .try_get_node_index_by_id(initial_id)
                 .await?
                 .is_none()
             {
-                debug!("Attribute Value {value_id} missing, skipping it in DependentValueGraph");
+                debug!(%initial_id, "missing node, skipping it in DependentValueGraph");
                 continue;
             }
-            values.push(WorkQueueValue::Initial(value_id));
+
+            let node_weight = workspace_snapshot.get_node_weight_by_id(initial_id).await?;
+
+            match node_weight {
+                NodeWeight::AttributeValue(_) => {
+                    values.push(WorkQueueValue::Initial(initial_id.into()));
+                }
+                NodeWeight::Content(content_node_weight) => {
+                    match content_node_weight.content_address().into() {
+                        // If we are processing a secret, we don't want to add the secret itself.
+                        // We only want to add the direct dependent attribute values. We also need
+                        // to mark these values as needing to be processed because DVU will skip
+                        // processing the first set of independent values. In most cases, we want
+                        // that to happen. However, since the first set of independent values all
+                        // have a secret as their parent and not an attribute value, they need to be
+                        // processed in DVU.
+                        ContentAddressDiscriminants::Secret => {
+                            let direct_dependents =
+                                Secret::direct_dependent_attribute_values(ctx, initial_id.into())
+                                    .await
+                                    .map_err(Box::new)?;
+                            self.values_that_need_to_execute_from_prototype_function
+                                .extend(direct_dependents.clone());
+                            values.extend(
+                                direct_dependents
+                                    .iter()
+                                    .map(|d| WorkQueueValue::Initial(*d)),
+                            );
+                        }
+                        discrim => {
+                            warn!(%discrim, %initial_id, "skipping dependent value graph generation for unsupported content node weight");
+                        }
+                    }
+                }
+                node_weight => {
+                    let discrim: NodeWeightDiscriminants = node_weight.into();
+                    warn!(%discrim, %initial_id, "skipping dependent value graph generation for unsupported node weight");
+                }
+            };
         }
 
-        let mut dependent_value_graph = Self::new();
+        Ok(values)
+    }
+
+    /// Populate the [`DependentValueGraph`] using the provided [`values`](WorkQueueValue). This
+    /// includes the entire parent tree of each value discovered, up to the root for every value's
+    /// component, as well as any dependencies of values discovered while walking the graph
+    /// (e.g. if a value's prototype takes one of the passed values as an input, we also need to
+    /// find the values for the other inputs to the prototype, etc.). The graph also includes any
+    /// inferred dependencies based on parentage, for example if a component gets its inputs from a
+    /// parent frame, and that frame's output sockets change, we add those downstream input sockets
+    /// to the graph.
+    async fn populate_for_values(
+        &mut self,
+        ctx: &DalContext,
+        values: Vec<WorkQueueValue>,
+    ) -> AttributeValueResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
         let mut controlling_funcs_for_component = HashMap::new();
         let mut work_queue = VecDeque::from_iter(values);
         let mut seen_list = HashSet::new();
@@ -227,7 +286,7 @@ impl DependentValueGraph {
                             work_queue.push_back(WorkQueueValue::Discovered(
                                 input_socket_match.attribute_value_id,
                             ));
-                            dependent_value_graph.value_depends_on(
+                            self.value_depends_on(
                                 input_socket_match.attribute_value_id,
                                 current_attribute_value.id(),
                             );
@@ -276,7 +335,7 @@ impl DependentValueGraph {
 
                     work_queue
                         .push_back(WorkQueueValue::Discovered(controlling_attribute_value_id));
-                    dependent_value_graph.inner.id_depends_on(
+                    self.inner.id_depends_on(
                         controlling_attribute_value_id,
                         current_attribute_value_controlling_value_id,
                     );
@@ -308,13 +367,14 @@ impl DependentValueGraph {
                 }
 
                 work_queue.push_back(WorkQueueValue::Discovered(parent_attribute_value_id));
-                dependent_value_graph.inner.id_depends_on(
+                self.inner.id_depends_on(
                     parent_attribute_value_id,
                     current_attribute_value_controlling_value_id,
                 );
             }
         }
-        Ok(dependent_value_graph)
+
+        Ok(())
     }
 
     pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
@@ -422,5 +482,16 @@ impl DependentValueGraph {
 
     pub fn independent_values(&self) -> Vec<AttributeValueId> {
         self.inner.independent_ids()
+    }
+
+    /// Indicates whether the value needs to be processed. This is useful for determining when to
+    /// filter or de-duplicate values when executing from their prototype functions. If the value is
+    /// marked as needing to be processed, it likely needs to execute from its prototype function.
+    pub fn values_needs_to_execute_from_prototype_function(
+        &self,
+        value_id: AttributeValueId,
+    ) -> bool {
+        self.values_that_need_to_execute_from_prototype_function
+            .contains(&value_id)
     }
 }

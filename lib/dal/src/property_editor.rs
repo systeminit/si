@@ -12,7 +12,7 @@ use crate::validation::ValidationError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, ComponentError, PropId, SchemaVariantId, StandardModelError,
+    pk, AttributeValueId, ComponentError, PropId, SchemaVariantId, SecretError, StandardModelError,
     TransactionsError,
 };
 
@@ -32,20 +32,20 @@ pub enum PropertyEditorError {
     ComponentNotFound,
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("no value(s) found for property editor prop id: {0}")]
-    NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("property editor value not found by prop id: {0}")]
+    PropertyEditorValueNotFoundByPropId(PropId),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("too many values found (likely not the prop for an element of a map or an array) for property editor prop id: {0}")]
-    TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

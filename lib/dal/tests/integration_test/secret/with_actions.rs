@@ -143,23 +143,26 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     // Ensure that everything looks as expected on HEAD.
     assert_eq!(
         serde_json::json![{
-            "qualification": {
-                "test:qualificationDummySecretStringIsTodd": {
-                    "message": "dummy secret string matches expected value",
-                    "result": "success",
-                },
-            },
-            "resource": {},
-            "resource_value": {},
-            "secret_definition": {},
-            "secrets": {
-                "dummy": secret.key(),
-            },
             "si": {
                 "color": "#ffffff",
                 "name": "source",
                 "type": "component",
             },
+            "secrets": {
+                "dummy": {
+                    "encrypted_secret_key": secret.key(),
+                    "secret_id": secret.id()
+                }
+            },
+            "resource": {},
+            "resource_value": {},
+            "qualification": {
+                "test:qualificationDummySecretStringIsTodd": {
+                    "result": "success",
+                    "message": "dummy secret string matches expected value"
+                },
+            },
+            "secret_definition": {},
         }], // expected
         source_component
             .view(ctx)
@@ -183,28 +186,31 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
 
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "active": true,
-                "name": "destination",
-            },
-            "resource": {
-                "last_synced": last_synced_value.unwrap_or(serde_json::Value::Null),
-                "logs": [
-                    "Setting dummySecretString to requestStorage",
-                     "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}",
-                ],
-                "payload": { "poop" :true },
-                "status": "ok",
-            },
-            "resource_value": {},
-            "secrets": {
-                "dummy": secret.key(),
-            },
             "si": {
                 "color": "#ffffff",
                 "name": "destination",
                 "type": "component",
             },
+            "domain": {
+                "name": "destination",
+                "active": true
+            },
+            "secrets": {
+                "dummy": {
+                    "encrypted_secret_key": secret.key(),
+                    "secret_id": secret.id()
+                }
+            },
+            "resource": {
+                "status": "ok",
+                "logs": [
+                    "Setting dummySecretString to requestStorage",
+                     "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}",
+                ],
+                "payload": { "poop" :true },
+                "last_synced": last_synced_value.unwrap_or(serde_json::Value::Null),
+            },
+            "resource_value": {}
         }], // expected
         destination_component
             .view(ctx)

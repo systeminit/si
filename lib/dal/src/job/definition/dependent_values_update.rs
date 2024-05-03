@@ -14,8 +14,6 @@ use tokio::{
 };
 use ulid::Ulid;
 
-//use crate::tasks::StatusReceiverClient;
-//use crate::tasks::StatusReceiverRequest;
 use crate::{
     attribute::value::{
         dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
@@ -56,20 +54,18 @@ pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs {
-    attribute_values: Vec<AttributeValueId>,
+    nodes: Vec<Ulid>,
 }
 
 impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
     fn from(value: DependentValuesUpdate) -> Self {
-        Self {
-            attribute_values: value.attribute_values,
-        }
+        Self { nodes: value.nodes }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
-    attribute_values: Vec<AttributeValueId>,
+    nodes: Vec<Ulid>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
@@ -81,10 +77,10 @@ impl DependentValuesUpdate {
     pub fn new(
         access_builder: AccessBuilder,
         visibility: Visibility,
-        attribute_values: Vec<AttributeValueId>,
+        nodes: Vec<Ulid>,
     ) -> Box<Self> {
         Box::new(Self {
-            attribute_values,
+            nodes,
             access_builder,
             visibility,
             job: None,
@@ -122,7 +118,7 @@ impl JobConsumer for DependentValuesUpdate {
         skip_all,
         level = "info",
         fields(
-            attribute_values = ?self.attribute_values,
+            nodes = ?self.nodes,
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
@@ -137,8 +133,7 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
 
-        let mut dependency_graph =
-            DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
+        let mut dependency_graph = DependentValueGraph::new(ctx, self.nodes.clone()).await?;
 
         debug!(
             "DependentValueGraph calculation took: {:?}",
@@ -147,7 +142,9 @@ impl DependentValuesUpdate {
 
         // Remove the first set of independent_values since they should already have had their functions executed
         for value in dependency_graph.independent_values() {
-            dependency_graph.remove_value(value);
+            if !dependency_graph.values_needs_to_execute_from_prototype_function(value) {
+                dependency_graph.remove_value(value);
+            }
         }
 
         let mut seen_ids = HashSet::new();
@@ -368,7 +365,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         let args = DependentValuesUpdateArgs::deserialize(&job.arg)?;
         Ok(Self {
-            attribute_values: args.attribute_values,
+            nodes: args.nodes,
             access_builder: job.access_builder,
             visibility: job.visibility,
             job: Some(job),

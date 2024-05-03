@@ -26,7 +26,7 @@ use crate::{
         WorkspaceSnapshotError,
     },
     AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
-    OutputSocketId, PropId, Timestamp, TransactionsError,
+    OutputSocketId, PropId, SecretId, Timestamp, TransactionsError,
 };
 
 use self::{
@@ -348,6 +348,9 @@ impl AttributePrototypeArgument {
                         ContentAddressDiscriminants::OutputSocket => {
                             ValueSource::OutputSocket(inner.id().into())
                         }
+                        ContentAddressDiscriminants::Secret => {
+                            ValueSource::Secret(inner.id().into())
+                        }
                         ContentAddressDiscriminants::StaticArgumentValue => {
                             ValueSource::StaticArgumentValue(inner.id().into())
                         }
@@ -470,6 +473,14 @@ impl AttributePrototypeArgument {
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, prop_id.into()).await
+    }
+
+    pub async fn set_value_from_secret_id(
+        self,
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        self.set_value_source(ctx, secret_id.into()).await
     }
 
     pub async fn set_value_from_static_value_id(

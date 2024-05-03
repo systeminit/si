@@ -491,7 +491,7 @@ impl Component {
 
         component.set_name(ctx, &name).await?;
 
-        let component_graph = DependentValueGraph::for_values(ctx, attribute_values).await?;
+        let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
         let leaf_value_ids = component_graph.independent_values();
         for leaf_value_id in &leaf_value_ids {
             // Run these concurrently in a join set? They will serialize on the lock...
@@ -639,6 +639,9 @@ impl Component {
                         }
                         ValueSource::Prop(prop_id) => {
                             apa.set_value_from_prop_id(ctx, prop_id).await?;
+                        }
+                        ValueSource::Secret(secret_id) => {
+                            apa.set_value_from_secret_id(ctx, secret_id).await?;
                         }
                         ValueSource::StaticArgumentValue(id) => {
                             apa.set_value_from_static_value_id(ctx, id).await?;

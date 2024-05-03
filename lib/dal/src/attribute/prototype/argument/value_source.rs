@@ -10,7 +10,7 @@ use crate::{
         output::OutputSocketError,
     },
     AttributeValue, AttributeValueId, ComponentId, DalContext, InputSocket, OutputSocket,
-    OutputSocketId, Prop, PropId,
+    OutputSocketId, Prop, PropId, SecretId,
 };
 
 use super::static_value::StaticArgumentValueId;
@@ -26,6 +26,8 @@ pub enum ValueSourceError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("secret sources have no attribute values: {0}")]
+    SecretSourcesNoValues(SecretId),
     #[error("static argument value sources have no attribute values")]
     StaticArgumentValueSourcesNoValues,
 }
@@ -38,6 +40,7 @@ pub enum ValueSource {
     InputSocket(InputSocketId),
     OutputSocket(OutputSocketId),
     Prop(PropId),
+    Secret(SecretId),
     StaticArgumentValue(StaticArgumentValueId),
 }
 
@@ -53,6 +56,9 @@ impl ValueSource {
             }
             Self::InputSocket(ip_id) => {
                 InputSocket::attribute_values_for_input_socket_id(ctx, *ip_id).await?
+            }
+            Self::Secret(secret_id) => {
+                return Err(ValueSourceError::SecretSourcesNoValues(*secret_id))
             }
             Self::StaticArgumentValue(_) => {
                 return Err(ValueSourceError::StaticArgumentValueSourcesNoValues);
@@ -89,10 +95,21 @@ impl ValueSource {
 impl fmt::Display for ValueSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValueSource::InputSocket(_) => write!(f, "Input Socket"),
-            ValueSource::OutputSocket(_) => write!(f, "Output Socket"),
-            ValueSource::Prop(_) => write!(f, "Prop"),
-            ValueSource::StaticArgumentValue(_) => write!(f, "Static Argument"),
+            ValueSource::InputSocket(input_socket_id) => {
+                write!(f, "ValueSource::InputSocket({input_socket_id})")
+            }
+            ValueSource::OutputSocket(output_socket_id) => {
+                write!(f, "ValueSource::OutputSocket({output_socket_id})")
+            }
+            ValueSource::Prop(prop_id) => {
+                write!(f, "ValueSource::Prop({prop_id})")
+            }
+            ValueSource::Secret(secret_id) => {
+                write!(f, "ValueSource::Secret({secret_id})")
+            }
+            ValueSource::StaticArgumentValue(id) => {
+                write!(f, "ValueSource::StaticArgumentValue({id})")
+            }
         }
     }
 }

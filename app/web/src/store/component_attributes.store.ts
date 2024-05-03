@@ -21,6 +21,7 @@ export interface UpdatePropertyEditorValueArgs {
   componentId: string;
   value?: unknown;
   key?: string;
+  isForSecret: boolean;
 }
 
 export interface InsertPropertyEditorValueArgs {

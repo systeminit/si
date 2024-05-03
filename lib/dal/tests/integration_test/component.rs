@@ -289,7 +289,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = DependentValueGraph::for_values(ctx, vec![rigid_designator_value_id])
+    let update_graph = DependentValueGraph::new(ctx, vec![rigid_designator_value_id])
         .await
         .expect("able to generate update graph");
 
@@ -457,7 +457,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = DependentValueGraph::for_values(ctx, vec![possible_world_a_value_id])
+    let update_graph = DependentValueGraph::new(ctx, vec![possible_world_a_value_id])
         .await
         .expect("able to generate update graph");
 

@@ -809,6 +809,7 @@ const setSource = (source: AttributeValueSource) => {
         propId: props.attributeDef.propId,
         componentId,
         value,
+        isForSecret: false,
       },
     });
   } else {
@@ -932,6 +933,8 @@ function unsetHandler() {
 function updateValue() {
   let newVal;
   let skipUpdate = false;
+  let isForSecret = false;
+
   if (widgetKind.value === "checkbox") {
     newVal = newValueBoolean.value;
     // special handling for empty value + false
@@ -958,6 +961,12 @@ function updateValue() {
     return;
   }
 
+  // If we are explicitly setting a secret, we need to inform SDF so that dependent values update
+  // will trigger when the secret's encrypted contents change.
+  if (widgetKind.value === "secret") {
+    isForSecret = true;
+  }
+
   attributesStore.UPDATE_PROPERTY_VALUE({
     update: {
       attributeValueId: props.attributeDef.valueId,
@@ -965,6 +974,7 @@ function updateValue() {
       propId: props.attributeDef.propId,
       componentId,
       value: newVal,
+      isForSecret,
     },
   });
 }

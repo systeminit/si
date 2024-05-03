@@ -16,6 +16,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::job::definition::AttributeValueBasedJobIdentifier;
@@ -683,7 +684,7 @@ impl DalContext {
 
     pub async fn enqueue_dependent_values_update(
         &self,
-        ids: Vec<AttributeValueId>,
+        ids: Vec<impl Into<Ulid>>,
     ) -> Result<(), TransactionsError> {
         self.txns()
             .await?
@@ -920,7 +921,7 @@ impl DalContextBuilder {
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: Tenancy::new_empty(),
-            visibility: Visibility::new_head(),
+            visibility: Visibility::new_head_fake(),
             history_actor: HistoryActor::SystemInit,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
@@ -941,7 +942,7 @@ impl DalContextBuilder {
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: access_builder.tenancy,
             history_actor: access_builder.history_actor,
-            visibility: Visibility::new_head(),
+            visibility: Visibility::new_head_fake(),
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,

@@ -37,15 +37,12 @@ pub mod summary;
 pub mod view;
 
 mod associations;
-mod before;
 mod kind;
 
 pub use associations::AttributePrototypeArgumentBag;
 pub use associations::AttributePrototypeBag;
 pub use associations::FuncArgumentBag;
 pub use associations::FuncAssociations;
-pub use before::before_funcs_for_component;
-pub use before::BeforeFuncError;
 pub use kind::FuncKind;
 
 #[remain::sorted]

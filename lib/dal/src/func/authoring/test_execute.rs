@@ -3,9 +3,9 @@ use base64::Engine;
 
 use crate::func::authoring::{FuncAuthoringResult, TestExecuteFuncResult};
 use crate::func::backend::FuncDispatchContext;
-use crate::func::before_funcs_for_component;
 use crate::func::binding::critical_section::execute_critical_section;
 use crate::func::binding::{FuncBindingError, LogLinePayload};
+use crate::secret::before_funcs_for_component;
 use crate::{ComponentId, DalContext, Func, FuncId, WsEvent, WsEventResult};
 
 pub(crate) async fn test_execute_func(

@@ -8,7 +8,8 @@ use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{
-    attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId, WsEventError,
+    attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
+    SecretError as DalSecretError, WsEventError,
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
@@ -68,6 +69,8 @@ pub enum ComponentError {
     SchemaNotFound,
     #[error("schema variant not found")]
     SchemaVariantNotFound,
+    #[error("dal secret error: {0}")]
+    Secret(#[from] DalSecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
