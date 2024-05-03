@@ -448,7 +448,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
     let odd_component_1_mat_view = AttributeValue::get_by_id(ctx, odd_component_1_av)
         .await
         .expect("got av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("got mat view")
         .expect("has value");
@@ -466,7 +466,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
     let odd_component_2_mat_view = AttributeValue::get_by_id(ctx, odd_component_2_av)
         .await
         .expect("got av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("got mat view")
         .expect("has value");
@@ -520,7 +520,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not get attribute value");
     let one_mat_view = one_av
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -544,7 +544,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -556,7 +556,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -624,7 +624,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not get attribute value");
     let one_mat_view = one_av
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -652,7 +652,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -695,7 +695,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
             .await
             .expect("could not get attribute value by id")
-            .materialized_view(ctx)
+            .view(ctx)
             .await
             .expect("could not get materialized view")
             .is_none()
@@ -736,7 +736,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get av by id")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -789,7 +789,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     let one_output_mat_view = AttributeValue::get_by_id(ctx, three_av_id.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not find materialized view")
         .expect("is some");
@@ -806,7 +806,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -861,7 +861,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not get attribute value");
     let one_mat_view = one_av
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -889,7 +889,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -946,7 +946,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not get attribute value");
     let one_mat_view = another_three_av
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -973,7 +973,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -1030,7 +1030,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not get attribute value");
     let odd_two_mat_view = odd_two_av
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("is some");
@@ -1068,7 +1068,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
         .await
         .expect("could not get attribute value")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("could not get materialized view")
         .expect("materialized view is some");

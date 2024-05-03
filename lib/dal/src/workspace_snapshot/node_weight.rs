@@ -657,7 +657,6 @@ impl NodeWeight {
         attribute_value_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        materialized_view: Option<ContentAddress>,
         func_execution_pk: Option<FuncExecutionPk>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
@@ -665,7 +664,6 @@ impl NodeWeight {
             attribute_value_id,
             unprocessed_value,
             value,
-            materialized_view,
             func_execution_pk,
         )?))
     }

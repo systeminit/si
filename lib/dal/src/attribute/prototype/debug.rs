@@ -174,13 +174,10 @@ impl AttributePrototypeDebugView {
                                 AttributeValue::get_by_id(ctx, attribute_value_id).await?;
                             let prop_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-                            let mat_view = attribute_value
-                                .materialized_view(ctx)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            info!("Materialized View: {:?}", mat_view);
+                            let view = attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            info!("View: {:?}", view);
                             let func_arg_debug = FuncArgDebugView {
-                                value: mat_view,
+                                value: view,
                                 name: func_arg_name.clone(),
                                 value_source: value_source.to_string(),
                                 value_source_id: prop_id.into(),
@@ -205,13 +202,11 @@ impl AttributePrototypeDebugView {
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
-                            let mat_view = attribute_value
-                                .materialized_view(ctx)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            info!("Materialized View: {:?}", mat_view);
+                            let value_view =
+                                attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            info!("Materialized View: {:?}", value_view);
                             let func_arg_debug = FuncArgDebugView {
-                                value: mat_view,
+                                value: value_view,
                                 name: func_arg_name.clone(),
                                 value_source: value_source.to_string(),
                                 value_source_id: input_socket_id.into(),
@@ -236,13 +231,11 @@ impl AttributePrototypeDebugView {
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
-                            let mat_view = attribute_value
-                                .materialized_view(ctx)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            info!("Materialized View: {:?}", mat_view);
+                            let value_view =
+                                attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            info!("Materialized View: {:?}", value_view);
                             let func_arg_debug = FuncArgDebugView {
-                                value: mat_view,
+                                value: value_view,
                                 name: func_arg_name.clone(),
                                 value_source: value_source.to_string(),
                                 value_source_id: output_socket_id.into(),
@@ -292,17 +285,14 @@ impl AttributePrototypeDebugView {
                         AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
                     let output_av =
                         AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                    let mat_view = output_av
-                        .materialized_view(ctx)
-                        .await?
-                        .unwrap_or(Value::Null);
+                    let value_view = output_av.view(ctx).await?.unwrap_or(Value::Null);
                     let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
                     if let Some(func_argument) =
                         FuncArgument::list_for_func(ctx, input_func).await?.pop()
                     {
                         let func_arg_name = func_argument.name.clone();
                         let func_arg_debug = FuncArgDebugView {
-                            value: mat_view,
+                            value: value_view,
                             name: func_argument.name,
                             value_source: "Output Socket".to_string(),
                             value_source_id: output_match.output_socket_id.into(),

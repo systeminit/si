@@ -325,17 +325,17 @@ async fn connect_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
+    assert!(matches!(view, serde_json::Value::Array(_)));
 
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(2, units_array.len())
     }
 
@@ -508,17 +508,17 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
+    assert!(matches!(view, serde_json::Value::Array(_)));
 
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(2, units_array.len())
     }
 
@@ -545,17 +545,17 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
+    assert!(matches!(view, serde_json::Value::Array(_)));
 
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(1, units_array.len())
     }
 

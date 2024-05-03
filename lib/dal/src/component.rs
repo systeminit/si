@@ -285,10 +285,7 @@ impl Component {
         self.to_delete
     }
 
-    pub async fn materialized_view(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Option<serde_json::Value>> {
+    pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
         let schema_variant_id = Self::schema_variant_id(ctx, self.id()).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
@@ -298,7 +295,7 @@ impl Component {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == self.id() {
                 let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
-                return Ok(root_value.materialized_view(ctx).await?);
+                return Ok(root_value.view(ctx).await?);
             }
         }
 
@@ -1075,7 +1072,7 @@ impl Component {
 
         let av = AttributeValue::get_by_id(ctx, value_id).await?;
 
-        Ok(match av.materialized_view(ctx).await? {
+        Ok(match av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => DeprecatedActionRunResult::default(),
         })
@@ -1091,7 +1088,7 @@ impl Component {
 
         let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
 
-        Ok(match name_av.materialized_view(ctx).await? {
+        Ok(match name_av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
@@ -1107,7 +1104,7 @@ impl Component {
 
         let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
-        Ok(match color_av.materialized_view(ctx).await? {
+        Ok(match color_av.view(ctx).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
             None => None,
         })
@@ -1125,7 +1122,7 @@ impl Component {
                 .ok_or(ComponentError::ComponentMissingTypeValue(component_id))?;
         let type_value = AttributeValue::get_by_id(ctx, type_value_id)
             .await?
-            .materialized_view(ctx)
+            .view(ctx)
             .await?
             .ok_or(ComponentError::ComponentMissingTypeValueMaterializedView(
                 component_id,

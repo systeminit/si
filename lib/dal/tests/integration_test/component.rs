@@ -94,10 +94,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    component
-        .materialized_view(ctx)
-        .await
-        .expect("materialized_view for component");
+    component.view(ctx).await.expect("view for component");
 
     // Confirm after rebase
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
@@ -318,15 +315,15 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     .await
     .expect("able to set universe value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
+    let view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(rigid_designation, materialized_view);
+    assert_eq!(rigid_designation, view);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -335,9 +332,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
         .await
         .expect("able to get attribute value for `naming_and_necessity_value_id`")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get materialized_view for `naming_and_necessity_value_id`")
+        .expect("able to get view for `naming_and_necessity_value_id`")
         .expect("naming and necessity has a value");
 
     // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
@@ -360,10 +357,10 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         .expect("able to get the value for the root prop attriburte value id");
 
     let root_view = root_value
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to fetch materialized_view for root value")
-        .expect("there is a value for the root value materialized_view");
+        .expect("able to fetch view for root value")
+        .expect("there is a value for the root value view");
 
     assert_eq!(
         serde_json::json!({
@@ -487,15 +484,15 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     .await
     .expect("able to set universe value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
+    let view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(possible_world_a, materialized_view);
+    assert_eq!(possible_world_a, view);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -504,9 +501,9 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
         .await
         .expect("able to get attribute value for `naming_and_necessity_value_id`")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get materialized_view for `naming_and_necessity_value_id`")
+        .expect("able to get view for `naming_and_necessity_value_id`")
         .expect("naming and necessity has a value");
 
     // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
@@ -529,10 +526,10 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
         .expect("able to get the value for the root prop attriburte value id");
 
     let root_view = root_value
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to fetch materialized_view for root value")
-        .expect("there is a value for the root value materialized_view");
+        .expect("able to fetch view for root value")
+        .expect("there is a value for the root value view");
 
     assert_eq!(
         serde_json::json!({
@@ -608,29 +605,29 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .await
         .expect("able to set universe value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(universe_json, materialized_view);
+    assert_eq!(universe_json, view);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(universe_json, materialized_view);
+    assert_eq!(universe_json, view);
 }
 
 #[test]
@@ -741,15 +738,14 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -789,15 +785,14 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }
@@ -910,15 +905,14 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -958,15 +952,14 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -1007,15 +1000,15 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -1037,15 +1030,15 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }
@@ -1097,7 +1090,7 @@ async fn paste_component(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     let mut view = pasted_pirate_component
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("unable to get materialized view of component")
         .expect("no view found");

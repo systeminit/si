@@ -851,6 +851,37 @@ impl Prop {
             .unwrap_or(false))
     }
 
+    pub async fn default_value(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<serde_json::Value>> {
+        let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
+        let prototype_func =
+            Func::get_by_id_or_error(ctx, AttributePrototype::func_id(ctx, prototype_id).await?)
+                .await?;
+        if prototype_func.is_dynamic() {
+            return Ok(None);
+        }
+
+        Ok(
+            if let Some(apa_id) =
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
+                    .await?
+                    .first()
+            {
+                if let Some(value) =
+                    AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await?
+                {
+                    Some(value.value)
+                } else {
+                    None
+                }
+            } else {
+                None
+            },
+        )
+    }
+
     pub async fn set_default_value<T: Serialize>(
         ctx: &DalContext,
         prop_id: PropId,
