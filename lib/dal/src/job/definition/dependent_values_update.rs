@@ -186,16 +186,38 @@ impl DependentValuesUpdate {
                             #[allow(unused_variables)]
                             let write_guard = self.set_value_lock.write().await;
 
-                            match AttributeValue::set_values_from_execution_result(
+                            // Only set values if their functions are actually
+                            // "dependent". Other values may have been
+                            // introduced to the attribute value graph because
+                            // of child-parent prop dependencies, but these
+                            // values themselves do not need to change (they are
+                            // always Objects, Maps, or Arrays set by
+                            // setObject/setArray/setMap and are not updated in
+                            // the dependent value execution). If we forced
+                            // these container values to update here, we might
+                            // touch child properties unnecessarily.
+                            match AttributeValue::is_set_by_dependent_function(
                                 ctx,
                                 finished_value_id,
-                                execution_values,
                             )
                             .await
                             {
-                                // Remove the value, so that any values that depend on it will
-                                // become independent values (once all other dependencies are removed)
-                                Ok(_) => dependency_graph.remove_value(finished_value_id),
+                                Ok(true) => match AttributeValue::set_values_from_execution_result(
+                                    ctx,
+                                    finished_value_id,
+                                    execution_values,
+                                )
+                                .await
+                                {
+                                    // Remove the value, so that any values that depend on it will
+                                    // become independent values (once all other dependencies are removed)
+                                    Ok(_) => dependency_graph.remove_value(finished_value_id),
+                                    Err(err) => {
+                                        error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
+                                        dependency_graph.cycle_on_self(finished_value_id);
+                                    }
+                                },
+                                Ok(false) => dependency_graph.remove_value(finished_value_id),
                                 Err(err) => {
                                     error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
                                     dependency_graph.cycle_on_self(finished_value_id);

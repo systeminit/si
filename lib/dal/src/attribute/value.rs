@@ -41,6 +41,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
+use async_recursion::async_recursion;
+use indexmap::IndexMap;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -214,7 +216,6 @@ pub struct AttributeValue {
     /// The processed return value.
     /// Example: empty array.
     pub value: Option<ContentAddress>,
-    pub materialized_view: Option<ContentAddress>,
     pub func_execution_pk: Option<FuncExecutionPk>,
 }
 
@@ -248,6 +249,23 @@ impl ValueIsFor {
             ValueIsFor::InputSocket(id) => Some(*id),
             _ => None,
         }
+    }
+
+    pub async fn debug_info(&self, ctx: &DalContext) -> AttributeValueResult<String> {
+        Ok(match self {
+            ValueIsFor::OutputSocket(output_socket_id) => {
+                let socket = OutputSocket::get_by_id(ctx, *output_socket_id).await?;
+                format!("Output Socket: {}", socket.name())
+            }
+            ValueIsFor::InputSocket(input_socket_id) => {
+                let socket = InputSocket::get_by_id(ctx, *input_socket_id).await?;
+                format!("Input Socket: {}", socket.name())
+            }
+            ValueIsFor::Prop(prop_id) => {
+                let prop = Prop::get_by_id_or_error(ctx, *prop_id).await?;
+                format!("Prop: {}", prop.path(ctx).await?.with_replaced_sep("."))
+            }
+        })
     }
 }
 
@@ -292,7 +310,6 @@ impl From<AttributeValueNodeWeight> for AttributeValue {
             id: value.id().into(),
             unprocessed_value: value.unprocessed_value(),
             value: value.value(),
-            materialized_view: value.materialized_view(),
             func_execution_pk: value.func_execution_pk(),
         }
     }
@@ -348,7 +365,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Self> {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None, None)?;
+        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None)?;
         let is_for = is_for.into();
 
         let ordered = if let Some(prop_id) = is_for.prop_id() {
@@ -686,10 +703,7 @@ impl AttributeValue {
                                     // XXX: no value" vs "the value is null", but right now we collapse
                                     // XXX: the two to just be "null" when passing these to a function.
                                     values.push(
-                                        attribute_value
-                                            .materialized_view(ctx)
-                                            .await?
-                                            .unwrap_or(Value::Null),
+                                        attribute_value.view(ctx).await?.unwrap_or(Value::Null),
                                     );
                                 }
 
@@ -714,7 +728,6 @@ impl AttributeValue {
         // functions.
         let mut args_map = HashMap::new();
         for (arg_name, values) in func_binding_args {
-            info!("arg name {} and values {:?}", arg_name, values);
             match values.len() {
                 1 => {
                     args_map.insert(arg_name, values[0].to_owned());
@@ -732,6 +745,7 @@ impl AttributeValue {
 
         // Serialize the raw args and we're good to go.
         let prepared_func_binding_args = serde_json::to_value(args_map)?;
+
         Ok((prototype_func_id, prepared_func_binding_args))
     }
 
@@ -783,16 +797,42 @@ impl AttributeValue {
                     // XXX: the two to just be "null" when passing these to a function.
                     let output_av =
                         AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                    let mat_view = output_av
-                        .materialized_view(ctx)
-                        .await?
-                        .unwrap_or(Value::Null);
-                    Some(mat_view)
+                    let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                    Some(view)
                 }
                 _ => None,
             },
         )
     }
+
+    pub async fn prototype_func(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Func> {
+        let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
+        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        Ok(Func::get_by_id_or_error(ctx, prototype_func_id).await?)
+    }
+
+    pub async fn is_set_by_dependent_function(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(Self::prototype_func(ctx, attribute_value_id)
+            .await?
+            .is_dynamic())
+    }
+
+    pub async fn is_set_by_unset(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(
+            Self::prototype_func(ctx, attribute_value_id).await?.name
+                == IntrinsicFunc::Unset.name(),
+        )
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn set_values_from_execution_result(
         ctx: &DalContext,
@@ -831,10 +871,6 @@ impl AttributeValue {
 
         if values_are_different {
             Self::populate_nested_values(ctx, attribute_value_id, unprocessed_value).await?;
-        } else {
-            let materialized_view =
-                AttributeValue::create_materialized_view(ctx, attribute_value_id).await?;
-            Self::set_materialized_view(ctx, attribute_value_id, materialized_view).await?;
         }
 
         Ok(())
@@ -1198,84 +1234,69 @@ impl AttributeValue {
             view_stack.extend(view_stack_extension);
         }
 
-        // walk up the tree that we touched, creating materialized views
-        while let Some(attribute_value_id) = view_stack.pop() {
-            let materialized_view =
-                AttributeValue::create_materialized_view(ctx, attribute_value_id).await?;
-            Self::set_materialized_view(ctx, attribute_value_id, materialized_view).await?;
-        }
-
         Ok(())
     }
 
-    pub async fn create_materialized_view(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<serde_json::Value>> {
-        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-        if av.value(ctx).await?.is_none() {
-            return Ok(None);
-        }
+    #[async_recursion]
+    pub async fn view(&self, ctx: &DalContext) -> AttributeValueResult<Option<serde_json::Value>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let attribute_value_id = self.id;
 
         match AttributeValue::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => {
-                let prop_kind = workspace_snapshot
-                    .get_node_weight_by_id(prop_id)
-                    .await?
-                    .get_prop_node_weight()?
-                    .kind();
+                let self_value = self.value(ctx).await?;
+                if self_value.is_none() {
+                    if Self::is_set_by_unset(ctx, self.id).await? {
+                        return Ok(Prop::default_value(ctx, prop_id).await?);
+                    }
+                    return Ok(None);
+                }
 
-                match prop_kind {
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+
+                match prop.kind {
                     PropKind::Object => {
-                        let mut object_view: HashMap<String, serde_json::Value> = HashMap::new();
-                        let mut child_av_ids = vec![];
+                        let mut object_view: IndexMap<String, serde_json::Value> = IndexMap::new();
+                        let mut av_prop_map = HashMap::new();
 
+                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                            ctx,
+                            attribute_value_id,
+                        )
+                        .await?
                         {
-                            for child_target in workspace_snapshot
-                                .outgoing_targets_for_edge_weight_kind(
-                                    attribute_value_id,
-                                    EdgeWeightKindDiscriminants::Contain,
-                                )
-                                .await?
-                            {
-                                let av_id =
-                                    workspace_snapshot.get_node_weight(child_target).await?.id();
-                                child_av_ids.push(av_id.into());
-                            }
-                        }
-
-                        for child_av_id in child_av_ids {
                             let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
 
                             if let ValueIsFor::Prop(child_prop_id) =
                                 AttributeValue::is_for(ctx, child_av.id()).await?
                             {
-                                let child_prop_name = {
-                                    workspace_snapshot
-                                        .get_node_weight_by_id(child_prop_id)
-                                        .await?
-                                        .get_prop_node_weight()?
-                                        .name()
-                                        .to_owned()
-                                };
-
-                                let child_materialized_view =
-                                    child_av.materialized_view(ctx).await?;
-                                if let Some(view) = child_materialized_view {
-                                    object_view.insert(child_prop_name, view);
-                                }
+                                av_prop_map.insert(child_prop_id, child_av);
                             } else {
                                 return Err(AttributeValueError::UnexpectedGraphLayout("a child attribute value of an object has no outgoing Prop edge but has an outgoing Socket edge"));
+                            }
+                        }
+
+                        // Unlike maps or arrays, we want to walk the
+                        // attribute values in prop order, not attribute
+                        // value order, so that we always return them in the
+                        // same order (the order the props were created for
+                        // the schema variant), not the order they were set
+                        // on the attribute value
+                        for child_prop in Prop::direct_child_props_ordered(ctx, prop_id).await? {
+                            if let Some(child_av) = av_prop_map.get(&child_prop.id()) {
+                                let child_view = child_av.view(ctx).await?;
+                                if let Some(view) = child_view {
+                                    object_view.insert(child_prop.name, view);
+                                }
                             }
                         }
 
                         Ok(Some(serde_json::to_value(object_view)?))
                     }
                     PropKind::Map => {
-                        let mut map_view: HashMap<String, serde_json::Value> = HashMap::new();
+                        let mut map_view: IndexMap<String, serde_json::Value> = IndexMap::new();
 
-                        let child_av_idxs_and_keys: HashMap<String, NodeIndex> = {
+                        let child_av_keys: HashMap<NodeIndex, String> = {
                             workspace_snapshot
                                 .edges_directed_for_edge_weight_kind(
                                     attribute_value_id,
@@ -1286,7 +1307,7 @@ impl AttributeValue {
                                 .iter()
                                 .filter_map(|(edge_weight, _, target_idx)| {
                                     if let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() {
-                                        Some((key.to_owned(), *target_idx))
+                                        Some((*target_idx, key.to_owned()))
                                     } else {
                                         None
                                     }
@@ -1294,18 +1315,20 @@ impl AttributeValue {
                                 .collect()
                         };
 
-                        for (key, node_index) in child_av_idxs_and_keys {
-                            let child_av_id: AttributeValueId = {
-                                workspace_snapshot
-                                    .get_node_weight(node_index)
-                                    .await?
-                                    .id()
-                                    .into()
-                            };
+                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                            ctx,
+                            attribute_value_id,
+                        )
+                        .await?
+                        {
+                            let node_index =
+                                workspace_snapshot.get_node_index_by_id(child_av_id).await?;
 
-                            let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
-                            if let Some(view) = child_av.materialized_view(ctx).await? {
-                                map_view.insert(key, view);
+                            if let Some(key) = child_av_keys.get(&node_index) {
+                                let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
+                                if let Some(view) = child_av.view(ctx).await? {
+                                    map_view.insert(key.to_owned(), view);
+                                }
                             }
                         }
 
@@ -1325,17 +1348,17 @@ impl AttributeValue {
 
                         for element_av_id in element_av_ids {
                             let av = AttributeValue::get_by_id(ctx, element_av_id.into()).await?;
-                            if let Some(view) = av.materialized_view(ctx).await? {
+                            if let Some(view) = av.view(ctx).await? {
                                 array_view.push(view);
                             }
                         }
 
                         Ok(Some(serde_json::to_value(array_view)?))
                     }
-                    _ => Ok(av.value(ctx).await?),
+                    _ => Ok(self_value),
                 }
             }
-            ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(av.value(ctx).await?),
+            ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(self.value(ctx).await?),
         }
     }
 
@@ -1907,63 +1930,6 @@ impl AttributeValue {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
-    async fn set_materialized_view(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        view: Option<serde_json::Value>,
-    ) -> AttributeValueResult<()> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let (av_idx, av_node_weight) = {
-            let av_idx = workspace_snapshot
-                .get_node_index_by_id(attribute_value_id)
-                .await?;
-
-            (
-                av_idx,
-                workspace_snapshot
-                    .get_node_weight(av_idx)
-                    .await?
-                    .get_attribute_value_node_weight()?,
-            )
-        };
-
-        let content_view: Option<si_events::CasValue> = view.clone().map(Into::into);
-
-        let view_address = match content_view {
-            Some(view) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(view.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?
-                    .0,
-            ),
-            None => None,
-        };
-
-        debug!(
-            "set_materialized_view: {:?}, {:?}, {}",
-            &view, &view_address, attribute_value_id
-        );
-
-        let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
-
-        new_av_node_weight.set_materialized_view(view_address.map(ContentAddress::JsonValue));
-
-        workspace_snapshot
-            .add_node(NodeWeight::AttributeValue(new_av_node_weight))
-            .await?;
-        workspace_snapshot.replace_references(av_idx).await?;
-
-        Ok(())
-    }
-
     // todo: add func binding id and func binding return value id here to store on the attribute
     // value, this will also mean creating those rows for "intrinsic" execution in set_value
     async fn set_real_values(
@@ -2129,13 +2095,6 @@ impl AttributeValue {
         ctx: &DalContext,
     ) -> AttributeValueResult<Option<serde_json::Value>> {
         Self::fetch_value_from_store(ctx, self.unprocessed_value).await
-    }
-
-    pub async fn materialized_view(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<serde_json::Value>> {
-        Self::fetch_value_from_store(ctx, self.materialized_view).await
     }
 
     pub async fn func_execution(

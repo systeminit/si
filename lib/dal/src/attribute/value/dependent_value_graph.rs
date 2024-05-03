@@ -1,8 +1,8 @@
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use std::{fs::File, io::Write};
 use telemetry::prelude::*;
-use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::component::ControllingFuncData;
 use crate::ComponentError;
@@ -13,7 +13,7 @@ use crate::{
     },
     dependency_graph::DependencyGraph,
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, DalContext, Prop,
+    Component, DalContext,
 };
 
 use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
@@ -239,10 +239,12 @@ impl DependentValueGraph {
                 }
             }
 
-            // Also walk up to the root and ensure each parent value of the
-            // current value depends on its child (down to the current value)
-            // This ensures that we update the materialized views of the parent
-            // tree
+            // Parent props always depend on their children, even if those parents do not have
+            // "dependent" functions. Adding them to the graph ensures we execute the entire set of
+            // dependent values here (suppose for example an output socket depends on the root
+            // prop, we have to be sure we add that output socket to the graph if a child of root
+            // changes, because if a child of root has changed, then the view of root to the leaves
+            // will also change)
             if let Some(parent_attribute_value_id) =
                 AttributeValue::parent_attribute_value_id(ctx, current_attribute_value_id).await?
             {
@@ -259,20 +261,12 @@ impl DependentValueGraph {
         let mut is_for_map = HashMap::new();
 
         for attribute_value_id in self.inner.id_to_index_map().keys() {
-            let is_for: String = match AttributeValue::is_for(ctx, *attribute_value_id)
+            let is_for = AttributeValue::is_for(ctx, *attribute_value_id)
                 .await
                 .expect("able to get value is for")
-            {
-                ValueIsFor::Prop(prop_id) => format!(
-                    "prop = {}",
-                    Prop::path_by_id(ctx, prop_id)
-                        .await
-                        .expect("able to get prop path")
-                        .with_replaced_sep("/"),
-                ),
-                ValueIsFor::OutputSocket(_) => "output socket".into(),
-                ValueIsFor::InputSocket(_) => "input socket".into(),
-            };
+                .debug_info(ctx)
+                .await
+                .expect("able to get info for value is for");
             is_for_map.insert(*attribute_value_id, is_for);
         }
 
@@ -303,11 +297,9 @@ impl DependentValueGraph {
 
         let filename_no_extension = format!("{}-{}", Ulid::new(), suffix.unwrap_or("depgraph"));
         let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
-            .await
             .expect("could not create file");
 
         file.write_all(format!("{dot:?}").as_bytes())
-            .await
             .expect("could not write file");
         println!("dot output stored in file (filename without extension: {filename_no_extension})");
     }

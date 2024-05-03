@@ -156,7 +156,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             },
         }], // expected
         source_component
-            .materialized_view(ctx)
+            .view(ctx)
             .await
             .expect("could not get materialized view")
             .expect("empty materialized view") // actual
@@ -171,7 +171,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     let last_synced_value = AttributeValue::get_by_id(ctx, last_synced_av_id)
         .await
         .expect("should be able to get last synced av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("should be able to get value for last synced av");
 
@@ -201,7 +201,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             },
         }], // expected
         destination_component
-            .materialized_view(ctx)
+            .view(ctx)
             .await
             .expect("could not get materialized view")
             .expect("empty materialized view") // actual

@@ -34,7 +34,7 @@ pub struct SocketDebugView {
     pub func_name: String,
     pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
     pub value: Option<serde_json::Value>,
-    pub materialized_view: Option<serde_json::Value>,
+    pub view: Option<serde_json::Value>,
     pub name: String,
     pub inferred_connections: Vec<Ulid>,
 }
@@ -84,7 +84,7 @@ impl SocketDebugView {
             None => String::new(),
         };
 
-        let materialized_view = attribute_value.materialized_view(ctx).await?;
+        let view = attribute_value.view(ctx).await?;
         let inferred_connections: Vec<Ulid> =
             AttributeValue::list_input_socket_sources_for_id(ctx, attribute_value_id)
                 .await?
@@ -102,7 +102,7 @@ impl SocketDebugView {
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,
             path,
-            materialized_view,
+            view,
             name: output_socket.name().to_string(),
             inferred_connections,
         })
@@ -130,7 +130,7 @@ impl SocketDebugView {
             Some(path) => path,
             None => String::new(),
         };
-        let materialized_view = attribute_value.materialized_view(ctx).await?;
+        let value_view = attribute_value.view(ctx).await?;
         let inferred_connections =
             match Component::find_potential_inferred_connection_to_input_socket(
                 ctx,
@@ -153,7 +153,7 @@ impl SocketDebugView {
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,
             path,
-            materialized_view,
+            view: value_view,
             name: input_socket.name().to_string(),
             inferred_connections,
         };

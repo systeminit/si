@@ -344,7 +344,7 @@ impl DeprecatedActionPrototype {
         component_id: ComponentId,
     ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
         let component = Component::get_by_id(ctx, component_id).await?;
-        let component_view = component.materialized_view(ctx).await?;
+        let component_view = component.view(ctx).await?;
 
         let before = before_funcs_for_component(ctx, component_id).await?;
 

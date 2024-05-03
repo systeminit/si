@@ -187,11 +187,10 @@ impl QualificationView {
             None => return Ok(None),
         };
 
-        let qualification_entry: QualificationEntry =
-            match attribute_value.materialized_view(ctx).await? {
-                Some(value) => serde_json::from_value(value)?,
-                None => return Ok(None),
-            };
+        let qualification_entry: QualificationEntry = match attribute_value.view(ctx).await? {
+            Some(value) => serde_json::from_value(value)?,
+            None => return Ok(None),
+        };
 
         let func = Func::get_by_id_or_error(ctx, *func_execution.func_id()).await?;
 

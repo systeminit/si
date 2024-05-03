@@ -29,8 +29,6 @@ pub struct AttributeValueNodeWeight {
     /// The processed return value.
     /// Example: empty array.
     value: Option<ContentAddress>,
-    /// A cached representation of this value and all of its child values.
-    materialized_view: Option<ContentAddress>,
     /// The id of the func execution that produced the values for this value
     func_execution_pk: Option<FuncExecutionPk>,
 }
@@ -41,7 +39,6 @@ impl AttributeValueNodeWeight {
         id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        materialized_view: Option<ContentAddress>,
         func_execution_pk: Option<FuncExecutionPk>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
@@ -54,7 +51,6 @@ impl AttributeValueNodeWeight {
 
             unprocessed_value,
             value,
-            materialized_view,
             func_execution_pk,
         })
     }
@@ -66,9 +62,6 @@ impl AttributeValueNodeWeight {
             hashes.push(hash.content_hash());
         }
         if let Some(hash) = self.value {
-            hashes.push(hash.content_hash());
-        }
-        if let Some(hash) = self.materialized_view {
             hashes.push(hash.content_hash());
         }
 
@@ -93,14 +86,6 @@ impl AttributeValueNodeWeight {
 
     pub fn set_value(&mut self, value: Option<ContentAddress>) {
         self.value = value
-    }
-
-    pub fn materialized_view(&self) -> Option<ContentAddress> {
-        self.materialized_view
-    }
-
-    pub fn set_materialized_view(&mut self, materialized_view: Option<ContentAddress>) {
-        self.materialized_view = materialized_view
     }
 
     pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
@@ -171,7 +156,6 @@ impl AttributeValueNodeWeight {
         ContentHash::from(&serde_json::json![{
             "unprocessed_value": self.unprocessed_value,
             "value": self.value,
-            "materialized_view": self.materialized_view,
         }])
     }
 
@@ -217,7 +201,6 @@ impl std::fmt::Debug for AttributeValueNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("value", &self.value)
             .field("unprocessed_value", &self.unprocessed_value)
-            .field("materialized_view", &self.materialized_view)
             .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)

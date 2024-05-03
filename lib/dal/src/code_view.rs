@@ -82,7 +82,7 @@ impl CodeView {
             None => return Ok(None),
         };
 
-        let func_execution = match attribute_value.materialized_view(ctx).await? {
+        let func_execution = match attribute_value.view(ctx).await? {
             Some(func_execution) => func_execution,
             None => return Ok(None),
         };

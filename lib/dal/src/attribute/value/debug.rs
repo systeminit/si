@@ -41,7 +41,7 @@ pub struct AttributeDebugView {
     pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
     pub value: Option<serde_json::Value>,
     pub prop_kind: Option<PropKind>,
-    pub materialized_view: Option<serde_json::Value>,
+    pub view: Option<serde_json::Value>,
 }
 
 type AttributeDebugViewResult<T> = Result<T, AttributeDebugViewError>;
@@ -97,7 +97,7 @@ impl AttributeDebugView {
         let prop_opt: Option<Prop> = Some(prop);
         let attribute_prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, attribute_value_id).await?;
-        let materialized_view = attribute_value.materialized_view(ctx).await?;
+        let value_view = attribute_value.view(ctx).await?;
         let prop_kind = prop_opt.clone().map(|prop| prop.kind);
         let value = match attribute_value.unprocessed_value(ctx).await? {
             Some(value) => Some(value),
@@ -118,7 +118,7 @@ impl AttributeDebugView {
             func_args: attribute_prototype_debug_view.func_args,
             value,
             prop_kind,
-            materialized_view,
+            view: value_view,
         };
         Ok(view)
     }
