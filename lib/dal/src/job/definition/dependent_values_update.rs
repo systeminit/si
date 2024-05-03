@@ -193,7 +193,7 @@ impl DependentValuesUpdate {
                             )
                             .await
                             {
-                                // Remove the value, so that any values that dependent on it will
+                                // Remove the value, so that any values that depend on it will
                                 // become independent values (once all other dependencies are removed)
                                 Ok(_) => dependency_graph.remove_value(finished_value_id),
                                 Err(err) => {

@@ -11,6 +11,7 @@ use crate::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
         value::ValueIsFor,
     },
+    dependency_graph::DependencyGraph,
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
     Component, DalContext, Prop,
 };
@@ -19,8 +20,7 @@ use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValu
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
-    graph: StableDiGraph<AttributeValueId, ()>,
-    id_to_index_map: HashMap<AttributeValueId, NodeIndex>,
+    inner: DependencyGraph<AttributeValueId>,
 }
 
 impl Default for DependentValueGraph {
@@ -32,8 +32,7 @@ impl Default for DependentValueGraph {
 impl DependentValueGraph {
     pub fn new() -> Self {
         Self {
-            id_to_index_map: HashMap::new(),
-            graph: StableGraph::new(),
+            inner: DependencyGraph::new(),
         }
     }
 
@@ -234,7 +233,8 @@ impl DependentValueGraph {
                     if component_id == filter_component_id {
                         work_queue.push_back(attribute_value_id);
                         dependent_value_graph
-                            .value_depends_on(attribute_value_id, current_attribute_value_id);
+                            .inner
+                            .id_depends_on(attribute_value_id, current_attribute_value_id);
                     }
                 }
             }
@@ -248,7 +248,8 @@ impl DependentValueGraph {
             {
                 work_queue.push_back(parent_attribute_value_id);
                 dependent_value_graph
-                    .value_depends_on(parent_attribute_value_id, current_attribute_value_id);
+                    .inner
+                    .id_depends_on(parent_attribute_value_id, current_attribute_value_id);
             }
         }
         Ok(dependent_value_graph)
@@ -257,7 +258,7 @@ impl DependentValueGraph {
     pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
         let mut is_for_map = HashMap::new();
 
-        for attribute_value_id in self.id_to_index_map.keys() {
+        for attribute_value_id in self.inner.id_to_index_map().keys() {
             let is_for: String = match AttributeValue::is_for(ctx, *attribute_value_id)
                 .await
                 .expect("able to get value is for")
@@ -291,7 +292,7 @@ impl DependentValueGraph {
             };
 
         let dot = petgraph::dot::Dot::with_attr_getters(
-            &self.graph,
+            self.inner.graph(),
             &[
                 petgraph::dot::Config::NodeNoLabel,
                 petgraph::dot::Config::EdgeNoLabel,
@@ -311,64 +312,31 @@ impl DependentValueGraph {
         println!("dot output stored in file (filename without extension: {filename_no_extension})");
     }
 
-    pub fn add_value(&mut self, value_id: AttributeValueId) -> NodeIndex {
-        match self.id_to_index_map.entry(value_id) {
-            Entry::Vacant(entry) => {
-                let node_idx = self.graph.add_node(value_id);
-                entry.insert(node_idx);
-
-                node_idx
-            }
-            Entry::Occupied(entry) => *entry.get(),
-        }
-    }
-
     pub fn value_depends_on(
         &mut self,
         value_id: AttributeValueId,
         depends_on_id: AttributeValueId,
     ) {
-        let value_idx = self.add_value(value_id);
-        let depends_on_idx = self.add_value(depends_on_id);
-
-        self.graph.add_edge(value_idx, depends_on_idx, ());
+        self.inner.id_depends_on(value_id, depends_on_id);
     }
 
     pub fn contains_value(&self, value_id: AttributeValueId) -> bool {
-        self.id_to_index_map.get(&value_id).is_some()
+        self.inner.contains_id(value_id)
     }
 
     pub fn direct_dependencies_of(&self, value_id: AttributeValueId) -> Vec<AttributeValueId> {
-        match self.id_to_index_map.get(&value_id) {
-            None => vec![],
-            Some(value_idx) => self
-                .graph
-                .edges_directed(*value_idx, Outgoing)
-                .filter_map(|edge_ref| self.graph.node_weight(edge_ref.target()).copied())
-                .collect(),
-        }
+        self.inner.direct_dependencies_of(value_id)
     }
 
     pub fn remove_value(&mut self, value_id: AttributeValueId) {
-        if let Some(node_idx) = self.id_to_index_map.remove(&value_id) {
-            self.graph.remove_node(node_idx);
-        }
+        self.inner.remove_id(value_id);
     }
 
     pub fn cycle_on_self(&mut self, value_id: AttributeValueId) {
-        if let Some(node_idx) = self.id_to_index_map.get(&value_id) {
-            self.graph.add_edge(*node_idx, *node_idx, ());
-        }
+        self.inner.cycle_on_self(value_id);
     }
 
     pub fn independent_values(&self) -> Vec<AttributeValueId> {
-        self.graph
-            .externals(Outgoing)
-            .filter_map(|node_idx| self.graph.node_weight(node_idx).copied())
-            .collect()
-    }
-
-    pub fn into_graph(self) -> StableDiGraph<AttributeValueId, ()> {
-        self.graph
+        self.inner.independent_ids()
     }
 }
