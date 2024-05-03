@@ -484,7 +484,7 @@ impl WorkspaceSnapshot {
         Ok(edge_index)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub async fn detect_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -642,7 +642,7 @@ impl WorkspaceSnapshot {
                 workspace_snapshot_addr,
             ))?;
 
-        info!("snapshot fetch took: {:?}", start.elapsed());
+        debug!("snapshot fetch took: {:?}", start.elapsed());
 
         Ok(Self {
             address: Arc::new(RwLock::new(workspace_snapshot_addr)),

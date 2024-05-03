@@ -462,17 +462,17 @@ impl WorkspaceSnapshotGraph {
                 self.graph.remove_node(*stale_node_index);
             }
         }
-        info!("Removed stale NodeIndex: {:?}", start.elapsed());
+        debug!("Removed stale NodeIndex: {:?}", start.elapsed());
 
         // After we retain the nodes, collect the remaining ids and indices.
         let remaining_node_ids: HashSet<Ulid> = self.graph.node_weights().map(|n| n.id()).collect();
-        info!(
+        debug!(
             "Got remaining node IDs: {} ({:?})",
             remaining_node_ids.len(),
             start.elapsed()
         );
         let remaining_node_indices: HashSet<NodeIndex> = self.graph.node_indices().collect();
-        info!(
+        debug!(
             "Got remaining NodeIndex: {} ({:?})",
             remaining_node_indices.len(),
             start.elapsed()
@@ -481,7 +481,7 @@ impl WorkspaceSnapshotGraph {
         // Cleanup the node index by id map.
         self.node_index_by_id
             .retain(|id, _index| remaining_node_ids.contains(id));
-        info!("Removed stale node_index_by_id: {:?}", start.elapsed());
+        debug!("Removed stale node_index_by_id: {:?}", start.elapsed());
 
         // Cleanup the node indices by lineage id map.
         self.node_indices_by_lineage_id
@@ -491,7 +491,7 @@ impl WorkspaceSnapshotGraph {
             });
         self.node_indices_by_lineage_id
             .retain(|_lineage_id, node_indices| !node_indices.is_empty());
-        info!(
+        debug!(
             "Removed stale node_indices_by_lineage_id: {:?}",
             start.elapsed()
         );
@@ -523,7 +523,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         self.add_node(self.get_node_weight(node_index_to_copy)?.clone())
     }
-
+    #[instrument(level = "info", skip_all)]
     pub fn detect_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -549,7 +549,7 @@ impl WorkspaceSnapshotGraph {
 
         Ok((conflicts, updates))
     }
-
+    #[instrument(level = "info", skip_all)]
     fn detect_conflicts_and_updates_process_dfs_event(
         &self,
         to_rebase_vector_clock_id: VectorClockId,

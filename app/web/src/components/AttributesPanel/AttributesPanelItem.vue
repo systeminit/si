@@ -439,14 +439,8 @@
           <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
         <div
-          v-if="
-            propControlledByParent || (propSetByDynamicFunc && !editOverride)
-          "
-          v-tooltip="
-            propControlledByParent
-              ? `${propName} is set via a function from an ancestor`
-              : `${propName} is set via an input socket`
-          "
+          v-if="!propIsEditable"
+          v-tooltip="sourceTooltip"
           :class="
             clsx(
               'attributes-panel-item__blocked-overlay',
@@ -833,6 +827,12 @@ const sourceIcon = computed(() => {
 
 const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
 
+const propIsEditable = computed(
+  () =>
+    sourceOverridden.value ||
+    (!propPopulatedBySocket.value && !propSetByDynamicFunc.value),
+);
+
 const sourceTooltip = computed(() => {
   if (sourceOverridden.value) {
     if (propPopulatedBySocket.value) {
@@ -846,6 +846,8 @@ const sourceTooltip = computed(() => {
   } else {
     if (propPopulatedBySocket.value) {
       return `${propName.value} is set via a populated socket`;
+    } else if (propControlledByParent.value) {
+      return `${propName.value} is set via a function from an ancestor`;
     } else if (propSetByDynamicFunc.value) {
       return `${propName.value} is set by a dynamic function`;
     } else if (propHasSocket.value) {
