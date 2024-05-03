@@ -8,7 +8,7 @@ use convert_case::{Case, Casing};
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder,
     SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
+    UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -22,13 +22,12 @@ use tokio::fs::read_dir;
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
-// mod approval_process;
+pub mod approval_process;
 pub mod builtin_module_spec;
 pub mod export_module;
-// pub mod export_workspace;
-pub mod get_module;
-// pub mod import_workspace_vote;
 mod export_workspace;
+pub mod get_module;
+pub mod import_workspace_vote;
 pub mod install_module;
 mod install_workspace;
 pub mod list_modules;
@@ -54,6 +53,8 @@ pub enum ModuleError {
     Hyper(#[from] hyper::http::Error),
     #[error("Invalid package file name: {0}")]
     InvalidPackageFileName(String),
+    #[error("invalid user: {0}")]
+    InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
     #[error("IO Error: {0}")]
@@ -233,16 +234,16 @@ pub fn routes() -> Router<AppState> {
             post(builtin_module_spec::promote_to_builtin),
         )
         .route("/reject_module", post(reject_module::reject_module))
-    // .route(
-    //     "/begin_approval_process",
-    //     post(approval_process::begin_approval_process),
-    // )
-    // .route(
-    //     "/cancel_approval_process",
-    //     post(approval_process::cancel_approval_process),
-    // )
-    // .route(
-    //     "/import_workspace_vote",
-    //     post(import_workspace_vote::import_workspace_vote),
-    // )
+        .route(
+            "/begin_approval_process",
+            post(approval_process::begin_approval_process),
+        )
+        .route(
+            "/cancel_approval_process",
+            post(approval_process::cancel_approval_process),
+        )
+        .route(
+            "/import_workspace_vote",
+            post(import_workspace_vote::import_workspace_vote),
+        )
 }
