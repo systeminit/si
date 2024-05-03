@@ -61,7 +61,6 @@ import { yCollab, yUndoManagerKeymap } from "yjs-codemirror-plugin";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { API_WS_URL } from "@/store/apis";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { usePresenceStore } from "@/store/presence.store";
 import {
   createTypescriptSource,
@@ -105,7 +104,6 @@ watch(
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const editorMount = ref(); // div (template ref) where we will mount the editor
 let view: EditorView; // instance of the CodeMirror editor
@@ -398,10 +396,7 @@ const mountEditor = async () => {
     // https://github.com/yjs/y-codemirror.next/issues/8
     // https://github.com/yjs/y-codemirror.next/pull/17
 
-    let id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
-    if (!featureFlagsStore.INVITE_USER) {
-      id = `${id}-${authStore.user?.pk}`;
-    }
+    const id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
 
     // const _storageProvider = new IndexeddbPersistence(id, ydoc);
 

@@ -101,22 +101,14 @@
             </div>
           </div>
           <SourceIconWithTooltip
-            v-if="
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              !(widgetKind === 'secret')
-            "
+            v-if="!(widgetKind === 'secret')"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
             header
           />
           <!-- DROPDOWN MENU FOR SELECT SOURCE -->
-          <template
-            v-if="
-              validAttributeValueSources.length > 1 &&
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET
-            "
-          >
+          <template v-if="validAttributeValueSources.length > 1">
             <div
               class="attributes-panel-item__section-header-source-select"
               @click="sourceSelectMenuRef?.open($event)"
@@ -274,10 +266,7 @@
           </button>
 
           <SourceIconWithTooltip
-            v-if="
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              !(widgetKind === 'secret')
-            "
+            v-if="!(widgetKind === 'secret')"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
@@ -451,10 +440,7 @@
         </template>
         <div
           v-if="
-            propControlledByParent ||
-            (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              propSetByDynamicFunc &&
-              !editOverride)
+            propControlledByParent || (propSetByDynamicFunc && !editOverride)
           "
           v-tooltip="
             propControlledByParent
@@ -612,7 +598,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
@@ -629,8 +614,6 @@ const props = defineProps({
   // number of prop keys to show while collapsed
   numPreviewProps: { type: Number, default: 3 },
 });
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const headerMainLabelRef = ref();
 const headerMainLabelTooltip = computed(() => {
