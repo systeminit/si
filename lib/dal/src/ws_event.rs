@@ -12,6 +12,9 @@ use crate::component::{
     ComponentUpdatedPayload,
 };
 use crate::func::FuncWsEventPayload;
+use crate::pkg::{
+    ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
+};
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{
     SchemaVariantClonedPayload, SchemaVariantCreatedPayload, SchemaVariantSavedPayload,
@@ -90,7 +93,7 @@ pub enum WsPayload {
     DeprecatedActionRemoved(ActionId),
     DeprecatedActionRunnerReturn(ActionRunnerReturn),
     FuncDeleted(FuncWsEventPayload),
-    // ImportWorkspaceVote(ImportWorkspaceVotePayload),
+    ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
@@ -105,8 +108,8 @@ pub enum WsPayload {
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
     // WorkspaceExported(WorkspaceExportPayload),
-    // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
-    // WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
+    WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
+    WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
     // WorkspaceImported(WorkspaceImportPayload),
 }
 
