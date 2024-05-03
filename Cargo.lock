@@ -6623,6 +6623,7 @@ dependencies = [
  "test-log",
  "thiserror",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
  "uuid",

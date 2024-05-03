@@ -19,6 +19,10 @@ const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
 
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
+pub fn reply_mailbox_for_keep_alive(reply_mailbox: &str) -> String {
+    format!("{reply_mailbox}.keepalive")
+}
+
 pub fn reply_mailbox_for_output(reply_mailbox: &str) -> String {
     format!("{reply_mailbox}.output")
 }

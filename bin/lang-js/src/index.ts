@@ -50,6 +50,10 @@ async function main() {
   // We don't have the executionId yet, so this field will be empty
   let errorFn = makeConsole(executionId).error;
 
+  const interval = setInterval(() => {
+    console.log(JSON.stringify({ protocol: "heartbeat" }));
+  }, 5000);
+
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
     debug({ request: requestJson });
@@ -75,6 +79,8 @@ async function main() {
   } catch (err) {
     onError(errorFn, err as Error, executionId);
   }
+
+  clearInterval(interval);
 }
 
 // interface Errorable {
