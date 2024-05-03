@@ -1,28 +1,21 @@
 <template>
   <div>
-    <div class="flex flex-row items-center gap-xs flex-none">
-      <Icon name="component" />
-      <div class="text-3xl font-bold truncate">
-        {{
-          localSummary?.name ||
-          remoteSummary?.name ||
-          moduleStore.urlSelectedModuleSlug
-        }}
+    <template v-if="moduleSlug && loadRemoteModulesReqStatus.isSuccess">
+      <div
+        v-if="localSummary || remoteSummary"
+        class="flex flex-row items-center gap-xs flex-none"
+      >
+        <Icon name="component" />
+        <div class="text-3xl font-bold truncate">
+          {{
+            localSummary?.name ||
+            remoteSummary?.name ||
+            moduleStore.urlSelectedModuleSlug
+          }}
+        </div>
       </div>
-    </div>
 
-    <div
-      v-if="
-        loadLocalModulesReqStatus.isPending ||
-        !loadLocalModulesReqStatus.isRequested
-      "
-    >
-      loading local modules...
-    </div>
-    <div v-else-if="loadLocalModulesReqStatus.isError">
-      <ErrorMessage :requestStatus="loadLocalModulesReqStatus" />
-    </div>
-    <div v-else-if="loadLocalModulesReqStatus.isSuccess">
+      <!-- A local module is selected -->
       <template v-if="localSummary">
         <div
           class="text-sm italic pb-sm flex flex-row flex-wrap gap-x-8 gap-y-1 flex-none"
@@ -122,89 +115,90 @@
         </div>
       </template>
 
-      <!-- this else means the module does not exist locally -->
-      <template v-else>
-        <!-- deal with showing an error message if name is totally bogus -->
-        <template
-          v-if="
-            loadRemoteModulesReqStatus.isSuccess && !remoteSummary && moduleSlug
-          "
-        >
-          <ErrorMessage>
-            Could not find module with hash {{ moduleSlug }}
+      <!-- A remote module is selected -->
+      <template v-else-if="remoteSummary">
+        <Stack class="mt-md">
+          <Inline spacing="lg">
+            <VormInput type="container" label="Owner/Creator">
+              {{ remoteSummary.ownerDisplayName }}
+            </VormInput>
+            <VormInput type="container" label="Created Date">
+              <Timestamp :date="remoteSummary.createdAt" />
+            </VormInput>
+          </Inline>
+          <p class="text-lg">{{ remoteSummary.description }}</p>
+
+          <ErrorMessage tone="warning">
+            Module is not currently installed locally
           </ErrorMessage>
-        </template>
-        <template v-else-if="remoteSummary">
-          <Stack class="mt-md">
-            <Inline spacing="lg">
-              <VormInput type="container" label="Owner/Creator">
-                {{ remoteSummary.ownerDisplayName }}
-              </VormInput>
-              <VormInput type="container" label="Created Date">
-                <Timestamp :date="remoteSummary.createdAt" />
-              </VormInput>
-            </Inline>
-            <p class="text-lg">{{ remoteSummary.description }}</p>
 
-            <ErrorMessage tone="warning">
-              Module is not currently installed locally
-            </ErrorMessage>
+          <ErrorMessage :requestStatus="installReqStatus" />
+          <ErrorMessage :message="moduleStore.installingError" />
+          <VButton
+            :requestStatus="installReqStatus"
+            :loading="moduleStore.installingLoading"
+            @click="installButtonHandler"
+          >
+            Install this module
+          </VButton>
 
-            <ErrorMessage :requestStatus="installReqStatus" />
-            <ErrorMessage :message="moduleStore.installingError" />
-            <VButton
-              :requestStatus="installReqStatus"
-              :loading="moduleStore.installingLoading"
-              @click="installButtonHandler"
-            >
-              Install this module
-            </VButton>
+          <ErrorMessage :requestStatus="remoteModuleSpecStatus" />
+          <VButton
+            :requestStatus="remoteModuleSpecStatus"
+            @click="viewModuleSpecHandler"
+          >
+            View functions from this module
+          </VButton>
 
-            <ErrorMessage :requestStatus="remoteModuleSpecStatus" />
-            <VButton
-              :requestStatus="remoteModuleSpecStatus"
-              @click="viewModuleSpecHandler"
-            >
-              View functions from this module
-            </VButton>
+          <ErrorMessage :requestStatus="rejectReqStatus" />
+          <VButton
+            :requestStatus="rejectReqStatus"
+            @click="rejectModuleSpecHandler"
+          >
+            Reject this module
+          </VButton>
 
-            <ErrorMessage :requestStatus="rejectReqStatus" />
-            <VButton
-              :requestStatus="rejectReqStatus"
-              @click="rejectModuleSpecHandler"
-            >
-              Reject this module
-            </VButton>
+          <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
+          <VButton
+            :requestStatus="promoteToBuiltinReqStatus"
+            @click="promoteToBuiltinSpecHandler"
+          >
+            Promote this module to be a builtin
+          </VButton>
 
-            <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
-            <VButton
-              :requestStatus="promoteToBuiltinReqStatus"
-              @click="promoteToBuiltinSpecHandler"
-            >
-              Promote this module to be a builtin
-            </VButton>
-
-            <div v-if="remoteSpec && remoteSpec.funcs.length > 0">
-              <ul>
-                <li
-                  v-for="func in remoteSpec.funcs"
-                  :key="func.uniqueId"
-                  class="mt-5"
-                >
-                  <b>{{ func.name }}</b>
-                  <CodeViewer
-                    v-if="func.codeBase64"
-                    :code="decodeb64(func.codeBase64)"
-                    codeLanguage="javascript"
-                  />
-                  <p v-else>(builtin, or no code)</p>
-                </li>
-              </ul>
-            </div>
-          </Stack>
-        </template>
+          <div v-if="remoteSpec && remoteSpec.funcs.length > 0">
+            <ul>
+              <li
+                v-for="func in remoteSpec.funcs"
+                :key="func.uniqueId"
+                class="mt-5"
+              >
+                <b>{{ func.name }}</b>
+                <CodeViewer
+                  v-if="func.codeBase64"
+                  :code="decodeb64(func.codeBase64)"
+                  codeLanguage="javascript"
+                />
+                <p v-else>(builtin, or no code)</p>
+              </li>
+            </ul>
+          </div>
+        </Stack>
       </template>
-    </div>
+
+      <!-- deal with showing an error message if name is totally bogus -->
+      <template v-else>
+        <ErrorMessage>
+          Could not find module with hash
+          <span class="italic font-bold">"{{ moduleSlug }}"</span>
+        </ErrorMessage>
+      </template>
+    </template>
+    <WorkspaceCustomizeEmptyState
+      v-else
+      :requestStatus="loadLocalModulesReqStatus"
+      loadingMessage="Loading modules..."
+    />
   </div>
 </template>
 
@@ -221,6 +215,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
 import CodeViewer from "../CodeViewer.vue";
+import WorkspaceCustomizeEmptyState from "../WorkspaceCustomizeEmptyState.vue";
 
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =

@@ -14,18 +14,18 @@
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>
-        <div
-          v-if="!assetStore.selectedAssetId"
-          class="w-full mt-4 p-sm text-neutral-400 dark:text-neutral-300 text-sm text-center"
-        >
-          Select an asset to see the functions attached to it.
-        </div>
       </template>
 
       <FuncList
         v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
         :funcsByKind="funcsByKind"
         context="workspace-lab-assets"
+      />
+      <EmptyStateCard
+        v-else
+        iconName="funcs"
+        primaryText="Select Asset, View Functions"
+        secondaryText="Select an asset from the list above to view its attached functions here."
       />
     </ScrollArea>
     <AssetFuncAttachModal
@@ -45,6 +45,7 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 import FuncList from "./FuncEditor/FuncList.vue";
+import EmptyStateCard from "./EmptyStateCard.vue";
 
 const props = defineProps<{ assetId?: string }>();
 

@@ -31,13 +31,19 @@
       /> -->
     </div>
   </div>
+  <EmptyStateCard
+    v-else
+    iconName="no-changes"
+    primaryText="No Module Selected"
+    secondaryText="Select a module from the list on the left panel to view its details here."
+  />
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-
 import { RequestStatusMessage } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
+import EmptyStateCard from "../EmptyStateCard.vue";
 
 const moduleStore = useModuleStore();
 const localDetailsReq = moduleStore.getRequestStatus(

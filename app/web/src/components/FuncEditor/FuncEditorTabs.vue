@@ -9,16 +9,10 @@
     @update:selected-tab="onTabChange"
   >
     <template #noTabs>
-      <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
-        <RequestStatusMessage
-          v-if="loadFuncsReqStatus.isPending"
-          :requestStatus="loadFuncsReqStatus"
-          loadingMessage="Loading functions..."
-        />
-        <template v-else-if="loadFuncsReqStatus.isSuccess">
-          Select a function to edit it.
-        </template>
-      </div>
+      <WorkspaceCustomizeEmptyState
+        :requestStatus="loadFuncsReqStatus"
+        loadingMessage="Loading functions..."
+      />
     </template>
 
     <TabGroupItem
@@ -54,13 +48,13 @@ import * as _ from "lodash-es";
 import { watch, ref, nextTick } from "vue";
 import {
   ErrorMessage,
-  RequestStatusMessage,
   TabGroup,
   TabGroupItem,
 } from "@si/vue-lib/design-system";
 import FuncEditor from "@/components/FuncEditor/FuncEditor.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
+import WorkspaceCustomizeEmptyState from "../WorkspaceCustomizeEmptyState.vue";
 
 const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 

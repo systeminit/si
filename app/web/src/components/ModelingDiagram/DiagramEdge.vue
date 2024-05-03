@@ -89,13 +89,12 @@ import {
   useTheme,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { isDevMode } from "@/utils/debug";
 import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramContext } from "./ModelingDiagram.vue";
-
-const isDevMode = import.meta.env.DEV;
 
 const props = defineProps({
   edge: {
