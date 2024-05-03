@@ -205,18 +205,22 @@ const filterComponentArrayBySearchString = (components: FullComponent[]) => {
 const filterComponentArrayBySearchStringAndFilters = (
   components: FullComponent[],
 ) => {
-  let filteredComponents = filterComponentArrayBySearchString(components);
+  let _filteredComponents = filterComponentArrayBySearchString(components);
 
   if (searchRef.value?.filteringActive) {
-    searchFiltersWithCounts.value.forEach((filter, index) => {
+    for (
+      let index = 0;
+      index < searchRef.value?.activeFilters.length;
+      index++
+    ) {
       if (searchRef.value?.activeFilters[index]) {
-        filteredComponents = _.filter(filteredComponents, (component) =>
+        _filteredComponents = _.filter(_filteredComponents, (component) =>
           filterArrays[index]?.value.includes(component),
         ) as FullComponent[];
       }
-    });
+    }
   }
-  return filteredComponents;
+  return _filteredComponents;
 };
 
 const filteredComponents = computed(() => {
