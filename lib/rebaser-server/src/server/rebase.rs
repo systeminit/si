@@ -28,7 +28,7 @@ pub(crate) enum RebaseError {
 }
 
 type RebaseResult<T> = Result<T, RebaseError>;
-
+#[instrument(level = "info", skip_all)]
 pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
     message: &ActivityRebaseRequest,
@@ -45,7 +45,7 @@ pub(crate) async fn perform_rebase(
         to_rebase_change_set.workspace_snapshot_address.ok_or(
             RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
         )?;
-    info!("before snapshot fetch and parse: {:?}", start.elapsed());
+    debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
     let onto_workspace_snapshot: WorkspaceSnapshot =
@@ -55,7 +55,7 @@ pub(crate) async fn perform_rebase(
         to_rebase_workspace_snapshot_address,
         onto_workspace_snapshot.id().await
     );
-    info!("after snapshot fetch and parse: {:?}", start.elapsed());
+    debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
