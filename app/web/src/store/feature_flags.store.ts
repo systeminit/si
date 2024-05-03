@@ -6,10 +6,7 @@ import { posthog } from "@/utils/posthog";
 // translation from store key to posthog feature flag name
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
-  INVITE_USER: "invite_user",
   MODULES_TAB: "modules_tab",
-  INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
-  FEAT_GRAPHVIZ: "feat-graphviz",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
