@@ -45,7 +45,6 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 import FuncList from "./FuncEditor/FuncList.vue";
-import EmptyStateIcon from "./EmptyStateIcon.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
 
 const props = defineProps<{ assetId?: string }>();

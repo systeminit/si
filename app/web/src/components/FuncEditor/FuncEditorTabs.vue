@@ -48,7 +48,6 @@ import * as _ from "lodash-es";
 import { watch, ref, nextTick } from "vue";
 import {
   ErrorMessage,
-  RequestStatusMessage,
   TabGroup,
   TabGroupItem,
 } from "@si/vue-lib/design-system";

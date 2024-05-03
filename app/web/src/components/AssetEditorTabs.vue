@@ -43,11 +43,7 @@
 <script lang="ts" setup>
 import isEqual from "lodash-es/isEqual";
 import { watch, ref, computed } from "vue";
-import {
-  TabGroup,
-  TabGroupItem,
-  RequestStatusMessage,
-} from "@si/vue-lib/design-system";
+import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import AssetEditor from "./AssetEditor.vue";
