@@ -3,8 +3,6 @@
 //! _Caution:_ functions in this module may appear to be unused, but they are likely used during
 //! macro expansion.
 
-use std::time::Duration;
-
 use dal::{ChangeSet, ChangeSetId, DalContext, UserClaim};
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
@@ -57,7 +55,6 @@ pub fn tracing_init(span_events_env_var: &'static str, log_env_var: &'static str
 }
 
 fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
-    use opentelemetry_sdk::runtime;
     use tracing_subscriber::layer::SubscriberExt;
 
     telemetry::opentelemetry::global::set_text_map_propagator(
@@ -103,35 +100,37 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
         .with_test_writer()
         .pretty();
 
-    let otel_layer = {
-        let resource = opentelemetry_sdk::Resource::from_detectors(
-            Duration::from_secs(3),
-            vec![
-                Box::new(opentelemetry_sdk::resource::EnvResourceDetector::new()),
-                Box::new(opentelemetry_sdk::resource::OsResourceDetector),
-                Box::new(opentelemetry_sdk::resource::ProcessResourceDetector),
-            ],
-        )
-        .merge(&opentelemetry_sdk::Resource::new(vec![
-            // TODO(fnichol): make name configurable
-            telemetry::opentelemetry::KeyValue::new("service.name", "test"),
-            telemetry::opentelemetry::KeyValue::new("service.namespace", "si"),
-        ]));
-
-        let otel_tracer = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-            .with_trace_config(opentelemetry_sdk::trace::config().with_resource(resource))
-            .install_batch(runtime::Tokio)
-            .expect("Creating otel_tracer failed");
-
-        tracing_opentelemetry::layer().with_tracer(otel_tracer)
-    };
+    // let otel_layer = {
+    //     use std::time::Duration;
+    //
+    //     let resource = opentelemetry_sdk::Resource::from_detectors(
+    //         Duration::from_secs(3),
+    //         vec![
+    //             Box::new(opentelemetry_sdk::resource::EnvResourceDetector::new()),
+    //             Box::new(opentelemetry_sdk::resource::OsResourceDetector),
+    //             Box::new(opentelemetry_sdk::resource::ProcessResourceDetector),
+    //         ],
+    //     )
+    //     .merge(&opentelemetry_sdk::Resource::new(vec![
+    //         // TODO(fnichol): make name configurable
+    //         telemetry::opentelemetry::KeyValue::new("service.name", "test"),
+    //         telemetry::opentelemetry::KeyValue::new("service.namespace", "si"),
+    //     ]));
+    //
+    //     let otel_tracer = opentelemetry_otlp::new_pipeline()
+    //         .tracing()
+    //         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+    //         .with_trace_config(opentelemetry_sdk::trace::config().with_resource(resource))
+    //         .install_batch(opentelemetry_sdk::runtime::Tokio)
+    //         .expect("Creating otel_tracer failed");
+    //
+    //     tracing_opentelemetry::layer().with_tracer(otel_tracer)
+    // };
 
     let registry = Registry::default();
     let registry = registry.with(env_filter);
     let registry = registry.with(format_layer);
-    let registry = registry.with(otel_layer);
+    // let registry = registry.with(otel_layer);
 
     registry
         .try_init()
