@@ -215,12 +215,69 @@ impl VariantAuthoringClient {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[instrument(name = "variant.authoring.update_variant", level = "info", skip_all)]
+    pub async fn update_variant(
+        ctx: &DalContext,
+        current_sv_id: SchemaVariantId,
+        name: String,
+        menu_name: Option<String>,
+        category: String,
+        color: String,
+        link: Option<String>,
+        code: String,
+        description: Option<String>,
+        component_type: ComponentType,
+    ) -> VariantAuthoringResult<SchemaVariantId> {
+        let sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        let components_in_use = sv.get_components_on_graph(ctx).await?;
+        let updated_sv_id: SchemaVariantId = if let Some(asset_func_id) = sv.asset_func_id() {
+            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            if !components_in_use.is_empty() {
+                Self::update_and_generate_variant_with_new_version(
+                    ctx,
+                    &asset_func,
+                    current_sv_id,
+                    name.clone(),
+                    menu_name.clone(),
+                    category.clone(),
+                    color.clone(),
+                    link.clone(),
+                    code.clone(),
+                    description.clone(),
+                    component_type,
+                )
+                .await?
+            } else {
+                Self::update_existing_variant_and_regenerate(
+                    ctx,
+                    current_sv_id,
+                    name.clone(),
+                    menu_name.clone(),
+                    category.clone(),
+                    color.clone(),
+                    link.clone(),
+                    code.clone(),
+                    description.clone(),
+                    component_type,
+                )
+                .await?;
+                current_sv_id
+            }
+        } else {
+            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
+                current_sv_id,
+            ));
+        };
+        Ok(updated_sv_id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
     #[instrument(
         name = "variant.authoring.update_existing_variant_and_regenerate",
         level = "info",
         skip_all
     )]
-    pub async fn update_existing_variant_and_regenerate(
+    async fn update_existing_variant_and_regenerate(
         ctx: &DalContext,
         current_sv_id: SchemaVariantId,
         name: String,
@@ -368,7 +425,7 @@ impl VariantAuthoringClient {
         level = "info",
         skip_all
     )]
-    pub async fn update_and_generate_variant_with_new_version(
+    async fn update_and_generate_variant_with_new_version(
         ctx: &DalContext,
         old_asset_func: &Func,
         current_sv_id: SchemaVariantId,
