@@ -6,7 +6,8 @@
     ref="internalRef"
     :class="
       clsx(
-        'flex gap-xs items-center p-xs pr-sm cursor-pointer rounded-sm children:pointer-events-none',
+        'flex gap-xs items-center cursor-pointer rounded-sm children:pointer-events-none',
+        menuCtx.compact ? 'p-2xs pr-xs' : 'p-xs pr-sm',
         isFocused && 'bg-action-500',
         !menuCtx.isCheckable.value && !icon && !$slots.icon && 'pl-sm',
         disabled && 'text-gray-500',

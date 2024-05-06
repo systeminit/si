@@ -14,8 +14,7 @@ export type SpacingSizes =
   | "xl"
   | "2xl";
 
-// TODO: maybe there is a way to get these objects generated with a helper rather than manually creating them?
-// I tried with no luck... Not a huge deal to define manually
+export type FontSizes = SpacingSizes | "3xs";
 
 export const responsiveSpacingProps = (defaultSpacing: SpacingSizes) => ({
   spacing: { type: String as PropType<SpacingSizes>, default: defaultSpacing },

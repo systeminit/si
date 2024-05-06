@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts" setup>
-import { SpacingSizes, Tones, themeClasses } from "@si/vue-lib/design-system";
+import { FontSizes, Tones, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
 
@@ -25,7 +25,7 @@ export type ChipVariant = "classic" | "simple";
 
 const props = defineProps({
   text: { type: String },
-  textSize: { type: String as PropType<SpacingSizes> },
+  textSize: { type: String as PropType<FontSizes> },
   tone: { type: String as PropType<Tones>, default: "action" },
   uppercase: { type: Boolean },
   variant: { type: String as PropType<ChipVariant>, default: "classic" },

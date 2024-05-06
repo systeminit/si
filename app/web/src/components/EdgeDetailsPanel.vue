@@ -12,7 +12,7 @@
       </SidebarSubpanelTitle>
 
       <div class="border-b dark:border-neutral-600">
-        <div v-if="isDevMode" class="px-xs pt-xs text-2xs italic opacity-30">
+        <div v-if="isDevMode" class="px-xs pt-xs text-3xs italic opacity-30">
           EDGE ID = {{ selectedEdge.id }}
         </div>
 

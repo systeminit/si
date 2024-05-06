@@ -14,8 +14,9 @@
       "
       internalScrolling
       class="min-h-[32px]"
+      primaryIconClasses=""
     >
-      <template #primaryIcon><FuncSkeleton size="md" /></template>
+      <template #primaryIcon><Icon name="func" :size="'sm'" /></template>
       <template #label>
         <div class="flex items-center gap-xs text-sm">
           <span> {{ label.pluralLabel }} </span>
@@ -47,10 +48,9 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { PropType } from "vue";
-import { PillCounter, TreeNode } from "@si/vue-lib/design-system";
+import { PillCounter, TreeNode, Icon } from "@si/vue-lib/design-system";
 import { Dictionary } from "async";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import { FuncSummary } from "@/store/func/funcs.store";
 import {
   CUSTOMIZABLE_FUNC_TYPES,

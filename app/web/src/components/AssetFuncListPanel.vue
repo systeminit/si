@@ -6,11 +6,14 @@
     />
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle label="Asset Functions">
+        <SidebarSubpanelTitle
+          label="Asset Functions"
+          icon="func"
+          class="mt-2xs"
+        >
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedAssetId"
             :disabled="!assetStore.selectedAsset?.id"
-            label="Attach"
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>

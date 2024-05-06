@@ -172,7 +172,7 @@
         >
           <!-- TODO(wendy) - changelog link goes here -->
           <div>Github</div>
-          <Icon name="arrow-square-out" />
+          <Icon name="external-link" />
         </a>
       </div>
     </div>

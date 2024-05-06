@@ -1,20 +1,23 @@
 <template>
   <VButton
+    v-tooltip="'Attach Function'"
     tone="action"
-    icon="plus"
+    icon="link"
     iconRight="chevron--down"
-    :variant="menuRef?.isOpen ? 'ghost' : 'solid'"
+    variant="ghost"
     :requestStatus="requestStatus"
     loadingText="Attaching new function..."
-    size="sm"
+    size="2xs"
     @click="menuRef?.open"
   >
-    {{ label }}
-    <DropdownMenu ref="menuRef">
-      <DropdownMenuItem @select="emit('selectedAttachType', 'new')">
+    <DropdownMenu ref="menuRef" compact>
+      <DropdownMenuItem icon="plus" @select="emit('selectedAttachType', 'new')">
         New function
       </DropdownMenuItem>
-      <DropdownMenuItem @select="emit('selectedAttachType', 'existing')">
+      <DropdownMenuItem
+        icon="func"
+        @select="emit('selectedAttachType', 'existing')"
+      >
         Existing
       </DropdownMenuItem>
     </DropdownMenu>
@@ -31,7 +34,6 @@ import {
 } from "@si/vue-lib/design-system";
 
 defineProps({
-  label: { type: String, required: true },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
 });
 
