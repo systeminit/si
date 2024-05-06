@@ -16,6 +16,12 @@ pub trait Spec {
     /// Error type returned for errors when calling member methods.
     type Error;
 
+    /// Performs activities to clean an [Instance] that failed to prepare.
+    async fn clean(&mut self, id: u32) -> result::Result<(), Self::Error>;
+
+    /// Performs activities to prepare an [Instance].
+    async fn prepare(&mut self, id: u32) -> result::Result<(), Self::Error>;
+
     /// Performs setup activities to prepare the host to create [Instance]s.
     async fn setup(&mut self) -> result::Result<(), Self::Error>;
     /// Creates and launches an [`Instance`].
@@ -79,7 +85,7 @@ pub trait Spec {
     /// # });
     /// # Ok::<(), SpawnError>(())
     /// ```
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error>;
+    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error>;
 }
 
 /// A type which implements the [Builder pattern] and builds a [`Spec`].
