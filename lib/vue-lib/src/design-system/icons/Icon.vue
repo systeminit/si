@@ -20,7 +20,8 @@
         sizeClasses,
         toneColorClass,
         computedRotate && `--rotate-${computedRotate}`,
-        AUTO_SPIN_ICONS.includes(name) && '--spin',
+        AUTO_SPIN_ICONS_CLOCKWISE.includes(name) && '--spin',
+        AUTO_SPIN_ICONS_COUNTER_CLOCKWISE.includes(name) && '--spin-cc',
       )
     "
     v-html="iconSvgRaw"
@@ -90,7 +91,8 @@ const sizeClasses = computed(
     }[props.size]),
 );
 
-const AUTO_SPIN_ICONS = ["loader", "refresh-active"];
+const AUTO_SPIN_ICONS_CLOCKWISE = ["loader"];
+const AUTO_SPIN_ICONS_COUNTER_CLOCKWISE = ["refresh-active"];
 </script>
 
 <style lang="less" scoped>
@@ -106,6 +108,11 @@ const AUTO_SPIN_ICONS = ["loader", "refresh-active"];
   &.--spin {
     > :deep(svg) {
       @apply animate-spin;
+    }
+  }
+  &.--spin-cc {
+    > :deep(svg) {
+      @apply animate-spin-cc;
     }
   }
   &.--rotate-up > :deep(svg) {

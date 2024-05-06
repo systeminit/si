@@ -39,6 +39,9 @@
           @click="componentsStore.setComponentDetailsTab('diff')"
         />
       </div>
+
+      <!-- Slot for additional icons/buttons -->
+      <slot />
     </div>
   </div>
 </template>

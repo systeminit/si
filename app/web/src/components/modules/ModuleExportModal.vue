@@ -151,7 +151,9 @@ const open = () => {
   openModal();
 };
 
-defineExpose({ open, close });
+const isOpen = computed(() => modalRef.value?.isOpen);
+
+defineExpose({ open, close, isOpen });
 
 const schemaVariantsById = computed(() => componentStore.schemaVariantsById);
 

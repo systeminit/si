@@ -1,7 +1,7 @@
 <template>
   <ScrollArea v-if="selectedComponent">
     <template #top>
-      <SidebarSubpanelTitle label="Asset Details" icon="component">
+      <ComponentCard :componentId="selectedComponent.id" titleCard>
         <DetailsPanelMenuIcon
           @click="
             (e) => {
@@ -9,8 +9,7 @@
             }
           "
         />
-      </SidebarSubpanelTitle>
-      <ComponentCard :componentId="selectedComponent.id" titleCard />
+      </ComponentCard>
 
       <div
         v-if="currentStatus && currentStatus.isUpdating"
@@ -72,10 +71,11 @@
     </template>
 
     <template v-else>
-      <div class="absolute inset-0">
+      <div class="absolute inset-0 border-t dark:border-neutral-700">
         <TabGroup
           ref="tabsRef"
           trackingSlug="asset_details"
+          variant="fullsize"
           :startSelectedTabSlug="
             componentsStore.detailsTabSlugs[0] || undefined
           "
@@ -96,7 +96,7 @@
             <TabGroup
               ref="componentSubTabsRef"
               trackingSlug="asset_details/component"
-              minimal
+              variant="minimal"
               :startSelectedTabSlug="
                 componentsStore.detailsTabSlugs[1] || undefined
               "
@@ -202,7 +202,6 @@ import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 import ComponentDebugDetails from "./Debug/ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
-import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";

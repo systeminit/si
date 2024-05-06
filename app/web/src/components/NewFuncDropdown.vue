@@ -1,15 +1,15 @@
 <template>
   <VButton
+    v-tooltip="'Create Function'"
     tone="action"
     icon="plus"
     iconRight="chevron--down"
-    :variant="menuRef?.isOpen ? 'ghost' : 'solid'"
+    variant="ghost"
     :requestStatus="requestStatus"
     loadingText="Creating new function..."
-    size="sm"
+    size="xs"
     @click="menuRef?.open"
   >
-    {{ label }}
     <DropdownMenu ref="menuRef">
       <DropdownMenuItem
         v-for="(fnLabel, fnKind) in CUSTOMIZABLE_FUNC_TYPES"

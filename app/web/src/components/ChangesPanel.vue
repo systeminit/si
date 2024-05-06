@@ -2,7 +2,7 @@
   <TabGroup
     rememberSelectedTabKey="proposed_right"
     trackingSlug="actions_applied"
-    minimal
+    variant="minimal"
     marginTop="2xs"
   >
     <TabGroupItem

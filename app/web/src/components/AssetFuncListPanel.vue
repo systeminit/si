@@ -20,6 +20,7 @@
         v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
         :funcsByKind="funcsByKind"
         context="workspace-lab-assets"
+        defaultOpen
       />
       <EmptyStateCard
         v-else

@@ -365,9 +365,14 @@ const computedClasses = computed(() => ({
 
     &.--variant-solid {
       background-color: @color;
-      color: contrast(
-        @color
-      ); // sets legible text color based on the background color
+
+      color: if(
+        @color = @colors-action-300,
+        // an exception to the rule for action 300
+        "white",
+        // sets legible text color based on the background color
+        contrast(@color)
+      );
 
       // set hover to either lighten or darken depending on if color is bright or dark
       &:hover when (lightness(@color) > 50%) {
@@ -421,7 +426,12 @@ const computedClasses = computed(() => ({
   }
 
   &.--tone-action {
-    .button-theme-generator(@colors-action-500);
+    &.--within-dark {
+      .button-theme-generator(@colors-action-300);
+    }
+    &.--within-light {
+      .button-theme-generator(@colors-action-500);
+    }
   }
   &.--tone-destructive {
     .button-theme-generator(@colors-destructive-500);

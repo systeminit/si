@@ -33,9 +33,9 @@
     <div class="absolute inset-0">
       <TabGroup
         startSelectedTabSlug="changes"
-        marginTop="2xs"
         rememberSelectedTabKey="no-selection-details-panel"
         trackingSlug="no-selection-details-panel"
+        variant="fullsize"
       >
         <TabGroupItem label="Changes" slug="changes">
           <ChangesPanel />

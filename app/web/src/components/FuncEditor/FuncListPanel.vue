@@ -1,40 +1,44 @@
 <template>
-  <div>
-    <RequestStatusMessage
-      v-if="!funcList.length"
-      :requestStatus="loadFuncsReqStatus"
-      loadingMessage="Loading functions..."
-    />
-    <ScrollArea v-if="funcList.length">
-      <template #top>
-        <div
-          class="w-full p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-        >
-          <NewFuncDropdown
-            label="Function"
-            :fnTypes="CREATE_OPTIONS"
-            @selected-func-kind="createNewFunc"
-          />
+  <div
+    v-if="funcList.length"
+    class="flex flex-col overflow-hidden h-full relative"
+  >
+    <SidebarSubpanelTitle icon="func">
+      <template #label>
+        <div class="flex flex-row gap-xs">
+          <div>Functions</div>
+          <PillCounter :count="totalFuncs" />
         </div>
-        <ErrorMessage
-          v-if="createFuncReqStatus.isError"
-          :requestStatus="createFuncReqStatus"
-        />
-        <SiSearch
-          autoSearch
-          placeholder="search functions"
-          @search="onSearch"
-        />
-        <!-- <div
+      </template>
+      <NewFuncDropdown
+        label="Function"
+        :fnTypes="CREATE_OPTIONS"
+        @selected-func-kind="createNewFunc"
+      />
+    </SidebarSubpanelTitle>
+
+    <ErrorMessage
+      v-if="createFuncReqStatus.isError"
+      :requestStatus="createFuncReqStatus"
+    />
+    <SiSearch autoSearch placeholder="search functions" @search="onSearch" />
+    <!-- <div
           class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
         >
           Select a function to view or edit it.
         </div> -->
-      </template>
 
-      <FuncList :funcsByKind="funcsByKind" context="workspace-lab-functions" />
-    </ScrollArea>
+    <FuncList
+      :funcsByKind="funcsByKind"
+      context="workspace-lab-functions"
+      firstOpen
+    />
   </div>
+  <RequestStatusMessage
+    v-else
+    :requestStatus="loadFuncsReqStatus"
+    loadingMessage="Loading functions..."
+  />
 </template>
 
 <script lang="ts" setup>
@@ -43,8 +47,8 @@ import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
 import {
   ErrorMessage,
+  PillCounter,
   RequestStatusMessage,
-  ScrollArea,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import {
@@ -56,6 +60,7 @@ import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import FuncList from "./FuncList.vue";
+import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
@@ -91,4 +96,12 @@ async function createNewFunc(kind: CustomizableFuncKind) {
     routeToFunc(createReq.result.data.id);
   }
 }
+
+const totalFuncs = computed(() => {
+  let count = 0;
+  for (const key in funcsByKind.value) {
+    count += funcsByKind.value[key]?.length || 0;
+  }
+  return count;
+});
 </script>

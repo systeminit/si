@@ -18,6 +18,12 @@
         <div class="truncate">
           {{ func.name }}
         </div>
+        <SiChip
+          :text="chipText"
+          :tone="func.isBuiltin ? 'warning' : 'action'"
+          uppercase
+          variant="simple"
+        />
       </div>
       <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
@@ -33,8 +39,10 @@ import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { TreeNode } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { computed } from "vue";
 import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";
+import SiChip from "./SiChip.vue";
 
 const props = defineProps<{
   color?: string;
@@ -46,12 +54,16 @@ const route = useRoute();
 const router = useRouter();
 const funcStore = useFuncStore();
 const { selectedFuncId: storeSelectedFuncId } = storeToRefs(funcStore);
+
+const chipText = computed(() => (props.func.isBuiltin ? "builtin" : "custom"));
+
 const trackFunctionSelected = () => {
   trackEvent("function_selected_for_edit", {
     func_id: props.func.id,
     func_name: props.func.name,
   });
 };
+
 const onClick = () => {
   trackFunctionSelected();
   router.push({
