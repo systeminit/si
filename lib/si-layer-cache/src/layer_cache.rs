@@ -4,6 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::PgPool;
+use telemetry::prelude::*;
 
 use crate::db::serialize;
 use crate::disk_cache::DiskCache;
@@ -48,14 +49,30 @@ where
         Ok(())
     }
 
+    #[instrument(
+        name = "layer_cache.get",
+        level = "debug",
+        skip_all,
+        fields(
+            si.layer_cache.key = key.as_ref(),
+            si.layer_cache.layer.hit = Empty,
+        ),
+    )]
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+        let span = Span::current();
+
         Ok(match self.memory_cache.get(&key).await {
-            Some(memory_value) => Some(memory_value),
+            Some(memory_value) => {
+                span.record("si.layer_cache.layer.hit", "memory");
+                Some(memory_value)
+            }
             None => match self.disk_cache.get(key.clone()).await {
                 Ok(value) => {
                     let deserialized: V = serialize::from_bytes(&value[..])?;
 
                     self.memory_cache.insert(key, deserialized.clone()).await;
+
+                    span.record("si.layer_cache.layer.hit", "disk");
                     Some(deserialized)
                 }
                 Err(_) => match self.pg.get(&key).await? {
@@ -67,6 +84,7 @@ where
                             .await;
                         self.spawn_disk_cache_write_vec(key.clone(), value).await?;
 
+                        span.record("si.layer_cache.layer.hit", "disk");
                         Some(deserialized)
                     }
                     None => None,

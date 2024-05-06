@@ -1,7 +1,8 @@
+use std::path::PathBuf;
+
 use clap::{ArgAction, Parser};
 use rebaser_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 use si_std::SensitiveString;
-use std::path::PathBuf;
 
 const NAME: &str = "rebaser";
 

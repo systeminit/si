@@ -26,7 +26,7 @@ async fn activities() {
     let db = setup_pg_db("activities").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
@@ -38,7 +38,7 @@ async fn activities() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
@@ -88,7 +88,7 @@ async fn activities_subscribe_partial() {
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
@@ -100,7 +100,7 @@ async fn activities_subscribe_partial() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,

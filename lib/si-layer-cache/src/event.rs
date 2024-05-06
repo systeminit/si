@@ -1,39 +1,37 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
-use bytes::BufMut;
-use bytes::Bytes;
-use bytes::BytesMut;
+use bytes::{BufMut, Bytes, BytesMut};
 use chrono::prelude::*;
-use serde::Deserialize;
-use serde::Serialize;
-
 use futures::StreamExt;
-use si_data_nats::async_nats::jetstream;
-use si_data_nats::async_nats::jetstream::consumer::DeliverPolicy;
-use si_data_nats::async_nats::jetstream::Message;
-use si_data_nats::HeaderMap;
-use si_data_nats::NatsClient;
+use serde::{Deserialize, Serialize};
+use si_data_nats::{
+    async_nats::jetstream::{
+        self,
+        consumer::{pull::Stream, DeliverPolicy},
+        Message,
+    },
+    jetstream::context::Context,
+    HeaderMap, NatsClient,
+};
 use si_events::{Actor, Tenancy, WebEvent};
 use strum::AsRefStr;
-use telemetry::tracing::debug;
-use telemetry::tracing::warn;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
-use tokio_util::task::TaskTracker;
+use telemetry::tracing::{debug, warn};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
-use crate::db::serialize;
-use crate::error::LayerDbResult;
-use crate::nats;
-use crate::nats::subject;
-use crate::nats::NATS_HEADER_DB_NAME;
-use crate::nats::NATS_HEADER_INSTANCE_ID;
-use crate::nats::NATS_HEADER_KEY;
-use crate::LayerDbError;
+use crate::{
+    db::serialize,
+    error::LayerDbResult,
+    nats::{self, subject, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID, NATS_HEADER_KEY},
+    LayerDbError,
+};
 
 const DEFAULT_CHUNK_SIZE: usize = 128 * 1024;
 const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
@@ -158,17 +156,13 @@ impl LayeredEvent {
 
 #[derive(Debug, Clone)]
 pub struct LayeredEventClient {
-    context: jetstream::context::Context,
+    context: Context,
     prefix: Option<Arc<str>>,
     instance_id: Ulid,
 }
 
 impl LayeredEventClient {
-    pub fn new(
-        prefix: Option<String>,
-        instance_id: Ulid,
-        context: jetstream::context::Context,
-    ) -> Self {
+    pub fn new(prefix: Option<String>, instance_id: Ulid, context: Context) -> Self {
         Self {
             prefix: prefix.map(|s| s.into()),
             context,
@@ -261,7 +255,7 @@ impl LayeredEventServer {
     pub async fn run(&mut self) -> LayerDbResult<()> {
         let shutdown_token = self.shutdown_token.clone();
 
-        let context = jetstream::new(self.nats_client.as_inner().clone());
+        let context = si_data_nats::jetstream::new(self.nats_client.clone());
 
         let mut messages_stream =
             nats::layerdb_events_stream(&context, self.nats_client.metadata().subject_prefix())
@@ -285,10 +279,7 @@ impl LayeredEventServer {
         Ok(())
     }
 
-    pub async fn process_messages(
-        &mut self,
-        messages_stream: &mut si_data_nats::jetstream::Stream,
-    ) {
+    pub async fn process_messages(&mut self, messages_stream: &mut Stream) {
         while let Some(msg_result) = messages_stream.next().await {
             match msg_result {
                 Ok(msg) => {

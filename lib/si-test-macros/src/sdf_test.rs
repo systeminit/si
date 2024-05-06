@@ -95,11 +95,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "RebaserShutdownHandle" => {
-                                let var = expander.setup_rebaser_shutdown_handle();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -222,7 +217,6 @@ struct SdfTestFnSetupExpander {
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
     rebaser_server: Option<Rc<Ident>>,
-    rebaser_shutdown_handle: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
     veritech_shutdown_handle: Option<Rc<Ident>>,
@@ -259,7 +253,6 @@ impl SdfTestFnSetupExpander {
             pinga_shutdown_handle: None,
             start_pinga_server: None,
             rebaser_server: None,
-            rebaser_shutdown_handle: None,
             start_rebaser_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
@@ -535,14 +528,6 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>) {
         self.rebaser_server = value;
-    }
-
-    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>> {
-        self.rebaser_shutdown_handle.as_ref()
-    }
-
-    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
-        self.rebaser_shutdown_handle = value;
     }
 
     fn start_rebaser_server(&self) -> Option<()> {

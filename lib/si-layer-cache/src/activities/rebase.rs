@@ -156,6 +156,13 @@ impl<'a> ActivityRebase<'a> {
         Ok(rebase_finished_activity)
     }
 
+    /// Returns an `impl Stream` of [`Activity`] items which are of interest to a Rebaser.
+    pub async fn rebaser_activity_stream(&self) -> LayerDbResult<BroadcastStream<Activity>> {
+        self.activity_base
+            .subscribe(Some(ActivityPayloadDiscriminants::RebaseRequest))
+            .await
+    }
+
     pub async fn rebase_finished_activity_stream(
         &self,
     ) -> LayerDbResult<BroadcastStream<Activity>> {

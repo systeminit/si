@@ -16,8 +16,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::jetstream::Context;
-
 mod connect_options;
 mod message;
 mod subscriber;
@@ -27,7 +25,7 @@ pub mod service;
 
 pub use async_nats::{
     self, connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
-    Error as InnerError, HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
+    Error as InnerError, Event, HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
 };
 pub use connect_options::ConnectOptions;
 pub use message::{InnerMessage, Message};
@@ -106,6 +104,10 @@ impl Client {
         &self.inner
     }
 
+    pub(crate) fn into_parts(self) -> (async_nats::Client, Arc<ConnectionMetadata>) {
+        (self.inner, self.metadata)
+    }
+
     #[instrument(name = "client.new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
@@ -129,7 +131,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main () -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// println!("info: {:?}", client.server_info());
     /// # Ok(())
     /// # }
@@ -144,7 +150,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// assert!(client.is_server_compatible(2, 8, 4));
     /// # Ok(())
     /// # }
@@ -159,10 +169,12 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// client
-    ///     .publish("events.data".into(), "payload".into())
-    ///     .await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// client.publish("events.data", "payload".into()).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -215,19 +227,21 @@ impl Client {
     /// Publish a [Message] with headers to a given subject.
     ///
     /// # Examples
-    /// ```
+    /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// use std::str::FromStr;
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// let mut headers = async_nats::HeaderMap::new();
     /// headers.insert(
     ///     "X-Header",
     ///     async_nats::HeaderValue::from_str("Value").unwrap(),
     /// );
-    /// client
-    ///     .publish_with_headers("events.data".into(), headers, "payload".into())
-    ///     .await?;
+    /// client.publish_with_headers("events.data", headers, "payload".into()).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -290,14 +304,12 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// client
-    ///     .publish_with_reply(
-    ///         "events.data".into(),
-    ///         "reply_subject".into(),
-    ///         "payload".into(),
-    ///     )
-    ///     .await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// client.publish_with_reply("events.data", "reply_subject", "payload".into()).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -361,7 +373,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
     /// use std::str::FromStr;
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// let mut headers = async_nats::HeaderMap::new();
     /// client
     ///     .publish_with_reply_and_headers(
@@ -432,7 +448,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// let response = client.request("service", "data".into()).await?;
     /// # Ok(())
     /// # }
@@ -491,7 +511,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// let mut headers = async_nats::HeaderMap::new();
     /// headers.insert("Key", "Value");
     /// let response = client
@@ -560,8 +584,12 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let request = async_nats::Request::new().payload("data".into());
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// let request = si_data_nats::Request::new().payload("data".into());
     /// let response = client.send_request("service", request).await?;
     /// # Ok(())
     /// # }
@@ -623,7 +651,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let nc = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// let reply = nc.new_inbox();
     /// let rsub = nc.subscribe(reply).await?;
     /// # Ok(())
@@ -642,8 +674,12 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
     /// use futures::StreamExt;
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let mut subscription = client.subscribe("events.>".into()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// let mut subscription = client.subscribe("events.>").await?;
     /// while let Some(message) = subscription.next().await {
     ///     println!("received message: {:?}", message);
     /// }
@@ -707,10 +743,12 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// use futures::StreamExt;
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let mut subscription = client
-    ///     .queue_subscribe("events.>".into(), "queue".into())
-    ///     .await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
+    /// let mut subscription = client.queue_subscribe("events.>", "queue".into()).await?;
     /// while let Some(message) = subscription.next().await {
     ///     println!("received message: {:?}", message);
     /// }
@@ -779,7 +817,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// client.flush().await?;
     /// # Ok(())
     /// # }
@@ -825,7 +867,11 @@ impl Client {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     /// println!("connection state: {}", client.connection_state());
     /// # Ok(())
     /// # }
@@ -1008,33 +1054,6 @@ impl Client {
     /// Gets a reference to the client's metadata.
     pub fn metadata(&self) -> &ConnectionMetadata {
         self.metadata.as_ref()
-    }
-
-    /// Consumes self to create a [Jetstream](https://docs.nats.io/nats-concepts/jetstream) context.
-    #[instrument(
-    name = "client::to_jetstream_ctx",
-        skip_all,
-        level = "debug",
-        fields(
-            messaging.client_id = Empty,
-            messaging.nats.server.id = Empty,
-            messaging.nats.server.name = Empty,
-            messaging.nats.server.version = Empty,
-            messaging.system = Empty,
-            messaging.url = Empty,
-            network.peer.address = Empty,
-            network.protocol.name = Empty,
-            network.protocol.version = Empty,
-            network.transport = Empty,
-            otel.kind = SpanKind::Client.as_str(),
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            server.address = Empty,
-            server.port = Empty,
-        )
-    )]
-    pub fn to_jetstream_ctx(self) -> Context {
-        Context::new(self)
     }
 }
 
@@ -1309,7 +1328,7 @@ impl Request {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::connect("demo.nats.io").await?;
+    /// let client = si_data_nats::ConnectOptions::new().connect("demo.nats.io", None).await?;
     /// let request = si_data_nats::Request::new().payload("data".into());
     /// client.send_request("service", request).await?;
     /// # Ok(())
@@ -1327,7 +1346,7 @@ impl Request {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// use std::str::FromStr;
-    /// let client = si_data_nats::connect("demo.nats.io").await?;
+    /// let client = si_data_nats::ConnectOptions::new().connect("demo.nats.io", None).await?;
     /// let mut headers = si_data_nats::HeaderMap::new();
     /// headers.insert(
     ///     "X-Example",
@@ -1353,7 +1372,7 @@ impl Request {
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::connect("demo.nats.io").await?;
+    /// let client = si_data_nats::ConnectOptions::new().connect("demo.nats.io", None).await?;
     /// let request = si_data_nats::Request::new()
     ///     .timeout(Some(std::time::Duration::from_secs(15)))
     ///     .payload("data".into());
@@ -1373,7 +1392,7 @@ impl Request {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// use std::str::FromStr;
-    /// let client = si_data_nats::connect("demo.nats.io").await?;
+    /// let client = si_data_nats::ConnectOptions::new().connect("demo.nats.io", None).await?;
     /// let request = si_data_nats::Request::new()
     ///     .inbox("custom_inbox".into())
     ///     .payload("data".into());

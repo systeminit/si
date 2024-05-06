@@ -11,10 +11,6 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { workspace = true }
-color-eyre = { workspace = true }
 rebaser-server = { path = "../../lib/rebaser-server" }
 si-service = { path = "../../lib/si-service" }
 si-std = { path = "../../lib/si-std" }
-telemetry-application = { path = "../../lib/telemetry-application-rs" }
-tokio = { workspace = true }
-tokio-util = { workspace = true }

@@ -4,11 +4,12 @@
 //! macro expansion.
 
 use dal::{ChangeSet, ChangeSetId, DalContext, UserClaim};
-use telemetry::tracing::subscriber;
-use tracing_subscriber::{fmt, EnvFilter, Registry};
+use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
-use crate::helpers::{create_auth_token, generate_fake_name};
-use crate::WorkspaceSignup;
+use crate::{
+    helpers::{create_auth_token, generate_fake_name},
+    WorkspaceSignup,
+};
 
 /// This function is used during macro expansion for setting up a [`ChangeSet`] in an integration test.
 pub async fn create_change_set_and_update_ctx(
@@ -54,10 +55,13 @@ pub fn tracing_init(span_events_env_var: &'static str, log_env_var: &'static str
 }
 
 fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
-    use opentelemetry_sdk::runtime;
     use tracing_subscriber::layer::SubscriberExt;
 
-    let event_filter = {
+    telemetry::opentelemetry::global::set_text_map_propagator(
+        opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+    );
+
+    let span_events_fmt = {
         use fmt::format::FmtSpan;
 
         // Used exclusively in tests & prefixed with `SI_TEST_`
@@ -89,28 +93,48 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
     };
 
     let env_filter = EnvFilter::from_env(log_env_var);
+
     let format_layer = fmt::layer()
         .with_thread_ids(true)
-        .with_span_events(event_filter)
+        .with_span_events(span_events_fmt)
         .with_test_writer()
         .pretty();
 
-    let otel_tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .install_batch(runtime::Tokio)
-        .expect("Creating otel_tracer failed");
-
-    let otel_layer = tracing_opentelemetry::layer().with_tracer(otel_tracer);
+    // let otel_layer = {
+    //     use std::time::Duration;
+    //
+    //     let resource = opentelemetry_sdk::Resource::from_detectors(
+    //         Duration::from_secs(3),
+    //         vec![
+    //             Box::new(opentelemetry_sdk::resource::EnvResourceDetector::new()),
+    //             Box::new(opentelemetry_sdk::resource::OsResourceDetector),
+    //             Box::new(opentelemetry_sdk::resource::ProcessResourceDetector),
+    //         ],
+    //     )
+    //     .merge(&opentelemetry_sdk::Resource::new(vec![
+    //         // TODO(fnichol): make name configurable
+    //         telemetry::opentelemetry::KeyValue::new("service.name", "test"),
+    //         telemetry::opentelemetry::KeyValue::new("service.namespace", "si"),
+    //     ]));
+    //
+    //     let otel_tracer = opentelemetry_otlp::new_pipeline()
+    //         .tracing()
+    //         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+    //         .with_trace_config(opentelemetry_sdk::trace::config().with_resource(resource))
+    //         .install_batch(opentelemetry_sdk::runtime::Tokio)
+    //         .expect("Creating otel_tracer failed");
+    //
+    //     tracing_opentelemetry::layer().with_tracer(otel_tracer)
+    // };
 
     let registry = Registry::default();
+    let registry = registry.with(env_filter);
+    let registry = registry.with(format_layer);
+    // let registry = registry.with(otel_layer);
 
-    let registry = registry
-        .with(env_filter)
-        .with(format_layer)
-        .with(otel_layer);
-
-    subscriber::set_global_default(registry).expect("failed to register global default");
+    registry
+        .try_init()
+        .expect("failed to initialize subscriber");
 }
 
 /// This function is used during macro expansion for setting up the workspace for integration tests.

@@ -1,6 +1,7 @@
 use si_crypto::CryptoConfig;
 use si_layer_cache::db::LayerDbConfig;
 use std::{env, path::Path};
+use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -61,6 +62,9 @@ pub struct Config {
 
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
+
+    #[builder(default = "random_instance_id()")]
+    instance_id: String,
 }
 
 impl StandardConfig for Config {
@@ -106,6 +110,11 @@ impl Config {
     pub fn layer_db_config(&self) -> &LayerDbConfig {
         &self.layer_db_config
     }
+
+    /// Gets the config's instance ID.
+    pub fn instance_id(&self) -> &str {
+        self.instance_id.as_ref()
+    }
 }
 
 /// The configuration file for creating a [`Server`].
@@ -123,6 +132,8 @@ pub struct ConfigFile {
     messaging_config: RebaserMessagingConfig,
     #[serde(default = "default_layer_db_config")]
     layer_db_config: LayerDbConfig,
+    #[serde(default = "random_instance_id")]
+    instance_id: String,
 }
 
 impl Default for ConfigFile {
@@ -134,6 +145,7 @@ impl Default for ConfigFile {
             symmetric_crypto_service: default_symmetric_crypto_config(),
             layer_db_config: default_layer_db_config(),
             messaging_config: Default::default(),
+            instance_id: random_instance_id(),
         }
     }
 }
@@ -154,8 +166,13 @@ impl TryFrom<ConfigFile> for Config {
         config.crypto(value.crypto);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
+        config.instance_id(value.instance_id);
         config.build().map_err(Into::into)
     }
+}
+
+fn random_instance_id() -> String {
+    Ulid::new().to_string()
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
