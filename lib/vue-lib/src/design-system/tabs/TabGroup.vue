@@ -369,20 +369,22 @@ function selectTab(slug?: string | null) {
         selectedTabSlug.value,
       );
     }
-    // adjust the tab position if it is offscreen
-    const tabEl = tabRefs.value[selectedTabSlug.value];
-    if (tabEl) {
-      const tabElRect = tabEl.getBoundingClientRect();
-      const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
-      // Need to account for the overflow dropdown button!
-      const overflowButtonWidth = overflowDropdownButtonRef.value
-        ? overflowDropdownButtonRef.value.getBoundingClientRect().width
-        : 0;
-      const limit = tabContainerRect.right - overflowButtonWidth;
-      if (tabElRect.right > limit) {
-        orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
-          slug === selectedTabSlug.value ? 0 : 1,
-        );
+    if (!growTabs.value) {
+      // adjust the tab position if it is offscreen
+      const tabEl = tabRefs.value[selectedTabSlug.value];
+      if (tabEl) {
+        const tabElRect = tabEl.getBoundingClientRect();
+        const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
+        // Need to account for the overflow dropdown button!
+        const overflowButtonWidth = overflowDropdownButtonRef.value
+          ? overflowDropdownButtonRef.value.getBoundingClientRect().width
+          : 0;
+        const limit = tabContainerRect.right - overflowButtonWidth;
+        if (tabElRect.right > limit) {
+          orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
+            slug === selectedTabSlug.value ? 0 : 1,
+          );
+        }
       }
     }
   }

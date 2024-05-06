@@ -55,7 +55,7 @@ import { useTheme } from "../utils/theme_tools";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
-type ButtonSizes = "xs" | "sm" | "md" | "lg" | "xl";
+type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 type ButtonVariants = "solid" | "ghost" | "soft" | "transparent";
 type ButtonTones = Tones;
 
@@ -279,6 +279,21 @@ const computedClasses = computed(() => ({
   // }
 
   // Size options (medium is default)
+  &.--size-2xs {
+    font-size: 8px;
+    padding: 1px 1px;
+    // border-radius: 8px;
+    .vbutton__icon {
+      padding: 0px;
+    }
+    .vbutton__inner {
+      gap: 1px;
+      padding: 0 0px;
+    }
+    .vbutton__text {
+      padding: 0 1px;
+    }
+  }
   &.--size-xs {
     font-size: 12px;
     padding: 2px 2px;

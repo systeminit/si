@@ -7,7 +7,7 @@
     variant="ghost"
     :requestStatus="requestStatus"
     loadingText="Creating new function..."
-    size="xs"
+    size="2xs"
     @click="menuRef?.open"
   >
     <DropdownMenu ref="menuRef">
