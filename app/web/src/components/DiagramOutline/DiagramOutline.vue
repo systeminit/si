@@ -11,25 +11,30 @@
                 hideIfZero
                 :paddingX="componentCount < 10 ? 'xs' : '2xs'"
               />
-              <VButton
-                v-if="
-                  changeSetsStore.selectedChangeSetId ===
-                  changeSetsStore.headChangeSetId
-                "
-                icon="refresh"
-                variant="ghost"
-                loadingIcon="refresh-active"
-                loadingText=""
-                :loading="refreshing"
-                @click="onClickRefreshButton"
-              ></VButton>
             </div>
           </template>
-          <Icon
-            v-if="fetchComponentsReq.isPending || actionsAreRunning"
-            name="loader"
-            size="md"
-          />
+          <div class="flex flex-row gap-xs items-center">
+            <Icon
+              v-if="fetchComponentsReq.isPending || actionsAreRunning"
+              tone="action"
+              name="loader"
+              size="md"
+            />
+            <IconButton
+              v-else-if="
+                changeSetsStore.selectedChangeSetId ===
+                changeSetsStore.headChangeSetId
+              "
+              icon="refresh"
+              variant="simple"
+              tooltip="Refresh"
+              loadingTooltip="Refreshing..."
+              tooltipPlacement="top"
+              loadingIcon="refresh-active"
+              :loading="refreshing"
+              @click="onClickRefreshButton"
+            />
+          </div>
         </SidebarSubpanelTitle>
 
         <!-- search bar - dont need to show if no components -->
@@ -123,7 +128,6 @@ import {
   Icon,
   PillCounter,
   ScrollArea,
-  VButton,
 } from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import {
@@ -137,6 +141,7 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+import IconButton from "../IconButton.vue";
 
 defineProps<{ actionsAreRunning: boolean }>();
 

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex text-neutral-500 dark:text-neutral-400 border-b dark:border-neutral-500 items-center p-xs gap-xs"
+    class="flex text-neutral-500 dark:text-neutral-400 border-b dark:border-neutral-500 items-center px-xs py-2xs gap-xs"
   >
     <div class="flex-none empty:hidden">
       <slot name="icon">

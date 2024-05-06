@@ -6,26 +6,34 @@
       loadingMessage="Loading assets..."
     />
     <template #top>
-      <div
-        class="w-full p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-      >
-        <VButton
-          label="Contribute"
-          tone="action"
-          icon="cloud-upload"
-          size="sm"
-          @click="contributeAsset"
-        />
-        <VButton
-          label="New Asset"
-          :requestStatus="createAssetReqStatus"
-          successText="Successful"
-          tone="action"
-          icon="plus"
-          size="sm"
-          @click="newAsset"
-        />
-      </div>
+      <SidebarSubpanelTitle icon="component">
+        <template #label>
+          <div class="flex flex-row gap-xs">
+            <div>Assets</div>
+            <PillCounter :count="assetList.length" />
+          </div>
+        </template>
+        <div class="flex flex-row gap-xs">
+          <IconButton
+            icon="plus"
+            loadingIcon="loader"
+            :requestStatus="createAssetReqStatus"
+            variant="simple"
+            tooltip="New Asset"
+            tooltipPlacement="top"
+            loadingTooltip="Creating Asset..."
+            @click="newAsset"
+          />
+          <IconButton
+            icon="cloud-upload"
+            variant="simple"
+            tooltip="Contribute"
+            tooltipPlacement="top"
+            :selected="contributeAssetModalRef?.isOpen || false"
+            @click="contributeAsset"
+          />
+        </div>
+      </SidebarSubpanelTitle>
       <SiSearch autoSearch placeholder="search assets" @search="onSearch" />
       <!-- <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
@@ -84,7 +92,6 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
   ScrollArea,
-  VButton,
   Modal,
   RequestStatusMessage,
   TreeNode,
@@ -95,6 +102,8 @@ import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { getAssetIcon } from "@/store/components.store";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
+import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
+import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
 const { assetList } = storeToRefs(assetStore);

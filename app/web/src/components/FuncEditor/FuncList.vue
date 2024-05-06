@@ -1,14 +1,19 @@
 <template>
-  <div class="overflow-y-auto min-h-[200px]">
+  <div class="flex flex-col overflow-hidden h-full relative">
     <TreeNode
-      v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
+      v-for="(label, kind, index) in CUSTOMIZABLE_FUNC_TYPES"
       :key="kind"
       enableDefaultHoverClasses
       enableGroupToggle
       alwaysShowArrow
       indentationSize="none"
       leftBorderSize="none"
-      :defaultOpen="funcsForKind(kind).length > 0"
+      :defaultOpen="
+        (defaultOpen || (index === 0 && firstOpen)) &&
+        !(funcsForKind(kind).length <= 0)
+      "
+      internalScrolling
+      class="min-h-[32px]"
     >
       <template #primaryIcon><FuncSkeleton size="md" /></template>
       <template #label>
@@ -54,6 +59,8 @@ import {
 } from "@/api/sdf/dal/func";
 
 const props = defineProps({
+  defaultOpen: { type: Boolean },
+  firstOpen: { type: Boolean },
   context: { type: String, default: "workspace-lab-functions" },
   funcsByKind: {
     type: Object as PropType<Dictionary<FuncSummary[]>>,

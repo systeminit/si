@@ -1,7 +1,7 @@
 <template>
   <div class="h-full relative">
     <TabGroup
-      minimal
+      variant="minimal"
       :startSelectedTabSlug="componentsStore.detailsTabSlugs[1] || undefined"
       marginTop="2xs"
       @update:selectedTab="onTabSelected"

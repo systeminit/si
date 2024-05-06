@@ -24,7 +24,7 @@
           <div>
             <span class="font-bold">Created By: </span>System Initiative
           </div>
-          <SiChip v-if="isReadOnly" variant="warning" text="read-only" />
+          <SiChip v-if="isReadOnly" tone="warning" text="read-only" />
         </div>
       </div>
     </template>
