@@ -90,6 +90,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
           values: null as PropertyEditorValues | null,
+          batchedProps: [] as (
+            | UpdatePropertyEditorValueArgs
+            | InsertPropertyEditorValueArgs
+          )[],
         }),
         getters: {
           // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
@@ -261,38 +265,85 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             });
           },
 
-          // combined these 2 api endpoints so they will get tracked under the same key, can revisit this later...
-          async UPDATE_PROPERTY_VALUE(
+          // NOTE this is async because we're returning the other
+          // action that returns the APIRequest...
+          async addPropertyToBatch(
             updatePayload:
               | { update: UpdatePropertyEditorValueArgs }
               | { insert: InsertPropertyEditorValueArgs },
           ) {
+            let pushed = false;
+            if ("insert" in updatePayload) {
+              if (
+                // don't allow duplicates
+                !_.some(this.batchedProps, (b) =>
+                  _.isEqual(updatePayload.insert, b),
+                )
+              ) {
+                this.batchedProps.push(updatePayload.insert);
+                pushed = true;
+              }
+            }
+            if ("update" in updatePayload) {
+              if (
+                !_.some(this.batchedProps, (b) =>
+                  _.isEqual(updatePayload.update, b),
+                )
+              ) {
+                this.batchedProps.push(updatePayload.update);
+                pushed = true;
+              }
+            }
+            if (pushed) return this.UPDATE_PROPERTY_VALUE();
+          },
+
+          // combined these 2 api endpoints so they will get tracked under the same key, can revisit this later...
+          async UPDATE_PROPERTY_VALUE() {
+            if (this.batchedProps.length === 0) return;
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const isInsert = "insert" in updatePayload;
+            const inserts = [] as InsertPropertyEditorValueArgs[];
+            const updates = [] as UpdatePropertyEditorValueArgs[];
 
-            // If the valueid for this update does not exist in the values tree,
-            // we shouldn't perform the update!
-            if (
-              this.values?.values[
-                isInsert
-                  ? updatePayload.insert.parentAttributeValueId
-                  : updatePayload.update.attributeValueId
-              ] === undefined
-            ) {
-              return;
+            const components = new Set(
+              this.batchedProps.map((b) => b.componentId),
+            );
+            if (components.size > 1) {
+              throw Error(
+                `Cannot batch different components: ${[...components].join(
+                  ", ",
+                )}`,
+              );
+            }
+            const componentId = components.values().next().value;
+            // splicing so we don't re-submit changes, or drop changes that get put in after we fire
+            for (const payload of this.batchedProps.splice(0)) {
+              // If the valueid for this update does not exist in the values tree,
+              // we shouldn't perform the update!
+              const isUpdate = "attributeValueId" in payload;
+              if (
+                this.values?.values[
+                  isUpdate
+                    ? payload.attributeValueId
+                    : payload.parentAttributeValueId
+                ] === undefined
+              ) {
+                continue;
+              }
+              if (isUpdate) updates.push(payload);
+              else inserts.push(payload);
             }
 
             return new ApiRequest<{ success: true }>({
               method: "post",
-              url: isInsert
-                ? "component/insert_property_editor_value"
-                : "component/update_property_editor_value",
+              url: "component/upsert_property_editor_value",
               params: {
-                ...(isInsert ? updatePayload.insert : updatePayload.update),
+                componentId,
+                inserts,
+                updates,
                 ...visibilityParams,
               },
             });
@@ -329,6 +380,15 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
+        },
+        debounce: {
+          UPDATE_PROPERTY_VALUE: [
+            1000,
+            {
+              leading: false,
+              wait: 1000,
+            },
+          ],
         },
         onActivated() {
           this.reloadPropertyEditorData();

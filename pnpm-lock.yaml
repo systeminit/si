@@ -140,6 +140,9 @@ importers:
       '@lezer/highlight':
         specifier: ^1.1.3
         version: 1.1.3
+      '@pinia/plugin-debounce':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@replit/codemirror-vim':
         specifier: ^6.0.11
         version: 6.0.11(@codemirror/commands@6.1.2)(@codemirror/language@6.3.1)(@codemirror/search@6.3.0)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)
@@ -3074,6 +3077,10 @@ packages:
 
   /@one-ini/wasm@0.1.1:
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
+    dev: false
+
+  /@pinia/plugin-debounce@1.0.1:
+    resolution: {integrity: sha512-/ITYpdvEk8CvUWs/0zpI3eBQkSOoLI/hgTr+WaULxMHdKP9IWBEM+yY2+aqEMa0e48K4y+uVMFYCM9lcv8g/cQ==}
     dev: false
 
   /@pkgjs/parseargs@0.11.0:

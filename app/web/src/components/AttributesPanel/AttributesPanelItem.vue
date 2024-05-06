@@ -802,7 +802,7 @@ const setSource = (source: AttributeValueSource) => {
   if (source === AttributeValueSource.Manual) {
     const value = props.attributeDef.value?.value ?? null;
 
-    attributesStore.UPDATE_PROPERTY_VALUE({
+    attributesStore.addPropertyToBatch({
       update: {
         attributeValueId: props.attributeDef.valueId,
         parentAttributeValueId: props.attributeDef.parentValueId,
@@ -911,7 +911,7 @@ function addChildHandler() {
     return;
   }
 
-  attributesStore.UPDATE_PROPERTY_VALUE({
+  attributesStore.addPropertyToBatch({
     insert: {
       parentAttributeValueId: props.attributeDef.valueId,
       propId: props.attributeDef.propId,
@@ -962,6 +962,7 @@ function updateValue() {
     return;
   }
 
+<<<<<<< HEAD
   // If we are explicitly setting a secret, we need to inform SDF so that dependent values update
   // will trigger when the secret's encrypted contents change.
   if (widgetKind.value === "secret") {
@@ -969,6 +970,9 @@ function updateValue() {
   }
 
   attributesStore.UPDATE_PROPERTY_VALUE({
+=======
+  attributesStore.addPropertyToBatch({
+>>>>>>> d23cff5ea (BUG-142 debounce & batch prop edits at 1 second)
     update: {
       attributeValueId: props.attributeDef.valueId,
       parentAttributeValueId: props.attributeDef.parentValueId,

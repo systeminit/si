@@ -1,10 +1,12 @@
 import { createPinia } from "pinia";
 
+import * as _ from "lodash-es";
 import {
   piniaHooksPlugin,
   initPiniaApiToolkitPlugin,
   registerApi,
 } from "@si/vue-lib/pinia";
+import { PiniaDebounce } from "@pinia/plugin-debounce";
 import {
   sdfApiInstance,
   authApiInstance,
@@ -25,5 +27,6 @@ export const ModuleIndexApiRequest = registerApi(moduleIndexApiInstance);
 
 pinia.use(piniaApiToolkitPlugin);
 pinia.use(piniaHooksPlugin);
+pinia.use(PiniaDebounce(_.debounce));
 
 export default pinia;

@@ -120,12 +120,8 @@ pub fn routes() -> Router<AppState> {
         .route("/get_diff", get(get_diff::get_diff))
         .route("/get_resource", get(get_resource::get_resource))
         .route(
-            "/update_property_editor_value",
-            post(update_property_editor_value::update_property_editor_value),
-        )
-        .route(
-            "/insert_property_editor_value",
-            post(insert_property_editor_value::insert_property_editor_value),
+            "/upsert_property_editor_value",
+            post(update_property_editor_value::upsert_property_editor_value),
         )
         .route(
             "/delete_property_editor_value",

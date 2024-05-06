@@ -171,7 +171,7 @@ function updateSiProp(key: keyof typeof siValues) {
   const prop = siProps.value?.[key as string];
   if (!prop) return;
 
-  attributesStore.UPDATE_PROPERTY_VALUE({
+  attributesStore.addPropertyToBatch({
     update: {
       attributeValueId: prop.valueId,
       parentAttributeValueId: prop.parentValueId,
