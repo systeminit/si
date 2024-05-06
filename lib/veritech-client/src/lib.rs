@@ -6,10 +6,12 @@ use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 use veritech_core::{
     nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
     nats_schema_variant_definition_subject, nats_subject, nats_validation_subject,
-    reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
+    reply_mailbox_for_keep_alive, reply_mailbox_for_output, reply_mailbox_for_result,
+    FINAL_MESSAGE_HEADER_KEY,
 };
 
 pub use cyclone_core::{
@@ -30,6 +32,8 @@ pub enum ClientError {
     JSONSerialize(#[source] serde_json::Error),
     #[error("nats error")]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("no keep alive from cyclone")]
+    NoKeepAlive,
     #[error("no function result from cyclone; bug!")]
     NoResult,
     #[error("unable to publish message: {0:?}")]
@@ -257,9 +261,27 @@ impl Client {
             .start(&self.nats)
             .await?;
 
+        // Construct a subscriber stream for keep-alive messages
+        let keep_alive_subscriber_subject = reply_mailbox_for_keep_alive(&reply_mailbox_root);
+        trace!(
+            messaging.destination = &keep_alive_subscriber_subject.as_str(),
+            "subscribing for keep-alive messages"
+        );
+        let mut keep_alive_subscriber: Subscriber<()> =
+            Subscriber::create(keep_alive_subscriber_subject)
+                .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+                .start(&self.nats)
+                .await?;
+
+        let shutdown_token = CancellationToken::new();
         let span = Span::current();
         // Spawn a task to forward output to the sender provided by the caller
-        tokio::spawn(forward_output_task(output_subscriber, output_tx, span));
+        tokio::spawn(forward_output_task(
+            output_subscriber,
+            output_tx,
+            span,
+            shutdown_token.clone(),
+        ));
 
         // Submit the request message
         let subject = subject.into();
@@ -282,40 +304,54 @@ impl Client {
 
         let span = Span::current();
 
-        tokio::select! {
-            // Wait for one message on the result reply mailbox
-            result = result_subscriber.try_next() => {
-                root_subscriber.unsubscribe_after(0).await?;
-                result_subscriber.unsubscribe_after(0).await?;
-                match result? {
-                    Some(result) => {
-                        span.follows_from(result.process_span);
-                        Ok(result.payload)
-                    }
-                    None => Err(ClientError::NoResult)
+        loop {
+            tokio::select! {
+                _ = keep_alive_subscriber.next() => {
+                    info!("Heartbeat from veritech");
+                    continue;
                 }
-            }
-            maybe_msg = root_subscriber.next() => {
-                match &maybe_msg {
-                    Some(msg) => {
-                        propagation::associate_current_span_from_headers(msg.headers());
-                        error!(
-                            subject = reply_mailbox_root,
-                            msg = ?msg,
-                            "received an unexpected message or error on reply subject prefix"
-                        )
-                    }
-                    None => {
-                        error!(
-                            subject = reply_mailbox_root,
-                            "reply subject prefix subscriber unexpectedly closed"
-                        )
-                    }
-                };
+                // Abort if no keep-alive for too long
+                _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {
+                    return Err(ClientError::NoKeepAlive);
+                }
+                // Wait for one message on the result reply mailbox
+                result = result_subscriber.try_next() => {
+                    shutdown_token.cancel();
 
-                // In all cases, we're considering a message on this subscriber to be fatal and
-                // will return with an error
-                Err(ClientError::PublishingFailed(maybe_msg.ok_or(ClientError::RootConnectionClosed)?))
+                    root_subscriber.unsubscribe_after(0).await?;
+                    result_subscriber.unsubscribe_after(0).await?;
+                    match result? {
+                        Some(result) => {
+                            span.follows_from(result.process_span);
+                            return Ok(result.payload);
+                        }
+                        None => return Err(ClientError::NoResult),
+                    }
+                }
+                maybe_msg = root_subscriber.next() => {
+                    shutdown_token.cancel();
+
+                    match &maybe_msg {
+                        Some(msg) => {
+                            propagation::associate_current_span_from_headers(msg.headers());
+                            error!(
+                                subject = reply_mailbox_root,
+                                msg = ?msg,
+                                "received an unexpected message or error on reply subject prefix"
+                            )
+                        }
+                        None => {
+                            error!(
+                                subject = reply_mailbox_root,
+                                "reply subject prefix subscriber unexpectedly closed"
+                            )
+                        }
+                    };
+
+                    // In all cases, we're considering a message on this subscriber to be fatal and
+                    // will return with an error
+                    return Err(ClientError::PublishingFailed(maybe_msg.ok_or(ClientError::RootConnectionClosed)?));
+                }
             }
         }
     }
@@ -325,18 +361,25 @@ async fn forward_output_task(
     mut output_subscriber: Subscriber<OutputStream>,
     output_tx: mpsc::Sender<OutputStream>,
     request_span: Span,
+    shutdown_token: CancellationToken,
 ) {
-    while let Some(msg) = output_subscriber.next().await {
-        match msg {
-            Ok(output) => {
-                output.process_span.follows_from(&request_span);
-                if let Err(err) = output_tx.send(output.payload).await {
-                    warn!(error = ?err, "output forwarder failed to send message on channel");
+    loop {
+        tokio::select! {
+            Some(msg) = output_subscriber.next() => {
+                match msg {
+                    Ok(output) => {
+                        output.process_span.follows_from(&request_span);
+                        if let Err(err) = output_tx.send(output.payload).await {
+                            warn!(error = ?err, "output forwarder failed to send message on channel");
+                        }
+                    }
+                    Err(err) => {
+                        warn!(error = ?err, "output forwarder received an error on its subscriber")
+                    }
                 }
             }
-            Err(err) => {
-                warn!(error = ?err, "output forwarder received an error on its subscriber")
-            }
+            _ = shutdown_token.cancelled() => break,
+            else => break,
         }
     }
     if let Err(err) = output_subscriber.unsubscribe_after(0).await {

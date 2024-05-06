@@ -3,7 +3,10 @@ use serde::Serialize;
 use si_data_nats::{NatsClient, Subject};
 use telemetry_nats::propagation;
 use thiserror::Error;
-use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
+use veritech_core::{
+    reply_mailbox_for_keep_alive, reply_mailbox_for_output, reply_mailbox_for_result,
+    FINAL_MESSAGE_HEADER_KEY,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -19,6 +22,7 @@ type Result<T> = std::result::Result<T, PublisherError>;
 #[derive(Debug)]
 pub struct Publisher<'a> {
     nats: &'a NatsClient,
+    reply_mailbox_keep_alive: Subject,
     reply_mailbox_output: Subject,
     reply_mailbox_result: Subject,
 }
@@ -29,6 +33,7 @@ impl<'a> Publisher<'a> {
             nats,
             reply_mailbox_output: reply_mailbox_for_output(reply_mailbox).into(),
             reply_mailbox_result: reply_mailbox_for_result(reply_mailbox).into(),
+            reply_mailbox_keep_alive: reply_mailbox_for_keep_alive(reply_mailbox).into(),
         }
     }
 
@@ -69,5 +74,20 @@ impl<'a> Publisher<'a> {
             )
             .await
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_result.to_string()))
+    }
+
+    pub async fn publish_keep_alive(&self) -> Result<()> {
+        let nats_msg = serde_json::to_string(&()).map_err(PublisherError::JSONSerialize)?;
+
+        self.nats
+            .publish_with_headers(
+                self.reply_mailbox_keep_alive.clone(),
+                propagation::empty_injected_headers(),
+                nats_msg.into(),
+            )
+            .await
+            .map_err(|err| {
+                PublisherError::NatsPublish(err, self.reply_mailbox_keep_alive.to_string())
+            })
     }
 }

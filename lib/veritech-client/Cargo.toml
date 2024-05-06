@@ -18,6 +18,7 @@ telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
