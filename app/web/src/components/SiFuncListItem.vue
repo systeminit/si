@@ -7,7 +7,6 @@
         'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
       )
     "
-    labelClasses="w-full"
     noIndentationOrLeftBorder
     :isSelected="storeSelectedFuncId === func.id"
     showSelection
@@ -21,6 +20,7 @@
         <SiChip
           :text="chipText"
           :tone="func.isBuiltin ? 'warning' : 'action'"
+          textSize="2xs"
           uppercase
           variant="simple"
         />
