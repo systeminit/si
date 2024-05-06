@@ -797,6 +797,8 @@ async fn migrate_local_builtins(
     schema::migrate_pkg(&ctx, SI_COREOS_PKG, None).await?;
     schema::migrate_pkg(&ctx, SI_AWS_EC2_PKG, None).await?;
     schemas::migrate_test_exclusive_schema_starfield(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_etoiles(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_morningstar(&ctx).await?;
     schemas::migrate_test_exclusive_schema_fallout(&ctx).await?;
     schemas::migrate_test_exclusive_schema_dummy_secret(&ctx).await?;
     schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;

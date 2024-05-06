@@ -154,7 +154,7 @@ export interface AttributeDebugView {
   prototypeId: string;
   prototypeIsComponentSpecific: boolean;
   kind: string;
-  materializedView?: string;
+  view?: string;
 }
 export interface FuncArgDebugView {
   value: object | string | number | boolean | null;

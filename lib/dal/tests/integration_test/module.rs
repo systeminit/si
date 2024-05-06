@@ -13,19 +13,19 @@ async fn list_modules(ctx: &DalContext) {
     let mut module_names: Vec<String> = modules.iter().map(|m| m.name().to_string()).collect();
     module_names.sort();
 
-    assert_eq!(20, modules.len());
-
     let expected_installed_module_names = vec![
         "BadValidations".to_string(),
         "ValidatedInput".to_string(),
         "ValidatedOutput".to_string(),
         "dummy-secret".to_string(),
+        "etoiles".to_string(),
         "fallout".to_string(),
         "katy perry".to_string(),
         "large even lego".to_string(),
         "large odd lego".to_string(),
         "medium even lego".to_string(),
         "medium odd lego".to_string(),
+        "morningstar".to_string(),
         "pet_shop".to_string(),
         "pirate".to_string(),
         "si-aws-ec2-2023-09-26-2".to_string(),

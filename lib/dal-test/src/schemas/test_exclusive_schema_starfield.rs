@@ -417,3 +417,397 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
 
     Ok(())
 }
+
+pub(crate) async fn migrate_test_exclusive_schema_morningstar(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
+    let mut morningstar_builder = PkgSpec::builder();
+    let schema_name = "morningstar";
+
+    morningstar_builder
+        .name(schema_name)
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
+
+    let identity_func_spec = IntrinsicFunc::Identity
+        .to_spec()
+        .expect("create identity func spec");
+
+    let star_func_code = "async function star(input: Input): Promise<Output> {
+        if (!input?.stars) {
+            return 'a starless sky';
+        }
+        const stars = Array.isArray(input.stars) ? input.stars : [input.stars];
+        return stars[0] ?? 'not a star in the sky';
+    }";
+
+    let star_func_name = "star";
+    let star_func = FuncSpec::builder()
+        .name(star_func_name)
+        .unique_id(star_func_name)
+        .data(
+            FuncSpecData::builder()
+                .name(star_func_name)
+                .code_plaintext(star_func_code)
+                .handler(star_func_name)
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::String)
+                .build()
+                .expect("star func data build"),
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("stars")
+                .kind(FuncArgumentKind::Array)
+                .build()
+                .expect("stars arg build"),
+        )
+        .build()
+        .expect("star_func_build");
+
+    let morningstar_scaffold_func = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+    let fn_name = "test:scaffoldMorningstarAsset";
+    let morningstar_authoring_schema_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(morningstar_scaffold_func)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()
+                .expect("scaffold data buidl"),
+        )
+        .build()
+        .expect("scaffold func build");
+
+    let morningstar_schema = SchemaSpec::builder()
+        .name(schema_name)
+        .data(
+            SchemaSpecData::builder()
+                .name(schema_name)
+                .category("test exclusive")
+                .category_name(schema_name)
+                .build()
+                .expect("schema spec morningstar data build"),
+        )
+        .variant(
+            SchemaVariantSpec::builder()
+                .name("v0")
+                .unique_id("morningstar_sv")
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .name("v0")
+                        .color("#ffffff")
+                        .func_unique_id(&morningstar_authoring_schema_func.unique_id)
+                        .build()
+                        .expect("sv spec data build"),
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("stars")
+                        .kind(PropKind::String)
+                        .func_unique_id(&star_func.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::InputSocket)
+                                .name("stars")
+                                .socket_name("naming_and_necessity")
+                                .build()
+                                .expect("stars prop attr input build"),
+                        )
+                        .build()
+                        .expect("stars prop build"),
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("naming_and_necessity")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("naming_and_necessity")
+                                .connection_annotations(serde_json::to_string(&vec![
+                                    "naming_and_necessity",
+                                ])?)
+                                .kind(SocketSpecKind::Input)
+                                .build()
+                                .expect("socket spec data build"),
+                        )
+                        .build()
+                        .expect("socket spec build"),
+                )
+                .build()
+                .expect("sv spec build"),
+        )
+        .build()
+        .expect("sv build");
+
+    let morningstar_spec = morningstar_builder
+        .func(identity_func_spec)
+        .func(star_func)
+        .func(morningstar_authoring_schema_func)
+        .schema(morningstar_schema)
+        .build()
+        .expect("schema build");
+
+    let pkg = SiPkg::load_from_spec(morningstar_spec)?;
+
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
+
+    Ok(())
+}
+
+pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> BuiltinsResult<()> {
+    let mut etoiles_builder = PkgSpec::builder();
+
+    let schema_name = "etoiles";
+
+    etoiles_builder
+        .name(schema_name)
+        .version(crate::schemas::PKG_VERSION)
+        .created_by(crate::schemas::PKG_CREATED_BY);
+
+    let identity_func_spec = IntrinsicFunc::Identity
+        .to_spec()
+        .expect("create identity func spec");
+
+    let etoiles_scaffold_func = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+    let fn_name = "test:scaffoldetoilesAsset";
+    let etoiles_authoring_schema_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(etoiles_scaffold_func)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()?,
+        )
+        .build()?;
+
+    let etoiles_resource_payload_to_value_func_code =
+        "async function translate(arg: Input): Promise<Output> {\
+            return arg.payload ?? {};
+        }";
+    let fn_name = "test:resourcePayloadToValue";
+    let etoiles_resource_payload_to_value_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(etoiles_resource_payload_to_value_func_code)
+                .handler("translate")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Json)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("payload")
+                .kind(FuncArgumentKind::Object)
+                .build()?,
+        )
+        .build()?;
+
+    let etoiles_kripke_func_code = "async function la_belle_etoile(input) {
+            let rigid_designator = 'not hesperus';
+
+            if input?.possible_world_a?.wormhole_1?.wormhole_2?.wormhole_3?.rigid_designator === \"hesperus\" { rigid_designator = \"phosphorus\"; }
+
+            return {
+                wormhole_1: {
+                    wormhole_2: {
+                        wormhole_3: {
+                            rigid_designator,
+                        }
+                    }
+                }
+            }
+        }";
+    let etoiles_kripke_func_name = "la_belle_etoile";
+    let etoiles_kripke_func = FuncSpec::builder()
+        .name(etoiles_kripke_func_name)
+        .unique_id(etoiles_kripke_func_name)
+        .data(
+            FuncSpecData::builder()
+                .name(etoiles_kripke_func_name)
+                .code_plaintext(etoiles_kripke_func_code)
+                .handler(etoiles_kripke_func_name)
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Object)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("possible_world_a")
+                .kind(FuncArgumentKind::Object)
+                .build()?,
+        )
+        .build()?;
+
+    let etoiles_schema = SchemaSpec::builder()
+        .name(schema_name)
+        .data(
+            SchemaSpecData::builder()
+                .name(schema_name)
+                .category("test exclusive")
+                .category_name(schema_name)
+                .build()
+                .expect("schema spec data build"),
+        )
+        .variant(
+            SchemaVariantSpec::builder()
+                .name("v0")
+                .unique_id("etoiles_sv")
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .name("v0")
+                        .color("#ffffff")
+                        .func_unique_id(&etoiles_authoring_schema_func.unique_id)
+                        .build()
+                        .expect("build variant spec data"),
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("name")
+                        .kind(PropKind::String)
+                        .func_unique_id(&identity_func_spec.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::Prop)
+                                .name("identity")
+                                .prop_path(PropPath::new(["root", "si", "name"]))
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("hidden_prop")
+                        .kind(PropKind::String)
+                        .hidden(true)
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("possible_world_a")
+                        .kind(PropKind::Object)
+                        .entry(
+                            PropSpec::builder()
+                                .name("wormhole_1")
+                                .kind(PropKind::Object)
+                                .entry(
+                                    PropSpec::builder()
+                                        .name("wormhole_2")
+                                        .kind(PropKind::Object)
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("wormhole_3")
+                                                .kind(PropKind::Object)
+                                                .entry(
+                                                    PropSpec::builder()
+                                                        .kind(PropKind::String)
+                                                        .name("rigid_designator")
+                                                        .build()?,
+                                                )
+                                                .build()?,
+                                        )
+                                        .build()?,
+                                )
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("possible_world_b")
+                        .kind(PropKind::Object)
+                        .func_unique_id(&etoiles_kripke_func.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::Prop)
+                                .name("possible_world_a")
+                                .prop_path(PropPath::new(["root", "domain", "possible_world_a"]))
+                                .build()?,
+                        )
+                        .entry(
+                            PropSpec::builder()
+                                .name("wormhole_1")
+                                .kind(PropKind::Object)
+                                .entry(
+                                    PropSpec::builder()
+                                        .name("wormhole_2")
+                                        .kind(PropKind::Object)
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("wormhole_3")
+                                                .kind(PropKind::Object)
+                                                .entry(
+                                                    PropSpec::builder()
+                                                        .kind(PropKind::String)
+                                                        .name("rigid_designator")
+                                                        .build()?,
+                                                )
+                                                .build()?,
+                                        )
+                                        .build()?,
+                                )
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("naming_and_necessity")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("naming_and_necessity")
+                                .connection_annotations(serde_json::to_string(&vec![
+                                    "naming_and_necessity",
+                                ])?)
+                                .kind(SocketSpecKind::Output)
+                                .func_unique_id(&identity_func_spec.unique_id)
+                                .build()?,
+                        )
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .name("identity")
+                                .kind(AttrFuncInputSpecKind::Prop)
+                                .prop_path(PropPath::new([
+                                    "root",
+                                    "domain",
+                                    "possible_world_b",
+                                    "wormhole_1",
+                                    "wormhole_2",
+                                    "wormhole_3",
+                                    "rigid_designator",
+                                ]))
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .build()?,
+        )
+        .build()?;
+
+    let etoiles_spec = etoiles_builder
+        .func(identity_func_spec)
+        .func(etoiles_authoring_schema_func)
+        .func(etoiles_resource_payload_to_value_func)
+        .func(etoiles_kripke_func)
+        .schema(etoiles_schema)
+        .build()?;
+
+    let etoiles_pkg = SiPkg::load_from_spec(etoiles_spec)?;
+    import_pkg_from_pkg(ctx, &etoiles_pkg, None).await?;
+
+    Ok(())
+}

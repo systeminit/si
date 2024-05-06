@@ -44,10 +44,7 @@
           <p v-else>No inferred connections</p>
         </template>
       </DebugViewItem>
-      <DebugViewItem
-        title="Materialized View"
-        :data="data.materializedView ?? 'NULL'"
-      />
+      <DebugViewItem title="Materialized View" :data="data.view ?? 'NULL'" />
       <DebugViewItem title="Input Sources">
         <template #data>
           <ul v-if="data.funcArgs && Object.keys(data.funcArgs).length">

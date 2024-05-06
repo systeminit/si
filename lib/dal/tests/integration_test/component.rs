@@ -557,6 +557,137 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
 }
 
 #[test]
+async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) {
+    let etoiles_name = "À la belle étoile";
+    let etoiles_component = create_component_for_schema_name(ctx, "etoiles", etoiles_name).await;
+    let etoiles_variant_id = Component::schema_variant_id(ctx, etoiles_component.id())
+        .await
+        .expect("find variant id for etoiles component");
+    let morningstar_name = "hesperus is phosphorus";
+    let morningstar_component =
+        create_component_for_schema_name(ctx, "morningstar", morningstar_name).await;
+    let morningstar_variant_id = Component::schema_variant_id(ctx, morningstar_component.id())
+        .await
+        .expect("find variant id for morningstar component");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_a_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        etoiles_variant_id,
+        &PropPath::new(["root", "domain", "possible_world_a"]),
+    )
+    .await
+    .expect("able to find 'possible_world_a' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    let possible_world_a_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let possible_world_a = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "hesperus"
+                }
+            }
+        }
+    });
+
+    AttributeValue::update(
+        ctx,
+        possible_world_a_value_id,
+        Some(possible_world_a.clone()),
+    )
+    .await
+    .expect("able to set universe value");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_b_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        etoiles_variant_id,
+        &PropPath::new(["root", "domain", "possible_world_b"]),
+    )
+    .await
+    .expect("able to find 'possible_world_b' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_b_prop_id)
+        .await
+        .expect("able to get attribute value for possible world prop");
+
+    let possible_world_b_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let value = AttributeValue::get_by_id(ctx, possible_world_b_value_id)
+        .await
+        .expect("able to get av by id");
+
+    let possible_world_b = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "phosphorus"
+                }
+            }
+        }
+    });
+
+    assert_eq!(
+        Some(possible_world_b),
+        value.view(ctx).await.expect("able to get view")
+    );
+
+    connect_components_with_socket_names(
+        ctx,
+        etoiles_component.id(),
+        "naming_and_necessity",
+        morningstar_component.id(),
+        "naming_and_necessity",
+    )
+    .await;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let stars_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        morningstar_variant_id,
+        &PropPath::new(["root", "domain", "stars"]),
+    )
+    .await
+    .expect("able to find 'stars' prop");
+
+    let stars_value_id = Prop::attribute_values_for_prop_id(ctx, stars_prop_id)
+        .await
+        .expect("able to get attribute value for possible world prop")
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let stars_value = AttributeValue::get_by_id(ctx, stars_value_id)
+        .await
+        .expect("able to get av by id");
+
+    assert_eq!(
+        Some(serde_json::to_value("phosphorus").expect("able to make phosphorus value")),
+        stars_value.view(ctx).await.expect("get stars value")
+    );
+}
+
+#[test]
 async fn set_the_universe(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
     let variant_id = Component::schema_variant_id(ctx, component.id())

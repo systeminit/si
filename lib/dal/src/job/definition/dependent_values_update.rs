@@ -27,6 +27,7 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
+    prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
     WsEvent, WsEventError,
@@ -39,6 +40,8 @@ const MAX_RETRIES: u32 = 8;
 pub enum DependentValueUpdateError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("status update error: {0}")]
     StatusUpdate(#[from] StatusUpdateError),
     #[error(transparent)]
@@ -183,7 +186,6 @@ impl DependentValuesUpdate {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
-                            #[allow(unused_variables)]
                             let write_guard = self.set_value_lock.write().await;
 
                             // Only set values if their functions are actually
@@ -209,17 +211,21 @@ impl DependentValuesUpdate {
                                 )
                                 .await
                                 {
-                                    // Remove the value, so that any values that depend on it will
-                                    // become independent values (once all other dependencies are removed)
-                                    Ok(_) => dependency_graph.remove_value(finished_value_id),
+                                    Ok(_) => {
+                                        // Remove the value, so that any values that depend on it will
+                                        // become independent values (once all other dependencies are removed)
+                                        dependency_graph.remove_value(finished_value_id);
+                                        drop(write_guard);
+                                    }
                                     Err(err) => {
-                                        error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
+                                        execution_error(ctx, err.to_string(), finished_value_id)
+                                            .await;
                                         dependency_graph.cycle_on_self(finished_value_id);
                                     }
                                 },
                                 Ok(false) => dependency_graph.remove_value(finished_value_id),
                                 Err(err) => {
-                                    error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
+                                    execution_error(ctx, err.to_string(), finished_value_id).await;
                                     dependency_graph.cycle_on_self(finished_value_id);
                                 }
                             }
@@ -230,8 +236,9 @@ impl DependentValuesUpdate {
                             // nodes *without* outgoing edges. Thus we will never try to re-execute
                             // the function for this value, nor will we execute anything in the
                             // dependency graph connected to this value
-
-                            error!("error executing prototype function for AttributeValue {finished_value_id}: {err}");
+                            let read_guard = self.set_value_lock.read().await;
+                            execution_error(ctx, err.to_string(), finished_value_id).await;
+                            drop(read_guard);
                             dependency_graph.cycle_on_self(finished_value_id);
                         }
                     }
@@ -255,7 +262,7 @@ impl DependentValuesUpdate {
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
         Ok(if ctx.commit().await?.is_some() {
-            debug!("retrying DependentValueUpdate because of conflicts");
+            warn!("Retrying DependentValueUpdate due to conflicts");
             JobCompletionState::Retry {
                 limit: MAX_RETRIES,
                 backoff: RetryBackoff::Exponential,
@@ -264,6 +271,38 @@ impl DependentValuesUpdate {
             JobCompletionState::Done
         })
     }
+}
+
+async fn execution_error(
+    ctx: &DalContext,
+    err_string: String,
+    attribute_value_id: AttributeValueId,
+) {
+    let fallback = format!(
+        "error executing prototype function for AttributeValue {attribute_value_id}: {err_string}"
+    );
+    let error_message = if let Ok(detail) = execution_error_detail(ctx, attribute_value_id).await {
+        format!("{detail}: {err_string}")
+    } else {
+        fallback
+    };
+
+    error!("{}", error_message);
+}
+
+async fn execution_error_detail(
+    ctx: &DalContext,
+    id: AttributeValueId,
+) -> DependentValueUpdateResult<String> {
+    let is_for = AttributeValue::is_for(ctx, id)
+        .await?
+        .debug_info(ctx)
+        .await?;
+    let prototype_func = AttributeValue::prototype_func(ctx, id).await?.name;
+
+    Ok(format!(
+        "error executing prototype function \"{prototype_func}\" to set the value of {is_for} ({id})"
+    ))
 }
 
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
