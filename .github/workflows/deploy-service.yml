@@ -28,7 +28,15 @@ jobs:
           aws-region: us-east-1
       - name: Invalidate Artifacts Cache
         run: |
-          aws cloudfront create-invalidation --distribution-id E2HW6000JEVIPB --paths "/*"
+          DIST_ID=E2HW6000JEVIPB
+          # Create a CloudFront invalidation for all objects (/*)
+          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
+          # Check the status of the invalidation until it's completed
+          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+              echo "Invalidation is still in progress. Waiting..."
+              sleep 5
+          done
+          echo "Invalidation is complete."
 
       - name: Configure AWS credentials for tools-prod
         uses: aws-actions/configure-aws-credentials@v2
