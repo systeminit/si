@@ -294,6 +294,9 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
               },
+              onSuccess: () => {
+                this.FETCH_PROPERTY_EDITOR_VALUES();
+              },
             });
           },
           async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
