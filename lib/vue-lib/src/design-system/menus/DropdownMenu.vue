@@ -27,6 +27,7 @@
 
 <script lang="ts">
 type DropdownMenuContext = {
+  compact: boolean;
   isOpen: Ref<boolean>;
   isCheckable: Ref<boolean>;
   focusedItemId: Ref<string | undefined>;
@@ -82,6 +83,7 @@ const props = defineProps({
   items: {
     type: Array as PropType<DropdownMenuItemObjectDef[]>,
   },
+  compact: Boolean, // apply more compact styles to this dropdown
 });
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -317,6 +319,7 @@ const context = {
   isOpen: readOnlyIsOpen,
   isCheckable,
   focusedItemId,
+  compact: props.compact,
   open,
   close,
   registerItem,

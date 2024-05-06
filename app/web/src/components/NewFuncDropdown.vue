@@ -10,13 +10,13 @@
     size="2xs"
     @click="menuRef?.open"
   >
-    <DropdownMenu ref="menuRef">
+    <DropdownMenu ref="menuRef" compact>
       <DropdownMenuItem
         v-for="(fnLabel, fnKind) in CUSTOMIZABLE_FUNC_TYPES"
         :key="fnKind"
+        icon="func"
         @select="emit('selectedFuncKind', fnKind)"
       >
-        <template #icon><FuncSkeleton /></template>
         {{ fnLabel.singularLabel }}
       </DropdownMenuItem>
     </DropdownMenu>
@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   VButton,
 } from "@si/vue-lib/design-system";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,

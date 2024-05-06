@@ -61,7 +61,8 @@
           v-if="slots.primaryIcon"
           :class="
             clsx(
-              'mr-xs flex-none',
+              'flex-none',
+              primaryIconClasses,
               enableGroupToggle &&
                 !alwaysShowArrow &&
                 'group-hover:scale-0 transition-all',
@@ -196,6 +197,7 @@ const props = defineProps({
   labelClasses: { type: String },
   childrenContainerClasses: { type: String },
   staticContentClasses: { type: String },
+  primaryIconClasses: { type: String, default: "mr-xs" },
 });
 
 const nodeRef = ref<HTMLElement>();
