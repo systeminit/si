@@ -1237,7 +1237,6 @@ impl Transactions {
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
-        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         // We need to send a rebase request *after* committing any transactions,
         // but before starting any jobs in pinga, since those transactions may
@@ -1249,6 +1248,8 @@ impl Transactions {
         } else {
             None
         };
+
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         self.job_processor.process_queue(self.job_queue).await?;
 
@@ -1273,13 +1274,14 @@ impl Transactions {
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
-        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         let conflicts = if let Some(rebase_request) = rebase_request {
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
         };
+
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         self.job_processor
             .blocking_process_queue(self.job_queue)
