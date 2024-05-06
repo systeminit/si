@@ -12,6 +12,8 @@ pub(crate) use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_
 pub(crate) use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_medium_odd_lego;
 pub(crate) use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_even_lego;
 pub(crate) use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_odd_lego;
+pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_etoiles;
+pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_morningstar;
 pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield;
 pub(crate) use test_exclusive_schema_swifty::migrate_test_exclusive_schema_swifty;
 

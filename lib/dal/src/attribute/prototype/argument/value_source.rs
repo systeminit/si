@@ -3,6 +3,7 @@ use core::fmt;
 use thiserror::Error;
 
 use crate::{
+    attribute::value::AttributeValueError,
     prop::PropError,
     socket::{
         input::{InputSocketError, InputSocketId},
@@ -67,11 +68,17 @@ impl ValueSource {
         let mut result = vec![];
 
         for value_id in self.attribute_values(ctx).await? {
-            if AttributeValue::component_id(ctx, value_id)
-                .await
-                .map_err(|err| ValueSourceError::AttributeValue(err.to_string()))?
-                == component_id
-            {
+            let value_component_id = match AttributeValue::component_id(ctx, value_id).await {
+                Ok(component_id) => Some(component_id),
+                // If this is a child value of a value set by a dynamic
+                // function, we might encounter an orphaned value (since we're
+                // walking backwards from the prop to the values here). That's
+                // fine, just skip it. It will be cleaned up on write.
+                Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
+                Err(other_err) => Err(ValueSourceError::AttributeValue(other_err.to_string()))?,
+            };
+
+            if value_component_id == Some(component_id) {
                 result.push(value_id);
             }
         }
