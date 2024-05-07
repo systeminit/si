@@ -407,7 +407,10 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
                 }
             }
 
-            CONCURRENT_TASKS.fetch_sub(1, atomic::Ordering::Relaxed);
+            let concurrency_count = CONCURRENT_TASKS.fetch_sub(1, atomic::Ordering::Relaxed) - 1;
+
+            let span = Span::current();
+            span.record("concurrency.count", concurrency_count);
         })
         .await;
 }
