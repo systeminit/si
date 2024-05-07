@@ -54,6 +54,7 @@ mod value_from;
 
 pub mod authoring;
 
+use crate::action::prototype::ActionKind;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -839,7 +840,7 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
-    pub async fn new_action_prototype(
+    pub async fn new_deprecated_action_prototype(
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
@@ -854,6 +855,35 @@ impl SchemaVariant {
 
         Ok(())
     }
+
+    pub async fn find_action_prototypes_by_kind(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        kind: ActionKind,
+    ) -> SchemaVariantResult<Vec<ActionPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id: Ulid = schema_variant_id.into();
+
+        let action_prototype_node_idxs = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::ActionPrototype)
+            .await?;
+
+        let mut prototype_ids = vec![];
+
+        for prototype_idx in action_prototype_node_idxs {
+            let weight = workspace_snapshot
+                .get_node_weight(prototype_idx)
+                .await?
+                .get_action_prototype_node_weight()?;
+
+            if weight.kind() == kind {
+                prototype_ids.push(weight.id().into());
+            }
+        }
+
+        return Ok(prototype_ids);
+    }
+
     pub async fn find_leaf_item_functions(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

@@ -26,7 +26,7 @@ pub mod prototype;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
-    #[error("action prototype errro: {0}")]
+    #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
@@ -214,6 +214,42 @@ impl Action {
             .into();
 
         Ok(new_action)
+    }
+
+    pub async fn remove(
+        ctx: &DalContext,
+        action_prototype_id: ActionPrototypeId,
+        maybe_component_id: Option<ComponentId>,
+    ) -> ActionResult<()> {
+        let change_set = ctx.change_set()?;
+        let snap = ctx.workspace_snapshot()?;
+        let action_category_id = snap
+            .get_category_node(None, CategoryNodeKind::Action)
+            .await?;
+
+        for action_idx in snap
+            .outgoing_targets_for_edge_weight_kind(
+                action_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
+            let action_id: ActionId = snap
+                .get_node_weight(action_idx)
+                .await?
+                .get_action_node_weight()?
+                .id()
+                .into();
+
+            if Self::component_id(ctx, action_id).await? == maybe_component_id
+                && Self::action_prototype_id(ctx, action_id).await? == action_prototype_id
+            {
+                snap.remove_node_by_id(&change_set, action_id.into())
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Sort the dependency graph of [`Actions`][Action] topologically, breaking ties by listing

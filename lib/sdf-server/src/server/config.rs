@@ -9,6 +9,7 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+use dal::feature_flags::FeatureFlag;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -19,7 +20,6 @@ use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::server::feature_flags::FeatureFlag;
 pub use dal::MigrationMode;
 pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};

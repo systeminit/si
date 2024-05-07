@@ -60,6 +60,7 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
+use dal::feature_flags::FeatureFlagService;
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
@@ -359,6 +360,7 @@ impl TestContext {
             None,
             self.symmetric_crypto_service.clone(),
             layer_db,
+            FeatureFlagService::default(),
         )
     }
 
@@ -781,6 +783,7 @@ async fn migrate_local_builtins(
         Some(module_index_url),
         symmetric_crypto_service.clone(),
         layer_db.clone(),
+        FeatureFlagService::default(),
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

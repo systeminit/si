@@ -19,6 +19,7 @@ use tokio::time::Instant;
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::feature_flags::FeatureFlagService;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::{
@@ -64,6 +65,8 @@ pub struct ServicesContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// The layer db
     layer_db: DalLayerDb,
+    /// The service that stores feature flags
+    feature_flag_service: FeatureFlagService,
 }
 
 impl ServicesContext {
@@ -79,6 +82,7 @@ impl ServicesContext {
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
         layer_db: DalLayerDb,
+        feature_flag_service: FeatureFlagService,
     ) -> Self {
         Self {
             pg_pool,
@@ -90,6 +94,7 @@ impl ServicesContext {
             module_index_url,
             symmetric_crypto_service,
             layer_db,
+            feature_flag_service,
         }
     }
 
@@ -139,6 +144,11 @@ impl ServicesContext {
     /// Gets a reference to the Layer Db
     pub fn layer_db(&self) -> &DalLayerDb {
         &self.layer_db
+    }
+
+    /// Get a reference to the feature flags service
+    pub fn feature_flags_service(&self) -> &FeatureFlagService {
+        &self.feature_flag_service
     }
 
     /// Builds and returns a new [`Connections`].
@@ -959,7 +969,7 @@ impl DalContextBuilder {
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
         // workspace's default change set id, but we are going to use a dummy visibility to do so.
         // We should probably just use the pg connection directly or derive the default change set
-        // id thorugh other means.
+        // id through other means.
         let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
         ctx.update_visibility_and_snapshot_to_visibility(default_change_set_id)
             .await?;

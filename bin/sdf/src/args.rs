@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{builder::EnumValueParser, builder::PossibleValuesParser, ArgAction, Parser};
-use sdf_server::server::feature_flags::FeatureFlag;
-use sdf_server::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
+
+use sdf_server::{Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile};
 use si_std::SensitiveString;
 
 const NAME: &str = "sdf";
