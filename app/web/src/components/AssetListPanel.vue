@@ -72,7 +72,9 @@
       title="Contribute Assets"
       label="Contribute to System Initiative"
       :loadingText="_.sample(contributeLoadingTexts)"
-      :preSelectedSchemaVariantId="assetStore.selectedAsset?.id"
+      :preSelectedSchemaVariantId="
+        assetStore.selectedAsset?.defaultSchemaVariantId
+      "
       @export-success="onExport"
     />
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
