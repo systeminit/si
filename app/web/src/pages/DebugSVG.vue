@@ -41,13 +41,32 @@
           />
         </div>
       </div>
+
+      <div class="w-full px-lg text-xl text-left">Other SVGs</div>
+      <div
+        class="w-full flex flex-row flex-wrap px-lg pb-lg justify-start gap-sm items-center"
+      >
+        <NodeSkeleton
+          v-tooltip="'NodeSkeleton'"
+          color="#ff00ff"
+          class="cursor-pointer"
+        />
+        <SiLogo v-tooltip="'SiLogo'" class="cursor-pointer h-xl w-xl" />
+        <CheechSvg
+          v-tooltip="'CheechSvg'"
+          class="h-xl w-xl rounded-full bg-shade-0 border-2 border-shade-100 cursor-pointer"
+        />
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { Icon, IconNames, ICONS, LOGO_ICONS } from "@si/vue-lib/design-system";
+import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
+import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import EmptyStateIcon, { BIG_ICONS } from "@/components/EmptyStateIcon.vue";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import DebugNavbar from "@/components/DebugNavbar.vue";
+import NodeSkeleton from "@/components/NodeSkeleton.vue";
 </script>
