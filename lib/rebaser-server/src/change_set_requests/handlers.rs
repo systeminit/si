@@ -83,6 +83,7 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     let mut event =
         WsEvent::change_set_written(&ctx, message.payload.to_rebase_change_set_id.into()).await?;
     event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_inner().into());
+    event.set_change_set_id(Some(message.payload.to_rebase_change_set_id.into()));
     event.publish_immediately(&ctx).await?;
 
     Ok(())
