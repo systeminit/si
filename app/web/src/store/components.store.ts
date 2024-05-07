@@ -843,8 +843,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     actor: { kind: "user", label: "You" },
                   },
                 };
+
+                const replacingEdge = this.allEdges
+                  .filter(
+                    (e) =>
+                      e.isInferred &&
+                      e.toSocketId === to.socketId &&
+                      e.toComponentId === to.componentId,
+                  )
+                  .pop();
+                if (replacingEdge) {
+                  delete this.edgesById[replacingEdge.id];
+                }
                 return () => {
                   delete this.edgesById[tempId];
+                  if (replacingEdge) {
+                    this.edgesById[replacingEdge.id] = replacingEdge;
+                  }
                 };
               },
             });
