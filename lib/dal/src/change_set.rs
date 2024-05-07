@@ -14,7 +14,7 @@ use telemetry::prelude::*;
 
 use crate::context::{Conflicts, RebaseRequest};
 use crate::deprecated_action::DeprecatedActionBag;
-use crate::job::definition::{ActionRunnerItem, ActionsJob};
+use crate::job::definition::{DeprecatedActionRunnerItem, DeprecatedActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     id, ActionId, ActionPrototypeId, ChangeSetStatus, Component, ComponentError, DalContext,
@@ -79,8 +79,6 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
-    #[error("action error: {0}")]
-    Action(#[from] DeprecatedActionError),
     #[error("action batch error: {0}")]
     ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]
@@ -95,6 +93,8 @@ pub enum ChangeSetApplyError {
     Component(#[from] ComponentError),
     #[error("could not apply to head because of merge conflicts")]
     ConflictsOnApply(Conflicts),
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] DeprecatedActionError),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -465,7 +465,8 @@ impl ChangeSet {
             // TODO: restore actors of change-set concept
             let actors_delimited_string = String::new();
             let batch = DeprecatedActionBatch::new(ctx, author, &actors_delimited_string).await?;
-            let mut runners: HashMap<DeprecatedActionRunnerId, ActionRunnerItem> = HashMap::new();
+            let mut runners: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem> =
+                HashMap::new();
             let mut runners_by_action: HashMap<ActionId, DeprecatedActionRunnerId> = HashMap::new();
 
             let mut values: Vec<DeprecatedActionBag> = actions_to_run.values().cloned().collect();
@@ -506,7 +507,7 @@ impl ChangeSet {
 
                 runners.insert(
                     runner.id,
-                    ActionRunnerItem {
+                    DeprecatedActionRunnerItem {
                         id: runner.id,
                         component_id: bag.component_id,
                         action_prototype_id: prototype_id,
@@ -516,7 +517,7 @@ impl ChangeSet {
             }
 
             // With all the runners gathered, we can enqueue a new batch.
-            ctx.enqueue_actions(ActionsJob::new(ctx, runners, batch.id))
+            ctx.enqueue_deprecated_actions(DeprecatedActionsJob::new(ctx, runners, batch.id))
                 .await?;
         }
 

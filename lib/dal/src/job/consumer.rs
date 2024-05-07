@@ -13,6 +13,7 @@ use tokio::task::JoinError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
 use crate::{
+    action::prototype::ActionPrototypeError, action::ActionError,
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
@@ -25,10 +26,12 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("action batch error: {0}")]
     ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("action runner error: {0}")]
@@ -45,6 +48,8 @@ pub enum JobConsumerError {
     ComponentIsDestroyed(ComponentId),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] DependentValueUpdateError),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]

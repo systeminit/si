@@ -23,6 +23,7 @@ use crate::schema::variant::{
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
+    action::ActionReturn,
     deprecated_action::prototype::ResourceRefreshedPayload,
     deprecated_action::{
         batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn, ActionId, ActionView,
@@ -70,6 +71,7 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
+    ActionReturn(ActionReturn),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
