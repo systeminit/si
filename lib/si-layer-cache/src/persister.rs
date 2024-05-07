@@ -206,15 +206,18 @@ impl PersistEventTask {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
             Err(e) => {
+                error!("{}", &e);
                 status_tx.send(PersistStatus::Error(e));
             }
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn try_write_layers(&self, event: LayeredEvent) -> LayerDbResult<()> {
         let event = Arc::new(event);
 
@@ -282,6 +285,7 @@ impl PersistEventTask {
     }
 
     // Write an event to the pg layer
+    #[instrument(level = "debug", skip_all)]
     pub async fn write_to_pg(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
         pg_layer
