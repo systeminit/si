@@ -2466,6 +2466,26 @@ pub struct ComponentDeletedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct ConnectionCreatedPayload {
+    from_component_id: ComponentId,
+    to_component_id: ComponentId,
+    from_socket_id: OutputSocketId,
+    to_socket_id: InputSocketId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionDeletedPayload {
+    from_component_id: ComponentId,
+    to_component_id: ComponentId,
+    from_socket_id: OutputSocketId,
+    to_socket_id: InputSocketId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentPosition {
     x: i32,
     y: i32,
@@ -2557,6 +2577,46 @@ impl WsEvent {
                 success: true,
                 change_set_id: ctx.change_set_id(),
                 component_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn connection_created(
+        ctx: &DalContext,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_socket_id: OutputSocketId,
+        to_socket_id: InputSocketId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionCreated(ConnectionCreatedPayload {
+                from_component_id,
+                to_component_id,
+                from_socket_id,
+                change_set_id: ctx.change_set_id(),
+                to_socket_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn connection_deleted(
+        ctx: &DalContext,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_socket_id: OutputSocketId,
+        to_socket_id: InputSocketId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionDeleted(ConnectionDeletedPayload {
+                from_component_id,
+                to_component_id,
+                from_socket_id,
+                change_set_id: ctx.change_set_id(),
+                to_socket_id,
             }),
         )
         .await
