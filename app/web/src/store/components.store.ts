@@ -765,6 +765,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               optimistic: () => {
+                /**
+                 * NOTE: WsEvents are firing *BEFORE* the POST returns
+                 * And when a new changeset is created by the backend, we end up
+                 * re-creating componentStore, so the store for HEAD never runs onSuccess below
+                 * We end up with pending components on HEAD that never go away
+                 *
+                 * To fix: don't create pending components if we're on HEAD
+                 */
+                if (changeSetsStore.headSelected) return;
+
                 this.pendingInsertedComponents[tempInsertId] = {
                   tempId: tempInsertId,
                   position,
