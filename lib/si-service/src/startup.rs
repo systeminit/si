@@ -45,7 +45,7 @@ pub async fn startup(service: &str) -> Result<(), std::io::Error> {
         .components()
         .any(|path| Component::Normal("buck-out".as_ref()) == path)
     {
-        info!(
+        debug!(
             "development build (buck) detected for {}, no metadata can be reported",
             service
         );

@@ -64,7 +64,7 @@ pub async fn watch_timeout_task(
             }
             Ok(None) | Err(_) => {
                 // Timeout has elapsed
-                info!("watch_timeout_task timeout elapsed");
+                debug!("watch_timeout_task timeout elapsed");
                 if shutdown_tx
                     .send(ShutdownSource::WatchTimeout)
                     .await
