@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility};
+use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
@@ -35,6 +35,11 @@ pub async fn insert_property_editor_value(
         request.key,
     )
     .await?;
+
+    WsEvent::component_updated(&ctx, request.component_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
