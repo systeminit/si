@@ -409,8 +409,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           deletableSelectedComponents(): FullComponent[] {
+            const selectedAndChildren: FullComponent[] = [];
+            this.allComponents.forEach((component) => {
+              this.selectedComponents?.forEach((el) => {
+                if (component.ancestorIds?.includes(el.id)) {
+                  selectedAndChildren.push(component);
+                }
+              });
+            });
+            this.selectedComponents?.forEach((el) => {
+              selectedAndChildren.push(el);
+            });
             return _.reject(
-              this.selectedComponents,
+              selectedAndChildren,
               (c) => c.changeStatus === "deleted",
             );
           },
