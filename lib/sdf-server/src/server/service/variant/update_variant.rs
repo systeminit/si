@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, Func, SchemaVariant, SchemaVariantId, WsEvent};
+use dal::{ChangeSet, SchemaVariantId, WsEvent};
 use dal::{ComponentType, SchemaId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -43,51 +43,19 @@ pub async fn update_variant(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
-    let sv = SchemaVariant::get_by_id(&ctx, request.default_schema_variant_id).await?;
-    let components_in_use = sv.get_components_on_graph(&ctx).await?;
-
-    let updated_sv_id: SchemaVariantId = if let Some(asset_func_id) = sv.asset_func_id() {
-        let asset_func = Func::get_by_id_or_error(&ctx, asset_func_id).await?;
-        if !components_in_use.is_empty() {
-            // If we have components_in_use
-            // We should create a new version of the schema_variant
-            // and we will set that new version to be the default for the schema
-            VariantAuthoringClient::update_and_generate_variant_with_new_version(
-                &ctx,
-                &asset_func,
-                sv.id(),
-                request.name.clone(),
-                request.menu_name.clone(),
-                request.category.clone(),
-                request.color.clone(),
-                request.link.clone(),
-                request.code.clone(),
-                request.description.clone(),
-                request.component_type,
-            )
-            .await?
-        } else {
-            VariantAuthoringClient::update_existing_variant_and_regenerate(
-                &ctx,
-                sv.id(),
-                request.name.clone(),
-                request.menu_name.clone(),
-                request.category.clone(),
-                request.color.clone(),
-                request.link.clone(),
-                request.code.clone(),
-                request.description.clone(),
-                request.component_type,
-            )
-            .await?;
-            sv.id()
-        }
-    } else {
-        return Err(
-            crate::service::variant::SchemaVariantError::SchemaVariantAssetNotFound(sv.id()),
-        );
-    };
+    let updated_sv_id = VariantAuthoringClient::update_variant(
+        &ctx,
+        request.default_schema_variant_id,
+        request.name.clone(),
+        request.menu_name.clone(),
+        request.category.clone(),
+        request.color,
+        request.link,
+        request.code,
+        request.description,
+        request.component_type,
+    )
+    .await?;
 
     track(
         &posthog_client,
