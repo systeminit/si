@@ -202,6 +202,7 @@ function openColorPicker() {
     picker = new Picker({
       parent: colorPickerMountRef.value,
       alpha: false,
+      color: siValues.color,
       onDone(color: { hex: string }) {
         siValues.color = color.hex.substring(0, color.hex.length - 2);
         updateSiProp("color");
