@@ -38,7 +38,6 @@
         >
           <span class="pr-2" role="decoration">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
-          {{ schemaVariantsById?.[svId]?.builtin ? "(builtin)" : "" }}
           <VButton
             class="ml-auto"
             size="xs"
@@ -161,7 +160,7 @@ const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
     .map((sv) => ({
-      label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
+      label: sv.schemaName,
       value: sv.id,
     })),
 );

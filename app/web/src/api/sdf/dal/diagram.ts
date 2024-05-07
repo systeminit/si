@@ -16,6 +16,7 @@ export interface DiagramSchemaVariant {
   id: string;
   name: string;
   builtin: boolean;
+  isDefault: boolean;
 
   color: string;
   category: string;

@@ -504,7 +504,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     id: variant.id,
                     name: variant.name,
                     builtin: variant.builtin,
-
+                    isDefault: true,
                     color: variant.color,
                     category: variant.category,
                     inputSockets: variant.inputSockets,
