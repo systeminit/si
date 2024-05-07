@@ -15,7 +15,7 @@ use crate::{
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
     Component, DalContext,
 };
-use crate::{ComponentError, ComponentId};
+use crate::{ComponentError, ComponentId, Prop, PropKind};
 
 use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
 
@@ -43,9 +43,9 @@ enum WorkQueueValue {
 impl WorkQueueValue {
     fn id(&self) -> AttributeValueId {
         match self {
-            WorkQueueValue::Initial(id) => *id,
-            WorkQueueValue::ObjectChild(id) => *id,
-            WorkQueueValue::Discovered(id) => *id,
+            WorkQueueValue::Initial(id)
+            | WorkQueueValue::ObjectChild(id)
+            | WorkQueueValue::Discovered(id) => *id,
         }
     }
 }
@@ -107,19 +107,6 @@ impl DependentValueGraph {
             }
             seen_list.insert(current_attribute_value.id());
 
-            // The children of an object set by a dynamic function might themselves be the input to
-            // another function, so we have to add them to the calculation of the graph, as we
-            // encounter them. We use `seen_list` to ensure we don't reprocess the parents of these
-            // values.
-            let child_values =
-                AttributeValue::all_object_children_to_leaves(ctx, current_attribute_value.id())
-                    .await?;
-            for child_value_id in child_values {
-                if !seen_list.contains(&child_value_id) {
-                    work_queue.push_back(WorkQueueValue::ObjectChild(child_value_id));
-                }
-            }
-
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
 
@@ -180,53 +167,76 @@ impl DependentValueGraph {
                 relevant_apas
             };
 
-            // Check if this value is an output socket as the attribute
-            // value might have implicit dependendcies based on the ancestry
-            // (aka frames/nested frames) note: we filter out non-deleted
-            // targets if the source component is set to be deleted
-            if let ValueIsFor::OutputSocket(_) = value_is_for {
-                let maybe_values_depend_on =
-                    match Component::find_inferred_values_using_this_output_socket(
-                        ctx,
-                        current_attribute_value.id(),
-                    )
-                    .await
-                    {
-                        Ok(values) => values,
-                        // When we first run dvu, the component type might not be set yet.
-                        // In this case, we can assume there aren't downstream inputs that need to
-                        // be queued up.
-                        Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                            vec![]
-                        }
-                        Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
-                    };
-
-                for input_socket_match in maybe_values_depend_on {
-                    // Both "deleted" and not deleted Components can feed data into
-                    // "deleted" Components. **ONLY** not deleted Components can feed
-                    // data into not deleted Components.
-                    let destination_component_id =
-                        AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
-                    if Component::should_data_flow_between_components(
-                        ctx,
-                        destination_component_id,
-                        input_socket_match.component_id,
-                    )
-                    .await
-                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?
-                    {
-                        work_queue.push_back(WorkQueueValue::Discovered(
-                            input_socket_match.attribute_value_id,
-                        ));
-                        dependent_value_graph.value_depends_on(
-                            input_socket_match.attribute_value_id,
+            match value_is_for {
+                ValueIsFor::Prop(prop_id) => {
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    if prop.kind == PropKind::Object {
+                        // The children of an object might themselves be the
+                        // input to another function, so we have to add them to
+                        // the calculation of the graph, as we encounter them.
+                        // We use `seen_list` to ensure we don't reprocess these
+                        // values or the parents of these values.
+                        for child_value_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                            ctx,
                             current_attribute_value.id(),
-                        );
-
-                        found_deps = true;
+                        )
+                        .await?
+                        {
+                            if !seen_list.contains(&child_value_id) {
+                                work_queue.push_back(WorkQueueValue::ObjectChild(child_value_id));
+                            }
+                        }
                     }
                 }
+                // Check if this value is an output socket as the attribute
+                // value might have implicit dependendcies based on the ancestry
+                // (aka frames/nested frames) note: we filter out non-deleted
+                // targets if the source component is set to be deleted
+                ValueIsFor::OutputSocket(_) => {
+                    let maybe_values_depend_on =
+                        match Component::find_inferred_values_using_this_output_socket(
+                            ctx,
+                            current_attribute_value.id(),
+                        )
+                        .await
+                        {
+                            Ok(values) => values,
+                            // When we first run dvu, the component type might not be set yet.
+                            // In this case, we can assume there aren't downstream inputs that need to
+                            // be queued up.
+                            Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                                vec![]
+                            }
+                            Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
+                        };
+
+                    for input_socket_match in maybe_values_depend_on {
+                        // Both "deleted" and not deleted Components can feed data into
+                        // "deleted" Components. **ONLY** not deleted Components can feed
+                        // data into not deleted Components.
+                        let destination_component_id =
+                            AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
+                        if Component::should_data_flow_between_components(
+                            ctx,
+                            destination_component_id,
+                            input_socket_match.component_id,
+                        )
+                        .await
+                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                        {
+                            work_queue.push_back(WorkQueueValue::Discovered(
+                                input_socket_match.attribute_value_id,
+                            ));
+                            dependent_value_graph.value_depends_on(
+                                input_socket_match.attribute_value_id,
+                                current_attribute_value.id(),
+                            );
+
+                            found_deps = true;
+                        }
+                    }
+                }
+                _ => {}
             }
 
             // Find the values that are set by the prototype for the relevant
@@ -287,11 +297,11 @@ impl DependentValueGraph {
             )
             .await?
             {
-                // We should only walk the parent tree if we have actually found
-                // a dep for this value if this is one of child values we added
-                // speculatively. Otherwise we will potentially add unnecessary
-                // values to the graph. Normally this is harmless, but it means
-                // we'll do more work than necessary
+                // If this is one of child values we added speculatively we
+                // should only walk the parent tree if we have actually found a
+                // dep for this value.  Otherwise we will add unnecessary values
+                // to the graph. Normally this is harmless, but it means we'll
+                // do more work than necessary
                 if !found_deps && matches!(current_attribute_value, WorkQueueValue::ObjectChild(_))
                 {
                     continue;
