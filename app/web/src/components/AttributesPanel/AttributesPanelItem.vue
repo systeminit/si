@@ -830,6 +830,7 @@ const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
 const propIsEditable = computed(
   () =>
     sourceOverridden.value ||
+    editOverride.value ||
     (!propPopulatedBySocket.value && !propSetByDynamicFunc.value),
 );
 
