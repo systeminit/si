@@ -1457,6 +1457,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
             {
+              eventType: "ConnectionCreated",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
+              eventType: "ConnectionDeleted",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
               eventType: "ComponentDeleted",
               callback: (data) => {
                 if (data.changeSetId !== changeSetId) return;

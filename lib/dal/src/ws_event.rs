@@ -9,7 +9,7 @@ use ulid::Ulid;
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
-    ComponentUpdatedPayload,
+    ComponentUpdatedPayload, ConnectionCreatedPayload, ConnectionDeletedPayload,
 };
 use crate::func::FuncWsEventPayload;
 use crate::pkg::{
@@ -87,6 +87,8 @@ pub enum WsPayload {
     ComponentCreated(ComponentCreatedPayload),
     ComponentDeleted(ComponentDeletedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
+    ConnectionCreated(ConnectionCreatedPayload),
+    ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
     DeprecatedActionAdded(ActionView),
     DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),

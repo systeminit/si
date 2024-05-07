@@ -2,7 +2,7 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::{
     ChangeSet, Component, ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
-    Visibility,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +69,17 @@ pub async fn delete_connection(
             "change_set_id": ctx.change_set_id(),
         }),
     );
+
+    WsEvent::connection_deleted(
+        &ctx,
+        request.from_component_id,
+        request.to_component_id,
+        request.from_socket_id,
+        request.to_socket_id,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     ctx.commit().await?;
 

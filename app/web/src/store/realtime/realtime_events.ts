@@ -187,7 +187,21 @@ export type WsEventPayloadMap = {
     changeSetId: string;
   };
   ComponentUpdated: {
-    componentId: string;
+    componentId: ComponentId;
+    changeSetId: string;
+  };
+  ConnectionCreated: {
+    fromComponentId: string;
+    toComponentId: string;
+    fromSocketId: string;
+    toSocketId: string;
+    changeSetId: string;
+  };
+  ConnectionDeleted: {
+    fromComponentId: string;
+    toComponentId: string;
+    fromSocketId: string;
+    toSocketId: string;
     changeSetId: string;
   };
   ModuleImported: {
