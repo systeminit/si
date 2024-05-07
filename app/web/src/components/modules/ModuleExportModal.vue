@@ -159,6 +159,7 @@ const schemaVariantsById = computed(() => componentStore.schemaVariantsById);
 const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
+    .filter((sv) => sv.isDefault)
     .map((sv) => ({
       label: sv.schemaName,
       value: sv.id,
