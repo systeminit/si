@@ -127,6 +127,40 @@ impl Action {
         result: ActionResult,
     );
 
+    pub async fn find_equivalent(
+        ctx: &DalContext,
+        action_prototype_id: ActionPrototypeId,
+        maybe_component_id: Option<ComponentId>,
+    ) -> ActionResult<Option<ActionId>> {
+        let snap = ctx.workspace_snapshot()?;
+        let action_category_id = snap
+            .get_category_node(None, CategoryNodeKind::Action)
+            .await?;
+
+        for action_idx in snap
+            .outgoing_targets_for_edge_weight_kind(
+                action_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
+            let action_id: ActionId = snap
+                .get_node_weight(action_idx)
+                .await?
+                .get_action_node_weight()?
+                .id()
+                .into();
+
+            if Self::component_id(ctx, action_id).await? == maybe_component_id
+                && Self::action_prototype_id(ctx, action_id).await? == action_prototype_id
+            {
+                // we found the equivalent!
+                return Ok(Some(action_id));
+            }
+        }
+        Ok(None)
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
         let action: Self = ctx
             .workspace_snapshot()?
@@ -223,32 +257,13 @@ impl Action {
     ) -> ActionResult<()> {
         let change_set = ctx.change_set()?;
         let snap = ctx.workspace_snapshot()?;
-        let action_category_id = snap
-            .get_category_node(None, CategoryNodeKind::Action)
-            .await?;
 
-        for action_idx in snap
-            .outgoing_targets_for_edge_weight_kind(
-                action_category_id,
-                EdgeWeightKindDiscriminants::Use,
-            )
-            .await?
+        if let Some(action_id) =
+            Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
         {
-            let action_id: ActionId = snap
-                .get_node_weight(action_idx)
-                .await?
-                .get_action_node_weight()?
-                .id()
-                .into();
-
-            if Self::component_id(ctx, action_id).await? == maybe_component_id
-                && Self::action_prototype_id(ctx, action_id).await? == action_prototype_id
-            {
-                snap.remove_node_by_id(&change_set, action_id.into())
-                    .await?;
-            }
+            let action_ulid: Ulid = action_id.into();
+            snap.remove_node_by_id(&change_set, action_ulid);
         }
-
         Ok(())
     }
 
