@@ -1330,7 +1330,15 @@ function sendMovedElementPosition(e: {
   const positions: ComponentPositions[] = [];
   for (const key of e.uniqueKeys) {
     const position = movedElementPositions[key];
+    if (position) {
+      position.x = Math.round(position.x);
+      position.y = Math.round(position.y);
+    }
     const size = resizedElementSizes[key];
+    if (size) {
+      size.width = Math.round(size.width);
+      size.height = Math.round(size.height);
+    }
     const componentId = DiagramNodeData.componentIdFromUniqueKey(
       DiagramGroupData.componentIdFromUniqueKey(key),
     );
