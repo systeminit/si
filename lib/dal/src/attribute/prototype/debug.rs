@@ -22,37 +22,8 @@ use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
-    ComponentError, DalContext, Func, FuncError, FuncId,
+    ComponentError, DalContext, Func, FuncError, FuncId, Secret, SecretError,
 };
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeDebugView {
-    pub func_id: FuncId,
-    pub func_execution: Option<FuncExecution>,
-    pub id: AttributePrototypeId,
-    pub func_name: String,
-    pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
-    pub attribute_values: Vec<AttributeValueId>,
-    pub is_component_specific: bool,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FuncArgDebugView {
-    pub value: serde_json::Value,
-    pub name: String,
-    pub value_source: String,
-    pub value_source_id: Ulid,
-    pub socket_source_kind: Option<SocketSourceKind>,
-    pub path: Option<String>,
-    pub is_used: bool,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum SocketSourceKind {
-    Inferred,
-    Manual,
-}
 
 type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugViewError>;
 
@@ -81,10 +52,43 @@ pub enum AttributePrototypeDebugViewError {
     OutputSocketError(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     PropError(#[from] PropError),
+    #[error("secret error: {0}")]
+    SecretError(#[from] SecretError),
     #[error("value source error: {0}")]
     ValueSourceError(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshotError(#[from] WorkspaceSnapshotError),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeDebugView {
+    pub func_id: FuncId,
+    pub func_execution: Option<FuncExecution>,
+    pub id: AttributePrototypeId,
+    pub func_name: String,
+    pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
+    pub attribute_values: Vec<AttributeValueId>,
+    pub is_component_specific: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncArgDebugView {
+    pub value: serde_json::Value,
+    pub name: String,
+    pub value_source: String,
+    pub value_source_id: Ulid,
+    pub socket_source_kind: Option<SocketSourceKind>,
+    pub path: Option<String>,
+    pub is_used: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SocketSourceKind {
+    Inferred,
+    Manual,
 }
 
 impl AttributePrototypeDebugView {
@@ -148,6 +152,17 @@ impl AttributePrototypeDebugView {
                             ),
                         )?;
                 let values_for_arg = match value_source {
+                    ValueSource::Secret(secret_id) => {
+                        vec![FuncArgDebugView {
+                            value: Secret::payload_for_prototype_debug_view(secret_id)?,
+                            name: func_arg_name.clone(),
+                            value_source: value_source.to_string(),
+                            value_source_id: secret_id.into(),
+                            path: None,
+                            socket_source_kind: None,
+                            is_used: arg_used,
+                        }]
+                    }
                     ValueSource::StaticArgumentValue(static_argument_value_id) => {
                         let val = StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
                             .await?
@@ -162,7 +177,6 @@ impl AttributePrototypeDebugView {
                             is_used: arg_used,
                         }]
                     }
-
                     ValueSource::Prop(prop_id) => {
                         let mut values = vec![];
 

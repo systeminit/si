@@ -51,8 +51,9 @@ use crate::func::argument::{FuncArgumentError, FuncArgumentId};
 use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::binding::FuncBindingError;
 use crate::func::view::FuncViewError;
-use crate::func::{BeforeFuncError, FuncKind};
+use crate::func::FuncKind;
 use crate::prop::PropError;
+use crate::secret::BeforeFuncError;
 use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototypeId, ComponentError, ComponentId, DalContext, DeprecatedActionKind,

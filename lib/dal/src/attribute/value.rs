@@ -58,12 +58,12 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::PropError;
+use crate::secret::before_funcs_for_component;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
@@ -78,7 +78,7 @@ use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotErr
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, TransactionsError,
+    OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -184,6 +184,8 @@ pub enum AttributeValueError {
     PropNotFound(AttributeValueId),
     #[error("trying to delete av that's not related to child of map or array: {0}")]
     RemovingWhenNotChildOrMapOrArray(AttributeValueId),
+    #[error("secret error: {0}")]
+    Secret(#[from] Box<SecretError>),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -686,6 +688,11 @@ impl AttributeValue {
                                         .await?
                                         .value,
                                 ]
+                            }
+                            ValueSource::Secret(secret_id) => {
+                                vec![Secret::payload_for_prototype_execution(ctx, secret_id)
+                                    .await
+                                    .map_err(Box::new)?]
                             }
                             other_source => {
                                 let mut values = vec![];

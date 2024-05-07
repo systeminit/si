@@ -37,9 +37,18 @@ use sodiumoxide::crypto::sealedbox;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
+use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::binding::FuncBindingError;
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::key_pair::KeyPairPk;
 use crate::layer_db_types::{SecretContent, SecretContentV1};
 use crate::prop::PropError;
@@ -53,18 +62,22 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, ChangeSetError, DalContext, HelperError, HistoryActor,
+    id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
+    ChangeSetError, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor,
     HistoryEventError, KeyPair, KeyPairError, SchemaVariantError, StandardModelError, Timestamp,
     TransactionsError, UserPk,
 };
 
 mod algorithm;
+mod before_funcs;
 mod definition_view;
 mod event;
 mod view;
 
 pub use algorithm::SecretAlgorithm;
 pub use algorithm::SecretVersion;
+pub use before_funcs::before_funcs_for_component;
+pub use before_funcs::BeforeFuncError;
 pub use definition_view::SecretDefinitionView;
 pub use definition_view::SecretDefinitionViewError;
 pub use event::SecretCreatedPayload;
@@ -77,16 +90,30 @@ pub use view::SecretViewResult;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("error when decrypting crypted secret")]
+    #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("encrypted secret not found for corresponding secret: {0}")]
-    EncryptedSecretNotFound(SecretId),
+    #[error("encrypted secret not found for key: {0}")]
+    EncryptedSecretNotFound(EncryptedSecretKey),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument not found for func ({0}) and name ({1})")]
+    FuncArgumentNotFound(FuncId, String),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("history event error: {0}")]
@@ -291,6 +318,69 @@ impl Secret {
         self.key
     }
 
+    /// Attach a [`Secret`] to a given [`AttributeValue`] corresponding to a
+    /// "/root/secrets/\<secret\>" [`Prop`](crate::Prop).
+    ///
+    /// - If a [`Secret`] has already been attached to the given [`AttributeValue`], the existing
+    ///   attachment will be replaced with a new one.
+    /// - If no [`Secret`] is provided, then the [`AttributeValue`] will be updated to its original
+    ///   state via [`AttributeValue::use_default_prototype`].
+    ///
+    /// This method will enqueue
+    /// [`DependentValuesUpdate`](crate::job::definition::DependentValuesUpdate).
+    pub async fn attach_for_attribute_value(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        secret_id: Option<SecretId>,
+    ) -> SecretResult<()> {
+        // First, check if the caller would like to unset the secret.
+        let secret_id = match secret_id {
+            Some(provided_secret_id) => provided_secret_id,
+            None => {
+                // We use the default prototype here rather than passing "None" to
+                // "AttributeValue::update" because we neither want nor need existing prototype
+                // arguments and the user cannot override the prototype for values corresponding
+                // to a given "/root/secrets/<secret>".
+                AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
+                return Ok(());
+            }
+        };
+
+        // Cache the variables we need for creating the attachment.
+        let func_argument_name = "identity";
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+
+        // Create a new prototype and replace the existing one. If we are updating which secret is
+        // used for the provided attribute value, this will remove the attribute prototype argument
+        // that uses the previous secret. Despite having the ability to update the attribute
+        // prototype argument value source, we need to re-create the prototype every time this
+        // method is called. Why? We cannot be certain that the existing prototype and its arguments
+        // (0 to N) will be what we need.
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        AttributeValue::set_component_prototype_id(
+            ctx,
+            attribute_value_id,
+            attribute_prototype.id(),
+        )
+        .await?;
+
+        // Create an attribute prototype argument whose value source is the secret provided. Then,
+        // enqueue dependent values update with the secret.
+        let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
+            .await?
+            .ok_or(SecretError::FuncArgumentNotFound(
+                func_id,
+                func_argument_name.to_owned(),
+            ))?;
+        AttributePrototypeArgument::new(ctx, attribute_prototype.id(), func_argument.id)
+            .await?
+            .set_value_from_secret_id(ctx, secret_id)
+            .await?;
+        ctx.enqueue_dependent_values_update(vec![secret_id]).await?;
+
+        Ok(())
+    }
+
     /// Gets the [`Secret`] with a given [`SecretId`]. If a [`Secret`] is not found, then return an
     /// [`error`](SecretError).
     ///
@@ -313,6 +403,75 @@ impl Secret {
         let SecretContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
+    }
+
+    /// Prepares the serialized payload for prototype execution for a given [`SecretId`](Secret).
+    pub async fn payload_for_prototype_execution(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<Value> {
+        let secret = Self::get_by_id_or_error(ctx, secret_id).await?;
+        Ok(serde_json::to_value(PayloadForAttributeValue {
+            secret_id,
+            encrypted_secret_key: secret.key,
+        })?)
+    }
+
+    /// Prepares the serialized debug payload for debug views using a redacted key and the provided
+    /// [`SecretId`](Secret).
+    pub fn payload_for_prototype_debug_view(secret_id: SecretId) -> SecretResult<Value> {
+        Ok(serde_json::to_value(PayloadForPrototypeDebugView {
+            secret_id,
+            encrypted_secret_key: REDACTED_ENCRYPTED_SECRET_KEY.into(),
+        })?)
+    }
+
+    /// Takes the [`SecretId`](Secret) from an existing serialized payload and prepares it for use
+    /// in the property editor.
+    pub fn payload_for_property_editor_values(payload: Value) -> SecretResult<Value> {
+        let deserialized_payload: PayloadForAttributeValue = serde_json::from_value(payload)?;
+        let new_payload = serde_json::to_value(deserialized_payload.secret_id.to_string())?;
+        Ok(new_payload)
+    }
+
+    /// Gets the [`EncryptedSecretKey`] from a serialized payload found within an
+    /// [`AttributeValue`].
+    pub fn key_from_payload(payload: Value) -> SecretResult<EncryptedSecretKey> {
+        let deserialized_payload: PayloadForAttributeValue = serde_json::from_value(payload)?;
+        Ok(deserialized_payload.encrypted_secret_key)
+    }
+
+    /// Find all [`AttributeValues`](AttributeValue) that _directly_ depend on the [`Secret`]
+    /// corresponding to the provided [`SecretId`](Secret).
+    pub async fn direct_dependent_attribute_values(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<Vec<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let attribute_prototype_argument_indices = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                secret_id,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )
+            .await?;
+
+        let mut attribute_value_ids = Vec::new();
+        for attribute_prototype_argument_index in attribute_prototype_argument_indices {
+            let attribute_prototype_argument_node_weight = workspace_snapshot
+                .get_node_weight(attribute_prototype_argument_index)
+                .await?
+                .get_attribute_prototype_argument_node_weight()?;
+            let attribute_prototype_id = AttributePrototypeArgument::prototype_id_for_argument_id(
+                ctx,
+                attribute_prototype_argument_node_weight.id().into(),
+            )
+            .await?;
+            attribute_value_ids.extend(
+                AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id).await?,
+            );
+        }
+
+        Ok(attribute_value_ids)
     }
 
     /// Lists all [`Secrets`](Secret) in the current [`snapshot`](crate::WorkspaceSnapshot).
@@ -400,8 +559,11 @@ impl Secret {
         let new_key = Self::generate_key(ctx, self.id)?;
         EncryptedSecret::insert(ctx, new_key, crypted, key_pair_pk, version, algorithm).await?;
 
+        // Since we are updating encrypted contents, we have a new key and need to enqueue ourselves
+        // into dependent values update.
+        ctx.enqueue_dependent_values_update(vec![self.id]).await?;
+
         // Now, update the key on the secret on the graph.
-        // TODO(nick): ensure that the old encrypted secret gets garbage collected.
         self.modify(ctx, |s| {
             s.key = new_key;
             Ok(())
@@ -439,6 +601,24 @@ impl Secret {
 
         Ok(secret)
     }
+}
+
+const REDACTED_ENCRYPTED_SECRET_KEY: &str = "[REDACTED]";
+
+// NOTE(nick): keep this and its fields private! It should only be used by methods within the Secret
+// impl. I will be sad if it neither remains private nor remains used in a limited fashion.
+#[derive(Debug, Serialize, Deserialize)]
+struct PayloadForAttributeValue {
+    secret_id: SecretId,
+    encrypted_secret_key: EncryptedSecretKey,
+}
+
+// NOTE(nick): keep this and its fields private! It should only be used by methods within the Secret
+// impl. I will be sad if it neither remains private nor remains used in a limited fashion.
+#[derive(Debug, Serialize, Deserialize)]
+struct PayloadForPrototypeDebugView {
+    secret_id: SecretId,
+    encrypted_secret_key: String,
 }
 
 /// The [`EncryptedSecret`] corresponding to an individual [`Secret`]. It contains sensitive, but
@@ -511,7 +691,7 @@ impl EncryptedSecret {
         Ok(())
     }
 
-    /// Gets the [`EncryptedSecret`] by a given [`SecretId`].
+    /// Gets the [`EncryptedSecret`] with a given key.
     ///
     /// _Warning:_ sensitive, but encrypted, contents will be returned.
     pub async fn get_by_key(

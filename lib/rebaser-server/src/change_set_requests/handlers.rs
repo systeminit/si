@@ -55,7 +55,7 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     let mut ctx = state.ctx_builder.build_default().await?;
     // TODO(fnichol): I'm about 95% sure that preparing the `ctx` is not necessary, but I
     // am explicitly copying implementation across from the last iteration
-    ctx.update_visibility_deprecated(Visibility::new_head());
+    ctx.update_visibility_deprecated(Visibility::new_head_fake());
     ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
 
     let rebase_status = perform_rebase(&mut ctx, &message)

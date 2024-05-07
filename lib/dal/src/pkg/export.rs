@@ -813,6 +813,9 @@ impl PkgExporter {
                                 .build()?,
                         );
                     }, // get the prop name and add to the list
+                    // NOTE(nick): do we want to skip exporting secrets? Probably not... but maybe
+                    // something that the user can toggle?
+                    crate::attribute::prototype::argument::value_source::ValueSource::Secret(_) => {},
                     crate::attribute::prototype::argument::value_source::ValueSource::StaticArgumentValue(_) => {}, // do nothing as this is irrelevant for the schema variant!
                 }
             }

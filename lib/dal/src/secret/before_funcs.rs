@@ -7,9 +7,10 @@ use crate::schema::variant::root_prop::RootPropChild;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     AttributeValue, Component, ComponentError, ComponentId, DalContext, EncryptedSecret, Func,
-    FuncId, Prop, PropId, SchemaVariant, Secret, SecretError, SecretId, StandardModelError,
+    FuncId, Prop, PropId, SchemaVariant, Secret, SecretError, StandardModelError,
 };
 
+#[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum BeforeFuncError {
@@ -41,6 +42,7 @@ pub enum BeforeFuncError {
 
 type BeforeFuncResult<T> = Result<T, BeforeFuncError>;
 
+/// Collect all [`BeforeFunctions`](BeforeFunction) for a given [`ComponentId`](Component).
 pub async fn before_funcs_for_component(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -67,7 +69,7 @@ pub async fn before_funcs_for_component(
         .await?;
 
         let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
-        let mut maybe_secret_id = None;
+        let mut maybe_payload = None;
         for av_id in av_ids {
             if AttributeValue::component_id(ctx, av_id).await? != component_id {
                 continue;
@@ -75,24 +77,23 @@ pub async fn before_funcs_for_component(
 
             let av = AttributeValue::get_by_id(ctx, av_id).await?;
 
-            maybe_secret_id = av.value(ctx).await?;
+            maybe_payload = av.value(ctx).await?;
             break;
         }
 
-        if let Some(secret_id_str) = maybe_secret_id {
-            let id: SecretId = serde_json::from_value(secret_id_str)?;
+        if let Some(payload) = maybe_payload {
+            let key = Secret::key_from_payload(payload)?;
 
-            funcs_and_secrets.push((id, auth_funcs))
+            funcs_and_secrets.push((key, auth_funcs))
         }
     }
 
     let mut results = vec![];
 
-    for (secret_id, funcs) in funcs_and_secrets {
-        let secret = Secret::get_by_id_or_error(ctx, secret_id).await?;
-        let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.key())
+    for (key, funcs) in funcs_and_secrets {
+        let encrypted_secret = EncryptedSecret::get_by_key(ctx, key)
             .await?
-            .ok_or(SecretError::EncryptedSecretNotFound(secret_id))?;
+            .ok_or(SecretError::EncryptedSecretNotFound(key))?;
 
         // Decrypt message from EncryptedSecret
         let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();

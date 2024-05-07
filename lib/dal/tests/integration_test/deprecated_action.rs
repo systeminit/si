@@ -1,6 +1,5 @@
 mod batch;
 mod runner;
-mod with_secret;
 mod with_update;
 
 use chrono::Utc;

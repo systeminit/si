@@ -1,15 +1,17 @@
+use std::{collections::HashMap, collections::HashSet, collections::VecDeque, sync::Arc};
+use tokio::sync::Mutex;
+use ulid::Ulid;
+
 use super::producer::JobProducer;
 use crate::job::definition::compute_validation::ComputeValidation;
 use crate::job::definition::{AttributeValueBasedJobIdentifier, DependentValuesUpdate};
-use crate::{AccessBuilder, AttributeValueId, ChangeSetId, Visibility};
-use std::{collections::HashMap, collections::HashSet, collections::VecDeque, sync::Arc};
-use tokio::sync::Mutex;
+use crate::{AccessBuilder, ChangeSetId, Visibility};
 
 type AttributeValueBasedJobs = Arc<
     Mutex<
         HashMap<
             AttributeValueBasedJobIdentifier,
-            HashMap<(ChangeSetId, AccessBuilder), HashSet<AttributeValueId>>,
+            HashMap<(ChangeSetId, AccessBuilder), HashSet<Ulid>>,
         >,
     >,
 >;
@@ -33,9 +35,10 @@ impl JobQueue {
         change_set_id: ChangeSetId,
         access_builder: AccessBuilder,
         job_kind: AttributeValueBasedJobIdentifier,
-        ids: Vec<AttributeValueId>,
+        ids: Vec<impl Into<Ulid>>,
     ) {
         let mut lock = self.attribute_value_based_jobs.lock().await;
+        let ids: Vec<Ulid> = ids.into_iter().map(|id| id.into()).collect();
         lock.entry(job_kind)
             .or_default()
             .entry((change_set_id, access_builder))
@@ -92,7 +95,11 @@ impl JobQueue {
                 AttributeValueBasedJobIdentifier::ComputeValidation => ComputeValidation::new(
                     access_builder,
                     Visibility::new(change_set_id),
-                    ids.into_iter().collect(),
+                    // NOTE(nick): despite dependent values update accepting ids for any node, we
+                    // know that validations must take in attribute values ids. This conversion is
+                    // safe given that the enqueue methods require an explicit list of attribute
+                    // value ids.
+                    ids.iter().map(|id| (*id).into()).collect(),
                 ),
             });
         }

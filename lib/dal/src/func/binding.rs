@@ -7,8 +7,9 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{BeforeFunction, OutputStream};
 
-use super::{BeforeFuncError, FuncError};
 use crate::func::binding::critical_section::execute_critical_section;
+use crate::secret::BeforeFuncError;
+use crate::FuncError;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
     standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
