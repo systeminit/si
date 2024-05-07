@@ -4668,6 +4668,7 @@ dependencies = [
  "base64 0.22.1",
  "buck2-resources",
  "chrono",
+ "clap",
  "convert_case 0.6.0",
  "dal",
  "dal-test",

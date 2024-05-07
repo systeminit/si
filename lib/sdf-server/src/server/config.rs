@@ -1,6 +1,7 @@
 use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
+use std::collections::HashSet;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -18,6 +19,7 @@ use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::server::feature_flags::FeatureFlag;
 pub use dal::MigrationMode;
 pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
@@ -86,6 +88,8 @@ pub struct Config {
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
+
+    boot_feature_flags: HashSet<FeatureFlag>,
 }
 
 impl StandardConfig for Config {
@@ -157,6 +161,12 @@ impl Config {
         &self.module_index_url
     }
 
+    /// Feature flags defined at boot time, via config files or the FEATURES env variable
+    #[must_use]
+    pub fn boot_feature_flags(&self) -> &HashSet<FeatureFlag> {
+        &self.boot_feature_flags
+    }
+
     #[must_use]
     pub fn layer_db_config(&self) -> &LayerDbConfig {
         &self.layer_db_config
@@ -197,6 +207,8 @@ pub struct ConfigFile {
     pub module_index_url: String,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
+    #[serde(default)]
+    boot_feature_flags: Vec<FeatureFlag>,
 }
 
 impl Default for ConfigFile {
@@ -213,6 +225,7 @@ impl Default for ConfigFile {
             layer_db_config: default_layer_db_config(),
             module_index_url: default_module_index_url(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
+            boot_feature_flags: Default::default(),
         }
     }
 }
@@ -239,6 +252,7 @@ impl TryFrom<ConfigFile> for Config {
         config.module_index_url(value.module_index_url);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
+        config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
         config.build().map_err(Into::into)
     }
 }

@@ -13,12 +13,6 @@ use crate::{
     PosthogConfig,
 };
 
-#[derive(Debug, Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum FeatureFlag {
-    Secrets,
-}
-
 #[derive(Debug)]
 struct FlagsCacheEntry {
     retrieved_at: Instant,
@@ -58,11 +52,7 @@ impl PosthogClient {
         Ok(())
     }
 
-    pub async fn check_feature_flag(
-        &self,
-        flag: FeatureFlag,
-        user_id: String,
-    ) -> PosthogResult<bool> {
+    pub async fn check_feature_flag(&self, flag: String, user_id: String) -> PosthogResult<bool> {
         let mut cache = FLAGS_CACHE.lock().await;
         let maybe_flags_cache = cache.get(&user_id);
 
@@ -83,6 +73,6 @@ impl PosthogClient {
             flags
         };
 
-        Ok(*flags.get(&flag.to_string()).unwrap_or(&false))
+        Ok(*flags.get(&flag).unwrap_or(&false))
     }
 }
