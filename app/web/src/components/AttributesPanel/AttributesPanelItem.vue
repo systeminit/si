@@ -962,17 +962,13 @@ function updateValue() {
     return;
   }
 
-<<<<<<< HEAD
   // If we are explicitly setting a secret, we need to inform SDF so that dependent values update
   // will trigger when the secret's encrypted contents change.
   if (widgetKind.value === "secret") {
     isForSecret = true;
   }
 
-  attributesStore.UPDATE_PROPERTY_VALUE({
-=======
   attributesStore.addPropertyToBatch({
->>>>>>> d23cff5ea (BUG-142 debounce & batch prop edits at 1 second)
     update: {
       attributeValueId: props.attributeDef.valueId,
       parentAttributeValueId: props.attributeDef.parentValueId,

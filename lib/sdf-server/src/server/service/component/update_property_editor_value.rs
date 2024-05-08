@@ -56,17 +56,17 @@ pub async fn upsert_property_editor_value(
     for update in request.updates {
         // Determine how to update the value based on whether it corresponds to a secret. The vast
         // majority of the time, the request will not be for a secret.
-        if request.is_for_secret {
-            if let Some(value) = request.value.as_ref() {
+        if update.is_for_secret {
+            if let Some(value) = update.value.as_ref() {
                 let secret_id: SecretId = serde_json::from_value(value.to_owned())?;
                 Secret::attach_for_attribute_value(
                     &ctx,
-                    request.attribute_value_id,
+                    update.attribute_value_id,
                     Some(secret_id),
                 )
                 .await?;
             } else {
-                Secret::attach_for_attribute_value(&ctx, request.attribute_value_id, None).await?;
+                Secret::attach_for_attribute_value(&ctx, update.attribute_value_id, None).await?;
             }
         } else {
             AttributeValue::update(&ctx, update.attribute_value_id, update.value).await?;
