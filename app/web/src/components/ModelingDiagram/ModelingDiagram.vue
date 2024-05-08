@@ -220,6 +220,7 @@ import {
   useComponentsStore,
   FullComponent,
   ComponentPositions,
+  ComponentConnection,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
@@ -1392,6 +1393,7 @@ function endDragElements() {
   // so we don't need to worry about accidentally moving them more than once
   const numSelected = currentSelectionMovableElements.value.length;
   const keys_to_save: string[] = [];
+  const parentConnections: ComponentConnection[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     let fitWithinParent: null | {
       position: Vector2d;
@@ -1422,7 +1424,10 @@ function endDragElements() {
             };
           }
         }
-        componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
+        parentConnections.push({
+          childId: el.def.id,
+          parentId: newParent.def.id,
+        });
       }
     }
 
@@ -1457,6 +1462,8 @@ function endDragElements() {
     uniqueKeys: keys_to_save,
     writeToChangeSet: true,
   });
+
+  componentsStore.CONNECT_COMPONENT_TO_FRAME(parentConnections);
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;

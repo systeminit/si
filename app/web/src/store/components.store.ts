@@ -186,6 +186,11 @@ export interface ComponentPositions {
   size?: Size2D;
 }
 
+export interface ComponentConnection {
+  childId: ComponentId;
+  parentId: ComponentId;
+}
+
 type APIComponentPositions = {
   componentId: string;
   x: string;
@@ -885,10 +890,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          async CONNECT_COMPONENT_TO_FRAME(
-            childId: ComponentId,
-            parentId: ComponentId,
-          ) {
+          async CONNECT_COMPONENT_TO_FRAME(connections: ComponentConnection[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -898,17 +900,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/connect_component_to_frame",
               params: {
-                childId,
-                parentId,
+                connections,
                 ...visibilityParams,
               },
               optimistic: () => {
-                const component = this.rawComponentsById[childId];
-                if (!component) return;
-                const prevParentId = component?.parentId;
-                component.parentId = parentId;
+                type Parent = [RawComponent, string | undefined];
+                const prevParents: Parent[] = [];
+                connections.forEach(({ childId, parentId }) => {
+                  const component = this.rawComponentsById[childId];
+                  if (!component) return;
+                  prevParents.push([component, component?.parentId]);
+                  component.parentId = parentId;
+                });
                 return () => {
-                  component.parentId = prevParentId;
+                  for (const [component, parentId] of prevParents) {
+                    component.parentId = parentId;
+                  }
                 };
               },
             });
