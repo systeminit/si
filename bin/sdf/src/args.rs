@@ -174,9 +174,9 @@ pub(crate) struct Args {
 
     /// The base URL for the module-index API server
     #[arg(
-        long, 
-        env = "FEATURES", 
-        value_parser = EnumValueParser::<FeatureFlag>::new(), 
+        long,
+        env = "SI_FEATURES",
+        value_parser = EnumValueParser::<FeatureFlag>::new(),
         value_delimiter = ',',
         rename_all = "snake_case",
     )]
