@@ -6,6 +6,7 @@ use dal::{
 use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
+use serde::Deserialize;
 
 #[test]
 async fn make_multiple_trees(ctx: &mut DalContext) {
@@ -219,7 +220,7 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     );
 }
 #[test]
-async fn connect_components(ctx: &mut DalContext) {
+async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalContext) {
     // Get the source schema variant id.
     let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
         .await
@@ -344,6 +345,77 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
+
+    // lunch, oysters - docker
+    // royel - butane
+
+    // disconnect oysters from butane
+    Component::remove_connection(
+        ctx,
+        oysters_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("able to remove connection");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .view(ctx)
+        .await
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    #[derive(Deserialize, Debug, PartialEq, Eq)]
+    struct Unit {
+        #[allow(unused)]
+        contents: String,
+        #[allow(unused)]
+        enabled: bool,
+        name: String,
+    }
+
+    let units: Vec<Unit> = serde_json::from_value(view).expect("able to deserialize");
+    assert_eq!(1, units.len());
+    assert_eq!(
+        "were-saving-for-lunch.service",
+        units
+            .get(0)
+            .map(|unit| unit.name.to_owned())
+            .expect("has the first unit")
+    );
+
+    // Disconnect lunch from butane
+    Component::remove_connection(
+        ctx,
+        lunch_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("able to remove connection");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .view(ctx)
+        .await
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units: Vec<Unit> = serde_json::from_value(view).expect("able to deserialize");
+    let empty_vec: Vec<Unit> = vec![];
+    assert_eq!(empty_vec, units, "units should now be empty");
 }
 
 #[test]

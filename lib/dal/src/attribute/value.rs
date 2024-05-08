@@ -865,7 +865,10 @@ impl AttributeValue {
             Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
         }
 
-        let values_are_different = value != unprocessed_value;
+        let should_populate_nested = Self::prop_for_id(ctx, attribute_value_id)
+            .await?
+            .map(|prop| prop.kind.is_container())
+            .unwrap_or(false);
 
         Self::set_real_values(
             ctx,
@@ -876,7 +879,7 @@ impl AttributeValue {
         )
         .await?;
 
-        if values_are_different {
+        if should_populate_nested {
             Self::populate_nested_values(ctx, attribute_value_id, unprocessed_value).await?;
         }
 
@@ -2035,6 +2038,17 @@ impl AttributeValue {
             .get_attribute_value_node_weight()?;
 
         Ok(node_weight.into())
+    }
+
+    pub async fn prop_for_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<Prop>> {
+        let prop_id = Self::prop_id_for_id(ctx, attribute_value_id).await?;
+        Ok(match prop_id {
+            Some(prop_id) => Some(Prop::get_by_id_or_error(ctx, prop_id).await?),
+            None => None,
+        })
     }
 
     pub async fn prop_id_for_id(
