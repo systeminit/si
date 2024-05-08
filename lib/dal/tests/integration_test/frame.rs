@@ -255,14 +255,15 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await
-                .expect("couldn't find implicit inputs");
-                assert!(possible_match.is_some());
-                let travis_output_match = possible_match.expect("has a value");
+                let mut possible_match =
+                    Component::find_potential_inferred_connections_to_input_socket(
+                        ctx,
+                        input_socket_match,
+                    )
+                    .await
+                    .expect("couldn't find implicit inputs");
+                assert!(!possible_match.is_empty());
+                let travis_output_match = possible_match.pop().expect("has a value");
                 //maybe_travis_output_socket = Some(travis_output);
                 assert_eq!(
                     travis_output_match.component_id,
@@ -348,13 +349,14 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await
-                .expect("couldn't find implicit inputs");
-                assert!(possible_match.is_none());
+                let possible_match =
+                    Component::find_potential_inferred_connections_to_input_socket(
+                        ctx,
+                        input_socket_match,
+                    )
+                    .await
+                    .expect("couldn't find implicit inputs");
+                assert!(possible_match.is_empty());
             }
         }
         //make sure travis output socket can find swifty input socket
@@ -795,10 +797,11 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .expect("is some");
     assert_eq!(one_output_mat_view, serde_json::json!("4"));
     let maybe_match =
-        Component::find_potential_inferred_connection_to_input_socket(ctx, one_input_match)
+        Component::find_potential_inferred_connections_to_input_socket(ctx, one_input_match)
             .await
             .expect("could not find inferred input socket")
-            .expect("is some");
+            .pop()
+            .expect("has one");
     assert_eq!(
         maybe_match.attribute_value_id,
         three_av_id.attribute_value_id
@@ -1059,9 +1062,10 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .expect("could not get input socket");
 
     let output_match =
-        Component::find_potential_inferred_connection_to_input_socket(ctx, *one_input_match)
+        Component::find_potential_inferred_connections_to_input_socket(ctx, *one_input_match)
             .await
             .expect("could not get inferred connection")
+            .pop()
             .expect("inferred connection is some");
     assert_eq!(odd_up_frame_output_av, output_match.attribute_value_id);
 

@@ -387,8 +387,11 @@ where
                             item: Some(item),
                         });
                     }
-                    Err(_) => {
-                        debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
+                    Err(err) => {
+                        debug!(
+                            "PoolNoodle: not healthy, cleaning up and getting a new one: {}",
+                            err
+                        );
                         // Item will be dropped, we need to try again
                     }
                 }

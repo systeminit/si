@@ -233,7 +233,7 @@ const edgeFromRawEdge =
   (isInferred: boolean) =>
   (e: RawEdge): Edge => {
     const edge = structuredClone(e) as Edge;
-    edge.id = `${edge.toSocketId}_${edge.fromSocketId}`;
+    edge.id = `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
     edge.isInferred = isInferred;
     return edge;
   };

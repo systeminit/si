@@ -41,6 +41,7 @@ use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_we
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::SocketArity;
 use crate::{
     func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
     AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
@@ -1907,18 +1908,18 @@ impl Component {
     pub async fn build_map_for_component_id_input_sockets(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<InputSocketMatch, OutputSocketMatch>> {
+    ) -> ComponentResult<HashMap<InputSocketMatch, Vec<OutputSocketMatch>>> {
         let mut results = HashMap::new();
-        let vet = Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        for (_, input_socket_match) in vet {
-            if let Some(output_socket) =
-                Component::find_potential_inferred_connection_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await?
-            {
-                results.entry(input_socket_match).or_insert(output_socket);
+        let input_sockets =
+            Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
+        for (_, input_socket_match) in input_sockets {
+            let output_matches = Component::find_potential_inferred_connections_to_input_socket(
+                ctx,
+                input_socket_match,
+            )
+            .await?;
+            if !output_matches.is_empty() {
+                results.entry(input_socket_match).or_insert(output_matches);
             }
         }
         debug!(
@@ -1927,40 +1928,48 @@ impl Component {
         );
         Ok(results)
     }
-    /// For a given [`InputSocketMatch`], find the single inferred [`OutputSocketMatch`] that is driving it
+    /// For a given [`InputSocketMatch`], find the inferred [`OutputSocketMatch`]es that are driving it
     /// if it exists. This walks up or down the component lineage tree depending on the [`ComponentType`]
     /// and finds the closest matching [`OutputSocket`]
     ///
+    /// When walking down the lineage tree, we allow multiple output sockets to drive an input socket
+    /// if the input socket has arity many and the matches are all siblings
+    ///
     /// Note: this does not check for whether data should actually flow between components
     #[instrument(level = "info", skip(ctx))]
-    pub async fn find_potential_inferred_connection_to_input_socket(
+    pub async fn find_potential_inferred_connections_to_input_socket(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
+    ) -> ComponentResult<Vec<OutputSocketMatch>> {
         if InputSocket::is_manually_configured(ctx, input_socket_match).await? {
             //if the input socket is being manually driven (the user has drawn an edge)
             // there will be no inferred connections to it
             info!("input socket is manually configured");
-            return Ok(None);
+            return Ok(vec![]);
         }
-        let maybe_source_socket =
+        let source_sockets =
             match Component::get_type_by_id(ctx, input_socket_match.component_id).await? {
                 ComponentType::Component | ComponentType::ConfigurationFrameDown => {
                     //For a component, or a down frame, check my parents and other ancestors
                     // find the first output socket match that is a down frame and use it!
 
-                    Self::find_first_output_socket_match_in_ancestors(
+                    if let Some(output_match) = Self::find_first_output_socket_match_in_ancestors(
                         ctx,
                         input_socket_match,
                         vec![ComponentType::ConfigurationFrameDown],
                     )
                     .await?
+                    {
+                        vec![output_match]
+                    } else {
+                        vec![]
+                    }
                 }
                 ComponentType::ConfigurationFrameUp => {
                     // An up frame's input sockets are sourced from its children's output sockets
                     // For now, we won't let down frames send outputs to parents and children
                     // This might need to change, but we can change it when we've got a use case.
-                    Self::find_first_output_socket_match_in_descendants(
+                    let mut matches = Self::find_all_output_socket_match_in_descendants(
                         ctx,
                         input_socket_match,
                         vec![
@@ -1968,16 +1977,20 @@ impl Component {
                             ComponentType::Component,
                         ],
                     )
-                    .await?
+                    .await?;
+                    // if there is more than one match, sort by component Ulid so they're
+                    // consistently ordered
+                    matches.sort_by_key(|output_socket| output_socket.component_id);
+                    matches
                 }
-                ComponentType::AggregationFrame => None,
+                ComponentType::AggregationFrame => vec![],
             };
         info!(
             "Source socket for input socket {:?} is: {:?}",
-            input_socket_match, maybe_source_socket
+            input_socket_match, source_sockets
         );
 
-        Ok(maybe_source_socket)
+        Ok(source_sockets)
     }
     /// Walk down the component lineage to find all matching input sockets that a given output
     /// socket is driving
@@ -2001,11 +2014,13 @@ impl Component {
                 let matchy_matchy =
                     Component::build_map_for_component_id_input_sockets(ctx, component_id).await?;
                 for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_match)) =
+                    if let Some((input_socket_match, output_socket_matches)) =
                         matchy_matchy.get_key_value(key)
                     {
-                        if output_socket_match.output_socket_id == output_socket_id {
-                            found_sockets.push(*input_socket_match);
+                        for output_socket_match in output_socket_matches {
+                            if output_socket_match.output_socket_id == output_socket_id {
+                                found_sockets.push(*input_socket_match);
+                            }
                         }
                     }
                 }
@@ -2086,15 +2101,17 @@ impl Component {
                     Component::build_map_for_component_id_input_sockets(ctx, working_component_id)
                         .await?;
                 for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_match)) =
+                    if let Some((input_socket_match, output_socket_matches)) =
                         matchy_matchy.get_key_value(key)
                     {
-                        if output_socket_match.output_socket_id == output_socket_id {
-                            debug!(
-                                "Found matching input socket {:?} for component id {}",
-                                input_socket_match, working_component_id
-                            );
-                            found_sockets.push(*input_socket_match);
+                        for output_socket_match in output_socket_matches {
+                            if output_socket_match.output_socket_id == output_socket_id {
+                                debug!(
+                                    "Found matching input socket {:?} for component id {}",
+                                    input_socket_match, working_component_id
+                                );
+                                found_sockets.push(*input_socket_match);
+                            }
                         }
                     }
                 }
@@ -2121,8 +2138,8 @@ impl Component {
         let input_sockets =
             Self::input_socket_attribute_values_for_component_id(ctx, to_component_id).await?;
         for (to_input_socket_id, input_socket_match) in input_sockets.into_iter() {
-            if let Some(output_socket_match) =
-                Self::find_potential_inferred_connection_to_input_socket(ctx, input_socket_match)
+            for output_socket_match in
+                Self::find_potential_inferred_connections_to_input_socket(ctx, input_socket_match)
                     .await?
             {
                 // add the check for to_delete on either to or from component
@@ -2153,35 +2170,39 @@ impl Component {
         Ok(connections)
     }
 
-    /// For the provided [`InputSocketMatch`], find the first [`OutputSocketMatch`] that should
+    /// For the provided [`InputSocketMatch`], find any matching [`OutputSocketMatch`] that should
     /// drive this [`InputSocket`] by searching down the descendants of the [`Component`],
-    /// checking children first and walking down until we find a single match
+    /// checking children first and walking down until we find any matches.
     /// Note: If we find multiple matches (for example, multiple children of a
-    /// [`ComponentType::ComponentFrameUp`], we return [`None`],
+    /// [`ComponentType::ComponentFrameUp`], and each of those children has a single
+    /// matching [`OutputSocket`], we return all of them. If the child has multiple
+    /// matches (for example, because of [`ConnectionAnnotations`], we won't connect any
     /// forcing the user to make an explicit, manual connection, by drawing an edge)
     ///
     /// Note: this does not check if data should actually flow between the components with matches
     #[instrument(level = "debug", skip(ctx))]
-    async fn find_first_output_socket_match_in_descendants(
+    async fn find_all_output_socket_match_in_descendants(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
         component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
-        let mut output_socket_match: Option<OutputSocketMatch> = None;
+    ) -> ComponentResult<Vec<OutputSocketMatch>> {
+        let mut output_socket_match: Vec<OutputSocketMatch> = vec![];
         let component_id = input_socket_match.component_id;
-        let children = Component::get_children_for_id(ctx, component_id).await?;
+        let children = VecDeque::from(Component::get_children_for_id(ctx, component_id).await?);
+        let socket_arrity = InputSocket::get_by_id(ctx, input_socket_match.input_socket_id)
+            .await?
+            .arity();
         //load up the children and look for matches
-        let mut work_queue: VecDeque<Vec<ComponentId>> = VecDeque::new();
+        let mut work_queue: VecDeque<VecDeque<ComponentId>> = VecDeque::new();
         work_queue.push_front(children);
 
-        'parents: while let Some(children) = work_queue.pop_front() {
-            for child_component in children {
-                match output_socket_match {
-                    Some(_) => {
-                        // we already have a match, but let's check siblings. If we find another one,
-                        // stop looking and return none, letting the user decide how to connect this
-                        // as for now, we aren't going to let input sockets infer their connection from
-                        // multiple output sockets
+        'parents: while let Some(mut children) = work_queue.pop_front() {
+            while let Some(child_component) = children.pop_front() {
+                match !output_socket_match.is_empty() {
+                    true => {
+                        // we already have a match, but if the input socket has arity many, we need to check siblings.
+                        // if the input socket is arity one, stop looking and return none, letting the user decide which
+                        // single child to connect to
                         if component_types
                             .contains(&Self::get_type_by_id(ctx, child_component).await?)
                         {
@@ -2193,20 +2214,30 @@ impl Component {
                                 )
                                 .await?;
                             {
-                                match maybe_matches.is_empty() {
-                                    // no match here, so let's keep looking
-                                    true => (),
-                                    // found another match, let's return none
-                                    false => {
-                                        output_socket_match = None;
-                                        break 'parents;
+                                match socket_arrity {
+                                    SocketArity::Many => {
+                                        if maybe_matches.len() == 1 {
+                                            // found a single match in descendants!
+                                            if let Some(output_match) =
+                                                maybe_matches.first().cloned()
+                                            {
+                                                output_socket_match.push(output_match);
+                                            }
+                                        }
+                                    }
+                                    SocketArity::One => {
+                                        if !maybe_matches.is_empty() {
+                                            //found another match, clear the matches we've found and break
+                                            output_socket_match = vec![];
+                                            break 'parents;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    None => {
-                        // no match yet, let's find if this child has exactly one match!
+                    false => {
+                        // no match yet, let's find if this child has any matches!
                         if component_types
                             .contains(&Component::get_type_by_id(ctx, child_component).await?)
                         {
@@ -2217,29 +2248,51 @@ impl Component {
                                     child_component,
                                 )
                                 .await?;
-
-                            if maybe_matches.len() > 1 {
-                                // this child has more than one match
-                                // stop looking and return None to force
-                                // the user to manually draw an edge
-                                // we don't care if other children might also be a match
-                                // let the user decide!
-                                return Ok(None);
-                            }
-                            if maybe_matches.len() == 1 {
-                                // found a single match in descendants!
-                                output_socket_match = maybe_matches.first().cloned();
+                            match socket_arrity {
+                                SocketArity::Many => {
+                                    if maybe_matches.len() == 1 {
+                                        // found matches in descendants!
+                                        if let Some(output_match) = maybe_matches.first().cloned() {
+                                            output_socket_match.push(output_match);
+                                        }
+                                    }
+                                }
+                                SocketArity::One => {
+                                    if maybe_matches.len() > 1 {
+                                        // this child has more than one match
+                                        // stop looking and return None to force
+                                        // the user to manually draw an edge
+                                        // we don't care if other children might also be a match
+                                        // let the user decide!
+                                        return Ok(vec![]);
+                                    }
+                                    if maybe_matches.len() == 1 {
+                                        if let Some(output_match) = maybe_matches.first().cloned() {
+                                            output_socket_match.push(output_match);
+                                        }
+                                    }
+                                    if !maybe_matches.is_empty() {
+                                        //found another match, clear the matches we've found and break
+                                        output_socket_match = vec![];
+                                        break 'parents;
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                let child_components = Component::get_children_for_id(ctx, child_component).await?;
+                let child_components =
+                    VecDeque::from(Component::get_children_for_id(ctx, child_component).await?);
                 work_queue.push_back(child_components);
             }
 
-            // if we found a match after looping through these children, we're done.
-            //Otherwise, continue with next children
-            if output_socket_match.is_some() {
+            // if we found any matches while looking through these children,
+            // and the socket arrity is one, or there aren't any more children at this level
+            // to process, we're done.
+            // Otherwise, continue to process the next level children
+            if !output_socket_match.is_empty()
+                && (socket_arrity == SocketArity::One || children.is_empty())
+            {
                 break 'parents;
             }
         }

@@ -112,7 +112,7 @@ impl Frame {
                         == ComponentType::ConfigurationFrameUp
                     {
                         for (_, input_socket_match) in
-                            Component::input_socket_attribute_values_for_component_id(ctx, child_id)
+                            Component::input_socket_attribute_values_for_component_id(ctx, parent)
                                 .await?
                         {
                             if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
@@ -144,6 +144,7 @@ impl Frame {
         child_id: ComponentId,
     ) -> FrameResult<()> {
         //when detaching a child, need to re-run any attribute prototypes for those impacted input sockets then queue up dvu!
+        Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
 
         let values_rerun = match Component::get_type_by_id(ctx, child_id).await? {
             ComponentType::Component
@@ -168,7 +169,7 @@ impl Frame {
                         == ComponentType::ConfigurationFrameUp
                     {
                         for (_, input_socket_match) in
-                            Component::input_socket_attribute_values_for_component_id(ctx, child_id)
+                            Component::input_socket_attribute_values_for_component_id(ctx, parent)
                                 .await?
                         {
                             if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
@@ -191,7 +192,6 @@ impl Frame {
             ComponentType::AggregationFrame => vec![],
         };
 
-        Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
         ctx.enqueue_dependent_values_update(values_rerun).await?;
         Ok(())
     }

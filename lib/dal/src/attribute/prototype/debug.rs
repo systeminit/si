@@ -281,12 +281,11 @@ impl AttributePrototypeDebugView {
             {
                 info!("Input socket match: {:?}", input_socket_match);
                 // now get inferred func binding args and values!
-                if let Some(output_match) =
-                    Component::find_potential_inferred_connection_to_input_socket(
-                        ctx,
-                        input_socket_match,
-                    )
-                    .await?
+                for output_match in Component::find_potential_inferred_connections_to_input_socket(
+                    ctx,
+                    input_socket_match,
+                )
+                .await?
                 {
                     info!("output socket match: {:?}", output_match);
                     let arg_used = Component::should_data_flow_between_components(

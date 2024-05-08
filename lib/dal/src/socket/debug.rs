@@ -132,16 +132,11 @@ impl SocketDebugView {
         };
         let value_view = attribute_value.view(ctx).await?;
         let inferred_connections =
-            match Component::find_potential_inferred_connection_to_input_socket(
-                ctx,
-                input_socket_match,
-            )
-            .await?
-            .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
-            {
-                Some(output_id) => vec![output_id],
-                None => vec![],
-            };
+            Component::find_potential_inferred_connections_to_input_socket(ctx, input_socket_match)
+                .await?
+                .into_iter()
+                .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
+                .collect();
         let view = SocketDebugView {
             prototype_id,
             func_name: prototype_debug_view.func_name,
