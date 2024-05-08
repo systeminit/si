@@ -52,14 +52,14 @@ import { VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { ProposedAction } from "@/store/actions.store";
+import { DeprecatedProposedAction } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const componentsStore = useComponentsStore();
 const changeSetStore = useChangeSetsStore();
 
 const props = defineProps<{
-  action: ProposedAction;
+  action: DeprecatedProposedAction;
   slim?: boolean;
 }>();
 

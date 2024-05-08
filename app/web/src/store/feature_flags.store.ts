@@ -7,6 +7,7 @@ import { posthog } from "@/utils/posthog";
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
+  IS_ACTIONS_V2: "actions_v2", // TODO - THIS SHOULD BE REMOVED ONCE ACTIONS V1 IS GONE
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
@@ -31,6 +32,8 @@ export function useFeatureFlagsStore() {
           });
         });
         // You can override feature flags while working on a feature by setting them to true here
+
+        this.IS_ACTIONS_V2 = true; // TODO -  THIS SHOULD BE REMOVED ONCE ACTIONS V1 IS GONE
 
         // Make sure to remove the override before committing your code!
       },

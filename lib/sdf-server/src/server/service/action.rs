@@ -6,7 +6,10 @@ use axum::{
 };
 use thiserror::Error;
 
-use dal::schema::SchemaError as DalSchemaError;
+use dal::{
+    action::{prototype::ActionPrototypeError, Action},
+    schema::SchemaError as DalSchemaError,
+};
 use dal::{
     func::binding::return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     DeprecatedActionBatchError, DeprecatedActionRunnerError, StandardModelError, TransactionsError,
@@ -16,12 +19,17 @@ use dal::{
 use crate::server::state::AppState;
 
 pub mod history;
+pub mod load_queued;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ActionError {
     #[error(transparent)]
+    Action(#[from] dal::action::ActionError),
+    #[error(transparent)]
     ActionBatch(#[from] DeprecatedActionBatchError),
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
     ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error(transparent)]
@@ -65,5 +73,7 @@ impl IntoResponse for ActionError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/history", get(history::history))
+    Router::new()
+        .route("/history", get(history::history))
+        .route("/load_queued", get(load_queued::load_queued))
 }

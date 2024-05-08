@@ -1,5 +1,6 @@
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use thiserror::Error;
 
 use crate::component::ComponentResult;
@@ -114,6 +115,14 @@ impl ActionPrototype {
             .into();
 
         Ok(new_prototype)
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn description(&self) -> &Option<String> {
+        &self.description
     }
 
     implement_add_edge_to!(

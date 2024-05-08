@@ -7,9 +7,9 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { ComponentId, ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import {
-  ActionStatus,
-  DeprecatedActionId,
-  ProposedAction,
+  DeprecatedActionStatus,
+  ActionId,
+  DeprecatedProposedAction,
 } from "../actions.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
@@ -175,7 +175,7 @@ export type WsEventPayloadMap = {
   };
   DeprecatedActionBatchReturn: {
     id: string;
-    status: ActionStatus;
+    status: DeprecatedActionStatus;
   };
   ComponentCreated: {
     success: boolean;
@@ -239,16 +239,16 @@ export type WsEventPayloadMap = {
 
   ActionAdded: {
     componentId: ComponentId;
-    actionId: DeprecatedActionId;
+    actionId: ActionId;
     changeSetId: ChangeSetId;
   };
   ActionRemoved: {
     componentId: ComponentId;
-    actionId: DeprecatedActionId;
+    actionId: ActionId;
     changeSetId: ChangeSetId;
   };
-  DeprecatedActionAdded: ProposedAction;
-  DeprecatedActionRemoved: DeprecatedActionId;
+  DeprecatedActionAdded: DeprecatedProposedAction;
+  DeprecatedActionRemoved: ActionId;
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;

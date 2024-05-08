@@ -102,6 +102,10 @@ impl Action {
         self.state
     }
 
+    pub fn originating_changeset_id(&self) -> ChangeSetId {
+        self.originating_changeset_id
+    }
+
     implement_add_edge_to!(
         source_id: ActionId,
         destination_id: ComponentId,
