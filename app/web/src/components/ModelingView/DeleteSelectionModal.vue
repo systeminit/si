@@ -99,9 +99,9 @@ async function onConfirmDelete() {
       componentsStore.selectedEdge?.fromComponentId,
     );
   } else if (componentsStore.deletableSelectedComponents.length > 0) {
-    await componentsStore.DELETE_COMPONENTS(
-      componentsStore.deletableSelectedComponents.map((c) => c.id),
-    );
+    await componentsStore.DELETE_COMPONENTS([
+      ...new Set(componentsStore.deletableSelectedComponents.map((c) => c.id)),
+    ]);
   }
   componentsStore.setSelectedComponentId(null);
 }
