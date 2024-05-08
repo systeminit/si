@@ -211,6 +211,7 @@ import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
+import { useRoute } from "vue-router";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -279,6 +280,8 @@ import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
+
+const route = useRoute();
 
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
@@ -378,6 +381,7 @@ const containerPointerPos = ref<Vector2d>();
 /** pointer position in frame of reference of grid  */
 const gridPointerPos = computed(() => {
   if (!containerPointerPos.value) return undefined;
+  if (route.name === "workspace-lab") return undefined;
   const converted = convertContainerCoordsToGridCoords(
     containerPointerPos.value,
   );
