@@ -22,7 +22,7 @@ use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
-    ComponentError, DalContext, Func, FuncError, FuncId, Secret, SecretError,
+    ComponentError, DalContext, Func, FuncError, FuncId, SecretError,
 };
 
 type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugViewError>;
@@ -54,6 +54,8 @@ pub enum AttributePrototypeDebugViewError {
     PropError(#[from] PropError),
     #[error("secret error: {0}")]
     SecretError(#[from] SecretError),
+    #[error("serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::Error),
     #[error("value source error: {0}")]
     ValueSourceError(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
@@ -154,7 +156,9 @@ impl AttributePrototypeDebugView {
                 let values_for_arg = match value_source {
                     ValueSource::Secret(secret_id) => {
                         vec![FuncArgDebugView {
-                            value: Secret::payload_for_prototype_debug_view(secret_id)?,
+                            value: serde_json::to_value(format!(
+                                "[REDACTED KEY FOR SECRET (ID: {secret_id})]"
+                            ))?,
                             name: func_arg_name.clone(),
                             value_source: value_source.to_string(),
                             value_source_id: secret_id.into(),

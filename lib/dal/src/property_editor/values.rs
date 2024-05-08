@@ -7,6 +7,7 @@ use petgraph::prelude::NodeIndex;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValueError;
 use crate::component::ControllingFuncData;
@@ -240,6 +241,16 @@ impl PropertyEditorValues {
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root", "secrets"]))
                 .await?;
 
+        // Collect a map of all secret ids by key in the graph. In the future, we may want to cache
+        // this or search while iterating. For now, the "list_ids_by_key_bench" test ensures that we
+        // meet a baseline performance target.
+        let ids_by_key = {
+            let start = tokio::time::Instant::now();
+            let ids_by_key = Secret::list_ids_by_key(ctx).await?;
+            debug!(%component_id, "listing secret ids by key took {:?}", start.elapsed());
+            ids_by_key
+        };
+
         for secret_prop_id in Prop::direct_child_prop_ids(ctx, secret_object_prop_id).await? {
             let attribute_value_id = self.find_by_prop_id(secret_prop_id).ok_or(
                 PropertyEditorError::PropertyEditorValueNotFoundByPropId(secret_object_prop_id),
@@ -247,7 +258,8 @@ impl PropertyEditorValues {
 
             if let Some(property_editor_value) = self.values.get_mut(&attribute_value_id.into()) {
                 if Value::Null != property_editor_value.value {
-                    property_editor_value.value = Secret::payload_for_property_editor_values(
+                    property_editor_value.value = Secret::prepare_property_editor_value(
+                        &ids_by_key,
                         property_editor_value.value.clone(),
                     )?;
                 }

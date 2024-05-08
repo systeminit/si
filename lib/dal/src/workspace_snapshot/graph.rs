@@ -880,6 +880,10 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::Prop(prop_node_weight) => {
                         (format!("Prop\n{}", prop_node_weight.name()), "orange")
                     }
+                    NodeWeight::Secret(secret_node_weight) => (
+                        format!("Secret\n{}", secret_node_weight.encrypted_secret_key()),
+                        "black",
+                    ),
                 };
                 let color = color.to_string();
                 let id = node_weight.id();

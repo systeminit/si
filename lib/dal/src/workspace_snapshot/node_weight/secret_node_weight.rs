@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::EdgeWeightKindDiscriminants;
 use crate::{
@@ -16,37 +16,23 @@ use crate::{
 };
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ContentNodeWeight {
-    /// The stable local ID of the object in question. Mainly used by external things like
-    /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
-    /// internal implementation detail, and the content ID wrapped by the
-    /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
-    /// example, the name, or type of a [`Prop`].)
+pub struct SecretNodeWeight {
     id: Ulid,
-    /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
-    /// should be trying to receive updates.
     lineage_id: LineageId,
-    /// What type of thing is this node representing, and what is the content hash used to
-    /// retrieve the data for this specific node.
     content_address: ContentAddress,
-    /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
-    /// starting with this node as the root. Mainly useful in quickly determining "has
-    /// something changed anywhere in this (sub)graph".
     merkle_tree_hash: MerkleTreeHash,
-    /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
-    /// whether the absence of this content on one side or the other of a rebase/merge is because
-    /// the content is new, or because one side deleted it.
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
-    to_delete: bool,
+    encrypted_secret_key: EncryptedSecretKey,
 }
 
-impl ContentNodeWeight {
+impl SecretNodeWeight {
     pub fn new(
         change_set: &ChangeSet,
         id: Ulid,
         content_address: ContentAddress,
+        encrypted_secret_key: EncryptedSecretKey,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -56,7 +42,7 @@ impl ContentNodeWeight {
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
-            to_delete: false,
+            encrypted_secret_key,
         })
     }
 
@@ -74,9 +60,6 @@ impl ContentNodeWeight {
 
     pub fn id(&self) -> Ulid {
         self.id
-    }
-    pub fn to_delete(&self) -> bool {
-        self.to_delete
     }
 
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
@@ -121,48 +104,27 @@ impl ContentNodeWeight {
         self.merkle_tree_hash
     }
 
+    pub fn encrypted_secret_key(&self) -> EncryptedSecretKey {
+        self.encrypted_secret_key
+    }
+
+    pub fn set_encrypted_secret_key(
+        &mut self,
+        encrypted_secret_key: EncryptedSecretKey,
+    ) -> &mut Self {
+        self.encrypted_secret_key = encrypted_secret_key;
+        self
+    }
+
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
-            ContentAddress::DeprecatedAction(_) => ContentAddress::DeprecatedAction(content_hash),
-            ContentAddress::DeprecatedActionBatch(_) => {
-                ContentAddress::DeprecatedActionBatch(content_hash)
-            }
-            ContentAddress::DeprecatedActionRunner(_) => {
-                ContentAddress::DeprecatedActionRunner(content_hash)
-            }
-            ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
-            ContentAddress::AttributePrototype(_) => {
-                ContentAddress::AttributePrototype(content_hash)
-            }
-            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
-            ContentAddress::OutputSocket(_) => ContentAddress::OutputSocket(content_hash),
-            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
-            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::InputSocket(_) => ContentAddress::InputSocket(content_hash),
-            ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
-            ContentAddress::Module(_) => ContentAddress::Module(content_hash),
-            ContentAddress::Prop(_) => {
+            ContentAddress::Secret(_) => ContentAddress::Secret(content_hash),
+            other => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Prop".to_string(),
-                    "Content".to_string(),
+                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
+                    ContentAddressDiscriminants::Secret.to_string(),
                 ));
             }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
-            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
-            ContentAddress::Secret(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Secret".to_string(),
-                    "Content".to_string(),
-                ));
-            }
-            ContentAddress::StaticArgumentValue(_) => {
-                ContentAddress::StaticArgumentValue(content_hash)
-            }
-            ContentAddress::ValidationPrototype(_) => {
-                ContentAddress::ValidationPrototype(content_hash)
-            }
-            ContentAddress::ValidationOutput(_) => ContentAddress::ValidationOutput(content_hash),
         };
 
         self.content_address = new_address;
@@ -181,11 +143,10 @@ impl ContentNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
-    }
-    pub fn set_to_delete(&mut self, to_delete: bool) -> bool {
-        self.to_delete = to_delete;
-        self.to_delete
+        ContentHash::from(&serde_json::json![{
+            "content_address": self.content_address,
+            "encrypted_secret_key": self.encrypted_secret_key,
+        }])
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
@@ -214,16 +175,16 @@ impl ContentNodeWeight {
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
+        &[EdgeWeightKindDiscriminants::Use]
     }
 }
 
-impl std::fmt::Debug for ContentNodeWeight {
+impl std::fmt::Debug for SecretNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("ContentNodeWeight")
-            .field("id", &self.id.to_string())
+        f.debug_struct("SecretNodeWeight")
+            .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_address", &self.content_address)
+            .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(
@@ -231,6 +192,7 @@ impl std::fmt::Debug for ContentNodeWeight {
                 &self.vector_clock_recently_seen,
             )
             .field("vector_clock_write", &self.vector_clock_write)
+            .field("encrypted_secret_key", &self.encrypted_secret_key)
             .finish()
     }
 }

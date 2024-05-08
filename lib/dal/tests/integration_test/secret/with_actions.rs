@@ -149,10 +149,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
                 "type": "component",
             },
             "secrets": {
-                "dummy": {
-                    "encrypted_secret_key": secret.key(),
-                    "secret_id": secret.id()
-                }
+                "dummy": secret.encrypted_secret_key().to_string()
             },
             "resource": {},
             "resource_value": {},
@@ -196,10 +193,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
                 "active": true
             },
             "secrets": {
-                "dummy": {
-                    "encrypted_secret_key": secret.key(),
-                    "secret_id": secret.id()
-                }
+                "dummy": secret.encrypted_secret_key().to_string()
             },
             "resource": {
                 "status": "ok",

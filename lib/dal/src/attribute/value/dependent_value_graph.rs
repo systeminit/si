@@ -6,8 +6,7 @@ use std::{fs::File, io::Write};
 use telemetry::prelude::*;
 
 use crate::component::ControllingFuncData;
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightDiscriminants};
+use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
@@ -98,39 +97,30 @@ impl DependentValueGraph {
 
             let node_weight = workspace_snapshot.get_node_weight_by_id(initial_id).await?;
 
-            match node_weight {
-                NodeWeight::AttributeValue(_) => {
+            match node_weight.into() {
+                NodeWeightDiscriminants::AttributeValue => {
                     values.push(WorkQueueValue::Initial(initial_id.into()));
                 }
-                NodeWeight::Content(content_node_weight) => {
-                    match content_node_weight.content_address().into() {
-                        // If we are processing a secret, we don't want to add the secret itself.
-                        // We only want to add the direct dependent attribute values. We also need
-                        // to mark these values as needing to be processed because DVU will skip
-                        // processing the first set of independent values. In most cases, we want
-                        // that to happen. However, since the first set of independent values all
-                        // have a secret as their parent and not an attribute value, they need to be
-                        // processed in DVU.
-                        ContentAddressDiscriminants::Secret => {
-                            let direct_dependents =
-                                Secret::direct_dependent_attribute_values(ctx, initial_id.into())
-                                    .await
-                                    .map_err(Box::new)?;
-                            self.values_that_need_to_execute_from_prototype_function
-                                .extend(direct_dependents.clone());
-                            values.extend(
-                                direct_dependents
-                                    .iter()
-                                    .map(|d| WorkQueueValue::Initial(*d)),
-                            );
-                        }
-                        discrim => {
-                            warn!(%discrim, %initial_id, "skipping dependent value graph generation for unsupported content node weight");
-                        }
-                    }
+                NodeWeightDiscriminants::Secret => {
+                    // If we are processing a secret, we don't want to add the secret itself. We
+                    // only want to add the direct dependent attribute values. We also need to mark
+                    // these values as needing to be processed because DVU will skip processing the
+                    // first set of independent values. In most cases, we want that to happen.
+                    // However, since the first set of independent values all have a secret as their
+                    // parent and not an attribute value, they need to be processed in DVU.
+                    let direct_dependents =
+                        Secret::direct_dependent_attribute_values(ctx, initial_id.into())
+                            .await
+                            .map_err(Box::new)?;
+                    self.values_that_need_to_execute_from_prototype_function
+                        .extend(direct_dependents.clone());
+                    values.extend(
+                        direct_dependents
+                            .iter()
+                            .map(|d| WorkQueueValue::Initial(*d)),
+                    );
                 }
-                node_weight => {
-                    let discrim: NodeWeightDiscriminants = node_weight.into();
+                discrim => {
                     warn!(%discrim, %initial_id, "skipping dependent value graph generation for unsupported node weight");
                 }
             };

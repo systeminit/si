@@ -9,6 +9,7 @@ use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 
 mod before_funcs;
+mod bench;
 mod with_actions;
 
 #[test]
@@ -33,7 +34,7 @@ async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(Some("Description"), secret.description().as_deref());
 
     // Ensure that the underlying encrypted secret was created and that we can fetch its key pair.
-    let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.key())
+    let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found");
@@ -83,10 +84,13 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret.name(), found_secret.name());
     assert_eq!(secret.description(), found_secret.description());
     assert_eq!(secret.definition(), found_secret.definition());
-    assert_eq!(secret.key(), found_secret.key());
+    assert_eq!(
+        secret.encrypted_secret_key(),
+        found_secret.encrypted_secret_key()
+    );
 
-    // Ensure that the decrypted contents match our messag.e
-    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+    // Ensure that the decrypted contents match our message.
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found")
@@ -133,10 +137,13 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     assert_eq!(secret.name(), found_secret.name());
     assert_eq!(secret.description(), found_secret.description());
     assert_eq!(secret.definition(), found_secret.definition());
-    assert_eq!(secret.key(), found_secret.key());
+    assert_eq!(
+        secret.encrypted_secret_key(),
+        found_secret.encrypted_secret_key()
+    );
 
     // Ensure that the decrypted message matches the original message.
-    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found")
@@ -153,7 +160,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         &serde_json::to_vec(&updated_message).expect("failed to serialize message"),
         pkey,
     );
-    let original_key = secret.key();
+    let original_key = secret.encrypted_secret_key();
     let updated_secret = secret
         .update_encrypted_contents(
             ctx,
@@ -169,17 +176,21 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         .expect("could not perform get by id or secret not found");
 
     // Check that the key has changed.
-    assert_ne!(original_key, updated_secret.key());
-    assert_eq!(found_updated_secret.key(), updated_secret.key());
+    assert_ne!(original_key, updated_secret.encrypted_secret_key());
+    assert_eq!(
+        found_updated_secret.encrypted_secret_key(),
+        updated_secret.encrypted_secret_key()
+    );
 
     // Check that the decrypted contents match.
-    let updated_decrypted = EncryptedSecret::get_by_key(ctx, found_updated_secret.key())
-        .await
-        .expect("failed to perform get by key for encrypted secret")
-        .expect("no encrypted secret found")
-        .decrypt(ctx)
-        .await
-        .expect("failed to decrypt encrypted secret");
+    let updated_decrypted =
+        EncryptedSecret::get_by_key(ctx, found_updated_secret.encrypted_secret_key())
+            .await
+            .expect("failed to perform get by key for encrypted secret")
+            .expect("no encrypted secret found")
+            .decrypt(ctx)
+            .await
+            .expect("failed to decrypt encrypted secret");
     let actual_updated_message = prepare_decrypted_secret_for_assertions(&updated_decrypted);
     assert_eq!(updated_message, actual_updated_message);
 
@@ -210,10 +221,13 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Ensure the key has not changed.
     assert_eq!(
-        double_updated_secret.key(),
-        found_double_updated_secret.key()
+        double_updated_secret.encrypted_secret_key(),
+        found_double_updated_secret.encrypted_secret_key()
     );
-    assert_eq!(double_updated_secret.key(), found_updated_secret.key());
+    assert_eq!(
+        double_updated_secret.encrypted_secret_key(),
+        found_updated_secret.encrypted_secret_key()
+    );
 
     // Ensure the definition has not changed.
     assert_eq!(
@@ -227,7 +241,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Check that the decrypted contents have not changed.
     let updated_decrypted_should_not_have_changed =
-        EncryptedSecret::get_by_key(ctx, found_double_updated_secret.key())
+        EncryptedSecret::get_by_key(ctx, found_double_updated_secret.encrypted_secret_key())
             .await
             .expect("failed to perform get by key for encrypted secret")
             .expect("no encrypted secret found")
@@ -333,7 +347,6 @@ async fn update_encrypted_contents_with_dependent_values(
         )
         .await
         .expect("could not update encrypted contents");
-    dbg!("=======");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

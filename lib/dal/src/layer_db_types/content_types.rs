@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{CasValue, ContentHash, EncryptedSecretKey};
+use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
 
 use crate::validation::ValidationStatus;
@@ -370,8 +370,6 @@ pub enum SecretContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SecretContentV1 {
-    pub key: EncryptedSecretKey,
-
     pub timestamp: Timestamp,
     pub created_by: Option<UserPk>,
     pub updated_by: Option<UserPk>,

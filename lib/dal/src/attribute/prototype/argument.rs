@@ -339,6 +339,9 @@ impl AttributePrototypeArgument {
                 NodeWeight::Prop(inner) => {
                     return Ok(Some(ValueSource::Prop(inner.id().into())));
                 }
+                NodeWeight::Secret(inner) => {
+                    return Ok(Some(ValueSource::Secret(inner.id().into())));
+                }
                 NodeWeight::Content(inner) => {
                     let discrim: ContentAddressDiscriminants = inner.content_address().into();
                     return Ok(Some(match discrim {
@@ -347,9 +350,6 @@ impl AttributePrototypeArgument {
                         }
                         ContentAddressDiscriminants::OutputSocket => {
                             ValueSource::OutputSocket(inner.id().into())
-                        }
-                        ContentAddressDiscriminants::Secret => {
-                            ValueSource::Secret(inner.id().into())
                         }
                         ContentAddressDiscriminants::StaticArgumentValue => {
                             ValueSource::StaticArgumentValue(inner.id().into())

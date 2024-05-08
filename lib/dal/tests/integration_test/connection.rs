@@ -386,7 +386,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
     assert_eq!(
         "were-saving-for-lunch.service",
         units
-            .get(0)
+            .first()
             .map(|unit| unit.name.to_owned())
             .expect("has the first unit")
     );
