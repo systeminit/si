@@ -1389,7 +1389,7 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   right: 4px;
   bottom: 4px;
   display: none;
-  z-index: 49;
+  z-index: 51;
   transform: scaleX(-1);
 
   .attributes-panel-item.--input.--focus &,
