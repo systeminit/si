@@ -135,9 +135,7 @@ async fn action_task(
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(id))?;
 
-    let prototype_id = Action::prototype_id(ctx, id)
-        .await?
-        .ok_or(ActionError::PrototypeNotFoundForAction(id))?;
+    let prototype_id = Action::prototype_id(ctx, id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
     Action::set_state(ctx, id, ActionState::Running).await?;
@@ -220,9 +218,7 @@ async fn process_failed_action_inner(
         .ok_or(ActionError::ComponentNotFoundForAction(id))?;
     let component = Component::get_by_id(ctx, component_id).await?;
 
-    let prototype_id = Action::prototype_id(ctx, id)
-        .await?
-        .ok_or(ActionError::PrototypeNotFoundForAction(id))?;
+    let prototype_id = Action::prototype_id(ctx, id).await?;
 
     let resource = DeprecatedActionRunResult {
         status: Some(ResourceStatus::Error),

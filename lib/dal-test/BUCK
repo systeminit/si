@@ -14,6 +14,7 @@ rust_library(
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-std:si-std",
         "//lib/si-pkg:si-pkg",
+        "//third-party/rust:base64",
         "//lib/si-test-macros:si-test-macros",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",

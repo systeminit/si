@@ -11,6 +11,7 @@ use thiserror::Error;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
+    action::prototype::ActionKind,
     change_set::{ChangeSet, ChangeSetError},
     workspace_snapshot::{
         content_address::ContentAddress,
@@ -649,6 +650,22 @@ impl NodeWeight {
     pub fn new_action(change_set: &ChangeSet, action_id: Ulid) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Action(ActionNodeWeight::new(
             change_set, action_id,
+        )?))
+    }
+
+    pub fn new_action_prototype(
+        change_set: &ChangeSet,
+        action_id: Ulid,
+        kind: ActionKind,
+        name: String,
+        description: Option<String>,
+    ) -> NodeWeightResult<Self> {
+        Ok(NodeWeight::ActionPrototype(ActionPrototypeNodeWeight::new(
+            change_set,
+            action_id,
+            kind,
+            name,
+            description,
         )?))
     }
 

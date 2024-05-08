@@ -12,8 +12,8 @@ use crate::{
     secret::BeforeFuncError,
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
-    EdgeWeightError, EdgeWeightKindDiscriminants, FuncId, HelperError, SchemaVariantId,
-    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, FuncId, HelperError,
+    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -90,6 +90,31 @@ impl ActionPrototype {
         self.id
     }
 
+    pub async fn new(
+        ctx: &DalContext,
+        kind: ActionKind,
+        name: String,
+        description: Option<String>,
+        func_id: FuncId,
+    ) -> ActionPrototypeResult<Self> {
+        let change_set = ctx.change_set()?;
+        let new_id: ActionPrototypeId = change_set.generate_ulid()?.into();
+        let node_weight =
+            NodeWeight::new_action_prototype(change_set, new_id.into(), kind, name, description)?;
+        ctx.workspace_snapshot()?.add_node(node_weight).await?;
+
+        Self::add_edge_to_func(ctx, new_id, func_id, EdgeWeightKind::new_use()).await?;
+
+        let new_prototype: Self = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(new_id)
+            .await?
+            .get_action_prototype_node_weight()?
+            .into();
+
+        Ok(new_prototype)
+    }
+
     implement_add_edge_to!(
         source_id: ActionPrototypeId,
         destination_id: FuncId,
@@ -108,10 +133,7 @@ impl ActionPrototype {
         Ok(prototype)
     }
 
-    pub async fn func_id(
-        ctx: &DalContext,
-        id: ActionPrototypeId,
-    ) -> ActionPrototypeResult<Option<FuncId>> {
+    pub async fn func_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<FuncId> {
         for (_, _tail_node_idx, head_node_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(id, Outgoing, EdgeWeightKindDiscriminants::Use)
@@ -122,11 +144,11 @@ impl ActionPrototype {
                 .get_node_weight(head_node_idx)
                 .await?
             {
-                return Ok(Some(node_weight.id().into()));
+                return Ok(node_weight.id().into());
             }
         }
 
-        Ok(None)
+        Err(ActionPrototypeError::FuncNotFoundForPrototype(id))
     }
 
     pub async fn run(
@@ -142,9 +164,7 @@ impl ActionPrototype {
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::json!({ "properties" : component_view }),
-            Self::func_id(ctx, id)
-                .await?
-                .ok_or(ActionPrototypeError::FuncNotFoundForPrototype(id))?,
+            Self::func_id(ctx, id).await?,
             before,
         )
         .await?;

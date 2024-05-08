@@ -1333,6 +1333,7 @@ name = "dal-test"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
+ "base64 0.22.1",
  "buck2-resources",
  "color-eyre",
  "dal",

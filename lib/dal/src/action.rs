@@ -98,6 +98,10 @@ impl Action {
         self.id
     }
 
+    pub fn state(&self) -> ActionState {
+        self.state
+    }
+
     implement_add_edge_to!(
         source_id: ActionId,
         destination_id: ComponentId,
@@ -134,12 +138,17 @@ impl Action {
     }
 
     pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
+        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let mut node_weight = ctx
             .workspace_snapshot()?
             .get_node_weight_by_id(id)
             .await?
             .get_action_node_weight()?;
         node_weight.set_state(state);
+        ctx.workspace_snapshot()?
+            .add_node(NodeWeight::Action(node_weight))
+            .await?;
+        ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
     }
 
@@ -148,12 +157,17 @@ impl Action {
         id: ActionId,
         pk: Option<FuncExecutionPk>,
     ) -> ActionResult<()> {
+        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let mut node_weight = ctx
             .workspace_snapshot()?
             .get_node_weight_by_id(id)
             .await?
             .get_action_node_weight()?;
         node_weight.set_func_execution_pk(pk);
+        ctx.workspace_snapshot()?
+            .add_node(NodeWeight::Action(node_weight))
+            .await?;
+        ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
     }
 
@@ -235,7 +249,7 @@ impl Action {
     pub async fn prototype_id(
         ctx: &DalContext,
         action_id: ActionId,
-    ) -> ActionResult<Option<ActionPrototypeId>> {
+    ) -> ActionResult<ActionPrototypeId> {
         for (_, _tail_node_idx, head_node_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
@@ -250,11 +264,11 @@ impl Action {
                 .get_node_weight(head_node_idx)
                 .await?
             {
-                return Ok(Some(node_weight.id().into()));
+                return Ok(node_weight.id().into());
             }
         }
 
-        Ok(None)
+        Err(ActionError::PrototypeNotFoundForAction(action_id))
     }
 
     pub async fn component_id(
@@ -320,9 +334,7 @@ impl Action {
             .await?
             .ok_or(ActionError::ComponentNotFoundForAction(id))?;
 
-        let prototype_id = Action::prototype_id(ctx, id)
-            .await?
-            .ok_or(ActionError::PrototypeNotFoundForAction(id))?;
+        let prototype_id = Action::prototype_id(ctx, id).await?;
         let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
         let (func_execution_pk, resource) =

@@ -241,8 +241,15 @@ impl DeprecatedActionPrototype {
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
             let weight = workspace_snapshot.get_node_weight(node).await?;
-            content_hashes.push(weight.content_hash());
-            node_weights.push(weight);
+            if let NodeWeight::Content(content) = &weight {
+                if matches!(
+                    content.content_address(),
+                    ContentAddress::ActionPrototype(_)
+                ) {
+                    content_hashes.push(weight.content_hash());
+                    node_weights.push(weight);
+                }
+            }
         }
 
         let content_map: HashMap<ContentHash, DeprecatedActionPrototypeContent> = ctx

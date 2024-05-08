@@ -2,8 +2,14 @@ use crate::schemas::schema_helpers::{
     build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
     create_identity_func,
 };
+use base64::{engine::general_purpose, Engine};
 use dal::pkg::import_pkg_from_pkg;
-use dal::{prop::PropPath, ComponentType, DeprecatedActionKind};
+use dal::workspace_snapshot::edge_weight::EdgeWeightKind;
+use dal::{
+    action::prototype::ActionKind, action::prototype::ActionPrototype, prop::PropPath,
+    ComponentType, DeprecatedActionKind, Func, FuncBackendKind, FuncBackendResponseType,
+    SchemaVariant,
+};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
@@ -180,7 +186,42 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
         .build()?;
 
     let swifty_pkg = SiPkg::load_from_spec(swifty_spec)?;
-    import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
+    let (_, variant_ids, _) = import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
+    assert_eq!(variant_ids.len(), 1);
+
+    let code_base64 = general_purpose::STANDARD_NO_PAD.encode(create_action_code);
+    let create_action_func = Func::new(
+        ctx,
+        "test:createSwifty",
+        None::<&str>,
+        None::<&str>,
+        None::<&str>,
+        false,
+        false,
+        FuncBackendKind::JsAction,
+        FuncBackendResponseType::Action,
+        Some("main"),
+        Some(code_base64),
+    )
+    .await?;
+
+    for variant_id in variant_ids {
+        let prototype = ActionPrototype::new(
+            ctx,
+            ActionKind::Create,
+            "createSwifty".to_owned(),
+            None,
+            create_action_func.id,
+        )
+        .await?;
+        SchemaVariant::add_edge_to_action_prototype(
+            ctx,
+            variant_id,
+            prototype.id,
+            EdgeWeightKind::ActionPrototype,
+        )
+        .await?;
+    }
 
     Ok(())
 }
