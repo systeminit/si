@@ -37,7 +37,7 @@ use tokio::{
     sync::oneshot,
     time,
 };
-use tracing::{trace, warn};
+use tracing::trace;
 
 use crate::instance::{Instance, Spec, SpecBuilder};
 
@@ -910,7 +910,7 @@ async fn watch_task<Strm>(
             _ = Pin::new(&mut shutdown_rx) => {
                 trace!("watch task received shutdown");
                 if let Err(err) = watch_progress.stop().await {
-                    warn!(error = ?err, "failed to cleanly close the watch session");
+                    trace!(error = ?err, "failed to cleanly close the watch session");
                 }
                 break;
             }

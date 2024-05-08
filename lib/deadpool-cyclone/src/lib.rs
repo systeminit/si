@@ -39,6 +39,7 @@ pub mod pool_noodle;
 mod tests {
 
     use cyclone_client::{LivenessStatus, ReadinessStatus};
+    use tokio::sync::broadcast;
 
     use super::*;
     use crate::instance::cyclone::{
@@ -63,8 +64,9 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
+        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
-            PoolNoodle::new(10, spec.clone());
+            PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
         pool.start();
 
         let mut instance = pool.get().await.expect("pool is empty!");
@@ -101,7 +103,8 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let mut pool = PoolNoodle::new(10, spec.clone());
+        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
+        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
         pool.start();
 
         let mut instance = pool.get().await.expect("pool is empty!");
@@ -152,7 +155,8 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let mut pool = PoolNoodle::new(10, spec.clone());
+        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
+        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
         pool.start();
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");

@@ -475,7 +475,7 @@ fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
 }
 
 fn default_pool_size() -> u16 {
-    50
+    5
 }
 
 fn default_connect_timeout() -> u64 {

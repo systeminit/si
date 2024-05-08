@@ -116,7 +116,11 @@ impl Server {
                 let nats = connect_to_nats(&config).await?;
 
                 let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
-                    PoolNoodle::new(spec.pool_size.into(), spec.clone());
+                    PoolNoodle::new(
+                        spec.pool_size.into(),
+                        spec.clone(),
+                        shutdown_broadcast_tx.subscribe(),
+                    );
 
                 spec.clone()
                     .setup()

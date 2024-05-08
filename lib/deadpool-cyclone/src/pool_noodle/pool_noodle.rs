@@ -98,8 +98,8 @@ where
     spec: S,
     ready: Vec<I>,
     to_be_cleaned: VecDeque<u32>,
-    to_be_terminated: VecDeque<I>,
     unprepared: VecDeque<u32>,
+    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
     drop_tx: Sender<I>,
     drop_rx: Receiver<I>,
 }
@@ -129,21 +129,12 @@ where
             .map_err(|e| PoolNoodleError::InstanceSpawn(e.to_string()))
     }
 
-    /// This terminates the instance
-    async fn terminate(mut instance: I) -> Result<()> {
-        instance
-            .terminate()
-            .await
-            .map_err(|e| PoolNoodleError::InstanceTerminate(e.to_string()))
-    }
-
     /// This outputs the current state of the pool
     pub async fn stats(&mut self) -> PoolNoodleStats {
         PoolNoodleStats {
             pool_size: self.pool_size as usize,
             ready: self.ready.len(),
             to_be_cleaned: self.to_be_cleaned.len(),
-            to_be_terminated: self.to_be_terminated.len(),
             unprepared: self.unprepared.len(),
         }
     }
@@ -158,20 +149,17 @@ pub struct PoolNoodleStats {
     pub ready: usize,
     /// Total number of instances that need to be cleaned up
     pub to_be_cleaned: usize,
-    /// Total number of instances that need to be terminated
-    pub to_be_terminated: usize,
     /// Total number of unclaimed instances waiting to be readied
     pub unprepared: usize,
 }
 
 impl Display for PoolNoodleStats {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "PoolNoodle Stats -- pool size: {}, ready: {}, to be cleaned: {}, to be terminated: {}, unprepared: {}",
-                   self.pool_size,
-                   self.ready,
-                   self.to_be_cleaned,
-                   self.to_be_terminated,
-                   self.unprepared)
+        write!(
+            f,
+            "PoolNoodle Stats -- pool size: {}, ready: {}, to be cleaned: {}, unprepared: {}",
+            self.pool_size, self.ready, self.to_be_cleaned, self.unprepared
+        )
     }
 }
 
@@ -234,7 +222,7 @@ where
     E: Send + Display,
 {
     /// Creates a new instance of PoolNoodle
-    pub fn new(pool_size: u32, spec: S) -> Self {
+    pub fn new(pool_size: u32, spec: S, shutdown_rx: tokio::sync::broadcast::Receiver<()>) -> Self {
         let (drop_tx, drop_rx) = mpsc::channel();
         PoolNoodle(Arc::new(
             PoolNoodleInner {
@@ -242,8 +230,8 @@ where
                 spec,
                 ready: Vec::new(),
                 to_be_cleaned: VecDeque::new(),
-                to_be_terminated: VecDeque::new(),
                 unprepared: VecDeque::from_iter(0..pool_size),
+                shutdown_rx,
                 drop_tx,
                 drop_rx,
             }
@@ -261,12 +249,8 @@ where
     /// 1. Check if we have fewer ready instances than `[pool_size]`
     /// 2. If so, go get an unprepared instance and prepare it!
     /// 3. If not, let's go see if any of our instances have dropped.
-    /// 4. If so, move them to `[to_be_terminated]` so they can be terminated.
-    /// 3. If not, check if there are any instances that need to be terminated.
     /// 4. If so, terminate them and move them to `[to_be_cleaned]` so they can be cleaned.
-    /// 3. If not, check if there are any instances that need to be cleaned.
-    /// 4. If so, terminate them and move them to `[unprepared]` so they can be made ready.
-    /// 9. If not, do nothing and loop again!
+    /// 5.. If not, do nothing and loop again!
     ///
     #[allow(clippy::let_underscore_future)] // This needs to just run in the background forever.
     pub fn start(&mut self) {
@@ -277,8 +261,13 @@ where
                 sleep(Duration::from_millis(100)).await;
 
                 let mut me = me.lock().await;
-                let stats = me.stats().await;
 
+                if me.shutdown_rx.try_recv().is_ok() {
+                    debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+                    break;
+                }
+
+                let stats = me.stats().await;
                 trace!("{}", stats);
 
                 // we're at fewer than the desired pool, let's make more instances
@@ -312,28 +301,6 @@ where
                 } else if let Ok(instance) = me.drop_rx.try_recv() {
                     debug!("PoolNoodle: drop message receieved");
                     me.to_be_cleaned.push_front(instance.id());
-
-                // let's go terminate some finished instances!
-                } else if stats.to_be_terminated != 0 {
-                    // go get a instance that needs to be terminated
-                    if let Some(instance) = me.to_be_terminated.pop_back() {
-                        debug!("PoolNoodle: terminating instance");
-                        let id = instance.id();
-                        // attempt to terminate it
-                        match PoolNoodleInner::<I, S>::terminate(instance).await {
-                            // it worked!
-                            Ok(_) => {
-                                debug!("PoolNoodle: instance terminated: {}", id);
-                                me.to_be_cleaned.push_front(id);
-                            }
-                            // it did not work. We should move on to a different instance.
-                            Err(e) => {
-                                warn!("PoolNoodle: failed to terminate: {}", id);
-                                warn!("{}", e);
-                                me.to_be_cleaned.push_front(id);
-                            }
-                        };
-                    }
 
                 // let's go clean some dead instances!
                 } else if stats.to_be_cleaned != 0 {
@@ -370,7 +337,7 @@ where
         let max_retries = 300; // Set the maximum number of retries
         let mut retries = 0;
 
-        info!("PoolNoodle: getting instance for func execution");
+        debug!("PoolNoodle: getting instance for func execution");
         loop {
             if retries >= max_retries {
                 return Err(PoolNoodleError::ExecutionPoolStarved);
@@ -382,6 +349,10 @@ where
                 match &mut item.ensure_healthy().await {
                     Ok(_) => {
                         let drop_tx = me.drop_tx.clone();
+                        info!(
+                            "PoolNoodle: got instance for func execution: {}",
+                            &item.id()
+                        );
                         return Ok(LifeGuard {
                             drop_tx,
                             item: Some(item),
@@ -411,6 +382,7 @@ mod tests {
     use crate::instance::SpecBuilder;
     use async_trait::async_trait;
     use derive_builder::Builder;
+    use tokio::sync::broadcast;
     use tokio::time::{sleep, Duration};
 
     use super::*;
@@ -475,8 +447,8 @@ mod tests {
     #[tokio::test]
     async fn pool_noodle_lifecycle() {
         let spec = DummyInstanceSpec {};
-
-        let mut pool = PoolNoodle::new(3, spec);
+        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
+        let mut pool = PoolNoodle::new(3, spec, shutdown_broadcast_tx.subscribe());
         pool.start();
 
         // give the pool time to create some instances
