@@ -32,11 +32,7 @@
         secondaryText="Select an asset from the list above to view its attached functions here."
       />
     </ScrollArea>
-    <AssetFuncAttachModal
-      ref="attachModalRef"
-      :schemaVariantId="assetSchemaVariantId"
-      :assetId="assetId"
-    />
+    <AssetFuncAttachModal ref="attachModalRef" :assetId="assetId" />
   </div>
 </template>
 
@@ -67,9 +63,6 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 );
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
-const assetSchemaVariantId = computed(() =>
-  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
-);
 
 const openAttachFuncModal = (type: "new" | "existing") => {
   if (type === "new") {

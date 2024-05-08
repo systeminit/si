@@ -7,12 +7,10 @@ use dal::func::argument::FuncArgumentError;
 use dal::func::authoring::FuncAuthoringError;
 use dal::func::summary::FuncSummaryError;
 use dal::func::view::FuncViewError;
-use dal::func::FuncAssociations;
 use dal::input_sources::InputSourcesError;
 use dal::schema::variant::SchemaVariantError;
 use dal::{workspace_snapshot::WorkspaceSnapshotError, FuncId, TransactionsError};
 use dal::{ChangeSetError, WsEventError};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::server::{impl_default_error_into_response, state::AppState};
@@ -78,11 +76,4 @@ pub fn routes() -> Router<AppState> {
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
         .route("/save_func", post(save_func::save_func))
         .route("/test_execute", post(test_execute::test_execute))
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct SaveFuncResponse {
-    types: String,
-    associations: Option<FuncAssociations>,
 }

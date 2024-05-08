@@ -51,11 +51,7 @@
           />
         </ErrorMessage>
 
-        <AssetFuncAttachModal
-          ref="attachModalRef"
-          :schemaVariantId="assetSchemaVariantId"
-          :assetId="props.assetId"
-        />
+        <AssetFuncAttachModal ref="attachModalRef" :assetId="props.assetId" />
       </template>
 
       <Stack class="p-xs py-sm">
@@ -210,9 +206,6 @@ const componentTypeOptions = [
 ];
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
-const assetSchemaVariantId = computed(() =>
-  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
-);
 
 const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
 watch(

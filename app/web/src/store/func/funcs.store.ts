@@ -332,8 +332,6 @@ export const useFuncStore = () => {
             changeSetStore.creatingChangeSet = true;
           const isHead = changeSetStore.headSelected;
 
-          const oldAssociations = this.funcDetailsById[func.id]?.associations;
-
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_func",
@@ -358,52 +356,6 @@ export const useFuncStore = () => {
               };
             },
             keyRequestStatusBy: func.id,
-            onSuccess: (response) => {
-              if (isHead) return;
-
-              if (
-                response.associations &&
-                "schemaVariantIds" in response.associations &&
-                oldAssociations &&
-                "schemaVariantIds" in oldAssociations
-              ) {
-                const addedVariantIds = _.difference(
-                  response.associations.schemaVariantIds,
-                  oldAssociations.schemaVariantIds,
-                );
-
-                const removedVariantIds = _.difference(
-                  oldAssociations.schemaVariantIds,
-                  response.associations.schemaVariantIds,
-                );
-
-                const assetStore = useAssetStore();
-                for (const schemaVariantId of _.concat(
-                  addedVariantIds,
-                  removedVariantIds,
-                )) {
-                  const asset =
-                    assetStore.assetBySchemaVariantId[schemaVariantId];
-
-                  if (asset) {
-                    useAssetStore().LOAD_ASSET(asset.id);
-                  }
-                }
-                const asset = assetStore.getLastSelectedAssetId();
-                if (asset) {
-                  useAssetStore().LOAD_ASSET(asset);
-                  this.recoverOpenFuncIds();
-                }
-              }
-
-              func.associations = response.associations;
-              this.funcDetailsById[func.id] = func;
-
-              // Forces a reload if the types have changed (reloads typescript compiler)
-              if (func.types !== response.types) {
-                this.FETCH_FUNC_DETAILS(func.id);
-              }
-            },
           });
         },
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
@@ -416,21 +368,12 @@ export const useFuncStore = () => {
             throw new Error("race, wait until the change set is created");
           if (changeSetStore.headSelected)
             changeSetStore.creatingChangeSet = true;
-          const isHead = changeSetStore.headSelected;
 
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_and_exec",
             keyRequestStatusBy: funcId,
             params: { ...func, ...visibility },
-            onSuccess: (response) => {
-              if (isHead) return;
-              const func = this.funcDetailsById[funcId];
-              if (func) {
-                func.associations = response.associations;
-                this.funcDetailsById[funcId] = func;
-              }
-            },
           });
         },
         async TEST_EXECUTE(executeRequest: {
@@ -627,7 +570,9 @@ export const useFuncStore = () => {
           }
         });
 
+        const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
+
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
             eventType: "ChangeSetWritten",
@@ -648,6 +593,15 @@ export const useFuncStore = () => {
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
+
+              const assetId = assetStore.getLastSelectedAssetId();
+              if (
+                assetId &&
+                assetStore.selectedFuncId &&
+                assetStore.selectedFuncId === this.selectedFuncId
+              ) {
+                assetStore.closeFunc(assetId, this.selectedFuncId);
+              }
             },
           },
           {
@@ -655,6 +609,36 @@ export const useFuncStore = () => {
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
+
+              // Reload the last selected asset to ensure that its func list is up to date.
+              const assetId = assetStore.getLastSelectedAssetId();
+              if (assetId) {
+                assetStore.LOAD_ASSET(assetId);
+              }
+
+              if (this.selectedFuncId) {
+                // only fetch if we don't have this one already in our state,
+                // otherwise we can overwrite functions with their previous value
+                // before the save queue is drained.
+                if (
+                  typeof this.funcDetailsById[this.selectedFuncId] ===
+                    "undefined" &&
+                  data.funcId === this.selectedFuncId
+                ) {
+                  this.FETCH_FUNC_DETAILS(this.selectedFuncId);
+                }
+
+                // // NOTE(nick): since we removed the response body from routes involving saving
+                // // funcs, we may need to re-introduce logic related to reloading the typescript
+                // // compiler as well as some other tasks. If this comment becomes old and the
+                // // associated code remains commented out, we can likely delete this.
+                //
+                // // NOTE(nick): force a reload if the types have changed in order to reload the
+                // // typescript compiler.
+                // if (func.types !== response.types) {
+                //   this.FETCH_FUNC_DETAILS(func.id);
+                // }
+              }
             },
           },
         ]);

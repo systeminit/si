@@ -599,7 +599,7 @@ impl WsEvent {
     pub async fn func_saved(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::FuncDeleted(FuncWsEventPayload {
+            WsPayload::FuncSaved(FuncWsEventPayload {
                 func_id,
                 change_set_id: ctx.change_set_id(),
             }),
