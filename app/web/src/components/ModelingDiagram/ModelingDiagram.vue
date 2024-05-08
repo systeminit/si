@@ -1390,6 +1390,7 @@ function endDragElements() {
   // fire off final move event
   // note - we've already filtered out children that are selected along with their parents,
   // so we don't need to worry about accidentally moving them more than once
+  const numSelected = currentSelectionMovableElements.value.length;
   const keys_to_save: string[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     let fitWithinParent: null | {
@@ -1410,7 +1411,7 @@ function endDragElements() {
       ] as DiagramGroupData;
 
       if (el.def.parentId !== newParent?.def.componentId) {
-        if (newParent?.def.childIds?.length === 0) {
+        if (numSelected === 1 && newParent?.def.childIds?.length === 0) {
           if (newParent.def.size) {
             fitWithinParent = {
               position:
@@ -1426,9 +1427,10 @@ function endDragElements() {
     }
 
     // only resize if my parent *currently* has zero children, and i have no children
+    // and i'm only adding one component into the frame (e.g. we can't "grow" two children to max size)
     // otherwise let the human deal witht it
     keys_to_save.push(el.uniqueKey);
-    if (el.def.childIds?.length === 0 && fitWithinParent) {
+    if (numSelected === 1 && el.def.childIds?.length === 0 && fitWithinParent) {
       const [position, size] = fitChildInsideParentFrame(
         fitWithinParent.position,
         fitWithinParent.size,
