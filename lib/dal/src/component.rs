@@ -1676,10 +1676,10 @@ impl Component {
         for incoming_connection in component.incoming_connections(ctx).await? {
             Component::remove_connection(
                 ctx,
-                incoming_connection.to_input_socket_id,
+                incoming_connection.from_component_id,
                 incoming_connection.from_output_socket_id,
                 incoming_connection.to_component_id,
-                incoming_connection.from_component_id,
+                incoming_connection.to_input_socket_id,
             )
             .await?;
         }
@@ -2354,19 +2354,20 @@ impl Component {
 
     pub async fn remove_connection(
         ctx: &DalContext,
-        to_socket_id: InputSocketId,
-        from_socket_id: OutputSocketId,
-        to_component_id: ComponentId,
-        from_component_id: ComponentId,
+        source_component_id: ComponentId,
+        source_output_socket_id: OutputSocketId,
+        destination_component_id: ComponentId,
+        destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<()> {
-        let attribute_prototype_id = AttributePrototype::find_for_input_socket(ctx, to_socket_id)
-            .await?
-            .ok_or_else(|| InputSocketError::MissingPrototype(to_socket_id))?;
+        let input_socket_prototype_id =
+            AttributePrototype::find_for_input_socket(ctx, destination_input_socket_id)
+                .await?
+                .ok_or_else(|| InputSocketError::MissingPrototype(destination_input_socket_id))?;
 
         let attribute_prototype_arguments = ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
-                attribute_prototype_id,
+                input_socket_prototype_id,
                 Outgoing,
                 EdgeWeightKindDiscriminants::PrototypeArgument,
             )
@@ -2380,8 +2381,8 @@ impl Component {
             let attribute_prototype_argument_node_weight =
                 node_weight.get_attribute_prototype_argument_node_weight()?;
             if let Some(targets) = attribute_prototype_argument_node_weight.targets() {
-                if targets.source_component_id == from_component_id
-                    && targets.destination_component_id == to_component_id
+                if targets.source_component_id == source_component_id
+                    && targets.destination_component_id == destination_component_id
                 {
                     let data_sources = ctx
                         .workspace_snapshot()?
@@ -2402,7 +2403,7 @@ impl Component {
                                 ContentAddressDiscriminants::OutputSocket,
                             )
                         {
-                            if output_socket_node_weight.id() == from_socket_id.into() {
+                            if output_socket_node_weight.id() == source_output_socket_id.into() {
                                 AttributePrototypeArgument::remove(
                                     ctx,
                                     attribute_prototype_argument_node_weight.id().into(),
@@ -2412,8 +2413,8 @@ impl Component {
                                 let component_attribute_value_id =
                                     InputSocket::component_attribute_value_for_input_socket_id(
                                         ctx,
-                                        to_socket_id,
-                                        to_component_id,
+                                        destination_input_socket_id,
+                                        destination_component_id,
                                     )
                                     .await?;
 
@@ -2422,6 +2423,7 @@ impl Component {
                                     component_attribute_value_id,
                                 )
                                 .await?;
+
                                 ctx.enqueue_dependent_values_update(vec![
                                     component_attribute_value_id,
                                 ])

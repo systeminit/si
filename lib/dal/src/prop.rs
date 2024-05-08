@@ -266,8 +266,12 @@ pub enum PropKind {
 }
 
 impl PropKind {
-    pub fn ordered(&self) -> bool {
+    pub fn is_container(&self) -> bool {
         matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
+    }
+
+    pub fn ordered(&self) -> bool {
+        self.is_container()
     }
 
     pub fn empty_value(&self) -> Option<serde_json::Value> {

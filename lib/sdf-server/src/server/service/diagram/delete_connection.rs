@@ -35,10 +35,10 @@ pub async fn delete_connection(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     Component::remove_connection(
         &ctx,
-        request.to_socket_id,
+        request.from_component_id,
         request.from_socket_id,
         request.to_component_id,
-        request.from_component_id,
+        request.to_socket_id,
     )
     .await?;
 
