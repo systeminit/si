@@ -12,9 +12,15 @@ use super::DiagramResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateFrameConnectionRequest {
+pub struct FrameConnection {
     pub child_id: ComponentId,
     pub parent_id: ComponentId,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateFrameConnectionRequest {
+    pub connections: Vec<FrameConnection>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -31,13 +37,17 @@ pub async fn connect_component_to_frame(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    // Connect children to parent through frame edge
-    Frame::upsert_parent(&ctx, request.child_id, request.parent_id).await?;
+    let connections = serde_json::json!(&request.connections);
 
-    WsEvent::component_updated(&ctx, request.child_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    // Connect children to parent through frame edge
+    for connection in request.connections {
+        Frame::upsert_parent(&ctx, connection.child_id, connection.parent_id).await?;
+
+        WsEvent::component_updated(&ctx, connection.child_id)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     track(
         &posthog_client,
@@ -46,8 +56,7 @@ pub async fn connect_component_to_frame(
         "connect_component_to_frame",
         serde_json::json!({
             "how": "/diagram/connect_component_to_frame",
-            "child_id": request.child_id,
-            "parent_id": request.parent_id,
+            "connections": connections,
             "change_set_id": ctx.change_set_id(),
         }),
     );
