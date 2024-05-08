@@ -1,3 +1,4 @@
+use std::time::Duration;
 use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
@@ -397,6 +398,7 @@ impl LayeredEventServer {
             description: Some(description),
             deliver_policy: DeliverPolicy::New,
             max_bytes: MAX_BYTES,
+            inactive_threshold: Duration::from_secs(180),
             ..Default::default()
         }
     }
