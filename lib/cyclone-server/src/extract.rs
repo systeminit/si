@@ -43,7 +43,7 @@ impl Drop for LimitRequestGuard {
             tokio::spawn(async move {
                 trace!("sending shutdown to limit request shutdown receiver");
                 if tx.send(ShutdownSource::LimitRequest).await.is_err() {
-                    warn!("the limit request shutdown receiver has already been dropped");
+                    trace!("the limit request shutdown receiver has already been dropped");
                 }
             });
         }

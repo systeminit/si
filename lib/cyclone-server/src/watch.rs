@@ -64,13 +64,13 @@ pub async fn watch_timeout_task(
             }
             Ok(None) | Err(_) => {
                 // Timeout has elapsed
-                debug!("watch_timeout_task timeout elapsed");
+                trace!("watch_timeout_task timeout elapsed");
                 if shutdown_tx
                     .send(ShutdownSource::WatchTimeout)
                     .await
                     .is_err()
                 {
-                    warn!("failed to send shutdown, receiver has already dropped");
+                    trace!("failed to send shutdown, receiver has already dropped");
                 }
                 break;
             }

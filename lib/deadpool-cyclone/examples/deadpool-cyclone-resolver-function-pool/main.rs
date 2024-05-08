@@ -6,6 +6,7 @@ use std::{
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
 };
+use tokio::sync::broadcast;
 
 use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
@@ -37,7 +38,9 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     };
 
     let spec = spec()?;
-    let mut pool: PoolNoodle<LocalUdsInstance, _> = PoolNoodle::new(10, spec.clone());
+    let (shutdown_broadcast_tx, _) = broadcast::channel(16);
+    let mut pool: PoolNoodle<LocalUdsInstance, _> =
+        PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
     pool.start();
     let ctrl_c = signal::ctrl_c();
     tokio::pin!(ctrl_c);
