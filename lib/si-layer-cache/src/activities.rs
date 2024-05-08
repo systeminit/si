@@ -1,3 +1,4 @@
+use std::time::Duration;
 use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 
 use futures::StreamExt;
@@ -365,6 +366,7 @@ impl ActivityStream {
             description: Some(description),
             deliver_policy: jetstream::consumer::DeliverPolicy::All,
             max_bytes: MAX_BYTES,
+            inactive_threshold: Duration::from_secs(180),
             ..Default::default()
         };
 
