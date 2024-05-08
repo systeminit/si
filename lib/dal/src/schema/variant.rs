@@ -1500,6 +1500,37 @@ impl SchemaVariant {
         Ok(auth_func_ids)
     }
 
+    pub async fn list_schema_variant_ids_using_auth_func_id(
+        ctx: &DalContext,
+        auth_func_id: FuncId,
+    ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let mut results = vec![];
+
+        for schema_variant_id in Self::list_ids(ctx).await? {
+            let workspace_snapshot = ctx.workspace_snapshot()?;
+
+            let targets = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    schema_variant_id,
+                    EdgeWeightKindDiscriminants::AuthenticationPrototype,
+                )
+                .await?;
+
+            for target in targets {
+                let func_node_weight = workspace_snapshot
+                    .get_node_weight(target)
+                    .await?
+                    .get_func_node_weight()?;
+                if auth_func_id == func_node_weight.id().into() {
+                    results.push(schema_variant_id);
+                    break;
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`PropId`](Prop).
     pub async fn find_for_prop_id(
         ctx: &DalContext,

@@ -1,13 +1,11 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::FuncView;
-use dal::{ChangeSet, Func};
+use dal::{ChangeSet, WsEvent};
 
 use super::{save_func::SaveFuncRequest, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::func::SaveFuncResponse;
 
 pub async fn save_and_exec(
     HandlerContext(builder): HandlerContext,
@@ -20,21 +18,22 @@ pub async fn save_and_exec(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
+    // Cache for posthog tracking.
+    let func_id = request.id;
+    let func_name = request.name.clone();
+
     FuncAuthoringClient::save_func(
         &ctx,
-        request.id,
+        func_id,
         request.display_name,
-        request.name.clone(),
+        request.name,
         request.description,
         request.code,
         request.associations,
     )
     .await?;
 
-    FuncAuthoringClient::execute_func(&ctx, request.id).await?;
-
-    let func = Func::get_by_id_or_error(&ctx, request.id).await?;
-    let func_view = FuncView::assemble(&ctx, &func).await?;
+    FuncAuthoringClient::execute_func(&ctx, func_id).await?;
 
     track(
         &posthog_client,
@@ -43,10 +42,15 @@ pub async fn save_and_exec(
         "save_and_exec",
         serde_json::json!({
             "how": "/func/save_and_exec",
-            "func_id": request.id,
-            "func_name": request.name.clone(),
+            "func_id": func_id,
+            "func_name": func_name.as_str(),
         }),
     );
+
+    WsEvent::func_saved(&ctx, func_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
@@ -55,8 +59,5 @@ pub async fn save_and_exec(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response.body(serde_json::to_string(&SaveFuncResponse {
-        types: func_view.types,
-        associations: func_view.associations,
-    })?)?)
+    Ok(response.body(axum::body::Empty::new())?)
 }

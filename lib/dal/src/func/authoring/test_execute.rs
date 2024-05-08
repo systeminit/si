@@ -1,49 +1,18 @@
-use base64::engine::general_purpose;
-use base64::Engine;
+use telemetry::prelude::*;
 
 use crate::func::authoring::{FuncAuthoringResult, TestExecuteFuncResult};
 use crate::func::backend::FuncDispatchContext;
 use crate::func::binding::critical_section::execute_critical_section;
 use crate::func::binding::{FuncBindingError, LogLinePayload};
 use crate::secret::before_funcs_for_component;
-use crate::{ComponentId, DalContext, Func, FuncId, WsEvent, WsEventResult};
+use crate::{ComponentId, DalContext, Func, WsEvent, WsEventResult};
 
-pub(crate) async fn test_execute_func(
-    ctx: &DalContext,
-    id: FuncId,
-    args: serde_json::Value,
-    execution_key: String,
-    code: String,
-    component_id: ComponentId,
-) -> FuncAuthoringResult<TestExecuteFuncResult> {
-    // Cache the old code.
-    let func = Func::get_by_id_or_error(ctx, id).await?;
-    let cached_code = func.code_base64.to_owned();
-
-    // Use our new code and re-fetch.
-    Func::modify_by_id(ctx, id, |func| {
-        func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
-        Ok(())
-    })
-    .await?;
-    let func_with_temp_code = Func::get_by_id_or_error(ctx, id).await?;
-
-    // Perform the test execution.
-    let test_execute_func_result =
-        test_execute_func_inner(ctx, func_with_temp_code, args, execution_key, component_id)
-            .await?;
-
-    // Restore the old code. We need to do this in case users want to perform a commit.
-    Func::modify_by_id(ctx, id, |func| {
-        func.code_base64 = cached_code;
-        Ok(())
-    })
-    .await?;
-
-    Ok(test_execute_func_result)
-}
-
-async fn test_execute_func_inner(
+#[instrument(
+    name = "func.authoring.test_execute_func.perform_test_execution",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn perform_test_execution(
     ctx: &DalContext,
     func: Func,
     args: serde_json::Value,

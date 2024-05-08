@@ -95,6 +95,7 @@ pub enum WsPayload {
     DeprecatedActionRemoved(ActionId),
     DeprecatedActionRunnerReturn(ActionRunnerReturn),
     FuncDeleted(FuncWsEventPayload),
+    FuncSaved(FuncWsEventPayload),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),

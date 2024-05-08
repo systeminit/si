@@ -1,27 +1,17 @@
-use telemetry::prelude::warn;
+use telemetry::prelude::*;
 
-use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
-use crate::func::FuncKind;
-use crate::{AttributePrototype, AttributeValue, DalContext, Func, FuncId};
+use crate::func::authoring::FuncAuthoringResult;
+use crate::{AttributePrototype, AttributeValue, DalContext, Func};
 
-pub(crate) async fn execute_func(ctx: &DalContext, id: FuncId) -> FuncAuthoringResult<()> {
-    let func = Func::get_by_id_or_error(ctx, id).await?;
-
-    match func.kind {
-        FuncKind::Attribute => update_values_for_func(ctx, &func).await?,
-        FuncKind::Action => {
-            // TODO(nick): fully restore or wait for actions v2. Essentially, we need to run
-            // every prototype using the func id for every component.
-            warn!("skipping action execution...");
-            return Ok(());
-        }
-        kind => return Err(FuncAuthoringError::NotRunnable(id, kind)),
-    };
-
-    Ok(())
-}
-
-async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncAuthoringResult<()> {
+#[instrument(
+    name = "func.authoring.execute_func.execute_attribute_func",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn execute_attribute_func(
+    ctx: &DalContext,
+    func: &Func,
+) -> FuncAuthoringResult<()> {
     let attribute_prototype_ids = AttributePrototype::list_ids_for_func_id(ctx, func.id).await?;
 
     if attribute_prototype_ids.is_empty() {
