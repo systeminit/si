@@ -1,17 +1,17 @@
 use chrono::Utc;
 
-use deadpool_cyclone::CycloneClient;
-use deadpool_cyclone::Spec;
-use deadpool_cyclone::{
+use futures::{channel::oneshot, join, StreamExt};
+use nats_subscriber::Request;
+use si_data_nats::NatsClient;
+use si_pool_noodle::CycloneClient;
+use si_pool_noodle::Spec;
+use si_pool_noodle::{
     instance::cyclone::LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest,
     ActionRunResultSuccess, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
     PoolNoodle, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
     ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
-use futures::{channel::oneshot, join, StreamExt};
-use nats_subscriber::Request;
-use si_data_nats::NatsClient;
 use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -27,9 +27,9 @@ use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, Publishe
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("action run error: {0}")]
-    ActionRun(#[from] deadpool_cyclone::ExecutionError<ActionRunResultSuccess>),
+    ActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
     #[error("cyclone error: {0}")]
-    Cyclone(#[from] deadpool_cyclone::ClientError),
+    Cyclone(#[from] si_pool_noodle::ClientError),
     #[error("cyclone pool error: {0}")]
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone progress error: {0}")]
@@ -45,19 +45,19 @@ pub enum ServerError {
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    Reconciliation(#[from] deadpool_cyclone::ExecutionError<ReconciliationResultSuccess>),
+    Reconciliation(#[from] si_pool_noodle::ExecutionError<ReconciliationResultSuccess>),
     #[error(transparent)]
-    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
+    ResolverFunction(#[from] si_pool_noodle::ExecutionError<ResolverFunctionResultSuccess>),
     #[error(transparent)]
     SchemaVariantDefinition(
-        #[from] deadpool_cyclone::ExecutionError<SchemaVariantDefinitionResultSuccess>,
+        #[from] si_pool_noodle::ExecutionError<SchemaVariantDefinitionResultSuccess>,
     ),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
     Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error(transparent)]
-    Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
+    Validation(#[from] si_pool_noodle::ExecutionError<ValidationResultSuccess>),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, Box<CycloneSpec>),
 }
@@ -332,7 +332,7 @@ async fn resolver_function_request_task(
 
     if let Err(err) = publisher.finalize_output().await {
         error!(error = ?err, "failed to finalize output by sending final message");
-        let result = deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+        let result = si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
             FunctionResultFailure {
                 execution_id,
                 error: FunctionResultFailureError {
@@ -352,7 +352,7 @@ async fn resolver_function_request_task(
         Ok(fr) => fr,
         Err(err) => {
             error!(error = ?err, "failure trying to run function to completion");
-            deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+            si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
                 FunctionResultFailure {
                     execution_id,
                     error: FunctionResultFailureError {

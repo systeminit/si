@@ -1,12 +1,13 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "deadpool-cyclone",
+    name = "si-pool-noodle",
     deps = [
         "//lib/cyclone-client:cyclone-client",
         "//lib/cyclone-core:cyclone-core",
         "//third-party/rust:async-trait",
         "//third-party/rust:bollard",
+        "//third-party/rust:crossbeam-queue",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
         "//third-party/rust:indexmap",

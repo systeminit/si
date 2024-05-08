@@ -4,9 +4,9 @@ rust_library(
     name = "veritech-server",
     deps = [
         "//lib/buck2-resources:buck2-resources",
-        "//lib/deadpool-cyclone:deadpool-cyclone",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-pool-noodle:si-pool-noodle",
         "//lib/si-settings:si-settings",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
