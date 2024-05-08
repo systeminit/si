@@ -414,19 +414,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           deletableSelectedComponents(): FullComponent[] {
-            const selectedAndChildren: FullComponent[] = [];
+            const selectedAndChildren: Record<string, FullComponent> = {};
             this.allComponents.forEach((component) => {
               this.selectedComponents?.forEach((el) => {
                 if (component.ancestorIds?.includes(el.id)) {
-                  selectedAndChildren.push(component);
+                  selectedAndChildren[component.id] = component;
                 }
               });
             });
             this.selectedComponents?.forEach((el) => {
-              selectedAndChildren.push(el);
+              selectedAndChildren[el.id] = el;
             });
             return _.reject(
-              selectedAndChildren,
+              Object.values(selectedAndChildren),
               (c) => c.changeStatus === "deleted",
             );
           },
