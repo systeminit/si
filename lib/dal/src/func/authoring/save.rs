@@ -368,7 +368,7 @@ async fn save_attr_func_arguments(
             func_argument.id
         } else {
             FuncArgument::modify_by_id(ctx, arg.id, |existing_arg| {
-                existing_arg.name = arg.name.to_owned();
+                arg.name.clone_into(&mut existing_arg.name);
                 existing_arg.kind = arg.kind;
                 existing_arg.element_kind = arg.element_kind;
 

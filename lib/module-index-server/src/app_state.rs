@@ -6,16 +6,13 @@ use s3::creds::Credentials as AwsCredentials;
 use sea_orm::DatabaseConnection;
 pub use si_posthog::PosthogClient;
 
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex};
 
 use crate::{jwt_key::JwtPublicSigningKey, s3::S3Config};
 
 #[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}
-
-#[derive(Clone, Debug)]
-pub struct ShutdownBroadcast(broadcast::Sender<()>);
 
 #[derive(Clone, Debug, FromRef)]
 pub struct AppState {
@@ -26,8 +23,6 @@ pub struct AppState {
     aws_creds: AwsCredentials,
     s3_config: S3Config,
     token_emails: Arc<Mutex<HashMap<String, String>>>,
-
-    shutdown_broadcast: ShutdownBroadcast,
 
     // see notes in sdf AppState
     #[from_ref(skip)]
@@ -43,7 +38,6 @@ impl AppState {
         posthog_client: PosthogClient,
         aws_creds: AwsCredentials,
         s3_config: S3Config,
-        shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
         Self {
@@ -52,7 +46,6 @@ impl AppState {
             posthog_client,
             aws_creds,
             s3_config,
-            shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             token_emails: Arc::new(Mutex::new(HashMap::new())),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }

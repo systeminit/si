@@ -116,7 +116,9 @@ impl PkgExporter {
                 if let Some(default_variant_id) = default_variant_id {
                     if variant.id() == default_variant_id {
                         category = variant_category;
-                        default_variant_unique_id = variant_spec.unique_id.to_owned();
+                        variant_spec
+                            .unique_id
+                            .clone_into(&mut default_variant_unique_id);
                     }
                 }
             }

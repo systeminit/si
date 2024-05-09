@@ -46,7 +46,7 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
     }
 
     pub fn contains_id(&self, id: T) -> bool {
-        self.id_to_index_map.get(&id).is_some()
+        self.id_to_index_map.contains_key(&id)
     }
 
     pub fn direct_dependencies_of(&self, id: T) -> Vec<T> {

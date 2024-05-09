@@ -5,10 +5,13 @@
 
 [package]
 name = "config-file"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [features]
 default = []

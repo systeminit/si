@@ -1,7 +1,6 @@
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
-use si_std::SensitiveString;
 use std::{ops::Deref, sync::Arc};
 use tokio::sync::{broadcast, mpsc, Mutex};
 
@@ -12,7 +11,6 @@ use crate::server::service::ws::crdt::BroadcastGroups;
 #[derive(Clone, FromRef)]
 pub struct AppState {
     services_context: ServicesContext,
-    signup_secret: SignupSecret,
     broadcast_groups: BroadcastGroups,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
@@ -30,7 +28,6 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         services_context: impl Into<ServicesContext>,
-        signup_secret: impl Into<SignupSecret>,
         jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
         posthog_client: impl Into<PosthogClient>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
@@ -45,7 +42,6 @@ impl AppState {
         };
         Self {
             services_context: services_context.into(),
-            signup_secret: signup_secret.into(),
             jwt_public_signing_key: jwt_public_signing_key.into(),
             broadcast_groups: Default::default(),
             posthog_client: posthog_client.into(),
@@ -128,18 +124,6 @@ impl From<dal::ServicesContext> for ServicesContext {
 impl From<ServicesContext> for dal::ServicesContext {
     fn from(value: ServicesContext) -> Self {
         value.0
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct SignupSecret(Arc<SensitiveString>);
-
-impl<S> From<S> for SignupSecret
-where
-    S: Into<SensitiveString>,
-{
-    fn from(value: S) -> Self {
-        Self(Arc::new(value.into()))
     }
 }
 

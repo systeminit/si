@@ -174,9 +174,6 @@ pub(crate) trait FnSetupExpander {
     fn task_tracker(&self) -> Option<&Rc<Ident>>;
     fn set_task_tracker(&mut self, value: Option<Rc<Ident>>);
 
-    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>>;
-    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>);
-
     fn pinga_server(&self) -> Option<&Rc<Ident>>;
     fn set_pinga_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -271,20 +268,6 @@ pub(crate) trait FnSetupExpander {
         self.set_task_tracker(Some(Rc::new(var)));
 
         self.task_tracker().unwrap().clone()
-    }
-
-    fn setup_nats_subject_prefix(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.nats_subject_prefix() {
-            return ident.clone();
-        }
-
-        let var = Ident::new("nats_subject_prefix", Span::call_site());
-        self.code_extend(quote! {
-            let #var = ::dal_test::random_identifier_string();
-        });
-        self.set_nats_subject_prefix(Some(Rc::new(var)));
-
-        self.nats_subject_prefix().unwrap().clone()
     }
 
     fn setup_pinga_server(&mut self) -> Rc<Ident> {

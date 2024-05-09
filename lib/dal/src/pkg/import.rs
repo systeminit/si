@@ -311,7 +311,7 @@ async fn update_func(
 ) -> PkgResult<Func> {
     let func = func
         .modify(ctx, |func| {
-            func.name = func_spec_data.name().to_owned();
+            func_spec_data.name().clone_into(&mut func.name);
             func.backend_kind = func_spec_data.backend_kind().into();
             func.backend_response_type = func_spec_data.response_type().into();
             func.display_name = func_spec_data

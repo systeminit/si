@@ -1,4 +1,4 @@
-use sea_orm::{entity::prelude::*, sea_query, DeriveIden, TryGetError};
+use sea_orm::{entity::prelude::*, sea_query, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use ulid::Ulid;
@@ -156,9 +156,6 @@ impl sea_orm::TryGetable for ModuleId {
         // serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
     }
 }
-
-#[derive(DeriveIden, Clone, Copy)]
-struct UlidIdentType;
 
 impl sea_query::ValueType for ModuleId {
     fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
