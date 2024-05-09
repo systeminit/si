@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
+    EncryptedSecretKey,
     {ulid::Ulid, ContentHash},
 };
 use strum::EnumDiscriminants;
@@ -22,6 +23,7 @@ use crate::{
 use crate::{func::execution::FuncExecutionPk, EdgeWeightKindDiscriminants};
 
 use crate::func::FuncKind;
+use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
 pub use attribute_prototype_argument_node_weight::ArgumentTargets;
@@ -48,6 +50,7 @@ pub mod func_argument_node_weight;
 pub mod func_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
+pub mod secret_node_weight;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -92,6 +95,7 @@ pub enum NodeWeight {
     FuncArgument(FuncArgumentNodeWeight),
     Ordering(OrderingNodeWeight),
     Prop(PropNodeWeight),
+    Secret(SecretNodeWeight),
 }
 
 impl NodeWeight {
@@ -108,6 +112,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.content_hash(),
             NodeWeight::Ordering(weight) => weight.content_hash(),
             NodeWeight::Prop(weight) => weight.content_hash(),
+            NodeWeight::Secret(weight) => weight.content_hash(),
         }
     }
 
@@ -124,6 +129,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.content_store_hashes(),
             NodeWeight::Ordering(weight) => weight.content_store_hashes(),
             NodeWeight::Prop(weight) => weight.content_store_hashes(),
+            NodeWeight::Secret(weight) => weight.content_store_hashes(),
         }
     }
 
@@ -139,7 +145,8 @@ impl NodeWeight {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Ordering(_)
-            | NodeWeight::Prop(_) => None,
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_) => None,
         }
     }
 
@@ -156,6 +163,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.id(),
             NodeWeight::Ordering(weight) => weight.id(),
             NodeWeight::Prop(weight) => weight.id(),
+            NodeWeight::Secret(weight) => weight.id(),
         }
     }
 
@@ -174,6 +182,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.increment_vector_clock(change_set),
             NodeWeight::Ordering(weight) => weight.increment_vector_clock(change_set),
             NodeWeight::Prop(weight) => weight.increment_vector_clock(change_set),
+            NodeWeight::Secret(weight) => weight.increment_vector_clock(change_set),
         }
     }
 
@@ -190,6 +199,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.lineage_id(),
             NodeWeight::Ordering(weight) => weight.lineage_id(),
             NodeWeight::Prop(weight) => weight.lineage_id(),
+            NodeWeight::Secret(weight) => weight.lineage_id(),
         }
     }
 
@@ -208,6 +218,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
             NodeWeight::Ordering(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
             NodeWeight::Prop(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
+            NodeWeight::Secret(weight) => weight.mark_seen_at(vector_clock_id, seen_at),
         }
     }
 
@@ -252,6 +263,9 @@ impl NodeWeight {
             (NodeWeight::Prop(self_weight), NodeWeight::Prop(other_weight)) => {
                 self_weight.merge_clocks(change_set, other_weight)
             }
+            (NodeWeight::Secret(self_weight), NodeWeight::Secret(other_weight)) => {
+                self_weight.merge_clocks(change_set, other_weight)
+            }
             _ => Err(NodeWeightError::IncompatibleNodeWeightVariants),
         }
     }
@@ -269,6 +283,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.merkle_tree_hash(),
             NodeWeight::Ordering(weight) => weight.merkle_tree_hash(),
             NodeWeight::Prop(weight) => weight.merkle_tree_hash(),
+            NodeWeight::Secret(weight) => weight.merkle_tree_hash(),
         }
     }
 
@@ -279,6 +294,7 @@ impl NodeWeight {
             NodeWeight::Func(weight) => weight.new_content_hash(content_hash),
             NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Secret(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
@@ -328,6 +344,9 @@ impl NodeWeight {
             NodeWeight::Prop(weight) => {
                 NodeWeight::Prop(weight.new_with_incremented_vector_clock(change_set)?)
             }
+            NodeWeight::Secret(weight) => {
+                NodeWeight::Secret(weight.new_with_incremented_vector_clock(change_set)?)
+            }
         };
 
         Ok(new_weight)
@@ -349,6 +368,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.node_hash(),
             NodeWeight::Ordering(weight) => weight.node_hash(),
             NodeWeight::Prop(weight) => weight.node_hash(),
+            NodeWeight::Secret(weight) => weight.node_hash(),
         }
     }
 
@@ -365,6 +385,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::Ordering(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::Prop(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Secret(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -380,7 +401,8 @@ impl NodeWeight {
             | NodeWeight::Content(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
-            | NodeWeight::Prop(_) => Err(NodeWeightError::CannotSetOrderOnKind),
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
     }
 
@@ -423,6 +445,9 @@ impl NodeWeight {
             NodeWeight::Prop(weight) => {
                 weight.set_vector_clock_recently_seen_to(change_set, new_val)
             }
+            NodeWeight::Secret(weight) => {
+                weight.set_vector_clock_recently_seen_to(change_set, new_val)
+            }
         }
     }
 
@@ -439,6 +464,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.vector_clock_first_seen(),
             NodeWeight::Ordering(weight) => weight.vector_clock_first_seen(),
             NodeWeight::Prop(weight) => weight.vector_clock_first_seen(),
+            NodeWeight::Secret(weight) => weight.vector_clock_first_seen(),
         }
     }
 
@@ -455,6 +481,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.vector_clock_recently_seen(),
             NodeWeight::Ordering(weight) => weight.vector_clock_recently_seen(),
             NodeWeight::Prop(weight) => weight.vector_clock_recently_seen(),
+            NodeWeight::Secret(weight) => weight.vector_clock_recently_seen(),
         }
     }
 
@@ -471,6 +498,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.vector_clock_write(),
             NodeWeight::Ordering(weight) => weight.vector_clock_write(),
             NodeWeight::Prop(weight) => weight.vector_clock_write(),
+            NodeWeight::Secret(weight) => weight.vector_clock_write(),
         }
     }
 
@@ -497,6 +525,7 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 
@@ -581,6 +610,16 @@ impl NodeWeight {
             NodeWeight::FuncArgument(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::FuncArgument,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_secret_node_weight(&self) -> NodeWeightResult<SecretNodeWeight> {
+        match self {
+            NodeWeight::Secret(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Secret,
                 other.into(),
             )),
         }
@@ -755,5 +794,19 @@ impl NodeWeight {
                 targets,
             )?,
         ))
+    }
+
+    pub fn new_secret(
+        change_set: &ChangeSet,
+        secret_id: Ulid,
+        encrypted_secret_key: EncryptedSecretKey,
+        content_hash: ContentHash,
+    ) -> NodeWeightResult<Self> {
+        Ok(NodeWeight::Secret(SecretNodeWeight::new(
+            change_set,
+            secret_id,
+            ContentAddress::Secret(content_hash),
+            encrypted_secret_key,
+        )?))
     }
 }

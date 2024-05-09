@@ -69,7 +69,7 @@ pub async fn before_funcs_for_component(
         .await?;
 
         let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
-        let mut maybe_payload = None;
+        let mut maybe_value = None;
         for av_id in av_ids {
             if AttributeValue::component_id(ctx, av_id).await? != component_id {
                 continue;
@@ -77,13 +77,12 @@ pub async fn before_funcs_for_component(
 
             let av = AttributeValue::get_by_id(ctx, av_id).await?;
 
-            maybe_payload = av.value(ctx).await?;
+            maybe_value = av.value(ctx).await?;
             break;
         }
 
-        if let Some(payload) = maybe_payload {
-            let key = Secret::key_from_payload(payload)?;
-
+        if let Some(value) = maybe_value {
+            let key = Secret::key_from_value_in_attribute_value(value)?;
             funcs_and_secrets.push((key, auth_funcs))
         }
     }
