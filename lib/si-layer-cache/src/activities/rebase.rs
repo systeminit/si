@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
@@ -75,7 +76,8 @@ impl RebaseFinished {
 
 // NOTE: We're basically smashing the data in here, and we really do have to figure out what we
 // actually want when things work / or don't work.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum RebaseStatus {
     /// Processing the request and performing updates were both successful. Additionally, no conflicts were found.
     Success {

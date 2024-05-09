@@ -12,6 +12,7 @@ use crate::{
     func::backend::js_action::DeprecatedActionRunResult,
     func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
     id, implement_add_edge_to,
+    job::definition::ActionJob,
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
@@ -353,6 +354,30 @@ impl Action {
         }
 
         Ok(resource)
+    }
+
+    pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+        let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+        let mut result = Vec::new();
+
+        for possible_action_id in action_dependency_graph.independent_actions() {
+            let action = Action::get_by_id(ctx, possible_action_id).await?;
+
+            // Only Actions in the ActionState::Queued state are dispatchable.
+            if action.state() == ActionState::Queued {
+                result.push(possible_action_id);
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub async fn dispatch_action(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
+        Action::set_state(ctx, action_id, ActionState::Dispatched).await?;
+
+        ctx.enqueue_action(ActionJob::new(ctx, action_id)).await?;
+
+        Ok(())
     }
 }
 

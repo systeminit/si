@@ -41,6 +41,7 @@ use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
@@ -60,6 +61,8 @@ use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("Action error: {0}")]
+    Action(#[from] Box<ActionError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} has no workspace snapshot address")]
@@ -1259,5 +1262,15 @@ impl WorkspaceSnapshot {
             }
         }
         Ok(None)
+    }
+
+    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
+            Action::dispatch_action(ctx, dispatchable_ation_id)
+                .await
+                .map_err(Box::new)?;
+        }
+
+        Ok(())
     }
 }
