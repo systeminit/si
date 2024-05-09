@@ -24,6 +24,7 @@ rust_library(
         "//third-party/rust:axum",
         "//third-party/rust:base64",
         "//third-party/rust:chrono",
+        "//third-party/rust:clap",
         "//third-party/rust:convert_case",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",

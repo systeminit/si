@@ -17,6 +17,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
+use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -66,6 +67,8 @@ pub enum WorkspaceError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -87,6 +90,7 @@ pub struct Workspace {
     pk: WorkspacePk,
     name: String,
     default_change_set_id: ChangeSetId,
+    uses_actions_v2: bool,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -101,6 +105,7 @@ impl TryFrom<PgRow> for Workspace {
             pk: row.try_get("pk")?,
             name: row.try_get("name")?,
             default_change_set_id: row.try_get("default_change_set_id")?,
+            uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
         })
     }
@@ -113,6 +118,10 @@ impl Workspace {
 
     pub fn default_change_set_id(&self) -> ChangeSetId {
         self.default_change_set_id
+    }
+
+    pub fn uses_actions_v2(&self) -> bool {
+        self.uses_actions_v2
     }
 
     pub async fn update_default_change_set_id(
@@ -161,13 +170,18 @@ impl Workspace {
 
         let head_pk = WorkspaceId::NONE;
 
+        let uses_actions_v2 = ctx
+            .services_context()
+            .feature_flags_service()
+            .feature_is_enabled(&FeatureFlag::ActionsV2);
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id) VALUES ($1, $2, $3) RETURNING *",
-                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2) VALUES ($1, $2, $3, $4) RETURNING *",
+                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id, &uses_actions_v2],
             )
             .await?;
 
@@ -249,14 +263,19 @@ impl Workspace {
             .await?;
         let change_set_id = change_set.id;
 
+        let uses_actions_v2 = ctx
+            .services_context()
+            .feature_flags_service()
+            .feature_is_enabled(&FeatureFlag::ActionsV2);
+
         let name = name.as_ref();
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id) VALUES ($1, $2, $3) RETURNING *",
-                &[&pk, &name, &change_set_id],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2) VALUES ($1, $2, $3, $4) RETURNING *",
+                &[&pk, &name, &change_set_id, &uses_actions_v2],
             )
             .await?;
         let new_workspace = Self::try_from(row)?;
@@ -326,6 +345,15 @@ impl Workspace {
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn get_by_pk_or_error(
+        ctx: &DalContext,
+        pk: &WorkspacePk,
+    ) -> WorkspaceResult<Workspace> {
+        Self::get_by_pk(ctx, pk)
+            .await?
+            .ok_or(WorkspaceError::WorkspaceNotFound(*pk))
     }
 
     pub async fn generate_export_data(

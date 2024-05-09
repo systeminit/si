@@ -13,7 +13,6 @@ pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
 pub(crate) mod extract;
-mod feature_flags;
 pub(crate) mod job_processor;
 mod nats_multiplexer;
 mod routes;

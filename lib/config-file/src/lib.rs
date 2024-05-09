@@ -9,6 +9,7 @@ mod find;
 mod layered_load;
 mod simple_load;
 
+pub use config::ValueKind;
 pub use find::find;
 #[cfg(feature = "layered")]
 pub use layered_load::{layered_load, ConfigMap};

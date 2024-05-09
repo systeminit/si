@@ -27,7 +27,7 @@ pub mod prototype;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
-    #[error("action prototype errro: {0}")]
+    #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
@@ -103,6 +103,10 @@ impl Action {
         self.state
     }
 
+    pub fn originating_changeset_id(&self) -> ChangeSetId {
+        self.originating_changeset_id
+    }
+
     implement_add_edge_to!(
         source_id: ActionId,
         destination_id: ComponentId,
@@ -127,6 +131,40 @@ impl Action {
         discriminant: EdgeWeightKindDiscriminants::Use,
         result: ActionResult,
     );
+
+    pub async fn find_equivalent(
+        ctx: &DalContext,
+        action_prototype_id: ActionPrototypeId,
+        maybe_component_id: Option<ComponentId>,
+    ) -> ActionResult<Option<ActionId>> {
+        let snap = ctx.workspace_snapshot()?;
+        let action_category_id = snap
+            .get_category_node(None, CategoryNodeKind::Action)
+            .await?;
+
+        for action_idx in snap
+            .outgoing_targets_for_edge_weight_kind(
+                action_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
+            let action_id: ActionId = snap
+                .get_node_weight(action_idx)
+                .await?
+                .get_action_node_weight()?
+                .id()
+                .into();
+
+            if Self::component_id(ctx, action_id).await? == maybe_component_id
+                && Self::prototype_id(ctx, action_id).await? == action_prototype_id
+            {
+                // we found the equivalent!
+                return Ok(Some(action_id));
+            }
+        }
+        Ok(None)
+    }
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
         let action: Self = ctx
@@ -215,6 +253,23 @@ impl Action {
             .into();
 
         Ok(new_action)
+    }
+
+    pub async fn remove(
+        ctx: &DalContext,
+        action_prototype_id: ActionPrototypeId,
+        maybe_component_id: Option<ComponentId>,
+    ) -> ActionResult<()> {
+        let change_set = ctx.change_set()?;
+        let snap = ctx.workspace_snapshot()?;
+
+        if let Some(action_id) =
+            Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
+        {
+            let action_ulid: Ulid = action_id.into();
+            snap.remove_node_by_id(change_set, action_ulid).await?;
+        }
+        Ok(())
     }
 
     /// Sort the dependency graph of [`Actions`][Action] topologically, breaking ties by listing

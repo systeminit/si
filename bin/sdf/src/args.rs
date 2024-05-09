@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use clap::{builder::PossibleValuesParser, ArgAction, Parser};
-use sdf_server::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
+use clap::{builder::EnumValueParser, builder::PossibleValuesParser, ArgAction, Parser};
+
+use sdf_server::{Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile};
 use si_std::SensitiveString;
 
 const NAME: &str = "sdf";
@@ -170,6 +171,16 @@ pub(crate) struct Args {
     /// The base URL for the module-index API server
     #[arg(long, env = "SI_MODULE_INDEX_URL")]
     pub(crate) module_index_url: Option<String>,
+
+    /// The base URL for the module-index API server
+    #[arg(
+        long,
+        env = "SI_FEATURES",
+        value_parser = EnumValueParser::<FeatureFlag>::new(),
+        value_delimiter = ',',
+        rename_all = "snake_case",
+    )]
+    pub(crate) features: Vec<FeatureFlag>,
 }
 
 impl TryFrom<Args> for Config {
@@ -180,6 +191,7 @@ impl TryFrom<Args> for Config {
             if let Some(dbname) = args.pg_dbname {
                 config_map.set("pg.dbname", dbname);
             }
+
             if let Some(layer_cache_pg_dbname) = args.layer_db_pg_dbname {
                 config_map.set(
                     "layer_db_config.pg_pool_config.dbname",
@@ -267,6 +279,8 @@ impl TryFrom<Args> for Config {
             if let Some(module_index_url) = args.module_index_url {
                 config_map.set("module_index_url", module_index_url);
             }
+
+            config_map.set("boot_feature_flags", args.features);
 
             config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);

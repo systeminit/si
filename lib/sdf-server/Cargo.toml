@@ -11,6 +11,7 @@ axum = { workspace = true }
 base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
+clap = { workspace = true }
 convert_case = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }

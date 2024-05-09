@@ -32,8 +32,8 @@ impl IntrinsicFunc {
             "Wed, 24 May 2023 00:00:00 PST",
         )?);
         builder.created_by("System Initiative");
-        for instrinsic in IntrinsicFunc::iter() {
-            builder.func(instrinsic.to_spec()?);
+        for intrinsic in IntrinsicFunc::iter() {
+            builder.func(intrinsic.to_spec()?);
         }
 
         builder

@@ -32,6 +32,7 @@ pub mod context;
 pub mod dependency_graph;
 pub mod deprecated_action;
 pub mod diagram;
+pub mod feature_flags;
 pub mod func;
 pub mod history_event;
 pub mod input_sources;

@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use dal::feature_flags::FeatureFlagService;
 use dal::{
     ChangeSetStatus, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, NatsProcessor,
     ServicesContext,
@@ -85,6 +86,7 @@ impl Server {
             None,
             symmetric_crypto_service,
             layer_db,
+            FeatureFlagService::default(),
         );
 
         Self::from_services(

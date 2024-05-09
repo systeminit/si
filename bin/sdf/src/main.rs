@@ -7,8 +7,8 @@ use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
 use sdf_server::server::{LayerDb, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
-    Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
-    ServicesContext,
+    Config, FeatureFlagService, IncomingStream, JobProcessorClientCloser, JobProcessorConnector,
+    MigrationMode, Server, ServicesContext,
 };
 use si_service::startup;
 use telemetry_application::prelude::*;
@@ -92,6 +92,10 @@ async fn async_main() -> Result<()> {
     }
 
     let config = Config::try_from(args)?;
+    dbg!(config.boot_feature_flags());
+    // TODO Create Feature Flags Service in Service Context
+    // TODO Push Boot feature flags into it
+    // TODO Read FFs  back from actions endpoints
 
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =
@@ -121,6 +125,8 @@ async fn async_main() -> Result<()> {
         LayerDb::from_config(config.layer_db_config().clone(), shutdown_token.clone()).await?;
     task_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
+    let feature_flags_service = FeatureFlagService::new(config.boot_feature_flags().clone());
+
     let services_context = ServicesContext::new(
         pg_pool,
         nats_conn,
@@ -131,6 +137,7 @@ async fn async_main() -> Result<()> {
         Some(module_index_url),
         symmetric_crypto_service,
         layer_db,
+        feature_flags_service,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

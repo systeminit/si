@@ -5,18 +5,22 @@ import { trackEvent } from "@/utils/tracking";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
-export type ActionStatus =
+// ACTIONS V1 STUFF - TODO - THIS IS ALL DEPRECATED AND SHOULD BE REMOVED ONCE ACTIONS V1 IS REMOVED
+export type DeprecatedActionInstanceId = string;
+export type DeprecatedActionStatus =
   | "success"
   | "failure"
   | "running"
   | "error"
   | "unstarted";
 
-export enum ActionKind {
+export enum DeprecatedActionKind {
   Create = "create",
   Delete = "delete",
   Other = "other",
@@ -26,7 +30,7 @@ export enum ActionKind {
 export type DeprecatedActionRunnerId = string;
 export type DeprecatedActionRunner = {
   id: DeprecatedActionRunnerId;
-  status: ActionStatus;
+  status: DeprecatedActionStatus;
   actionKind: string;
   schemaName: string;
   componentName: string;
@@ -36,31 +40,27 @@ export type DeprecatedActionRunner = {
   finishedAt?: string;
   displayName?: string;
 };
-
-// TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 export type DeprecatedActionBatchId = string;
 export type DeprecatedActionBatch = {
   id: DeprecatedActionBatchId;
-  status?: ActionStatus;
+  status?: DeprecatedActionStatus;
   author: string;
   actors?: string[];
   actions: DeprecatedActionRunner[];
   startedAt: string | null;
   finishedAt: string | null;
 };
+export type DeprecatedProposedAction = DeprecatedActionInstance & {
+  kind: DeprecatedActionKind;
+};
 
-export type ActionPrototypeId = string;
-export type ActionInstanceId = string;
-
-export type ProposedAction = ActionInstance & { kind: ActionKind };
-
-export interface ActionPrototype {
+export interface DeprecatedActionPrototype {
   id: ActionPrototypeId;
   name: string;
   displayName: string;
 }
 
-export interface NewAction {
+export interface DeprecatedNewAction {
   id: never;
   prototypeId: ActionPrototypeId;
   name: string;
@@ -68,22 +68,55 @@ export interface NewAction {
   displayName: string;
 }
 
-export type DeprecatedActionId = string;
-export interface ActionInstance {
-  id: DeprecatedActionId;
+export interface DeprecatedActionInstance {
+  id: ActionId;
   actionPrototypeId: ActionPrototypeId;
   name: string;
   componentId: ComponentId;
   actor?: string;
-  parents: DeprecatedActionId[];
+  parents: ActionId[];
 }
 
-export type FullAction = {
+export type DeprecatedFullAction = {
   actionPrototypeId: ActionPrototypeId;
-  actionInstanceId?: DeprecatedActionId;
+  actionInstanceId?: ActionId;
   componentId?: ComponentId;
   actor?: string;
-} & Omit<ActionPrototype, "id">;
+} & Omit<DeprecatedActionPrototype, "id">;
+
+// ACTIONS V2 STUFF - TODO - ONCE ACTIONS V2 WORKS IT SHOULD REPLACE ACTIONS V1
+export enum ActionState {
+  Dispatched = "dispatched",
+  Failed = "failed",
+  OnHold = "on_hold",
+  Queued = "queued",
+  Running = "running",
+}
+
+export enum ActionKind {
+  Create = "create",
+  Destroy = "destroy",
+  Refresh = "refresh",
+  Manual = "manual",
+  Update = "update",
+}
+
+export interface ActionView {
+  id: ActionId;
+  prototypeId: ActionPrototypeId;
+  name: string;
+  description?: string;
+  kind: ActionKind;
+  state: ActionState;
+  originating_changeset_id: ChangeSetId;
+}
+
+// STUFF FOR BOTH ACTIONS V1 AND V2
+
+export type ActionPrototypeId = string;
+export type ActionId = string;
+
+// END STUFF
 
 export const useActionsStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -92,15 +125,20 @@ export const useActionsStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
+  const featureFlagsStore = useFeatureFlagsStore();
+
   return addStoreHooks(
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`,
       {
         state: () => ({
-          rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
+          rawActionsByComponentId: {} as Record<
+            ComponentId,
+            DeprecatedActionPrototype[]
+          >,
           rawProposedActionsById: {} as Record<
-            DeprecatedActionId,
-            ProposedAction
+            ActionId,
+            DeprecatedProposedAction
           >,
           actionBatches: [] as Array<DeprecatedActionBatch>,
           runningActionBatch: undefined as DeprecatedActionBatchId | undefined,
@@ -141,7 +179,7 @@ export const useActionsStore = () => {
             }
             return Object.fromEntries(counts);
           },
-          proposedActions(): ProposedAction[] {
+          proposedActions(): DeprecatedProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
             // probably want to clean up and avoid the while loop if possible too
             const graph = _.cloneDeep(this.rawProposedActionsById);
@@ -177,7 +215,7 @@ export const useActionsStore = () => {
             }
             return actions;
           },
-          actionsByComponentId(): Record<ComponentId, FullAction[]> {
+          actionsByComponentId(): Record<ComponentId, DeprecatedFullAction[]> {
             return _.mapValues(
               this.rawActionsByComponentId,
               (actions, componentId) => {
@@ -185,12 +223,13 @@ export const useActionsStore = () => {
                   _.map(actions, (actionPrototype) => {
                     if (actionPrototype.name === "refresh") return;
 
-                    const actionInstance: ActionInstance | undefined = _.find(
-                      this.rawProposedActions,
-                      (pa) =>
-                        pa.componentId === componentId &&
-                        pa.actionPrototypeId === actionPrototype.id,
-                    );
+                    const actionInstance: DeprecatedActionInstance | undefined =
+                      _.find(
+                        this.rawProposedActions,
+                        (pa) =>
+                          pa.componentId === componentId &&
+                          pa.actionPrototypeId === actionPrototype.id,
+                      );
 
                     return {
                       actionPrototypeId: actionPrototype.id,
@@ -214,12 +253,12 @@ export const useActionsStore = () => {
           },
         },
         actions: {
-          async FETCH_QUEUED_ACTIONS() {
+          async FETCH_DEPRECATED_QUEUED_ACTIONS() {
             if (changeSetId === changeSetsStore.headChangeSetId) {
               return ApiRequest.noop;
             }
             return new ApiRequest<{
-              actions: Record<DeprecatedActionId, ProposedAction>;
+              actions: Record<ActionId, DeprecatedProposedAction>;
             }>({
               method: "get",
               url: "change_set/list_queued_actions",
@@ -246,7 +285,7 @@ export const useActionsStore = () => {
               },
             });
           },
-          async REMOVE_ACTION(id: DeprecatedActionId) {
+          async REMOVE_ACTION(id: ActionId) {
             return new ApiRequest<null>({
               method: "post",
               url: "change_set/remove_action",
@@ -258,7 +297,7 @@ export const useActionsStore = () => {
             });
           },
           async FETCH_COMPONENT_ACTIONS(componentId: ComponentId) {
-            return new ApiRequest<{ actions: ActionPrototype[] }>({
+            return new ApiRequest<{ actions: DeprecatedActionPrototype[] }>({
               url: "component/get_actions",
               keyRequestStatusBy: componentId,
               params: {
@@ -270,7 +309,7 @@ export const useActionsStore = () => {
               },
             });
           },
-          async LOAD_ACTION_BATCHES() {
+          async LOAD_DEPRECATED_ACTION_BATCHES() {
             return new ApiRequest<Array<DeprecatedActionBatch>>({
               url: "/action/history",
               onSuccess: (response) => {
@@ -284,28 +323,50 @@ export const useActionsStore = () => {
               },
             });
           },
+          async LOAD_QUEUED_ACTIONS() {
+            return new ApiRequest<Array<ActionView>>({
+              url: "/action/load_queued",
+              headers: { accept: "application/json" },
+              params: {
+                visibility_change_set_pk: changeSetId,
+              },
+              onSuccess: (response) => {
+                // TODO - UPDATE THIS FOR ACTIONS V2
+                // eslint-disable-next-line no-console
+                console.log(response);
+              },
+            });
+          },
+          // TODO - THIS FUNCTION WILL BE RIPPED OUT WHEN ACTIONS V2 IS READY
+          async LOAD_V1_OR_V2() {
+            if (featureFlagsStore.IS_ACTIONS_V2) {
+              this.LOAD_QUEUED_ACTIONS();
+            } else {
+              this.LOAD_DEPRECATED_ACTION_BATCHES();
+              this.FETCH_DEPRECATED_QUEUED_ACTIONS();
+            }
+          },
         },
         onActivated() {
           if (!changeSetId) return;
-          this.LOAD_ACTION_BATCHES();
-          this.FETCH_QUEUED_ACTIONS();
+
+          this.LOAD_V1_OR_V2();
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ChangeSetWritten",
               callback: () => {
-                this.FETCH_QUEUED_ACTIONS();
-                this.LOAD_ACTION_BATCHES();
+                this.LOAD_V1_OR_V2();
               },
             },
             {
               eventType: "ChangeSetApplied",
               callback: (_update) => {
-                this.LOAD_ACTION_BATCHES();
+                this.LOAD_DEPRECATED_ACTION_BATCHES();
                 // Short term fix for reactivity issue on apply, since the
                 // first load won't have the actions since the rebaser isnt done
-                setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                setTimeout(() => this.LOAD_DEPRECATED_ACTION_BATCHES(), 500);
               },
             },
             {
@@ -340,7 +401,7 @@ export const useActionsStore = () => {
                 if (!batch) {
                   // Short term fix for reactivity issue on apply, since the
                   // first load won't have the actions since the rebaser isnt done
-                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  setTimeout(() => this.LOAD_DEPRECATED_ACTION_BATCHES(), 500);
                   return;
                 }
 
@@ -351,7 +412,7 @@ export const useActionsStore = () => {
                 if (!runner) {
                   // Short term fix for reactivity issue on apply, since the
                   // first load won't have the actions since the rebaser isnt done
-                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  setTimeout(() => this.LOAD_DEPRECATED_ACTION_BATCHES(), 500);
                   return;
                 }
 
@@ -391,7 +452,7 @@ export const useActionsStore = () => {
                 if (!batch) {
                   // Short term fix for reactivity issue on apply, since the
                   // first load won't have the actions since the rebaser isnt done
-                  setTimeout(() => this.LOAD_ACTION_BATCHES(), 500);
+                  setTimeout(() => this.LOAD_DEPRECATED_ACTION_BATCHES(), 500);
                   return;
                 }
                 batch.status = update.status;

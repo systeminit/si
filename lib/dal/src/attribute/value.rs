@@ -54,6 +54,8 @@ use tokio::sync::{RwLock, TryLockError};
 
 pub use dependent_value_graph::DependentValueGraph;
 
+use crate::action::prototype::ActionKind;
+use crate::action::Action;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
@@ -78,7 +80,8 @@ use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotErr
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
+    OutputSocketId, Prop, PropId, PropKind, SchemaVariant, Secret, SecretError, TransactionsError,
+    Workspace,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -94,6 +97,8 @@ pub mod dependent_value_graph;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AttributeValueError {
+    #[error("action error: {0}")]
+    Action(String),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -200,6 +205,8 @@ pub enum AttributeValueError {
     Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
     ValueSource(#[from] ValueSourceError),
+    #[error("workspace error: {0}")]
+    Workspace(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -2018,6 +2025,45 @@ impl AttributeValue {
             .is_some()
         {
             ctx.enqueue_compute_validations(attribute_value_id).await?;
+        }
+
+        // Enqueue update actions if they exist
+        {
+            let workspace_pk = ctx
+                .tenancy()
+                .workspace_pk()
+                .ok_or(ComponentError::WorkspacePkNone)
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+
+            let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk)
+                .await
+                .map_err(|err| AttributeValueError::Workspace(err.to_string()))?;
+
+            let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            let schema_variant_id = Component::schema_variant_id(ctx, component_id)
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+
+            if workspace.uses_actions_v2() {
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Update,
+                )
+                .await
+                .map_err(|err| AttributeValueError::Action(err.to_string()))?
+                {
+                    if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                        .await
+                        .map_err(|err| AttributeValueError::Action(err.to_string()))?
+                        .is_none()
+                    {
+                        Action::new(ctx, prototype_id, Some(component_id))
+                            .await
+                            .map_err(|err| AttributeValueError::Action(err.to_string()))?;
+                    }
+                }
+            }
         }
 
         Ok(())

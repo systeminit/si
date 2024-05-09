@@ -129,6 +129,14 @@ impl ActionPrototype {
         Ok(new_prototype)
     }
 
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn description(&self) -> &Option<String> {
+        &self.description
+    }
+
     implement_add_edge_to!(
         source_id: ActionPrototypeId,
         destination_id: FuncId,

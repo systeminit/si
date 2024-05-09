@@ -16,6 +16,7 @@ si-events = { path = "../../lib/si-events-rs" }
 si-hash = { path = "../../lib/si-hash" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
+si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
@@ -27,6 +28,7 @@ base64 = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
+clap = { workspace = true }
 convert_case = { workspace = true }
 derive_more = { workspace = true }
 diff = { workspace = true }

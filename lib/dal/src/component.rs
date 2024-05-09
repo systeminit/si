@@ -16,6 +16,8 @@ use veritech_client::ResourceStatus;
 
 use si_events::{ulid::Ulid, ContentHash};
 
+use crate::action::prototype::ActionKind;
+use crate::action::Action;
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
@@ -47,8 +49,8 @@ use crate::{
     DeprecatedAction, DeprecatedActionError, DeprecatedActionKind, DeprecatedActionPrototype,
     DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WorkspacePk,
-    WsEvent, WsEventError, WsEventResult, WsPayload,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, Workspace,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -168,6 +170,10 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("workspace pk not found on context")]
+    WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("attribute value {0} has wrong type for operation: {0}")]
@@ -500,14 +506,35 @@ impl Component {
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
-        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
-            if prototype.kind == DeprecatedActionKind::Create {
-                DeprecatedAction::upsert(ctx, prototype.id, component.id())
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::new(ctx, prototype_id, Some(component.id))
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        } else {
+            for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
+                .await
+                .map_err(Box::new)?
+            {
+                if prototype.kind == DeprecatedActionKind::Create {
+                    DeprecatedAction::upsert(ctx, prototype.id, component.id())
+                        .await
+                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
             }
         }
 
@@ -1673,6 +1700,9 @@ impl Component {
         let change_set = ctx.change_set()?;
 
         let component = Self::get_by_id(ctx, id).await?;
+
+        let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
+
         for incoming_connection in component.incoming_connections(ctx).await? {
             Component::remove_connection(
                 ctx,
@@ -1701,6 +1731,28 @@ impl Component {
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)
             .await?;
+
+        // Remove Creation actions from queue
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::remove(ctx, prototype_id, Some(component.id))
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        }
 
         WsEvent::component_deleted(ctx, id)
             .await?
@@ -1734,6 +1786,8 @@ impl Component {
 
     pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
         let component_id = self.id;
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+
         let modified = self
             .modify(ctx, |component| {
                 component.to_delete = to_delete;
@@ -1777,33 +1831,70 @@ impl Component {
         ctx.enqueue_dependent_values_update(downstream_av_ids)
             .await?;
 
+        // Deal with deletion actions
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
         if to_delete {
             // Enqueue delete actions for component
-            for prototype in DeprecatedActionPrototype::for_variant(
-                ctx,
-                Self::schema_variant_id(ctx, modified.id).await?,
-            )
-            .await
-            .map_err(Box::new)?
-            {
-                if prototype.kind == DeprecatedActionKind::Delete {
-                    DeprecatedAction::upsert(ctx, prototype.id, modified.id)
+            if workspace.uses_actions_v2() {
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Destroy,
+                )
+                .await?
+                {
+                    Action::new(ctx, prototype_id, Some(component_id))
                         .await
                         .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            } else {
+                for prototype in DeprecatedActionPrototype::for_variant(
+                    ctx,
+                    Self::schema_variant_id(ctx, modified.id).await?,
+                )
+                .await
+                .map_err(Box::new)?
+                {
+                    if prototype.kind == DeprecatedActionKind::Delete {
+                        DeprecatedAction::upsert(ctx, prototype.id, modified.id)
+                            .await
+                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    }
                 }
             }
         } else {
             // Remove delete actions for component
-            let actions = DeprecatedAction::build_graph(ctx)
-                .await
-                .map_err(|err| ComponentError::Action(err.to_string()))?;
-            for bag in actions.values() {
-                if bag.component_id == component_id {
-                    bag.action
-                        .clone()
-                        .delete(ctx)
+            if workspace.uses_actions_v2() {
+                // Get actions category node
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Destroy,
+                )
+                .await?
+                {
+                    Action::remove(ctx, prototype_id, Some(component_id))
                         .await
                         .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            } else {
+                let actions = DeprecatedAction::build_graph(ctx)
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                for bag in actions.values() {
+                    if bag.component_id == component_id {
+                        bag.action
+                            .clone()
+                            .delete(ctx)
+                            .await
+                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    }
                 }
             }
         }
@@ -1884,17 +1975,39 @@ impl Component {
 
         pasted_comp.clone_attributes_from(ctx, self.id()).await?;
 
-        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
-            .await
-            .map_err(Box::new)?
-        {
-            if prototype.kind != DeprecatedActionKind::Create {
-                continue;
-            }
+        // Enqueue creation actions
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
 
-            let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant.id(),
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::new(ctx, prototype_id, Some(pasted_comp.id))
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        } else {
+            for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
                 .await
-                .map_err(Box::new)?;
+                .map_err(Box::new)?
+            {
+                if prototype.kind != DeprecatedActionKind::Create {
+                    continue;
+                }
+
+                let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
+                    .await
+                    .map_err(Box::new)?;
+            }
         }
 
         Ok(pasted_comp)

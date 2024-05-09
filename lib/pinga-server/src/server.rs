@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use dal::feature_flags::FeatureFlagService;
 use dal::job::definition::compute_validation::ComputeValidation;
 use dal::{
     job::{
@@ -139,6 +140,7 @@ impl Server {
             None,
             symmetric_crypto_service,
             layer_db,
+            FeatureFlagService::default(),
         );
 
         Self::from_services(

@@ -60,6 +60,7 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
+use dal::feature_flags::FeatureFlagService;
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
@@ -359,6 +360,7 @@ impl TestContext {
             None,
             self.symmetric_crypto_service.clone(),
             layer_db,
+            FeatureFlagService::default(),
         )
     }
 
@@ -733,6 +735,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
         services_ctx.layer_db().clone(),
+        services_ctx.feature_flags_service().clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -770,6 +773,7 @@ async fn migrate_local_builtins(
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
     layer_db: DalLayerDb,
+    feature_flag_service: FeatureFlagService,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -781,6 +785,7 @@ async fn migrate_local_builtins(
         Some(module_index_url),
         symmetric_crypto_service.clone(),
         layer_db.clone(),
+        feature_flag_service,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
