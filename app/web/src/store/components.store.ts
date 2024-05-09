@@ -904,6 +904,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               optimistic: () => {
+                // NOTE: `onDragElementsMove` only looks at parentId
+                // so we don't have to manipulate `ancestorIds` here
                 type Parent = [RawComponent, string | undefined];
                 const prevParents: Parent[] = [];
                 connections.forEach(({ childId, parentId }) => {

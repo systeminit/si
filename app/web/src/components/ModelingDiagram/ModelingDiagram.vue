@@ -1463,7 +1463,8 @@ function endDragElements() {
     writeToChangeSet: true,
   });
 
-  componentsStore.CONNECT_COMPONENT_TO_FRAME(parentConnections);
+  if (parentConnections.length > 0)
+    componentsStore.CONNECT_COMPONENT_TO_FRAME(parentConnections);
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
