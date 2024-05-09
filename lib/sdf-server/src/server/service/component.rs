@@ -9,7 +9,7 @@ use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{
     attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
-    SecretError as DalSecretError, WsEventError,
+    SchemaVariantError, SecretError as DalSecretError, WsEventError,
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
@@ -37,6 +37,7 @@ pub mod debug;
 pub mod get_code;
 pub mod restore_default_function;
 pub mod set_type;
+mod upgrade;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -67,8 +68,12 @@ pub enum ComponentError {
     PropNotFound(PropId),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
+    #[error("schema variant not required")]
+    SchemaVariantUpgradeSkipped,
     #[error("dal secret error: {0}")]
     Secret(#[from] DalSecretError),
     #[error("serde json error: {0}")]
@@ -140,4 +145,5 @@ pub fn routes() -> Router<AppState> {
         // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))
+        .route("/upgrade_component", post(upgrade::upgrade))
 }
