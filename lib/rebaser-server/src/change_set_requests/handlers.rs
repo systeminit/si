@@ -2,14 +2,20 @@
 
 use std::result;
 
-use dal::{Tenancy, Visibility, WorkspacePk, WsEvent};
+use dal::{
+    Tenancy, Visibility, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
+    WorkspaceSnapshotError, WsEvent,
+};
 use naxum::{
     extract::State,
     response::{IntoResponse, Response},
 };
 use si_data_nats::InnerMessage;
 use si_layer_cache::{
-    activities::{rebase::RebaseStatus, Activity, ActivityRebaseRequest},
+    activities::{
+        rebase::{RebaseStatus, RebaseStatusDiscriminants},
+        Activity, ActivityRebaseRequest,
+    },
     db::serialize,
 };
 use telemetry::prelude::*;
@@ -32,6 +38,12 @@ pub enum HandlerError {
     /// When failing to successfully send a "rebase finished" message
     #[error("failed to send rebase finished activity: {0}")]
     SendRebaseFinished(#[source] si_layer_cache::LayerDbError),
+    #[error("Workspace error: {0}")]
+    /// When failing to find the workspace
+    Workspace(#[from] WorkspaceError),
+    /// When failing to do an operation using the [`WorkspaceSnapshot`]
+    #[error("Workspace Snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     /// When failing to send a [`WsEvent`]
     #[error("failed to construct ws event: {0}")]
     WsEvent(#[from] dal::WsEventError),
@@ -66,6 +78,20 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
                 message: err.to_string(),
             }
         });
+
+    // Dispatch eligible actions if the change set is the default for the workspace.
+    // Actions are **ONLY** ever dispatched from the default change set for a workspace.
+    if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
+        if let Some(workspace_pk) = ctx.tenancy().workspace_pk() {
+            if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk).await? {
+                if let Ok(change_set) = ctx.change_set() {
+                    if workspace.default_change_set_id() == change_set.id {
+                        WorkspaceSnapshot::dispatch_actions(&ctx).await?;
+                    }
+                }
+            }
+        }
+    }
 
     ctx.layer_db()
         .activity()
