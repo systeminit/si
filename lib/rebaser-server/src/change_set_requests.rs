@@ -19,7 +19,7 @@ use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
 
-use crate::{ServerError as Error, ServerMetadata, ServerResult};
+use crate::{dvu_debouncer::DvuDebouncer, ServerError as Error, ServerMetadata, ServerResult};
 
 use self::app_state::AppState;
 
@@ -55,7 +55,13 @@ impl ChangeSetRequestsTask {
         ctx_builder: DalContextBuilder,
         shutdown_token: CancellationToken,
     ) -> Self {
-        let state = AppState::new(workspace_id, change_set_id, ctx_builder);
+        let dvu_debouncer = DvuDebouncer::new(
+            workspace_id,
+            change_set_id,
+            shutdown_token.clone(),
+            ctx_builder.clone(),
+        );
+        let state = AppState::new(workspace_id, change_set_id, ctx_builder, dvu_debouncer);
 
         let app = ServiceBuilder::new()
             .concurrency_limit(1)

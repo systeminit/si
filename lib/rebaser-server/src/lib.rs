@@ -31,6 +31,7 @@ use thiserror::Error;
 
 pub mod change_set_requests;
 mod config;
+pub mod dvu_debouncer;
 mod rebase;
 mod server;
 

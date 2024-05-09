@@ -544,6 +544,7 @@ impl ChangeSet {
             onto_workspace_snapshot_address,
             onto_vector_clock_id: self.vector_clock_id(),
             to_rebase_change_set_id,
+            dvu_values: None,
         };
 
         if let Some(conflicts) = ctx.do_rebase_request(rebase_request).await? {

@@ -14,7 +14,7 @@ use crate::activity_client::ActivityClient;
 use crate::{error::LayerDbResult, event::LayeredEventMetadata};
 
 /// The message that the server receives to perform a rebase.
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct RebaseRequest {
     /// Corresponds to the change set whose pointer is to be updated.
     pub to_rebase_change_set_id: Ulid,
@@ -25,6 +25,9 @@ pub struct RebaseRequest {
     /// last change set before edits were made, or the change set that you are trying to rebase
     /// onto base.
     pub onto_vector_clock_id: Ulid,
+    /// A set of values that have changed, and need to have the impact of their
+    /// change reflected downstream of them by the dependent values update job
+    pub dvu_values: Option<Vec<Ulid>>,
 }
 
 impl RebaseRequest {
@@ -32,11 +35,13 @@ impl RebaseRequest {
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
     ) -> RebaseRequest {
         RebaseRequest {
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         }
     }
 }
@@ -115,12 +120,14 @@ impl<'a> ActivityRebase<'a> {
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         );
         let activity = Activity::rebase(payload, metadata);
         self.activity_base.publish(&activity).await?;
@@ -133,12 +140,14 @@ impl<'a> ActivityRebase<'a> {
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         );
         let activity = Activity::rebase(payload, metadata);
         // println!("trigger: sending rebase and waiting for response");
