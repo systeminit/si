@@ -1,0 +1,26 @@
+[package]
+name = "si-full-stack"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+derive_builder = { workspace = true }
+remain = { workspace = true }
+buck2-resources = { path = "../../lib/buck2-resources" }
+rebaser-server = { path = "../../lib/rebaser-server" }
+pinga-server = { path = "../../lib/pinga-server" }
+si-std = { path = "../../lib/si-std" }
+si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+veritech-server = { path = "../../lib/veritech-server" }
+sodiumoxide = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
+telemetry = { path = "../../lib/telemetry-rs" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }

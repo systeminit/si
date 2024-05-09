@@ -5123,6 +5123,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-full-stack"
+version = "0.1.0"
+dependencies = [
+ "buck2-resources",
+ "derive_builder",
+ "module-index-client",
+ "pinga-server",
+ "rebaser-server",
+ "remain",
+ "serde",
+ "si-crypto",
+ "si-data-nats",
+ "si-data-pg",
+ "si-layer-cache",
+ "si-std",
+ "sodiumoxide",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "veritech-server",
+]
+
+[[package]]
 name = "si-hash"
 version = "0.1.0"
 dependencies = [

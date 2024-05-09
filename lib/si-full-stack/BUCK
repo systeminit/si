@@ -1,0 +1,11 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-full-stack",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
