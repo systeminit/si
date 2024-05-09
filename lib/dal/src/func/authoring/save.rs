@@ -256,7 +256,13 @@ async fn update_leaf_associations(
     // for the provided components.
     id_set.extend(schema_variant_ids);
     for component_id in component_ids {
-        id_set.insert(Component::schema_variant_id(ctx, component_id).await?);
+        // TODO(nick): destroy nilId. Log a warning at the moment in case the frontend sends value
+        // for no-ops. I will come back and destroy nil id soon.
+        if component_id == ComponentId::NONE {
+            warn!("skipping component id set to nil id");
+        } else {
+            id_set.insert(Component::schema_variant_id(ctx, component_id).await?);
+        }
     }
 
     let mut views = Vec::new();
@@ -285,7 +291,7 @@ async fn save_attr_func_prototypes(
     func: &Func,
     prototype_bags: Vec<AttributePrototypeBag>,
     removed_protoype_op: RemovedPrototypeOp,
-    _key: Option<String>,
+    key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
     let mut id_set = HashSet::new();
     let mut computed_backend_response_type = func.backend_response_type;
@@ -294,7 +300,7 @@ async fn save_attr_func_prototypes(
     for prototype_bag in prototype_bags {
         // TODO(nick): don't use the nil id in the future.
         let attribute_prototype_id = if AttributePrototypeId::NONE == prototype_bag.id {
-            create_new_attribute_prototype(ctx, &prototype_bag, func.id).await?
+            create_new_attribute_prototype(ctx, &prototype_bag, func.id, key.clone()).await?
         } else {
             AttributePrototype::update_func_by_id(ctx, prototype_bag.id, func.id).await?;
             prototype_bag.id
@@ -462,13 +468,21 @@ async fn create_new_attribute_prototype(
     ctx: &DalContext,
     prototype_bag: &AttributePrototypeBag,
     func_id: FuncId,
+    key: Option<String>,
 ) -> FuncAuthoringResult<AttributePrototypeId> {
     let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
+    // TODO(nick): just destroy and burn nilId to the ground. We need to use the "id!" macro instead
+    // of the "pk!" macro and be done with it.
+    let component_id_cannot_be_nil_id = match prototype_bag.component_id {
+        None | Some(ComponentId::NONE) => None,
+        Some(component_id) => Some(component_id),
+    };
 
     let mut affected_attribute_value_ids = Vec::new();
 
     if let Some(prop_id) = prototype_bag.prop_id {
-        if let Some(component_id) = prototype_bag.component_id {
+        if let Some(component_id) = component_id_cannot_be_nil_id {
             let attribute_value_ids = Prop::attribute_values_for_prop_id(ctx, prop_id).await?;
 
             for attribute_value_id in attribute_value_ids {
@@ -487,12 +501,12 @@ async fn create_new_attribute_prototype(
                 ctx,
                 prop_id,
                 attribute_prototype.id,
-                EdgeWeightKind::Prototype(None),
+                EdgeWeightKind::Prototype(key),
             )
             .await?;
         }
     } else if let Some(output_socket_id) = prototype_bag.output_socket_id {
-        if let Some(component_id) = prototype_bag.component_id {
+        if let Some(component_id) = component_id_cannot_be_nil_id {
             let attribute_value_ids =
                 OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket_id).await?;
             for attribute_value_id in attribute_value_ids {
@@ -511,7 +525,7 @@ async fn create_new_attribute_prototype(
                 ctx,
                 output_socket_id,
                 attribute_prototype.id,
-                EdgeWeightKind::Prototype(None),
+                EdgeWeightKind::Prototype(key),
             )
             .await?;
         }
