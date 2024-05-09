@@ -2555,6 +2555,21 @@ impl Component {
 
         Ok(())
     }
+
+    pub async fn upgrade_to_new_variant(
+        &self,
+        _ctx: &DalContext,
+        _schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<()> {
+        // Get the list of potential sockets for the component
+        // Now get the list of edges for the component
+
+        // now lets delete the edges from this component
+        // Find all of the attributes for the component
+        //
+
+        Ok(())
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -2568,6 +2583,13 @@ pub struct ComponentCreatedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
+    component_id: ComponentId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpgradedPayload {
     component_id: ComponentId,
     change_set_id: ChangeSetId,
 }
@@ -2744,6 +2766,20 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::ComponentUpdated(ComponentUpdatedPayload {
+                component_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn component_upgraded(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentUpgraded(ComponentUpgradedPayload {
                 component_id,
                 change_set_id: ctx.change_set_id(),
             }),
