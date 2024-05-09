@@ -13,6 +13,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
+    action::prototype::ActionPrototypeError,
     change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
     prop::PropError,
@@ -36,7 +37,7 @@ pub mod import;
 #[derive(Debug, Error)]
 pub enum PkgError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
@@ -55,6 +56,8 @@ pub enum PkgError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]

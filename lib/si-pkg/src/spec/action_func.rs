@@ -23,6 +23,7 @@ pub enum ActionFuncSpecKind {
     Refresh,
     Other,
     Delete,
+    Update,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

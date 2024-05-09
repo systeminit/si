@@ -1,5 +1,7 @@
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
+use si_pkg::ActionFuncSpecKind;
+use strum::Display;
 use thiserror::Error;
 
 use crate::{
@@ -13,7 +15,8 @@ use crate::{
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, FuncId, HelperError,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
+    WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -37,6 +40,8 @@ pub enum ActionPrototypeError {
     Helper(#[from] HelperError),
     #[error("Node Weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("Transactions error: {0}")]
@@ -50,7 +55,7 @@ pub enum ActionPrototypeError {
 pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
 
 #[remain::sorted]
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
 pub enum ActionKind {
     /// Create the "outside world" version of the modeled object.
     Create,
@@ -95,6 +100,7 @@ impl ActionPrototype {
         kind: ActionKind,
         name: String,
         description: Option<String>,
+        schema_variant_id: SchemaVariantId,
         func_id: FuncId,
     ) -> ActionPrototypeResult<Self> {
         let change_set = ctx.change_set()?;
@@ -104,6 +110,14 @@ impl ActionPrototype {
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 
         Self::add_edge_to_func(ctx, new_id, func_id, EdgeWeightKind::new_use()).await?;
+
+        SchemaVariant::add_edge_to_action_prototype(
+            ctx,
+            schema_variant_id,
+            new_id,
+            EdgeWeightKind::ActionPrototype,
+        )
+        .await?;
 
         let new_prototype: Self = ctx
             .workspace_snapshot()?
@@ -230,5 +244,17 @@ impl ActionPrototype {
         }
 
         Ok(prototypes)
+    }
+}
+
+impl From<ActionFuncSpecKind> for ActionKind {
+    fn from(value: ActionFuncSpecKind) -> Self {
+        match value {
+            ActionFuncSpecKind::Create => ActionKind::Create,
+            ActionFuncSpecKind::Refresh => ActionKind::Refresh,
+            ActionFuncSpecKind::Other => ActionKind::Manual,
+            ActionFuncSpecKind::Delete => ActionKind::Destroy,
+            ActionFuncSpecKind::Update => ActionKind::Update,
+        }
     }
 }

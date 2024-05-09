@@ -128,6 +128,7 @@ impl From<ActionFuncSpecKind> for DeprecatedActionKind {
             ActionFuncSpecKind::Refresh => DeprecatedActionKind::Refresh,
             ActionFuncSpecKind::Other => DeprecatedActionKind::Other,
             ActionFuncSpecKind::Delete => DeprecatedActionKind::Delete,
+            ActionFuncSpecKind::Update => DeprecatedActionKind::Other,
         }
     }
 }
