@@ -1,5 +1,7 @@
 use ulid::Ulid as CoreUlid;
+pub use ulid::ULID_LEN;
 
+/// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Default, PartialOrd, Ord)]

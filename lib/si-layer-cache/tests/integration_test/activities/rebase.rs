@@ -86,6 +86,7 @@ async fn subscribe_rebaser_requests_work_queue() {
             Ulid::new(),
             WorkspaceSnapshotAddress::new(b"poop"),
             Ulid::new(),
+            None,
             metadata.clone(),
         )
         .await
@@ -201,6 +202,7 @@ async fn rebase_and_wait() {
                 Ulid::new(),
                 WorkspaceSnapshotAddress::new(b"poop"),
                 Ulid::new(),
+                None,
                 metadata_for_task,
             )
             .await
@@ -337,6 +339,7 @@ async fn rebase_requests_work_queue_stress() {
                     Ulid::new(),
                     WorkspaceSnapshotAddress::new(b"poop"),
                     Ulid::new(),
+                    None,
                     send_meta.clone(),
                 )
                 .await
@@ -492,6 +495,7 @@ async fn rebase_and_wait_stress() {
                         Ulid::new(),
                         WorkspaceSnapshotAddress::new(b"poop"),
                         Ulid::new(),
+                        None,
                         mp,
                     )
                     .await;

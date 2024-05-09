@@ -1,4 +1,4 @@
-use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
+use std::{mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
@@ -33,8 +33,8 @@ use crate::{
         queue::JobQueue,
     },
     workspace_snapshot::WorkspaceSnapshotError,
-    AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
-    WorkspacePk, WorkspaceSnapshot,
+    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    WorkspaceSnapshot,
 };
 use crate::{EncryptedSecret, Workspace};
 
@@ -377,6 +377,9 @@ impl DalContext {
             // of the current change set
             to_rebase_change_set_id: self.change_set_id(),
             onto_vector_clock_id: vector_clock_id,
+            // dependent values to be processed will be added later, if any
+            // exist
+            dvu_values: None,
         })
     }
 
@@ -528,6 +531,11 @@ impl DalContext {
         self.blocking_commit_internal(rebase_request).await
     }
 
+    pub async fn blocking_commit_no_rebase(&self) -> Result<(), TransactionsError> {
+        self.blocking_commit_internal(None).await?;
+        Ok(())
+    }
+
     /// Rolls all inner transactions back, discarding all changes made within them.
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
@@ -655,21 +663,6 @@ impl DalContext {
         new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(base_change_set_id)
             .await?;
         Ok(new)
-    }
-
-    pub async fn enqueue_dependencies_update_component(
-        &self,
-        component_id: ComponentId,
-    ) -> Result<(), TransactionsError> {
-        self.txns()
-            .await?
-            .enqueue_dependencies_update_component(
-                *self.tenancy(),
-                self.change_set_id(),
-                component_id,
-            )
-            .await;
-        Ok(())
     }
 
     pub async fn enqueue_deprecated_actions(
@@ -1126,9 +1119,6 @@ pub struct Transactions {
     nats_txn: NatsTxn,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
-    #[allow(clippy::type_complexity)]
-    dependencies_update_component:
-        Arc<Mutex<HashMap<(Tenancy, ChangeSetId), HashSet<ComponentId>>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -1136,6 +1126,7 @@ pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
     pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub onto_vector_clock_id: VectorClockId,
+    pub dvu_values: Option<Vec<ulid::Ulid>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1170,6 +1161,9 @@ async fn rebase(
             rebase_request.to_rebase_change_set_id.into(),
             rebase_request.onto_workspace_snapshot_address,
             rebase_request.onto_vector_clock_id.into(),
+            rebase_request
+                .dvu_values
+                .map(|values| values.into_iter().map(Into::into).collect()),
             metadata,
         )
         .await?;
@@ -1217,7 +1211,6 @@ impl Transactions {
             nats_txn,
             job_processor,
             job_queue: JobQueue::new(),
-            dependencies_update_component: Default::default(),
         }
     }
 
@@ -1246,13 +1239,11 @@ impl Transactions {
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
-
-        // We need to send a rebase request *after* committing any transactions,
-        // but before starting any jobs in pinga, since those transactions may
-        // have updated the change set pointer to point to the current snapshot,
-        // and that will be the snapshot we expect the dependent values update
-        // (for example) to access.
-        let conflicts = if let Some(rebase_request) = rebase_request {
+        let conflicts = if let Some(mut rebase_request) = rebase_request {
+            rebase_request.dvu_values = self
+                .job_queue
+                .take_dependent_values_for_change_set(rebase_request.to_rebase_change_set_id)
+                .await;
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
@@ -1319,38 +1310,6 @@ impl Transactions {
     /// encountered to the caller.
     pub async fn rollback(self) -> Result<(), TransactionsError> {
         let _ = self.rollback_into_conns().await?;
-        Ok(())
-    }
-
-    pub async fn enqueue_dependencies_update_component(
-        &self,
-        tenancy: Tenancy,
-        change_set_id: ChangeSetId,
-        component_id: ComponentId,
-    ) {
-        self.dependencies_update_component
-            .lock()
-            .await
-            .entry((tenancy, change_set_id))
-            .or_default()
-            .insert(component_id);
-    }
-
-    #[instrument(level = "info", skip_all)]
-    async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
-        for ((tenancy, change_set_id), component_ids) in
-            std::mem::take(&mut *self.dependencies_update_component.lock().await)
-        {
-            for component_id in component_ids {
-                let visibility = Visibility::new(change_set_id);
-                self.pg()
-                    .execute(
-                        "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
-                        &[&tenancy, &visibility, &component_id],
-                    )
-                    .await?;
-            }
-        }
         Ok(())
     }
 }

@@ -3,6 +3,8 @@
 use dal::DalContextBuilder;
 use si_events::{ChangeSetId, WorkspacePk};
 
+use crate::dvu_debouncer::DvuDebouncer;
+
 /// Application state.
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -12,6 +14,8 @@ pub struct AppState {
     pub change_set_id: ChangeSetId,
     /// DAL context builder for each processing request
     pub ctx_builder: DalContextBuilder,
+    /// The DVU debouncer
+    pub dvu_debouncer: DvuDebouncer,
 }
 
 impl AppState {
@@ -20,11 +24,13 @@ impl AppState {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
+        dvu_debouncer: DvuDebouncer,
     ) -> Self {
         Self {
             workspace_id,
             change_set_id,
             ctx_builder,
+            dvu_debouncer,
         }
     }
 }
