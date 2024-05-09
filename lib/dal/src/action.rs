@@ -4,16 +4,20 @@ use si_events::ulid::Ulid;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::ResourceStatus;
 
 use crate::{
     action::dependency_graph::ActionDependencyGraph,
+    action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+    func::backend::js_action::DeprecatedActionRunResult,
+    func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
     id, implement_add_edge_to,
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
     ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext, EdgeWeightError,
     EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
-    WorkspaceSnapshotError,
+    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -22,16 +26,24 @@ pub mod prototype;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
+    #[error("action prototype errro: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("component not found for action: {0}")]
+    ComponentNotFoundForAction(ActionId),
     #[error("Edge Weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func execution error: {0}")]
+    FuncExecution(#[from] FuncExecutionError),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("Node Weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("prototype not found for action: {0}")]
+    PrototypeNotFoundForAction(ActionId),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("Workspace Snapshot error: {0}")]
@@ -67,6 +79,7 @@ pub struct Action {
     id: ActionId,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
+    func_execution_pk: Option<FuncExecutionPk>,
 }
 
 impl From<ActionNodeWeight> for Action {
@@ -75,6 +88,7 @@ impl From<ActionNodeWeight> for Action {
             id: value.id().into(),
             state: value.state(),
             originating_changeset_id: value.originating_changeset_id(),
+            func_execution_pk: value.func_execution_pk(),
         }
     }
 }
@@ -82,6 +96,10 @@ impl From<ActionNodeWeight> for Action {
 impl Action {
     pub fn id(&self) -> ActionId {
         self.id
+    }
+
+    pub fn state(&self) -> ActionState {
+        self.state
     }
 
     implement_add_edge_to!(
@@ -108,6 +126,50 @@ impl Action {
         discriminant: EdgeWeightKindDiscriminants::Use,
         result: ActionResult,
     );
+
+    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
+        let action: Self = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(id)
+            .await?
+            .get_action_node_weight()?
+            .into();
+        Ok(action)
+    }
+
+    pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
+        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
+        let mut node_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(id)
+            .await?
+            .get_action_node_weight()?;
+        node_weight.set_state(state);
+        ctx.workspace_snapshot()?
+            .add_node(NodeWeight::Action(node_weight))
+            .await?;
+        ctx.workspace_snapshot()?.replace_references(idx).await?;
+        Ok(())
+    }
+
+    pub async fn set_func_execution_pk(
+        ctx: &DalContext,
+        id: ActionId,
+        pk: Option<FuncExecutionPk>,
+    ) -> ActionResult<()> {
+        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
+        let mut node_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight_by_id(id)
+            .await?
+            .get_action_node_weight()?;
+        node_weight.set_func_execution_pk(pk);
+        ctx.workspace_snapshot()?
+            .add_node(NodeWeight::Action(node_weight))
+            .await?;
+        ctx.workspace_snapshot()?.replace_references(idx).await?;
+        Ok(())
+    }
 
     pub async fn new(
         ctx: &DalContext,
@@ -184,6 +246,31 @@ impl Action {
         Ok(result)
     }
 
+    pub async fn prototype_id(
+        ctx: &DalContext,
+        action_id: ActionId,
+    ) -> ActionResult<ActionPrototypeId> {
+        for (_, _tail_node_idx, head_node_idx) in ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                action_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
+            if let NodeWeight::ActionPrototype(node_weight) = ctx
+                .workspace_snapshot()?
+                .get_node_weight(head_node_idx)
+                .await?
+            {
+                return Ok(node_weight.id().into());
+            }
+        }
+
+        Err(ActionError::PrototypeNotFoundForAction(action_id))
+    }
+
     pub async fn component_id(
         ctx: &DalContext,
         action_id: ActionId,
@@ -230,5 +317,71 @@ impl Action {
         }
 
         Ok(result)
+    }
+
+    pub async fn func_execution(&self, ctx: &DalContext) -> ActionResult<Option<FuncExecution>> {
+        Ok(match self.func_execution_pk {
+            Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
+            None => None,
+        })
+    }
+
+    pub async fn run(
+        ctx: &DalContext,
+        id: ActionId,
+    ) -> ActionResult<Option<DeprecatedActionRunResult>> {
+        let component_id = Action::component_id(ctx, id)
+            .await?
+            .ok_or(ActionError::ComponentNotFoundForAction(id))?;
+
+        let prototype_id = Action::prototype_id(ctx, id).await?;
+        let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+
+        let (func_execution_pk, resource) =
+            ActionPrototype::run(ctx, prototype.id, component_id).await?;
+        Action::set_func_execution_pk(ctx, id, Some(func_execution_pk)).await?;
+
+        if matches!(
+            resource.as_ref().and_then(|r| r.status),
+            Some(ResourceStatus::Ok)
+        ) {
+            ctx.workspace_snapshot()?
+                .remove_node_by_id(ctx.change_set()?, id)
+                .await?;
+        } else {
+            Action::set_state(ctx, id, ActionState::Failed).await?;
+        }
+
+        Ok(resource)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionReturn {
+    id: ActionId,
+    component_id: ComponentId,
+    kind: ActionKind,
+    resource: Option<DeprecatedActionRunResult>,
+}
+
+impl WsEvent {
+    pub async fn action_return(
+        ctx: &DalContext,
+        id: ActionId,
+        kind: ActionKind,
+        component_id: ComponentId,
+        resource: Option<DeprecatedActionRunResult>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ActionReturn(ActionReturn {
+                id,
+                kind,
+                component_id,
+                resource,
+            }),
+        )
+        .await
     }
 }

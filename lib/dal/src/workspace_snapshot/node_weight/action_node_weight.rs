@@ -4,6 +4,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     action::ActionState,
+    func::execution::FuncExecutionPk,
     workspace_snapshot::{
         graph::LineageId,
         vector_clock::{VectorClock, VectorClockId},
@@ -18,6 +19,7 @@ pub struct ActionNodeWeight {
     id: Ulid,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
+    func_execution_pk: Option<FuncExecutionPk>,
     lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -32,6 +34,7 @@ impl ActionNodeWeight {
         Ok(Self {
             id,
             state: ActionState::Queued,
+            func_execution_pk: None,
             originating_changeset_id: change_set.id,
             lineage_id: change_set.generate_ulid()?,
             merkle_tree_hash: MerkleTreeHash::default(),
@@ -53,12 +56,24 @@ impl ActionNodeWeight {
         self.id
     }
 
+    pub fn set_state(&mut self, state: ActionState) {
+        self.state = state;
+    }
+
     pub fn state(&self) -> ActionState {
         self.state
     }
 
     pub fn originating_changeset_id(&self) -> ChangeSetId {
         self.originating_changeset_id
+    }
+
+    pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
+        self.func_execution_pk = func_execution_pk
+    }
+
+    pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
+        self.func_execution_pk
     }
 
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {

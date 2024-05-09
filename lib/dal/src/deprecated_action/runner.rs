@@ -538,7 +538,7 @@ pub struct ActionRunnerReturn {
 }
 
 impl WsEvent {
-    pub async fn action_return(
+    pub async fn deprecated_action_return(
         ctx: &DalContext,
         id: DeprecatedActionRunnerId,
         batch_id: DeprecatedActionBatchId,

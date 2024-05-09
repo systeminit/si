@@ -72,7 +72,7 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 pub enum ComponentError {
     #[error("action error: {0}")]
     Action(String),
-    #[error("action prototype error: {0}")]
+    #[error("deprecated action prototype error: {0}")]
     ActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),

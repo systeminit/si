@@ -12,7 +12,10 @@ use si_pkg::{SiPkgError, SpecError};
 use crate::func::FuncError;
 use crate::module::ModuleError;
 use crate::pkg::PkgError;
-use crate::{AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
+use crate::{
+    action::prototype::ActionPrototypeError, AttributeValueId, PropId, SchemaVariantError,
+    SchemaVariantId, StandardModelError, TransactionsError,
+};
 
 // Private builtins modules.
 pub mod func;
@@ -21,6 +24,8 @@ pub mod schema;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value not found by id: {0}")]
     AttributeValueNotFound(AttributeValueId),
     #[error("builtin {0} missing func argument {1}")]
@@ -49,6 +54,8 @@ pub enum BuiltinsError {
     PropNotFound(PropId),
     #[error("Regex parsing error: {0}")]
     Regex(#[from] regex::Error),
+    #[error(transparent)]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
