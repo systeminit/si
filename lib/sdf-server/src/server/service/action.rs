@@ -6,10 +6,7 @@ use axum::{
 };
 use thiserror::Error;
 
-use dal::{
-    action::{prototype::ActionPrototypeError, Action},
-    schema::SchemaError as DalSchemaError,
-};
+use dal::{action::prototype::ActionPrototypeError, schema::SchemaError as DalSchemaError};
 use dal::{
     func::binding::return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     DeprecatedActionBatchError, DeprecatedActionRunnerError, StandardModelError, TransactionsError,

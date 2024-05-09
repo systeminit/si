@@ -26,6 +26,7 @@ export enum DeprecatedActionKind {
   Other = "other",
   Refresh = "refresh",
 }
+
 export type DeprecatedActionRunnerId = string;
 export type DeprecatedActionRunner = {
   id: DeprecatedActionRunnerId;
@@ -52,11 +53,13 @@ export type DeprecatedActionBatch = {
 export type DeprecatedProposedAction = DeprecatedActionInstance & {
   kind: DeprecatedActionKind;
 };
+
 export interface DeprecatedActionPrototype {
   id: ActionPrototypeId;
   name: string;
   displayName: string;
 }
+
 export interface DeprecatedNewAction {
   id: never;
   prototypeId: ActionPrototypeId;
@@ -64,6 +67,7 @@ export interface DeprecatedNewAction {
   componentId: ComponentId;
   displayName: string;
 }
+
 export interface DeprecatedActionInstance {
   id: ActionId;
   actionPrototypeId: ActionPrototypeId;
@@ -72,6 +76,7 @@ export interface DeprecatedActionInstance {
   actor?: string;
   parents: ActionId[];
 }
+
 export type DeprecatedFullAction = {
   actionPrototypeId: ActionPrototypeId;
   actionInstanceId?: ActionId;
@@ -87,6 +92,7 @@ export enum ActionState {
   Queued = "queued",
   Running = "running",
 }
+
 export enum ActionKind {
   Create = "create",
   Destroy = "destroy",
@@ -94,6 +100,7 @@ export enum ActionKind {
   Manual = "manual",
   Update = "update",
 }
+
 export interface ActionView {
   id: ActionId;
   prototypeId: ActionPrototypeId;
@@ -325,6 +332,7 @@ export const useActionsStore = () => {
               },
               onSuccess: (response) => {
                 // TODO - UPDATE THIS FOR ACTIONS V2
+                // eslint-disable-next-line no-console
                 console.log(response);
               },
             });

@@ -881,7 +881,7 @@ impl SchemaVariant {
             }
         }
 
-        return Ok(prototype_ids);
+        Ok(prototype_ids)
     }
 
     pub async fn find_leaf_item_functions(

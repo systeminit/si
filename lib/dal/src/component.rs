@@ -1700,6 +1700,9 @@ impl Component {
         let change_set = ctx.change_set()?;
 
         let component = Self::get_by_id(ctx, id).await?;
+
+        let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
+
         for incoming_connection in component.incoming_connections(ctx).await? {
             Component::remove_connection(
                 ctx,
@@ -1728,6 +1731,28 @@ impl Component {
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)
             .await?;
+
+        // Remove Creation actions from queue
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::remove(ctx, prototype_id, Some(component.id))
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        }
 
         WsEvent::component_deleted(ctx, id)
             .await?

@@ -55,7 +55,7 @@ use tokio::sync::{RwLock, TryLockError};
 pub use dependent_value_graph::DependentValueGraph;
 
 use crate::action::prototype::ActionKind;
-use crate::action::{Action, ActionError};
+use crate::action::Action;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
@@ -80,7 +80,8 @@ use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotErr
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, SchemaVariant, TransactionsError, Workspace,
+    OutputSocketId, Prop, PropId, PropKind, SchemaVariant, Secret, SecretError, TransactionsError,
+    Workspace,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -2036,7 +2037,7 @@ impl AttributeValue {
 
             let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk)
                 .await
-                .map_err(|err| AttributeValueError::Workspace((err.to_string())))?;
+                .map_err(|err| AttributeValueError::Workspace(err.to_string()))?;
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             let schema_variant_id = Component::schema_variant_id(ctx, component_id)

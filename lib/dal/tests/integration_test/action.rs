@@ -1,7 +1,7 @@
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
     action::ActionState, func::binding::FuncBinding, func::execution::FuncExecution,
-    func::intrinsics::IntrinsicFunc, Component, DalContext, Func,
+    func::intrinsics::IntrinsicFunc, AttributeValue, Component, DalContext, Func, Workspace,
 };
 use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
@@ -224,4 +224,172 @@ async fn run(ctx: &mut DalContext) {
         .await
         .expect("unable to run")
         .is_some());
+}
+
+// TODO This test is a stub that should be fixed after actions v2 is done
+// Right now, the workspace for tests does not have the actions flag set so this won't yield any results
+// The tests cases are valid
+#[test]
+async fn auto_queue_creation(ctx: &mut DalContext) {
+    let workspace = {
+        let pk = ctx.tenancy().workspace_pk().expect("get workspace pk");
+
+        Workspace::get_by_pk_or_error(ctx, &pk)
+            .await
+            .expect("get workspace")
+    };
+
+    dbg!(workspace.uses_actions_v2()); // TODO Make this be true for tests
+
+    // TODO uncomment assertions below this
+
+    // ======================================================
+    // Creating a component  should enqueue a create action
+    // ======================================================
+    let component = create_component_for_schema_name(ctx, "swifty", "jack antonoff").await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let action_ids = Action::list_topologically(ctx)
+        .await
+        .expect("find action ids");
+    // assert_eq!(action_ids.len(), 1);
+
+    for action_id in action_ids {
+        let action = Action::get_by_id(ctx, action_id)
+            .await
+            .expect("find action by id");
+        if action.state() == ActionState::Queued {
+            let prototype_id = Action::prototype_id(ctx, action_id)
+                .await
+                .expect("get prototype id from action");
+            let _prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+                .await
+                .expect("get prototype from id");
+
+            // assert_eq!(prototype.kind, ActionKind::Create);
+        }
+    }
+
+    // ======================================================
+    // Deleting a component with no resource should dequeue the creation action
+    // ======================================================
+    component.delete(ctx).await.expect("delete component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let _action_ids = Action::list_topologically(ctx)
+        .await
+        .expect("find action ids");
+
+    // assert_eq!(action_ids.len(), 1);
+}
+
+// TODO This test is a stub that should be fixed after actions v2 is done
+// Right now, the workspace for tests does not have the actions flag set so this won't yield any results
+// The tests cases are valid
+#[test]
+async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
+    let workspace = {
+        let pk = ctx.tenancy().workspace_pk().expect("get workspace pk");
+
+        Workspace::get_by_pk_or_error(ctx, &pk)
+            .await
+            .expect("get workspace")
+    };
+
+    dbg!(workspace.uses_actions_v2()); // TODO Make this be true for tests
+
+    // TODO uncomment assertions below this
+
+    // ======================================================
+    // Creating a component  should enqueue a create action
+    // ======================================================
+    let component = create_component_for_schema_name(ctx, "swifty", "jack antonoff").await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit and update snapshot to visibility");
+
+    // Apply changeset so it runs the creation action
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("apply changeset to base");
+
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("fork from head");
+
+    // ======================================================
+    // Updating values in a component that has a resource should enqueue an update action
+    // ======================================================
+
+    let name_path = &["root", "si", "name"];
+    let av_id = component
+        .attribute_values_for_prop(ctx, name_path)
+        .await
+        .expect("find value ids for the prop treasure")
+        .pop()
+        .expect("there should only be one value id");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever")))
+        .await
+        .expect("override domain/name attribute value");
+
+    let action_ids = Action::list_topologically(ctx)
+        .await
+        .expect("find action ids");
+    // assert_eq!(action_ids.len(), 1);
+
+    for action_id in action_ids {
+        let action = Action::get_by_id(ctx, action_id)
+            .await
+            .expect("find action by id");
+        if action.state() == ActionState::Queued {
+            let prototype_id = Action::prototype_id(ctx, action_id)
+                .await
+                .expect("get prototype id from action");
+            let _prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+                .await
+                .expect("get action prototype by id");
+
+            //assert_eq!(prototype.kind, ActionKind::Update);
+        }
+    }
+
+    // ======================================================
+    // Deleting a component with resource should queue the Destroy action
+    // ======================================================
+    component.delete(ctx).await.expect("delete component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let action_ids = Action::list_topologically(ctx)
+        .await
+        .expect("find action ids");
+    // assert_eq!(action_ids.len(), 2);
+
+    let mut deletion_action_count = 0;
+    for action_id in action_ids {
+        let action = Action::get_by_id(ctx, action_id)
+            .await
+            .expect("find action by id");
+        if action.state() == ActionState::Queued {
+            let prototype_id = Action::prototype_id(ctx, action_id)
+                .await
+                .expect("get prototype id from action");
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+                .await
+                .expect("get action prototype by id");
+
+            if prototype.kind == ActionKind::Destroy {
+                deletion_action_count += 1;
+            }
+        }
+    }
+
+    // assert_eq!(deletion_action_count, 1);
+    dbg!(deletion_action_count);
 }

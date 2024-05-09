@@ -1,9 +1,7 @@
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
 use thiserror::Error;
 
-use crate::component::ComponentResult;
 use crate::{
     func::backend::js_action::DeprecatedActionRunResult,
     func::binding::return_value::FuncBindingReturnValueError,

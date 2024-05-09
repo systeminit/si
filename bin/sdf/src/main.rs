@@ -7,8 +7,8 @@ use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
 use sdf_server::server::{LayerDb, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
-    Config, FeatureFlag, FeatureFlagService, IncomingStream, JobProcessorClientCloser,
-    JobProcessorConnector, MigrationMode, Server, ServicesContext,
+    Config, FeatureFlagService, IncomingStream, JobProcessorClientCloser, JobProcessorConnector,
+    MigrationMode, Server, ServicesContext,
 };
 use si_service::startup;
 use telemetry_application::prelude::*;
