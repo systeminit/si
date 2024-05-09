@@ -44,7 +44,7 @@ rust_binary(
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
-        "firecracker-setup.sh": "//lib/deadpool-cyclone:firecracker-setup.sh",
+        "firecracker-setup.sh": "//lib/si-pool-noodle:firecracker-setup.sh",
     },
     visibility = ["PUBLIC"],
 )

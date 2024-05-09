@@ -344,7 +344,7 @@ impl Spec for LocalUdsInstanceSpec {
     type Instance = LocalUdsInstance;
     type Error = LocalUdsInstanceError;
 
-    async fn clean(&mut self, id: u32) -> result::Result<(), Self::Error> {
+    async fn clean(&self, id: u32) -> result::Result<(), Self::Error> {
         match self.runtime_strategy {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
@@ -352,7 +352,7 @@ impl Spec for LocalUdsInstanceSpec {
         }
     }
 
-    async fn prepare(&mut self, id: u32) -> result::Result<(), Self::Error> {
+    async fn prepare(&self, id: u32) -> result::Result<(), Self::Error> {
         match self.runtime_strategy {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),

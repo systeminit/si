@@ -1,5 +1,5 @@
 [package]
-name = "deadpool-cyclone"
+name = "si-pool-noodle"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.64"
@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 async-trait = { workspace = true }
 bollard = { workspace = true }
+crossbeam-queue = { workspace = true}
 cyclone-client = { path = "../cyclone-client" }
 cyclone-core = { path = "../cyclone-core" }
 derive_builder = { workspace = true }

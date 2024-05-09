@@ -17,10 +17,10 @@ pub trait Spec {
     type Error;
 
     /// Performs activities to clean an [Instance] that failed to prepare.
-    async fn clean(&mut self, id: u32) -> result::Result<(), Self::Error>;
+    async fn clean(&self, id: u32) -> result::Result<(), Self::Error>;
 
     /// Performs activities to prepare an [Instance].
-    async fn prepare(&mut self, id: u32) -> result::Result<(), Self::Error>;
+    async fn prepare(&self, id: u32) -> result::Result<(), Self::Error>;
 
     /// Performs setup activities to prepare the host to create [Instance]s.
     async fn setup(&mut self) -> result::Result<(), Self::Error>;
@@ -33,7 +33,7 @@ pub trait Spec {
     ///
     /// ```rust
     /// use std::error::Error;
-    /// use deadpool_cyclone::instance::{Instance, Spec, SpecBuilder};
+    /// use si_pool_noodle::instance::{Instance, Spec, SpecBuilder};
     /// # #[derive(Default)]
     /// # struct Builder { coolness: usize };
     /// # impl SpecBuilder for Builder {
@@ -100,7 +100,7 @@ pub trait SpecBuilder: Default {
 
     /// ```rust
     /// use std::error::Error;
-    /// use deadpool_cyclone::instance::{Instance, Spec, SpecBuilder};
+    /// use si_pool_noodle::instance::{Instance, Spec, SpecBuilder};
     /// # #[derive(Default)]
     /// # struct MyInstance;
     /// # #[async_trait::async_trait]
@@ -185,7 +185,7 @@ pub trait Instance {
     ///
     /// ```rust
     /// use std::error::Error;
-    /// use deadpool_cyclone::instance::{Instance, Spec, SpecBuilder};
+    /// use si_pool_noodle::instance::{Instance, Spec, SpecBuilder};
     /// # struct MySpec { healthy: bool }
     /// # #[async_trait::async_trait]
     /// # impl Spec for MySpec {
@@ -267,7 +267,7 @@ pub trait Instance {
     ///
     /// ```rust
     /// use std::error::Error;
-    /// use deadpool_cyclone::instance::{Instance, Spec, SpecBuilder};
+    /// use si_pool_noodle::instance::{Instance, Spec, SpecBuilder};
     /// # struct MySpec;
     /// # #[async_trait::async_trait]
     /// # impl Spec for MySpec {

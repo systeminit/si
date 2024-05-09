@@ -7,16 +7,16 @@ use std::{
 use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
-use deadpool_cyclone::{
+use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
+use si_data_nats::NatsConfig;
+use si_pool_noodle::{
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
         LocalUdsInstanceSpec, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
     },
     Instance,
 };
-use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-use si_data_nats::NatsConfig;
 use telemetry::prelude::*;
 use thiserror::Error;
 

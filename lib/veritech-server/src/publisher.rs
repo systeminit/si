@@ -1,6 +1,6 @@
-use deadpool_cyclone::{FunctionResult, OutputStream};
 use serde::Serialize;
 use si_data_nats::{NatsClient, Subject};
+use si_pool_noodle::{FunctionResult, OutputStream};
 use telemetry_nats::propagation;
 use thiserror::Error;
 use veritech_core::{

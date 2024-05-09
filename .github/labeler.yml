@@ -110,12 +110,6 @@ A-dal-test:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-deadpool-cyclone:
-  - lib/deadpool-cyclone/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
 A-nats-subscriber:
   - lib/nats-subscriber/**/*
   - .cargo/**/*
@@ -148,6 +142,12 @@ A-si-layer-cache:
   - rustfmt.toml
 A-si-pkg:
   - lib/si-pkg/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-pool-noodle:
+  - lib/si-pool-noodle/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

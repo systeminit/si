@@ -297,10 +297,10 @@ impl Spec for LocalHttpInstanceSpec {
     type Instance = LocalHttpInstance;
     type Error = LocalHttpInstanceError;
 
-    async fn clean(&mut self, _id: u32) -> result::Result<(), Self::Error> {
+    async fn clean(&self, _id: u32) -> result::Result<(), Self::Error> {
         Ok(())
     }
-    async fn prepare(&mut self, _id: u32) -> result::Result<(), Self::Error> {
+    async fn prepare(&self, _id: u32) -> result::Result<(), Self::Error> {
         Ok(())
     }
     async fn setup(&mut self) -> result::Result<(), Self::Error> {

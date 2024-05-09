@@ -19,7 +19,6 @@ members = [
     "lib/cyclone-server",
     "lib/dal",
     "lib/dal-test",
-    "lib/deadpool-cyclone",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-multiplexer",
@@ -39,6 +38,7 @@ members = [
     "lib/si-hash",
     "lib/si-layer-cache",
     "lib/si-pkg",
+    "lib/si-pool-noodle",
     "lib/si-posthog-rs",
     "lib/si-service",
     "lib/si-settings",
@@ -74,6 +74,7 @@ console = "0.15.8"
 convert_case = "0.6.0"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 crossbeam-channel = "0.5.12"
+crossbeam-queue = {version = "0.3.10"}
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"
 derive_builder = "0.20.0"

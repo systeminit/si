@@ -16,7 +16,7 @@
 )]
 
 pub use self::instance::{Instance, Spec};
-pub use crate::pool_noodle::pool_noodle::PoolNoodle;
+pub use crate::pool_noodle::PoolNoodle;
 
 pub use cyclone_client::{
     ClientError, CycloneClient, CycloneEncryptionKey, CycloneEncryptionKeyError, ExecutionError,
@@ -30,6 +30,8 @@ pub use cyclone_core::{
     ValidationRequest, ValidationResultSuccess,
 };
 
+/// [`PoolNoodleError`] implementations.
+pub mod errors;
 /// [`Instance`] implementations.
 pub mod instance;
 /// [`PoolNoodle`] implementations.

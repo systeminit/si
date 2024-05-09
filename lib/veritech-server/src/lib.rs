@@ -14,4 +14,4 @@ pub(crate) use crate::{
     publisher::{Publisher, PublisherError},
     subscriber::FunctionSubscriber,
 };
-pub use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
+pub use si_pool_noodle::{instance::cyclone::LocalUdsInstance, Instance};
