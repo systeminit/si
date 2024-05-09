@@ -181,8 +181,8 @@ impl ChangeSet {
         new_local.base_change_set_id = self.base_change_set_id;
         new_local.workspace_snapshot_address = self.workspace_snapshot_address;
         new_local.workspace_id = self.workspace_id;
-        new_local.name = self.name.to_owned();
-        new_local.status = self.status.to_owned();
+        self.name.clone_into(&mut new_local.name);
+        self.status.clone_into(&mut new_local.status);
         Ok(new_local)
     }
 

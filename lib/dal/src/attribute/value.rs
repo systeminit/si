@@ -1629,7 +1629,7 @@ impl AttributeValue {
             .await?
         {
             if let EdgeWeightKind::Contain(contain_key) = edge_weight.kind() {
-                key = contain_key.to_owned();
+                contain_key.clone_into(&mut key);
             }
         }
 

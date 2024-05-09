@@ -26,7 +26,11 @@ impl IntoResponse for InvalidUtf8 {
 
 impl fmt::Display for InvalidUtf8 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "message payload didn't contain valid UTF-8")
+        write!(
+            f,
+            "message payload didn't contain valid UTF-8: {:?}",
+            self.0
+        )
     }
 }
 

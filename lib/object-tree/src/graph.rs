@@ -107,25 +107,6 @@ pub trait WriteBytes {
     }
 }
 
-/// Trait for types which can compute and verify their own [`struct@Hash`] value.
-pub trait VerifyHash: WriteBytes {
-    /// Returns a pre-computed [`struct@Hash`] value for `self`.
-    fn hash(&self) -> &Hash;
-
-    /// Recomputes a [`struct@Hash`] value for `self` and confirms it matches the pre-computed Hash
-    /// value.
-    fn verify_hash(&self) -> Result<(), GraphError> {
-        let input = self.to_bytes()?;
-        let computed = Hash::new(&input);
-
-        if self.hash() == &computed {
-            Ok(())
-        } else {
-            Err(GraphError::Verify(*self.hash(), computed))
-        }
-    }
-}
-
 /// Trait for types that can deserialize its representation from bytes.
 pub trait ReadBytes {
     /// Reads a serialized version of `self` from a reader over bytes.
@@ -682,15 +663,6 @@ where
 {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
         self.as_node_with_entries_ref().write_bytes(writer)
-    }
-}
-
-impl<T> VerifyHash for HashedNodeWithEntries<T>
-where
-    T: WriteBytes,
-{
-    fn hash(&self) -> &Hash {
-        &self.hash
     }
 }
 

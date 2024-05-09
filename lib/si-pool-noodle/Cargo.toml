@@ -1,13 +1,17 @@
 [package]
 name = "si-pool-noodle"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
 bollard = { workspace = true }
+buck2-resources = { path = "../buck2-resources" }
 crossbeam-queue = { workspace = true}
 cyclone-client = { path = "../cyclone-client" }
 cyclone-core = { path = "../cyclone-core" }
@@ -22,7 +26,6 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-buck2-resources = { path = "../buck2-resources" }
 
 [dev-dependencies]
 buck2-resources = { path = "../buck2-resources" }

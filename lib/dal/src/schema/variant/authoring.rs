@@ -299,17 +299,17 @@ impl VariantAuthoringClient {
             asset_func
                 .clone()
                 .modify(ctx, |func| {
-                    func.name = name.clone();
+                    func.name.clone_from(&name);
                     func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
                     func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
                     func.display_name = menu_name
                         .clone()
                         .map(|display_name| display_name.to_owned());
                     func.code_base64 = Some(code_base64);
-                    func.description = description.clone();
+                    func.description.clone_from(&description);
                     func.handler = Some("main".to_string());
                     func.hidden = false;
-                    func.link = link.clone();
+                    func.link.clone_from(&link);
                     Ok(())
                 })
                 .await?;
@@ -368,7 +368,7 @@ impl VariantAuthoringClient {
             schema
                 .clone()
                 .modify(ctx, |s| {
-                    s.name = name.clone();
+                    s.name.clone_from(&name);
                     Ok(())
                 })
                 .await?;
@@ -402,9 +402,9 @@ impl VariantAuthoringClient {
                     .modify(ctx, |sv| {
                         sv.description = description;
                         sv.link = link;
-                        sv.category = category.clone();
+                        sv.category.clone_from(&category);
                         sv.component_type = component_type;
-                        sv.color = color.clone();
+                        sv.color.clone_from(&color);
                         sv.display_name = menu_name;
                         Ok(())
                     })
@@ -452,10 +452,10 @@ impl VariantAuthoringClient {
                     .clone()
                     .map(|display_name| display_name.to_owned());
                 func.code_base64 = Some(code_base64);
-                func.description = description.clone();
+                func.description.clone_from(&description);
                 func.handler = Some("main".to_string());
                 func.hidden = false;
-                func.link = link.clone();
+                func.link.clone_from(&link);
                 Ok(())
             })
             .await?;
@@ -517,7 +517,7 @@ impl VariantAuthoringClient {
         schema
             .clone()
             .modify(ctx, |s| {
-                s.name = name.clone();
+                s.name.clone_from(&name);
                 Ok(())
             })
             .await?;
@@ -573,10 +573,10 @@ impl VariantAuthoringClient {
                         .clone()
                         .map(|display_name| display_name.to_owned());
                     func.code_base64 = Some(code_base64);
-                    func.description = description.clone();
+                    func.description.clone_from(&description);
                     func.handler = Some("main".to_string());
                     func.hidden = false;
-                    func.link = link.clone();
+                    func.link.clone_from(&link);
                     Ok(())
                 })
                 .await?;

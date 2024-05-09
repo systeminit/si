@@ -18,6 +18,15 @@ path = "top/main.rs"
 
 # BEGIN: DEPENDENCIES
 
+[workspace.package]
+version = "0.1.0"
+authors = ["System Initiative Inc. <info@systeminit.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/systeminit/si"
+edition = "2021"
+rust-version = "1.78"
+publish = false
+
 [dependencies]
 async-nats = { version = "0.34.0", features = ["service"] }
 async-recursion = "1.0.5"

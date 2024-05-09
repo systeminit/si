@@ -200,7 +200,6 @@ struct DalTestFnSetupExpander {
     test_context: Option<Rc<Ident>>,
     cancellation_token: Option<Rc<Ident>>,
     task_tracker: Option<Rc<Ident>>,
-    nats_subject_prefix: Option<Rc<Ident>>,
     pinga_server: Option<Rc<Ident>>,
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
@@ -228,7 +227,6 @@ impl DalTestFnSetupExpander {
             test_context: None,
             cancellation_token: None,
             task_tracker: None,
-            nats_subject_prefix: None,
             pinga_server: None,
             pinga_shutdown_handle: None,
             start_pinga_server: None,
@@ -293,14 +291,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_task_tracker(&mut self, value: Option<Rc<Ident>>) {
         self.task_tracker = value;
-    }
-
-    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>> {
-        self.nats_subject_prefix.as_ref()
-    }
-
-    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>) {
-        self.nats_subject_prefix = value;
     }
 
     fn pinga_server(&self) -> Option<&Rc<Ident>> {

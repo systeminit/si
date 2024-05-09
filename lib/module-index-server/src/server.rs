@@ -232,7 +232,6 @@ pub fn build_service(
         posthog_client,
         aws_creds,
         s3_config,
-        shutdown_broadcast_tx.clone(),
         shutdown_tx,
     );
 

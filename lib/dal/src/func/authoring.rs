@@ -234,9 +234,9 @@ impl FuncAuthoringClient {
         let func = Func::get_by_id_or_error(ctx, id).await?;
 
         Func::modify_by_id(ctx, func.id, |func| {
-            func.display_name = display_name.to_owned();
-            func.name = name.to_owned();
-            func.description = description.to_owned();
+            display_name.clone_into(&mut func.display_name);
+            name.clone_into(&mut func.name);
+            description.clone_into(&mut func.description);
             func.code_base64 = code
                 .as_ref()
                 .map(|code| general_purpose::STANDARD_NO_PAD.encode(code));

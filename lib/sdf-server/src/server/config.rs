@@ -16,7 +16,7 @@ use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
-use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -24,7 +24,6 @@ pub use dal::MigrationMode;
 pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
-const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
 
 #[remain::sorted]
@@ -86,7 +85,6 @@ pub struct Config {
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
-    signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
 
     boot_feature_flags: HashSet<FeatureFlag>,
@@ -131,12 +129,6 @@ impl Config {
     #[must_use]
     pub fn crypto(&self) -> &CryptoConfig {
         &self.crypto
-    }
-
-    /// Gets a reference to the config's signup secret.
-    #[must_use]
-    pub fn signup_secret(&self) -> &SensitiveString {
-        &self.signup_secret
     }
 
     /// Gets a reference to the config's pkg path.
@@ -195,8 +187,6 @@ pub struct ConfigFile {
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
     pub crypto: CryptoConfig,
-    #[serde(default = "default_signup_secret")]
-    pub signup_secret: SensitiveString,
     #[serde(default = "default_pkgs_path")]
     pub pkgs_path: String,
     #[serde(default)]
@@ -219,7 +209,6 @@ impl Default for ConfigFile {
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
             crypto: Default::default(),
-            signup_secret: default_signup_secret(),
             pkgs_path: default_pkgs_path(),
             posthog: Default::default(),
             layer_db_config: default_layer_db_config(),
@@ -246,7 +235,6 @@ impl TryFrom<ConfigFile> for Config {
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key(value.jwt_signing_public_key);
         config.crypto(value.crypto);
-        config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
@@ -284,10 +272,6 @@ impl IncomingStream {
         let pathbuf = path.into();
         Self::UnixDomainSocket(pathbuf)
     }
-}
-
-fn default_signup_secret() -> SensitiveString {
-    DEFAULT_SIGNUP_SECRET.into()
 }
 
 fn default_pkgs_path() -> String {

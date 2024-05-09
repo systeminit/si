@@ -19,7 +19,6 @@ use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
-use si_std::SensitiveString;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf};
@@ -131,7 +130,6 @@ impl Server<(), ()> {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_public_signing_key,
-                    config.signup_secret().clone(),
                     posthog_client,
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
@@ -176,7 +174,6 @@ impl Server<(), ()> {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_public_signing_key,
-                    config.signup_secret().clone(),
                     posthog_client,
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
@@ -473,7 +470,6 @@ async fn fetch_builtin(
 pub fn build_service_for_tests(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
-    signup_secret: SensitiveString,
     posthog_client: PosthogClient,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
@@ -481,7 +477,6 @@ pub fn build_service_for_tests(
     build_service_inner(
         services_context,
         jwt_public_signing_key,
-        signup_secret,
         posthog_client,
         true,
         ws_multiplexer_client,
@@ -492,7 +487,6 @@ pub fn build_service_for_tests(
 pub fn build_service(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
-    signup_secret: SensitiveString,
     posthog_client: PosthogClient,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
@@ -500,7 +494,6 @@ pub fn build_service(
     build_service_inner(
         services_context,
         jwt_public_signing_key,
-        signup_secret,
         posthog_client,
         false,
         ws_multiplexer_client,
@@ -511,7 +504,6 @@ pub fn build_service(
 fn build_service_inner(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
-    signup_secret: SensitiveString,
     posthog_client: PosthogClient,
     for_tests: bool,
     ws_multiplexer_client: MultiplexerClient,
@@ -522,7 +514,6 @@ fn build_service_inner(
 
     let state = AppState::new(
         services_context,
-        signup_secret,
         jwt_public_signing_key,
         posthog_client,
         shutdown_broadcast_tx.clone(),
