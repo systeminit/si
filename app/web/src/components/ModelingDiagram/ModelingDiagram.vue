@@ -1394,6 +1394,7 @@ function endDragElements() {
   const numSelected = currentSelectionMovableElements.value.length;
   const keys_to_save: string[] = [];
   const parentConnections: ComponentConnection[] = [];
+  const childrenToDetach: ComponentId[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     let fitWithinParent: null | {
       position: Vector2d;
@@ -1405,7 +1406,7 @@ function endDragElements() {
     // dragging onto root - ie detach from all parents
     if (!cursorWithinGroupKey.value) {
       if (el.def.parentId) {
-        componentsStore.DETACH_COMPONENT(el.def.componentId);
+        childrenToDetach.push(el.def.componentId);
       }
     } else {
       const newParent = allElementsByKey.value[
@@ -1465,6 +1466,9 @@ function endDragElements() {
 
   if (parentConnections.length > 0)
     componentsStore.CONNECT_COMPONENT_TO_FRAME(parentConnections);
+
+  if (childrenToDetach.length > 0)
+    componentsStore.DETACH_COMPONENT(childrenToDetach);
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;

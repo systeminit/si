@@ -896,7 +896,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          async DETACH_COMPONENT(childId: ComponentId) {
+          async DETACH_COMPONENT(children: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -906,33 +906,44 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/detach_component",
               params: {
-                childId,
+                children,
                 ...visibilityParams,
               },
               optimistic: () => {
-                const component = this.rawComponentsById[childId];
-                if (!component) return;
-                const prevParentId = component?.parentId;
-                component.parentId = undefined;
+                const prevParents: Record<
+                  ComponentId,
+                  ComponentId | undefined
+                > = {};
+                for (const childId of children) {
+                  const component = this.rawComponentsById[childId];
+                  if (!component) return;
+                  const prevParentId = component?.parentId;
+                  prevParents[component.id] = prevParentId;
+                  component.parentId = undefined;
 
-                // remove inferred edges between children and parents
-                const full_component = this.componentsById[childId];
-                for (const edge of _.filter(
-                  _.values(this.edgesById),
-                  (edge) =>
-                    !!(
-                      edge.isInferred &&
-                      edge.toComponentId === component.id &&
-                      full_component?.ancestorIds?.includes(
-                        edge.fromComponentId,
-                      )
-                    ),
-                )) {
-                  delete this.edgesById[edge.id];
+                  // remove inferred edges between children and parents
+                  const full_component = this.componentsById[childId];
+                  for (const edge of _.filter(
+                    _.values(this.edgesById),
+                    (edge) =>
+                      !!(
+                        edge.isInferred &&
+                        edge.toComponentId === component.id &&
+                        full_component?.ancestorIds?.includes(
+                          edge.fromComponentId,
+                        )
+                      ),
+                  )) {
+                    delete this.edgesById[edge.id];
+                  }
                 }
 
                 return () => {
-                  component.parentId = prevParentId;
+                  for (const componentId of Object.keys(prevParents)) {
+                    const component = this.rawComponentsById[componentId];
+                    if (component)
+                      component.parentId = prevParents[componentId];
+                  }
                 };
               },
             });
