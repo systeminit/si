@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DetachComponentRequest {
-    pub child_id: ComponentId,
+    pub children: Vec<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -27,15 +27,17 @@ pub async fn detach_component_from_frame(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    Frame::orphan_child(&ctx, request.child_id).await?;
+    for child_id in &request.children {
+        Frame::orphan_child(&ctx, *child_id).await?;
 
-    let component: Component = Component::get_by_id(&ctx, request.child_id).await?;
-    let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component).await?;
-    WsEvent::component_updated(&ctx, payload)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+        let component: Component = Component::get_by_id(&ctx, *child_id).await?;
+        let payload: SummaryDiagramComponent =
+            SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        WsEvent::component_updated(&ctx, payload)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     track(
         &posthog_client,
@@ -44,7 +46,7 @@ pub async fn detach_component_from_frame(
         "detach_component_from_frame",
         serde_json::json!({
             "how": "/diagram/detach_component_from_frame",
-            "child_id": &request.child_id,
+            "children": serde_json::json!(&request.children),
         }),
     );
 
