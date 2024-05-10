@@ -169,7 +169,7 @@ import * as _ from "lodash-es";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 

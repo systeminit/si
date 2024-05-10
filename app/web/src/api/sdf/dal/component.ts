@@ -2,8 +2,8 @@ import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import {
-  ComponentType,
   DiagramSocketDef,
   GridPoint,
   Size2D,
