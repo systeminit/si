@@ -614,12 +614,6 @@ impl AttributePrototypeArgument {
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set()?, self.id)
             .await?;
-        // Update the destination attribute values
-        for av_id_to_update in &avs_to_update {
-            AttributeValue::update_from_prototype_function(ctx, *av_id_to_update)
-                .await
-                .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
-        }
         // Enqueue a dependent values update with the destination attribute values
         ctx.enqueue_dependent_values_update(avs_to_update).await?;
 

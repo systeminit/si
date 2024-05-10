@@ -365,7 +365,6 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     assert_eq!(
         serde_json::json!({
                 "si": { "name": name, "color": "#ffffff", "type": "component" },
-                "resource": {},
                 "resource_value": {},
                 "domain": {
                     "name": name,
@@ -534,7 +533,6 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     assert_eq!(
         serde_json::json!({
                 "si": { "name": name, "color": "#ffffff", "type": "component" },
-                "resource": {},
                 "resource_value": {},
                 "domain": {
                     "name": name,

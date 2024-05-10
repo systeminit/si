@@ -99,7 +99,15 @@ impl DependentValueGraph {
 
             match node_weight.into() {
                 NodeWeightDiscriminants::AttributeValue => {
-                    values.push(WorkQueueValue::Initial(initial_id.into()));
+                    let initial_attribute_value_id: AttributeValueId = initial_id.into();
+                    if AttributeValue::is_set_by_dependent_function(ctx, initial_attribute_value_id)
+                        .await?
+                    {
+                        self.values_that_need_to_execute_from_prototype_function
+                            .insert(initial_attribute_value_id);
+                    }
+
+                    values.push(WorkQueueValue::Initial(initial_attribute_value_id));
                 }
                 NodeWeightDiscriminants::Secret => {
                     // If we are processing a secret, we don't want to add the secret itself. We

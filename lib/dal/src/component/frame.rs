@@ -7,7 +7,7 @@ use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket,
     TransactionsError,
 };
 
@@ -98,11 +98,6 @@ impl Frame {
                     Component::input_socket_attribute_values_for_component_id(ctx, child_id).await?
                 {
                     if !InputSocket::is_manually_configured(ctx, input_socket_match).await? {
-                        AttributeValue::update_from_prototype_function(
-                            ctx,
-                            input_socket_match.attribute_value_id,
-                        )
-                        .await?;
                         updated_avs.push(input_socket_match.attribute_value_id);
                     }
                 }
@@ -117,11 +112,6 @@ impl Frame {
                         {
                             if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
                             {
-                                AttributeValue::update_from_prototype_function(
-                                    ctx,
-                                    input_socket_match.attribute_value_id,
-                                )
-                                .await?;
                                 updated_avs.push(input_socket_match.attribute_value_id);
                             }
                         }
@@ -154,11 +144,6 @@ impl Frame {
                     Component::input_socket_attribute_values_for_component_id(ctx, child_id).await?
                 {
                     if !InputSocket::is_manually_configured(ctx, input_socket_match).await? {
-                        AttributeValue::update_from_prototype_function(
-                            ctx,
-                            input_socket_match.attribute_value_id,
-                        )
-                        .await?;
                         updated_avs.push(input_socket_match.attribute_value_id);
                     }
                 }
@@ -173,11 +158,6 @@ impl Frame {
                         {
                             if !InputSocket::is_manually_configured(ctx, input_socket_match).await?
                             {
-                                AttributeValue::update_from_prototype_function(
-                                    ctx,
-                                    input_socket_match.attribute_value_id,
-                                )
-                                .await?;
                                 updated_avs.push(input_socket_match.attribute_value_id);
                             }
                         }

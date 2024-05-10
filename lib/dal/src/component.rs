@@ -448,6 +448,8 @@ impl Component {
             .await?;
 
             attribute_values.push(attribute_value.id());
+            ctx.enqueue_compute_validations(attribute_value.id())
+                .await?;
 
             if should_descend {
                 match prop_kind {
@@ -500,10 +502,6 @@ impl Component {
 
         let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
         let leaf_value_ids = component_graph.independent_values();
-        for leaf_value_id in &leaf_value_ids {
-            // Run these concurrently in a join set? They will serialize on the lock...
-            AttributeValue::update_from_prototype_function(ctx, *leaf_value_id).await?;
-        }
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
@@ -1429,8 +1427,6 @@ impl Component {
         )
         .await?;
 
-        AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
-
         drop(cycle_check_guard);
 
         Ok(Some((
@@ -1812,9 +1808,6 @@ impl Component {
             .map(|f| &f.attribute_value_id)
             .cloned()
             .collect();
-        for av_id in &input_av_ids {
-            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
-        }
         ctx.enqueue_dependent_values_update(input_av_ids).await?;
 
         // We always want to make sure that everything "downstream" of us reacts appropriately
@@ -1826,9 +1819,6 @@ impl Component {
         // reflect that they're not getting data from this to_delete Component any more.
 
         let downstream_av_ids = modified.downstream_attribute_value_ids(ctx).await?;
-        for av_id in &downstream_av_ids {
-            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
-        }
         ctx.enqueue_dependent_values_update(downstream_av_ids)
             .await?;
 
@@ -2531,12 +2521,6 @@ impl Component {
                                         destination_component_id,
                                     )
                                     .await?;
-
-                                AttributeValue::update_from_prototype_function(
-                                    ctx,
-                                    component_attribute_value_id,
-                                )
-                                .await?;
 
                                 ctx.enqueue_dependent_values_update(vec![
                                     component_attribute_value_id,
