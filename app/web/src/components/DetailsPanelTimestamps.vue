@@ -71,7 +71,7 @@ import { PropType } from "vue";
 import clsx from "clsx";
 import { formatters } from "@si/vue-lib";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { ActorAndTimestamp } from "@/store/components.store";
+import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({

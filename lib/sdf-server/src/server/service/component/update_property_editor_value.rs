@@ -1,5 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use dal::diagram::SummaryDiagramComponent;
 use dal::{
     AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Secret,
     SecretId, Visibility, WsEvent,
@@ -50,9 +51,8 @@ pub async fn update_property_editor_value(
     }
 
     // Track
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
     {
-        let component = Component::get_by_id(&ctx, request.component_id).await?;
-
         let component_schema = component.schema(&ctx).await?;
         let prop = Prop::get_by_id_or_error(&ctx, request.prop_id).await?;
 
@@ -85,7 +85,9 @@ pub async fn update_property_editor_value(
         );
     }
 
-    WsEvent::component_updated(&ctx, request.component_id)
+    let payload: SummaryDiagramComponent =
+        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+    WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
         .await?;

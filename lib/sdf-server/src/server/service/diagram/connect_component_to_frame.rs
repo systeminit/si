@@ -1,9 +1,10 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use dal::diagram::SummaryDiagramComponent;
 use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
-use dal::{ChangeSet, ComponentId, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -43,7 +44,10 @@ pub async fn connect_component_to_frame(
     for connection in request.connections {
         Frame::upsert_parent(&ctx, connection.child_id, connection.parent_id).await?;
 
-        WsEvent::component_updated(&ctx, connection.child_id)
+        let component: Component = Component::get_by_id(&ctx, connection.child_id).await?;
+        let payload: SummaryDiagramComponent =
+            SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        WsEvent::component_updated(&ctx, payload)
             .await?
             .publish_on_commit(&ctx)
             .await?;

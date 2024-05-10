@@ -60,6 +60,8 @@ pub enum ComponentError {
     DalComponent(#[from] DalComponentError),
     #[error("deprecated action prototype: {0}")]
     DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
+    #[error("diagram error: {0}")]
+    DiagramError(#[from] dal::diagram::DiagramError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("invalid visibility")]

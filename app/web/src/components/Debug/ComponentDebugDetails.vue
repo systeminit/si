@@ -125,7 +125,8 @@ import {
   TreeNode,
 } from "@si/vue-lib/design-system";
 import { PropType, computed, onMounted } from "vue";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";

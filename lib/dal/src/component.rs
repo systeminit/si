@@ -27,6 +27,7 @@ use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSou
 use crate::attribute::value::{AttributeValueError, DependentValueGraph, ValueIsFor};
 use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
+use crate::diagram::SummaryDiagramComponent;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
@@ -2583,7 +2584,7 @@ pub struct ComponentCreatedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
-    component_id: ComponentId,
+    component: SummaryDiagramComponent,
     change_set_id: ChangeSetId,
 }
 
@@ -2761,12 +2762,12 @@ impl WsEvent {
 
     pub async fn component_updated(
         ctx: &DalContext,
-        component_id: ComponentId,
+        payload: SummaryDiagramComponent,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ComponentUpdated(ComponentUpdatedPayload {
-                component_id,
+                component: payload,
                 change_set_id: ctx.change_set_id(),
             }),
         )

@@ -2,7 +2,11 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::component::ComponentResult;
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::{AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility, WsEvent};
+use dal::diagram::SummaryDiagramComponent;
+use dal::{
+    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, PropId, Visibility,
+    WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,7 +31,10 @@ pub async fn delete_property_editor_value(
 
     AttributeValue::remove_by_id(&ctx, request.attribute_value_id).await?;
 
-    WsEvent::component_updated(&ctx, request.component_id)
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
+    let payload: SummaryDiagramComponent =
+        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+    WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
         .await?;

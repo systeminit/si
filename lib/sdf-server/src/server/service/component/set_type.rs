@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 
+use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +38,10 @@ pub async fn set_type(
     };
     component.set_type(&ctx, component_type).await?;
 
-    WsEvent::component_updated(&ctx, component.id())
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
+    let payload: SummaryDiagramComponent =
+        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+    WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
         .await?;

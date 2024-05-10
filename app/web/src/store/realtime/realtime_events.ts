@@ -4,7 +4,8 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Resource } from "@/api/sdf/dal/resource";
-import { ComponentId, ComponentPositions } from "../components.store";
+import { ComponentId, RawComponent } from "@/api/sdf/dal/component";
+import { ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import {
   DeprecatedActionStatus,
@@ -187,7 +188,7 @@ export type WsEventPayloadMap = {
     changeSetId: string;
   };
   ComponentUpdated: {
-    componentId: ComponentId;
+    component: RawComponent;
     changeSetId: string;
   };
   ComponentUpgraded: {

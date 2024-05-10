@@ -116,11 +116,8 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import {
-  ComponentId,
-  useComponentsStore,
-  FullComponent,
-} from "@/store/components.store";
+import { useComponentsStore, FullComponent } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";

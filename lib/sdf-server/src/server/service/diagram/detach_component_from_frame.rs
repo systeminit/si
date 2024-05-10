@@ -5,7 +5,8 @@ use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
 use dal::component::frame::Frame;
-use dal::{ChangeSet, ComponentId, Visibility};
+use dal::diagram::SummaryDiagramComponent;
+use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,6 +28,14 @@ pub async fn detach_component_from_frame(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     Frame::orphan_child(&ctx, request.child_id).await?;
+
+    let component: Component = Component::get_by_id(&ctx, request.child_id).await?;
+    let payload: SummaryDiagramComponent =
+        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+    WsEvent::component_updated(&ctx, payload)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     track(
         &posthog_client,

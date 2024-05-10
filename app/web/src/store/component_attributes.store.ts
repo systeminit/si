@@ -10,9 +10,10 @@ import {
   PropertyEditorValues,
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { ComponentId, useComponentsStore } from "./components.store";
+import { useComponentsStore } from "./components.store";
 
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: string;
@@ -340,7 +341,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               debounce: true,
               callback: (updated) => {
                 if (updated.changeSetId !== changeSetId) return;
-                if (updated.componentId !== this.selectedComponentId) return;
+                if (updated.component.id !== this.selectedComponentId) return;
                 this.reloadPropertyEditorData();
               },
             },
