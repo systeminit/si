@@ -112,11 +112,13 @@ where
 
         let _ = tokio::spawn(Self::handle_shutdown(me.clone(), stop.clone()));
 
-        let _ = tokio::spawn(Self::handle_prepare(me.clone(), stop.clone()));
+        for _ in 0..10 {
+            let _ = tokio::spawn(Self::handle_prepare(me.clone(), stop.clone()));
 
-        let _ = tokio::spawn(Self::handle_clean(me.clone(), stop.clone()));
+            let _ = tokio::spawn(Self::handle_clean(me.clone(), stop.clone()));
 
-        let _ = tokio::spawn(Self::handle_drop(me.clone(), stop.clone()));
+            let _ = tokio::spawn(Self::handle_drop(me.clone(), stop.clone()));
+        }
     }
 
     async fn handle_shutdown(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
