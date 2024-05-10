@@ -818,7 +818,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 
   constructor() {
     this.prop = <SecretPropDefinition>{};
-    this.prop.kind = "object";
+    this.prop.kind = "string";
     this.prop.widget = {
       kind: "secret",
       options: [],
