@@ -1426,20 +1426,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async REFRESH_ALL_RESOURCE_INFO() {
-            return new ApiRequest({
-              method: "post",
-              url: "component/refresh",
-              params: {
-                workspaceId: visibilityParams.workspaceId,
-                visibility_change_set_pk: changeSetsStore.headChangeSetId,
-              },
-              onSuccess: (response) => {
-                // do nothing
-              },
-            });
-          },
-
           setComponentDisplayName(component: FullComponent, name: string) {
             const c = this.rawComponentsById[component.id];
             if (!c) return;

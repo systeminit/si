@@ -8,14 +8,16 @@ use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{
+    action::prototype::ActionPrototypeError, action::ActionError,
+    ComponentError as DalComponentError, DeprecatedActionPrototypeError, StandardModelError,
+    WorkspaceError,
+};
+use dal::{
     attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
     SchemaVariantError, SecretError as DalSecretError, WsEventError,
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
-use dal::{
-    ComponentError as DalComponentError, DeprecatedActionPrototypeError, StandardModelError,
-};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -42,8 +44,10 @@ mod upgrade;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("action: {0}")]
+    Action(#[from] ActionError),
     #[error("action prototype: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute debug view error: {0}")]
     AttributeDebugViewError(#[from] AttributeDebugViewError),
     #[error("attribute value error: {0}")]
@@ -54,6 +58,8 @@ pub enum ComponentError {
     ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("dal component error: {0}")]
     DalComponent(#[from] DalComponentError),
+    #[error("deprecated action prototype: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("invalid visibility")]
@@ -84,6 +90,8 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

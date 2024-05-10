@@ -20,20 +20,6 @@
               name="loader"
               size="md"
             />
-            <IconButton
-              v-else-if="
-                changeSetsStore.selectedChangeSetId ===
-                changeSetsStore.headChangeSetId
-              "
-              icon="refresh"
-              variant="simple"
-              tooltip="Refresh"
-              loadingTooltip="Refreshing..."
-              tooltipPlacement="top"
-              loadingIcon="refresh-active"
-              :loading="refreshing"
-              @click="onClickRefreshButton"
-            />
           </div>
         </SidebarSubpanelTitle>
 
@@ -135,17 +121,13 @@ import {
   useComponentsStore,
   FullComponent,
 } from "@/store/components.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
-import IconButton from "../IconButton.vue";
 
 defineProps<{ actionsAreRunning: boolean }>();
-
-const changeSetsStore = useChangeSetsStore();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const outlineRef = ref<HTMLElement>();
@@ -422,14 +404,5 @@ const onKeyDown = (e: KeyboardEvent) => {
       componentsStore.setSelectedComponentId(toSelect);
     }
   }
-};
-
-const refreshing = ref(false);
-const onClickRefreshButton = () => {
-  refreshing.value = true;
-  componentsStore.REFRESH_ALL_RESOURCE_INFO();
-  timeout = setTimeout(() => {
-    refreshing.value = false;
-  }, 3000);
 };
 </script>
