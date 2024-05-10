@@ -151,7 +151,6 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             "secrets": {
                 "dummy": secret.encrypted_secret_key().to_string()
             },
-            "resource": {},
             "resource_value": {},
             "qualification": {
                 "test:qualificationDummySecretStringIsTodd": {
@@ -159,7 +158,6 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
                     "message": "dummy secret string matches expected value"
                 },
             },
-            "secret_definition": {},
         }], // expected
         source_component
             .view(ctx)

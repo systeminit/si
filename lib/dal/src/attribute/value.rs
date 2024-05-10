@@ -1263,7 +1263,9 @@ impl AttributeValue {
             ValueIsFor::Prop(prop_id) => {
                 let self_value = self.value(ctx).await?;
                 if self_value.is_none() {
-                    if Self::is_set_by_unset(ctx, self.id).await? {
+                    // If we are None, but our prototype hasn't been overridden
+                    // for this component, look for a default value
+                    if Self::component_prototype_id(ctx, self.id).await?.is_none() {
                         return Ok(Prop::default_value(ctx, prop_id).await?);
                     }
                     return Ok(None);
@@ -1834,7 +1836,9 @@ impl AttributeValue {
             )
             .await?;
 
-        AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        if !AttributeValue::is_set_by_dependent_function(ctx, attribute_value_id).await? {
+            AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        }
         ctx.enqueue_dependent_values_update(vec![attribute_value_id])
             .await?;
 
