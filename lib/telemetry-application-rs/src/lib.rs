@@ -392,6 +392,11 @@ fn otel_tracer(config: &TelemetryConfig) -> result::Result<Tracer, TraceError> {
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
         .with_trace_config(trace::config().with_resource(telemetry_resource(config)))
+        .with_batch_config(
+            trace::BatchConfigBuilder::default()
+                .with_max_queue_size(4096)
+                .build(),
+        )
         .install_batch(runtime::Tokio)
 }
 
