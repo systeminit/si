@@ -88,6 +88,8 @@ pub enum DeprecatedActionKind {
     Other,
     /// The [`action`](ActionPrototype) that refreshes an existing "resource".
     Refresh,
+    /// Unused - added so we can create actions v2 forward compatible schemas
+    Update,
 }
 
 impl From<ActionFuncSpecKind> for DeprecatedActionKind {
@@ -109,6 +111,7 @@ impl From<&DeprecatedActionKind> for ActionFuncSpecKind {
             DeprecatedActionKind::Refresh => ActionFuncSpecKind::Refresh,
             DeprecatedActionKind::Other => ActionFuncSpecKind::Other,
             DeprecatedActionKind::Delete => ActionFuncSpecKind::Delete,
+            DeprecatedActionKind::Update => ActionFuncSpecKind::Update,
         }
     }
 }

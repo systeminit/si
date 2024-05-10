@@ -1745,7 +1745,7 @@ impl Component {
             )
             .await?
             {
-                Action::remove(ctx, prototype_id, Some(component.id))
+                Action::remove_by_prototype_and_component(ctx, prototype_id, Some(component.id))
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
             }
@@ -1833,13 +1833,15 @@ impl Component {
         if to_delete {
             // Enqueue delete actions for component
             if workspace.uses_actions_v2() {
-                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-                    ctx,
-                    schema_variant_id,
-                    ActionKind::Destroy,
-                )
-                .await?
-                {
+                println!("actionsv2");
+                for prototype_id in dbg!(
+                    SchemaVariant::find_action_prototypes_by_kind(
+                        ctx,
+                        schema_variant_id,
+                        ActionKind::Destroy,
+                    )
+                    .await?
+                ) {
                     Action::new(ctx, prototype_id, Some(component_id))
                         .await
                         .map_err(|err| ComponentError::Action(err.to_string()))?;
@@ -1870,9 +1872,13 @@ impl Component {
                 )
                 .await?
                 {
-                    Action::remove(ctx, prototype_id, Some(component_id))
-                        .await
-                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    Action::remove_by_prototype_and_component(
+                        ctx,
+                        prototype_id,
+                        Some(component_id),
+                    )
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
                 }
             } else {
                 let actions = DeprecatedAction::build_graph(ctx)

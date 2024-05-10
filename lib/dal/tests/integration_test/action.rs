@@ -239,9 +239,12 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
             .expect("get workspace")
     };
 
-    dbg!(workspace.uses_actions_v2()); // TODO Make this be true for tests
+    // TODO remove this check after actions v2 stabilizes
+    if !workspace.uses_actions_v2() {
+        return;
+    }
 
-    // TODO uncomment assertions below this
+    dbg!(workspace.uses_actions_v2()); // TODO Make this be true for tests
 
     // ======================================================
     // Creating a component  should enqueue a create action
@@ -254,7 +257,7 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
     let action_ids = Action::list_topologically(ctx)
         .await
         .expect("find action ids");
-    // assert_eq!(action_ids.len(), 1);
+    assert_eq!(action_ids.len(), 1);
 
     for action_id in action_ids {
         let action = Action::get_by_id(ctx, action_id)
@@ -264,11 +267,11 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
             let prototype_id = Action::prototype_id(ctx, action_id)
                 .await
                 .expect("get prototype id from action");
-            let _prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
                 .await
                 .expect("get prototype from id");
 
-            // assert_eq!(prototype.kind, ActionKind::Create);
+            assert_eq!(prototype.kind, ActionKind::Create);
         }
     }
 
@@ -280,11 +283,11 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let _action_ids = Action::list_topologically(ctx)
+    let action_ids = Action::list_topologically(ctx)
         .await
         .expect("find action ids");
 
-    // assert_eq!(action_ids.len(), 1);
+    assert_eq!(action_ids.len(), 1);
 }
 
 // TODO This test is a stub that should be fixed after actions v2 is done
@@ -299,6 +302,12 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
             .await
             .expect("get workspace")
     };
+
+    // Force uses_actions_v2 to return hardcoded true to make sure this test will run
+    // TODO remove this check after actions v2 becomes the only one
+    if !workspace.uses_actions_v2() {
+        return;
+    }
 
     dbg!(workspace.uses_actions_v2()); // TODO Make this be true for tests
 
@@ -340,23 +349,29 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     let action_ids = Action::list_topologically(ctx)
         .await
         .expect("find action ids");
-    // assert_eq!(action_ids.len(), 1);
+
+    let mut update_action_count = 0;
 
     for action_id in action_ids {
         let action = Action::get_by_id(ctx, action_id)
             .await
             .expect("find action by id");
+
         if action.state() == ActionState::Queued {
             let prototype_id = Action::prototype_id(ctx, action_id)
                 .await
                 .expect("get prototype id from action");
-            let _prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
                 .await
                 .expect("get action prototype by id");
 
-            //assert_eq!(prototype.kind, ActionKind::Update);
+            if prototype.kind == ActionKind::Update {
+                update_action_count += 1;
+            };
         }
     }
+
+    assert_eq!(update_action_count, 1);
 
     // ======================================================
     // Deleting a component with resource should queue the Destroy action
@@ -366,30 +381,34 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let action_ids = Action::list_topologically(ctx)
-        .await
-        .expect("find action ids");
-    // assert_eq!(action_ids.len(), 2);
+    // TODO Fix the following section
+    // Since the creation action never actually runs on the test (or at least we can't wait for it)
+    // The resource never gets created. A Destroy action only gets queued
+    // (implicitly by component.delete above) if the component has a resource,
+    // So the check below is failing
 
-    let mut deletion_action_count = 0;
-    for action_id in action_ids {
-        let action = Action::get_by_id(ctx, action_id)
-            .await
-            .expect("find action by id");
-        if action.state() == ActionState::Queued {
-            let prototype_id = Action::prototype_id(ctx, action_id)
-                .await
-                .expect("get prototype id from action");
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
-                .await
-                .expect("get action prototype by id");
-
-            if prototype.kind == ActionKind::Destroy {
-                deletion_action_count += 1;
-            }
-        }
-    }
+    // let action_ids = Action::list_topologically(ctx)
+    //     .await
+    //     .expect("find action ids");
+    //
+    // let mut deletion_action_count = 0;
+    // for action_id in action_ids {
+    //     let action = dbg!(Action::get_by_id(ctx, action_id)
+    //         .await
+    //         .expect("find action by id"));
+    //     if action.state() == ActionState::Queued {
+    //         let prototype_id = Action::prototype_id(ctx, action_id)
+    //             .await
+    //             .expect("get prototype id from action");
+    //         let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
+    //             .await
+    //             .expect("get action prototype by id");
+    //
+    //         if prototype.kind == ActionKind::Destroy {
+    //             deletion_action_count += 1;
+    //         }
+    //     }
+    // }
 
     // assert_eq!(deletion_action_count, 1);
-    dbg!(deletion_action_count);
 }

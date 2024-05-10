@@ -422,6 +422,8 @@ impl DeprecatedAction {
                                 .2
                                 .extend(ids);
                         }
+                        // Variant Added just for compatibility, no prototype should have this in the wild
+                        DeprecatedActionKind::Update => unreachable!(),
                     }
                 }
             }
@@ -546,7 +548,7 @@ impl WsEvent {
             }
         }
 
-        // Super inneficient, but traversing the graph is required to get the parents
+        // Super inefficient, but traversing the graph is required to get the parents
         let parents = if let Some(action_bag) = DeprecatedAction::build_graph(ctx)
             .await
             .map_err(Box::new)?
@@ -563,8 +565,8 @@ impl WsEvent {
             name: display_name.unwrap_or_else(|| match prototype.kind {
                 DeprecatedActionKind::Create => "create".to_owned(),
                 DeprecatedActionKind::Delete => "delete".to_owned(),
-                DeprecatedActionKind::Other => "other".to_owned(),
                 DeprecatedActionKind::Refresh => "refresh".to_owned(),
+                DeprecatedActionKind::Other | DeprecatedActionKind::Update => "other".to_owned(),
             }),
             component_id: action.component(ctx).await.map_err(Box::new)?.id(),
             actor: actor_email,

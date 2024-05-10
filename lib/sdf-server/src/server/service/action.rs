@@ -1,3 +1,4 @@
+use axum::routing::post;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -6,7 +7,9 @@ use axum::{
 };
 use thiserror::Error;
 
-use dal::{action::prototype::ActionPrototypeError, schema::SchemaError as DalSchemaError};
+use dal::{
+    action::prototype::ActionPrototypeError, schema::SchemaError as DalSchemaError, ActionId,
+};
 use dal::{
     func::binding::return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     DeprecatedActionBatchError, DeprecatedActionRunnerError, StandardModelError, TransactionsError,
@@ -15,8 +18,10 @@ use dal::{
 
 use crate::server::state::AppState;
 
+mod cancel;
 pub mod history;
-pub mod load_queued;
+pub mod list_actions;
+mod put_on_hold;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -39,6 +44,10 @@ pub enum ActionError {
     DalSchema(#[from] DalSchemaError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("Cannot cancel Running or Dispatched actions. ActionId {0}")]
+    InvalidActionCancellation(ActionId),
+    #[error("Cannot update action state that's not Queued to On Hold. Action with Id {0}")]
+    InvalidOnHoldTransition(ActionId),
     #[error("invalid user {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -72,5 +81,7 @@ impl IntoResponse for ActionError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/history", get(history::history))
-        .route("/load_queued", get(load_queued::load_queued))
+        .route("/list", get(list_actions::list_actions))
+        .route("/put_on_hold", post(put_on_hold::put_on_hold))
+        .route("/cancel", post(cancel::cancel))
 }

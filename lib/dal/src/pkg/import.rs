@@ -723,7 +723,7 @@ async fn import_socket(
     Ok(())
 }
 
-async fn create_action_protoype(
+async fn create_action_prototype(
     ctx: &DalContext,
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
@@ -771,7 +771,7 @@ async fn import_action_func(
                                 (None, None)
                             } else {
                                 let (deprecated_action_prototype, action_prototype) =
-                                    create_action_protoype(
+                                    create_action_prototype(
                                         ctx,
                                         action_func_spec,
                                         func_id,
@@ -784,7 +784,7 @@ async fn import_action_func(
                     }
                 } else {
                     let (deprecated_action_prototype, action_prototype) =
-                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
+                        create_action_prototype(ctx, action_func_spec, func_id, schema_variant_id)
                             .await?;
                     (Some(deprecated_action_prototype), Some(action_prototype))
                 }

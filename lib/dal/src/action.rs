@@ -257,7 +257,16 @@ impl Action {
         Ok(new_action)
     }
 
-    pub async fn remove(
+    pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
+        let change_set = ctx.change_set()?;
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, action_id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn remove_by_prototype_and_component(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
@@ -268,8 +277,7 @@ impl Action {
         if let Some(action_id) =
             Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
         {
-            let action_ulid: Ulid = action_id.into();
-            snap.remove_node_by_id(change_set, action_ulid).await?;
+            snap.remove_node_by_id(change_set, action_id).await?;
         }
         Ok(())
     }
