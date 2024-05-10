@@ -871,10 +871,11 @@ impl SchemaVariant {
         let mut prototype_ids = vec![];
 
         for prototype_idx in action_prototype_node_idxs {
-            let weight = workspace_snapshot
-                .get_node_weight(prototype_idx)
-                .await?
-                .get_action_prototype_node_weight()?;
+            let NodeWeight::ActionPrototype(weight) =
+                workspace_snapshot.get_node_weight(prototype_idx).await?
+            else {
+                continue;
+            };
 
             if weight.kind() == kind {
                 prototype_ids.push(weight.id().into());

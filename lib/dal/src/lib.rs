@@ -88,7 +88,6 @@ pub use deprecated_action::batch::{
 };
 pub use deprecated_action::prototype::{
     DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
-    DeprecatedActionPrototypeView,
 };
 pub use deprecated_action::runner::{
     ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,

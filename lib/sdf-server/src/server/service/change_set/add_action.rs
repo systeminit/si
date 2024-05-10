@@ -3,7 +3,10 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
-use dal::{ActionPrototypeId, ChangeSet, ComponentId, DeprecatedAction, Visibility};
+use dal::{
+    action::prototype::ActionPrototype, action::Action, ActionPrototypeId, ChangeSet, Component,
+    ComponentError, ComponentId, DeprecatedAction, Visibility, Workspace,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,23 +29,50 @@ pub async fn add_action(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let action = DeprecatedAction::upsert(&ctx, request.prototype_id, request.component_id).await?;
-    let prototype = action.prototype(&ctx).await?;
-    let component = action.component(&ctx).await?;
+    let workspace_pk = ctx
+        .tenancy()
+        .workspace_pk()
+        .ok_or(ComponentError::WorkspacePkNone)?;
+    let workspace = Workspace::get_by_pk_or_error(&ctx, &workspace_pk).await?;
 
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        "create_action",
-        serde_json::json!({
-            "how": "/change_set/add_action",
-            "action_id": action.id.clone(),
-            "action_kind": prototype.kind,
-            "component_id": component.id(),
-            "change_set_id": ctx.change_set_id(),
-        }),
-    );
+    if workspace.uses_actions_v2() {
+        let action = Action::new(&ctx, request.prototype_id, Some(request.component_id)).await?;
+        let prototype = ActionPrototype::get_by_id(&ctx, request.prototype_id).await?;
+        let component = Component::get_by_id(&ctx, request.component_id).await?;
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "create_action",
+            serde_json::json!({
+                "how": "/change_set/add_action",
+                "action_id": action.id(),
+                "action_kind": prototype.kind,
+                "component_id": component.id(),
+                "change_set_id": ctx.change_set_id(),
+            }),
+        );
+    } else {
+        let action =
+            DeprecatedAction::upsert(&ctx, request.prototype_id, request.component_id).await?;
+        let prototype = action.prototype(&ctx).await?;
+        let component = action.component(&ctx).await?;
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "create_action",
+            serde_json::json!({
+                "how": "/change_set/add_action",
+                "action_id": action.id.clone(),
+                "action_kind": prototype.kind,
+                "component_id": component.id(),
+                "change_set_id": ctx.change_set_id(),
+            }),
+        );
+    }
 
     ctx.commit().await?;
 
