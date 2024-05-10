@@ -57,7 +57,7 @@ pub async fn paste_components(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let maybe_force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let mut pasted_components_by_original = HashMap::new();
     for component_id in &request.component_ids {
@@ -113,9 +113,8 @@ pub async fn paste_components(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = maybe_force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-
-    Ok(response.body(serde_json::to_string(&())?)?)
+    Ok(response.body(axum::body::Empty::new())?)
 }
