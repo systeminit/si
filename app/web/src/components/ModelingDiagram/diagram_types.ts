@@ -3,6 +3,7 @@ import { ConnectionAnnotation } from "@si/ts-lib";
 import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
@@ -167,13 +168,6 @@ export enum SchemaKind {
   Concept = "concept",
   Implementation = "implementation",
   Concrete = "concrete",
-}
-
-export enum ComponentType {
-  Component = "component",
-  ConfigurationFrameDown = "configurationFrameDown",
-  ConfigurationFrameUp = "configurationFrameUp",
-  AggregationFrame = "aggregationFrame",
 }
 
 export type DiagramNodeDef = {

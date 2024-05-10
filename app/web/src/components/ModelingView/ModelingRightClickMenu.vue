@@ -12,7 +12,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import plur from "plur";
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();

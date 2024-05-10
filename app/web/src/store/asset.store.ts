@@ -9,7 +9,7 @@ import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {

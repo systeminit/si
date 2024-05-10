@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
+use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     DalContext, InputSocketId, OutputSocketId, Schema, SchemaError, SchemaId, SchemaVariant,
@@ -66,6 +67,7 @@ impl SchemaView {
                         name: schema_variant.name().to_owned(),
                         color: schema_variant.get_color(ctx).await?,
                         category: schema_variant.category().to_owned(),
+                        component_type: schema_variant.component_type().to_owned(),
                         input_sockets: input_sockets
                             .iter()
                             .map(|s| InputSocketView {
@@ -114,6 +116,7 @@ pub struct SchemaVariantView {
     builtin: bool,
     name: String,
     is_default: bool,
+    component_type: ComponentType,
 
     color: String,
     category: String,

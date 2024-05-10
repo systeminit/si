@@ -227,6 +227,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -244,7 +245,6 @@ import {
   ElementHoverMeta,
   EdgeDisplayMode,
   MoveElementsState,
-  ComponentType,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -1415,7 +1415,7 @@ function endDragElements() {
 
       if (el.def.parentId !== newParent?.def.componentId) {
         if (numSelected === 1 && newParent?.def.childIds?.length === 0) {
-          if (newParent.def.size) {
+          if (newParent.def.size && "isGroup" in el.def && el.def.isGroup) {
             fitWithinParent = {
               position:
                 movedElementPositions[newParent.uniqueKey] ??
@@ -2464,6 +2464,14 @@ async function triggerInsertElement() {
     ) {
       parentId = parentGroupId;
     }
+    let isFrame = false;
+    const schema = componentsStore.schemasById[schemaId];
+    if (schema) {
+      const variant = schema.variants.filter((v) => v.isDefault).pop();
+      if (variant) {
+        isFrame = variant.componentType !== ComponentType.Component;
+      }
+    }
 
     if (parentComponent) {
       if (parentComponent.childIds.length > 0) {
@@ -2471,7 +2479,7 @@ async function triggerInsertElement() {
         // leave position as the cursor
         // backend default is 500 x 500, just make it smaller since there are other children
         createAtSize = { width: 250, height: 250 };
-      } else if (parentComponent.position && parentComponent.size) {
+      } else if (isFrame && parentComponent.position && parentComponent.size) {
         [createAtPosition, createAtSize] = fitChildInsideParentFrame(
           parentComponent.position,
           parentComponent.size,

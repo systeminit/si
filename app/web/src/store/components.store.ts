@@ -7,7 +7,6 @@ import { IconNames } from "@si/vue-lib/design-system";
 import mitt from "mitt";
 import { watch } from "vue";
 import {
-  ComponentType,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramStatusIcon,
@@ -15,6 +14,7 @@ import {
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
+  ComponentType,
   DiagramNode,
   DiagramSchema,
   DiagramSchemaVariant,
@@ -495,6 +495,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     name: variant.name,
                     builtin: variant.builtin,
                     isDefault: true,
+                    componentType: variant.componentType,
                     color: variant.color,
                     category: variant.category,
                     inputSockets: variant.inputSockets,
