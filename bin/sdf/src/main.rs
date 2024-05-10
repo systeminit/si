@@ -70,15 +70,15 @@ async fn async_main() -> Result<()> {
     Server::init()?;
 
     if let (Some(secret_key_path), Some(public_key_path)) = (
-        &args.generate_cyclone_secret_key_path,
-        &args.generate_cyclone_public_key_path,
+        &args.generate_veritech_secret_key_path,
+        &args.generate_veritech_public_key_path,
     ) {
         info!(
-            "Generating Cyclone key pair at: (secret = {}, public = {})",
+            "Generating Veritech key pair at: (secret = {}, public = {})",
             secret_key_path.display(),
             public_key_path.display()
         );
-        Server::generate_cyclone_key_pair(secret_key_path, public_key_path).await?;
+        Server::generate_veritech_key_pair(secret_key_path, public_key_path).await?;
         return Ok(());
     }
 

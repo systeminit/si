@@ -86,6 +86,10 @@ pub(crate) struct Args {
     /// Cyclone pool size
     #[arg(long)]
     pub(crate) cyclone_pool_size: Option<u16>,
+
+    /// Veritech decryption key file location [example: /run/veritech/veritech.key]
+    #[arg(long)]
+    pub(crate) decryption_key: Option<PathBuf>,
 }
 
 impl TryFrom<Args> for Config {
@@ -116,6 +120,12 @@ impl TryFrom<Args> for Config {
             }
             if let Some(size) = args.cyclone_pool_size {
                 config_map.set("cyclone.pool_size", size);
+            }
+            if let Some(decryption_key_path) = args.decryption_key {
+                config_map.set(
+                    "decryption_key_path",
+                    decryption_key_path.display().to_string(),
+                );
             }
             config_map.set("nats.connection_name", NAME);
         })?

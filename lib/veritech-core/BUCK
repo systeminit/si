@@ -2,6 +2,13 @@ load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
     name = "veritech-core",
-    deps = [],
+    deps = [
+        "//lib/si-crypto:si-crypto",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+    ],
+    test_unit_deps = [
+        "//lib/si-std:si-std",
+    ],
     srcs = glob(["src/**/*.rs"]),
 )

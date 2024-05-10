@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
 //     let path = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
 //         Buck2Resources::read()?.get_ends_with("dev.encryption.key")?
 //     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
-//         Path::new(&dir).join("../../lib/cyclone-server/src/dev.encryption.key")
+//         Path::new(&dir).join("../../lib/veritech-server/src/dev.encryption.key")
 //     } else {
 //         unimplemented!("not running with Buck2 or Cargo, unsupported")
 //     };

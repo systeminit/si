@@ -45,7 +45,6 @@ async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
         LocalUdsInstance::spec()
             .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
             .expect("failed to setup cyclone_cmd_path")
-            .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to setup lang_js_cmd_path")
             .all_endpoints()
@@ -55,6 +54,12 @@ async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
     let config = Config::builder()
         .nats(nats_config(subject_prefix.clone()))
         .cyclone_spec(cyclone_spec)
+        .decryption_key_path(
+            config_file
+                .decryption_key_path
+                .try_into()
+                .expect("failed to setup the decryption_key_path"),
+        )
         .build()
         .expect("failed to build spec");
     Server::for_cyclone_uds(config)

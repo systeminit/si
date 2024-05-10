@@ -1,33 +1,33 @@
-use std::os::unix::fs::PermissionsExt;
-use std::sync::Arc;
-use tracing::debug;
-
-use ::std::path::Path;
-use rand::distributions::Alphanumeric;
-use rand::thread_rng;
-use rand::Rng;
-use std::{io, path::PathBuf, result, time::Duration};
-
-use bollard::container::{
-    Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
+use std::{
+    io,
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    result,
+    sync::Arc,
+    time::Duration,
 };
-use bollard::models::{HostConfig, Mount, MountTypeEnum};
-use bollard::{errors::Error, Docker};
 
 use async_trait::async_trait;
+use bollard::{
+    container::{Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions},
+    errors::Error,
+    models::{HostConfig, Mount, MountTypeEnum},
+    Docker,
+};
 use cyclone_client::{
     Client, ClientConfig, ClientError, Connection, CycloneClient, Execution, LivenessStatus,
     PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, ValidationRequest,
-    ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, CycloneRequest,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use tempfile::{NamedTempFile, TempPath};
 use thiserror::Error;
@@ -37,7 +37,7 @@ use tokio::{
     sync::oneshot,
     time,
 };
-use tracing::trace;
+use tracing::{debug, trace};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
 
@@ -176,7 +176,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     async fn execute_resolver(
         &mut self,
-        request: ResolverFunctionRequest,
+        request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
         Execution<UnixStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
@@ -191,7 +191,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     async fn execute_validation(
         &mut self,
-        request: ValidationRequest,
+        request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<
         Execution<UnixStream, ValidationRequest, ValidationResultSuccess>,
         ClientError,
@@ -209,7 +209,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     // FuncBackendJsAction" in the dal.
     async fn execute_action_run(
         &mut self,
-        request: ActionRunRequest,
+        request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<UnixStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         self.ensure_healthy_client()
@@ -224,7 +224,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     async fn execute_reconciliation(
         &mut self,
-        request: ReconciliationRequest,
+        request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
         Execution<UnixStream, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
@@ -241,7 +241,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     async fn execute_schema_variant_definition(
         &mut self,
-        request: SchemaVariantDefinitionRequest,
+        request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
         Execution<UnixStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
@@ -293,10 +293,6 @@ pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into), default)]
     cyclone_cmd_path: CanonicalCommand,
-
-    /// Canonical path to Cyclone's secret key file.
-    #[builder(setter(into), default)]
-    cyclone_decryption_key_path: String,
 
     /// Canonical path to the language server program.
     #[builder(try_setter, setter(into), default)]
@@ -569,8 +565,6 @@ impl LocalProcessRuntime {
         let mut cmd = Command::new(&spec.cyclone_cmd_path);
         cmd.arg("--bind-uds")
             .arg(socket)
-            .arg("--decryption-key")
-            .arg(&spec.cyclone_decryption_key_path)
             .arg("--lang-server")
             .arg(&spec.lang_server_cmd_path)
             .arg("--enable-watch");
@@ -642,8 +636,6 @@ impl LocalDockerRuntime {
         let mut cmd = vec![
             String::from("--bind-uds"),
             socket.to_string_lossy().to_string(),
-            String::from("--decryption-key"),
-            String::from("/tmp/key"),
             String::from("--lang-server"),
             String::from("/usr/local/bin/lang-js"),
             String::from("--enable-watch"),
@@ -679,20 +671,12 @@ impl LocalDockerRuntime {
             .expect("socket path not available")
             .to_str()
             .expect("unable to unpack path");
-        let mounts = vec![
-            Mount {
-                source: Some(String::from(socket_dir)),
-                target: Some(String::from(socket_dir)),
-                typ: Some(MountTypeEnum::BIND),
-                ..Default::default()
-            },
-            Mount {
-                source: Some(spec.cyclone_decryption_key_path),
-                target: Some(String::from("/tmp/key")),
-                typ: Some(MountTypeEnum::BIND),
-                ..Default::default()
-            },
-        ];
+        let mounts = vec![Mount {
+            source: Some(String::from(socket_dir)),
+            target: Some(String::from(socket_dir)),
+            typ: Some(MountTypeEnum::BIND),
+            ..Default::default()
+        }];
 
         let container_id = docker
             .create_container(

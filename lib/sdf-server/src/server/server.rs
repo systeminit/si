@@ -12,8 +12,8 @@ use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDet
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_crypto::{
-    CryptoConfig, CycloneEncryptionKey, CycloneEncryptionKeyError, CycloneKeyPairError,
-    SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    VeritechEncryptionKey, VeritechEncryptionKeyError, VeritechKeyPairError,
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
@@ -39,21 +39,17 @@ use veritech_client::Client as VeritechClient;
 
 use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
-use crate::server::config::CycloneKeyPair;
+use crate::server::config::VeritechKeyPair;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error("intrinsics installation error: {0}")]
     Builtins(#[from] BuiltinsError),
-    #[error("cyclone public key already set")]
-    CyclonePublicKeyAlreadySet,
-    #[error("cyclone public key error: {0}")]
-    CyclonePublicKeyErr(#[from] CycloneKeyPairError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
-    #[error("error when loading cyclone encryption key: {0}")]
-    EncryptionKey(#[from] CycloneEncryptionKeyError),
+    #[error("error when loading veritech encryption key: {0}")]
+    EncryptionKey(#[from] VeritechEncryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("error initializing the server")]
@@ -92,6 +88,10 @@ pub enum ServerError {
     Uds(#[from] UdsIncomingStreamError),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
+    #[error("veritech public key already set")]
+    VeritechPublicKeyAlreadySet,
+    #[error("veritech public key error: {0}")]
+    VeritechPublicKeyErr(#[from] VeritechKeyPairError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
@@ -215,12 +215,12 @@ impl Server<(), ()> {
         Ok(posthog_client)
     }
 
-    #[instrument(name = "sdf.init.generate_cyclone_key_pair", level = "info", skip_all)]
-    pub async fn generate_cyclone_key_pair(
+    #[instrument(name = "sdf.init.generate_veritech_key_pair", level = "info", skip_all)]
+    pub async fn generate_veritech_key_pair(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
     ) -> Result<()> {
-        CycloneKeyPair::create_and_write_files(secret_key_path, public_key_path)
+        VeritechKeyPair::create_and_write_files(secret_key_path, public_key_path)
             .await
             .map_err(Into::into)
     }
@@ -254,9 +254,9 @@ impl Server<(), ()> {
     #[instrument(name = "sdf.init.load_encryption_key", level = "info", skip_all)]
     pub async fn load_encryption_key(
         crypto_config: CryptoConfig,
-    ) -> Result<Arc<CycloneEncryptionKey>> {
+    ) -> Result<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
-            CycloneEncryptionKey::from_config(crypto_config).await?,
+            VeritechEncryptionKey::from_config(crypto_config).await?,
         ))
     }
 

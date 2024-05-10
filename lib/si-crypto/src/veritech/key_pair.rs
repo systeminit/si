@@ -5,21 +5,21 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::{CycloneDecryptionKey, CycloneEncryptionKey};
+use crate::{VeritechDecryptionKey, VeritechEncryptionKey};
 
-/// An error that can be returned when working with a [`CycloneKeyPair`].
+/// An error that can be returned when working with a [`VeritechKeyPair`].
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum CycloneKeyPairError {
+pub enum VeritechKeyPairError {
     /// When an error is return while creating and writing key files
     #[error("write io error: {0}")]
     WriteIo(#[from] std::io::Error),
 }
 
-/// A Cyclone encryption/decryption key pair generator.
-pub struct CycloneKeyPair;
+/// A Veritech encryption/decryption key pair generator.
+pub struct VeritechKeyPair;
 
-impl CycloneKeyPair {
+impl VeritechKeyPair {
     /// Generates and writes a new pair of keys to the given file paths.
     ///
     /// # Errors
@@ -31,7 +31,7 @@ impl CycloneKeyPair {
     pub async fn create_and_write_files(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
-    ) -> Result<(), CycloneKeyPairError> {
+    ) -> Result<(), VeritechKeyPairError> {
         let (public_key, secret_key) = box_::gen_keypair();
 
         let mut file = File::create(&secret_key_path).await?;
@@ -44,7 +44,7 @@ impl CycloneKeyPair {
     }
 
     /// Generates a new pair of keys.
-    pub fn create() -> (CycloneEncryptionKey, CycloneDecryptionKey) {
+    pub fn create() -> (VeritechEncryptionKey, VeritechDecryptionKey) {
         let (public_key, secret_key) = box_::gen_keypair();
 
         (public_key.into(), secret_key.into())
@@ -69,7 +69,7 @@ mod tests {
             .expect("failed to create named tempfile")
             .into_temp_path();
 
-        CycloneKeyPair::create_and_write_files(&secret_key_path, &public_key_path)
+        VeritechKeyPair::create_and_write_files(&secret_key_path, &public_key_path)
             .await
             .expect("unable to create key pair");
 

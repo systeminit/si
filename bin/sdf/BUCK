@@ -22,7 +22,7 @@ rust_binary(
     resources = {
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
-        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
         "pkgs_path": "//pkgs:pkgs",

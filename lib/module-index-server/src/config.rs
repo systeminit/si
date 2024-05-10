@@ -243,7 +243,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.pg.certificate_path = Some(postgres_cert.try_into()?);
 
     // todo!();
-    // config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    // config.veritech_encryption_key_path = veritech_encryption_key_path;
 
     Ok(())
 }

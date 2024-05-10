@@ -9,21 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-nats-subscriber = { path = "../../lib/nats-subscriber" }
-object-tree = { path = "../../lib/object-tree" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-events = { path = "../../lib/si-events-rs" }
-si-hash = { path = "../../lib/si-hash" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
-
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
@@ -42,6 +27,8 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }
 paste = { workspace = true }
 petgraph = { workspace = true }
@@ -55,22 +42,33 @@ serde = { workspace = true }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-events = { path = "../../lib/si-events-rs" }
+si-hash = { path = "../../lib/si-hash" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
 sodiumoxide = { workspace = true }
 strum = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
+veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal-test = { path = "../../lib/dal-test" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
-
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 tempfile = { workspace = true }
 tokio-util = { workspace = true }
+veritech-client = { path = "../../lib/veritech-client" }

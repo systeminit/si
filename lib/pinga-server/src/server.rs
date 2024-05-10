@@ -5,8 +5,9 @@ use std::{
     sync::Arc,
 };
 
-use dal::feature_flags::FeatureFlagService;
-use dal::job::definition::compute_validation::ComputeValidation;
+use dal::{
+    feature_flags::FeatureFlagService, job::definition::compute_validation::ComputeValidation,
+};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -20,6 +21,7 @@ use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
 use si_crypto::{
     CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    VeritechEncryptionKey, VeritechEncryptionKeyError,
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
@@ -37,7 +39,7 @@ use tokio::{
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
+use veritech_client::Client as VeritechClient;
 
 use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
 
@@ -45,7 +47,7 @@ use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error("error when loading cyclone encryption key: {0}")]
-    EncryptionKey(#[from] CycloneEncryptionKeyError),
+    EncryptionKey(#[from] VeritechEncryptionKeyError),
     #[error(transparent)]
     Initialization(#[from] InitializationError),
     #[error(transparent)]
@@ -224,9 +226,11 @@ impl Server {
     }
 
     #[instrument(name = "pinga.init.load_encryption_key", level = "info", skip_all)]
-    async fn load_encryption_key(crypto_config: CryptoConfig) -> Result<Arc<CycloneEncryptionKey>> {
+    async fn load_encryption_key(
+        crypto_config: CryptoConfig,
+    ) -> Result<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
-            CycloneEncryptionKey::from_config(crypto_config).await?,
+            VeritechEncryptionKey::from_config(crypto_config).await?,
         ))
     }
 

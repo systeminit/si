@@ -15,7 +15,7 @@ rust_binary(
     ],
     srcs = glob(["src/**/*.rs"]),
     resources = {
-        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
     },

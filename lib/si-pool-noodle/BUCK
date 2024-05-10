@@ -3,8 +3,10 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-pool-noodle",
     deps = [
+        "//lib/buck2-resources:buck2-resources",
         "//lib/cyclone-client:cyclone-client",
         "//lib/cyclone-core:cyclone-core",
+        "//lib/si-std:si-std",
         "//third-party/rust:async-trait",
         "//third-party/rust:bollard",
         "//third-party/rust:crossbeam-queue",
@@ -19,7 +21,6 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",
-        "//lib/buck2-resources:buck2-resources",
     ],
     srcs = glob(["src/**/*.rs", "src/instance/cyclone/firecracker-setup.sh"]),
     test_unit_deps = [
@@ -27,7 +28,7 @@ rust_library(
     ],
     test_unit_resources = {
         "cyclone": "//bin/cyclone:cyclone",
-        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
     },
 )

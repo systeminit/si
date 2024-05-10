@@ -16,15 +16,18 @@
     clippy::module_name_repetitions
 )]
 
-mod cyclone;
+mod sensitive_strings;
 mod symmetric;
+mod veritech;
 
-pub use cyclone::config::CryptoConfig;
-pub use cyclone::decryption_key::{CycloneDecryptionKey, CycloneDecryptionKeyError};
-pub use cyclone::encryption_key::{CycloneEncryptionKey, CycloneEncryptionKeyError};
-pub use cyclone::key_pair::{CycloneKeyPair, CycloneKeyPairError};
-
+pub use sensitive_strings::SensitiveStrings;
 pub use symmetric::{
     SymmetricCryptoError, SymmetricCryptoResult, SymmetricCryptoService,
     SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, SymmetricKey, SymmetricNonce,
+};
+pub use veritech::{
+    config::CryptoConfig,
+    decryption_key::{VeritechDecryptionKey, VeritechDecryptionKeyError},
+    encryption_key::{VeritechEncryptionKey, VeritechEncryptionKeyError},
+    key_pair::{VeritechKeyPair, VeritechKeyPairError},
 };

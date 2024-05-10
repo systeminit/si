@@ -1,13 +1,13 @@
 //! Symmetric key cryptography.
-use telemetry::prelude::*;
 
-use base64::{engine::general_purpose, Engine};
 use std::{collections::HashMap, fs::File, io::Cursor, path::PathBuf, sync::Arc};
 
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use si_hash::Hash;
 use si_std::{CanonicalFile, CanonicalFileError};
 use sodiumoxide::crypto::secretbox;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 

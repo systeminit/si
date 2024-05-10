@@ -676,7 +676,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -721,7 +721,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -750,7 +750,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -1010,7 +1010,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -2127,7 +2127,7 @@ cargo.rust_library(
         ":heck-0.5.0",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -3353,7 +3353,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -3407,7 +3407,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
         ":strsim-0.10.0",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -3430,7 +3430,7 @@ cargo.rust_library(
     deps = [
         ":darling_core-0.20.8",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -3696,7 +3696,7 @@ cargo.rust_library(
         ":darling-0.20.8",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -3719,7 +3719,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":derive_builder_core-0.20.0",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -4133,7 +4133,7 @@ cargo.rust_library(
         ":enum-ordinalize-4.3.0",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -4304,7 +4304,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -5029,7 +5029,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -6405,7 +6405,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
         ":serde-1.0.201",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
         ":toml-0.8.12",
         ":unicode-xid-0.2.4",
     ],
@@ -6600,7 +6600,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -7664,7 +7664,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -7872,7 +7872,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -9198,7 +9198,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -9225,7 +9225,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.82",
         ":proc-macro2-diagnostics-0.10.1",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -9690,7 +9690,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -10083,7 +10083,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -10422,7 +10422,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
         ":yansi-1.0.1",
     ],
 )
@@ -10474,7 +10474,7 @@ cargo.rust_library(
         ":itertools-0.12.1",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -10940,7 +10940,7 @@ cargo.rust_library(
         ":quote-1.0.36",
         ":refinery-core-0.8.14",
         ":regex-1.10.4",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -11177,7 +11177,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -12868,7 +12868,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -12970,7 +12970,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
         ":unicode-ident-1.0.12",
     ],
 )
@@ -13352,7 +13352,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -13451,7 +13451,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -13587,7 +13587,7 @@ cargo.rust_library(
         ":darling-0.20.8",
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -14629,7 +14629,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
         ":rustversion-1.0.16",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -14721,23 +14721,23 @@ cargo.rust_library(
 
 alias(
     name = "syn",
-    actual = ":syn-2.0.61",
+    actual = ":syn-2.0.63",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "syn-2.0.61.crate",
-    sha256 = "c993ed8ccba56ae856363b1845da7266a7cb78e1d146c8a32d54b45a8b831fc9",
-    strip_prefix = "syn-2.0.61",
-    urls = ["https://crates.io/api/v1/crates/syn/2.0.61/download"],
+    name = "syn-2.0.63.crate",
+    sha256 = "bf5be731623ca1a1fb7d8be6f261a3be6d3e2337b8a1f97be944d020c8fcb704",
+    strip_prefix = "syn-2.0.63",
+    urls = ["https://crates.io/api/v1/crates/syn/2.0.63/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "syn-2.0.61",
-    srcs = [":syn-2.0.61.crate"],
+    name = "syn-2.0.63",
+    srcs = [":syn-2.0.63.crate"],
     crate = "syn",
-    crate_root = "syn-2.0.61.crate/src/lib.rs",
+    crate_root = "syn-2.0.63.crate/src/lib.rs",
     edition = "2021",
     features = [
         "clone-impls",
@@ -14998,7 +14998,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -15098,7 +15098,7 @@ cargo.rust_binary(
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.2",
         ":strum-0.26.2",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
         ":tar-0.4.40",
         ":tempfile-3.10.1",
         ":test-log-0.2.16",
@@ -15173,7 +15173,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -15505,7 +15505,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -16222,7 +16222,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -17451,7 +17451,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -17474,7 +17474,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )
 
@@ -18018,6 +18018,6 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.82",
         ":quote-1.0.36",
-        ":syn-2.0.61",
+        ":syn-2.0.63",
     ],
 )

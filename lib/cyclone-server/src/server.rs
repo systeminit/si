@@ -6,9 +6,7 @@ use std::{
 
 use async_trait::async_trait;
 use axum::routing::{IntoMakeService, Router};
-use cyclone_core::{CycloneDecryptionKey, CycloneDecryptionKeyError};
 use hyper::server::accept::Accept;
-use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
 use thiserror::Error;
 use tokio::{
@@ -28,10 +26,6 @@ use crate::{VsockIncomingStream, VsockIncomingStreamError};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error(transparent)]
-    CanonicalFile(#[from] CanonicalFileError),
-    #[error(transparent)]
-    DecryptionKey(#[from] CycloneDecryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("failed to setup signal handler")]
@@ -94,9 +88,8 @@ impl Server {
     pub async fn from_config(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
-        decryption_key: CycloneDecryptionKey,
     ) -> Result<Self> {
-        let (service, shutdown_rx) = build_service(&config, telemetry_level, decryption_key)?;
+        let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
 
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -139,14 +132,6 @@ impl Server {
                 })
             }
         }
-    }
-
-    pub async fn load_decryption_key(key_path: &Path) -> Result<CycloneDecryptionKey> {
-        // Ensure the key path is canonicalized and exists
-        let path = CanonicalFile::try_from(key_path)?;
-
-        let key = CycloneDecryptionKey::load(path.as_path()).await?;
-        Ok(key)
     }
 
     /// Gets a reference to the server's config.
@@ -226,11 +211,10 @@ impl ServerSocket {
 fn build_service(
     config: &Config,
     telemetry_level: Box<dyn TelemetryLevel>,
-    decryption_key: CycloneDecryptionKey,
 ) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let state = AppState::new(config.lang_server_path(), decryption_key, telemetry_level);
+    let state = AppState::new(config.lang_server_path(), telemetry_level);
 
     let routes = routes(config, state, shutdown_tx);
 

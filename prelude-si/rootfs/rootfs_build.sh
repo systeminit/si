@@ -84,7 +84,6 @@ sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
 cyclone_args=(
   --bind-vsock 3:52
-  --decryption-key /mnt/dkey/decryption.key
   --lang-server /usr/local/bin/lang-js
   --enable-watch
   --limit-requests 1

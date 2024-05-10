@@ -17,9 +17,11 @@ nats-subscriber = { path = "../../lib/nats-subscriber" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-pool-noodle = { path = "../../lib/si-pool-noodle" }
 si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }

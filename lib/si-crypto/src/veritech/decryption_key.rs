@@ -7,10 +7,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
 
-/// An error that can be returned when working with a [`CycloneDecryptionKey`].
+/// An error that can be returned when working with a [`VeritechDecryptionKey`].
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum CycloneDecryptionKeyError {
+pub enum VeritechDecryptionKeyError {
     /// When deserializing a crypted message from base64 encoding fails
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
@@ -25,17 +25,17 @@ pub enum CycloneDecryptionKeyError {
     LoadKeyIO(#[source] io::Error),
 }
 
-/// A key that decrypts segements of a Cyclone function request message.
+/// A key that decrypts segements of a Veritech function request message.
 #[derive(Debug, Clone)]
-pub struct CycloneDecryptionKey {
+pub struct VeritechDecryptionKey {
     secret_key: BoxSecretKey,
     public_key: BoxPublicKey,
     public_key_hash: Hash,
     public_key_hash_string: String,
 }
 
-impl CycloneDecryptionKey {
-    /// Loads a [`CycloneDecryptionKey`] from a file path.
+impl VeritechDecryptionKey {
+    /// Loads a [`VeritechDecryptionKey`] from a file path.
     ///
     /// # Errors
     ///
@@ -45,20 +45,20 @@ impl CycloneDecryptionKey {
     /// - A key file could not be successfuly parsed
     pub async fn load(
         decryption_key_path: impl AsRef<Path>,
-    ) -> Result<Self, CycloneDecryptionKeyError> {
+    ) -> Result<Self, VeritechDecryptionKeyError> {
         trace!(
             decryption_key_path = %decryption_key_path.as_ref().display(),
-            "loading cyclone decryption key from disk",
+            "loading veritech decryption key from disk",
         );
         let mut file = File::open(decryption_key_path)
             .await
-            .map_err(CycloneDecryptionKeyError::LoadKeyIO)?;
+            .map_err(VeritechDecryptionKeyError::LoadKeyIO)?;
         let mut buf: Vec<u8> = Vec::with_capacity(32);
         file.read_to_end(&mut buf)
             .await
-            .map_err(CycloneDecryptionKeyError::LoadKeyIO)?;
+            .map_err(VeritechDecryptionKeyError::LoadKeyIO)?;
         let secret_key =
-            BoxSecretKey::from_slice(&buf).ok_or(CycloneDecryptionKeyError::KeyParse)?;
+            BoxSecretKey::from_slice(&buf).ok_or(VeritechDecryptionKeyError::KeyParse)?;
 
         let public_key = secret_key.public_key();
 
@@ -84,10 +84,10 @@ impl CycloneDecryptionKey {
     pub fn decode_and_decrypt(
         &self,
         base64_encoded: impl AsRef<str>,
-    ) -> Result<Vec<u8>, CycloneDecryptionKeyError> {
+    ) -> Result<Vec<u8>, VeritechDecryptionKeyError> {
         let crypted = general_purpose::STANDARD_NO_PAD.decode(base64_encoded.as_ref())?;
         sodiumoxide::crypto::sealedbox::open(&crypted, &self.public_key, &self.secret_key)
-            .map_err(|_| CycloneDecryptionKeyError::DecryptionFailed)
+            .map_err(|_| VeritechDecryptionKeyError::DecryptionFailed)
     }
 
     /// Returns a [`Hash`] of the encryption key which would have encoded a message.
@@ -102,7 +102,7 @@ impl CycloneDecryptionKey {
     }
 }
 
-impl From<BoxSecretKey> for CycloneDecryptionKey {
+impl From<BoxSecretKey> for VeritechDecryptionKey {
     fn from(value: BoxSecretKey) -> Self {
         let public_key = value.public_key();
         let secret_key = value;

@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use cyclone_core::{FunctionResult, Message, ProgressMessage};
+use cyclone_core::{CycloneRequest, FunctionResult, Message, ProgressMessage};
 use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,7 +16,7 @@ pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
 
 pub fn execute<T, Request, Success>(
     stream: WebSocketStream<T>,
-    request: Request,
+    request: CycloneRequest<Request>,
 ) -> Execution<T, Request, Success> {
     Execution {
         stream,
@@ -57,7 +57,7 @@ pub enum ExecutionError<Success> {
 #[derive(Debug)]
 pub struct Execution<T, Request, Success> {
     stream: WebSocketStream<T>,
-    request: Request,
+    request: CycloneRequest<Request>,
     // Are we sure this is the right variance?
     success_marker: PhantomData<Success>,
 }

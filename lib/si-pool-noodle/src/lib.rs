@@ -18,16 +18,15 @@
 pub use self::instance::{Instance, Spec};
 pub use crate::pool_noodle::PoolNoodle;
 
-pub use cyclone_client::{
-    ClientError, CycloneClient, CycloneEncryptionKey, CycloneEncryptionKeyError, ExecutionError,
-};
+pub use cyclone_client::{ClientError, CycloneClient, ExecutionError};
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, ComponentView, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureError, OutputStream, ProgressMessage, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
-    ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, OutputStream,
+    ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
+    ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.
@@ -58,7 +57,6 @@ mod tests {
         let spec = LocalUdsInstance::spec()
             .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
             .expect("failed to find cyclone program")
-            .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to find lang server program")
             .limit_requests(2)
@@ -95,7 +93,6 @@ mod tests {
         let spec = LocalUdsInstance::spec()
             .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
             .expect("failed to find cyclone program")
-            .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to find lang server program")
             .limit_requests(2)
@@ -147,7 +144,6 @@ mod tests {
         let spec = LocalUdsInstance::spec()
             .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
             .expect("failed to find cyclone program")
-            .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to find lang server program")
             .limit_requests(2)

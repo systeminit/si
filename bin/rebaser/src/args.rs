@@ -103,17 +103,17 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
 
-    /// Cyclone encryption key file location [default: /run/rebaser/cyclone_encryption.key]
+    /// Veritech encryption key file location [default: /run/rebaser/veritech_encryption.key]
     #[arg(long)]
-    pub(crate) cyclone_encryption_key_path: Option<String>,
+    pub(crate) veritech_encryption_key_path: Option<String>,
 
     /// Cyclone encryption key file contents as a base64 encoded string
     #[arg(long)]
-    pub(crate) cyclone_encryption_key_base64: Option<SensitiveString>,
+    pub(crate) veritech_encryption_key_base64: Option<SensitiveString>,
 
-    /// Cyclone secret key as base64 string
+    /// Symmetric crypto active key as base64 string
     #[arg(long)]
-    pub(crate) cyclone_secret_key_base64: Option<SensitiveString>,
+    pub(crate) symmetric_crypto_active_key_base64: Option<SensitiveString>,
 
     /// The number of concurrent jobs that can be processed [default: 10]
     #[arg(long)]
@@ -197,22 +197,22 @@ impl TryFrom<Args> for Config {
                     creds_path.display().to_string(),
                 );
             }
-            if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
+            if let Some(veritech_encryption_key_file) = args.veritech_encryption_key_path {
                 config_map.set(
                     "crypto.encryption_key_file",
-                    cyclone_encryption_key_file.to_string(),
+                    veritech_encryption_key_file.to_string(),
                 );
             }
-            if let Some(cyclone_encryption_key_base64) = args.cyclone_encryption_key_base64 {
+            if let Some(veritech_encryption_key_base64) = args.veritech_encryption_key_base64 {
                 config_map.set(
                     "crypto.encryption_key_base64",
-                    cyclone_encryption_key_base64.to_string(),
+                    veritech_encryption_key_base64.to_string(),
                 );
             }
-            if let Some(secret_string) = args.cyclone_secret_key_base64 {
+            if let Some(base64) = args.symmetric_crypto_active_key_base64 {
                 config_map.set(
                     "symmetric_crypto_service.active_key_base64",
-                    secret_string.to_string(),
+                    base64.to_string(),
                 );
             }
             if let Some(concurrency) = args.concurrency {

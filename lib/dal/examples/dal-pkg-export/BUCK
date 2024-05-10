@@ -17,6 +17,6 @@ rust_binary(
         "//third-party/rust:tokio",
     ],
     resources = {
-        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
     }
 )
