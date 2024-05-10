@@ -143,6 +143,8 @@ export const useActionsStore = () => {
           actionBatches: [] as Array<DeprecatedActionBatch>,
           runningActionBatch: undefined as DeprecatedActionBatchId | undefined,
           populatingActionRunners: false,
+          // TODO: Everything above this go away when we remove actions v1
+          actionsV2: [] as Array<ActionView>,
         }),
         getters: {
           actionsAreInProgress: (state) => !!state.runningActionBatch,
@@ -323,7 +325,8 @@ export const useActionsStore = () => {
               },
             });
           },
-          async LOAD_QUEUED_ACTIONS() {
+          // Actions V2 Actions
+          async LOAD_ACTIONS() {
             return new ApiRequest<Array<ActionView>>({
               url: "/action/load_queued",
               headers: { accept: "application/json" },
@@ -331,16 +334,37 @@ export const useActionsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
-                // TODO - UPDATE THIS FOR ACTIONS V2
-                // eslint-disable-next-line no-console
-                console.log(response);
+                this.actionsV2 = response;
               },
             });
           },
+          async PUT_ACTION_ON_HOLD(id: ActionId) {
+            return new ApiRequest<null>({
+              method: "post",
+              url: "action/put_on_hold",
+              keyRequestStatusBy: id,
+              params: {
+                id,
+                visibility_change_set_pk: changeSetId,
+              },
+            });
+          },
+          async CANCEL(id: ActionId) {
+            return new ApiRequest<null>({
+              method: "post",
+              url: "action/cancel",
+              keyRequestStatusBy: id,
+              params: {
+                id,
+                visibility_change_set_pk: changeSetId,
+              },
+            });
+          },
+
           // TODO - THIS FUNCTION WILL BE RIPPED OUT WHEN ACTIONS V2 IS READY
           async LOAD_V1_OR_V2() {
             if (featureFlagsStore.IS_ACTIONS_V2) {
-              this.LOAD_QUEUED_ACTIONS();
+              this.LOAD_ACTIONS();
             } else {
               this.LOAD_DEPRECATED_ACTION_BATCHES();
               this.FETCH_DEPRECATED_QUEUED_ACTIONS();
