@@ -215,7 +215,6 @@ import { useRoute } from "vue-router";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
-  ComponentId,
   EdgeId,
   useComponentsStore,
   FullComponent,
@@ -226,6 +225,7 @@ import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverla
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
@@ -1273,11 +1273,11 @@ const currentSelectionMovableElements = computed(() => {
 
   // filter out children of other selected items, since moving a parent will already move the child
   const filteredElements = _.reject(elements, (el) => {
-    const parentKeys = _.map(
-      el.def.ancestorIds,
-      getDiagramElementKeyForComponentId,
-    );
-    return _.intersection(currentSelectionKeys.value, parentKeys).length > 0;
+    const ancestors = el.def.ancestorIds;
+    if (ancestors) {
+      const parentKeys = ancestors.map(getDiagramElementKeyForComponentId);
+      return _.intersection(currentSelectionKeys.value, parentKeys).length > 0;
+    } else return false;
   });
 
   return filteredElements;
@@ -2598,7 +2598,9 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
 
-function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
+function getDiagramElementKeyForComponentId(
+  componentId?: ComponentId | null,
+): string | undefined {
   if (!componentId) return;
   const component = componentsStore.componentsById[componentId];
   if (component) {

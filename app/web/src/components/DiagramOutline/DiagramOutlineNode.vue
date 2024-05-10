@@ -147,7 +147,8 @@ import * as _ from "lodash-es";
 
 import clsx from "clsx";
 import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useQualificationsStore } from "@/store/qualifications.store";
 
 import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import

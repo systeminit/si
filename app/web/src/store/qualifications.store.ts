@@ -3,9 +3,10 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { ComponentId, useComponentsStore } from "./components.store";
+import { useComponentsStore } from "./components.store";
 
 export type QualificationStatus = "success" | "failure" | "running" | "warning";
 

@@ -48,7 +48,8 @@ import clsx from "clsx";
 import { PropType, computed } from "vue";
 import { Icon, Stack, themeClasses } from "@si/vue-lib/design-system";
 import { ActionPrototypeId, useActionsStore } from "@/store/actions.store";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({

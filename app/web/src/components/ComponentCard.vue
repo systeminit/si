@@ -51,11 +51,8 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
-import {
-  ComponentId,
-  FullComponent,
-  useComponentsStore,
-} from "@/store/components.store";
+import { FullComponent, useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({

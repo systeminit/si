@@ -10,10 +10,8 @@ import {
   ComponentType,
   DiagramEdgeDef,
   DiagramNodeDef,
-  DiagramSocketDef,
   DiagramStatusIcon,
   ElementHoverMeta,
-  GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
@@ -27,10 +25,14 @@ import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
 import router from "@/router";
-import { ComponentDiff } from "@/api/sdf/dal/component";
+import {
+  ComponentDiff,
+  RawComponent,
+  ComponentId,
+  ActorAndTimestamp,
+} from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -40,33 +42,10 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
 
-export type ComponentId = string;
 export type ComponentNodeId = string;
 export type EdgeId = string;
 export type SocketId = string;
 type SchemaId = string;
-
-type RawComponent = {
-  changeStatus: ChangeStatus;
-  color: string;
-  createdInfo: ActorAndTimestamp;
-  deletedInfo?: ActorAndTimestamp;
-  displayName: string;
-  id: ComponentId;
-  componentType: ComponentType;
-  parentId?: ComponentId;
-  position: GridPoint;
-  size?: Size2D;
-  hasResource: boolean;
-  schemaCategory: string;
-  schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
-  schemaName: string;
-  schemaVariantId: string;
-  schemaVariantName: string;
-  sockets: DiagramSocketDef[];
-  updatedInfo: ActorAndTimestamp;
-  toDelete: boolean;
-};
 
 export type FullComponent = RawComponent & {
   // array of parent IDs
@@ -94,11 +73,6 @@ type Edge = RawEdge & {
   id: EdgeId;
   isInferred: boolean;
 };
-
-export interface ActorAndTimestamp {
-  actor: ActorView;
-  timestamp: string;
-}
 
 export type StatusIconsSet = {
   change?: DiagramStatusIcon;
@@ -938,11 +912,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               optimistic: () => {
                 const component = this.rawComponentsById[childId];
                 if (!component) return;
-                const full_component = this.componentsById[childId];
                 const prevParentId = component?.parentId;
-                delete component.parentId;
+                component.parentId = undefined;
 
                 // remove inferred edges between children and parents
+                const full_component = this.componentsById[childId];
                 for (const edge of _.filter(
                   _.values(this.edgesById),
                   (edge) =>
@@ -1503,9 +1477,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
-                if (this.selectedComponentId === data.componentId)
-                  this.FETCH_COMPONENT_DEBUG_VIEW(data.componentId);
+                this.rawComponentsById[data.component.id] = data.component;
+                if (this.selectedComponentId === data.component.id)
+                  this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
               },
             },
             {

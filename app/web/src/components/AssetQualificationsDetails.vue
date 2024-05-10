@@ -27,7 +27,7 @@ import { computed, PropType, watch } from "vue";
 import * as _ from "lodash-es";
 
 import { ErrorMessage } from "@si/vue-lib/design-system";
-import { ComponentId } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import QualificationViewerSingle from "@/components/QualificationViewerSingle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";

@@ -1,7 +1,8 @@
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ComponentId } from "@/api/sdf/dal/component";
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };

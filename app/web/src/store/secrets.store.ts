@@ -7,7 +7,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
-import { ActorAndTimestamp } from "./components.store";
+import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
 /**

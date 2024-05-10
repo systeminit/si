@@ -6,8 +6,8 @@ import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
-import { ComponentId } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
 

@@ -65,7 +65,7 @@ pub async fn delete_components(
             delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;
         components.insert(component_id, maybe.is_some());
 
-        WsEvent::component_updated(&ctx, component_id)
+        WsEvent::component_deleted(&ctx, component_id)
             .await?
             .publish_on_commit(&ctx)
             .await?;

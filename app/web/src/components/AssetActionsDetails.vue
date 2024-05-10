@@ -80,7 +80,8 @@ import {
   TabGroupItem,
 } from "@si/vue-lib/design-system";
 
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import { useActionsStore } from "@/store/actions.store";

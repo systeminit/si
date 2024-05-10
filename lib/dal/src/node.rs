@@ -268,9 +268,9 @@ impl Node {
             .await?
             .ok_or(NodeError::ComponentIsNone)?;
 
-        let component_id = component.id();
-
-        WsEvent::component_updated(ctx, *component_id)
+        let payload: SummaryDiagramComponent =
+            SummaryDiagramComponent::assemble(ctx, &component).await?;
+        WsEvent::component_updated(ctx, payload)
             .await?
             .publish_on_commit(ctx)
             .await?;
