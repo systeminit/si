@@ -134,7 +134,7 @@ impl<'a> ActivityRebase<'a> {
         Ok(activity)
     }
 
-    #[instrument(name = "activity::rebase::rebase_and_wait", level = "info")]
+    #[instrument(name = "activity::rebase::rebase_and_wait", level = "info", skip(self))]
     pub async fn rebase_and_wait(
         &self,
         to_rebase_change_set_id: Ulid,
@@ -182,7 +182,7 @@ impl<'a> ActivityRebase<'a> {
             .await
     }
 
-    #[instrument(name = "activity::rebase::rebase_finished", level = "info")]
+    #[instrument(name = "activity::rebase::rebase_finished", level = "info", skip(self))]
     pub async fn finished(
         &self,
         status: RebaseStatus,

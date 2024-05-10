@@ -678,7 +678,9 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
     let stars_value = AttributeValue::get_by_id(ctx, stars_value_id)
         .await
         .expect("able to get av by id");
-
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     assert_eq!(
         Some(serde_json::to_value("phosphorus").expect("able to make phosphorus value")),
         stars_value.view(ctx).await.expect("get stars value")
@@ -691,10 +693,6 @@ async fn set_the_universe(ctx: &mut DalContext) {
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
 
     let universe_prop_id = Prop::find_prop_id_by_path(
         ctx,
@@ -1042,6 +1040,9 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("able to get units view")
         .expect("units has a view");
     let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 

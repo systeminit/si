@@ -549,7 +549,6 @@ impl WorkspaceSnapshotGraph {
 
         Ok((conflicts, updates))
     }
-    #[instrument(level = "info", skip_all)]
     fn detect_conflicts_and_updates_process_dfs_event(
         &self,
         to_rebase_vector_clock_id: VectorClockId,

@@ -614,6 +614,7 @@ impl AttributePrototypeArgument {
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set()?, self.id)
             .await?;
+
         // Enqueue a dependent values update with the destination attribute values
         ctx.enqueue_dependent_values_update(avs_to_update).await?;
 

@@ -3,8 +3,11 @@ use dal::diagram::SummaryDiagramInferredEdge;
 use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal::{ComponentType, InputSocket, OutputSocket};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
+use dal_test::helpers::{
+    connect_components_with_socket_names, create_component_for_schema_name,
+    get_component_input_socket_value, get_component_output_socket_value,
+    update_attribute_value_for_component, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
@@ -255,14 +258,15 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await
-                .expect("couldn't find implicit inputs");
-                assert!(possible_match.is_some());
-                let travis_output_match = possible_match.expect("has a value");
+                let mut possible_match =
+                    Component::find_available_inferred_connections_to_input_socket(
+                        ctx,
+                        input_socket_match,
+                    )
+                    .await
+                    .expect("couldn't find implicit inputs");
+                assert!(!possible_match.is_empty());
+                let travis_output_match = possible_match.pop().expect("has a value");
                 //maybe_travis_output_socket = Some(travis_output);
                 assert_eq!(
                     travis_output_match.component_id,
@@ -348,13 +352,14 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("couldn't get input sockets")
         {
             if input_socket_id == swifty_input.id() {
-                let possible_match = Component::find_potential_inferred_connection_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await
-                .expect("couldn't find implicit inputs");
-                assert!(possible_match.is_none());
+                let possible_match =
+                    Component::find_available_inferred_connections_to_input_socket(
+                        ctx,
+                        input_socket_match,
+                    )
+                    .await
+                    .expect("couldn't find implicit inputs");
+                assert!(possible_match.is_empty());
             }
         }
         //make sure travis output socket can find swifty input socket
@@ -476,7 +481,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
 #[test]
 async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     let even_frame = create_component_for_schema_name(ctx, "large even lego", "even").await;
-
+    let even_frame_component_id = even_frame.id();
     let _ = even_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
         .await;
@@ -487,81 +492,27 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not upsert parent");
     // Change attribute value for one
-    let type_attribute_value_id = even_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "one"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
-
-    AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!["1"]))
-        .await
-        .expect("could not update attribute value");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-    // the output socket value is updated with Jason Mraz
-    let even_frame_sv_id = Component::schema_variant_id(ctx, even_frame.id())
-        .await
-        .expect("could not get sv id");
-    let even_frame_output_sockets = even_frame
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get output socket avs");
-    let output_id = OutputSocket::find_with_name(ctx, "one", even_frame_sv_id)
-        .await
-        .expect("could not get output socket by name")
-        .expect("is some");
-    let one_av_id = even_frame_output_sockets
-        .get(&output_id.id())
-        .expect("found a value");
-    let one_av = AttributeValue::get_by_id(ctx, one_av_id.attribute_value_id)
-        .await
-        .expect("could not get attribute value");
-    let one_mat_view = one_av
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-
-    assert_eq!(one_mat_view, serde_json::json!("1"));
-    let odd_sv_id = Component::schema_variant_id(ctx, odd_component.id())
-        .await
-        .expect("could not get sv id");
-    let one_input_id = InputSocket::find_with_name(ctx, "one", odd_sv_id)
-        .await
-        .expect("could not get input socket by name")
-        .expect("is some");
-
-    let odd_inputs = odd_component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get attribute values");
-
-    let one_input_match = odd_inputs.get(&one_input_id.id()).expect("found a value");
-
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("1"));
+    update_attribute_value_for_component(
+        ctx,
+        even_frame_component_id,
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await;
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
+    // the output socket value is updated with 1
+    let output_value = get_component_output_socket_value(ctx, even_frame_component_id, "one")
         .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("1"));
 
-    assert_eq!(one_input_mat_view, serde_json::json!("1"));
+    let input_value = get_component_input_socket_value(ctx, odd_component.id(), "one")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!("1"));
 }
 #[test]
 async fn simple_down_frames_nesting(ctx: &mut DalContext) {
@@ -590,157 +541,67 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     Frame::upsert_parent(ctx, odd_component.id(), even_child_frame.id())
         .await
         .expect("can upsert to child frame");
-    let one_attribute_value_id = even_parent_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "five"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
+    update_attribute_value_for_component(
+        ctx,
+        even_parent_frame.id(),
+        &["root", "domain", "five"],
+        serde_json::json!["5"],
+    )
+    .await;
 
-    AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["5"]))
-        .await
-        .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // the output socket value is updated with 1
-    let even_parent_frame_sv_id = Component::schema_variant_id(ctx, even_parent_frame.id())
+    let output_value = get_component_output_socket_value(ctx, even_parent_frame.id(), "five")
         .await
-        .expect("works");
-    let even_frame_output_sockets = even_parent_frame
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get output socket avs");
-    let output_id = OutputSocket::find_with_name(ctx, "five", even_parent_frame_sv_id)
-        .await
-        .expect("could not find output socket by name")
         .expect("is some");
-    let one_av_id = even_frame_output_sockets
-        .get(&output_id.id())
-        .expect("could not get output socket av");
-    let one_av = AttributeValue::get_by_id(ctx, one_av_id.attribute_value_id)
-        .await
-        .expect("could not get attribute value");
-    let one_mat_view = one_av
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-
-    assert_eq!(one_mat_view, serde_json::json!("5"));
+    assert_eq!(output_value, serde_json::json!("5"));
 
     // the component is updated with 5
-    let odd_component_sv_id = Component::schema_variant_id(ctx, odd_component.id())
+    let input_value = get_component_input_socket_value(ctx, odd_component.id(), "five")
         .await
-        .expect("could not get sv id");
-    let one_component_input_socket = InputSocket::find_with_name(ctx, "five", odd_component_sv_id)
-        .await
-        .expect("could not find input socket by name")
         .expect("is some");
+    assert_eq!(input_value, serde_json::json!("5"));
 
-    let odd_inputs = odd_component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input socket avs");
-
-    let one_input_match = odd_inputs
-        .get(&one_component_input_socket.id())
-        .expect("could not get input socket");
-
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("5"));
     // now let's update the parent frame to a value that the child also has
-    let one_attribute_value_id = even_parent_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "three"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
+    update_attribute_value_for_component(
+        ctx,
+        even_parent_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["4"],
+    )
+    .await;
 
-    AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["4"]))
-        .await
-        .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the component doesn't get the update as the child frame is a closer match and overrides it
-    // the component is updated with 5
-    let odd_component_sv_id = Component::schema_variant_id(ctx, odd_component.id())
-        .await
-        .expect("could not get sv id");
-    let one_component_input_socket = InputSocket::find_with_name(ctx, "three", odd_component_sv_id)
-        .await
-        .expect("could not find input socket by name")
-        .expect("is some");
-
-    let odd_inputs = odd_component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input socket avs");
-
-    let one_input_match = odd_inputs
-        .get(&one_component_input_socket.id())
-        .expect("could not get input value");
-
     assert!(
-        AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
+        get_component_input_socket_value(ctx, odd_component.id(), "three")
             .await
-            .expect("could not get attribute value by id")
-            .view(ctx)
-            .await
-            .expect("could not get materialized view")
             .is_none()
     );
-    // now let's update the child frame's same socket to a value the component should take
-    let one_attribute_value_id = even_child_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "three"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
 
-    AttributeValue::update(ctx, one_attribute_value_id, Some(serde_json::json!["3"]))
-        .await
-        .expect("could not update attribute value");
+    // now let's update the child frame's same socket to a value the component should take
+    update_attribute_value_for_component(
+        ctx,
+        even_child_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["3"],
+    )
+    .await;
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the component gets the update as the child frame is a closer match
-    let odd_component_sv_id = Component::schema_variant_id(ctx, odd_component.id())
+    let input_value = get_component_input_socket_value(ctx, odd_component.id(), "three")
         .await
-        .expect("could not get sv id");
-    let one_component_input_socket = InputSocket::find_with_name(ctx, "three", odd_component_sv_id)
-        .await
-        .expect("could not find input socket by name")
         .expect("is some");
+    assert_eq!(input_value, serde_json::json!("3"));
 
-    let odd_inputs = odd_component
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input socket attribute values");
-
-    let one_input_match = odd_inputs
-        .get(&one_component_input_socket.id())
-        .expect("could not get input socket");
-
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get av by id")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("3"));
     // now let's pop the component to the parent frame and make sure it gets the new socket value
     Frame::upsert_parent(ctx, odd_component.id(), even_parent_frame.id())
         .await
@@ -758,59 +619,11 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .expect("could not get component's parent")
         .expect("is some");
     assert_eq!(new_parent, even_parent_frame.id());
-    let one_component_input_socket = InputSocket::find_with_name(ctx, "three", odd_component_sv_id)
+    // make sure the input socket for the component is updated
+    let input_value = get_component_input_socket_value(ctx, odd_component.id(), "three")
         .await
-        .expect("could not find input socket by name")
         .expect("is some");
-
-    let one_input_match =
-        Component::input_socket_match(ctx, odd_component.id(), one_component_input_socket.id())
-            .await
-            .expect("could not find input socket match")
-            .expect("is some");
-
-    let three_socket_id = OutputSocket::find_with_name(ctx, "three", even_parent_frame_sv_id)
-        .await
-        .expect("could not find output socket by name")
-        .expect("is some");
-    let three_av_id =
-        Component::output_socket_match(ctx, even_parent_frame.id(), three_socket_id.id())
-            .await
-            .expect("could not get output socket av")
-            .expect("is some");
-
-    let _one_attribute_value_id = even_parent_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "three"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
-    let one_output_mat_view = AttributeValue::get_by_id(ctx, three_av_id.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not find materialized view")
-        .expect("is some");
-    assert_eq!(one_output_mat_view, serde_json::json!("4"));
-    let maybe_match =
-        Component::find_potential_inferred_connection_to_input_socket(ctx, one_input_match)
-            .await
-            .expect("could not find inferred input socket")
-            .expect("is some");
-    assert_eq!(
-        maybe_match.attribute_value_id,
-        three_av_id.attribute_value_id
-    );
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("4"));
+    assert_eq!(input_value, serde_json::json!("4"));
 }
 #[test]
 async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
@@ -826,77 +639,31 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not upsert parent");
     // Change attribute value for one on the component
-    let type_attribute_value_id = even_component
-        .attribute_values_for_prop(ctx, &["root", "domain", "one"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
+    update_attribute_value_for_component(
+        ctx,
+        even_component.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await;
 
-    AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!["1"]))
-        .await
-        .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-
     // the output socket value is updated with "1"
-    let even_component_sv_id = Component::schema_variant_id(ctx, even_component.id())
+    let output_value = get_component_output_socket_value(ctx, even_component.id(), "one")
         .await
-        .expect("could not get sv id");
-    let even_component_output_sockets = even_component
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get output avs");
-    let output_id = OutputSocket::find_with_name(ctx, "one", even_component_sv_id)
-        .await
-        .expect("could not find output socket by name")
-        .expect("is some");
-    let even_component_output_av = even_component_output_sockets
-        .get(&output_id.id())
-        .expect("found a value")
-        .attribute_value_id;
-    let one_av = AttributeValue::get_by_id(ctx, even_component_output_av)
-        .await
-        .expect("could not get attribute value");
-    let one_mat_view = one_av
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("1"));
 
-    assert_eq!(one_mat_view, serde_json::json!("1"));
+    // make sure component output socket matches on the up frames input socket
+    let input_value = get_component_input_socket_value(ctx, odd_up_frame.id(), "one")
+        .await
+        .expect("has value");
 
-    // // make sure component output socket matches on the up frames input socket
-    let odd_up_frame_sv_id = Component::schema_variant_id(ctx, odd_up_frame.id())
-        .await
-        .expect("could not get sv id");
-    let odd_up_frame_input_socket = InputSocket::find_with_name(ctx, "one", odd_up_frame_sv_id)
-        .await
-        .expect("could not get input socket by name")
-        .expect("is some");
-
-    let odd_inputs = odd_up_frame
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input socket avs");
-
-    let one_input_match = odd_inputs
-        .get(&odd_up_frame_input_socket.id())
-        .expect("could not find input by id");
-
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("1"));
+    assert_eq!(input_value, serde_json::json!("1"));
 
     //let's add another component to the frame, to drive the "3" input socket
-
     let another_even_component =
         create_component_for_schema_name(ctx, "medium even lego", "another even").await;
 
@@ -909,75 +676,29 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    // Change attribute value for three on the component
-    let type_attribute_value_id = another_even_component
-        .attribute_values_for_prop(ctx, &["root", "domain", "three"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
 
-    AttributeValue::update(ctx, type_attribute_value_id, Some(serde_json::json!("3")))
-        .await
-        .expect("could not update attribute value");
+    // Change attribute value for three on the component
+    update_attribute_value_for_component(
+        ctx,
+        another_even_component.id(),
+        &["root", "domain", "three"],
+        serde_json::json!("3"),
+    )
+    .await;
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the output socket value is updated with "3"
-    let another_even_component_sv_id =
-        Component::schema_variant_id(ctx, another_even_component.id())
-            .await
-            .expect("could not get sv id");
-    let another_even_component_output_sockets = another_even_component
-        .output_socket_attribute_values(ctx)
+    let output_value = get_component_output_socket_value(ctx, another_even_component.id(), "three")
         .await
-        .expect("could not get output socket avs");
-    let another_even_output_socket =
-        OutputSocket::find_with_name(ctx, "three", another_even_component_sv_id)
-            .await
-            .expect("found a name")
-            .expect("value exists");
-    let even_component_output_av = another_even_component_output_sockets
-        .get(&another_even_output_socket.id())
-        .expect("could not find output socket by id")
-        .attribute_value_id;
-    let another_three_av = AttributeValue::get_by_id(ctx, even_component_output_av)
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("3"));
+    // make sure component output socket matches on the up frames input socket
+    let input_value = get_component_input_socket_value(ctx, odd_up_frame.id(), "three")
         .await
-        .expect("could not get attribute value");
-    let one_mat_view = another_three_av
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-
-    assert_eq!(one_mat_view, serde_json::json!("3"));
-    // // make sure component output socket matches on the up frames input socket
-    let odd_up_frame_sv_id = Component::schema_variant_id(ctx, odd_up_frame.id())
-        .await
-        .expect("could not get sv id");
-    let odd_up_frame_input_socket = InputSocket::find_with_name(ctx, "three", odd_up_frame_sv_id)
-        .await
-        .expect("could not find input socket by name")
-        .expect("is some");
-
-    let odd_inputs = odd_up_frame
-        .input_socket_attribute_values(ctx)
-        .await
-        .expect("could not get input socket avs");
-
-    let one_input_match = odd_inputs
-        .get(&odd_up_frame_input_socket.id())
-        .expect("could not get input socket");
-
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
-        .await
-        .expect("could not get attribute value")
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("3"));
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!("3"));
 
     //now let's drop that up frame into an even up frame, driving the even values
     let even_up_frame =
@@ -992,87 +713,223 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    // Change attribute value for two on the odd up frame
-    let odd_up_frame = Component::get_by_id(ctx, odd_up_frame.id())
-        .await
-        .expect("could not get component");
-    let odd_up_frame_two_av_id = odd_up_frame
-        .attribute_values_for_prop(ctx, &["root", "domain", "two"])
-        .await
-        .expect("could not find attribute values for prop")
-        .into_iter()
-        .next()
-        .expect("could not get type attribute value id");
 
-    AttributeValue::update(ctx, odd_up_frame_two_av_id, Some(serde_json::json!("2")))
-        .await
-        .expect("could not update attribute value");
+    // Change attribute value for two on the odd up frame
+    update_attribute_value_for_component(
+        ctx,
+        odd_up_frame.id(),
+        &["root", "domain", "two"],
+        serde_json::json!("2"),
+    )
+    .await;
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
+
     // the output socket value is updated with "2"
-    let odd_up_frame_sv_id = Component::schema_variant_id(ctx, odd_up_frame.id())
+    let output_value = get_component_output_socket_value(ctx, odd_up_frame.id(), "two")
         .await
-        .expect("could not get sv id");
-    let odd_up_frame_output_sockets = odd_up_frame
-        .output_socket_attribute_values(ctx)
-        .await
-        .expect("could not get output sockets");
-    let odd_up_frame_output_socket = OutputSocket::find_with_name(ctx, "two", odd_up_frame_sv_id)
-        .await
-        .expect("could not find output socket by name")
-        .expect("output socket is some");
-    let odd_up_frame_output_av = odd_up_frame_output_sockets
-        .get(&odd_up_frame_output_socket.id())
-        .expect("found a value")
-        .attribute_value_id;
-    let odd_two_av = AttributeValue::get_by_id(ctx, odd_up_frame_output_av)
-        .await
-        .expect("could not get attribute value");
-    let odd_two_mat_view = odd_two_av
-        .view(ctx)
-        .await
-        .expect("could not get materialized view")
-        .expect("is some");
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("2"));
 
-    assert_eq!(odd_two_mat_view, serde_json::json!("2"));
     // even up frame input socket matches odd up frame output socket
-
-    let even_up_frame = Component::get_by_id(ctx, even_up_frame.id())
+    let input_value = get_component_input_socket_value(ctx, even_up_frame.id(), "two")
         .await
-        .expect("could not get component");
-    let even_up_frame_sv_id = Component::schema_variant_id(ctx, even_up_frame.id())
-        .await
-        .expect("could not get sv id");
-    let even_up_frame_input_socket = InputSocket::find_with_name(ctx, "two", even_up_frame_sv_id)
-        .await
-        .expect("could not get input socket by name")
-        .expect("input socket is some");
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!("2"));
+}
 
-    let even_inputs = even_up_frame
-        .input_socket_attribute_values(ctx)
+#[test]
+async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
+    // create two components to feed an up frame
+    let first_component =
+        create_component_for_schema_name(ctx, "medium even lego", "first_component").await;
+
+    let second_component =
+        create_component_for_schema_name(ctx, "medium even lego", "second_component").await;
+    let first_up_frame =
+        create_component_for_schema_name(ctx, "medium odd lego", "first_frame").await;
+    first_up_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
         .await
-        .expect("could not get input socket avs");
+        .expect("type is set");
+    // cache ids for later
+    let first_component_id = first_component.id();
+    let second_component_id = second_component.id();
+    let first_up_frame_id = first_up_frame.id();
 
-    let one_input_match = even_inputs
-        .get(&even_up_frame_input_socket.id())
-        .expect("could not get input socket");
+    Frame::upsert_parent(ctx, first_component_id, first_up_frame_id)
+        .await
+        .expect("upserted");
+    Frame::upsert_parent(ctx, second_component_id, first_up_frame_id)
+        .await
+        .expect("upserted");
 
-    let output_match =
-        Component::find_potential_inferred_connection_to_input_socket(ctx, *one_input_match)
+    // set attribute value for each component
+    update_attribute_value_for_component(
+        ctx,
+        first_component_id,
+        &["root", "domain", "one"],
+        serde_json::json!("1"),
+    )
+    .await;
+    update_attribute_value_for_component(
+        ctx,
+        second_component_id,
+        &["root", "domain", "one"],
+        serde_json::json!("2"),
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // make sure output socket values are updated for components
+    let first_output = get_component_output_socket_value(ctx, first_component_id, "one")
+        .await
+        .expect("has some");
+    let second_output = get_component_output_socket_value(ctx, second_component_id, "one")
+        .await
+        .expect("has value");
+    assert_eq!(first_output, serde_json::json!("1"));
+    assert_eq!(second_output, serde_json::json!("2"));
+
+    //make sure input socket value is updated
+    let input_value = get_component_input_socket_value(ctx, first_up_frame_id, "one")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!(["1", "2"]));
+    // create two more components in another up frame
+    let third_component =
+        create_component_for_schema_name(ctx, "medium even lego", "first_component").await;
+    let fourth_component =
+        create_component_for_schema_name(ctx, "medium even lego", "second_component").await;
+    let second_up_frame =
+        create_component_for_schema_name(ctx, "medium odd lego", "first_frame").await;
+    //cache ids for later
+    let third_component_id = third_component.id();
+    let fourth_component_id = fourth_component.id();
+    let second_up_frame_id = second_up_frame.id();
+    second_up_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await
+        .expect("type is set");
+    Frame::upsert_parent(ctx, third_component_id, second_up_frame_id)
+        .await
+        .expect("upserted");
+    Frame::upsert_parent(ctx, fourth_component_id, second_up_frame_id)
+        .await
+        .expect("upserted");
+
+    // set attribute value for each component
+    update_attribute_value_for_component(
+        ctx,
+        third_component_id,
+        &["root", "domain", "one"],
+        serde_json::json!("3"),
+    )
+    .await;
+    update_attribute_value_for_component(
+        ctx,
+        fourth_component.id(),
+        &["root", "domain", "one"],
+        serde_json::json!("4"),
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // make sure output socket values are updated for components
+    let third_output = get_component_output_socket_value(ctx, third_component_id, "one")
+        .await
+        .expect("has some");
+    let fourth_output = get_component_output_socket_value(ctx, fourth_component_id, "one")
+        .await
+        .expect("has value");
+    assert_eq!(third_output, serde_json::json!("3"));
+    assert_eq!(fourth_output, serde_json::json!("4"));
+
+    //make sure input socket value is updated
+    let input_value = get_component_input_socket_value(ctx, second_up_frame_id, "one")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!(["3", "4"]));
+    // both up frames feed the final up frame
+
+    let parent_up_frame =
+        create_component_for_schema_name(ctx, "small even lego", "parent_frame").await;
+    let parent_up_frame_id = parent_up_frame.id();
+    Frame::upsert_parent(ctx, first_up_frame_id, parent_up_frame_id)
+        .await
+        .expect("upserted");
+    Frame::upsert_parent(ctx, second_up_frame_id, parent_up_frame_id)
+        .await
+        .expect("upserted");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // make sure parent frame doesn't have any values for the input sockets, but does find them
+    assert_eq!(
+        get_component_input_socket_value(ctx, parent_up_frame_id, "two")
             .await
-            .expect("could not get inferred connection")
-            .expect("inferred connection is some");
-    assert_eq!(odd_up_frame_output_av, output_match.attribute_value_id);
+            .expect("value exists"),
+        serde_json::json!([null, null])
+    );
+    // set one frame's output socket value and make sure it flows through
+    update_attribute_value_for_component(
+        ctx,
+        first_up_frame_id,
+        &["root", "domain", "two"],
+        serde_json::json!("5"),
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let input_value = get_component_input_socket_value(ctx, parent_up_frame_id, "two")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!(["5", null]));
+    //set second frame's outptu socket value and make sure both are now flowing
+    update_attribute_value_for_component(
+        ctx,
+        second_up_frame_id,
+        &["root", "domain", "two"],
+        serde_json::json!("6"),
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let input_value = get_component_input_socket_value(ctx, parent_up_frame_id, "two")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!(["5", "6"]));
 
-    let one_input_mat_view = AttributeValue::get_by_id(ctx, one_input_match.attribute_value_id)
+    // now let's delete one of the components, and move one to the other up frame and make sure everything is updated
+    let first_component = Component::get_by_id(ctx, first_component_id)
         .await
-        .expect("could not get attribute value")
-        .view(ctx)
+        .expect("got component");
+    first_component.delete(ctx).await.expect("deleted");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("could not get materialized view")
-        .expect("materialized view is some");
-    assert_eq!(one_input_mat_view, serde_json::json!("2"));
+        .expect("could not commit and update snapshot to visibility");
+    Frame::upsert_parent(ctx, third_component_id, first_up_frame_id)
+        .await
+        .expect("upserted");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // first frame should have two components
+    let input_value = get_component_input_socket_value(ctx, first_up_frame_id, "one")
+        .await
+        .expect("got value");
+    assert_eq!(input_value, serde_json::json!(["2", "3"]));
+    // second frame should have one component
+    let input_value = get_component_input_socket_value(ctx, second_up_frame_id, "one")
+        .await
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!("4"));
 }
 
 #[test]

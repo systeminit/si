@@ -382,7 +382,8 @@ impl Diagram {
                 )?);
             }
 
-            for inferred_incoming_connection in component.inferred_connections(ctx).await? {
+            for inferred_incoming_connection in component.inferred_incoming_connections(ctx).await?
+            {
                 diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
                     inferred_incoming_connection,
                 )?)

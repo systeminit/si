@@ -144,6 +144,7 @@ impl FuncBinding {
     /// Use this function if you would like to receive the
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
     /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
+    #[instrument(level = "info", skip(ctx))]
     pub async fn create_and_execute(
         ctx: &DalContext,
         args: serde_json::Value,

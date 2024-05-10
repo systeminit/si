@@ -635,19 +635,13 @@ impl AttributeValue {
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
         if apa_ids.is_empty() {
-            if let Some(implicit_input) =
-                Self::get_inferred_input_value(ctx, attribute_value_id).await?
-            {
+            let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
+            if !inferred_inputs.is_empty() {
                 let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
-
-                match Func::get_by_id(ctx, input_func).await? {
-                    Some(_) => match FuncArgument::list_for_func(ctx, input_func).await?.pop() {
-                        Some(id) => func_binding_args.insert(id.name, vec![implicit_input]),
-                        None => None,
-                    },
-                    None => None,
-                };
-            };
+                if let Some(func_arg) = FuncArgument::list_for_func(ctx, input_func).await?.pop() {
+                    func_binding_args.insert(func_arg.name, inferred_inputs);
+                }
+            }
         } else {
             for apa_id in apa_ids {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
@@ -764,10 +758,10 @@ impl AttributeValue {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_inferred_input_value(
+    async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<Value>> {
+    ) -> AttributeValueResult<Vec<Value>> {
         // let mut maybe_result: Option<Value> = None;
         let maybe_input_socket_id =
             match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
@@ -776,7 +770,7 @@ impl AttributeValue {
             };
 
         let Some(input_socket_id) = maybe_input_socket_id else {
-            return Ok(None);
+            return Ok(vec![]);
         };
 
         let component_id = Self::component_id(ctx, input_attribute_value_id).await?;
@@ -785,38 +779,36 @@ impl AttributeValue {
             input_socket_id,
             attribute_value_id: input_attribute_value_id,
         };
-        Ok(
-            match Component::find_potential_inferred_connection_to_input_socket(
-                ctx,
-                input_socket_match,
-            )
-            .await
-            {
-                Ok(Some(output_match)) => {
-                    // Both deleted and non deleted components can feed data into deleted components.
-                    // ** ONLY ** non-deleted components can feed data into non-deleted components
-                    if !Component::should_data_flow_between_components(
-                        ctx,
-                        input_socket_match.component_id,
-                        output_match.component_id,
-                    )
-                    .await
-                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?
-                    {
-                        return Ok(None);
-                    }
-
-                    // XXX: We need to properly handle the difference between "there is
-                    // XXX: no value" vs "the value is null", but right now we collapse
-                    // XXX: the two to just be "null" when passing these to a function.
-                    let output_av =
-                        AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                    let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
-                    Some(view)
+        let mut inputs = vec![];
+        if let Ok(maybe_matches) =
+            Component::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))
+        {
+            for output_match in maybe_matches {
+                // Both deleted and non deleted components can feed data into deleted components.
+                // ** ONLY ** non-deleted components can feed data into non-deleted components
+                if !Component::should_data_flow_between_components(
+                    ctx,
+                    input_socket_match.component_id,
+                    output_match.component_id,
+                )
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                {
+                    return Ok(vec![]);
                 }
-                _ => None,
-            },
-        )
+                // XXX: We need to properly handle the difference between "there is
+                // XXX: no value" vs "the value is null", but right now we collapse
+                // XXX: the two to just be "null" when passing these to a function.
+                let output_av =
+                    AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
+                let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                inputs.push(view);
+            }
+        };
+
+        Ok(inputs)
     }
 
     pub async fn prototype_func(
@@ -1794,6 +1786,7 @@ impl AttributeValue {
     }
 
     /// Set's the component specific prototype id for this attribute value.
+    #[instrument(level = "info", skip(ctx))]
     pub async fn set_component_prototype_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1816,7 +1809,7 @@ impl AttributeValue {
 
         Ok(())
     }
-    #[instrument(level="info" skip_all)]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn use_default_prototype(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
