@@ -172,7 +172,7 @@ impl PersisterTask {
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
-                    self.tracker.spawn(task.write_layers(event, status_tx));
+                    task.write_layers(event, status_tx).await;
                 }
             }
         }
@@ -210,9 +210,9 @@ impl PersistEventTask {
     pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
-            Err(e) => {
-                error!("{}", &e);
-                status_tx.send(PersistStatus::Error(e));
+            Err(err) => {
+                error!(error = ?err, "persister task failed");
+                status_tx.send(PersistStatus::Error(err));
             }
         }
     }
