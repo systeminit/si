@@ -28,14 +28,18 @@ pub struct ActionNodeWeight {
 }
 
 impl ActionNodeWeight {
-    pub fn new(change_set: &ChangeSet, id: Ulid) -> NodeWeightResult<Self> {
+    pub fn new(
+        change_set: &ChangeSet,
+        originating_change_set_id: ChangeSetId,
+        id: Ulid,
+    ) -> NodeWeightResult<Self> {
         let new_vector_clock = VectorClock::new(change_set.vector_clock_id())?;
 
         Ok(Self {
             id,
             state: ActionState::Queued,
             func_execution_pk: None,
-            originating_changeset_id: change_set.id,
+            originating_changeset_id: originating_change_set_id,
             lineage_id: change_set.generate_ulid()?,
             merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: new_vector_clock.clone(),

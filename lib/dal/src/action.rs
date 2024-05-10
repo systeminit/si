@@ -217,7 +217,9 @@ impl Action {
     ) -> ActionResult<Self> {
         let change_set = ctx.change_set()?;
         let new_id: ActionId = change_set.generate_ulid()?.into();
-        let node_weight = NodeWeight::new_action(change_set, new_id.into())?;
+        let originating_change_set_id = ctx.change_set_id();
+        let node_weight =
+            NodeWeight::new_action(change_set, originating_change_set_id, new_id.into())?;
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 
         let action_category_id = ctx

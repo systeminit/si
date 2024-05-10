@@ -18,7 +18,7 @@ use crate::{
         content_address::ContentAddress,
         vector_clock::{VectorClock, VectorClockError},
     },
-    PropKind,
+    ChangeSetId, PropKind,
 };
 use crate::{func::execution::FuncExecutionPk, EdgeWeightKindDiscriminants};
 
@@ -686,9 +686,15 @@ impl NodeWeight {
         )?))
     }
 
-    pub fn new_action(change_set: &ChangeSet, action_id: Ulid) -> NodeWeightResult<Self> {
+    pub fn new_action(
+        change_set: &ChangeSet,
+        originating_change_set_id: ChangeSetId,
+        action_id: Ulid,
+    ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Action(ActionNodeWeight::new(
-            change_set, action_id,
+            change_set,
+            originating_change_set_id,
+            action_id,
         )?))
     }
 
