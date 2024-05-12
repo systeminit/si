@@ -192,7 +192,8 @@ export type WsEventPayloadMap = {
     changeSetId: string;
   };
   ComponentUpgraded: {
-    componentId: ComponentId;
+    component: RawComponent;
+    originalComponentId: ComponentId;
     changeSetId: string;
   };
   ConnectionCreated: {

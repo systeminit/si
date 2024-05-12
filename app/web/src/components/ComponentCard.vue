@@ -28,10 +28,17 @@
         </div>
       </Stack>
 
+      <div
+        v-if="component.canBeUpgraded"
+        class="ml-auto cursor-pointer rounded hover:scale-125"
+      >
+        <StatusIndicatorIcon type="upgradable" @click="upgradeComponent" />
+      </div>
+
       <!-- change status icon -->
       <div
         v-if="component.changeStatus !== 'unmodified'"
-        class="ml-auto cursor-pointer rounded hover:scale-125"
+        class="cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon
           type="change"
@@ -91,4 +98,8 @@ const componentNameTooltip = computed(() => {
     return {};
   }
 });
+
+const upgradeComponent = async () => {
+  await componentsStore.UPGRADE_COMPONENT(props.componentId);
+};
 </script>

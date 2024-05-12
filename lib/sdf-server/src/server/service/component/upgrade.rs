@@ -4,6 +4,7 @@ use crate::service::component::{ComponentError, ComponentResult};
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
+use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, SchemaVariant, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +37,7 @@ pub async fn upgrade(
         return Err(ComponentError::SchemaVariantUpgradeSkipped);
     }
 
-    current_component
+    let upgraded_component = current_component
         .upgrade_to_new_variant(&ctx, default_schema_variant.id())
         .await?;
 
@@ -54,7 +55,9 @@ pub async fn upgrade(
         }),
     );
 
-    WsEvent::component_upgraded(&ctx, request.component_id)
+    let payload: SummaryDiagramComponent =
+        SummaryDiagramComponent::assemble(&ctx, &upgraded_component).await?;
+    WsEvent::component_upgraded(&ctx, payload, request.component_id)
         .await?
         .publish_on_commit(&ctx)
         .await?;

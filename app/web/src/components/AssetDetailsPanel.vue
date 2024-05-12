@@ -11,10 +11,8 @@
         >
           <VButton
             :loading="execAssetReqStatus.isPending"
-            :loadingText="
-              editingAsset.id ? 'Updating Asset...' : 'Creating Asset...'
-            "
-            :label="editingAsset.id ? 'Update Asset' : 'Create Asset'"
+            loadingText="Regenerating Asset..."
+            label="Regenerate Asset"
             :disabled="disabled"
             successText="Successful"
             :requestStatus="execAssetReqStatus"
@@ -55,10 +53,6 @@
       </template>
 
       <Stack class="p-xs py-sm">
-        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning">
-          {{ disabledWarning }}
-        </ErrorMessage>
-
         <div>
           <ErrorMessage :requestStatus="execAssetReqStatus" />
         </div>
@@ -155,7 +149,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import {
   ErrorMessage,
   Modal,
@@ -224,17 +218,16 @@ const updateAsset = async () => {
   }
 };
 
-const disabled = computed(() => {
-  return false;
-});
-
-const disabledWarning = computed(() => {
-  if (disabled.value) {
-    return `This asset cannot be edited because it is in use by components.`;
-  }
-
-  return "";
-});
+const disabled = ref(true);
+watch(
+  () => editingAsset.value,
+  () => {
+    disabled.value = !_.isEqual(editingAsset.value, assetStore.selectedAsset);
+  },
+  {
+    deep: true,
+  },
+);
 
 const execAssetReqStatus = assetStore.getRequestStatus(
   "EXEC_ASSET",

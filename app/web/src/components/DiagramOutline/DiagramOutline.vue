@@ -238,6 +238,10 @@ const failedQualificationComponents = computed(() =>
   ),
 );
 
+const upgradableComponents = computed(() =>
+  componentsTreeFlattened.value.filter((component) => component.canBeUpgraded),
+);
+
 const searchFiltersWithCounts = computed(() => {
   const searchFilters: Array<Filter> = [
     {
@@ -262,6 +266,14 @@ const searchFiltersWithCounts = computed(() => {
         failedQualificationComponents.value,
       ).length,
     },
+    {
+      name: "Upgrades Available",
+      iconTone: "action",
+      iconName: "bolt",
+      count: filterComponentArrayBySearchStringAndFilters(
+        upgradableComponents.value,
+      ).length,
+    },
     // TODO - Add filter for resource status
     // { name: "Resources", iconTone: "destructive", iconName: "x-hex", count: 0 },
   ];
@@ -273,6 +285,7 @@ const filterArrays = [
   newComponents,
   diffComponents,
   failedQualificationComponents,
+  upgradableComponents,
 ];
 
 function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {

@@ -51,4 +51,5 @@ export interface RawComponent {
   sockets: DiagramSocketDef[];
   updatedInfo: ActorAndTimestamp;
   toDelete: boolean;
+  canBeUpgraded: boolean;
 }

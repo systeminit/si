@@ -16,6 +16,7 @@ use veritech_client::ResourceStatus;
 
 use si_events::{ulid::Ulid, ContentHash};
 
+use self::frame::{Frame, FrameError};
 use crate::action::prototype::ActionKind;
 use crate::action::Action;
 use crate::actor_view::ActorView;
@@ -56,8 +57,6 @@ use crate::{
     WorkspaceError, WorkspacePk, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
-use self::frame::{Frame, FrameError};
-
 pub mod code;
 pub mod debug;
 pub mod diff;
@@ -65,9 +64,6 @@ pub mod frame;
 pub mod properties;
 pub mod qualification;
 pub mod resource;
-// pub mod status;
-// pub mod validation;
-// pub mod view;
 
 pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
@@ -91,6 +87,8 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
+    #[error("component {0} has an unexpected schema variant id")]
+    ComponentIncorrectSchemaVariant(ComponentId),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
     #[error("component {0} has no attribute value for the root/domain prop")]
@@ -195,6 +193,17 @@ pk!(ComponentId);
 
 #[derive(Clone, Debug)]
 pub struct IncomingConnection {
+    pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    pub to_component_id: ComponentId,
+    pub to_input_socket_id: InputSocketId,
+    pub from_component_id: ComponentId,
+    pub from_output_socket_id: OutputSocketId,
+    pub created_info: HistoryEventMetadata,
+    pub deleted_info: Option<HistoryEventMetadata>,
+}
+
+#[derive(Clone, Debug)]
+pub struct OutgoingConnection {
     pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
     pub to_component_id: ComponentId,
     pub to_input_socket_id: InputSocketId,
@@ -555,6 +564,8 @@ impl Component {
         &self,
         ctx: &DalContext,
         copied_component_id: ComponentId,
+        reset_resource: bool,
+        reset_name: bool,
     ) -> ComponentResult<()> {
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
         let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
@@ -617,19 +628,23 @@ impl Component {
             }
         }
 
-        self.set_resource(
-            ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: None,
-                message: None,
-                logs: Vec::new(),
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
-        )
-        .await?;
-        self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
+        if reset_resource {
+            self.set_resource(
+                ctx,
+                DeprecatedActionRunResult {
+                    status: Some(ResourceStatus::Ok),
+                    payload: None,
+                    message: None,
+                    logs: Vec::new(),
+                    last_synced: Some(Utc::now().to_rfc3339()),
+                },
+            )
             .await?;
+        }
+        if reset_name {
+            self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
+                .await?;
+        }
 
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
         let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
@@ -765,6 +780,59 @@ impl Component {
         }
 
         Ok(())
+    }
+
+    pub async fn outgoing_connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<OutgoingConnection>> {
+        let mut outgoing_edges = vec![];
+
+        for (from_output_socket_id, to_value_id) in self.output_socket_attribute_values(ctx).await?
+        {
+            let prototype_id =
+                AttributeValue::prototype_id(ctx, to_value_id.attribute_value_id).await?;
+            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                prototype_id,
+                self.id,
+            )
+            .await?
+            {
+                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+
+                let created_info = {
+                    let history_actor = ctx.history_actor();
+                    let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+                    HistoryEventMetadata {
+                        actor,
+                        timestamp: apa.timestamp().created_at,
+                    }
+                };
+
+                if let Some(ArgumentTargets {
+                    source_component_id,
+                    destination_component_id,
+                }) = apa.targets()
+                {
+                    if let Some(ValueSource::InputSocket(to_input_socket_id)) =
+                        apa.value_source(ctx).await?
+                    {
+                        outgoing_edges.push(OutgoingConnection {
+                            attribute_prototype_argument_id: apa_id,
+                            to_component_id: destination_component_id,
+                            from_component_id: source_component_id,
+                            to_input_socket_id,
+                            from_output_socket_id,
+                            created_info,
+                            deleted_info: None,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(outgoing_edges)
     }
 
     pub async fn incoming_connections(
@@ -2008,7 +2076,9 @@ impl Component {
             )
             .await?;
 
-        pasted_comp.clone_attributes_from(ctx, self.id()).await?;
+        pasted_comp
+            .clone_attributes_from(ctx, self.id(), true, true)
+            .await?;
 
         // Enqueue creation actions
         let workspace_pk = ctx
@@ -2805,17 +2875,134 @@ impl Component {
 
     pub async fn upgrade_to_new_variant(
         &self,
-        _ctx: &DalContext,
-        _schema_variant_id: SchemaVariantId,
-    ) -> ComponentResult<()> {
-        // Get the list of potential sockets for the component
-        // Now get the list of edges for the component
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<Component> {
+        let original_component = Self::get_by_id(ctx, self.id).await?;
 
-        // now lets delete the edges from this component
-        // Find all of the attributes for the component
-        //
+        let original_component_name = self.name(ctx).await?;
+        let mut new_component =
+            Component::new(ctx, original_component_name.clone(), schema_variant_id).await?;
 
-        Ok(())
+        let new_comp_schema_variant_id = new_component.schema_variant(ctx).await?.id();
+        if new_comp_schema_variant_id != schema_variant_id {
+            return Err(ComponentError::ComponentIncorrectSchemaVariant(
+                new_component.id(),
+            ));
+        }
+
+        new_component
+            .clone_attributes_from(ctx, self.id(), false, false)
+            .await?;
+        new_component
+            .set_geometry(ctx, self.x(), self.y(), self.width(), self.height())
+            .await?;
+
+        if schema_variant_id
+            != Component::get_by_id(ctx, new_component.id())
+                .await?
+                .schema_variant(ctx)
+                .await?
+                .id()
+        {
+            return Err(ComponentError::ComponentIncorrectSchemaVariant(
+                new_component.id(),
+            ));
+        }
+
+        //Re-attach to any parent it has
+        if let Some(parent) = original_component.parent(ctx).await? {
+            Frame::upsert_parent(ctx, new_component.id(), parent)
+                .await
+                .map_err(Box::new)?;
+        }
+
+        // Re-attach any children to the new component
+        for child in Component::get_children_for_id(ctx, original_component.id).await? {
+            Frame::upsert_parent(ctx, child, new_component.id())
+                .await
+                .map_err(Box::new)?;
+        }
+
+        // Let's change the incoming connections to the component!
+        for incoming in original_component.incoming_connections(ctx).await? {
+            Component::remove_connection(
+                ctx,
+                incoming.from_component_id,
+                incoming.from_output_socket_id,
+                incoming.to_component_id,
+                incoming.to_input_socket_id,
+            )
+            .await?;
+
+            let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
+            if let Some(socket) =
+                InputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
+            {
+                Component::connect(
+                    ctx,
+                    incoming.from_component_id,
+                    incoming.from_output_socket_id,
+                    new_component.id(),
+                    socket.id(),
+                )
+                .await?;
+            } else {
+                debug!(
+                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
+                    socket.id(),
+                    new_component.id()
+                );
+            }
+        }
+
+        for outgoing in original_component.outgoing_connections(ctx).await? {
+            Component::remove_connection(
+                ctx,
+                outgoing.from_component_id,
+                outgoing.from_output_socket_id,
+                outgoing.to_component_id,
+                outgoing.to_input_socket_id,
+            )
+            .await?;
+
+            let socket = OutputSocket::get_by_id(ctx, outgoing.from_output_socket_id).await?;
+            if let Some(socket) =
+                OutputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
+            {
+                Component::connect(
+                    ctx,
+                    new_component.id(),
+                    socket.id(),
+                    outgoing.to_component_id,
+                    outgoing.to_input_socket_id,
+                )
+                .await?;
+            } else {
+                debug!(
+                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
+                    socket.id(),
+                    new_component.id()
+                );
+            }
+        }
+
+        // Let's remove the original resource so that we don't queue a delete action
+        original_component
+            .set_resource(
+                ctx,
+                DeprecatedActionRunResult {
+                    status: Some(ResourceStatus::Ok),
+                    payload: None,
+                    message: None,
+                    logs: Vec::new(),
+                    last_synced: Some(Utc::now().to_rfc3339()),
+                },
+            )
+            .await?;
+        original_component.delete(ctx).await?;
+
+        Ok(new_component)
     }
 }
 
@@ -2837,8 +3024,9 @@ pub struct ComponentUpdatedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpgradedPayload {
-    component_id: ComponentId,
+    component: SummaryDiagramComponent,
     change_set_id: ChangeSetId,
+    original_component_id: ComponentId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -3022,13 +3210,15 @@ impl WsEvent {
 
     pub async fn component_upgraded(
         ctx: &DalContext,
-        component_id: ComponentId,
+        payload: SummaryDiagramComponent,
+        original_component_id: ComponentId,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ComponentUpgraded(ComponentUpgradedPayload {
-                component_id,
+                component: payload,
                 change_set_id: ctx.change_set_id(),
+                original_component_id,
             }),
         )
         .await

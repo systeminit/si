@@ -46,6 +46,9 @@ const CONFIG = {
   actions: {
     show: { iconName: "chevron--right", tone: "neutral" },
   },
+  upgradable: {
+    _default: { iconName: "bolt", tone: "action" },
+  },
   funcTest: {
     success: { iconName: "check-circle", tone: "success" },
     running: { iconName: "loader", tone: "action" },

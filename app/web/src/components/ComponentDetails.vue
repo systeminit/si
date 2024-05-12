@@ -10,7 +10,6 @@
           "
         />
       </ComponentCard>
-
       <div
         v-if="currentStatus && currentStatus.isUpdating"
         class="flex flex-row items-center gap-xs m-xs mt-0"
