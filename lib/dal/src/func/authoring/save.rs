@@ -118,55 +118,28 @@ async fn update_action_associations(
     kind: DeprecatedActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
-    let mut id_set = HashSet::new();
-
-    // Add the new action prototype to schema variants who do not already have a prototype and
-    // replace existing prototypes found.
-    for schema_variant_id in schema_variant_ids {
-        let existing_action_prototypes =
-            DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-
-        if existing_action_prototypes.is_empty() {
-            DeprecatedActionPrototype::new(
-                ctx,
-                Some(func.name.to_owned()),
-                kind,
-                schema_variant_id,
-                func.id,
-            )
-            .await?;
-        } else {
-            for prototype in existing_action_prototypes {
-                let prototype_func_id = prototype.func_id(ctx).await?;
-                if func.id == prototype_func_id {
-                    DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
-                    DeprecatedActionPrototype::new(
-                        ctx,
-                        prototype.name,
-                        kind,
-                        schema_variant_id,
-                        func.id,
-                    )
-                    .await?;
-                }
+    // Clean up existing prototypes for all variants that use it. Since you could theoretically use
+    // the same func for different action kinds, we only clean up existing prototypes for the same
+    // func AND kind.
+    for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await? {
+            let prototype_func_id = prototype.func_id(ctx).await?;
+            if func.id == prototype_func_id && kind == prototype.kind {
+                DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
             }
         }
-
-        id_set.insert(schema_variant_id);
     }
 
-    // Remove action prototypes from schema variants that haven't been seen.
-    for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
-        if !id_set.contains(&schema_variant_id) {
-            let action_prototypes_to_be_deleted =
-                DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-            for prototype in action_prototypes_to_be_deleted {
-                let prototype_func_id = prototype.func_id(ctx).await?;
-                if func.id == prototype_func_id {
-                    DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
-                }
-            }
-        }
+    // Create or re-create the prototype for the schema variant ids passed in.
+    for schema_variant_id in schema_variant_ids {
+        DeprecatedActionPrototype::new(
+            ctx,
+            Some(func.name.to_owned()),
+            kind,
+            schema_variant_id,
+            func.id,
+        )
+        .await?;
     }
 
     Ok(())
@@ -219,9 +192,11 @@ async fn update_authentication_associations(
     for schema_variant_id in schema_variant_ids {
         let existing_auth_func_ids =
             SchemaVariant::list_auth_func_ids_for_id(ctx, schema_variant_id).await?;
-        if existing_auth_func_ids.is_empty() {
+
+        if !existing_auth_func_ids.iter().any(|id| *id == func.id) {
             SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id).await?;
         }
+
         id_set.insert(schema_variant_id);
     }
 
