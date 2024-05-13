@@ -26,41 +26,10 @@ use crate::{
     implement_add_edge_to,
     layer_db_types::{DeprecatedActionPrototypeContent, DeprecatedActionPrototypeContentV1},
     secret::{before_funcs_for_component, BeforeFuncError},
-    ActionPrototypeId, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
+    ActionPrototypeId, Component, ComponentError, ComponentId, DalContext, FuncError, FuncId,
     HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DeprecatedActionPrototypeView {
-    id: ActionPrototypeId,
-    name: String,
-    display_name: Option<String>,
-}
-
-impl DeprecatedActionPrototypeView {
-    pub async fn new(
-        ctx: &DalContext,
-        prototype: DeprecatedActionPrototype,
-    ) -> DeprecatedActionPrototypeResult<DeprecatedActionPrototypeView> {
-        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
-        let display_name = func.display_name.map(|dname| dname.to_string());
-        Ok(Self {
-            id: prototype.id,
-            name: prototype.name.as_deref().map_or_else(
-                || match prototype.kind {
-                    DeprecatedActionKind::Create => "create".to_owned(),
-                    DeprecatedActionKind::Delete => "delete".to_owned(),
-                    DeprecatedActionKind::Other => "other".to_owned(),
-                    DeprecatedActionKind::Refresh => "refresh".to_owned(),
-                },
-                ToOwned::to_owned,
-            ),
-            display_name,
-        })
-    }
-}
 
 #[remain::sorted]
 #[derive(Error, Debug)]

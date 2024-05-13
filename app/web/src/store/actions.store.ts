@@ -54,7 +54,7 @@ export type DeprecatedProposedAction = DeprecatedActionInstance & {
   kind: DeprecatedActionKind;
 };
 
-export interface DeprecatedActionPrototype {
+export interface ActionPrototype {
   id: ActionPrototypeId;
   name: string;
   displayName: string;
@@ -82,7 +82,7 @@ export type DeprecatedFullAction = {
   actionInstanceId?: ActionId;
   componentId?: ComponentId;
   actor?: string;
-} & Omit<DeprecatedActionPrototype, "id">;
+} & Omit<ActionPrototype, "id">;
 
 // ACTIONS V2 STUFF - TODO - ONCE ACTIONS V2 WORKS IT SHOULD REPLACE ACTIONS V1
 export enum ActionState {
@@ -132,10 +132,7 @@ export const useActionsStore = () => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`,
       {
         state: () => ({
-          rawActionsByComponentId: {} as Record<
-            ComponentId,
-            DeprecatedActionPrototype[]
-          >,
+          rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
           rawProposedActionsById: {} as Record<
             ActionId,
             DeprecatedProposedAction
@@ -299,7 +296,7 @@ export const useActionsStore = () => {
             });
           },
           async FETCH_COMPONENT_ACTIONS(componentId: ComponentId) {
-            return new ApiRequest<{ actions: DeprecatedActionPrototype[] }>({
+            return new ApiRequest<{ actions: ActionPrototype[] }>({
               url: "component/get_actions",
               keyRequestStatusBy: componentId,
               params: {

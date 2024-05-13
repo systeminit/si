@@ -9,8 +9,8 @@ use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{
     action::prototype::ActionPrototypeError, action::ActionError,
-    ComponentError as DalComponentError, DeprecatedActionPrototypeError, StandardModelError,
-    WorkspaceError,
+    ComponentError as DalComponentError, DeprecatedActionPrototypeError, FuncError,
+    StandardModelError, WorkspaceError,
 };
 use dal::{
     attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
@@ -62,6 +62,8 @@ pub enum ComponentError {
     DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("diagram error: {0}")]
     DiagramError(#[from] dal::diagram::DiagramError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("invalid visibility")]
