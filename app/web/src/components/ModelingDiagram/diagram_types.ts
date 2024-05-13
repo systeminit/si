@@ -211,6 +211,8 @@ export type DiagramNodeDef = {
   changeStatus?: ChangeStatus;
   /** component will be deleted after next action run */
   toDelete: boolean;
+  /** can the component be upgraded */
+  canBeUpgraded: boolean;
 };
 
 export type DiagramSocketDef = {

@@ -456,6 +456,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 componentId: component.id,
                 title: component.displayName,
                 subtitle: component.schemaName,
+                canBeUpgraded: component.canBeUpgraded,
                 isLoading:
                   statusStore.getComponentStatus(componentId)?.isUpdating ??
                   false,
@@ -1003,9 +1004,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async MIGRATE_COMPONENT(componentId: ComponentId) {
+          async UPGRADE_COMPONENT(componentId: ComponentId) {
             return new ApiRequest({
-              url: "component/migrate_to_default_variant",
+              url: "component/upgrade_component",
               keyRequestStatusBy: componentId,
               method: "post",
               params: {
@@ -1501,7 +1502,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
+                this.rawComponentsById[data.component.id] = data.component;
+                this.setSelectedComponentId(data.component.id);
+                delete this.rawComponentsById[data.originalComponentId];
               },
             },
             {

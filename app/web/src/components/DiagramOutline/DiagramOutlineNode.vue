@@ -91,6 +91,14 @@
 
           <!-- other status icons -->
           <div :class="clsx('flex items-center mr-xs')">
+            <div v-if="component.canBeUpgraded">
+              <StatusIndicatorIcon
+                class="hover:scale-110"
+                size="sm"
+                type="upgradable"
+              />
+            </div>
+
             <!-- change status -->
             <StatusIndicatorIcon
               class="hover:scale-110"
