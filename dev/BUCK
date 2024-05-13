@@ -35,9 +35,18 @@ tilt_up(
 
 # Bring up the full set of services for development with debug build optimizations
 tilt_up(
-    name = "up-debug",
+    name = "up-debug-all",
     args = [
         "--debug-rustc-build-mode"
+    ]
+)
+
+# Bring up the full set of services for development with debug build optimizations, except for
+# rebaser
+tilt_up(
+    name = "up-debug",
+    args = [
+        "--debug-no-rebaser-rustc-build-mode"
     ]
 )
 
