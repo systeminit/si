@@ -1424,6 +1424,38 @@ impl Component {
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
 
+        // check for socket arity on the input socket
+        // if the input socket has arity of one, and there's an existing edge, need to remove it before adding the new one
+        let input_socket = InputSocket::get_by_id(ctx, destination_input_socket_id).await?;
+        if input_socket.arity() == SocketArity::One {
+            let existing_attribute_prototype_args =
+                AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                    ctx,
+                    destination_prototype_id,
+                    destination_component_id,
+                )
+                .await?;
+            if !existing_attribute_prototype_args.is_empty() {
+                for attribute_prototype_argument_id in existing_attribute_prototype_args {
+                    let attribute_prototype_argument =
+                        AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id)
+                            .await?;
+                    if let Some(targets) = attribute_prototype_argument.targets() {
+                        if targets.destination_component_id == destination_component_id {
+                            debug!(
+                                "Removing existing prototype as we are trying to connect a new one"
+                            );
+                            AttributePrototypeArgument::remove(
+                                ctx,
+                                attribute_prototype_argument_id,
+                            )
+                            .await?;
+                        }
+                    }
+                }
+            }
+        }
+
         let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
             source_component_id,
