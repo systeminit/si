@@ -2,6 +2,7 @@
 config.define_string_list("to-run", args = True)
 config.define_bool("standard-rustc-build-mode")
 config.define_bool("debug-rustc-build-mode")
+config.define_bool("debug-no-rebaser-rustc-build-mode")
 
 cfg = config.parse()
 
@@ -47,6 +48,7 @@ config.set_enabled_resources(enabled_resources)
 # Parse the CLI args to get the rustc build mode or default to release
 standard_rustc_build_mode = cfg.get('standard-rustc-build-mode', False)
 debug_rustc_build_mode = cfg.get('debug-rustc-build-mode', False)
+debug_no_rebaser_rustc_build_mode = cfg.get('debug-no-rebaser-rustc-build-mode', False)
 rustc_build_mode = 'release'
 
 # TODO(nick): the bzl logic for writing arguments out does not know how
@@ -57,6 +59,8 @@ rustc_build_mode = 'release'
 if standard_rustc_build_mode:
     rustc_build_mode = 'standard'
 elif debug_rustc_build_mode:
+    rustc_build_mode = 'debug'
+elif debug_no_rebaser_rustc_build_mode:
     rustc_build_mode = 'debug'
 
 # Default trigger mode to manual so that (importantly) backend services don't rebuild/restart
@@ -106,6 +110,9 @@ serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(rebaser_target)
     serve_cmd = "buck2 run {}".format(rebaser_target)
+elif debug_no_rebaser_rustc_build_mode:
+    cmd = "buck2 build @//mode/release {}".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
 elif rustc_build_mode == 'debug':
     cmd = "buck2 build @//mode/debug {}".format(rebaser_target)
     serve_cmd = "buck2 run @//mode/debug {}".format(rebaser_target)
