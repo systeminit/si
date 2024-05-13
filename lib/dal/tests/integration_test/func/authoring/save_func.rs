@@ -5,6 +5,7 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+mod attach;
 mod attribute;
 
 #[test]
