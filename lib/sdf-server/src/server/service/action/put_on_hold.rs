@@ -25,11 +25,10 @@ pub async fn put_on_hold(
     let action = Action::get_by_id(&ctx, request.id).await?;
 
     match action.state() {
-        ActionState::Running
-        | ActionState::Dispatched
-        | ActionState::Failed
-        | ActionState::OnHold => return Err(ActionError::InvalidOnHoldTransition(request.id)),
-        ActionState::Queued => {}
+        ActionState::Running | ActionState::Dispatched | ActionState::OnHold => {
+            return Err(ActionError::InvalidOnHoldTransition(request.id))
+        }
+        ActionState::Queued | ActionState::Failed => {}
     }
 
     Action::remove_by_id(&ctx, action.id()).await?;
