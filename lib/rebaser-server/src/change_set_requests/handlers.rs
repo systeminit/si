@@ -3,8 +3,8 @@
 use std::result;
 
 use dal::{
-    Tenancy, Visibility, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
-    WorkspaceSnapshotError, WsEvent,
+    HistoryActor, RequestContext, Tenancy, Visibility, Workspace, WorkspaceError,
+    WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent,
 };
 use naxum::{
     extract::State,
@@ -20,6 +20,7 @@ use si_layer_cache::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::rebase::perform_rebase;
 
@@ -64,11 +65,14 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
         serialize::from_bytes::<Activity>(&msg.payload).map_err(HandlerError::Deserialize)?;
     let message: ActivityRebaseRequest = activity.try_into().map_err(HandlerError::Deserialize)?;
 
-    let mut ctx = state.ctx_builder.build_default().await?;
-    // TODO(fnichol): I'm about 95% sure that preparing the `ctx` is not necessary, but I
-    // am explicitly copying implementation across from the last iteration
-    ctx.update_visibility_deprecated(Visibility::new_head_fake());
-    ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
+    let workspace_pk = Ulid::from(message.metadata.tenancy.workspace_pk);
+    let request_ctx = RequestContext {
+        tenancy: Tenancy::new(workspace_pk.into()),
+        visibility: Visibility::new(message.payload.to_rebase_change_set_id.into()),
+        history_actor: HistoryActor::SystemInit,
+    };
+
+    let mut ctx = state.ctx_builder.build(request_ctx).await?;
 
     let rebase_status = perform_rebase(&mut ctx, &message)
         .await
@@ -82,13 +86,12 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     // Dispatch eligible actions if the change set is the default for the workspace.
     // Actions are **ONLY** ever dispatched from the default change set for a workspace.
     if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
-        if let Some(workspace_pk) = ctx.tenancy().workspace_pk() {
-            if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk).await? {
-                if let Ok(change_set) = ctx.change_set() {
-                    if workspace.default_change_set_id() == change_set.id {
-                        WorkspaceSnapshot::dispatch_actions(&ctx).await?;
-                    }
-                }
+        if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk.into()).await? {
+            if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                WorkspaceSnapshot::dispatch_actions(&ctx).await?;
+                // Disable until we fix the issue of commiting inside the rebaser
+                // Without this commit the dispatch is never persisted (or enqueued to pinga)
+                // ctx.commit().await?;
             }
         }
     }

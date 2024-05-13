@@ -31,7 +31,9 @@ pub async fn put_on_hold(
         ActionState::Queued | ActionState::Failed => {}
     }
 
-    Action::remove_by_id(&ctx, action.id()).await?;
+    Action::set_state(&ctx, action.id(), ActionState::OnHold).await?;
+
+    ctx.commit().await?;
 
     Ok(())
 }

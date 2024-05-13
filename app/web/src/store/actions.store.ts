@@ -104,6 +104,7 @@ export enum ActionKind {
 export interface ActionView {
   id: ActionId;
   prototypeId: ActionPrototypeId;
+  componentId: ComponentId | null;
   name: string;
   description?: string;
   kind: ActionKind;

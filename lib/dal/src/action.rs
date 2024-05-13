@@ -18,7 +18,7 @@ use crate::{
     },
     ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext, EdgeWeightError,
     EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
-    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -49,6 +49,8 @@ pub enum ActionError {
     Transactions(#[from] TransactionsError),
     #[error("Workspace Snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ActionResult<T> = Result<T, ActionError>;
@@ -258,10 +260,13 @@ impl Action {
     }
 
     pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
-        let change_set = ctx.change_set()?;
-
         ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, action_id)
+            .remove_node_by_id(ctx.change_set()?, action_id)
+            .await?;
+
+        WsEvent::action_removed(ctx, action_id)
+            .await?
+            .publish_on_commit(ctx)
             .await?;
         Ok(())
     }

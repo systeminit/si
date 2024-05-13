@@ -8,7 +8,7 @@ use dal::{
     action::prototype::ActionPrototypeError, action::ActionError,
     ChangeSetApplyError as DalChangeSetApplyError, ChangeSetError as DalChangeSetError,
     ComponentError, DeprecatedActionError, DeprecatedActionPrototypeError, FuncError,
-    StandardModelError, TransactionsError, WorkspaceError, WsEventError,
+    StandardModelError, TransactionsError, WorkspaceError, WorkspaceSnapshotError, WsEventError,
 };
 
 use telemetry::prelude::*;
@@ -57,6 +57,8 @@ pub enum ChangeSetError {
     Transactions(#[from] TransactionsError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

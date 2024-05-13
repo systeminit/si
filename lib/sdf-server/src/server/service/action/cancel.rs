@@ -1,4 +1,4 @@
-use axum::extract::Query;
+use axum::Json;
 use dal::action::{Action, ActionState};
 use dal::{ActionId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub struct PutOnHoldRequest {
 pub async fn cancel(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<PutOnHoldRequest>,
+    Json(request): Json<PutOnHoldRequest>,
 ) -> ActionResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
@@ -31,7 +31,9 @@ pub async fn cancel(
         ActionState::Failed | ActionState::OnHold | ActionState::Queued => {}
     }
 
-    Action::set_state(&ctx, action.id(), ActionState::OnHold).await?;
+    Action::remove_by_id(&ctx, action.id()).await?;
+
+    ctx.commit().await?;
 
     Ok(())
 }

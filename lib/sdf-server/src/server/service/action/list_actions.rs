@@ -2,7 +2,7 @@ use axum::extract::Query;
 use axum::Json;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
-use dal::{ActionId, ActionPrototypeId, ChangeSetId, Visibility};
+use dal::{ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
@@ -13,6 +13,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 pub struct ActionView {
     pub id: ActionId,
     pub prototype_id: ActionPrototypeId,
+    pub component_id: Option<ComponentId>,
     pub name: String,
     pub description: Option<String>,
     pub kind: ActionKind,
@@ -49,6 +50,7 @@ pub async fn list_actions(
             id: action_id,
             prototype_id: prototype.id(),
             name: prototype.name().clone(),
+            component_id: Action::component_id(&ctx, action_id).await?,
             description: prototype.description().clone(),
             kind: prototype.kind,
             state: action.state(),
