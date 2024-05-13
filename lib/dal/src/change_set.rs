@@ -412,6 +412,7 @@ impl ChangeSet {
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`]. [`Actions`](Action)
     /// are enqueued as needed and only done so if the base [`ChangeSet`] is "HEAD" (i.e.
     /// the default [`ChangeSet`] of the [`Workspace`]).
+    #[instrument(level = "info", skip_all)]
     pub async fn apply_to_base_change_set(
         ctx: &mut DalContext,
         allow_system_init_history_actor: bool,
@@ -433,7 +434,12 @@ impl ChangeSet {
         }
 
         // do we need this commit?
-        ctx.blocking_commit().await?;
+        if let Some(conflicts) = ctx.blocking_commit().await? {
+            error!("Conflicts when commiting again:{:?}", conflicts);
+
+            return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
+        }
+
         let change_set_that_was_applied = change_set_to_be_applied;
 
         if !actions_to_run.is_empty() {
@@ -560,7 +566,7 @@ impl ChangeSet {
 
         Ok(None)
     }
-
+    #[instrument(level = "info")]
     async fn list_actions_to_run(
         ctx: &DalContext,
     ) -> ChangeSetApplyResult<(
@@ -591,7 +597,10 @@ impl ChangeSet {
             // TODO(nick): this code should be removed once we only remove actions that have
             // succeeded.
             if at_least_one_deleted {
-                ctx.blocking_commit().await?;
+                if let Some(conflicts) = ctx.blocking_commit().await? {
+                    error!("Conflicts when listing actions:{:?}", conflicts);
+                    return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
+                }
             }
         }
 
