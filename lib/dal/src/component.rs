@@ -2873,6 +2873,7 @@ impl Component {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip(ctx))]
     pub async fn upgrade_to_new_variant(
         &self,
         ctx: &DalContext,
