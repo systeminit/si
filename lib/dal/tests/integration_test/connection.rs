@@ -336,6 +336,10 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
 
     assert!(matches!(view, serde_json::Value::Array(_)));
 
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
     if let serde_json::Value::Array(units_array) = view {
         assert_eq!(2, units_array.len())
     }

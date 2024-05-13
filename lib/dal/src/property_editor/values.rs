@@ -43,7 +43,7 @@ impl PropertyEditorValues {
             .map(|c| c.to_input_socket_id)
             .collect();
         let inferred_sockets_on_components: HashSet<InputSocketId> = component
-            .inferred_connections(ctx)
+            .inferred_incoming_connections(ctx)
             .await?
             .iter()
             .map(|c| c.to_input_socket_id)

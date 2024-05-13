@@ -64,7 +64,7 @@ impl ActionDependencyGraph {
                     .or_default()
                     .insert(incoming_connection.from_component_id);
             }
-            for inferred_connection in component.inferred_connections(ctx).await? {
+            for inferred_connection in component.inferred_incoming_connections(ctx).await? {
                 if inferred_connection.to_component_id != component_id {
                     continue;
                 }

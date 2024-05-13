@@ -1144,16 +1144,31 @@ pub struct Conflicts {
     pub conflicts_found: Vec<Conflict>,
     pub updates_found_and_skipped: Vec<Update>,
 }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Updates {
+    pub updates_found: Vec<Update>,
+}
 
 // TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
 // the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
 // not want it long term.
+#[instrument(level="info", skip_all, 
+    fields(
+            si.change_set.id = Empty,
+            si.workspace.pk = Empty,
+            si.conflicts = Empty,
+            si.updates = Empty,
+            si.conflicts.count = Empty,
+            si.updates.count = Empty,
+        ),
+    )]
 async fn rebase(
     tenancy: &Tenancy,
     layer_db: &DalLayerDb,
     rebase_request: RebaseRequest,
 ) -> Result<Option<Conflicts>, TransactionsError> {
     let start = Instant::now();
+    let span = Span::current();
 
     let metadata = LayeredEventMetadata::new(
         si_events::Tenancy::new(
@@ -1162,7 +1177,17 @@ async fn rebase(
         ),
         si_events::Actor::System,
     );
-
+    span.record(
+        "si.change_set.id",
+        rebase_request.to_rebase_change_set_id.to_string(),
+    );
+    span.record(
+        "si.workspace.pk",
+        tenancy
+            .workspace_pk()
+            .unwrap_or(WorkspacePk::NONE)
+            .to_string(),
+    );
     info!("requesting rebase: {:?}", start.elapsed());
     let rebase_finished_activity = layer_db
         .activity()
@@ -1184,7 +1209,14 @@ async fn rebase(
     );
     match rebase_finished_activity.payload {
         ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
-            RebaseStatus::Success { .. } => Ok(None),
+            RebaseStatus::Success { updates_performed } => {
+                let updates = Updates {
+                    updates_found: serde_json::from_str(updates_performed)?,
+                };
+                span.record("si.updates", updates_performed);
+                span.record("si.updates.count", updates.updates_found.len().to_string());
+                Ok(None)
+            }
             RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
                 rebase_request.onto_workspace_snapshot_address,
                 rebase_request.to_rebase_change_set_id,
@@ -1198,7 +1230,11 @@ async fn rebase(
                     conflicts_found: serde_json::from_str(conflicts_found)?,
                     updates_found_and_skipped: serde_json::from_str(updates_found_and_skipped)?,
                 };
-
+                span.record("si.conflicts", conflicts_found);
+                span.record(
+                    "si.conflicts.count",
+                    conflicts.conflicts_found.len().to_string(),
+                );
                 Ok(Some(conflicts))
             }
         },
@@ -1240,7 +1276,11 @@ impl Transactions {
         name = "transactions.commit_into_conns",
         level = "info",
         skip_all,
-        fields()
+        fields(
+            si.change_set.id = Empty,
+            si.workspace.pk = Empty,
+            si.dvu.values = Empty,
+        )
     )]
     pub async fn commit_into_conns(
         self,
@@ -1248,12 +1288,27 @@ impl Transactions {
         layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
+        let span = Span::current();
+        span.record(
+            "si.workspace.pk",
+            tenancy
+                .workspace_pk()
+                .unwrap_or(WorkspacePk::NONE)
+                .to_string(),
+        );
         let pg_conn = self.pg_txn.commit_into_conn().await?;
+
         let conflicts = if let Some(mut rebase_request) = rebase_request {
+            span.record(
+                "si.change_set.id",
+                rebase_request.to_rebase_change_set_id.to_string(),
+            );
+
             rebase_request.dvu_values = self
                 .job_queue
                 .take_dependent_values_for_change_set(rebase_request.to_rebase_change_set_id)
                 .await;
+            span.record("si.dvu.values", format!("{:?}", rebase_request.dvu_values));
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
