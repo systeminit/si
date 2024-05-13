@@ -47,7 +47,9 @@ impl ActionPrototypeView {
                 || match prototype.kind {
                     DeprecatedActionKind::Create => "create".to_owned(),
                     DeprecatedActionKind::Delete => "delete".to_owned(),
-                    DeprecatedActionKind::Other => "other".to_owned(),
+                    DeprecatedActionKind::Update | DeprecatedActionKind::Other => {
+                        "other".to_owned()
+                    }
                     DeprecatedActionKind::Refresh => "refresh".to_owned(),
                 },
                 ToOwned::to_owned,
