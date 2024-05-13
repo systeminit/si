@@ -172,7 +172,7 @@ impl PersisterTask {
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
-                    task.write_layers(event, status_tx).await;
+                    self.tracker.spawn(task.write_layers(event, status_tx));
                 }
             }
         }
