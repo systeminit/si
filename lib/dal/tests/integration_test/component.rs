@@ -17,6 +17,7 @@ mod debug;
 mod get_code;
 mod get_diff;
 mod set_type;
+mod upgrade;
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;
