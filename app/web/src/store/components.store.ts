@@ -907,37 +907,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          /* async CONNECT_COMPONENT_TO_FRAME(connections: ComponentConnection[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ node: DiagramNode }>({
-              method: "post",
-              url: "diagram/connect_component_to_frame",
-              params: {
-                connections,
-                ...visibilityParams,
-              },
-              optimistic: () => {},
-            });
-          }, */
-          /* async DETACH_COMPONENT(children: ComponentId[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ node: DiagramNode }>({
-              method: "post",
-              url: "diagram/detach_component",
-              params: {
-                children,
-                ...visibilityParams,
-              },
-            });
-          }, */
 
           async FETCH_COMPONENT_CODE(componentId: ComponentId) {
             return new ApiRequest<{ codeViews: CodeView[] }>({
@@ -1064,48 +1033,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-
-          /* async RESTORE_EDGE(
-            edgeId: EdgeId,
-            toSocketId: SocketId,
-            fromSocketId: SocketId,
-          ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest({
-              method: "post",
-              url: "diagram/restore_connection",
-              keyRequestStatusBy: edgeId,
-              params: {
-                toSocketId,
-                fromSocketId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                // this.componentDiffsById[componentId] = response.componentDiff;
-              },
-              optimistic: () => {
-                const originalEdge = this.edgesById[edgeId];
-                if (originalEdge) {
-                  this.edgesById[edgeId] = {
-                    ...originalEdge,
-                    changeStatus: "unmodified",
-                    deletedInfo: undefined,
-                  };
-                }
-
-                return () => {
-                  if (originalEdge) {
-                    this.edgesById[edgeId] = originalEdge;
-                  }
-                  this.selectedEdgeId = edgeId;
-                };
-              },
-            });
-          }, */
 
           async DELETE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
