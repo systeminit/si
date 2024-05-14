@@ -19,7 +19,7 @@ export default defineConfig({
     },
 
     // Hotfix, needs amended
-    baseUrl: 'http://10.0.0.250:8080',
+    baseUrl: 'http://127.0.0.1:8080',
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,

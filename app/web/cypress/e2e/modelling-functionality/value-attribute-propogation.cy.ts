@@ -1,5 +1,5 @@
 // @ts-check
-///<reference path="../global.d.ts"/>
+///<reference path="../../global.d.ts"/>
 
 import {
   componentAttributes
@@ -37,8 +37,9 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Give time to redirect onto the new changeset
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
-      // Find the AWS Credential
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('awsRegion');
+      // Needs a proper way to select from the updated asset tree panel
+      // Find the region asset
+      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('Region').as('awsRegion');
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
@@ -54,7 +55,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
       cy.wait(1000);
 
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
+      // Needs a proper way to select from the updated asset tree panel
+      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentB');
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
@@ -85,7 +87,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Find the attribute for the Integer Input
       //cy.get('.attributes-panel-item__input-wrap select:first')
       //.select('us-east-1');
-      componentAttributes.enterInputField('select','Region', 'us-east-1')
+      componentAttributes.enterInputField('select','region', 'us-east-1')
 
       // Intercept the API call and alias it
       cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
@@ -100,7 +102,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // Wait for the values to propagate
-      cy.wait(3000);
+      cy.wait(5000);
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')
