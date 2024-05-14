@@ -19,6 +19,13 @@ pub struct ActionView {
     pub kind: ActionKind,
     pub state: ActionState,
     pub originating_changeset_id: ChangeSetId,
+    // Actions that will wait until I've successfully completed before running
+    pub my_dependencies: Vec<ActionId>,
+    // Things that need to finish before I can start
+    pub dependent_on: Vec<ActionId>,
+    // includes action ids that impact this status
+    // this occurs when ancestors of this action are on hold or have failed
+    pub hold_status_influenced_by: Vec<ActionId>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -55,6 +62,9 @@ pub async fn list_actions(
             kind: prototype.kind,
             state: action.state(),
             originating_changeset_id: action.originating_changeset_id(),
+            my_dependencies: action.get_all_dependencies(&ctx).await?,
+            dependent_on: Action::get_dependent_actions_by_id(&ctx, action_id).await?,
+            hold_status_influenced_by: action.get_hold_status_influenced_by(&ctx).await?,
         };
         queued.push(action_view);
     }

@@ -342,7 +342,7 @@ export const useActionsStore = () => {
               url: "action/put_on_hold",
               keyRequestStatusBy: id,
               params: {
-                id,
+                ids: [id],
                 visibility_change_set_pk: changeSetId,
               },
             });
@@ -353,7 +353,7 @@ export const useActionsStore = () => {
               url: "action/cancel",
               keyRequestStatusBy: id,
               params: {
-                id,
+                ids: [id],
                 visibility_change_set_pk: changeSetId,
               },
             });

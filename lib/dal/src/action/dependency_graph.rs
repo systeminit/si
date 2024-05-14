@@ -1,4 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use std::collections::{HashMap, HashSet, VecDeque};
+use telemetry::prelude::*;
 
 use crate::{
     action::Action, dependency_graph::DependencyGraph, ActionId, Component, ComponentId, DalContext,
@@ -40,7 +42,6 @@ impl ActionDependencyGraph {
         // or are currently running.
         for action_id in Action::all_ids(ctx).await? {
             action_dependency_graph.inner.add_id(action_id);
-
             // Theoretically, we may have Actions at some point that aren't Component specific.
             if let Some(component_id) = Action::component_id(ctx, action_id).await? {
                 actions_by_component_id
@@ -102,13 +103,16 @@ impl ActionDependencyGraph {
     }
 
     pub fn action_depends_on(&mut self, action_id: ActionId, depends_on_id: ActionId) {
+        dbg!("action_depends_on {} {}", action_id, depends_on_id);
         self.inner.id_depends_on(action_id, depends_on_id);
     }
 
     pub fn contains_value(&self, action_id: ActionId) -> bool {
         self.inner.contains_id(action_id)
     }
-
+    /// gets what actions are directly dependent on a given action id
+    /// ex: Create -> Update -> Delete
+    /// graph.direct_dependencies_of(update.actionid) -> Create
     pub fn direct_dependencies_of(&self, action_id: ActionId) -> Vec<ActionId> {
         self.inner.direct_dependencies_of(action_id)
     }
@@ -127,5 +131,26 @@ impl ActionDependencyGraph {
 
     pub fn remaining_actions(&self) -> Vec<ActionId> {
         self.inner.remaining_ids()
+    }
+
+    /// Gets all downstream dependencies for the provided ActionId. This includes the entire subgraph
+    /// starting at ActionId.
+    #[instrument(level = "info", skip(self))]
+
+    pub fn get_all_dependencies(&self, action_id: ActionId) -> Vec<ActionId> {
+        let current_dependencies = self.inner.direct_reverse_dependencies_of(action_id);
+        let mut all_dependencies = HashSet::new();
+        let mut work_queue = VecDeque::from(current_dependencies.clone());
+        dbg!(current_dependencies);
+        while let Some(action) = work_queue.pop_front() {
+            match all_dependencies.insert(action) {
+                true => {
+                    let next = self.inner.direct_reverse_dependencies_of(action);
+                    work_queue.extend(next);
+                }
+                false => continue,
+            }
+        }
+        all_dependencies.into_iter().collect_vec()
     }
 }
