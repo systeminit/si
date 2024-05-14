@@ -20,15 +20,12 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
-pub mod connect_component_to_frame;
 pub mod create_component;
 pub mod create_connection;
-pub mod detach_component_from_frame;
 pub mod get_diagram;
 pub mod list_schemas;
 pub mod set_component_position;
 
-// mod connect_component_to_frame;
 pub mod delete_component;
 pub mod delete_connection;
 pub mod paste_component;
@@ -139,10 +136,6 @@ pub fn routes() -> Router<AppState> {
             "/remove_delete_intent",
             post(remove_delete_intent::remove_delete_intent),
         )
-        /*.route(
-            "/connect_component_to_frame",
-            post(connect_component_to_frame::connect_component_to_frame),
-        )*/
         .route(
             "/create_connection",
             post(create_connection::create_connection),
@@ -157,8 +150,4 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_diagram", get(get_diagram::get_diagram))
         .route("/list_schemas", get(list_schemas::list_schemas))
-    /*.route(
-        "/detach_component",
-        post(detach_component_from_frame::detach_component_from_frame),
-    )*/
 }
