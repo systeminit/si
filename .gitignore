@@ -29,6 +29,8 @@ prelude
 .vim
 
 .env.local
+.envrc.local
+
 # Local Netlify folder
 .netlify
 

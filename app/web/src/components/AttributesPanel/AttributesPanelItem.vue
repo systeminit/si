@@ -353,6 +353,7 @@
         >
           <textarea
             v-model="newValueString"
+            :class="${propLabelParts[0]}${propLabelParts[1]}"
             spellcheck="false"
             @blur="onBlur"
             @focus="onFocus"
@@ -381,7 +382,7 @@
         <template v-else-if="widgetKind === 'checkbox'">
           <input
             :checked="newValueBoolean"
-            class="attributes-panel-item__hidden-input"
+            :class="attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}"
             type="checkbox"
             @blur="onBlur"
             @change="updateValue"
@@ -401,7 +402,7 @@
         >
           <select
             v-model="newValueString"
-            class="attributes-panel-item__hidden-input"
+            :class="attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}"
             @blur="onBlur"
             @change="updateValue"
             @focus="onFocus"

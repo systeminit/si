@@ -1,6 +1,10 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
+import {
+  componentAttributes
+} from "../../support/attribute-panel-actions/component-attributes";
+
 const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
 const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
@@ -23,7 +27,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
-      
+
       cy.get('#vorm-input-3').clear().type(UUID);
 
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);
@@ -62,12 +66,12 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.wait(1000);
 
       cy.url().then(currentUrl => {
-        // Construct a new URL with desired query parameters for selecting 
+        // Construct a new URL with desired query parameters for selecting
         // the attribute panel for a known component
         let newUrl = new URL(currentUrl);
         newUrl.searchParams.set('s', 'c_'+componentIDA);
         newUrl.searchParams.set('t', 'attributes');
-      
+
         // Visit the new URL
         console.log(newUrl.href);
         cy.visit(newUrl.href);
@@ -79,14 +83,15 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
 
       // Find the attribute for the Integer Input
-      cy.get('.attributes-panel-item__input-wrap select:first')
-      .select('us-east-1');
+      //cy.get('.attributes-panel-item__input-wrap select:first')
+      //.select('us-east-1');
+      componentAttributes.enterInputField('select','Region', 'us-east-1')
 
       // Intercept the API call and alias it
       cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
 
       cy.url().then(currentUrl => {
-        // Construct a new URL with desired query parameters for selecting 
+        // Construct a new URL with desired query parameters for selecting
         // the attribute panel for a known connected component
         let newUrl = new URL(currentUrl);
         newUrl.searchParams.set('s', 'c_'+componentIDB);
