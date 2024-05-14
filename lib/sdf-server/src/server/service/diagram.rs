@@ -139,14 +139,14 @@ pub fn routes() -> Router<AppState> {
             "/remove_delete_intent",
             post(remove_delete_intent::remove_delete_intent),
         )
-        .route(
+        /*.route(
             "/connect_component_to_frame",
             post(connect_component_to_frame::connect_component_to_frame),
-        )
-        /*.route(
+        )*/
+        .route(
             "/create_connection",
             post(create_connection::create_connection),
-        )*/
+        )
         .route(
             "/create_component",
             post(create_component::create_component),
