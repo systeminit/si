@@ -2995,6 +2995,15 @@ impl Component {
             }
         }
 
+        // Let's requeue any Actions for the component
+        Self::requeue_actions_for_upgraded_component(
+            ctx,
+            original_component.id(),
+            new_component.id(),
+            new_comp_schema_variant_id,
+        )
+        .await?;
+
         // Let's remove the original resource so that we don't queue a delete action
         original_component
             .set_resource(
@@ -3011,6 +3020,87 @@ impl Component {
         original_component.delete(ctx).await?;
 
         Ok(new_component)
+    }
+
+    async fn requeue_actions_for_upgraded_component(
+        ctx: &DalContext,
+        old_component_id: ComponentId,
+        new_component_id: ComponentId,
+        new_schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<()> {
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        let mut queue_create = false;
+        if workspace.uses_actions_v2() {
+            //TODO: Paul Add the work for actions V2 requeing!
+        } else {
+            let available_actions =
+                DeprecatedActionPrototype::for_variant(ctx, new_schema_variant_id)
+                    .await
+                    .map_err(Box::new)?;
+
+            let queued_actions_for_old_comp =
+                DeprecatedAction::for_component(ctx, old_component_id)
+                    .await
+                    .map_err(Box::new)?;
+
+            for queued_action in queued_actions_for_old_comp {
+                let action_prototype = DeprecatedAction::get_by_id(ctx, queued_action.id)
+                    .await
+                    .map_err(Box::new)?
+                    .prototype(ctx)
+                    .await
+                    .map_err(Box::new)?;
+
+                let func_id = action_prototype.func_id(ctx).await.map_err(Box::new)?;
+                let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+                if action_prototype.kind == DeprecatedActionKind::Create {
+                    queue_create = true;
+                }
+
+                for available_action in available_actions.clone() {
+                    let available_func_id =
+                        available_action.func_id(ctx).await.map_err(Box::new)?;
+                    let available_func = Func::get_by_id_or_error(ctx, available_func_id).await?;
+
+                    if available_func.name == queued_func.name
+                        && available_func.kind == queued_func.kind
+                    {
+                        DeprecatedAction::upsert(ctx, available_action.id, new_component_id)
+                            .await
+                            .map_err(Box::new)?;
+                    }
+                }
+            }
+
+            if !queue_create {
+                let queued_actions_for_new_comp =
+                    DeprecatedAction::for_component(ctx, new_component_id)
+                        .await
+                        .map_err(Box::new)?;
+
+                for queued_action in queued_actions_for_new_comp {
+                    let action = DeprecatedAction::get_by_id(ctx, queued_action.id)
+                        .await
+                        .map_err(Box::new)?;
+
+                    let action_prototype = action.prototype(ctx).await.map_err(Box::new)?;
+
+                    if action_prototype.kind == DeprecatedActionKind::Create {
+                        action.delete(ctx).await.map_err(Box::new)?;
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
