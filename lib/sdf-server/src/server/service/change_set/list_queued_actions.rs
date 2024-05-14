@@ -76,6 +76,7 @@ pub async fn list_queued_actions(
                     DeprecatedActionKind::Delete => "delete".to_owned(),
                     DeprecatedActionKind::Other => "other".to_owned(),
                     DeprecatedActionKind::Refresh => "refresh".to_owned(),
+                    DeprecatedActionKind::Update => "other".to_owned(),
                 }),
                 component_id,
                 actor: actor_email,

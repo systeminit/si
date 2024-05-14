@@ -32,6 +32,13 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
     let fn_name = "test:createActionSwifty";
     let create_action_func = build_action_func(create_action_code, fn_name).await?;
 
+    // Build Update Action Func
+    let update_action_code = "async function main(component: Input): Promise<Output> {
+              return { payload: { \"poonami\": true }, status: \"ok\" };
+            }";
+    let fn_name = "test:updateActionSwifty";
+    let update_action_func = build_action_func(update_action_code, fn_name).await?;
+
     // Build Delete Action Func
     let delete_action_code = "async function main() {
                 return { payload: undefined, status: \"ok\" };
@@ -47,12 +54,6 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
 
     let fn_name = "test:refreshActionSwifty";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
-
-    let update_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: { \"poonami\": true }, status: \"ok\" };
-            }";
-    let fn_name = "test:updateActionSwifty";
-    let update_action_func = build_action_func(update_action_code, fn_name).await?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
@@ -152,7 +153,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Other)
+                        .kind(&DeprecatedActionKind::Update)
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )

@@ -20,6 +20,12 @@ impl WorkspacePk {
     }
 }
 
+impl From<WorkspacePk> for Ulid {
+    fn from(id: WorkspacePk) -> Self {
+        id.0
+    }
+}
+
 impl Default for WorkspacePk {
     fn default() -> Self {
         Self::new()
@@ -60,6 +66,12 @@ impl ChangeSetId {
 
     pub fn into_inner(self) -> Ulid {
         self.0
+    }
+}
+
+impl From<ChangeSetId> for Ulid {
+    fn from(id: ChangeSetId) -> Self {
+        id.0
     }
 }
 

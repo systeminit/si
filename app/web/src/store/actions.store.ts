@@ -104,6 +104,7 @@ export enum ActionKind {
 export interface ActionView {
   id: ActionId;
   prototypeId: ActionPrototypeId;
+  componentId: ComponentId | null;
   name: string;
   description?: string;
   kind: ActionKind;
@@ -325,7 +326,7 @@ export const useActionsStore = () => {
           // Actions V2 Actions
           async LOAD_ACTIONS() {
             return new ApiRequest<Array<ActionView>>({
-              url: "/action/load_queued",
+              url: "/action/list",
               headers: { accept: "application/json" },
               params: {
                 visibility_change_set_pk: changeSetId,

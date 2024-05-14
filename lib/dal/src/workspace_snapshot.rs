@@ -101,6 +101,8 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotGraphMissing(WorkspaceSnapshotAddress),
     #[error("no workspace snapshot was fetched for this dal context")]
     WorkspaceSnapshotNotFetched,
+    #[error("Unable to write workspace snapshot")]
+    WorkspaceSnapshotNotWritten,
 }
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
@@ -1264,13 +1266,16 @@ impl WorkspaceSnapshot {
         Ok(None)
     }
 
-    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
+    /// Returns whether or not any Actions were dispatched.
+    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
+        let mut did_dispatch = false;
         for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
             Action::dispatch_action(ctx, dispatchable_ation_id)
                 .await
                 .map_err(Box::new)?;
+            did_dispatch = true;
         }
 
-        Ok(())
+        Ok(did_dispatch)
     }
 }

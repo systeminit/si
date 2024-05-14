@@ -18,7 +18,7 @@ use crate::{
     },
     ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext, EdgeWeightError,
     EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
-    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -49,6 +49,8 @@ pub enum ActionError {
     Transactions(#[from] TransactionsError),
     #[error("Workspace Snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ActionResult<T> = Result<T, ActionError>;
@@ -257,7 +259,19 @@ impl Action {
         Ok(new_action)
     }
 
-    pub async fn remove(
+    pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(ctx.change_set()?, action_id)
+            .await?;
+
+        WsEvent::action_removed(ctx, action_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn remove_by_prototype_and_component(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
@@ -268,8 +282,7 @@ impl Action {
         if let Some(action_id) =
             Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
         {
-            let action_ulid: Ulid = action_id.into();
-            snap.remove_node_by_id(change_set, action_ulid).await?;
+            snap.remove_node_by_id(change_set, action_id).await?;
         }
         Ok(())
     }

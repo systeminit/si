@@ -71,6 +71,18 @@ pub enum ActionKind {
     Update,
 }
 
+impl From<ActionFuncSpecKind> for ActionKind {
+    fn from(value: ActionFuncSpecKind) -> Self {
+        match value {
+            ActionFuncSpecKind::Create => ActionKind::Create,
+            ActionFuncSpecKind::Refresh => ActionKind::Refresh,
+            ActionFuncSpecKind::Other => ActionKind::Manual,
+            ActionFuncSpecKind::Delete => ActionKind::Destroy,
+            ActionFuncSpecKind::Update => ActionKind::Update,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ActionPrototype {
     pub id: ActionPrototypeId,
@@ -252,17 +264,5 @@ impl ActionPrototype {
         }
 
         Ok(prototypes)
-    }
-}
-
-impl From<ActionFuncSpecKind> for ActionKind {
-    fn from(value: ActionFuncSpecKind) -> Self {
-        match value {
-            ActionFuncSpecKind::Create => ActionKind::Create,
-            ActionFuncSpecKind::Refresh => ActionKind::Refresh,
-            ActionFuncSpecKind::Other => ActionKind::Manual,
-            ActionFuncSpecKind::Delete => ActionKind::Destroy,
-            ActionFuncSpecKind::Update => ActionKind::Update,
-        }
     }
 }

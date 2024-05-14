@@ -2,7 +2,7 @@ use axum::extract::Query;
 use axum::Json;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
-use dal::{ActionId, ActionPrototypeId, ChangeSetId, Visibility};
+use dal::{ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
@@ -13,6 +13,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 pub struct ActionView {
     pub id: ActionId,
     pub prototype_id: ActionPrototypeId,
+    pub component_id: Option<ComponentId>,
     pub name: String,
     pub description: Option<String>,
     pub kind: ActionKind,
@@ -29,7 +30,7 @@ pub struct LoadQueuedRequest {
 
 pub type LoadQueuedResponse = Vec<ActionView>;
 
-pub async fn load_queued(
+pub async fn list_actions(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<LoadQueuedRequest>,
@@ -42,21 +43,20 @@ pub async fn load_queued(
 
     for action_id in action_ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
-        if action.state() == ActionState::Queued {
-            let prototype_id = Action::prototype_id(&ctx, action_id).await?;
-            let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+        let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+        let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
 
-            let action_view = ActionView {
-                id: action_id,
-                prototype_id: prototype.id(),
-                name: prototype.name().clone(),
-                description: prototype.description().clone(),
-                kind: prototype.kind,
-                state: action.state(),
-                originating_changeset_id: action.originating_changeset_id(),
-            };
-            queued.push(action_view);
-        }
+        let action_view = ActionView {
+            id: action_id,
+            prototype_id: prototype.id(),
+            name: prototype.name().clone(),
+            component_id: Action::component_id(&ctx, action_id).await?,
+            description: prototype.description().clone(),
+            kind: prototype.kind,
+            state: action.state(),
+            originating_changeset_id: action.originating_changeset_id(),
+        };
+        queued.push(action_view);
     }
 
     Ok(Json(queued))
