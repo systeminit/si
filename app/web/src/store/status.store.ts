@@ -5,12 +5,12 @@ import { POSITION, useToast } from "vue-toastification";
 import { watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentId, SocketId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import UpdatingModel from "../components/toasts/UpdatingModel.vue";
 
-import { SocketId, useComponentsStore } from "./components.store";
+import { useComponentsStore } from "./components.store";
 
 const GLOBAL_STATUS_TOAST_TIMEOUT = 1000;
 const GLOBAL_STATUS_TOAST_DEBOUNCE = 300;

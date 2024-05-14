@@ -15,7 +15,6 @@ import {
 } from "@/components/ModelingDiagram/diagram_types";
 import {
   ComponentType,
-  DiagramNode,
   DiagramSchema,
   DiagramSchemaVariant,
 } from "@/api/sdf/dal/diagram";
@@ -29,7 +28,10 @@ import {
   ComponentDiff,
   RawComponent,
   ComponentId,
-  ActorAndTimestamp,
+  Edge,
+  EdgeId,
+  SocketId,
+  RawEdge,
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -43,8 +45,6 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentNodeId = string;
-export type EdgeId = string;
-export type SocketId = string;
 type SchemaId = string;
 
 export type FullComponent = RawComponent & {
@@ -54,24 +54,6 @@ export type FullComponent = RawComponent & {
   matchesFilter: boolean;
   icon: IconNames;
   isGroup: false;
-};
-
-type RawEdge = {
-  fromComponentId: ComponentId;
-  fromSocketId: SocketId;
-  toComponentId: ComponentId;
-  toSocketId: SocketId;
-  toDelete: boolean;
-  /** change status of edge in relation to head */
-  changeStatus?: ChangeStatus;
-  createdInfo: ActorAndTimestamp;
-  // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
-  deletedInfo?: ActorAndTimestamp;
-};
-
-type Edge = RawEdge & {
-  id: EdgeId;
-  isInferred: boolean;
 };
 
 export type StatusIconsSet = {
@@ -694,27 +676,86 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async SET_COMPONENT_DIAGRAM_POSITION(
             positions: ComponentPositions[],
+            detach?: boolean,
+            newParent?: ComponentId,
           ) {
-            const rounded_positions = positions.map((p) => {
+            const string_positions = positions.map((p) => {
               const pos = {
                 componentId: p.componentId,
               } as APIComponentPositions;
-              pos.x = Math.round(p.position.x).toString();
-              pos.y = Math.round(p.position.y).toString();
-              if (p.size?.width)
-                pos.width = Math.round(p.size?.width).toString();
-              if (p.size?.height)
-                pos.height = Math.round(p.size?.height).toString();
+              pos.x = p.position.x.toString();
+              pos.y = p.position.y.toString();
+              if (p.size?.width) pos.width = p.size?.width.toString();
+              if (p.size?.height) pos.height = p.size?.height.toString();
               return pos;
             });
 
+            detach = !!detach; // avoiding an option on the backend (undefined -> false)
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
               url: "diagram/set_component_position",
               params: {
-                positions: rounded_positions,
+                positions: string_positions,
+                detach,
+                newParent,
                 diagramKind: "configuration",
                 ...visibilityParams,
+              },
+              optimistic: () => {
+                if (detach) {
+                  const prevParents: Record<
+                    ComponentId,
+                    ComponentId | undefined
+                  > = {};
+                  for (const { componentId } of positions) {
+                    const component = this.rawComponentsById[componentId];
+                    if (!component) return;
+                    const prevParentId = component?.parentId;
+                    prevParents[component.id] = prevParentId;
+                    component.parentId = undefined;
+
+                    // remove inferred edges between children and parents
+                    const full_component = this.componentsById[componentId];
+                    for (const edge of _.filter(
+                      _.values(this.edgesById),
+                      (edge) =>
+                        !!(
+                          edge.isInferred &&
+                          edge.toComponentId === component.id &&
+                          full_component?.ancestorIds?.includes(
+                            edge.fromComponentId,
+                          )
+                        ),
+                    )) {
+                      delete this.edgesById[edge.id];
+                    }
+                  }
+
+                  return () => {
+                    for (const componentId of Object.keys(prevParents)) {
+                      const component = this.rawComponentsById[componentId];
+                      if (component)
+                        component.parentId = prevParents[componentId];
+                    }
+                  };
+                }
+                if (newParent) {
+                  // NOTE: `onDragElementsMove` only looks at parentId
+                  // so we don't have to manipulate `ancestorIds` here
+                  type Parent = [RawComponent, string | undefined];
+                  const prevParents: Parent[] = [];
+                  positions.forEach(({ componentId }) => {
+                    const component = this.rawComponentsById[componentId];
+                    if (!component) return;
+                    prevParents.push([component, component?.parentId]);
+                    component.parentId = newParent;
+                  });
+                  return () => {
+                    for (const [component, parentId] of prevParents) {
+                      component.parentId = parentId;
+                    }
+                  };
+                }
               },
             });
           },
@@ -866,7 +907,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
-          async CONNECT_COMPONENT_TO_FRAME(connections: ComponentConnection[]) {
+          /* async CONNECT_COMPONENT_TO_FRAME(connections: ComponentConnection[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -879,26 +920,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 connections,
                 ...visibilityParams,
               },
-              optimistic: () => {
-                // NOTE: `onDragElementsMove` only looks at parentId
-                // so we don't have to manipulate `ancestorIds` here
-                type Parent = [RawComponent, string | undefined];
-                const prevParents: Parent[] = [];
-                connections.forEach(({ childId, parentId }) => {
-                  const component = this.rawComponentsById[childId];
-                  if (!component) return;
-                  prevParents.push([component, component?.parentId]);
-                  component.parentId = parentId;
-                });
-                return () => {
-                  for (const [component, parentId] of prevParents) {
-                    component.parentId = parentId;
-                  }
-                };
-              },
+              optimistic: () => {},
             });
-          },
-          async DETACH_COMPONENT(children: ComponentId[]) {
+          }, */
+          /* async DETACH_COMPONENT(children: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -911,45 +936,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 children,
                 ...visibilityParams,
               },
-              optimistic: () => {
-                const prevParents: Record<
-                  ComponentId,
-                  ComponentId | undefined
-                > = {};
-                for (const childId of children) {
-                  const component = this.rawComponentsById[childId];
-                  if (!component) return;
-                  const prevParentId = component?.parentId;
-                  prevParents[component.id] = prevParentId;
-                  component.parentId = undefined;
-
-                  // remove inferred edges between children and parents
-                  const full_component = this.componentsById[childId];
-                  for (const edge of _.filter(
-                    _.values(this.edgesById),
-                    (edge) =>
-                      !!(
-                        edge.isInferred &&
-                        edge.toComponentId === component.id &&
-                        full_component?.ancestorIds?.includes(
-                          edge.fromComponentId,
-                        )
-                      ),
-                  )) {
-                    delete this.edgesById[edge.id];
-                  }
-                }
-
-                return () => {
-                  for (const componentId of Object.keys(prevParents)) {
-                    const component = this.rawComponentsById[componentId];
-                    if (component)
-                      component.parentId = prevParents[componentId];
-                  }
-                };
-              },
             });
-          },
+          }, */
 
           async FETCH_COMPONENT_CODE(componentId: ComponentId) {
             return new ApiRequest<{ codeViews: CodeView[] }>({
@@ -1493,6 +1481,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.rawComponentsById[data.component.id] = data.component;
                 if (this.selectedComponentId === data.component.id)
                   this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+              },
+            },
+            {
+              eventType: "InferredEdgeUpsert",
+              debounce: true,
+              callback: (data) => {
+                if (data.changeSetId !== changeSetId) return;
+                const edges =
+                  data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge(true))
+                    : [];
+                for (const edge of edges) {
+                  this.edgesById[edge.id] = edge;
+                }
+              },
+            },
+            {
+              eventType: "InferredEdgeRemove",
+              debounce: true,
+              callback: (data) => {
+                if (data.changeSetId !== changeSetId) return;
+                const edges =
+                  data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge(true))
+                    : [];
+                for (const edge of edges) {
+                  delete this.edgesById[edge.id];
+                }
               },
             },
             {

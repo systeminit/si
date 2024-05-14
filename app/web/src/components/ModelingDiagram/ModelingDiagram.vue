@@ -215,17 +215,15 @@ import { useRoute } from "vue-router";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
-  EdgeId,
   useComponentsStore,
   FullComponent,
   ComponentPositions,
-  ComponentConnection,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
 import { ComponentType } from "@/api/sdf/dal/diagram";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
@@ -1322,13 +1320,16 @@ function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
     });
   }
 }
-
-function sendMovedElementPosition(e: {
+type MoveElementsPayload = {
   // used to send the already existing elements position and size
   uniqueKeys: DiagramElementUniqueKey[];
   writeToChangeSet?: boolean;
   broadcastToClients?: boolean;
-}) {
+  detach?: boolean;
+  newParent?: ComponentId;
+};
+
+function sendMovedElementPosition(e: MoveElementsPayload) {
   if (!e.writeToChangeSet && !e.broadcastToClients) return;
   if (!e.uniqueKeys) return;
 
@@ -1354,7 +1355,11 @@ function sendMovedElementPosition(e: {
 
   if (positions.length > 0) {
     if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_DIAGRAM_POSITION(positions);
+      componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+        positions,
+        e.detach,
+        e.newParent,
+      );
     }
 
     if (
@@ -1389,86 +1394,77 @@ function beginDragElements() {
 function endDragElements() {
   dragElementsActive.value = false;
   // fire off final move event
-  // note - we've already filtered out children that are selected along with their parents,
-  // so we don't need to worry about accidentally moving them more than once
-  const numSelected = currentSelectionMovableElements.value.length;
   const keys_to_save: string[] = [];
-  const parentConnections: ComponentConnection[] = [];
-  const childrenToDetach: ComponentId[] = [];
-  _.each(currentSelectionMovableElements.value, (el) => {
-    let fitWithinParent: null | {
-      position: Vector2d;
-      size: Size2D;
-    } = null;
 
-    if (!movedElementPositions[el.uniqueKey]) return;
+  // treating attach/detach as idempotent from the FE, always call it, even if we don't think we have a parent
+  // we may be compensating for what we don't know, the backend can resolve no-ops
+  const detach = !cursorWithinGroupKey.value;
+  let newParent: DiagramGroupData | undefined;
+  if (cursorWithinGroupKey.value) {
+    newParent = allElementsByKey.value[
+      cursorWithinGroupKey.value
+    ] as DiagramGroupData;
+  }
 
-    // dragging onto root - ie detach from all parents
-    if (!cursorWithinGroupKey.value) {
-      if (el.def.parentId) {
-        childrenToDetach.push(el.def.componentId);
-      }
-    } else {
-      const newParent = allElementsByKey.value[
-        cursorWithinGroupKey.value
-      ] as DiagramGroupData;
+  // special case logic for a single frame within a parent frame
+  if (currentSelectionMovableElements.value.length === 1) {
+    const el = currentSelectionMovableElements.value[0];
+    if (el) {
+      // always save, even if we fail to meet below conditions
+      keys_to_save.push(el.uniqueKey);
 
+      // am i moving to a new parent?
       if (el.def.parentId !== newParent?.def.componentId) {
-        if (numSelected === 1 && newParent?.def.childIds?.length === 0) {
+        // and the parent has no children?
+        if (newParent?.def.childIds?.length === 0) {
+          // and the parent has a size (is a group), and I am a group [frame]?
           if (newParent.def.size && "isGroup" in el.def && el.def.isGroup) {
-            fitWithinParent = {
+            // expand me to the inner size of the parent frame
+            const fitWithinParent = {
               position:
                 movedElementPositions[newParent.uniqueKey] ??
                 newParent.def.position,
               size:
                 resizedElementSizes[newParent.uniqueKey] ?? newParent.def.size,
             };
+            const [position, size] = fitChildInsideParentFrame(
+              fitWithinParent.position,
+              fitWithinParent.size,
+            );
+            updateElementPositionAndSize({
+              elements: [
+                {
+                  uniqueKey: el.uniqueKey,
+                  position,
+                  size,
+                },
+              ],
+            });
           }
         }
-        parentConnections.push({
-          childId: el.def.id,
-          parentId: newParent.def.id,
-        });
       }
     }
+  } else {
+    _.each(currentSelectionMovableElements.value, (el) => {
+      if (!movedElementPositions[el.uniqueKey]) return;
+      keys_to_save.push(el.uniqueKey);
 
-    // only resize if my parent *currently* has zero children, and i have no children
-    // and i'm only adding one component into the frame (e.g. we can't "grow" two children to max size)
-    // otherwise let the human deal witht it
-    keys_to_save.push(el.uniqueKey);
-    if (numSelected === 1 && el.def.childIds?.length === 0 && fitWithinParent) {
-      const [position, size] = fitChildInsideParentFrame(
-        fitWithinParent.position,
-        fitWithinParent.size,
-      );
-      updateElementPositionAndSize({
-        elements: [
-          {
-            uniqueKey: el.uniqueKey,
-            position,
-            size,
-          },
-        ],
-      });
-    }
+      // note - we've already filtered out children that are selected along with their parents,
+      // so we don't need to worry about accidentally moving them more than once
+      if (el instanceof DiagramGroupData) {
+        const childEls = allChildren(el);
+        keys_to_save.push(..._.map(childEls, (childEl) => childEl.uniqueKey));
+      }
+    });
+  }
 
-    if (el instanceof DiagramGroupData) {
-      const childEls = allChildren(el);
-      keys_to_save.push(..._.map(childEls, (childEl) => childEl.uniqueKey));
-    }
-  });
-
-  // send one batch of all positions that are being moved
-  sendMovedElementPosition({
+  const payload = {
     uniqueKeys: keys_to_save,
     writeToChangeSet: true,
-  });
-
-  if (parentConnections.length > 0)
-    componentsStore.CONNECT_COMPONENT_TO_FRAME(parentConnections);
-
-  if (childrenToDetach.length > 0)
-    componentsStore.DETACH_COMPONENT(childrenToDetach);
+    detach,
+  } as MoveElementsPayload;
+  if (newParent) payload.newParent = newParent.def.id;
+  sendMovedElementPosition(payload);
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;

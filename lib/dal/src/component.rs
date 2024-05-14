@@ -28,7 +28,7 @@ use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSou
 use crate::attribute::value::{AttributeValueError, DependentValueGraph, ValueIsFor};
 use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
-use crate::diagram::SummaryDiagramComponent;
+use crate::diagram::{SummaryDiagramComponent, SummaryDiagramInferredEdge};
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
@@ -3094,7 +3094,61 @@ impl ComponentSetPositionPayload {
     }
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct InferredEdgeRemovePayload {
+    change_set_id: ChangeSetId,
+    edges: Vec<SummaryDiagramInferredEdge>,
+}
+
+impl InferredEdgeRemovePayload {
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct InferredEdgeUpsertPayload {
+    change_set_id: ChangeSetId,
+    edges: Vec<SummaryDiagramInferredEdge>,
+}
+
+impl InferredEdgeUpsertPayload {
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
+    }
+}
+
 impl WsEvent {
+    pub async fn remove_inferred_edges(
+        ctx: &DalContext,
+        edges: Vec<SummaryDiagramInferredEdge>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::InferredEdgeRemove(InferredEdgeRemovePayload {
+                change_set_id: ctx.change_set_id(),
+                edges,
+            }),
+        )
+        .await
+    }
+
+    pub async fn upsert_inferred_edges(
+        ctx: &DalContext,
+        edges: Vec<SummaryDiagramInferredEdge>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::InferredEdgeUpsert(InferredEdgeUpsertPayload {
+                change_set_id: ctx.change_set_id(),
+                edges,
+            }),
+        )
+        .await
+    }
+
     pub async fn reflect_component_position(
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -3111,7 +3165,7 @@ impl WsEvent {
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        components: &Vec<Component>,
+        components: Vec<Component>,
         user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];

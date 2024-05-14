@@ -24,7 +24,6 @@ const {
   selectedComponentId,
   selectedComponentIds,
   selectedComponent,
-  selectedComponents,
   deletableSelectedComponents,
   restorableSelectedComponents,
   selectedEdgeId,
@@ -133,21 +132,6 @@ const rightClickMenuItems = computed(() => {
     }
   }
 
-  if (
-    selectedComponents.value.length > 0 &&
-    _.every(selectedComponents.value, (c) => (c.ancestorIds?.length || 0) > 0)
-  ) {
-    items.push({
-      label: "Detach from parent(s)",
-      icon: "frame",
-      onSelect: () => {
-        _.each(selectedComponentIds.value, (id) => {
-          componentsStore.DETACH_COMPONENT([id]);
-        });
-      },
-      disabled,
-    });
-  }
   if (
     selectedComponent.value?.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
