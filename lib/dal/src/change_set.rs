@@ -12,9 +12,9 @@ use si_data_pg::{PgError, PgRow};
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
-use crate::context::RebaseRequest;
+use crate::context::{Conflicts, RebaseRequest};
 use crate::deprecated_action::DeprecatedActionBag;
-use crate::job::definition::{ActionRunnerItem, ActionsJob};
+use crate::job::definition::{DeprecatedActionRunnerItem, DeprecatedActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     id, ActionId, ActionPrototypeId, ChangeSetStatus, Component, ComponentError, DalContext,
@@ -79,8 +79,6 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
-    #[error("action error: {0}")]
-    Action(#[from] DeprecatedActionError),
     #[error("action batch error: {0}")]
     ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]
@@ -93,6 +91,10 @@ pub enum ChangeSetApplyError {
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("could not apply to head because of merge conflicts")]
+    ConflictsOnApply(Conflicts),
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] DeprecatedActionError),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -179,13 +181,23 @@ impl ChangeSet {
         new_local.base_change_set_id = self.base_change_set_id;
         new_local.workspace_snapshot_address = self.workspace_snapshot_address;
         new_local.workspace_id = self.workspace_id;
-        new_local.name = self.name.to_owned();
-        new_local.status = self.status.to_owned();
+        self.name.clone_into(&mut new_local.name);
+        self.status.clone_into(&mut new_local.status);
         Ok(new_local)
     }
 
     pub async fn new(
         ctx: &DalContext,
+        name: impl AsRef<str>,
+        base_change_set_id: Option<ChangeSetId>,
+    ) -> ChangeSetResult<Self> {
+        let id: ChangeSetId = Ulid::new().into();
+        Self::new_with_id(ctx, id, name, base_change_set_id).await
+    }
+
+    pub async fn new_with_id(
+        ctx: &DalContext,
+        id: ChangeSetId,
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
     ) -> ChangeSetResult<Self> {
@@ -196,8 +208,8 @@ impl ChangeSet {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO change_set_pointers (name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4) RETURNING *",
-                &[&name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
+                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
             )
             .await?;
         let change_set = Self::try_from(row)?;
@@ -335,7 +347,15 @@ impl ChangeSet {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(
+        name = "change_set.find",
+        level = "debug",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.pk = Empty,
+        ),
+    )]
     pub async fn find(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
@@ -351,7 +371,16 @@ impl ChangeSet {
             .await?;
 
         match row {
-            Some(row) => Ok(Some(Self::try_from(row)?)),
+            Some(row) => {
+                let span = Span::current();
+
+                let change_set = Self::try_from(row)?;
+
+                if let Some(workspace_id) = change_set.workspace_id {
+                    span.record("si.workspace.pk", workspace_id.to_string());
+                }
+                Ok(Some(change_set))
+            }
             None => Ok(None),
         }
     }
@@ -396,9 +425,14 @@ impl ChangeSet {
             .ok_or(ChangeSetApplyError::ChangeSetNotFound(ctx.change_set_id()))?;
         ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(ctx.change_set_id())
             .await?;
-        change_set_to_be_applied
+        if let Some(conflicts) = change_set_to_be_applied
             .apply_to_base_change_set_inner(ctx)
-            .await?;
+            .await?
+        {
+            return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
+        }
+
+        // do we need this commit?
         ctx.blocking_commit().await?;
         let change_set_that_was_applied = change_set_to_be_applied;
 
@@ -431,7 +465,8 @@ impl ChangeSet {
             // TODO: restore actors of change-set concept
             let actors_delimited_string = String::new();
             let batch = DeprecatedActionBatch::new(ctx, author, &actors_delimited_string).await?;
-            let mut runners: HashMap<DeprecatedActionRunnerId, ActionRunnerItem> = HashMap::new();
+            let mut runners: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem> =
+                HashMap::new();
             let mut runners_by_action: HashMap<ActionId, DeprecatedActionRunnerId> = HashMap::new();
 
             let mut values: Vec<DeprecatedActionBag> = actions_to_run.values().cloned().collect();
@@ -472,7 +507,7 @@ impl ChangeSet {
 
                 runners.insert(
                     runner.id,
-                    ActionRunnerItem {
+                    DeprecatedActionRunnerItem {
                         id: runner.id,
                         component_id: bag.component_id,
                         action_prototype_id: prototype_id,
@@ -482,7 +517,7 @@ impl ChangeSet {
             }
 
             // With all the runners gathered, we can enqueue a new batch.
-            ctx.enqueue_actions(ActionsJob::new(ctx, runners, batch.id))
+            ctx.enqueue_deprecated_actions(DeprecatedActionsJob::new(ctx, runners, batch.id))
                 .await?;
         }
 
@@ -495,7 +530,10 @@ impl ChangeSet {
     ///
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
-    async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+    async fn apply_to_base_change_set_inner(
+        &mut self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<Option<Conflicts>> {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
@@ -506,8 +544,12 @@ impl ChangeSet {
             onto_workspace_snapshot_address,
             onto_vector_clock_id: self.vector_clock_id(),
             to_rebase_change_set_id,
+            dvu_values: None,
         };
-        ctx.do_rebase_request(rebase_request).await?;
+
+        if let Some(conflicts) = ctx.do_rebase_request(rebase_request).await? {
+            return Ok(Some(conflicts));
+        }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;
@@ -515,7 +557,8 @@ impl ChangeSet {
             .await?
             .publish_on_commit(ctx)
             .await?;
-        Ok(())
+
+        Ok(None)
     }
 
     async fn list_actions_to_run(

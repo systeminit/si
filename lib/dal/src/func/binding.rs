@@ -5,31 +5,18 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
+use veritech_client::{BeforeFunction, OutputStream};
 
-use super::FuncError;
-use crate::func::backend::validation::FuncBackendValidation;
+use crate::func::binding::critical_section::execute_critical_section;
+use crate::secret::BeforeFuncError;
+use crate::FuncError;
 use crate::{
     func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
     standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
     StandardModelError, Timestamp, Visibility,
 };
 use crate::{
-    func::backend::{
-        array::FuncBackendArray,
-        boolean::FuncBackendBoolean,
-        diff::FuncBackendDiff,
-        identity::FuncBackendIdentity,
-        integer::FuncBackendInteger,
-        js_action::FuncBackendJsAction,
-        js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-        js_reconciliation::FuncBackendJsReconciliation,
-        js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
-        map::FuncBackendMap,
-        object::FuncBackendObject,
-        string::FuncBackendString,
-        FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
-    },
+    func::backend::{FuncDispatchContext, InvalidResolverFunctionTypeError},
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use crate::{DalContext, Tenancy};
@@ -40,11 +27,14 @@ use super::{
     FuncId,
 };
 
+pub(crate) mod critical_section;
 pub mod return_value;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingError {
+    #[error("before func error: {0}")]
+    BeforeFunc(#[from] Box<BeforeFuncError>),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func backend error: {0}")]
@@ -79,6 +69,8 @@ pub enum FuncBindingError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("tokio task join error: {0}")]
+    TokioTaskJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ws event error: {0}")]
@@ -152,6 +144,7 @@ impl FuncBinding {
     /// Use this function if you would like to receive the
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
     /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
+    #[instrument(level = "info", skip(ctx))]
     pub async fn create_and_execute(
         ctx: &DalContext,
         args: serde_json::Value,
@@ -192,83 +185,17 @@ impl FuncBinding {
             .await
     }
 
-    /// Perform function execution to veritech for a given [`Func`](crate::Func) and
-    /// [`FuncDispatchContext`](crate::func::backend::FuncDispatchContext).
+    /// Perform function execution to veritech for a given [`Func`] and [`FuncDispatchContext`]
+    /// using arguments provided by the [`binding`](FuncBinding).
     async fn execute_critical_section(
         &self,
         func: Func,
         context: FuncDispatchContext,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        let execution_result = match self.backend_kind() {
-            FuncBackendKind::JsAction => {
-                FuncBackendJsAction::create_and_execute(context, &func, &self.args, before).await
-            }
-            FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args, before)
-                    .await
-            }
-            FuncBackendKind::JsAttribute => {
-                let args = FuncBackendJsAttributeArgs {
-                    component: ResolverFunctionComponent {
-                        data: veritech_client::ComponentView {
-                            properties: self.args.clone(),
-                            ..Default::default()
-                        },
-                        parents: Vec::new(),
-                    },
-                    response_type: func.backend_response_type.try_into()?,
-                };
-                FuncBackendJsAttribute::create_and_execute(
-                    context,
-                    &func,
-                    &serde_json::to_value(args)?,
-                    before,
-                )
-                .await
-            }
-            FuncBackendKind::JsSchemaVariantDefinition => {
-                FuncBackendJsSchemaVariantDefinition::create_and_execute(
-                    context,
-                    &func,
-                    &serde_json::Value::Null,
-                    before,
-                )
-                .await
-            }
-            FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
-            FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
-            FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
-            FuncBackendKind::Diff => FuncBackendDiff::create_and_execute(&self.args).await,
-            FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
-            FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
-            FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,
-            FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
-            FuncBackendKind::Unset => Ok((None, None)),
-            FuncBackendKind::Validation => {
-                FuncBackendValidation::create_and_execute(context, &func, &self.args, before).await
-            }
-            FuncBackendKind::JsValidation => {
-                unimplemented!("direct Validation function execution is deprecated")
-            }
-            FuncBackendKind::JsAuthentication => unimplemented!(
-                "direct JsAuthentication function execution is not currently supported"
-            ),
-        };
-
-        match execution_result {
-            Ok(value) => Ok(value),
-            Err(FuncBackendError::ResultFailure {
-                kind,
-                message,
-                backend,
-            }) => Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }),
-            Err(err) => Err(err)?,
-        }
+        let (value, unprocessed_value) =
+            execute_critical_section(func.clone(), &self.args, context, before).await?;
+        Ok((value, unprocessed_value))
     }
 
     async fn postprocess_execution(
@@ -324,6 +251,7 @@ impl FuncBinding {
             | FuncBackendKind::Identity
             | FuncBackendKind::Diff
             | FuncBackendKind::Integer
+            | FuncBackendKind::Json
             | FuncBackendKind::Map
             | FuncBackendKind::Object
             | FuncBackendKind::String

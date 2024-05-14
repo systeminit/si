@@ -12,15 +12,13 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import plur from "plur";
 import { useComponentsStore } from "@/store/components.store";
-import { useActionsStore } from "@/store/actions.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
-const actionsStore = useActionsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const {
   selectedComponentId,
@@ -56,9 +54,7 @@ function typeDisplayName(action = "delete") {
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
-  const disabled =
-    actionsStore.actionsAreInProgress &&
-    featureFlagsStore.DONT_BLOCK_ON_ACTIONS;
+  const disabled = false;
   if (selectedEdgeId.value) {
     // single selected edge
     if (selectedEdge.value?.changeStatus === "deleted") {
@@ -145,15 +141,17 @@ const rightClickMenuItems = computed(() => {
       label: "Detach from parent(s)",
       icon: "frame",
       onSelect: () => {
-        // TODO: we likely want an endpoint that handles multiple?
         _.each(selectedComponentIds.value, (id) => {
-          componentsStore.DETACH_COMPONENT(id);
+          componentsStore.DETACH_COMPONENT([id]);
         });
       },
       disabled,
     });
   }
-  if (selectedComponent.value?.hasResource) {
+  if (
+    selectedComponent.value?.hasResource &&
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
+  ) {
     items.push({
       label: "Refresh resource",
       icon: "refresh",

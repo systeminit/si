@@ -1,9 +1,9 @@
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::ContentHash;
 use si_pkg::PropSpecKind;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -188,6 +188,12 @@ impl PropPath {
         self.0.to_owned().replace(PROP_PATH_SEPARATOR, sep)
     }
 
+    pub fn with_replaced_sep_and_prefix(&self, sep: &str) -> String {
+        let mut path = self.with_replaced_sep(sep);
+        path.insert_str(0, sep);
+        path
+    }
+
     /// Returns true if this PropPath is a descendant (at any depth) of `maybe_parent`
     pub fn is_descendant_of(&self, maybe_parent: &PropPath) -> bool {
         let this_parts = self.as_parts();
@@ -253,20 +259,25 @@ pub enum PropKind {
     Array,
     Boolean,
     Integer,
+    Json,
     Map,
     Object,
     String,
 }
 
 impl PropKind {
-    pub fn ordered(&self) -> bool {
+    pub fn is_container(&self) -> bool {
         matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
+    }
+
+    pub fn ordered(&self) -> bool {
+        self.is_container()
     }
 
     pub fn empty_value(&self) -> Option<serde_json::Value> {
         match self {
             Self::Array => Some(serde_json::json!([])),
-            Self::Map | Self::Object => Some(serde_json::json!({})),
+            Self::Map | Self::Object | Self::Json => Some(serde_json::json!({})),
             _ => None,
         }
     }
@@ -286,6 +297,7 @@ impl From<PropKind> for PropSpecKind {
             PropKind::Boolean => Self::Boolean,
             PropKind::String => Self::String,
             PropKind::Integer => Self::Number,
+            PropKind::Json => PropSpecKind::Json,
             PropKind::Object => Self::Object,
             PropKind::Map => Self::Map,
         }
@@ -299,7 +311,7 @@ impl From<PropKind> for WidgetKind {
         match prop {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Checkbox,
-            PropKind::String | PropKind::Integer => Self::Text,
+            PropKind::Json | PropKind::String | PropKind::Integer => Self::Text,
             PropKind::Object => Self::Header,
             PropKind::Map => Self::Map,
         }
@@ -313,6 +325,7 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
             PropKind::Object => Self::Object,
+            PropKind::Json => Self::Json,
             PropKind::Map => Self::Map,
             PropKind::String => Self::String,
         }
@@ -641,7 +654,7 @@ impl Prop {
         Ok(result)
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
+    pub async fn get_by_id_or_error(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
@@ -760,7 +773,7 @@ impl Prop {
         path: &PropPath,
     ) -> PropResult<Self> {
         let prop_id = Self::find_prop_id_by_path(ctx, schema_variant_id, path).await?;
-        Self::get_by_id(ctx, prop_id).await
+        Self::get_by_id_or_error(ctx, prop_id).await
     }
 
     implement_add_edge_to!(
@@ -842,6 +855,37 @@ impl Prop {
             .unwrap_or(false))
     }
 
+    pub async fn default_value(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<serde_json::Value>> {
+        let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
+        let prototype_func =
+            Func::get_by_id_or_error(ctx, AttributePrototype::func_id(ctx, prototype_id).await?)
+                .await?;
+        if prototype_func.is_dynamic() {
+            return Ok(None);
+        }
+
+        Ok(
+            if let Some(apa_id) =
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
+                    .await?
+                    .first()
+            {
+                if let Some(value) =
+                    AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await?
+                {
+                    Some(value.value)
+                } else {
+                    None
+                }
+            } else {
+                None
+            },
+        )
+    }
+
     pub async fn set_default_value<T: Serialize>(
         ctx: &DalContext,
         prop_id: PropId,
@@ -849,7 +893,7 @@ impl Prop {
     ) -> PropResult<()> {
         let value = serde_json::to_value(value)?;
 
-        let prop = Prop::get_by_id(ctx, prop_id).await?;
+        let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
         if !prop.kind.is_scalar() {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
@@ -874,28 +918,43 @@ impl Prop {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    async fn get_content(
-        ctx: &DalContext,
-        prop_id: PropId,
-    ) -> PropResult<(ContentHash, PropContentV1)> {
+    /// List [`Props`](Prop) for a given list of [`PropIds`](Prop).
+    pub async fn list_content(ctx: &DalContext, prop_ids: Vec<PropId>) -> PropResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: Ulid = prop_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
 
-        let content: PropContent = ctx
+        let mut node_weights = vec![];
+        let mut content_hashes = vec![];
+        for prop_id in prop_ids {
+            let prop_node_index = workspace_snapshot.get_node_index_by_id(prop_id).await?;
+            let node_weight = workspace_snapshot
+                .get_node_weight(prop_node_index)
+                .await?
+                .get_prop_node_weight()?;
+            content_hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
+
+        let content_map: HashMap<ContentHash, PropContent> = ctx
             .layer_db()
             .cas()
-            .try_read_as(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+            .try_read_many_as(content_hashes.as_slice())
+            .await?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let PropContent::V1(inner) = content;
+        let mut props = Vec::new();
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let PropContent::V1(inner) = content;
 
-        Ok((hash, inner))
+                    props.push(Self::assemble(node_weight, inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+        Ok(props)
     }
 
     pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> PropResult<Self>
@@ -925,5 +984,103 @@ impl Prop {
                 .await?;
         }
         Ok(prop)
+    }
+
+    pub async fn direct_child_props_ordered(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Vec<Prop>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let kind = workspace_snapshot
+            .get_node_weight_by_id(prop_id)
+            .await?
+            .get_prop_node_weight()?
+            .kind();
+
+        let ordered_child_props = match kind {
+            PropKind::Json | PropKind::Boolean | PropKind::Integer | PropKind::String => Vec::new(),
+            PropKind::Array | PropKind::Map | PropKind::Object => {
+                let ordered_child_prop_ids = workspace_snapshot
+                    .ordered_children_for_node(prop_id)
+                    .await?
+                    .ok_or(WorkspaceSnapshotError::OrderingNotFound(prop_id.into()))?;
+
+                let mut ordered_child_props = Vec::new();
+                for ordered_child_prop_id in ordered_child_prop_ids {
+                    if let NodeWeight::Prop(child_prop_weight) = workspace_snapshot
+                        .get_node_weight_by_id(ordered_child_prop_id)
+                        .await?
+                    {
+                        let child_prop =
+                            Self::get_by_id_or_error(ctx, child_prop_weight.id().into()).await?;
+                        ordered_child_props.push(child_prop);
+                    }
+                }
+                ordered_child_props
+            }
+        };
+
+        Ok(ordered_child_props)
+    }
+
+    // TODO(nick): this is straight up broken and inverted. You need to encapsulate the child type
+    // in the parent type. The problem is that this was ported from a recursive function in the old
+    // engine and is now a work queue. The collection pattern is ironically inverted: now, we start
+    // at the highest level and descend (instead of immediately descending and popping the result
+    // back up).
+    pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
+        let mut work_queue = VecDeque::new();
+        work_queue.push_back((self.id, self.kind));
+
+        let mut ts_type = "".to_string();
+        while let Some((prop_id, prop_kind)) = work_queue.pop_front() {
+            ts_type = match prop_kind {
+                PropKind::Array => {
+                    let children = Self::direct_child_props_ordered(ctx, prop_id).await?;
+                    let array_element_type = children
+                        .first()
+                        .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))?;
+
+                    work_queue.push_back((array_element_type.id, array_element_type.kind));
+                    format!("{ts_type}[] | null | undefined")
+                }
+                PropKind::Json => {
+                    "object | array | string | number | boolean | null | undefined".into()
+                }
+                PropKind::Boolean => "boolean | null | undefined".into(),
+                PropKind::Integer => "number | null | undefined".into(),
+                PropKind::Object => {
+                    let mut object_interface = "{\n".to_string();
+                    for child in &Self::direct_child_props_ordered(ctx, prop_id).await? {
+                        // We serialize the object key as a JSON string because its
+                        // the easiest way to ensure we create a valid TS interface
+                        // even with keys that are not valid javascript identifiers.
+                        // (e.g., we escape quotes in the prop name this way)
+                        let name_value = serde_json::to_value(&child.name)?;
+                        let name_serialized = serde_json::to_string(&name_value)?;
+                        object_interface
+                            .push_str(format!("{name_serialized}: {ts_type};\n").as_str());
+                        work_queue.push_back((child.id, child.kind));
+                    }
+                    object_interface.push('}');
+
+                    object_interface
+                }
+                PropKind::Map => {
+                    let children = Self::direct_child_props_ordered(ctx, prop_id).await?;
+
+                    let map_element_type = children
+                        .first()
+                        .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))?;
+
+                    work_queue.push_back((map_element_type.id, map_element_type.kind));
+                    format!("Record<string, {ts_type}> | null | undefined")
+                }
+                PropKind::String => "string | null | undefined".into(),
+            }
+        }
+
+        Ok(ts_type)
     }
 }

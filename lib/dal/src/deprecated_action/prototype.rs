@@ -23,44 +23,13 @@ use crate::{
     func::backend::js_action::DeprecatedActionRunResult,
     func::binding::return_value::FuncBindingReturnValueError,
     func::binding::{FuncBinding, FuncBindingError},
-    func::{before_funcs_for_component, BeforeFuncError},
     implement_add_edge_to,
     layer_db_types::{DeprecatedActionPrototypeContent, DeprecatedActionPrototypeContentV1},
-    ActionPrototypeId, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
+    secret::{before_funcs_for_component, BeforeFuncError},
+    ActionPrototypeId, Component, ComponentError, ComponentId, DalContext, FuncError, FuncId,
     HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DeprecatedActionPrototypeView {
-    id: ActionPrototypeId,
-    name: String,
-    display_name: Option<String>,
-}
-
-impl DeprecatedActionPrototypeView {
-    pub async fn new(
-        ctx: &DalContext,
-        prototype: DeprecatedActionPrototype,
-    ) -> DeprecatedActionPrototypeResult<DeprecatedActionPrototypeView> {
-        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
-        let display_name = func.display_name.map(|dname| dname.to_string());
-        Ok(Self {
-            id: prototype.id,
-            name: prototype.name.as_deref().map_or_else(
-                || match prototype.kind {
-                    DeprecatedActionKind::Create => "create".to_owned(),
-                    DeprecatedActionKind::Delete => "delete".to_owned(),
-                    DeprecatedActionKind::Other => "other".to_owned(),
-                    DeprecatedActionKind::Refresh => "refresh".to_owned(),
-                },
-                ToOwned::to_owned,
-            ),
-            display_name,
-        })
-    }
-}
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -128,6 +97,7 @@ impl From<ActionFuncSpecKind> for DeprecatedActionKind {
             ActionFuncSpecKind::Refresh => DeprecatedActionKind::Refresh,
             ActionFuncSpecKind::Other => DeprecatedActionKind::Other,
             ActionFuncSpecKind::Delete => DeprecatedActionKind::Delete,
+            ActionFuncSpecKind::Update => DeprecatedActionKind::Other,
         }
     }
 }
@@ -241,8 +211,15 @@ impl DeprecatedActionPrototype {
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
             let weight = workspace_snapshot.get_node_weight(node).await?;
-            content_hashes.push(weight.content_hash());
-            node_weights.push(weight);
+            if let NodeWeight::Content(content) = &weight {
+                if matches!(
+                    content.content_address(),
+                    ContentAddress::ActionPrototype(_)
+                ) {
+                    content_hashes.push(weight.content_hash());
+                    node_weights.push(weight);
+                }
+            }
         }
 
         let content_map: HashMap<ContentHash, DeprecatedActionPrototypeContent> = ctx
@@ -344,20 +321,9 @@ impl DeprecatedActionPrototype {
         component_id: ComponentId,
     ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
         let component = Component::get_by_id(ctx, component_id).await?;
-        let mut component_view = component.materialized_view(ctx).await?;
-        // Postcard doesn't store serde_json::Value well, so we use a String for the resource
-        // payload, but all action functions were written expecting a payload object, so we
-        // manually cast it here, it's horrifying, but func editing is not 100% in a place where we
-        // can just update all actions
-        if let Some(payload) = component_view
-            .as_mut()
-            .and_then(|v| v.pointer_mut("/resource/payload"))
-        {
-            if let serde_json::Value::String(string) = payload.clone() {
-                *payload = serde_json::from_str::<serde_json::Value>(&string)?;
-            }
-        }
-        let before = before_funcs_for_component(ctx, &component_id).await?;
+        let component_view = component.view(ctx).await?;
+
+        let before = before_funcs_for_component(ctx, component_id).await?;
 
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,

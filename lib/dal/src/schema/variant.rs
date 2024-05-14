@@ -1,6 +1,6 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
-use petgraph::{Direction, Incoming};
+use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::LayerDbError;
@@ -54,6 +54,7 @@ mod value_from;
 
 pub mod authoring;
 
+use crate::action::prototype::ActionKind;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -180,6 +181,20 @@ pub struct SchemaVariantClonedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantUpdatedPayload {
+    schema_variant_id: SchemaVariantId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantSavedPayload {
+    schema_variant_id: SchemaVariantId,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
@@ -188,6 +203,20 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::SchemaVariantCreated(SchemaVariantCreatedPayload {
+                schema_variant_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn schema_variant_saved(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantSaved(SchemaVariantSavedPayload {
                 schema_variant_id,
                 change_set_id: ctx.change_set_id(),
             }),
@@ -207,6 +236,39 @@ impl WsEvent {
             }),
         )
         .await
+    }
+
+    pub async fn schema_variant_update_finished(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload {
+                schema_variant_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+}
+
+impl From<SchemaVariant> for SchemaVariantContentV1 {
+    fn from(value: SchemaVariant) -> Self {
+        Self {
+            timestamp: value.timestamp,
+            ui_hidden: value.ui_hidden,
+            name: value.name,
+            display_name: value.display_name,
+            category: value.category,
+            color: value.color,
+            component_type: value.component_type,
+            link: value.link,
+            description: value.description,
+            asset_func_id: value.asset_func_id,
+            finalized_once: value.finalized_once,
+            is_builtin: value.is_builtin,
+        }
     }
 }
 
@@ -289,6 +351,36 @@ impl SchemaVariant {
         Ok((schema_variant, root_prop))
     }
 
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> SchemaVariantResult<Self>
+    where
+        L: FnOnce(&mut Self) -> SchemaVariantResult<()>,
+    {
+        let mut schema_variant = self;
+
+        let before = SchemaVariantContentV1::from(schema_variant.clone());
+        lambda(&mut schema_variant)?;
+        let updated = SchemaVariantContentV1::from(schema_variant.clone());
+
+        if updated != before {
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(SchemaVariantContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set()?, schema_variant.id.into(), hash)
+                .await?;
+        }
+
+        Ok(schema_variant)
+    }
+
     /// Returns all [`PropIds`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
     pub async fn all_prop_ids(
         ctx: &DalContext,
@@ -335,6 +427,16 @@ impl SchemaVariant {
         Ok(prop_ids)
     }
 
+    /// Returns all [`Props`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
+    pub async fn all_props(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Prop>> {
+        let all_prop_ids = Self::all_prop_ids(ctx, schema_variant_id).await?;
+        let all_props = Prop::list_content(ctx, all_prop_ids.into_iter().collect()).await?;
+        Ok(all_props)
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -353,6 +455,26 @@ impl SchemaVariant {
         let SchemaVariantContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn get_components_on_graph(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<ComponentId>> {
+        let mut comp_ids: Vec<ComponentId> = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let incoming_nodes_indices = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+        for incoming_node_idx in incoming_nodes_indices {
+            if let NodeWeight::Component(comp) = workspace_snapshot
+                .get_node_weight(incoming_node_idx)
+                .await?
+            {
+                comp_ids.push(comp.id().into());
+            }
+        }
+        Ok(comp_ids)
     }
 
     pub async fn get_authoring_func(
@@ -476,9 +598,9 @@ impl SchemaVariant {
 
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
-                Some(func_content) => {
+                Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let SchemaVariantContent::V1(inner) = func_content;
+                    let SchemaVariantContent::V1(inner) = content;
 
                     schema_variants.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
                 }
@@ -718,7 +840,7 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
-    pub async fn new_action_prototype(
+    pub async fn new_deprecated_action_prototype(
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
@@ -733,6 +855,36 @@ impl SchemaVariant {
 
         Ok(())
     }
+
+    pub async fn find_action_prototypes_by_kind(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        kind: ActionKind,
+    ) -> SchemaVariantResult<Vec<ActionPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id: Ulid = schema_variant_id.into();
+
+        let action_prototype_node_idxs = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::ActionPrototype)
+            .await?;
+
+        let mut prototype_ids = vec![];
+
+        for prototype_idx in action_prototype_node_idxs {
+            let NodeWeight::ActionPrototype(weight) =
+                workspace_snapshot.get_node_weight(prototype_idx).await?
+            else {
+                continue;
+            };
+
+            if weight.kind() == kind {
+                prototype_ids.push(weight.id().into());
+            }
+        }
+
+        Ok(prototype_ids)
+    }
+
     pub async fn find_leaf_item_functions(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -742,11 +894,10 @@ impl SchemaVariant {
         let leaf_item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
-        for (maybe_key, _proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
-            if let Some(key) = maybe_key {
-                if let Some(func_id) = Func::find_by_name(ctx, key).await? {
-                    func_ids.push(func_id)
-                }
+        for (maybe_key, proto) in Prop::prototypes_by_key(ctx, leaf_item_prop_id).await? {
+            if maybe_key.is_some() {
+                let func_id = AttributePrototype::func_id(ctx, proto).await?;
+                func_ids.push(func_id);
             }
         }
 
@@ -1205,8 +1356,10 @@ impl SchemaVariant {
                 .await?;
 
             let mut schema_id: Option<SchemaId> = None;
-            for (edge_weight, source_index, _) in maybe_schema_indices {
-                if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
+            for (edge_weight, source_index, _target_index) in maybe_schema_indices {
+                if *edge_weight.kind() == EdgeWeightKind::new_use()
+                    || *edge_weight.kind() == EdgeWeightKind::new_use_default()
+                {
                     if let NodeWeight::Content(content) =
                         workspace_snapshot.get_node_weight(source_index).await?
                     {
@@ -1378,6 +1531,37 @@ impl SchemaVariant {
         Ok(auth_func_ids)
     }
 
+    pub async fn list_schema_variant_ids_using_auth_func_id(
+        ctx: &DalContext,
+        auth_func_id: FuncId,
+    ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let mut results = vec![];
+
+        for schema_variant_id in Self::list_ids(ctx).await? {
+            let workspace_snapshot = ctx.workspace_snapshot()?;
+
+            let targets = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    schema_variant_id,
+                    EdgeWeightKindDiscriminants::AuthenticationPrototype,
+                )
+                .await?;
+
+            for target in targets {
+                let func_node_weight = workspace_snapshot
+                    .get_node_weight(target)
+                    .await?
+                    .get_func_node_weight()?;
+                if auth_func_id == func_node_weight.id().into() {
+                    results.push(schema_variant_id);
+                    break;
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
     /// Find the [`SchemaVariantId`](SchemaVariant) for the given [`PropId`](Prop).
     pub async fn find_for_prop_id(
         ctx: &DalContext,
@@ -1544,5 +1728,27 @@ impl SchemaVariant {
         }
 
         Ok(schema_variant_ids)
+    }
+
+    pub async fn remove_direct_connected_edges(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let maybe_schema_indices = workspace_snapshot.edges_directed(self.id, Outgoing).await?;
+
+        for (_edge_weight, _source_index, target_index) in maybe_schema_indices {
+            workspace_snapshot
+                .remove_node_by_id(
+                    ctx.change_set()?,
+                    workspace_snapshot.get_node_weight(target_index).await?.id(),
+                )
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn rebuild_variant_root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        RootProp::new(ctx, self.id).await?;
+        Ok(())
     }
 }

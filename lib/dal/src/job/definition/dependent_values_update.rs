@@ -14,28 +14,32 @@ use tokio::{
 };
 use ulid::Ulid;
 
-//use crate::tasks::StatusReceiverClient;
-//use crate::tasks::StatusReceiverRequest;
 use crate::{
     attribute::value::{
         dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
     },
     job::{
         consumer::{
-            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
+            JobConsumerResult, JobInfo, RetryBackoff,
         },
         producer::{JobProducer, JobProducerResult},
     },
+    prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
     WsEvent, WsEventError,
 };
+
+const MAX_RETRIES: u32 = 8;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DependentValueUpdateError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("status update error: {0}")]
     StatusUpdate(#[from] StatusUpdateError),
     #[error(transparent)]
@@ -50,20 +54,18 @@ pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs {
-    attribute_values: Vec<AttributeValueId>,
+    nodes: Vec<Ulid>,
 }
 
 impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
     fn from(value: DependentValuesUpdate) -> Self {
-        Self {
-            attribute_values: value.attribute_values,
-        }
+        Self { nodes: value.nodes }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
-    attribute_values: Vec<AttributeValueId>,
+    nodes: Vec<Ulid>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
@@ -75,10 +77,10 @@ impl DependentValuesUpdate {
     pub fn new(
         access_builder: AccessBuilder,
         visibility: Visibility,
-        attribute_values: Vec<AttributeValueId>,
+        nodes: Vec<Ulid>,
     ) -> Box<Self> {
         Box::new(Self {
-            attribute_values,
+            nodes,
             access_builder,
             visibility,
             job: None,
@@ -116,20 +118,22 @@ impl JobConsumer for DependentValuesUpdate {
         skip_all,
         level = "info",
         fields(
-            attribute_values = ?self.attribute_values,
+            nodes = ?self.nodes,
         )
     )]
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         Ok(self.inner_run(ctx).await?)
     }
 }
 
 impl DependentValuesUpdate {
-    async fn inner_run(&self, ctx: &mut DalContext) -> DependentValueUpdateResult<()> {
+    async fn inner_run(
+        &self,
+        ctx: &mut DalContext,
+    ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
 
-        let mut dependency_graph =
-            DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
+        let mut dependency_graph = DependentValueGraph::new(ctx, self.nodes.clone()).await?;
 
         debug!(
             "DependentValueGraph calculation took: {:?}",
@@ -138,7 +142,9 @@ impl DependentValuesUpdate {
 
         // Remove the first set of independent_values since they should already have had their functions executed
         for value in dependency_graph.independent_values() {
-            dependency_graph.remove_value(value);
+            if !dependency_graph.values_needs_to_execute_from_prototype_function(value) {
+                dependency_graph.remove_value(value);
+            }
         }
 
         let mut seen_ids = HashSet::new();
@@ -177,21 +183,46 @@ impl DependentValuesUpdate {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
-                            #[allow(unused_variables)]
                             let write_guard = self.set_value_lock.write().await;
 
-                            match AttributeValue::set_values_from_execution_result(
+                            // Only set values if their functions are actually
+                            // "dependent". Other values may have been
+                            // introduced to the attribute value graph because
+                            // of child-parent prop dependencies, but these
+                            // values themselves do not need to change (they are
+                            // always Objects, Maps, or Arrays set by
+                            // setObject/setArray/setMap and are not updated in
+                            // the dependent value execution). If we forced
+                            // these container values to update here, we might
+                            // touch child properties unnecessarily.
+                            match AttributeValue::is_set_by_dependent_function(
                                 ctx,
                                 finished_value_id,
-                                execution_values,
                             )
                             .await
                             {
-                                // Remove the value, so that any values that dependent on it will
-                                // become independent values (once all other dependencies are removed)
-                                Ok(_) => dependency_graph.remove_value(finished_value_id),
+                                Ok(true) => match AttributeValue::set_values_from_execution_result(
+                                    ctx,
+                                    finished_value_id,
+                                    execution_values,
+                                )
+                                .await
+                                {
+                                    Ok(_) => {
+                                        // Remove the value, so that any values that depend on it will
+                                        // become independent values (once all other dependencies are removed)
+                                        dependency_graph.remove_value(finished_value_id);
+                                        drop(write_guard);
+                                    }
+                                    Err(err) => {
+                                        execution_error(ctx, err.to_string(), finished_value_id)
+                                            .await;
+                                        dependency_graph.cycle_on_self(finished_value_id);
+                                    }
+                                },
+                                Ok(false) => dependency_graph.remove_value(finished_value_id),
                                 Err(err) => {
-                                    error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
+                                    execution_error(ctx, err.to_string(), finished_value_id).await;
                                     dependency_graph.cycle_on_self(finished_value_id);
                                 }
                             }
@@ -202,8 +233,9 @@ impl DependentValuesUpdate {
                             // nodes *without* outgoing edges. Thus we will never try to re-execute
                             // the function for this value, nor will we execute anything in the
                             // dependency graph connected to this value
-
-                            error!("error executing prototype function for AttributeValue {finished_value_id}: {err}");
+                            let read_guard = self.set_value_lock.read().await;
+                            execution_error(ctx, err.to_string(), finished_value_id).await;
+                            drop(read_guard);
                             dependency_graph.cycle_on_self(finished_value_id);
                         }
                     }
@@ -226,10 +258,48 @@ impl DependentValuesUpdate {
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
-        ctx.commit().await?;
-
-        Ok(())
+        Ok(if ctx.commit().await?.is_some() {
+            warn!("Retrying DependentValueUpdate due to conflicts");
+            JobCompletionState::Retry {
+                limit: MAX_RETRIES,
+                backoff: RetryBackoff::Exponential,
+            }
+        } else {
+            JobCompletionState::Done
+        })
     }
+}
+
+async fn execution_error(
+    ctx: &DalContext,
+    err_string: String,
+    attribute_value_id: AttributeValueId,
+) {
+    let fallback = format!(
+        "error executing prototype function for AttributeValue {attribute_value_id}: {err_string}"
+    );
+    let error_message = if let Ok(detail) = execution_error_detail(ctx, attribute_value_id).await {
+        format!("{detail}: {err_string}")
+    } else {
+        fallback
+    };
+
+    error!("{}", error_message);
+}
+
+async fn execution_error_detail(
+    ctx: &DalContext,
+    id: AttributeValueId,
+) -> DependentValueUpdateResult<String> {
+    let is_for = AttributeValue::is_for(ctx, id)
+        .await?
+        .debug_info(ctx)
+        .await?;
+    let prototype_func = AttributeValue::prototype_func(ctx, id).await?.name;
+
+    Ok(format!(
+        "error executing prototype function \"{prototype_func}\" to set the value of {is_for} ({id})"
+    ))
 }
 
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
@@ -295,7 +365,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         let args = DependentValuesUpdateArgs::deserialize(&job.arg)?;
         Ok(Self {
-            attribute_values: args.attribute_values,
+            nodes: args.nodes,
             access_builder: job.access_builder,
             visibility: job.visibility,
             job: Some(job),

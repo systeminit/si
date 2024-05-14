@@ -22,6 +22,7 @@ pub mod js_action;
 pub mod js_attribute;
 pub mod js_reconciliation;
 pub mod js_schema_variant_definition;
+pub mod json;
 pub mod map;
 pub mod object;
 pub mod string;
@@ -83,6 +84,7 @@ pub enum FuncBackendKind {
     JsAction,
     JsAttribute,
     JsAuthentication,
+    Json,
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,

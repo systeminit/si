@@ -38,7 +38,6 @@
         >
           <span class="pr-2" role="decoration">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
-          {{ schemaVariantsById?.[svId]?.builtin ? "(builtin)" : "" }}
           <VButton
             class="ml-auto"
             size="xs"
@@ -151,15 +150,18 @@ const open = () => {
   openModal();
 };
 
-defineExpose({ open, close });
+const isOpen = computed(() => modalRef.value?.isOpen);
+
+defineExpose({ open, close, isOpen });
 
 const schemaVariantsById = computed(() => componentStore.schemaVariantsById);
 
 const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
+    .filter((sv) => sv.isDefault)
     .map((sv) => ({
-      label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
+      label: sv.schemaName,
       value: sv.id,
     })),
 );

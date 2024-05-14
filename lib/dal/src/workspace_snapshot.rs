@@ -41,6 +41,7 @@ use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
@@ -60,6 +61,8 @@ use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("Action error: {0}")]
+    Action(#[from] Box<ActionError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} has no workspace snapshot address")]
@@ -74,6 +77,8 @@ pub enum WorkspaceSnapshotError {
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("ordering not found for node with ordered children: {0}")]
+    OrderingNotFound(Ulid),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("postcard error: {0}")]
@@ -210,7 +215,14 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
 }
 
 impl WorkspaceSnapshot {
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.initial",
+        level = "debug",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set.id,
+        )
+    )]
     pub async fn initial(
         ctx: &DalContext,
         change_set: &ChangeSet,
@@ -301,7 +313,15 @@ impl WorkspaceSnapshot {
         self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.write",
+        level = "debug",
+        skip_all,
+        fields(
+            si.vector_clock.id = %vector_clock_id,
+            si.workspace_snapshot.address = Empty,
+        )
+    )]
     pub async fn write(
         &self,
         ctx: &DalContext,
@@ -325,6 +345,7 @@ impl WorkspaceSnapshot {
                     ctx.events_actor(),
                 )
                 .await?;
+            Span::current().record("si.workspace_snapshot.address", new_address.to_string());
 
             new_address
         };
@@ -346,7 +367,7 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.root())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(name = "workspace_snapshot.working_copy", level = "debug", skip_all)]
     async fn working_copy(&self) -> SnapshotReadGuard<'_> {
         SnapshotReadGuard {
             read_only_graph: self.read_only_graph.clone(),
@@ -354,7 +375,11 @@ impl WorkspaceSnapshot {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.working_copy_mut",
+        level = "debug",
+        skip_all
+    )]
     async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
         if self.working_copy.read().await.is_none() {
             // Make a copy of the read only graph as our new working copy
@@ -372,6 +397,17 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    pub async fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
+        let graph: WorkspaceSnapshotGraph = si_layer_cache::db::serialize::from_bytes(bytes)?;
+
+        Ok(Self {
+            address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
+            read_only_graph: Arc::new(graph),
+            working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
     /// Returns `true` if the graph does not have a cycle in it. This operation
     /// is relatively expensive but necessary to prevent infinite loops.
     pub async fn is_acyclic_directed(&self) -> bool {
@@ -383,7 +419,12 @@ impl WorkspaceSnapshot {
         Ok(new_node_index)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.add_ordered_node",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn add_ordered_node(
         &self,
         change_set: &ChangeSet,
@@ -396,7 +437,12 @@ impl WorkspaceSnapshot {
         Ok(new_node_index)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.update_content",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn update_content(
         &self,
         change_set: &ChangeSet,
@@ -409,7 +455,12 @@ impl WorkspaceSnapshot {
             .update_content(change_set, id, new_content_hash)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.add_edge",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn add_edge(
         &self,
         from_node_id: impl Into<Ulid>,
@@ -436,7 +487,12 @@ impl WorkspaceSnapshot {
 
     // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
     // indices are definitely correct.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.add_edge_unchecked",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn add_edge_unchecked(
         &self,
         from_node_index: NodeIndex,
@@ -449,7 +505,12 @@ impl WorkspaceSnapshot {
             .add_edge(from_node_index, edge_weight, to_node_index)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.add_ordered_edge",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn add_ordered_edge(
         &self,
         change_set: &ChangeSet,
@@ -471,7 +532,12 @@ impl WorkspaceSnapshot {
         Ok(edge_index)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.detect_conflicts_and_updates",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn detect_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -486,7 +552,13 @@ impl WorkspaceSnapshot {
     }
 
     // NOTE(nick): this should only be used by the rebaser.
-    #[instrument(level = "debug", skip_all)]
+    // NOTE(fnichol): ...it isn't though, at least right now... p.s. hey Nick!
+    #[instrument(
+        name = "workspace_snapshot.edge_endpoints",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn edge_endpoints(
         &self,
         edge_index: EdgeIndex,
@@ -494,7 +566,12 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy_mut().await.edge_endpoints(edge_index)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.import_subgraph",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn import_subgraph(
         &self,
         other: &mut Self,
@@ -507,7 +584,12 @@ impl WorkspaceSnapshot {
     }
 
     /// Calls [`WorkspaceSnapshotGraph::replace_references()`]
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.replace_references",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn replace_references(
         &self,
         original_node_index: NodeIndex,
@@ -518,7 +600,12 @@ impl WorkspaceSnapshot {
             .replace_references(original_node_index)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.get_node_weight_by_id",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn get_node_weight_by_id(
         &self,
         id: impl Into<Ulid>,
@@ -531,7 +618,12 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.get_node_weight",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn get_node_weight(
         &self,
         node_index: NodeIndex,
@@ -543,7 +635,12 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.find_equivalent_node",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn find_equivalent_node(
         &self,
         id: Ulid,
@@ -555,13 +652,18 @@ impl WorkspaceSnapshot {
             .find_equivalent_node(id, lineage_id)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.cleanup",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn cleanup(&self) -> WorkspaceSnapshotResult<()> {
         self.working_copy_mut().await.cleanup();
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(name = "workspace_snapshot.nodes", level = "debug", skip_all, fields())]
     pub async fn nodes(&self) -> WorkspaceSnapshotResult<Vec<(NodeWeight, NodeIndex)>> {
         Ok(self
             .working_copy()
@@ -571,7 +673,7 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(name = "workspace_snapshot.edges", level = "debug", skip_all, fields())]
     pub async fn edges(&self) -> WorkspaceSnapshotResult<Vec<(EdgeWeight, NodeIndex, NodeIndex)>> {
         Ok(self
             .working_copy()
@@ -589,7 +691,12 @@ impl WorkspaceSnapshot {
         self.working_copy().await.tiny_dot_to_file(suffix);
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.get_node_index_by_id",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
@@ -597,7 +704,12 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.get_node_index_by_id(id)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.try_get_node_index_by_id",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn try_get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
@@ -605,7 +717,12 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.try_get_node_index_by_id(id)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.get_latest_node_index",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn get_latest_node_index(
         &self,
         node_index: NodeIndex,
@@ -613,7 +730,7 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.get_latest_node_idx(node_index)?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "workspace_snapshot.find", level = "debug", skip_all, fields())]
     pub async fn find(
         ctx: &DalContext,
         workspace_snapshot_addr: WorkspaceSnapshotAddress,
@@ -629,7 +746,7 @@ impl WorkspaceSnapshot {
                 workspace_snapshot_addr,
             ))?;
 
-        info!("snapshot fetch took: {:?}", start.elapsed());
+        debug!("snapshot fetch took: {:?}", start.elapsed());
 
         Ok(Self {
             address: Arc::new(RwLock::new(workspace_snapshot_addr)),
@@ -661,7 +778,12 @@ impl WorkspaceSnapshot {
         Self::find(ctx, address).await
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.get_category_node",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn get_category_node(
         &self,
         source: Option<Ulid>,
@@ -671,7 +793,12 @@ impl WorkspaceSnapshot {
         Ok(category_node_id)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.edges_directed",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn edges_directed(
         &self,
         id: impl Into<Ulid>,
@@ -692,7 +819,12 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.edges_directed_for_edge_weight_kind",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn edges_directed_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -707,7 +839,12 @@ impl WorkspaceSnapshot {
             .edges_directed_for_edge_weight_kind(node_index, direction, edge_kind))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.edges_directed_by_index",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn edges_directed_by_index(
         &self,
         node_index: NodeIndex,
@@ -727,7 +864,12 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.remove_all_edges",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn remove_all_edges(
         &self,
         change_set: &ChangeSet,
@@ -745,7 +887,12 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.incoming_sources_for_edge_weight_kind",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn incoming_sources_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -765,7 +912,12 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.outgoing_targets_for_edge_weight_kind",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn outgoing_targets_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -786,7 +938,12 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn outgoing_targets_for_edge_weight_kind_by_index(
         &self,
         node_index: NodeIndex,
@@ -806,7 +963,12 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.all_outgoing_targets",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn all_outgoing_targets(
         &self,
         id: impl Into<Ulid>,
@@ -827,7 +989,12 @@ impl WorkspaceSnapshot {
         Ok(result)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.all_incoming_sources",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn all_incoming_sources(
         &self,
         id: impl Into<Ulid>,
@@ -848,7 +1015,12 @@ impl WorkspaceSnapshot {
         Ok(result)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.remove_incoming_edges_of_kind",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn remove_incoming_edges_of_kind(
         &self,
         change_set: &ChangeSet,
@@ -892,7 +1064,12 @@ impl WorkspaceSnapshot {
         Ok(edges)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.remove_node_by_id",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn remove_node_by_id(
         &self,
         change_set: &ChangeSet,
@@ -907,7 +1084,12 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.remove_edge",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn remove_edge(
         &self,
         change_set: &ChangeSet,
@@ -923,7 +1105,12 @@ impl WorkspaceSnapshot {
         )?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.remove_edge_for_ulids",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn remove_edge_for_ulids(
         &self,
         change_set: &ChangeSet,
@@ -945,7 +1132,12 @@ impl WorkspaceSnapshot {
 
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
     /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.perform_updates",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn perform_updates(
         &self,
         to_rebase_change_set: &ChangeSet,
@@ -962,7 +1154,12 @@ impl WorkspaceSnapshot {
     /// Mark whether a prop can be used as an input to a function. Props below
     /// Maps and Arrays are not valid inputs. Must only be used when
     /// "finalizing" a schema variant!
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.mark_prop_as_able_to_be_used_as_prototype_arg",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
         &self,
         node_index: NodeIndex,
@@ -980,7 +1177,12 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.ordering_node_for_container",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn ordering_node_for_container(
         &self,
         id: impl Into<Ulid>,
@@ -989,7 +1191,12 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.ordering_node_for_container(idx)?)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(
+        name = "workspace_snapshot.ordered_children_for_node",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn ordered_children_for_node(
         &self,
         id: impl Into<Ulid>,
@@ -1008,7 +1215,13 @@ impl WorkspaceSnapshot {
             },
         )
     }
-    #[instrument(level = "debug", skip_all)]
+
+    #[instrument(
+        name = "workspace_snapshot.index_or_key_of_child_entry",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     pub async fn index_or_key_of_child_entry(
         &self,
         id: impl Into<Ulid>,
@@ -1049,5 +1262,15 @@ impl WorkspaceSnapshot {
             }
         }
         Ok(None)
+    }
+
+    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
+            Action::dispatch_action(ctx, dispatchable_ation_id)
+                .await
+                .map_err(Box::new)?;
+        }
+
+        Ok(())
     }
 }

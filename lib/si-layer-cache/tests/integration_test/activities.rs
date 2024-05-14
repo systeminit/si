@@ -5,7 +5,8 @@ use std::sync::Arc;
 use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
-    activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata, LayerDb,
+    activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
+    memory_cache::MemoryCacheConfig, LayerDb,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -25,10 +26,11 @@ async fn activities() {
     let db = setup_pg_db("activities").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -36,10 +38,11 @@ async fn activities() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -85,10 +88,11 @@ async fn activities_subscribe_partial() {
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -96,10 +100,11 @@ async fn activities_subscribe_partial() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await

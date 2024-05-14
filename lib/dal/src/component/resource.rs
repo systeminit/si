@@ -14,7 +14,7 @@ use crate::{Component, ComponentId, DalContext};
 pub struct ResourceView {
     pub status: Option<ResourceStatus>,
     pub message: Option<String>,
-    pub data: Option<Value>,
+    pub payload: Option<Value>,
     pub logs: Vec<String>,
     pub last_synced: Option<String>,
 }
@@ -32,12 +32,12 @@ impl ResourceView {
 
     pub fn assemble(result: DeprecatedActionRunResult) -> ComponentResult<Self> {
         let payload: Value = match result.payload {
-            Some(payload) => serde_json::from_str::<Value>(&payload)?,
+            Some(payload) => payload,
             None => Value::Null,
         };
 
         Ok(Self {
-            data: Some(payload),
+            payload: Some(payload),
             message: result.message,
             status: result.status,
             logs: result.logs,

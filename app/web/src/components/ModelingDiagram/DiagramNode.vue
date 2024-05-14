@@ -105,6 +105,7 @@
           y: nodeHeight - 2,
         }"
       >
+        HERE
         <DiagramIcon
           v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
           :key="`status-icon-${i}`"
@@ -151,6 +152,16 @@
           :y="nodeBodyHeight / 2"
         />
       </v-group>
+
+      <DiagramIcon
+        v-if="node.def.canBeUpgraded"
+        icon="bolt"
+        :color="getToneColorHex('action')"
+        :size="24 + (diffIconHover ? 4 : 0)"
+        :x="halfWidth - 2 - 36"
+        :y="nodeHeaderHeight / 2"
+        origin="center"
+      />
 
       <!-- added/modified indicator -->
       <DiagramIcon

@@ -6,84 +6,46 @@
     />
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle label="Asset Functions">
+        <SidebarSubpanelTitle
+          label="Asset Functions"
+          icon="func"
+          class="mt-2xs"
+        >
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedAssetId"
             :disabled="!assetStore.selectedAsset?.id"
-            label="Attach"
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>
-        <div
-          v-if="!assetStore.selectedAssetId"
-          class="w-full mt-4 p-sm text-neutral-400 dark:text-neutral-300 text-sm text-center"
-        >
-          Select an asset to see the functions attached to it.
-        </div>
       </template>
 
-      <ul
+      <FuncList
         v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
-        class="overflow-y-auto min-h-[200px]"
-      >
-        <Collapsible
-          v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
-          :key="kind"
-          as="li"
-          class="w-full"
-          contentAs="ul"
-          defaultOpen
-        >
-          <template #label>
-            <div class="flex items-center gap-2">
-              <FuncSkeleton />
-              <span> {{ label.pluralLabel }} </span>
-            </div>
-          </template>
-
-          <template #default>
-            <li
-              v-for="func in funcsByKind[
-                customizableFuncKindToFuncKind(kind)
-              ] ?? []"
-              :key="func.id"
-            >
-              <SiFuncListItem
-                :func="func"
-                color="#921ed6"
-                context="workspace-lab-assets"
-              />
-            </li>
-          </template>
-        </Collapsible>
-      </ul>
+        :funcsByKind="funcsByKind"
+        context="workspace-lab-assets"
+        defaultOpen
+      />
+      <EmptyStateCard
+        v-else
+        iconName="funcs"
+        primaryText="Select Asset, View Functions"
+        secondaryText="Select an asset from the list above to view its attached functions here."
+      />
     </ScrollArea>
-    <AssetFuncAttachModal
-      ref="attachModalRef"
-      :schemaVariantId="assetSchemaVariantId"
-      :assetId="assetId"
-    />
+    <AssetFuncAttachModal ref="attachModalRef" :assetId="assetId" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
-import {
-  Collapsible,
-  RequestStatusMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
-import {
-  CUSTOMIZABLE_FUNC_TYPES,
-  customizableFuncKindToFuncKind,
-} from "@/api/sdf/dal/func";
+import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
-import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import FuncSkeleton from "./FuncSkeleton.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
+import FuncList from "./FuncEditor/FuncList.vue";
+import EmptyStateCard from "./EmptyStateCard.vue";
 
 const props = defineProps<{ assetId?: string }>();
 
@@ -101,9 +63,6 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 );
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
-const assetSchemaVariantId = computed(() =>
-  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
-);
 
 const openAttachFuncModal = (type: "new" | "existing") => {
   if (type === "new") {

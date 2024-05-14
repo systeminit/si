@@ -1,20 +1,17 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
-    "rust_binary",
     "nix_omnibus_pkg",
+    "rust_binary",
 )
 
 rust_binary(
     name = "rebaser",
     deps = [
         "//lib/rebaser-server:rebaser-server",
+        "//lib/si-service:si-service",
         "//lib/si-std:si-std",
-        "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
-        "//third-party/rust:color-eyre",
-        "//third-party/rust:tokio",
-        "//third-party/rust:tokio-util",
     ],
     srcs = glob(["src/**/*.rs"]),
     resources = {
@@ -27,7 +24,7 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "rebaser",
-    build_deps = ["//bin/rebaser:rebaser"]
+    build_deps = ["//bin/rebaser:rebaser"],
 )
 
 nix_omnibus_pkg(

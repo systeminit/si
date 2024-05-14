@@ -8,9 +8,7 @@ use strum::{AsRefStr, Display, EnumString};
 
 use crate::prop::{PropPath, WidgetOptions};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorResult};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::{DalContext, Prop, PropId, PropKind, SchemaVariantId};
+use crate::{DalContext, Prop, PropKind, SchemaVariantId};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,47 +29,36 @@ impl PropertyEditorSchema {
         // Get the root prop and load it into the work queue.
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
-        let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
+        let root_prop = Prop::get_by_id_or_error(ctx, root_prop_id).await?;
         let root_property_editor_prop = PropertyEditorProp::new(ctx, root_prop).await?;
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut work_queue = VecDeque::from([(root_prop_id, root_property_editor_prop_id)]);
         while let Some((prop_id, property_editor_prop_id)) = work_queue.pop_front() {
             // Collect all child props.
             let mut cache = Vec::new();
             {
-                for child_prop_node_index in workspace_snapshot
-                    .outgoing_targets_for_edge_weight_kind(
-                        prop_id,
-                        EdgeWeightKindDiscriminants::Use,
-                    )
-                    .await?
-                {
-                    if let NodeWeight::Prop(child_prop_weight) = workspace_snapshot
-                        .get_node_weight(child_prop_node_index)
-                        .await?
-                    {
-                        let child_prop_id: PropId = child_prop_weight.id().into();
+                let child_props = Prop::direct_child_props_ordered(ctx, prop_id).await?;
 
-                        // Skip anything at and under "/root/secret_definition"
-                        if prop_id == root_prop_id
-                            && child_prop_weight.name() == "secret_definition"
-                        {
-                            continue;
-                        }
-                        cache.push(child_prop_id);
+                for child_prop in child_props {
+                    // Skip anything at and under "/root/secret_definition",
+                    // also skip hidden props
+                    if (prop_id == root_prop_id && child_prop.name == "secret_definition")
+                        || child_prop.hidden
+                    {
+                        continue;
                     }
+                    cache.push(child_prop);
                 }
             }
 
             // Now that we have the child props, prepare the property editor props and load the work queue.
             let mut child_property_editor_prop_ids = Vec::new();
-            for child_prop_id in cache {
+            for child_prop in cache {
+                let child_prop_id = child_prop.id;
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let child_prop = Prop::get_by_id(ctx, child_prop_id).await?;
                 let child_property_editor_prop = PropertyEditorProp::new(ctx, child_prop).await?;
 
                 // Load the work queue with the child prop.
@@ -134,6 +121,7 @@ pub enum PropertyEditorPropKind {
     Array,
     Boolean,
     Integer,
+    Json,
     Map,
     Object,
     String,
@@ -145,6 +133,7 @@ impl From<PropKind> for PropertyEditorPropKind {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
+            PropKind::Json => Self::Json,
             PropKind::Object => Self::Object,
             PropKind::String => Self::String,
             PropKind::Map => Self::Map,

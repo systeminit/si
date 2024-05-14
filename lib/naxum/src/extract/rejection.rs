@@ -20,12 +20,17 @@ impl InvalidUtf8 {
 impl IntoResponse for InvalidUtf8 {
     fn into_response(self) -> Response {
         // TODO: log rejection
+        Response::server_error()
     }
 }
 
 impl fmt::Display for InvalidUtf8 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "message payload didn't contain valid UTF-8")
+        write!(
+            f,
+            "message payload didn't contain valid UTF-8: {:?}",
+            self.0
+        )
     }
 }
 

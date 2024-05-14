@@ -119,15 +119,15 @@ where
         builder = builder.add_source(env);
     }
 
-    // Add programattic config
+    // Add programmatic config
     let mut config_map = ConfigMap::default();
     set_func(&mut config_map);
 
     if config_map.empty {
-        trace!("nothing set for programatic config, not merging");
+        trace!("nothing set for programmatic config, not merging");
     } else {
         let config_hash = config_map.into_inner();
-        trace!("merging programatic config for config={:?}", &config_hash);
+        trace!("merging programmatic config for config={:?}", &config_hash);
         for (key, value) in config_hash.into_iter() {
             builder = builder
                 .set_override(key, value)

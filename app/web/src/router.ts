@@ -4,9 +4,9 @@ import { nextTick } from "vue";
 import { posthog } from "@/utils/posthog";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
+import { isDevMode } from "./utils/debug";
 
 // Cannot use inside the template directly.
-const isDevMode = import.meta.env.DEV;
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const routes: RouteRecordRaw[] = [
@@ -82,7 +82,7 @@ const routes: RouteRecordRaw[] = [
             path: "m/:moduleSlug?",
             name: "workspace-lab-packages",
             component: () =>
-              import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
+              import("@/components/Workspace/WorkspaceCustomizeModules.vue"),
           },
         ],
       },
@@ -137,13 +137,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/OopsPage.vue"),
   },
 
-  // svg debug page, see all icons and svgs in the system in one place
-  {
-    path: "/svg",
-    name: "svg",
-    meta: { public: true },
-    component: () => import("@/pages/DebugSVG.vue"),
-  },
+  ...(isDevMode
+    ? [
+        // svg debug page, see all icons and svgs in the system in one place
+        {
+          path: "/w/:workspacePk/svg",
+          name: "svg",
+          meta: { public: true },
+          component: () => import("@/pages/DebugSVG.vue"),
+        },
+      ]
+    : []),
 
   // 404
   {

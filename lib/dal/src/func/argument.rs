@@ -14,6 +14,7 @@ use crate::attribute::prototype::argument::{
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::{
     FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
@@ -83,6 +84,7 @@ pub enum FuncArgumentKind {
     Array,
     Boolean,
     Integer,
+    Json,
     Map,
     Object,
     String,
@@ -91,6 +93,7 @@ pub enum FuncArgumentKind {
 impl From<PropKind> for FuncArgumentKind {
     fn from(prop_kind: PropKind) -> Self {
         match prop_kind {
+            PropKind::Json => FuncArgumentKind::Json,
             PropKind::Array => FuncArgumentKind::Array,
             PropKind::Boolean => FuncArgumentKind::Boolean,
             PropKind::Integer => FuncArgumentKind::Integer,
@@ -105,6 +108,7 @@ impl From<PkgFuncArgumentKind> for FuncArgumentKind {
     fn from(value: PkgFuncArgumentKind) -> Self {
         match value {
             PkgFuncArgumentKind::Any => FuncArgumentKind::Any,
+            PkgFuncArgumentKind::Json => FuncArgumentKind::Json,
             PkgFuncArgumentKind::Array => FuncArgumentKind::Array,
             PkgFuncArgumentKind::Boolean => FuncArgumentKind::Boolean,
             PkgFuncArgumentKind::Integer => FuncArgumentKind::Integer,
@@ -124,6 +128,7 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
             FuncArgumentKind::Integer => PkgFuncArgumentKind::Integer,
             FuncArgumentKind::Map => PkgFuncArgumentKind::Map,
             FuncArgumentKind::Object => PkgFuncArgumentKind::Object,
+            FuncArgumentKind::Json => PkgFuncArgumentKind::Json,
             FuncArgumentKind::String => PkgFuncArgumentKind::String,
         }
     }
@@ -211,29 +216,43 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&func_argument_node_weight, &content))
     }
 
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncArgumentResult<Option<Self>> {
+        let (node_weight, hash) = if let Some((node_weight, hash)) =
+            Self::get_node_weight_and_content_hash(ctx, id).await?
+        {
+            (node_weight, hash)
+        } else {
+            return Ok(None);
+        };
+
+        let func_argument = Self::get_by_id_inner(ctx, &hash, &node_weight).await?;
+        Ok(Some(func_argument))
+    }
+
     pub async fn get_by_id_or_error(
         ctx: &DalContext,
         id: FuncArgumentId,
     ) -> FuncArgumentResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let (node_weight, hash) = Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
+        Self::get_by_id_inner(ctx, &hash, &node_weight).await
+    }
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
-
-        let content: FuncArgumentContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+    async fn get_by_id_inner(
+        ctx: &DalContext,
+        hash: &ContentHash,
+        node_weight: &FuncArgumentNodeWeight,
+    ) -> FuncArgumentResult<Self> {
+        let content: FuncArgumentContent = ctx.layer_db().cas().try_read_as(hash).await?.ok_or(
+            WorkspaceSnapshotError::MissingContentFromStore(node_weight.id()),
+        )?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let FuncArgumentContent::V1(inner) = content;
 
-        let arg_node_weight = node_weight.get_func_argument_node_weight()?;
-
-        Ok(FuncArgument::assemble(&arg_node_weight, &inner))
+        Ok(Self::assemble(node_weight, &inner))
     }
 
     pub async fn get_name_by_id(
@@ -396,6 +415,26 @@ impl FuncArgument {
         }
 
         Ok(Self::assemble(&node_weight, &updated))
+    }
+
+    async fn get_node_weight_and_content_hash(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncArgumentResult<Option<(FuncArgumentNodeWeight, ContentHash)>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let node_index = match workspace_snapshot.get_node_index_by_id(id).await {
+            Ok(node_index) => node_index,
+            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
+            )) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+
+        let hash = node_weight.content_hash();
+        let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
+        Ok(Some((func_argument_node_weight, hash)))
     }
 
     async fn get_node_weight_and_content_hash_or_error(

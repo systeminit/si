@@ -1,9 +1,10 @@
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
+use serde::{Deserialize, Serialize};
+
 use dal::module::Module;
 use dal::Visibility;
-use serde::{Deserialize, Serialize};
+
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 use super::ModuleResult;
 
@@ -30,8 +31,6 @@ pub struct ModuleView {
 pub async fn list_modules(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
     Query(request): Query<ModuleListRequest>,
 ) -> ModuleResult<Json<ModuleListResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -45,14 +44,6 @@ pub async fn list_modules(
             hash: module.root_hash().to_string(),
         })
         .collect();
-
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "list_pkgs",
-    //     serde_json::json!({}),
-    // );
 
     Ok(Json(ModuleListResponse { modules }))
 }

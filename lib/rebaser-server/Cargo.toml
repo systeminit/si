@@ -1,8 +1,12 @@
 [package]
 name = "rebaser-server"
-version = "0.1.0"
-edition = "2021"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
@@ -10,6 +14,7 @@ dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
+naxum = { path = "../../lib/naxum" }
 rebaser-core = { path = "../../lib/rebaser-core" }
 remain = { workspace = true }
 serde = { workspace = true }
@@ -17,6 +22,7 @@ serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-events = { path = "../../lib/si-events-rs" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
@@ -26,5 +32,6 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+tower = { workspace = true }
 ulid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }

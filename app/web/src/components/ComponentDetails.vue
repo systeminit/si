@@ -1,7 +1,7 @@
 <template>
   <ScrollArea v-if="selectedComponent">
     <template #top>
-      <SidebarSubpanelTitle label="Asset Details" icon="component">
+      <ComponentCard :componentId="selectedComponent.id" titleCard>
         <DetailsPanelMenuIcon
           @click="
             (e) => {
@@ -9,9 +9,7 @@
             }
           "
         />
-      </SidebarSubpanelTitle>
-      <ComponentCard :componentId="selectedComponent.id" titleCard />
-
+      </ComponentCard>
       <div
         v-if="currentStatus && currentStatus.isUpdating"
         class="flex flex-row items-center gap-xs m-xs mt-0"
@@ -31,7 +29,11 @@
         />
         <div class="pr-xs shrink-0">
           <VButton
-            v-if="selectedComponent.hasResource"
+            v-if="
+              selectedComponent.hasResource &&
+              changeSetStore.selectedChangeSetId ===
+                changeSetStore.headChangeSetId
+            "
             icon="refresh"
             size="sm"
             variant="ghost"
@@ -68,10 +70,11 @@
     </template>
 
     <template v-else>
-      <div class="absolute inset-0">
+      <div class="absolute inset-0 border-t dark:border-neutral-700">
         <TabGroup
           ref="tabsRef"
           trackingSlug="asset_details"
+          variant="fullsize"
           :startSelectedTabSlug="
             componentsStore.detailsTabSlugs[0] || undefined
           "
@@ -92,7 +95,7 @@
             <TabGroup
               ref="componentSubTabsRef"
               trackingSlug="asset_details/component"
-              minimal
+              variant="minimal"
               :startSelectedTabSlug="
                 componentsStore.detailsTabSlugs[1] || undefined
               "
@@ -112,6 +115,8 @@
                     <PillCounter
                       :count="selectedComponentFailingQualificationsCount"
                       tone="destructive"
+                      hideIfZero
+                      altStyle
                     />
                   </Inline>
                 </template>
@@ -143,7 +148,10 @@
             <template #label>
               <Inline noWrap>
                 <span>Actions</span>
-                <PillCounter :count="selectedComponentActionsCount" />
+                <PillCounter
+                  :count="selectedComponentActionsCount"
+                  hideIfZero
+                />
               </Inline>
             </template>
             <AssetActionsDetails :componentId="selectedComponentId" />
@@ -186,14 +194,13 @@ import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useActionsStore } from "@/store/actions.store";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 import ComponentDebugDetails from "./Debug/ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
-import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";

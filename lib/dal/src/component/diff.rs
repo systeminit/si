@@ -33,8 +33,8 @@ impl Component {
     ) -> ComponentResult<ComponentDiff> {
         let component = Self::get_by_id(ctx, component_id).await?;
         let curr_json: String;
-        let materialized_view = component.materialized_view(ctx).await?;
-        if let Some(view) = materialized_view {
+        let view = component.view(ctx).await?;
+        if let Some(view) = view {
             let mut current_component_view = ComponentProperties::try_from(view)?;
             current_component_view.drop_private();
             curr_json = serde_json::to_string_pretty(&current_component_view)?;
@@ -58,8 +58,8 @@ impl Component {
         let head_component = Self::get_by_id(&head_ctx, component_id).await;
         match head_component {
             Ok(comp) => {
-                let materialized_view = comp.materialized_view(&head_ctx).await?;
-                if let Some(view) = materialized_view {
+                let view = comp.view(&head_ctx).await?;
+                if let Some(view) = view {
                     let mut head_component_view = ComponentProperties::try_from(view)?;
                     head_component_view.drop_private();
                     head_component_view.drop_private();
@@ -105,9 +105,9 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<ComponentProperties> {
         let component = Self::get_by_id(ctx, component_id).await?;
-        let materialized_view = component.materialized_view(ctx).await?;
+        let view = component.view(ctx).await?;
 
-        if let Some(view) = materialized_view {
+        if let Some(view) = view {
             let properties = ComponentProperties::try_from(view)?;
             return Ok(properties);
         }

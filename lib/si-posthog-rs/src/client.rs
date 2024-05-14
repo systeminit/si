@@ -1,7 +1,6 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::time::Duration;
-use strum::Display;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -12,12 +11,6 @@ use crate::{
     error::PosthogResult,
     PosthogConfig,
 };
-
-#[derive(Debug, Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum FeatureFlag {
-    Secrets,
-}
 
 #[derive(Debug)]
 struct FlagsCacheEntry {
@@ -58,11 +51,7 @@ impl PosthogClient {
         Ok(())
     }
 
-    pub async fn check_feature_flag(
-        &self,
-        flag: FeatureFlag,
-        user_id: String,
-    ) -> PosthogResult<bool> {
+    pub async fn check_feature_flag(&self, flag: String, user_id: String) -> PosthogResult<bool> {
         let mut cache = FLAGS_CACHE.lock().await;
         let maybe_flags_cache = cache.get(&user_id);
 
@@ -83,6 +72,6 @@ impl PosthogClient {
             flags
         };
 
-        Ok(*flags.get(&flag.to_string()).unwrap_or(&false))
+        Ok(*flags.get(&flag).unwrap_or(&false))
     }
 }

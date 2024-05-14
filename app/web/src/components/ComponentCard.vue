@@ -28,10 +28,17 @@
         </div>
       </Stack>
 
+      <div
+        v-if="component.canBeUpgraded"
+        class="ml-auto cursor-pointer rounded hover:scale-125"
+      >
+        <StatusIndicatorIcon type="upgradable" @click="upgradeComponent" />
+      </div>
+
       <!-- change status icon -->
       <div
         v-if="component.changeStatus !== 'unmodified'"
-        class="ml-auto cursor-pointer rounded hover:scale-125"
+        class="cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon
           type="change"
@@ -39,6 +46,9 @@
           @click="componentsStore.setComponentDetailsTab('diff')"
         />
       </div>
+
+      <!-- Slot for additional icons/buttons -->
+      <slot />
     </div>
   </div>
 </template>
@@ -48,11 +58,8 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
-import {
-  ComponentId,
-  FullComponent,
-  useComponentsStore,
-} from "@/store/components.store";
+import { FullComponent, useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
@@ -91,4 +98,8 @@ const componentNameTooltip = computed(() => {
     return {};
   }
 });
+
+const upgradeComponent = async () => {
+  await componentsStore.UPGRADE_COMPONENT(props.componentId);
+};
 </script>

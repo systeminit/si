@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
+use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     DalContext, InputSocketId, OutputSocketId, Schema, SchemaError, SchemaId, SchemaVariant,
@@ -14,6 +15,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaViewError {
+    #[error("default variant not found for schema: {0}")]
+    DefaultVariantNotFoundForSchema(SchemaId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -47,45 +50,51 @@ impl SchemaView {
             let mut schema_variant_views = Vec::new();
             let schema_variants = SchemaVariant::list_for_schema(ctx, schema.id).await?;
 
-            for schema_variant in schema_variants {
-                if schema_variant.ui_hidden() {
-                    continue;
+            if let Some(default_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
+                for schema_variant in schema_variants {
+                    if schema_variant.ui_hidden() {
+                        continue;
+                    }
+
+                    let (output_sockets, input_sockets) =
+                        SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
+
+                    schema_variant_views.push(SchemaVariantView {
+                        id: schema_variant.id(),
+                        // FIXME(nick): use the real value here
+                        builtin: true,
+                        is_default: schema_variant.id() == default_variant_id,
+                        name: schema_variant.name().to_owned(),
+                        color: schema_variant.get_color(ctx).await?,
+                        category: schema_variant.category().to_owned(),
+                        component_type: schema_variant.component_type().to_owned(),
+                        input_sockets: input_sockets
+                            .iter()
+                            .map(|s| InputSocketView {
+                                id: s.id(),
+                                name: s.name().to_owned(),
+                            })
+                            .collect(),
+                        output_sockets: output_sockets
+                            .iter()
+                            .map(|s| OutputSocketView {
+                                id: s.id(),
+                                name: s.name().to_owned(),
+                            })
+                            .collect(),
+                    });
                 }
 
-                let (output_sockets, input_sockets) =
-                    SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
-
-                schema_variant_views.push(SchemaVariantView {
-                    id: schema_variant.id(),
+                schema_views.push(Self {
+                    id: schema.id,
                     // FIXME(nick): use the real value here
                     builtin: true,
-                    name: schema_variant.name().to_owned(),
-                    color: schema_variant.get_color(ctx).await?,
-                    category: schema_variant.category().to_owned(),
-                    input_sockets: input_sockets
-                        .iter()
-                        .map(|s| InputSocketView {
-                            id: s.id(),
-                            name: s.name().to_owned(),
-                        })
-                        .collect(),
-                    output_sockets: output_sockets
-                        .iter()
-                        .map(|s| OutputSocketView {
-                            id: s.id(),
-                            name: s.name().to_owned(),
-                        })
-                        .collect(),
+                    name: schema.name,
+                    variants: schema_variant_views,
                 });
+            } else {
+                return Err(SchemaViewError::DefaultVariantNotFoundForSchema(schema.id));
             }
-
-            schema_views.push(Self {
-                id: schema.id,
-                // FIXME(nick): use the real value here
-                builtin: true,
-                name: schema.name,
-                variants: schema_variant_views,
-            });
         }
 
         Ok(schema_views)
@@ -106,6 +115,8 @@ pub struct SchemaVariantView {
     id: SchemaVariantId,
     builtin: bool,
     name: String,
+    is_default: bool,
+    component_type: ComponentType,
 
     color: String,
     category: String,

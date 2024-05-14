@@ -1,15 +1,16 @@
 [package]
 name = "dal"
-version = "0.1.0"
-authors = ["Adam Jacob <adam@systeminit.com>"]
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 object-tree = { path = "../../lib/object-tree" }
-si-cbor = { path = "../../lib/si-cbor" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
@@ -17,6 +18,7 @@ si-events = { path = "../../lib/si-events-rs" }
 si-hash = { path = "../../lib/si-hash" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
+si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
@@ -28,6 +30,7 @@ base64 = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
+clap = { workspace = true }
 convert_case = { workspace = true }
 derive_more = { workspace = true }
 diff = { workspace = true }
@@ -35,6 +38,7 @@ dyn-clone = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 iftree = { workspace = true }
+indexmap = { workspace = true }
 itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }

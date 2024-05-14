@@ -7,7 +7,6 @@ load(
 rust_library(
     name = "dal",
     deps = [
-        "//lib/si-cbor:si-cbor",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
         "//lib/si-crypto:si-crypto",
@@ -17,6 +16,7 @@ rust_library(
         "//lib/si-hash:si-hash",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
+        "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//lib/telemetry-nats-rs:telemetry-nats",
@@ -27,6 +27,7 @@ rust_library(
         "//third-party/rust:blake3",
         "//third-party/rust:chrono",
         "//third-party/rust:ciborium",
+        "//third-party/rust:clap",
         "//third-party/rust:convert_case",
         "//third-party/rust:derive_more",
         "//third-party/rust:diff",
@@ -34,6 +35,7 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:hex",
         "//third-party/rust:iftree",
+        "//third-party/rust:indexmap",
         "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",

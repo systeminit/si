@@ -34,12 +34,20 @@ const CONFIG = {
   },
   action: {
     create: { iconName: "plus-hex-outline", tone: "success" },
+    Create: { iconName: "plus-hex-outline", tone: "success" },
     delete: { iconName: "minus-hex-outline", tone: "destructive" },
+    Destroy: { iconName: "minus-hex-outline", tone: "destructive" },
     refresh: { iconName: "refresh-hex-outline", tone: "action" },
+    Refresh: { iconName: "refresh-hex-outline", tone: "action" },
     other: { iconName: "tilde-hex-outline", tone: "action" },
+    Manual: { iconName: "tilde-hex-outline", tone: "action" },
+    Update: { iconName: "plus-hex-outline", tone: "success" },
   },
   actions: {
     show: { iconName: "chevron--right", tone: "neutral" },
+  },
+  upgradable: {
+    _default: { iconName: "bolt", tone: "action" },
   },
   funcTest: {
     success: { iconName: "check-circle", tone: "success" },

@@ -1,5 +1,5 @@
 <template>
-  <div :class="divClasses" class="flex p-2 border rounded items-start">
+  <div :class="divClasses" class="flex p-xs border rounded items-start">
     <StatusIndicatorIcon
       v-if="status"
       :type="type"

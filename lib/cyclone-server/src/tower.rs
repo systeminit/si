@@ -139,7 +139,7 @@ mod limit_requests {
                         tokio::spawn(async move {
                             trace!("sending shutdown to limit request shutdown receiver");
                             if tx.send(ShutdownSource::LimitRequest).await.is_err() {
-                                warn!(
+                                trace!(
                                     "the limit request shutdown receiver has already been dropped"
                                 );
                             }

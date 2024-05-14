@@ -1,4 +1,4 @@
-use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
+use std::{mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::feature_flags::FeatureFlagService;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::{
@@ -26,14 +28,14 @@ use crate::workspace_snapshot::{
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
-        definition::ActionsJob,
+        definition::{ActionJob, DeprecatedActionsJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
     },
     workspace_snapshot::WorkspaceSnapshotError,
-    AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
-    WorkspacePk, WorkspaceSnapshot,
+    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    WorkspaceSnapshot,
 };
 use crate::{EncryptedSecret, Workspace};
 
@@ -63,6 +65,8 @@ pub struct ServicesContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// The layer db
     layer_db: DalLayerDb,
+    /// The service that stores feature flags
+    feature_flag_service: FeatureFlagService,
 }
 
 impl ServicesContext {
@@ -78,6 +82,7 @@ impl ServicesContext {
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
         layer_db: DalLayerDb,
+        feature_flag_service: FeatureFlagService,
     ) -> Self {
         Self {
             pg_pool,
@@ -89,6 +94,7 @@ impl ServicesContext {
             module_index_url,
             symmetric_crypto_service,
             layer_db,
+            feature_flag_service,
         }
     }
 
@@ -138,6 +144,11 @@ impl ServicesContext {
     /// Gets a reference to the Layer Db
     pub fn layer_db(&self) -> &DalLayerDb {
         &self.layer_db
+    }
+
+    /// Get a reference to the feature flags service
+    pub fn feature_flags_service(&self) -> &FeatureFlagService {
+        &self.feature_flag_service
     }
 
     /// Builds and returns a new [`Connections`].
@@ -376,6 +387,9 @@ impl DalContext {
             // of the current change set
             to_rebase_change_set_id: self.change_set_id(),
             onto_vector_clock_id: vector_clock_id,
+            // dependent values to be processed will be added later, if any
+            // exist
+            dvu_values: None,
         })
     }
 
@@ -527,6 +541,11 @@ impl DalContext {
         self.blocking_commit_internal(rebase_request).await
     }
 
+    pub async fn blocking_commit_no_rebase(&self) -> Result<(), TransactionsError> {
+        self.blocking_commit_internal(None).await?;
+        Ok(())
+    }
+
     /// Rolls all inner transactions back, discarding all changes made within them.
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
@@ -656,34 +675,27 @@ impl DalContext {
         Ok(new)
     }
 
-    pub async fn enqueue_dependencies_update_component(
+    pub async fn enqueue_deprecated_actions(
         &self,
-        component_id: ComponentId,
+        job: Box<DeprecatedActionsJob>,
     ) -> Result<(), TransactionsError> {
-        self.txns()
-            .await?
-            .enqueue_dependencies_update_component(
-                *self.tenancy(),
-                self.change_set_id(),
-                component_id,
-            )
-            .await;
-        Ok(())
-    }
-
-    pub async fn enqueue_actions(&self, job: Box<ActionsJob>) -> Result<(), TransactionsError> {
         self.txns().await?.job_queue.enqueue_job(job).await;
         Ok(())
     }
 
-    // pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
-    //     self.txns().await?.job_queue.enqueue_job(job).await;
-    //     Ok(())
-    // }
+    pub async fn enqueue_action(&self, job: Box<ActionJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
 
     pub async fn enqueue_dependent_values_update(
         &self,
-        ids: Vec<AttributeValueId>,
+        ids: Vec<impl Into<Ulid>>,
     ) -> Result<(), TransactionsError> {
         self.txns()
             .await?
@@ -920,7 +932,7 @@ impl DalContextBuilder {
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: Tenancy::new_empty(),
-            visibility: Visibility::new_head(),
+            visibility: Visibility::new_head_fake(),
             history_actor: HistoryActor::SystemInit,
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
@@ -941,7 +953,7 @@ impl DalContextBuilder {
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: access_builder.tenancy,
             history_actor: access_builder.history_actor,
-            visibility: Visibility::new_head(),
+            visibility: Visibility::new_head_fake(),
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
@@ -950,7 +962,7 @@ impl DalContextBuilder {
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
         // workspace's default change set id, but we are going to use a dummy visibility to do so.
         // We should probably just use the pg connection directly or derive the default change set
-        // id thorugh other means.
+        // id through other means.
         let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
         ctx.update_visibility_and_snapshot_to_visibility(default_change_set_id)
             .await?;
@@ -1000,6 +1012,11 @@ impl DalContextBuilder {
     /// Gets a reference to the [`ServicesContext`].
     pub fn services_context(&self) -> &ServicesContext {
         &self.services_context
+    }
+
+    /// Gets a reference to the LayerDb.
+    pub fn layer_db(&self) -> &DalLayerDb {
+        &self.services_context.layer_db
     }
 
     /// Set blocking flag
@@ -1112,9 +1129,6 @@ pub struct Transactions {
     nats_txn: NatsTxn,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
-    #[allow(clippy::type_complexity)]
-    dependencies_update_component:
-        Arc<Mutex<HashMap<(Tenancy, ChangeSetId), HashSet<ComponentId>>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -1122,23 +1136,39 @@ pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
     pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub onto_vector_clock_id: VectorClockId,
+    pub dvu_values: Option<Vec<ulid::Ulid>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Conflicts {
-    conflicts_found: Vec<Conflict>,
-    updates_found_and_skipped: Vec<Update>,
+    pub conflicts_found: Vec<Conflict>,
+    pub updates_found_and_skipped: Vec<Update>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Updates {
+    pub updates_found: Vec<Update>,
 }
 
 // TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
 // the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
 // not want it long term.
+#[instrument(level="info", skip_all, 
+    fields(
+            si.change_set.id = Empty,
+            si.workspace.pk = Empty,
+            si.conflicts = Empty,
+            si.updates = Empty,
+            si.conflicts.count = Empty,
+            si.updates.count = Empty,
+        ),
+    )]
 async fn rebase(
     tenancy: &Tenancy,
     layer_db: &DalLayerDb,
     rebase_request: RebaseRequest,
 ) -> Result<Option<Conflicts>, TransactionsError> {
     let start = Instant::now();
+    let span = Span::current();
 
     let metadata = LayeredEventMetadata::new(
         si_events::Tenancy::new(
@@ -1147,7 +1177,17 @@ async fn rebase(
         ),
         si_events::Actor::System,
     );
-
+    span.record(
+        "si.change_set.id",
+        rebase_request.to_rebase_change_set_id.to_string(),
+    );
+    span.record(
+        "si.workspace.pk",
+        tenancy
+            .workspace_pk()
+            .unwrap_or(WorkspacePk::NONE)
+            .to_string(),
+    );
     info!("requesting rebase: {:?}", start.elapsed());
     let rebase_finished_activity = layer_db
         .activity()
@@ -1156,14 +1196,27 @@ async fn rebase(
             rebase_request.to_rebase_change_set_id.into(),
             rebase_request.onto_workspace_snapshot_address,
             rebase_request.onto_vector_clock_id.into(),
+            rebase_request
+                .dvu_values
+                .map(|values| values.into_iter().map(Into::into).collect()),
             metadata,
         )
         .await?;
     info!("got response from rebaser: {:?}", start.elapsed());
-
+    debug!(
+        "rebaser response payload: {:?}",
+        rebase_finished_activity.payload
+    );
     match rebase_finished_activity.payload {
         ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
-            RebaseStatus::Success { .. } => Ok(None),
+            RebaseStatus::Success { updates_performed } => {
+                let updates = Updates {
+                    updates_found: serde_json::from_str(updates_performed)?,
+                };
+                span.record("si.updates", updates_performed);
+                span.record("si.updates.count", updates.updates_found.len().to_string());
+                Ok(None)
+            }
             RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
                 rebase_request.onto_workspace_snapshot_address,
                 rebase_request.to_rebase_change_set_id,
@@ -1177,7 +1230,11 @@ async fn rebase(
                     conflicts_found: serde_json::from_str(conflicts_found)?,
                     updates_found_and_skipped: serde_json::from_str(updates_found_and_skipped)?,
                 };
-
+                span.record("si.conflicts", conflicts_found);
+                span.record(
+                    "si.conflicts.count",
+                    conflicts.conflicts_found.len().to_string(),
+                );
                 Ok(Some(conflicts))
             }
         },
@@ -1200,7 +1257,6 @@ impl Transactions {
             nats_txn,
             job_processor,
             job_queue: JobQueue::new(),
-            dependencies_update_component: Default::default(),
         }
     }
 
@@ -1220,7 +1276,11 @@ impl Transactions {
         name = "transactions.commit_into_conns",
         level = "info",
         skip_all,
-        fields()
+        fields(
+            si.change_set.id = Empty,
+            si.workspace.pk = Empty,
+            si.dvu.values = Empty,
+        )
     )]
     pub async fn commit_into_conns(
         self,
@@ -1228,19 +1288,33 @@ impl Transactions {
         layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
+        let span = Span::current();
+        span.record(
+            "si.workspace.pk",
+            tenancy
+                .workspace_pk()
+                .unwrap_or(WorkspacePk::NONE)
+                .to_string(),
+        );
         let pg_conn = self.pg_txn.commit_into_conn().await?;
-        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
-        // We need to send a rebase request *after* committing any transactions,
-        // but before starting any jobs in pinga, since those transactions may
-        // have updated the change set pointer to point to the current snapshot,
-        // and that will be the snapshot we expect the dependent values update
-        // (for example) to access.
-        let conflicts = if let Some(rebase_request) = rebase_request {
+        let conflicts = if let Some(mut rebase_request) = rebase_request {
+            span.record(
+                "si.change_set.id",
+                rebase_request.to_rebase_change_set_id.to_string(),
+            );
+
+            rebase_request.dvu_values = self
+                .job_queue
+                .take_dependent_values_for_change_set(rebase_request.to_rebase_change_set_id)
+                .await;
+            span.record("si.dvu.values", format!("{:?}", rebase_request.dvu_values));
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
         };
+
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         self.job_processor.process_queue(self.job_queue).await?;
 
@@ -1265,13 +1339,14 @@ impl Transactions {
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
-        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         let conflicts = if let Some(rebase_request) = rebase_request {
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
         };
+
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         self.job_processor
             .blocking_process_queue(self.job_queue)
@@ -1300,38 +1375,6 @@ impl Transactions {
     /// encountered to the caller.
     pub async fn rollback(self) -> Result<(), TransactionsError> {
         let _ = self.rollback_into_conns().await?;
-        Ok(())
-    }
-
-    pub async fn enqueue_dependencies_update_component(
-        &self,
-        tenancy: Tenancy,
-        change_set_id: ChangeSetId,
-        component_id: ComponentId,
-    ) {
-        self.dependencies_update_component
-            .lock()
-            .await
-            .entry((tenancy, change_set_id))
-            .or_default()
-            .insert(component_id);
-    }
-
-    #[instrument(level = "info", skip_all)]
-    async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
-        for ((tenancy, change_set_id), component_ids) in
-            std::mem::take(&mut *self.dependencies_update_component.lock().await)
-        {
-            for component_id in component_ids {
-                let visibility = Visibility::new(change_set_id);
-                self.pg()
-                    .execute(
-                        "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
-                        &[&tenancy, &visibility, &component_id],
-                    )
-                    .await?;
-            }
-        }
         Ok(())
     }
 }

@@ -59,7 +59,7 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant");
     assert!(maybe_sv_id.is_some());
@@ -149,7 +149,7 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant");
     assert!(maybe_sv_id.is_some());
@@ -243,7 +243,7 @@ async fn create_attribute_with_prop(ctx: &mut DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant id");
     assert!(maybe_sv_id.is_some());
@@ -316,7 +316,7 @@ async fn create_attribute_with_socket(ctx: &mut DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant id");
     assert!(maybe_sv_id.is_some());
@@ -325,7 +325,6 @@ async fn create_attribute_with_socket(ctx: &mut DalContext) {
     let (output, _input) = SchemaVariant::list_all_sockets(ctx, sv_id)
         .await
         .expect("Unable to get the Sockets for the Schema Variant");
-    dbg!(&output);
 
     assert!(!output.is_empty());
 
@@ -424,7 +423,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
 
     let swifty_schema = maybe_swifty_schema.unwrap();
     let maybe_sv_id = swifty_schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant");
     assert!(maybe_sv_id.is_some());

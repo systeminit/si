@@ -1,10 +1,9 @@
 use reqwest::StatusCode;
+use si_pkg::WorkspaceExport;
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::{
-    BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse, WorkspaceExport,
-};
+use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
 use crate::{IndexClientError, IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
@@ -195,5 +194,27 @@ impl IndexClient {
             .error_for_status()?;
 
         Ok(())
+    }
+
+    pub async fn download_workspace(&self, module_id: Ulid) -> IndexClientResult<WorkspaceExport> {
+        let download_url = self
+            .base_url
+            .join("workspace/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("download")?;
+        let response = reqwest::Client::new()
+            .get(download_url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let bytes = response.bytes().await?;
+
+        let export_data: WorkspaceExport =
+            serde_json::from_slice(&bytes).map_err(IndexClientError::Deserialization)?;
+
+        // Deserialize back into export object
+        Ok(export_data)
     }
 }

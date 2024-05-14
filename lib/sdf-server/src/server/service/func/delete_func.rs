@@ -1,11 +1,11 @@
+use axum::extract::OriginalUri;
+use axum::{response::IntoResponse, Json};
+use dal::{ChangeSet, Func, FuncId, Visibility, WsEvent};
+use serde::{Deserialize, Serialize};
+
 use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::func::{get_func_view, FuncAssociations, FuncError};
-use axum::extract::OriginalUri;
-use axum::{response::IntoResponse, Json};
-use dal::{ChangeSet, Func, FuncId, StandardModel, Visibility, WsEvent};
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -30,62 +30,9 @@ pub async fn delete_func(
 ) -> FuncResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_change_set_id = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_change_set_id = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
-
-    let mut func = Func::get_by_id(&ctx, &request.id)
-        .await?
-        .ok_or(FuncError::FuncNotFound)?;
-
-    let func_details = get_func_view(&ctx, &func).await?;
-    if let Some(associations) = func_details.associations {
-        let has_associations = match associations {
-            FuncAssociations::Action {
-                schema_variant_ids,
-                kind: _,
-            } => !schema_variant_ids.is_empty(),
-            FuncAssociations::Attribute {
-                prototypes,
-                arguments,
-            } => !prototypes.is_empty() || !arguments.is_empty(),
-            FuncAssociations::CodeGeneration {
-                schema_variant_ids,
-                component_ids,
-                inputs: _,
-            } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
-            FuncAssociations::Qualification {
-                schema_variant_ids,
-                component_ids,
-                inputs: _,
-            } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
-            FuncAssociations::SchemaVariantDefinitions { schema_variant_ids } => {
-                schema_variant_ids.is_empty()
-            }
-            FuncAssociations::Validation { prototypes } => !prototypes.is_empty(),
-            FuncAssociations::Authentication { schema_variant_ids } => {
-                !schema_variant_ids.is_empty()
-            }
-        };
-
-        if has_associations {
-            return Err(FuncError::FuncHasAssociations(*func.id()));
-        }
-    };
-
-    func.delete_by_id(&ctx).await?;
+    let func_name = Func::delete_by_id(&ctx, request.id).await?;
 
     track(
         &posthog_client,
@@ -93,12 +40,13 @@ pub async fn delete_func(
         &original_uri,
         "deleted_func",
         serde_json::json!({
-                    "func_id": func.id().to_owned(),
-                    "func_name": func.name().to_owned(),
+            "how": "/func/deleted_func",
+            "func_id": request.id,
+            "func_name": func_name,
         }),
     );
 
-    WsEvent::func_deleted(&ctx, *func.id())
+    WsEvent::func_deleted(&ctx, request.id)
         .await?
         .publish_on_commit(&ctx)
         .await?;

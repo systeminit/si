@@ -14,7 +14,7 @@ export enum ResourceStatus {
 }
 
 export interface Resource {
-  data: unknown;
+  payload: unknown;
   status: ResourceHealth | null;
   message: string | null;
   logs: string[];

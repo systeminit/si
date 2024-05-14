@@ -26,7 +26,7 @@ use crate::{
         WorkspaceSnapshotError,
     },
     AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
-    OutputSocketId, PropId, Timestamp, TransactionsError,
+    OutputSocketId, PropId, SecretId, Timestamp, TransactionsError,
 };
 
 use self::{
@@ -167,6 +167,14 @@ impl AttributePrototypeArgument {
         destination_id: FuncArgumentId,
         add_fn: add_edge_to_func_argument,
         discriminant: EdgeWeightKindDiscriminants::Use,
+        result: AttributePrototypeArgumentResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: Ulid,
+        add_fn: add_edge_to_value,
+        discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         result: AttributePrototypeArgumentResult,
     );
 
@@ -331,6 +339,9 @@ impl AttributePrototypeArgument {
                 NodeWeight::Prop(inner) => {
                     return Ok(Some(ValueSource::Prop(inner.id().into())));
                 }
+                NodeWeight::Secret(inner) => {
+                    return Ok(Some(ValueSource::Secret(inner.id().into())));
+                }
                 NodeWeight::Content(inner) => {
                     let discrim: ContentAddressDiscriminants = inner.content_address().into();
                     return Ok(Some(match discrim {
@@ -401,14 +412,6 @@ impl AttributePrototypeArgument {
         Ok(self)
     }
 
-    implement_add_edge_to!(
-        source_id: AttributePrototypeArgumentId,
-        destination_id: Ulid,
-        add_fn: add_edge_to_value,
-        discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-        result: AttributePrototypeArgumentResult,
-    );
-
     pub async fn prototype_id_for_argument_id(
         ctx: &DalContext,
         attribute_prototype_argument_id: AttributePrototypeArgumentId,
@@ -470,6 +473,14 @@ impl AttributePrototypeArgument {
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, prop_id.into()).await
+    }
+
+    pub async fn set_value_from_secret_id(
+        self,
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        self.set_value_source(ctx, secret_id.into()).await
     }
 
     pub async fn set_value_from_static_value_id(
@@ -603,12 +614,7 @@ impl AttributePrototypeArgument {
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set()?, self.id)
             .await?;
-        // Update the destination attribute values
-        for av_id_to_update in &avs_to_update {
-            AttributeValue::update_from_prototype_function(ctx, *av_id_to_update)
-                .await
-                .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
-        }
+
         // Enqueue a dependent values update with the destination attribute values
         ctx.enqueue_dependent_values_update(avs_to_update).await?;
 

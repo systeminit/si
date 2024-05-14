@@ -6,14 +6,15 @@ use axum::{
 };
 use convert_case::{Case, Casing};
 use dal::{
-    pkg::PkgError as DalPkgError, ChangeSetError, DalContextBuilder, SchemaVariantError,
-    SchemaVariantId, StandardModelError, TenancyError, TransactionsError, UserError, UserPk,
-    WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
+    pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder,
+    SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
+    UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
 use si_pkg::{SiPkg, SiPkgError};
-use si_std::{canonical_file::safe_canonically_join, CanonicalFileError};
+use si_std::canonical_file::safe_canonically_join;
+use si_std::CanonicalFileError;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
@@ -21,14 +22,14 @@ use tokio::fs::read_dir;
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
-// mod approval_process;
+pub mod approval_process;
 pub mod builtin_module_spec;
 pub mod export_module;
-// pub mod export_workspace;
-pub mod get_module;
-// pub mod import_workspace_vote;
 mod export_workspace;
+pub mod get_module;
+pub mod import_workspace_vote;
 pub mod install_module;
+mod install_workspace;
 pub mod list_modules;
 pub mod reject_module;
 pub mod remote_module_spec;
@@ -36,22 +37,23 @@ pub mod remote_module_spec;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ModuleError {
-    #[error("Could not canononicalize path: {0}")]
-    Canononicalize(#[from] CanonicalFileError),
+    #[error("Could not canonicalize path: {0}")]
+    Canonicalize(#[from] CanonicalFileError),
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
+    #[error("Changeset not found: {0}")]
+    ChangeSetNotFound(ChangeSetId),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
-    #[error("Trying to export from system actor. This can only be done by a user actor")]
-    ExportingFromSystemActor,
+    #[error("Trying to export from/import into root tenancy")]
+    ExportingImportingWithRootTenancy,
     #[error(transparent)]
     Hyper(#[from] hyper::http::Error),
-    // add error for matching hash
-    #[error("Invalid pacakge file name: {0}")]
+    #[error("Invalid package file name: {0}")]
     InvalidPackageFileName(String),
-    #[error("invalid user {0}")]
+    #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
@@ -218,6 +220,10 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_module_by_hash", get(get_module::get_module_by_hash))
         .route("/install_module", post(install_module::install_module))
+        .route(
+            "/install_workspace",
+            post(install_workspace::install_workspace),
+        )
         .route("/list_modules", get(list_modules::list_modules))
         .route(
             "/remote_module_spec",
@@ -228,16 +234,16 @@ pub fn routes() -> Router<AppState> {
             post(builtin_module_spec::promote_to_builtin),
         )
         .route("/reject_module", post(reject_module::reject_module))
-    // .route(
-    //     "/begin_approval_process",
-    //     post(approval_process::begin_approval_process),
-    // )
-    // .route(
-    //     "/cancel_approval_process",
-    //     post(approval_process::cancel_approval_process),
-    // )
-    // .route(
-    //     "/import_workspace_vote",
-    //     post(import_workspace_vote::import_workspace_vote),
-    // )
+        .route(
+            "/begin_approval_process",
+            post(approval_process::begin_approval_process),
+        )
+        .route(
+            "/cancel_approval_process",
+            post(approval_process::cancel_approval_process),
+        )
+        .route(
+            "/import_workspace_vote",
+            post(import_workspace_vote::import_workspace_vote),
+        )
 }

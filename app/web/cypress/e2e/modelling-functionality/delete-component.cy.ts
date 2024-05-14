@@ -38,7 +38,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.dragTo('@awsCred', '@konvaStage');
 
       // Check to make sure a component has been added to the outliner
-      cy.get('[class="component-outline-node"]', { timeout: 30000 })
+      cy.get('[class="diagram-outline-node"]', { timeout: 30000 })
         .contains('AWS Credential', { timeout: 30000 })
         .should('be.visible')
         .rightclick();
@@ -51,7 +51,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         .click();
 
       // Check to make sure a component has been added to the outliner
-      cy.get('[class="component-outline-node"]', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible');
+      cy.get('[class="diagram-outline-node"]', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible');
 
       // Click the button to destroy changeset
       cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')

@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
+use crate::job::consumer::JobCompletionState;
 use crate::validation::{ValidationOutput, ValidationOutputNode};
 use crate::{
     job::consumer::{
@@ -81,7 +82,7 @@ impl JobConsumer for ComputeValidation {
             attribute_values = ?self.attribute_values,
         )
     )]
-    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         for &av_id in &self.attribute_values {
@@ -118,7 +119,7 @@ impl JobConsumer for ComputeValidation {
 
         ctx.commit().await?;
 
-        Ok(())
+        Ok(JobCompletionState::Done)
     }
 }
 

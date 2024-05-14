@@ -7,15 +7,15 @@
     <ScrollArea v-else-if="editingAsset && props.assetId">
       <template #top>
         <div
-          class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
+          class="flex flex-row items-center gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :loading="executeAssetTaskRunning"
-            :loadingText="
-              editingAsset.id ? 'Updating Asset...' : 'Creating Asset...'
-            "
-            :label="editingAsset.id ? 'Update Asset' : 'Create Asset'"
+            :loading="execAssetReqStatus.isPending"
+            loadingText="Regenerating Asset..."
+            label="Regenerate Asset"
             :disabled="disabled"
+            successText="Successful"
+            :requestStatus="execAssetReqStatus"
             tone="action"
             icon="bolt"
             size="md"
@@ -49,23 +49,12 @@
           />
         </ErrorMessage>
 
-        <AssetFuncAttachModal
-          ref="attachModalRef"
-          :schemaVariantId="assetSchemaVariantId"
-          :assetId="props.assetId"
-        />
+        <AssetFuncAttachModal ref="attachModalRef" :assetId="props.assetId" />
       </template>
 
       <Stack class="p-xs py-sm">
-        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning">
-          {{ disabledWarning }}
-        </ErrorMessage>
-
         <div>
-          <!-- For now, using v-if inside a <Stack> is breaking the VormInputs below so we add indirection -->
-          <ErrorMessage v-if="executeAssetTaskError">
-            {{ executeAssetTaskError }}
-          </ErrorMessage>
+          <ErrorMessage :requestStatus="execAssetReqStatus" />
         </div>
 
         <VormInput
@@ -160,7 +149,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import {
   ErrorMessage,
   Modal,
@@ -171,11 +160,10 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
-import { storeToRefs } from "pinia";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 
@@ -212,9 +200,6 @@ const componentTypeOptions = [
 ];
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
-const assetSchemaVariantId = computed(() =>
-  props.assetId ? assetStore.assetsById[props.assetId]?.id : undefined,
-);
 
 const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
 watch(
@@ -233,39 +218,26 @@ const updateAsset = async () => {
   }
 };
 
-const disabled = computed(() => {
-  return false;
-});
+const disabled = ref(true);
+watch(
+  () => editingAsset.value,
+  () => {
+    disabled.value = !_.isEqual(editingAsset.value, assetStore.selectedAsset);
+  },
+  {
+    deep: true,
+  },
+);
 
-const disabledWarning = computed(() => {
-  if (disabled.value) {
-    return `This asset cannot be edited because it is in use by components.`;
-  }
-
-  return "";
-});
-
-const { executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError } =
-  storeToRefs(assetStore);
+const execAssetReqStatus = assetStore.getRequestStatus(
+  "EXEC_ASSET",
+  assetStore.selectedAssetId,
+);
 const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
   }
 };
-
-watch(
-  [executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError],
-  () => {
-    // If stopped running task and have ID, we finished saving. Open notification modal.
-    if (
-      !executeAssetTaskRunning.value &&
-      executeAssetTaskId.value !== undefined &&
-      !executeAssetTaskError.value?.length
-    ) {
-      executeAssetModalRef.value?.open();
-    }
-  },
-);
 
 const closeHandler = () => {
   assetStore.executeAssetTaskId = undefined;

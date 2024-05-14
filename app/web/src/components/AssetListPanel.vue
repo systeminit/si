@@ -6,27 +6,37 @@
       loadingMessage="Loading assets..."
     />
     <template #top>
-      <div
-        class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-      >
-        <VButton
-          label="Contribute"
-          tone="action"
-          icon="cloud-upload"
-          size="sm"
-          @click="contributeAsset"
-        />
-        <VButton
-          label="New Asset"
-          tone="action"
-          icon="plus"
-          size="sm"
-          @click="newAsset"
-        />
-      </div>
+      <SidebarSubpanelTitle icon="component">
+        <template #label>
+          <div class="flex flex-row gap-xs">
+            <div>Assets</div>
+            <PillCounter :count="assetList.length" />
+          </div>
+        </template>
+        <div class="flex flex-row gap-xs">
+          <IconButton
+            icon="plus"
+            loadingIcon="loader"
+            :requestStatus="createAssetReqStatus"
+            variant="simple"
+            tooltip="New Asset"
+            tooltipPlacement="top"
+            loadingTooltip="Creating Asset..."
+            @click="newAsset"
+          />
+          <IconButton
+            icon="cloud-upload"
+            variant="simple"
+            tooltip="Contribute"
+            tooltipPlacement="top"
+            :selected="contributeAssetModalRef?.isOpen || false"
+            @click="contributeAsset"
+          />
+        </div>
+      </SidebarSubpanelTitle>
       <SiSearch autoSearch placeholder="search assets" @search="onSearch" />
       <!-- <div
-        class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
+        class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
       >
         Select an asset to view or edit it.
       </div> -->
@@ -38,8 +48,7 @@
         :label="category"
         :primaryIcon="getAssetIcon(category)"
         :color="categoryColor(category)"
-        classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
-        labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+        enableDefaultHoverClasses
         enableGroupToggle
         alwaysShowArrow
         clickLabelToToggle
@@ -48,8 +57,7 @@
         <template #icons>
           <PillCounter
             :count="categorizedAssets[category]?.length || 0"
-            borderTone="action"
-            class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
+            showHoverInsideTreeNode
           />
         </template>
         <AssetListItem
@@ -64,7 +72,9 @@
       title="Contribute Assets"
       label="Contribute to System Initiative"
       :loadingText="_.sample(contributeLoadingTexts)"
-      :preSelectedSchemaVariantId="assetStore.selectedAsset?.id"
+      :preSelectedSchemaVariantId="
+        assetStore.selectedAsset?.defaultSchemaVariantId
+      "
       @export-success="onExport"
     />
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
@@ -84,7 +94,6 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
   ScrollArea,
-  VButton,
   Modal,
   RequestStatusMessage,
   TreeNode,
@@ -95,10 +104,13 @@ import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { getAssetIcon } from "@/store/components.store";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
+import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
+import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
 const { assetList } = storeToRefs(assetStore);
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const createAssetReqStatus = assetStore.getRequestStatus("CREATE_ASSET");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
 

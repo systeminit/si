@@ -1,7 +1,12 @@
 [package]
 name = "si-pkg"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 base64.workspace = true
@@ -17,6 +22,7 @@ si-hash = { path = "../../lib/si-hash" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+ulid = { workspace = true }
 url = { workspace = true }
 
 [dev-dependencies]

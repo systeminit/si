@@ -4,6 +4,8 @@ use config_file::ConfigMap;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
+pub use config_file::ValueKind;
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SettingsError {

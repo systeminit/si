@@ -1,8 +1,25 @@
 mod into_response;
 
+use async_nats::StatusCode;
+
 pub use self::into_response::IntoResponse;
 
-pub type Response = ();
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Response {
+    status: StatusCode,
+}
+
+impl Response {
+    pub fn server_error() -> Self {
+        Self {
+            status: StatusCode::from_u16(500).expect("status code is in valid range"),
+        }
+    }
+
+    pub fn status(self) -> StatusCode {
+        self.status
+    }
+}
 
 pub type Result<T, E = ErrorResponse> = std::result::Result<T, E>;
 

@@ -1,10 +1,12 @@
 [package]
 name = "naxum"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.70.0"
-authors = ["Fletcher Nichol <fnichol@nichol.ca>"]
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 async-nats = { workspace = true }
@@ -18,4 +20,5 @@ tower = { workspace = true }
 tracing = { workspace = true } # NOTE: left with vanilla tracing for potential future extraction
 
 [dev-dependencies]
+thiserror = { workspace = true }
 tracing-subscriber = { workspace = true }

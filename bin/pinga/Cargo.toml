@@ -1,9 +1,12 @@
 [package]
 name = "pinga"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [[bin]]
 name = "pinga"
@@ -13,6 +16,7 @@ path = "src/main.rs"
 clap = { workspace = true }
 color-eyre = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
+si-service = { path = "../../lib/si-service" }
 si-std = { path = "../../lib/si-std" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 tokio = { workspace = true }

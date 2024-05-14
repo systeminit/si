@@ -69,6 +69,12 @@ impl Default for ChangeSetId {
     }
 }
 
+impl fmt::Display for ChangeSetId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl From<ulid::Ulid> for ChangeSetId {
     fn from(value: ulid::Ulid) -> Self {
         Self(value)

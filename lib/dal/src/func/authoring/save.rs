@@ -1,8 +1,5 @@
-//! This module contains [`save_func`] and everything it needs.
-
-use base64::engine::general_purpose;
-use base64::Engine;
 use std::collections::HashSet;
+use telemetry::prelude::*;
 
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
@@ -15,172 +12,251 @@ use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, ComponentId, DalContext,
-    DeprecatedActionKind, DeprecatedActionPrototype, Func, FuncBackendResponseType, FuncId,
-    SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
+    DeprecatedActionKind, DeprecatedActionPrototype, EdgeWeightKind, Func, FuncBackendResponseType,
+    FuncId, OutputSocket, Prop, SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
 };
 
-pub(crate) async fn save_func(
+#[instrument(
+    name = "func.authoring.save_func.update_associations",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn update_associations(
     ctx: &DalContext,
-    id: FuncId,
-    display_name: Option<String>,
-    name: String,
-    description: Option<String>,
-    code: Option<String>,
-    associations: Option<FuncAssociations>,
+    func: &Func,
+    associations: FuncAssociations,
 ) -> FuncAuthoringResult<()> {
-    let func = Func::get_by_id_or_error(ctx, id).await?;
-
-    // TODO(nick): we should eventually either return an error or make it a no-op.
-    // For now, we need configurable builtins to ensure that the system is working.
-    // if func.builtin {
-    //     return Err(FuncAuthoringError::NotWritable);
-    // }
-
-    Func::modify_by_id(ctx, func.id, |func| {
-        func.display_name = display_name.to_owned();
-        func.name = name.to_owned();
-        func.description = description.to_owned();
-        func.code_base64 = code
-            .as_ref()
-            .map(|code| general_purpose::STANDARD_NO_PAD.encode(code));
-
-        Ok(())
-    })
-    .await?;
-
     match func.kind {
-        FuncKind::Action => {
-            if let Some(FuncAssociations::Action {
+        FuncKind::Action => match associations {
+            FuncAssociations::Action {
                 kind,
                 schema_variant_ids,
-            }) = associations
-            {
-                save_action_func_prototypes(ctx, &func, kind, schema_variant_ids).await?;
+            } => update_action_associations(ctx, func, kind, schema_variant_ids).await,
+            invalid => {
+                return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+                    invalid, func.id, func.kind,
+                ))
             }
-        }
-        FuncKind::Attribute => {
-            if let Some(FuncAssociations::Attribute {
+        },
+        FuncKind::Attribute => match associations {
+            FuncAssociations::Attribute {
                 prototypes,
                 arguments,
-            }) = associations
-            {
-                // First, modify the arguments because they dictate what we can do within the
-                // attribute subsystem.
-                save_attr_func_arguments(ctx, &func, arguments).await?;
-
-                // Now that we know what func arguments exist and have been modified, we can work
-                // within the attribute subsystem.
-                let backend_response_type = save_attr_func_prototypes(
-                    ctx,
-                    &func,
-                    prototypes,
-                    RemovedPrototypeOp::Reset,
-                    None,
-                )
-                .await?;
-
-                Func::modify_by_id(ctx, func.id, |func| {
-                    func.backend_response_type = backend_response_type;
-                    Ok(())
-                })
-                .await?;
+            } => update_attribute_associations(ctx, func, prototypes, arguments).await,
+            invalid => {
+                return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+                    invalid, func.id, func.kind,
+                ))
             }
-        }
-        FuncKind::Authentication => {
-            if let Some(FuncAssociations::Authentication { schema_variant_ids }) = associations {
-                save_auth_func_prototypes(ctx, &func, schema_variant_ids).await?;
+        },
+        FuncKind::Authentication => match associations {
+            FuncAssociations::Authentication { schema_variant_ids } => {
+                update_authentication_associations(ctx, func, schema_variant_ids).await
             }
-        }
-        FuncKind::CodeGeneration => {
-            if let Some(FuncAssociations::CodeGeneration {
+            invalid => {
+                return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+                    invalid, func.id, func.kind,
+                ))
+            }
+        },
+        FuncKind::CodeGeneration => match associations {
+            FuncAssociations::CodeGeneration {
                 schema_variant_ids,
                 component_ids,
                 inputs,
-            }) = associations
-            {
-                save_leaf_prototypes(
+            } => {
+                update_leaf_associations(
                     ctx,
-                    &func,
+                    func,
                     schema_variant_ids,
                     component_ids,
                     &inputs,
                     LeafKind::CodeGeneration,
                 )
-                .await?;
+                .await
             }
-        }
-        FuncKind::Qualification => {
-            if let Some(FuncAssociations::Qualification {
+            invalid => Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+                invalid, func.id, func.kind,
+            )),
+        },
+        FuncKind::Qualification => match associations {
+            FuncAssociations::Qualification {
                 schema_variant_ids,
                 component_ids,
                 inputs,
-            }) = associations
-            {
-                save_leaf_prototypes(
+            } => {
+                update_leaf_associations(
                     ctx,
-                    &func,
+                    func,
                     schema_variant_ids,
                     component_ids,
                     &inputs,
                     LeafKind::Qualification,
                 )
-                .await?;
+                .await
             }
-        }
-        FuncKind::Intrinsic | FuncKind::SchemaVariantDefinition | FuncKind::Unknown => {
-            return Err(FuncAuthoringError::NotWritable)
-        }
+            invalid => Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+                invalid, func.id, func.kind,
+            )),
+        },
+        kind => Err(FuncAuthoringError::FuncCannotHaveAssociations(
+            func.id,
+            kind,
+            associations,
+        )),
     }
-
-    Ok(())
 }
 
-async fn save_action_func_prototypes(
+#[instrument(
+    name = "func.authoring.save_func.update_associations.action",
+    level = "debug",
+    skip(ctx)
+)]
+async fn update_action_associations(
     ctx: &DalContext,
     func: &Func,
     kind: DeprecatedActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
-    for schema_variant_id in schema_variant_ids {
-        let prototypes = DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-
-        for prototype in prototypes {
+    // Clean up existing prototypes for all variants that use it. Since you could theoretically use
+    // the same func for different action kinds, we only clean up existing prototypes for the same
+    // func AND kind.
+    for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
+        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await? {
             let prototype_func_id = prototype.func_id(ctx).await?;
-            if func.id == prototype_func_id {
+            if func.id == prototype_func_id && kind == prototype.kind {
                 DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
-                DeprecatedActionPrototype::new(
-                    ctx,
-                    prototype.name,
-                    kind,
-                    schema_variant_id,
-                    func.id,
-                )
-                .await?;
             }
+        }
+    }
+
+    // Create or re-create the prototype for the schema variant ids passed in.
+    for schema_variant_id in schema_variant_ids {
+        DeprecatedActionPrototype::new(
+            ctx,
+            Some(func.name.to_owned()),
+            kind,
+            schema_variant_id,
+            func.id,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[instrument(
+    name = "func.authoring.save_func.update_associations.attribute",
+    level = "debug",
+    skip(ctx)
+)]
+async fn update_attribute_associations(
+    ctx: &DalContext,
+    func: &Func,
+    prototypes: Vec<AttributePrototypeBag>,
+    arguments: Vec<FuncArgumentBag>,
+) -> FuncAuthoringResult<()> {
+    // First, modify the arguments because they dictate what we can do within the
+    // attribute subsystem.
+    save_attr_func_arguments(ctx, func, arguments).await?;
+
+    // Now that we know what func arguments exist and have been modified, we can work
+    // within the attribute subsystem.
+    let backend_response_type =
+        save_attr_func_prototypes(ctx, func, prototypes, RemovedPrototypeOp::Reset, None).await?;
+
+    Func::modify_by_id(ctx, func.id, |func| {
+        func.backend_response_type = backend_response_type;
+        Ok(())
+    })
+    .await?;
+
+    Ok(())
+}
+
+#[instrument(
+    name = "func.authoring.save_func.update_associations.authentication",
+    level = "debug",
+    skip(ctx)
+)]
+async fn update_authentication_associations(
+    ctx: &DalContext,
+    func: &Func,
+    schema_variant_ids: Vec<SchemaVariantId>,
+) -> FuncAuthoringResult<()> {
+    let mut id_set = HashSet::new();
+
+    // Add the new authentication prototype to schema variants who do not already have a prototype.
+    // We do not need to re-create or edit the prototypes that already exist because the prototype
+    // is merely an edge.
+    for schema_variant_id in schema_variant_ids {
+        let existing_auth_func_ids =
+            SchemaVariant::list_auth_func_ids_for_id(ctx, schema_variant_id).await?;
+
+        if !existing_auth_func_ids.iter().any(|id| *id == func.id) {
+            SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id).await?;
+        }
+
+        id_set.insert(schema_variant_id);
+    }
+
+    // Remove authentication prototypes from schema variants that haven't been seen.
+    for schema_variant_id in
+        SchemaVariant::list_schema_variant_ids_using_auth_func_id(ctx, func.id).await?
+    {
+        if !id_set.contains(&schema_variant_id) {
+            SchemaVariant::remove_authentication_prototype(ctx, func.id, schema_variant_id).await?;
         }
     }
 
     Ok(())
 }
 
-async fn save_auth_func_prototypes(
+#[instrument(
+    name = "func.authoring.save_func.update_associations.leaf",
+    level = "debug",
+    skip(ctx)
+)]
+async fn update_leaf_associations(
     ctx: &DalContext,
     func: &Func,
     schema_variant_ids: Vec<SchemaVariantId>,
+    component_ids: Vec<ComponentId>,
+    inputs: &[LeafInputLocation],
+    leaf_kind: LeafKind,
 ) -> FuncAuthoringResult<()> {
-    for schema_variant_id in schema_variant_ids {
-        let existing_auth_func_ids =
-            SchemaVariant::list_auth_func_ids_for_id(ctx, schema_variant_id).await?;
+    let mut id_set = HashSet::new();
 
-        for existing_auth_func_id in existing_auth_func_ids {
-            if func.id == existing_auth_func_id {
-                SchemaVariant::remove_authentication_prototype(ctx, func.id, schema_variant_id)
-                    .await?;
-                SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id)
-                    .await?;
-            }
+    // Populate the id set with the provided schema variant ids as well as the schema variant ids
+    // for the provided components.
+    id_set.extend(schema_variant_ids);
+    for component_id in component_ids {
+        // TODO(nick): destroy nilId. Log a warning at the moment in case the frontend sends value
+        // for no-ops. I will come back and destroy nil id soon.
+        if component_id == ComponentId::NONE {
+            warn!("skipping component id set to nil id");
+        } else {
+            id_set.insert(Component::schema_variant_id(ctx, component_id).await?);
         }
     }
+
+    let mut views = Vec::new();
+    for schema_variant_id in id_set {
+        let attribute_prototype_id = SchemaVariant::upsert_leaf_function(
+            ctx,
+            schema_variant_id,
+            None,
+            leaf_kind,
+            inputs,
+            func,
+        )
+        .await?;
+        views.push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
+    }
+
+    let key = Some(func.name.to_owned());
+
+    save_attr_func_prototypes(ctx, func, views, RemovedPrototypeOp::Delete, key).await?;
 
     Ok(())
 }
@@ -188,27 +264,32 @@ async fn save_auth_func_prototypes(
 async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
-    prototype_views: Vec<AttributePrototypeBag>,
+    prototype_bags: Vec<AttributePrototypeBag>,
     removed_protoype_op: RemovedPrototypeOp,
-    _key: Option<String>,
+    key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
     let mut id_set = HashSet::new();
     let mut computed_backend_response_type = func.backend_response_type;
 
     // Update all prototypes using the func.
-    for prototype_view in prototype_views {
+    for prototype_bag in prototype_bags {
         // TODO(nick): don't use the nil id in the future.
-        let attribute_prototype_id = if AttributePrototypeId::NONE == prototype_view.id {
-            let attribute_prototype = AttributePrototype::new(ctx, func.id).await?;
-            attribute_prototype.id
+        let attribute_prototype_id = if AttributePrototypeId::NONE == prototype_bag.id {
+            create_new_attribute_prototype(ctx, &prototype_bag, func.id, key.clone()).await?
         } else {
-            AttributePrototype::update_func_by_id(ctx, prototype_view.id, func.id).await?;
-            prototype_view.id
+            AttributePrototype::update_func_by_id(ctx, prototype_bag.id, func.id).await?;
+            prototype_bag.id
         };
         id_set.insert(attribute_prototype_id);
 
-        save_attr_func_proto_arguments(ctx, prototype_view.id, prototype_view.prototype_arguments)
-            .await?;
+        // Use the attribute prototype id variable rather than the one off the iterator so that we
+        // don't use the nil one by accident.
+        save_attr_func_proto_arguments(
+            ctx,
+            attribute_prototype_id,
+            prototype_bag.prototype_arguments,
+        )
+        .await?;
     }
 
     // Remove or reset all prototypes not included in the views that use the func.
@@ -268,7 +349,7 @@ async fn save_attr_func_arguments(
             func_argument.id
         } else {
             FuncArgument::modify_by_id(ctx, arg.id, |existing_arg| {
-                existing_arg.name = arg.name.to_owned();
+                arg.name.clone_into(&mut existing_arg.name);
                 existing_arg.kind = arg.kind;
                 existing_arg.element_kind = arg.element_kind;
 
@@ -290,56 +371,22 @@ async fn save_attr_func_arguments(
     Ok(())
 }
 
-async fn save_leaf_prototypes(
-    ctx: &DalContext,
-    func: &Func,
-    schema_variant_ids: Vec<SchemaVariantId>,
-    component_ids: Vec<ComponentId>,
-    inputs: &[LeafInputLocation],
-    leaf_kind: LeafKind,
-) -> FuncAuthoringResult<()> {
-    let mut schema_variant_id_set = HashSet::new();
-    schema_variant_id_set.extend(schema_variant_ids);
-    for component_id in component_ids {
-        schema_variant_id_set.insert(Component::schema_variant_id(ctx, component_id).await?);
-    }
-
-    let mut views = Vec::new();
-    for schema_variant_id in schema_variant_id_set {
-        let attribute_prototype_id = SchemaVariant::upsert_leaf_function(
-            ctx,
-            schema_variant_id,
-            None,
-            leaf_kind,
-            inputs,
-            func,
-        )
-        .await?;
-        views.push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
-    }
-
-    let key = Some(func.name.to_owned());
-
-    save_attr_func_prototypes(ctx, func, views, RemovedPrototypeOp::Delete, key).await?;
-
-    Ok(())
-}
-
 async fn save_attr_func_proto_arguments(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
     arguments: Vec<AttributePrototypeArgumentBag>,
 ) -> FuncAuthoringResult<()> {
     let mut id_set = HashSet::new();
+
     for arg in &arguments {
-        // TODO(nick): don't use the nil id in the future.
-        if AttributePrototypeArgumentId::NONE != arg.id {
-            // The attribute prototype argument may have been deleted when deleting func arguments,
-            // so we want to remove or no-op.
-            AttributePrototypeArgument::remove_or_no_op(ctx, arg.id).await?;
+        // Ensure that the user is not also requesting a new func argument inside the attribute
+        // prototype argument request. They should use the func argument bag to do that.
+        if arg.func_argument_id == FuncArgumentId::NONE {
+            return Err(FuncAuthoringError::FuncArgumentMustExist(arg.id));
         }
 
-        // Ensure the func argument exists before continuing.
+        // Ensure the func argument exists before continuing. By continuing, we will not add the
+        // attribute prototype to the id set and will be deleted.
         if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
             match err {
                 FuncArgumentError::WorkspaceSnapshot(
@@ -351,31 +398,120 @@ async fn save_attr_func_proto_arguments(
             }
         }
 
-        // NOTE(nick): we always re-create attribute prototype arguments because we do not easily
-        // know if the input socket has been changed (or removed) in addition to the func argument
-        // existing or moving. However, it is probable that we can refactor this in the future to be
-        // more atomic and abstracted while removing foot-guns.
-        let new_or_recreated_attribute_prototype_argument =
-            AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
-                .await?;
-        let new_or_recreated_attribute_prototype_argument_id =
-            new_or_recreated_attribute_prototype_argument.id();
-        if let Some(input_socket_id) = arg.input_socket_id {
-            new_or_recreated_attribute_prototype_argument
-                .set_value_from_input_socket_id(ctx, input_socket_id)
-                .await?;
+        // Always remove and recreate the argument because the func argument or input socket
+        // could have changed.
+        if AttributePrototypeArgumentId::NONE != arg.id {
+            AttributePrototypeArgument::remove_or_no_op(ctx, arg.id).await?;
         }
 
-        id_set.insert(new_or_recreated_attribute_prototype_argument_id);
+        let attribute_prototype_argument =
+            AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
+                .await?;
+        let attribute_prototype_argument_id = attribute_prototype_argument.id();
+
+        if let Some(input_socket_id) = arg.input_socket_id {
+            attribute_prototype_argument
+                .set_value_from_input_socket_id(ctx, input_socket_id)
+                .await?;
+        } else if let Some(prop_id) = arg.prop_id {
+            attribute_prototype_argument
+                .set_value_from_prop_id(ctx, prop_id)
+                .await?;
+        } else {
+            return Err(FuncAuthoringError::NoInputLocationGiven(
+                attribute_prototype_id,
+                arg.func_argument_id,
+            ));
+        }
+
+        id_set.insert(attribute_prototype_argument_id);
     }
 
     for attribute_prototype_argument_id in
         AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?
     {
         if !id_set.contains(&attribute_prototype_argument_id) {
-            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id).await?;
+            AttributePrototypeArgument::remove_or_no_op(ctx, attribute_prototype_argument_id)
+                .await?;
         }
     }
 
     Ok(())
+}
+
+async fn create_new_attribute_prototype(
+    ctx: &DalContext,
+    prototype_bag: &AttributePrototypeBag,
+    func_id: FuncId,
+    key: Option<String>,
+) -> FuncAuthoringResult<AttributePrototypeId> {
+    let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
+    // TODO(nick): just destroy and burn nilId to the ground. We need to use the "id!" macro instead
+    // of the "pk!" macro and be done with it.
+    let component_id_cannot_be_nil_id = match prototype_bag.component_id {
+        None | Some(ComponentId::NONE) => None,
+        Some(component_id) => Some(component_id),
+    };
+
+    let mut affected_attribute_value_ids = Vec::new();
+
+    if let Some(prop_id) = prototype_bag.prop_id {
+        if let Some(component_id) = component_id_cannot_be_nil_id {
+            let attribute_value_ids = Prop::attribute_values_for_prop_id(ctx, prop_id).await?;
+
+            for attribute_value_id in attribute_value_ids {
+                if component_id == AttributeValue::component_id(ctx, attribute_value_id).await? {
+                    AttributeValue::set_component_prototype_id(
+                        ctx,
+                        attribute_value_id,
+                        attribute_prototype.id,
+                    )
+                    .await?;
+                    affected_attribute_value_ids.push(attribute_value_id);
+                }
+            }
+        } else {
+            Prop::add_edge_to_attribute_prototype(
+                ctx,
+                prop_id,
+                attribute_prototype.id,
+                EdgeWeightKind::Prototype(key),
+            )
+            .await?;
+        }
+    } else if let Some(output_socket_id) = prototype_bag.output_socket_id {
+        if let Some(component_id) = component_id_cannot_be_nil_id {
+            let attribute_value_ids =
+                OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket_id).await?;
+            for attribute_value_id in attribute_value_ids {
+                if component_id == AttributeValue::component_id(ctx, attribute_value_id).await? {
+                    AttributeValue::set_component_prototype_id(
+                        ctx,
+                        attribute_value_id,
+                        attribute_prototype.id,
+                    )
+                    .await?;
+                    affected_attribute_value_ids.push(attribute_value_id);
+                }
+            }
+        } else {
+            OutputSocket::add_edge_to_attribute_prototype(
+                ctx,
+                output_socket_id,
+                attribute_prototype.id,
+                EdgeWeightKind::Prototype(key),
+            )
+            .await?;
+        }
+    } else {
+        return Err(FuncAuthoringError::NoOutputLocationGiven(func_id));
+    }
+
+    if !affected_attribute_value_ids.is_empty() {
+        ctx.enqueue_dependent_values_update(affected_attribute_value_ids)
+            .await?;
+    }
+
+    Ok(attribute_prototype.id)
 }

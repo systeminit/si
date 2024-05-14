@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 flex flex-col gap-2">
+  <div class="p-3 flex flex-col gap-xs">
     <template v-if="!schemaVariantId">
       <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
         Run this qualification on the selected asset and assets of type below.

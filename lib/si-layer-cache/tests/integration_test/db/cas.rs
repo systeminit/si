@@ -1,3 +1,4 @@
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
@@ -16,10 +17,11 @@ async fn write_to_db() {
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let dbfile = disk_cache_path(&tempdir, "slash");
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -83,10 +85,11 @@ async fn write_and_read_many() {
 
     let dbfile = disk_cache_path(&tempdir, "slash");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -138,10 +141,11 @@ async fn cold_read_from_db() {
 
     let dbfile = disk_cache_path(&tempdir, "slash");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -232,10 +236,11 @@ async fn writes_are_gossiped() {
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -243,10 +248,11 @@ async fn writes_are_gossiped() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -349,10 +355,11 @@ async fn stress_test() {
     let db = setup_pg_db("stress_test").await;
 
     // First, we need a layerdb for slash
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("stress_test".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -362,10 +369,11 @@ async fn stress_test() {
     dbg!(ldb_slash.instance_id().to_string());
 
     // Then, we need a layerdb for axl
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db,
         setup_nats_client(Some("stress_test".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await

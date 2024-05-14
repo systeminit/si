@@ -1,9 +1,8 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::FuncView;
 use dal::func::FuncAssociations;
-use dal::{ChangeSet, Func, FuncId, Visibility};
+use dal::{ChangeSet, FuncId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -23,14 +22,6 @@ pub struct SaveFuncRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct SaveFuncResponse {
-    is_revertible: bool,
-    types: String,
-    associations: Option<FuncAssociations>,
-}
-
 pub async fn save_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -42,7 +33,9 @@ pub async fn save_func(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let request_id = request.id;
+    // Cache for posthog tracking.
+    let func_id = request.id;
+    let func_name = request.name.clone();
 
     FuncAuthoringClient::save_func(
         &ctx,
@@ -55,21 +48,22 @@ pub async fn save_func(
     )
     .await?;
 
-    let func = Func::get_by_id_or_error(&ctx, request_id).await?;
-    let func_view = FuncView::assemble(&ctx, &func).await?;
-
     track(
         &posthog_client,
         &ctx,
         &original_uri,
         "save_func",
         serde_json::json!({
-                    "func_id": func.id,
-                    "func_name": func.name.as_str(),
-                    "func_variant": func.backend_response_type,
-                    "func_is_builtin": func.builtin,
+            "how": "/func/save_func",
+            "func_id": func_id,
+            "func_name": func_name.as_str(),
         }),
     );
+
+    WsEvent::func_saved(&ctx, func_id)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
@@ -78,9 +72,5 @@ pub async fn save_func(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response.body(serde_json::to_string(&SaveFuncResponse {
-        is_revertible: func_view.is_revertible,
-        types: func_view.types,
-        associations: func_view.associations,
-    })?)?)
+    Ok(response.body(axum::body::Empty::new())?)
 }

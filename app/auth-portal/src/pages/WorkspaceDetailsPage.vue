@@ -20,11 +20,10 @@
         </RouterLink>
       </div>
       <div class="mt-sm pb-md">
-        <div v-if="featureFlagsStore.INVITE_USER">
+        <div>
           From here you can manage this workspace and invite users to be part of
           it.
         </div>
-        <div v-else>From here you can manage this workspace</div>
       </div>
 
       <Stack>
@@ -112,10 +111,7 @@
                     <td class="normal-case">
                       <ErrorMessage :requestStatus="deleteUserHandlerReq" />
                       <div
-                        v-if="
-                          memUser.role !== 'OWNER' &&
-                          featureFlagsStore.INVITE_USER
-                        "
+                        v-if="memUser.role !== 'OWNER'"
                         class="cursor-pointer hover:text-destructive-500"
                         @click="deleteUserHandler(memUser.email)"
                       >
@@ -129,7 +125,7 @@
           </div>
         </template>
       </div>
-      <div v-if="featureFlagsStore.INVITE_USER" class="pt-md">
+      <div class="pt-md">
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>

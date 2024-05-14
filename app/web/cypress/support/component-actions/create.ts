@@ -24,9 +24,9 @@ Cypress.Commands.add("createComponent", (componentName: string) => {
   // TODO(Wendy) - eventually we should replace this wait! For now this just gives time for the component to be created and load
   cy.wait(5000);
 
-  // Validate that the component was created via the ComponentOutline
+  // Validate that the component was created via the DiagramOutline
   // TODO(Wendy) - this version of createComponent only works for placing components directly onto the canvas, not into frames
-  cy.get('.component-outline .component-outline-node', { timeout: 30000 }).last().contains(componentName, { timeout: 30000, matchCase: false }).should('be.visible');
+  cy.get('.diagram-outline .diagram-outline-node', { timeout: 30000 }).last().contains(componentName, { timeout: 30000, matchCase: false }).should('be.visible');
 
   log.snapshot("after");
   log.end();

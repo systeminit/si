@@ -14,6 +14,7 @@ use tower_http::cors::CorsLayer;
 
 mod download_builtin_route;
 mod download_module_route;
+mod download_workspace_route;
 mod get_module_details_route;
 mod list_builtins_route;
 mod list_modules_route;
@@ -41,6 +42,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/workspace",
             post(upsert_workspace_route::upsert_workspace_route),
+        )
+        .route(
+            "/workspace/:module_id/download",
+            get(download_workspace_route::download_workspace_route),
         )
         .route("/modules", post(upsert_module_route::upsert_module_route))
         .route(

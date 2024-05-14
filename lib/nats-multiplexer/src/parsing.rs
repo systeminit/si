@@ -46,7 +46,7 @@ pub(crate) fn keys_for_potential_receivers(subject: impl ToSubject) -> HashSet<S
         keys_for_potential_receivers.insert(format!("{current}.>"));
 
         // Before entering the next iteration, set the "previous" and "current'.
-        previous = current.clone();
+        previous.clone_from(&current);
         current = format!("{current}.{token}");
     }
 

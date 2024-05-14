@@ -50,7 +50,7 @@
           :details="runner.resource.logs"
         />
         <IconButton
-          v-if="runner.resource?.data"
+          v-if="runner.resource?.payload"
           tooltip="show code"
           rotate="down"
           icon="code-pop"
@@ -63,11 +63,11 @@
     </template>
     <template #staticContent>
       <div
-        v-if="codeViewerShowing && runner.resource?.data"
+        v-if="codeViewerShowing && runner.resource?.payload"
         class="relative w-full"
       >
         <CodeViewer
-          :code="JSON.stringify(runner.resource.data, null, 2)"
+          :code="JSON.stringify(runner.resource.payload, null, 2)"
           class="dark:text-neutral-50 text-neutral-900"
         >
           <template #title>

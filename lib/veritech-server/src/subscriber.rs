@@ -1,9 +1,9 @@
-use deadpool_cyclone::{
+use nats_subscriber::Subscriber;
+use si_data_nats::NatsClient;
+use si_pool_noodle::{
     ActionRunRequest, ReconciliationRequest, ResolverFunctionRequest,
     SchemaVariantDefinitionRequest, ValidationRequest,
 };
-use nats_subscriber::Subscriber;
-use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use veritech_core::{
     nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,

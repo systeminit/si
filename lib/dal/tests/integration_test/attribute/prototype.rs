@@ -10,7 +10,7 @@ async fn find_for_prop(ctx: &mut DalContext) {
         .expect("unable to get schema")
         .expect("schema not found");
     let schema_variant_id = schema
-        .get_default_schema_variant(ctx)
+        .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get schema variant")
         .expect("schema variant not found");

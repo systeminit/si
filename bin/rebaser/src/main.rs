@@ -1,32 +1,20 @@
-use color_eyre::Result;
+use std::time::Duration;
+
 use rebaser_server::{Config, Server};
-use telemetry_application::prelude::*;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
 
 mod args;
 
-const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
-
 fn main() -> Result<()> {
-    let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);
-    let thread_handler = thread_builder.spawn(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-            .thread_name("bin/rebaser-tokio::runtime")
-            .enable_all()
-            .build()?
-            .block_on(async_main())
-    })?;
-    thread_handler.join().unwrap()
+    rt::block_on("bin/rebaser-tokio::runtime", async_main())
 }
 
 async fn async_main() -> Result<()> {
-    let shutdown_token = CancellationToken::new();
-    let task_tracker = TaskTracker::new();
+    let tracker = TaskTracker::new();
+    let token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
-
     let (mut telemetry, telemetry_shutdown) = {
         let config = TelemetryConfig::builder()
             .force_color(args.force_color.then_some(true))
@@ -40,11 +28,19 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["rebaser", "rebaser_server"])
-            .interesting_modules(vec!["si_data_nats", "si_data_pg"])
+            .interesting_modules(vec![
+                "dal",
+                "naxum",
+                "si_data_nats",
+                "si_data_pg",
+                "si_layer_cache",
+            ])
             .build()?;
 
-        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+        telemetry_application::init(config, &tracker, token.clone())?
     };
+
+    startup::startup("rebaser").await?;
 
     if args.verbose > 0 {
         telemetry
@@ -55,20 +51,19 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    task_tracker.close();
+    let server = Server::from_config(config, token.clone(), tracker.clone()).await?;
 
-    Server::from_config(config, shutdown_token.clone(), task_tracker.clone())
-        .await?
-        .run()
-        .await?;
+    tracker.spawn(async move {
+        info!("ready to receive messages");
+        server.run().await
+    });
 
-    // TODO(nick): see other TODOs from the other services with similar shutdown procedures.
-    {
-        shutdown_token.cancel();
-        task_tracker.wait().await;
-        telemetry_shutdown.wait().await?;
-    }
-
-    info!("graceful shutdown complete.");
-    Ok(())
+    shutdown::graceful(
+        tracker,
+        token,
+        Some(telemetry_shutdown.into_future()),
+        Some(Duration::from_secs(10)),
+    )
+    .await
+    .map_err(Into::into)
 }

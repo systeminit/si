@@ -178,6 +178,7 @@ function updateSiProp(key: keyof typeof siValues) {
       propId: prop.propId,
       componentId: component.id,
       value: newVal,
+      isForSecret: false,
     },
   });
   if (key === "name") {
@@ -201,6 +202,7 @@ function openColorPicker() {
     picker = new Picker({
       parent: colorPickerMountRef.value,
       alpha: false,
+      color: siValues.color,
       onDone(color: { hex: string }) {
         siValues.color = color.hex.substring(0, color.hex.length - 2);
         updateSiProp("color");

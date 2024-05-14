@@ -49,9 +49,9 @@
         <FuncDetails
           v-if="assetStore.selectedFuncId"
           :funcId="assetStore.selectedFuncId"
-          :schemaVariantId="assetStore.selectedAsset?.id"
+          :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
           singleModelScreen
-          testPanelEnabled
+          allowTestPanel
           @detached="onDetach"
           @expand-panel="rightResizablePanelRef?.maximize()"
         />
@@ -63,12 +63,12 @@
           :assetId="assetStore.selectedAssetId"
         />
       </template>
-      <div
+      <EmptyStateCard
         v-else
-        class="p-sm text-center text-neutral-400 dark:text-neutral-300"
-      >
-        Select an asset to edit it.
-      </div>
+        iconName="no-assets"
+        primaryText="No Assets Selected"
+        secondaryText="Select an asset from the list on the left panel to view its details here."
+      />
     </div>
   </component>
 </template>
@@ -85,6 +85,7 @@ import AssetEditorTabs from "../AssetEditorTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
+import EmptyStateCard from "../EmptyStateCard.vue";
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();

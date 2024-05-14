@@ -9,8 +9,7 @@ import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
-import { useComponentsStore } from "@/store/components.store";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -72,6 +71,7 @@ export interface DetachedValidationPrototype {
 
 export interface ListedVariant {
   id: AssetId;
+  defaultSchemaVariantId: string;
   name: string;
   displayName?: string;
   category: string;
@@ -178,13 +178,6 @@ export const useAssetStore = () => {
         },
       },
       actions: {
-        setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
-          const asset = this.assetsById[assetId];
-          if (asset) {
-            asset.id = schemaVariantId;
-            this.assetsById[assetId] = asset;
-          }
-        },
         getLastSelectedAssetId(): AssetId | undefined {
           return storage.getItem(
             LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
@@ -236,13 +229,10 @@ export const useAssetStore = () => {
           ])}`;
         },
 
-        generateMockAssets() {
-          return {} as Record<AssetId, Asset>;
-        },
-
         createNewAsset(): Asset {
           return {
             id: nilId(),
+            defaultSchemaVariantId: "",
             name: `new asset ${Math.floor(Math.random() * 10000)}`,
             code: "",
             color: this.generateMockColor(),
@@ -384,9 +374,6 @@ export const useAssetStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
-          this.executeAssetTaskRunning = true;
-          this.executeAssetTaskError = undefined;
-          this.executeAssetTaskId = undefined;
           this.detachmentWarnings = [];
 
           const asset = this.assetsById[assetId];
@@ -397,7 +384,7 @@ export const useAssetStore = () => {
             AssetSaveRequest
           >({
             method: "post",
-            url: "/variant/exec_variant",
+            url: "/variant/update_variant",
             keyRequestStatusBy: assetId,
             params: {
               ...visibility,
@@ -429,6 +416,13 @@ export const useAssetStore = () => {
           },
           {
             eventType: "SchemaVariantSaved",
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantUpdateFinished",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();
@@ -468,52 +462,6 @@ export const useAssetStore = () => {
                   }
                 }
                 this.executeAssetTaskError = errorMessage;
-              }
-            },
-          },
-          {
-            eventType: "SchemaVariantFinished",
-            callback: async ({
-              taskId,
-              schemaVariantId,
-              detachedAttributePrototypes,
-            }) => {
-              if (taskId === this.executeAssetTaskId) {
-                this.executeAssetTaskRunning = false;
-                this.executeAssetTaskError = undefined;
-
-                for (const detached of detachedAttributePrototypes) {
-                  if (
-                    detached.context.type === "OutputSocketSocket" ||
-                    detached.context.type === "InputSocketSocket"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      kind: detached.kind ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
-                    });
-                  } else if (
-                    detached.context.type === "InputSocketProp" ||
-                    detached.context.type === "Prop"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      kind: detached.kind ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
-                    });
-                  }
-                }
-
-                if (schemaVariantId !== nilId() && this.selectedAssetId) {
-                  this.setSchemaVariantIdForAsset(
-                    this.selectedAssetId,
-                    schemaVariantId,
-                  );
-                  // We need to reload both schemas and assets since they're stored separately
-                  await this.LOAD_ASSET(this.selectedAssetId);
-                  await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
-                  await useFuncStore().FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
-                }
               }
             },
           },

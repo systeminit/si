@@ -61,7 +61,7 @@ import { inject, watch, computed, ref, Ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Modal, useModal } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { AttributePrototypeView, OutputLocation } from "@/store/func/types";
+import { AttributePrototypeBag, OutputLocation } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, OutputLocationOption } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
@@ -90,7 +90,7 @@ const modalTitle = computed(
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "save", v?: AttributePrototypeView): void;
+  (e: "save", v?: AttributePrototypeBag): void;
 }>();
 
 interface EditingBinding {
@@ -180,18 +180,10 @@ const inputSourceOptions = computed<Option[]>(() => {
     })) ?? [];
 
   const propOptions =
-    funcStore.inputSourceProps[selectedVariantId]
-      ?.filter(
-        (prop) =>
-          prop.inputSocketId &&
-          ("propId" in selectedOutputLocation.value.value
-            ? prop.propId !== selectedOutputLocation.value.value.propId
-            : true),
-      )
-      .map((prop) => ({
-        label: `Attribute: ${prop.path}${prop.name}`,
-        value: prop.inputSocketId ?? nilId(),
-      })) ?? [];
+    funcStore.inputSourceProps[selectedVariantId]?.map((prop) => ({
+      label: `Attribute: ${prop.path}`,
+      value: prop.propId,
+    })) ?? [];
 
   return socketOptions.concat(propOptions);
 });
@@ -247,7 +239,7 @@ watch(
 );
 
 // When prototype we're editing changes, set up defaults
-const open = (prototype: AttributePrototypeView) => {
+const open = (prototype: AttributePrototypeBag) => {
   const schemaVariantId =
     props.schemaVariantId ??
     funcStore.schemaVariantIdForAttributePrototype(prototype);

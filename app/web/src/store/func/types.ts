@@ -1,11 +1,11 @@
 import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { ActionKind } from "@/store/actions.store";
+import { DeprecatedActionKind } from "@/store/actions.store";
 
 export interface ActionAssociations {
   type: "action";
   schemaVariantIds: string[];
-  kind?: ActionKind;
+  kind?: DeprecatedActionKind;
 }
 
 export type LeafInputLocation =
@@ -34,24 +34,25 @@ export interface QualificationAssociations {
   inputs: LeafInputLocation[];
 }
 
-export interface AttributePrototypeArgumentView {
+export interface AttributePrototypeArgumentBag {
   funcArgumentId: string;
   id?: string;
+  propId?: string;
   inputSocketId?: string;
 }
 
-export interface AttributePrototypeView {
+export interface AttributePrototypeBag {
   id: string;
   componentId?: string;
   schemaVariantId?: string;
   propId?: string;
   outputSocketId?: string;
-  prototypeArguments: AttributePrototypeArgumentView[];
+  prototypeArguments: AttributePrototypeArgumentBag[];
 }
 
 export interface AttributeAssociations {
   type: "attribute";
-  prototypes: AttributePrototypeView[];
+  prototypes: AttributePrototypeBag[];
   arguments: FuncArgument[];
 }
 
@@ -62,13 +63,13 @@ export type FuncAssociations =
   | CodeGenerationAssociations
   | QualificationAssociations;
 
-export interface InputSourceSocket {
+export interface InputSocketView {
   schemaVariantId: string;
   inputSocketId: string;
   name: string;
 }
 
-export interface OutputSocket {
+export interface OutputSocketView {
   schemaVariantId: string;
   outputSocketId: string;
   name: string;
@@ -78,7 +79,6 @@ export interface InputSourceProp {
   propId: string;
   kind: PropKind;
   schemaVariantId: string;
-  inputSocketId?: string;
   path: string;
   name: string;
 }
@@ -123,7 +123,7 @@ export interface CreateFuncAttributeOptions {
 export interface CreateFuncActionOptions {
   type: "actionOptions";
   schemaVariantId: string;
-  actionKind: ActionKind;
+  actionKind: DeprecatedActionKind;
 }
 
 export interface CreateFuncQualificationOptions {

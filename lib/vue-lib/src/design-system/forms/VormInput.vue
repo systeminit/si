@@ -775,8 +775,12 @@ defineExpose({
     background-repeat: no-repeat;
 
     &.--placeholder-selected {
-      color: white;
+      color: @colors-neutral-400;
       font-style: italic;
+
+      &.--theme-dark {
+        color: @colors-neutral-500;
+      }
     }
 
     &:-moz-focusring {

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 use std::collections::HashMap;
@@ -12,15 +13,16 @@ use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
+    action::prototype::ActionPrototypeError,
     change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
     prop::PropError,
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncBackendKind,
-    FuncBackendResponseType, OutputSocketId, SchemaError, SchemaVariantId, TransactionsError,
-    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    DalContext, DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType,
+    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError, UserPk, WorkspaceError,
+    WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributePrototypeId, FuncId, PropId, PropKind};
 
@@ -35,7 +37,7 @@ pub mod import;
 #[derive(Debug, Error)]
 pub enum PkgError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
@@ -54,6 +56,8 @@ pub enum PkgError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]
@@ -132,6 +136,7 @@ impl From<FuncBackendKind> for FuncSpecBackendKind {
             FuncBackendKind::Integer => Self::Integer,
             FuncBackendKind::JsAction => Self::JsAction,
             FuncBackendKind::JsAttribute => Self::JsAttribute,
+            FuncBackendKind::Json => Self::Json,
             FuncBackendKind::JsReconciliation => Self::JsReconciliation,
             FuncBackendKind::JsSchemaVariantDefinition => Self::JsSchemaVariantDefinition,
             FuncBackendKind::JsValidation => Self::JsValidation,
@@ -155,6 +160,7 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::Integer => Self::Integer,
             FuncSpecBackendKind::JsAction => Self::JsAction,
             FuncSpecBackendKind::JsAttribute => Self::JsAttribute,
+            FuncSpecBackendKind::Json => Self::Json,
             FuncSpecBackendKind::JsReconciliation => Self::JsReconciliation,
             FuncSpecBackendKind::JsSchemaVariantDefinition => Self::JsSchemaVariantDefinition,
             FuncSpecBackendKind::JsValidation => Self::JsValidation,
@@ -217,56 +223,38 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
 /// A generic hash map of hash maps for tracking the presence of a thing in each change set. If a
 /// thing is asked for in a specific change set, and not found, the HEAD change set will be
 /// checked.
+#[derive(Debug)]
 pub struct ChangeSetThingMap<Key, Thing> {
-    inner: HashMap<ChangeSetId, HashMap<Key, Thing>>,
-    default_change_set_id: ChangeSetId,
+    inner: HashMap<Key, Thing>,
+}
+
+impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>
+where
+    Key: Eq + PartialEq + std::hash::Hash,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<Key, Thing> ChangeSetThingMap<Key, Thing>
 where
     Key: Eq + PartialEq + std::hash::Hash,
 {
-    pub fn new(default_change_set_id: ChangeSetId) -> Self {
-        let head_thing_map = HashMap::new();
-        let mut change_set_map = HashMap::new();
-        change_set_map.insert(default_change_set_id, head_thing_map);
+    pub fn new() -> Self {
+        let change_set_map = HashMap::new();
 
         Self {
             inner: change_set_map,
-            default_change_set_id,
-        }
-    }
-    pub fn get_change_set_map(&self, change_set_id: ChangeSetId) -> Option<&HashMap<Key, Thing>> {
-        self.inner.get(&change_set_id)
-    }
-
-    pub fn get(&self, change_set_id: Option<ChangeSetId>, key: &Key) -> Option<&Thing> {
-        match self
-            .inner
-            .get(&change_set_id.unwrap_or(self.default_change_set_id))
-        {
-            Some(change_set_map) => change_set_map.get(key).or_else(|| {
-                self.inner
-                    .get(&self.default_change_set_id)
-                    .and_then(|things| things.get(key))
-            }),
-            None => self
-                .inner
-                .get(&self.default_change_set_id)
-                .and_then(|things| things.get(key)),
         }
     }
 
-    pub fn insert(
-        &mut self,
-        change_set_id: Option<ChangeSetId>,
-        key: Key,
-        thing: Thing,
-    ) -> Option<Thing> {
-        self.inner
-            .entry(change_set_id.unwrap_or(self.default_change_set_id))
-            .or_default()
-            .insert(key, thing)
+    pub fn get(&self, key: &Key) -> Option<&Thing> {
+        self.inner.get(key)
+    }
+
+    pub fn insert(&mut self, key: Key, thing: Thing) -> Option<Thing> {
+        self.inner.insert(key, thing)
     }
 }
 
@@ -276,12 +264,12 @@ pub struct ModuleImportedPayload {
     schema_variant_ids: Vec<SchemaVariantId>,
 }
 
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct WorkspaceImportPayload {
-//     workspace_pk: Option<WorkspacePk>,
-//     user_pk: Option<UserPk>,
-// }
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceImportPayload {
+    workspace_pk: Option<WorkspacePk>,
+    user_pk: Option<UserPk>,
+}
 //
 // #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
@@ -290,31 +278,31 @@ pub struct ModuleImportedPayload {
 //     user_pk: Option<UserPk>,
 // }
 //
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ImportWorkspaceVotePayload {
-//     workspace_pk: Option<WorkspacePk>,
-//     user_pk: UserPk,
-//     vote: String,
-// }
-//
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct WorkspaceActorPayload {
-//     workspace_pk: Option<WorkspacePk>,
-//     user_pk: Option<UserPk>,
-// }
-//
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct WorkspaceImportApprovalActorPayload {
-//     workspace_pk: Option<WorkspacePk>,
-//     user_pk: Option<UserPk>,
-//     created_at: DateTime<Utc>,
-//     created_by: String,
-//     name: String,
-// }
-//
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportWorkspaceVotePayload {
+    workspace_pk: Option<WorkspacePk>,
+    user_pk: UserPk,
+    vote: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceActorPayload {
+    workspace_pk: Option<WorkspacePk>,
+    user_pk: Option<UserPk>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceImportApprovalActorPayload {
+    workspace_pk: Option<WorkspacePk>,
+    user_pk: Option<UserPk>,
+    created_at: DateTime<Utc>,
+    created_by: String,
+    name: String,
+}
+
 impl WsEvent {
     pub async fn module_imported(
         ctx: &DalContext,
@@ -357,56 +345,56 @@ impl WsEvent {
     //         .await
     //     }
     //
-    //     pub async fn import_workspace_vote(
-    //         ctx: &DalContext,
-    //         workspace_pk: Option<WorkspacePk>,
-    //         user_pk: UserPk,
-    //         vote: String,
-    //     ) -> WsEventResult<Self> {
-    //         WsEvent::new(
-    //             ctx,
-    //             WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
-    //                 workspace_pk,
-    //                 user_pk,
-    //                 vote,
-    //             }),
-    //         )
-    //         .await
-    //     }
-    //
-    //     pub async fn workspace_import_begin_approval_process(
-    //         ctx: &DalContext,
-    //         workspace_pk: Option<WorkspacePk>,
-    //         user_pk: Option<UserPk>,
-    //         workspace_export_created_at: DateTime<Utc>,
-    //         workspace_export_created_by: String,
-    //         workspace_export_name: String,
-    //     ) -> WsEventResult<Self> {
-    //         WsEvent::new(
-    //             ctx,
-    //             WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
-    //                 workspace_pk,
-    //                 user_pk,
-    //                 created_at: workspace_export_created_at,
-    //                 created_by: workspace_export_created_by,
-    //                 name: workspace_export_name,
-    //             }),
-    //         )
-    //         .await
-    //     }
-    //
-    //     pub async fn workspace_import_cancel_approval_process(
-    //         ctx: &DalContext,
-    //         workspace_pk: Option<WorkspacePk>,
-    //         user_pk: Option<UserPk>,
-    //     ) -> WsEventResult<Self> {
-    //         WsEvent::new(
-    //             ctx,
-    //             WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
-    //                 workspace_pk,
-    //                 user_pk,
-    //             }),
-    //         )
-    //         .await
-    //     }
+    pub async fn import_workspace_vote(
+        ctx: &DalContext,
+        workspace_pk: Option<WorkspacePk>,
+        user_pk: UserPk,
+        vote: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ImportWorkspaceVote(ImportWorkspaceVotePayload {
+                workspace_pk,
+                user_pk,
+                vote,
+            }),
+        )
+        .await
+    }
+
+    pub async fn workspace_import_begin_approval_process(
+        ctx: &DalContext,
+        workspace_pk: Option<WorkspacePk>,
+        user_pk: Option<UserPk>,
+        workspace_export_created_at: DateTime<Utc>,
+        workspace_export_created_by: String,
+        workspace_export_name: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload {
+                workspace_pk,
+                user_pk,
+                created_at: workspace_export_created_at,
+                created_by: workspace_export_created_by,
+                name: workspace_export_name,
+            }),
+        )
+        .await
+    }
+
+    pub async fn workspace_import_cancel_approval_process(
+        ctx: &DalContext,
+        workspace_pk: Option<WorkspacePk>,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload {
+                workspace_pk,
+                user_pk,
+            }),
+        )
+        .await
+    }
 }

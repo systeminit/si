@@ -119,7 +119,7 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import { ActionKind } from "@/store/actions.store";
+import { DeprecatedActionKind } from "@/store/actions.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
@@ -138,7 +138,6 @@ import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
 const props = defineProps<{
-  schemaVariantId?: string;
   assetId?: string;
 }>();
 
@@ -150,6 +149,12 @@ const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
   props.assetId,
+);
+
+const schemaVariantId = computed(() =>
+  props.assetId
+    ? assetStore.assetsById[props.assetId]?.defaultSchemaVariantId
+    : undefined,
 );
 
 const showLoading = computed(
@@ -272,17 +277,17 @@ const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
   selectedExistingFuncId.value = funcId;
   attrToValidate.value = undefined;
 
-  attributeOutputLocationOptions.value = props.schemaVariantId
+  attributeOutputLocationOptions.value = schemaVariantId.value
     ? funcStore
-        .outputLocationOptionsForSchemaVariant(props.schemaVariantId)
+        .outputLocationOptionsForSchemaVariant(schemaVariantId.value)
         .map(({ label, value }) => ({
           label,
           value: JSON.stringify(value),
         }))
     : [];
 
-  validationOptions.value = props.schemaVariantId
-    ? funcStore.propsAsOptionsForSchemaVariant(props.schemaVariantId)
+  validationOptions.value = schemaVariantId.value
+    ? funcStore.propsAsOptionsForSchemaVariant(schemaVariantId.value)
     : [];
 
   openModal();
@@ -296,7 +301,7 @@ const newFuncOptions = (
     schemaVariantId,
   };
 
-  let kind = ActionKind.Other;
+  let kind = DeprecatedActionKind.Other;
   switch (funcKind) {
     case FuncKind.Authentication:
       return {
@@ -304,9 +309,9 @@ const newFuncOptions = (
         ...baseOptions,
       };
     case FuncKind.Action:
-      if (isCreate.value) kind = ActionKind.Create;
-      if (isDelete.value) kind = ActionKind.Delete;
-      if (isRefresh.value) kind = ActionKind.Refresh;
+      if (isCreate.value) kind = DeprecatedActionKind.Create;
+      if (isDelete.value) kind = DeprecatedActionKind.Delete;
+      if (isRefresh.value) kind = DeprecatedActionKind.Refresh;
 
       return {
         type: "actionOptions",
@@ -373,7 +378,7 @@ const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
 };
 
 const attachExistingFunc = async () => {
-  if (props.schemaVariantId && selectedExistingFuncId.value) {
+  if (schemaVariantId.value && selectedExistingFuncId.value) {
     const func = funcStore.funcDetailsById[selectedExistingFuncId.value];
     if (func) {
       let updatedAssociations: FuncAssociations | undefined;
@@ -388,7 +393,7 @@ const attachExistingFunc = async () => {
         case "codeGeneration":
         case "qualification":
           updatedAssociations = _.cloneDeep(associations);
-          updatedAssociations.schemaVariantIds.push(props.schemaVariantId);
+          updatedAssociations.schemaVariantIds.push(schemaVariantId.value);
           break;
         case "attribute":
           if (attributeOutputLocationParsed.value) {
@@ -417,8 +422,8 @@ const attachExistingFunc = async () => {
 };
 
 const attachNewFunc = async () => {
-  if (props.schemaVariantId) {
-    const options = newFuncOptions(funcKind.value, props.schemaVariantId);
+  if (schemaVariantId.value) {
+    const options = newFuncOptions(funcKind.value, schemaVariantId.value);
     const result = await funcStore.CREATE_FUNC({
       kind: funcKind.value,
       name: name.value,

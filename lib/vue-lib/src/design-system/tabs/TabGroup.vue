@@ -7,24 +7,29 @@
     <slot v-if="isNoTabs" name="noTabs">No tabs.</slot>
 
     <template v-else>
-      <!-- This div holds the actual tabs -->
+      <!-- This div holds the tabs themselves (the part at the top, not the content!) -->
       <div
         ref="tabContainerRef"
         :class="
           clsx(
-            {
-              none: '',
-              '2xs': 'mt-2xs',
-              xs: 'mt-xs',
-              sm: 'mt-sm',
-              md: 'mt-md',
-            }[marginTop],
+            variant !== 'fullsize' &&
+              {
+                none: '',
+                '2xs': 'mt-2xs',
+                xs: 'mt-xs',
+                sm: 'mt-sm',
+                md: 'mt-md',
+              }[marginTop],
             'w-full h-8 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden',
           )
         "
       >
         <div
-          v-if="firstTabMarginLeft && firstTabMarginLeft !== 'none'"
+          v-if="
+            firstTabMarginLeft &&
+            firstTabMarginLeft !== 'none' &&
+            variant !== 'fullsize'
+          "
           :class="
             clsx(
               {
@@ -48,24 +53,9 @@
             :class="
               clsx(
                 'focus:outline-none whitespace-nowrap',
-                'h-8 px-2 text-xs inline-flex items-center',
-                growTabsToFillWidth && 'flex-grow justify-center',
-                minimal
-                  ? [
-                      'border-b hover:border-b-2',
-                      tab.props.slug === selectedTabSlug
-                        ? 'border-current text-action-500 dark:text-action-300 font-bold'
-                        : 'border-neutral-300 dark:border-neutral-600 hover:border-shade-100 dark:hover:border-shade-0',
-                    ]
-                  : [
-                      'text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0',
-                      tab.props.slug === selectedTabSlug
-                        ? 'border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold'
-                        : themeClasses(
-                            'hover:text-neutral-400 font-medium hover:bg-neutral-100',
-                            'hover:text-neutral-300 font-medium hover:bg-neutral-900',
-                          ),
-                    ],
+                'h-8 px-xs text-xs inline-flex items-center',
+                growTabs && 'flex-grow justify-center',
+                variantStyles(tab.props.slug),
               )
             "
             @click.prevent="selectTab(tab.props.slug)"
@@ -92,11 +82,12 @@
             </button>
           </a>
           <div
+            v-if="variant !== 'fullsize'"
             class="border-b border-neutral-300 dark:border-neutral-600 w-2xs shrink-0"
           />
         </template>
         <div
-          v-if="!growTabsToFillWidth"
+          v-if="!growTabs"
           class="flex-grow border-b border-neutral-300 dark:border-neutral-600 order-last"
         ></div>
 
@@ -183,6 +174,13 @@ import { Icon, DropdownMenu, DropdownMenuItem } from "..";
 import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
 
+// TabGroupVariant is used to determine the styling for a TabGroup
+//      "classic" is the original design for TabGroup used throughout the product up until May 2024
+//      "minimal" is the first variant added for a TabGroup which is a child of another TabGroups to use
+//      "fullsize" is the newest design for TabGroup added in May 2024
+// If you intend to add another style variant, please update this comment accordingly!
+export type TabGroupVariant = "classic" | "minimal" | "fullsize";
+
 const unmounting = ref(false);
 const showOverflowDropdown = ref(false);
 const overflowMenuRef = ref();
@@ -203,10 +201,54 @@ const props = defineProps({
     default: "none",
   },
   trackingSlug: String,
-  growTabsToFillWidth: { type: Boolean },
-  minimal: { type: Boolean },
+  growTabsToFillWidth: { type: Boolean, default: undefined }, // the "fullsize" variant does this by default
+  variant: { type: String as PropType<TabGroupVariant>, default: "classic" },
   disableOverflowDropdown: { type: Boolean },
 });
+
+const growTabs = computed(() => {
+  if (
+    props.growTabsToFillWidth ||
+    (props.growTabsToFillWidth === undefined && props.variant === "fullsize")
+  )
+    return true;
+  else return false;
+});
+
+const variantStyles = (slug: string) => {
+  switch (props.variant) {
+    case "minimal":
+      return [
+        "border-b hover:border-b-2",
+        slug === selectedTabSlug.value
+          ? "border-current text-action-500 dark:text-action-300 font-bold"
+          : "border-neutral-300 dark:border-neutral-600 hover:border-shade-100 dark:hover:border-shade-0",
+      ];
+    case "fullsize":
+      return [
+        "font-bold",
+        slug === selectedTabSlug.value
+          ? themeClasses(
+              "bg-shade-0 text-action-500",
+              "bg-neutral-800 text-action-300",
+            )
+          : themeClasses(
+              "bg-neutral-200 text-neutral-600 hover:text-action-500",
+              "bg-neutral-700 text-neutral-300 hover:text-action-300",
+            ),
+      ];
+    default: // CLASSIC
+      return [
+        "text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0",
+        slug === selectedTabSlug.value
+          ? "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold"
+          : themeClasses(
+              "hover:text-neutral-400 font-medium hover:bg-neutral-100",
+              "hover:text-neutral-300 font-medium hover:bg-neutral-900",
+            ),
+      ];
+  }
+};
 
 const emit = defineEmits<{
   (e: "closeTab", slug: string): void;
@@ -327,20 +369,22 @@ function selectTab(slug?: string | null) {
         selectedTabSlug.value,
       );
     }
-    // adjust the tab position if it is offscreen
-    const tabEl = tabRefs.value[selectedTabSlug.value];
-    if (tabEl) {
-      const tabElRect = tabEl.getBoundingClientRect();
-      const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
-      // Need to account for the overflow dropdown button!
-      const overflowButtonWidth = overflowDropdownButtonRef.value
-        ? overflowDropdownButtonRef.value.getBoundingClientRect().width
-        : 0;
-      const limit = tabContainerRect.right - overflowButtonWidth;
-      if (tabElRect.right > limit) {
-        orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
-          slug === selectedTabSlug.value ? 0 : 1,
-        );
+    if (!growTabs.value) {
+      // adjust the tab position if it is offscreen
+      const tabEl = tabRefs.value[selectedTabSlug.value];
+      if (tabEl) {
+        const tabElRect = tabEl.getBoundingClientRect();
+        const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
+        // Need to account for the overflow dropdown button!
+        const overflowButtonWidth = overflowDropdownButtonRef.value
+          ? overflowDropdownButtonRef.value.getBoundingClientRect().width
+          : 0;
+        const limit = tabContainerRect.right - overflowButtonWidth;
+        if (tabElRect.right > limit) {
+          orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
+            slug === selectedTabSlug.value ? 0 : 1,
+          );
+        }
       }
     }
   }
@@ -395,6 +439,9 @@ function fixOverflowDropdown() {
   showOverflowDropdown.value = tabListEl.scrollWidth > tabListEl.clientWidth;
 }
 onMounted(fixOverflowDropdown);
+onMounted(() => {
+  selectTab(selectedTabSlug.value);
+});
 onUpdated(fixOverflowDropdown);
 const debounceForResize = _.debounce(fixOverflowDropdown, 50);
 const resizeObserver = new ResizeObserver(debounceForResize);

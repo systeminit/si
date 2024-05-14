@@ -5,11 +5,12 @@ use std::path::PathBuf;
 
 use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
-use sdf_server::server::{LayerDb, PgPool, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
+use sdf_server::server::{LayerDb, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
-    Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
-    ServicesContext,
+    Config, FeatureFlagService, IncomingStream, JobProcessorClientCloser, JobProcessorConnector,
+    MigrationMode, Server, ServicesContext,
 };
+use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -57,6 +58,8 @@ async fn async_main() -> Result<()> {
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
 
+    startup::startup("sdf").await?;
+
     if args.verbose > 0 {
         telemetry
             .set_verbosity_and_wait(args.verbose.into())
@@ -89,6 +92,10 @@ async fn async_main() -> Result<()> {
     }
 
     let config = Config::try_from(args)?;
+    dbg!(config.boot_feature_flags());
+    // TODO Create Feature Flags Service in Service Context
+    // TODO Push Boot feature flags into it
+    // TODO Read FFs  back from actions endpoints
 
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =
@@ -114,17 +121,11 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
-    let mut pg_layer_db_pool = config.pg_pool().clone();
-    pg_layer_db_pool.dbname = config.layer_cache_pg_dbname().to_string();
-
-    let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-        config.layer_cache_disk_path(),
-        PgPool::new(&pg_layer_db_pool).await?,
-        nats_conn.clone(),
-        shutdown_token.clone(),
-    )
-    .await?;
+    let (layer_db, layer_db_graceful_shutdown) =
+        LayerDb::from_config(config.layer_db_config().clone(), shutdown_token.clone()).await?;
     task_tracker.spawn(layer_db_graceful_shutdown.into_future());
+
+    let feature_flags_service = FeatureFlagService::new(config.boot_feature_flags().clone());
 
     let services_context = ServicesContext::new(
         pg_pool,
@@ -136,6 +137,7 @@ async fn async_main() -> Result<()> {
         Some(module_index_url),
         symmetric_crypto_service,
         layer_db,
+        feature_flags_service,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

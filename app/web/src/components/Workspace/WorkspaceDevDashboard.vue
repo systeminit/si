@@ -5,27 +5,34 @@
     <Stack spacing="lg">
       <span class="flex flex-row mt-10 font-bold text-3xl">Dev Dashboard</span>
       <Stack>
-        <h2>FRONTEND</h2>
+        <h2 class="font-bold text-lg">FRONTEND</h2>
         <Inline spacing="md">
           <div>
-            Branch:
+            <span class="font-bold">Branch: </span>
             <a
               :href="getGithubBranchLink(webBranch)"
-              class="text-action-400"
+              class="text-action-400 hover:underline"
               target="_blank"
-              >{{ webBranch }}</a
             >
+              {{ webBranch }}
+            </a>
           </div>
           <div>
-            Sha:
+            <span class="font-bold">Sha: </span>
             <a
               :href="getGithubShaLink(webSha)"
-              class="text-action-400"
+              class="text-action-400 hover:underline"
               target="_blank"
-              >{{ webSha }}</a
             >
+              {{ webSha }}
+            </a>
           </div>
         </Inline>
+        <div class="text-md font-bold text-action-400 hover:underline">
+          <RouterLink :to="{ name: 'svg' }">
+            SVG Debug Page (see all Icons and EmptyStateIcons)
+          </RouterLink>
+        </div>
       </Stack>
 
       <Stack>

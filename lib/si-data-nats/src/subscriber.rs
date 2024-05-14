@@ -16,11 +16,11 @@ use super::{ConnectionMetadata, Error, Message, Result};
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// # #[tokio::main]
 /// # async fn main() ->  Result<(), async_nats::Error> {
-/// let mut nc = si_data_nats::connect("demo.nats.io").await?;
-/// # nc.publish("test".into(), "data".into()).await?;
+/// let mut nc = si_data_nats::ConnectOptions::new().connect("demo.nats.io", None).await?;
+/// # nc.publish("test", "data".into()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -54,12 +54,16 @@ impl Subscriber {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     ///
-    /// let mut subscriber = client.subscribe("foo".into()).await?;
+    /// let mut subscriber = client.subscribe("foo").await?;
     ///
     /// subscriber.unsubscribe().await?;
     /// # Ok(())
@@ -101,24 +105,28 @@ impl Subscriber {
         Ok(())
     }
 
-    /// Unsubscribes from subscription after reaching given number of messages. This is the total
-    /// number of messages received by this subscriber in it's whole lifespan. If it already
-    /// reached or surpassed the passed value, it will immediately stop.
+    /// Unsubscribes from subscription after reaching given number of messages.
+    ///
+    /// This is the total number of messages received by this subscriber in it's whole lifespan. If
+    /// it already reached or surpassed the passed value, it will immediately stop.
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # use futures::StreamExt;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), async_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options(
+    ///     "demo.nats.io",
+    ///     None,
+    ///     Default::default(),
+    /// ).await?;
     ///
-    /// let mut subscriber = client.subscribe("test".into()).await?;
+    /// let mut subscriber = client.subscribe("test").await?;
     /// subscriber.unsubscribe_after(3).await?;
-    /// client.flush().await?;
     ///
     /// for _ in 0..3 {
-    ///     client.publish("test".into(), "data".into()).await?;
+    ///     client.publish("test", "data".into()).await?;
     /// }
     ///
     /// while let Some(message) = subscriber.next().await {
@@ -151,7 +159,7 @@ impl Subscriber {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn unsubscribe_after(mut self, unsub_after: u64) -> Result<()> {
+    pub async fn unsubscribe_after(&mut self, unsub_after: u64) -> Result<()> {
         let span = Span::current();
         span.follows_from(&self.sub_span);
 

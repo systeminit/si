@@ -5,8 +5,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ModuleId } from "@/store/module.store";
-import { nilId } from "@/utils/nilId";
-import { Visibility } from "@/api/sdf/dal/visibility";
+import router from "@/router";
 import { useAuthStore, UserId } from "./auth.store";
 import { useRouterStore } from "./router.store";
 import { AuthApiRequest } from ".";
@@ -38,13 +37,11 @@ export type WorkspaceImportSummary = {
 
 const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 
+// Note(victor): The workspace import exists outside a changeset context
+// (since change sets exists inside tenancies) - So no endpoints in this store
+// should use a visibility. If one seems like it should, then it belongs
+// in a different store.
 export const useWorkspacesStore = () => {
-  // TODO(nick): this is fine for now since workspaces are handled outside of the snapshots, but we will need to change
-  // this once the old change set concept is gone.
-  const visibility: Visibility = {
-    visibility_change_set_pk: nilId(),
-  };
-
   return addStoreHooks(
     defineStore("workspaces", {
       state: () => ({
@@ -109,16 +106,6 @@ export const useWorkspacesStore = () => {
             },
           });
         },
-        async BEGIN_APPROVAL_PROCESS(moduleId: ModuleId) {
-          return new ApiRequest({
-            method: "post",
-            url: "/module/begin_approval_process",
-            params: {
-              id: moduleId,
-              ...visibility,
-            },
-          });
-        },
         async BEGIN_WORKSPACE_IMPORT(moduleId: ModuleId) {
           this.workspaceApprovals = {};
           this.importId = null;
@@ -126,10 +113,9 @@ export const useWorkspacesStore = () => {
           this.importError = undefined;
           return new ApiRequest<{ id: string }>({
             method: "post",
-            url: "/module/install_module",
+            url: "/module/install_workspace",
             params: {
               id: moduleId,
-              ...visibility,
             },
             onSuccess: (data) => {
               this.workspaceImportSummary = null;
@@ -141,14 +127,21 @@ export const useWorkspacesStore = () => {
             },
           });
         },
+        async BEGIN_APPROVAL_PROCESS(moduleId: ModuleId) {
+          return new ApiRequest({
+            method: "post",
+            url: "/module/begin_approval_process",
+            params: {
+              id: moduleId,
+            },
+          });
+        },
         async CANCEL_APPROVAL_PROCESS() {
           this.workspaceImportSummary = null;
           return new ApiRequest({
             method: "post",
             url: "/module/cancel_approval_process",
-            params: {
-              ...visibility,
-            },
+            params: {},
             onSuccess: (_response) => {
               this.workspaceImportSummary = null;
             },
@@ -160,7 +153,6 @@ export const useWorkspacesStore = () => {
             url: "/module/import_workspace_vote",
             params: {
               vote,
-              ...visibility,
             },
           });
         },
@@ -177,72 +169,95 @@ export const useWorkspacesStore = () => {
         );
 
         const realtimeStore = useRealtimeStore();
-        realtimeStore.subscribe(
-          this.$id,
-          `workspace/${this.selectedWorkspacePk}`,
-          [
-            {
-              eventType: "WorkspaceImportBeginApprovalProcess",
-              callback: (data) => {
-                this.importCancelledAt = null;
-                this.importCompletedAt = null;
-                this.workspaceImportSummary = {
-                  importRequestedByUserPk: data.userPk,
-                  workspaceExportCreatedAt: data.createdAt,
-                  workspaceExportCreatedBy: data.createdBy,
-                  importedWorkspaceName: data.name,
-                };
-              },
-            },
-            {
-              eventType: "WorkspaceImportCancelApprovalProcess",
-              callback: () => {
-                this.workspaceApprovals = {};
-                this.workspaceImportSummary = null;
-                this.importCancelledAt = new Date().toISOString();
-                this.importCompletedAt = null;
-              },
-            },
-            {
-              eventType: "ImportWorkspaceVote",
-              callback: (data) => {
-                if (this.selectedWorkspacePk === data.workspacePk) {
-                  this.workspaceApprovals[data.userPk] = data.vote;
-                }
-              },
-            },
-            {
-              eventType: "WorkspaceImported",
-              callback: () => {
-                this.workspaceApprovals = {};
-                this.workspaceImportSummary = null;
-                this.importCompletedAt = new Date().toISOString();
-                this.importCancelledAt = null;
-              },
-            },
-            {
-              eventType: "AsyncFinish",
-              callback: ({ id }: { id: string }) => {
-                if (id === this.importId) {
-                  this.importLoading = false;
-                  this.importError = undefined;
-                  this.importId = null;
-                }
-              },
-            },
-            {
-              eventType: "AsyncError",
-              callback: ({ id, error }: { id: string; error: string }) => {
-                if (id === this.importId) {
-                  this.importLoading = false;
-                  this.importError = error;
-                  this.importId = null;
-                }
-              },
-            },
-          ],
+
+        // Since there is only one workspace store instance,
+        // we need to resubscribe when the workspace pk changes
+        watch(
+          () => this.selectedWorkspacePk,
+          () => {
+            realtimeStore.subscribe(
+              this.$id,
+              `workspace/${this.selectedWorkspacePk}`,
+              [
+                {
+                  eventType: "WorkspaceImportBeginApprovalProcess",
+                  callback: (data) => {
+                    this.importCancelledAt = null;
+                    this.importCompletedAt = null;
+                    this.workspaceImportSummary = {
+                      importRequestedByUserPk: data.userPk,
+                      workspaceExportCreatedAt: data.createdAt,
+                      workspaceExportCreatedBy: data.createdBy,
+                      importedWorkspaceName: data.name,
+                    };
+                  },
+                },
+                {
+                  eventType: "WorkspaceImportCancelApprovalProcess",
+                  callback: () => {
+                    this.workspaceApprovals = {};
+                    this.workspaceImportSummary = null;
+                    this.importCancelledAt = new Date().toISOString();
+                    this.importCompletedAt = null;
+                  },
+                },
+                {
+                  eventType: "ImportWorkspaceVote",
+                  callback: (data) => {
+                    if (this.selectedWorkspacePk === data.workspacePk) {
+                      this.workspaceApprovals[data.userPk] = data.vote;
+                    }
+                  },
+                },
+                {
+                  eventType: "WorkspaceImported",
+                  callback: () => {
+                    this.workspaceApprovals = {};
+                    this.workspaceImportSummary = null;
+                    this.importCompletedAt = new Date().toISOString();
+                    this.importCancelledAt = null;
+                  },
+                },
+                {
+                  eventType: "AsyncFinish",
+                  callback: ({ id }: { id: string }) => {
+                    if (id === this.importId) {
+                      this.importLoading = false;
+                      this.importCompletedAt = new Date().toISOString();
+                      this.importError = undefined;
+                      this.importId = null;
+
+                      const route = router.currentRoute.value;
+
+                      router.push({
+                        name: "workspace-compose",
+                        params: {
+                          ...route.params,
+                          changeSetId: "head",
+                        },
+                        query: route.query,
+                      });
+                    }
+                  },
+                },
+                {
+                  eventType: "AsyncError",
+                  callback: ({ id, error }: { id: string; error: string }) => {
+                    if (id === this.importId) {
+                      this.importLoading = false;
+                      this.importError = error;
+                      this.importId = null;
+                    }
+                  },
+                },
+              ],
+            );
+          },
+          { immediate: true },
         );
-        // NOTE - dont need to clean up here, since there is only one workspace store and it will always be loaded
+
+        // NOTE - don't need to clean up here, since there is only one workspace
+        // store, and it will always be loaded
       },
     }),
   )();

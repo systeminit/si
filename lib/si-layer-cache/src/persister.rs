@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
 use tokio::{
@@ -113,7 +113,7 @@ impl PersisterTask {
     ) -> LayerDbResult<Self> {
         let tracker = TaskTracker::new();
 
-        let context = jetstream::new(nats_client.as_inner().clone());
+        let context = si_data_nats::jetstream::new(nats_client.clone());
         // Ensure the Jetstream is created
         let _stream =
             layerdb_events_stream(&context, nats_client.metadata().subject_prefix()).await?;
@@ -206,16 +206,18 @@ impl PersistEventTask {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
-            Err(e) => {
-                println!("wtf: {:?}", e);
-                status_tx.send(PersistStatus::Error(e));
+            Err(err) => {
+                error!(error = ?err, "persister task failed");
+                status_tx.send(PersistStatus::Error(err));
             }
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn try_write_layers(&self, event: LayeredEvent) -> LayerDbResult<()> {
         let event = Arc::new(event);
 
@@ -283,6 +285,7 @@ impl PersistEventTask {
     }
 
     // Write an event to the pg layer
+    #[instrument(level = "debug", skip_all)]
     pub async fn write_to_pg(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
         pg_layer

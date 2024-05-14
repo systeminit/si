@@ -1,9 +1,14 @@
 pub(crate) mod node;
 mod pkg;
 mod spec;
+mod workspace;
 
 pub use pkg::*;
 pub use spec::*;
+pub use workspace::{
+    WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
+    WorkspaceExportMetadataV0,
+};
 
 #[cfg(test)]
 mod tests {
@@ -123,7 +128,7 @@ mod tests {
         assert_eq!(2, leaf_funcs.len());
 
         for func in leaf_funcs {
-            assert!(funcs_by_unique_id.contains_key(&func.func_unique_id().to_string()));
+            assert!(funcs_by_unique_id.contains_key(func.func_unique_id()));
             match func.leaf_kind() {
                 LeafKind::Qualification => {
                     assert_eq!(

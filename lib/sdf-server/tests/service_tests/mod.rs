@@ -7,14 +7,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceExt;
 
 mod crdt;
-mod secret;
 mod session;
-
-// TODO(nick): bring these back as they make sense. Make sure to refactor, redo, drop, etc. as we go.
-// mod change_set;
-// mod component;
-// mod scenario;
-// mod functions;
 
 pub async fn api_request_auth_empty<Res: DeserializeOwned>(
     app: Router,

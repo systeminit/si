@@ -15,6 +15,7 @@ rust_library(
         "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
         "//third-party/rust:url",
     ],
     srcs = glob(["src/**/*.rs"]),

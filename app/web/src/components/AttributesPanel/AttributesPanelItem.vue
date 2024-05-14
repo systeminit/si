@@ -62,14 +62,20 @@
             class="attributes-panel-item__type-icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label">
+          <div class="attributes-panel-item__section-header-label flex-1">
             <div
               ref="headerMainLabelRef"
               v-tooltip="headerMainLabelTooltip"
-              class="attributes-panel-item__section-header-label-main leading-loose"
+              class="attributes-panel-item__section-header-label-main leading-loose flex"
             >
               <template v-if="isChildOfArray">
                 {{ propName }}[{{ attributeDef.arrayIndex }}]
+                <button
+                  class="attributes-panel-item__delete-child-button hover:scale-125 items-center"
+                  @click="removeChildHandler"
+                >
+                  <Icon name="trash" size="xs" />
+                </button>
               </template>
               <template v-else-if="isChildOfMap">
                 {{ attributeDef.mapKey }}
@@ -95,22 +101,14 @@
             </div>
           </div>
           <SourceIconWithTooltip
-            v-if="
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              !(widgetKind === 'secret')
-            "
+            v-if="!(widgetKind === 'secret')"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
             header
           />
           <!-- DROPDOWN MENU FOR SELECT SOURCE -->
-          <template
-            v-if="
-              validAttributeValueSources.length > 1 &&
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET
-            "
-          >
+          <template v-if="validAttributeValueSources.length > 1">
             <div
               class="attributes-panel-item__section-header-source-select"
               @click="sourceSelectMenuRef?.open($event)"
@@ -268,10 +266,7 @@
           </button>
 
           <SourceIconWithTooltip
-            v-if="
-              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              !(widgetKind === 'secret')
-            "
+            v-if="!(widgetKind === 'secret')"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
@@ -445,17 +440,8 @@
           <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
         <div
-          v-if="
-            propControlledByParent ||
-            (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              propSetByDynamicFunc &&
-              !editOverride)
-          "
-          v-tooltip="
-            propControlledByParent
-              ? `${propName} is set via a function from an ancestor`
-              : `${propName} is set via an input socket`
-          "
+          v-if="!propIsEditable"
+          v-tooltip="sourceTooltip"
           :class="
             clsx(
               'attributes-panel-item__blocked-overlay',
@@ -607,7 +593,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
@@ -624,8 +609,6 @@ const props = defineProps({
   // number of prop keys to show while collapsed
   numPreviewProps: { type: Number, default: 3 },
 });
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const headerMainLabelRef = ref();
 const headerMainLabelTooltip = computed(() => {
@@ -827,6 +810,7 @@ const setSource = (source: AttributeValueSource) => {
         propId: props.attributeDef.propId,
         componentId,
         value,
+        isForSecret: false,
       },
     });
   } else {
@@ -845,6 +829,13 @@ const sourceIcon = computed(() => {
 
 const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
 
+const propIsEditable = computed(
+  () =>
+    sourceOverridden.value ||
+    editOverride.value ||
+    (!propPopulatedBySocket.value && !propSetByDynamicFunc.value),
+);
+
 const sourceTooltip = computed(() => {
   if (sourceOverridden.value) {
     if (propPopulatedBySocket.value) {
@@ -858,6 +849,8 @@ const sourceTooltip = computed(() => {
   } else {
     if (propPopulatedBySocket.value) {
       return `${propName.value} is set via a populated socket`;
+    } else if (propControlledByParent.value) {
+      return `${propName.value} is set via a function from an ancestor`;
     } else if (propSetByDynamicFunc.value) {
       return `${propName.value} is set by a dynamic function`;
     } else if (propHasSocket.value) {
@@ -942,6 +935,8 @@ function unsetHandler() {
 function updateValue() {
   let newVal;
   let skipUpdate = false;
+  let isForSecret = false;
+
   if (widgetKind.value === "checkbox") {
     newVal = newValueBoolean.value;
     // special handling for empty value + false
@@ -968,6 +963,12 @@ function updateValue() {
     return;
   }
 
+  // If we are explicitly setting a secret, we need to inform SDF so that dependent values update
+  // will trigger when the secret's encrypted contents change.
+  if (widgetKind.value === "secret") {
+    isForSecret = true;
+  }
+
   attributesStore.UPDATE_PROPERTY_VALUE({
     update: {
       attributeValueId: props.attributeDef.valueId,
@@ -975,6 +976,7 @@ function updateValue() {
       propId: props.attributeDef.propId,
       componentId,
       value: newVal,
+      isForSecret,
     },
   });
 }
@@ -1388,7 +1390,7 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   right: 4px;
   bottom: 4px;
   display: none;
-  z-index: 49;
+  z-index: 51;
   transform: scaleX(-1);
 
   .attributes-panel-item.--input.--focus &,

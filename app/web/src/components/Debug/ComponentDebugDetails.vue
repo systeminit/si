@@ -11,11 +11,14 @@
     <template v-else-if="fetchDebugReqStatus.isSuccess && debugData">
       <div class="border border-neutral-500 m-xs">
         <!-- Component -->
-        <Collapsible
-          defaultOpen
-          extraBorderAtBottomOfContent
+        <TreeNode
+          :defaultOpen="false"
+          alwaysShowArrow
+          enableGroupToggle
           label="Component"
-          textSize="lg"
+          labelClasses="text-lg font-medium border-b border-neutral-200 dark:border-neutral-600"
+          childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          noIndentationOrLeftBorder
         >
           <dl class="border-l-2 p-xs flex flex-col gap-xs">
             <DebugViewItem :data="componentId" title="Id" />
@@ -28,70 +31,88 @@
               title="Parent Id?"
             />
           </dl>
-        </Collapsible>
+        </TreeNode>
 
         <!-- Attributes -->
-        <Collapsible
+        <TreeNode
           :defaultOpen="false"
-          contentAs="ul"
+          alwaysShowArrow
+          enableGroupToggle
           label="Attributes"
-          textSize="lg"
+          labelClasses="text-lg font-medium border-b border-neutral-200 dark:border-neutral-600"
+          childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          indentationSize="xs"
+          leftBorderSize="none"
         >
-          <Collapsible
+          <TreeNode
             v-for="attribute in debugData.attributes"
             :key="attribute.path"
             :defaultOpen="false"
             :label="attribute.path"
-            as="li"
-            contentClasses="px-sm"
-            extraBorderAtBottomOfContent
-            xPadding="double"
+            alwaysShowArrow
+            enableGroupToggle
+            labelClasses="text-sm border-l border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+            indentationSize="none"
+            leftBorderSize="none"
           >
             <AttributeDebugView :data="attribute" />
-          </Collapsible>
-        </Collapsible>
+          </TreeNode>
+        </TreeNode>
 
         <!-- Input Sockets -->
-        <Collapsible
+        <TreeNode
           :defaultOpen="false"
-          contentAs="ul"
+          alwaysShowArrow
+          enableGroupToggle
           label="Input Sockets"
-          textSize="lg"
+          labelClasses="text-lg font-medium border-b border-neutral-200 dark:border-neutral-600"
+          childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          indentationSize="xs"
+          leftBorderSize="none"
         >
-          <Collapsible
+          <TreeNode
             v-for="attribute in debugData.inputSockets"
             :key="attribute.name"
             :defaultOpen="false"
             :label="attribute.name"
-            as="li"
-            contentClasses="px-sm"
-            extraBorderAtBottomOfContent
-            xPadding="double"
+            alwaysShowArrow
+            enableGroupToggle
+            labelClasses="text-sm border-l border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+            indentationSize="none"
+            leftBorderSize="none"
           >
             <SocketDebugView :data="attribute" />
-          </Collapsible>
-        </Collapsible>
+          </TreeNode>
+        </TreeNode>
 
         <!-- Output Sockets -->
-        <Collapsible
+        <TreeNode
           :defaultOpen="false"
-          contentAs="ul"
+          alwaysShowArrow
+          enableGroupToggle
           label="Output Sockets"
-          textSize="lg"
+          labelClasses="text-lg font-medium border-b border-neutral-200 dark:border-neutral-600"
+          childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          indentationSize="xs"
+          leftBorderSize="none"
         >
-          <Collapsible
+          <TreeNode
             v-for="attribute in debugData.outputSockets"
             :key="attribute.name"
             :defaultOpen="false"
             :label="attribute.name"
-            as="li"
-            contentClasses="px-sm"
-            extraBorderAtBottomOfContent
-            xPadding="double"
+            alwaysShowArrow
+            enableGroupToggle
+            labelClasses="text-sm border-l border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+            indentationSize="none"
+            leftBorderSize="none"
           >
             <SocketDebugView :data="attribute" />
-          </Collapsible>
-        </Collapsible>
+          </TreeNode>
+        </TreeNode>
       </div>
     </template>
   </div>
@@ -99,12 +120,13 @@
 
 <script lang="ts" setup>
 import {
-  Collapsible,
   ErrorMessage,
   LoadingMessage,
+  TreeNode,
 } from "@si/vue-lib/design-system";
 import { PropType, computed, onMounted } from "vue";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";

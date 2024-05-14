@@ -23,20 +23,6 @@
           {{ detail }}
         </div>
       </slot>
-
-      <div class="ml-xs flex-none">
-        <VButton
-          v-if="showRefreshButton"
-          icon="refresh"
-          variant="ghost"
-          loadingIcon="refresh-active"
-          loadingText="Refreshing..."
-          :loading="refreshing"
-          @click="onClickRefreshButton"
-        >
-          Resources
-        </VButton>
-      </div>
     </div>
 
     <Transition
@@ -70,12 +56,9 @@
 
 <script setup lang="ts">
 import clsx from "clsx";
-import { ref, computed, onBeforeUnmount } from "vue";
-import { Icon, VButton } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
+import { computed } from "vue";
+import { Icon } from "@si/vue-lib/design-system";
 import ProgressBar from "./ProgressBar.vue";
-
-const componentsStore = useComponentsStore();
 
 const props = defineProps({
   title: { type: String },
@@ -96,19 +79,5 @@ const computedProgressPercent = computed(() => {
     return (props.doneCount || 0) / props.totalCount;
   }
   return undefined;
-});
-
-const refreshing = ref(false);
-let timeout: Timeout;
-const onClickRefreshButton = () => {
-  refreshing.value = true;
-  componentsStore.REFRESH_ALL_RESOURCE_INFO();
-  timeout = setTimeout(() => {
-    refreshing.value = false;
-  }, 3000);
-};
-
-onBeforeUnmount(() => {
-  clearTimeout(timeout);
 });
 </script>

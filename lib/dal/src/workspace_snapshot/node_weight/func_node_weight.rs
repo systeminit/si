@@ -5,6 +5,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use crate::func::FuncKind;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::EdgeWeightKindDiscriminants;
 use crate::{
     change_set::ChangeSet,
     workspace_snapshot::{
@@ -55,6 +56,10 @@ impl FuncNodeWeight {
 
     pub fn content_hash(&self) -> ContentHash {
         self.content_address.content_hash()
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![self.content_address.content_hash()]
     }
 
     pub fn id(&self) -> Ulid {
@@ -178,6 +183,10 @@ impl FuncNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[EdgeWeightKindDiscriminants::Use]
     }
 }
 

@@ -1,17 +1,21 @@
 use chrono::Utc;
-use deadpool_cyclone::{
-    instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest, ActionRunResultSuccess,
-    CycloneClient, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Manager,
-    Pool, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
-};
+
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
 use si_data_nats::NatsClient;
+use si_pool_noodle::CycloneClient;
+use si_pool_noodle::Spec;
+use si_pool_noodle::{
+    instance::cyclone::LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest,
+    ActionRunResultSuccess, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    PoolNoodle, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+};
 use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
+
 use tokio::{
     signal::unix,
     sync::{broadcast, mpsc},
@@ -23,13 +27,15 @@ use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, Publishe
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("action run error: {0}")]
-    ActionRun(#[from] deadpool_cyclone::ExecutionError<ActionRunResultSuccess>),
+    ActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
     #[error("cyclone error: {0}")]
-    Cyclone(#[from] deadpool_cyclone::ClientError),
+    Cyclone(#[from] si_pool_noodle::ClientError),
     #[error("cyclone pool error: {0}")]
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone progress error: {0}")]
     CycloneProgress(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
+    #[error("cyclone spec setup error: {0}")]
+    CycloneSetupError(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone spec builder error: {0}")]
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("error connecting to nats: {0}")]
@@ -39,19 +45,19 @@ pub enum ServerError {
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    Reconciliation(#[from] deadpool_cyclone::ExecutionError<ReconciliationResultSuccess>),
+    Reconciliation(#[from] si_pool_noodle::ExecutionError<ReconciliationResultSuccess>),
     #[error(transparent)]
-    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
+    ResolverFunction(#[from] si_pool_noodle::ExecutionError<ResolverFunctionResultSuccess>),
     #[error(transparent)]
     SchemaVariantDefinition(
-        #[from] deadpool_cyclone::ExecutionError<SchemaVariantDefinitionResultSuccess>,
+        #[from] si_pool_noodle::ExecutionError<SchemaVariantDefinitionResultSuccess>,
     ),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
     Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error(transparent)]
-    Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
+    Validation(#[from] si_pool_noodle::ExecutionError<ValidationResultSuccess>),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, Box<CycloneSpec>),
 }
@@ -61,7 +67,7 @@ type ServerResult<T> = Result<T, ServerError>;
 pub struct Server {
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_rx: oneshot::Receiver<()>,
@@ -108,15 +114,19 @@ impl Server {
                 let (shutdown_broadcast_tx, _) = broadcast::channel(16);
 
                 let nats = connect_to_nats(&config).await?;
-                let mut manager = Manager::new(spec.clone());
-                manager
+
+                let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
+                    PoolNoodle::new(
+                        spec.pool_size.into(),
+                        spec.clone(),
+                        shutdown_broadcast_tx.subscribe(),
+                    );
+
+                spec.clone()
                     .setup()
                     .await
-                    .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
-
-                let cyclone_pool = Pool::builder(manager)
-                    .build()
-                    .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
+                    .map_err(|e| ServerError::CycloneSetupError(Box::new(e)))?;
+                cyclone_pool.start();
 
                 let metadata = ServerMetadata {
                     job_instance: config.instance_id().into(),
@@ -225,7 +235,7 @@ async fn process_resolver_function_requests_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_resolver_function_requests(
@@ -245,7 +255,7 @@ async fn process_resolver_function_requests(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -296,7 +306,7 @@ async fn process_resolver_function_requests(
 async fn resolver_function_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
 ) {
     let cyclone_request = request.payload;
@@ -322,7 +332,7 @@ async fn resolver_function_request_task(
 
     if let Err(err) = publisher.finalize_output().await {
         error!(error = ?err, "failed to finalize output by sending final message");
-        let result = deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+        let result = si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
             FunctionResultFailure {
                 execution_id,
                 error: FunctionResultFailureError {
@@ -342,7 +352,7 @@ async fn resolver_function_request_task(
         Ok(fr) => fr,
         Err(err) => {
             error!(error = ?err, "failure trying to run function to completion");
-            deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+            si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
                 FunctionResultFailure {
                     execution_id,
                     error: FunctionResultFailureError {
@@ -378,7 +388,7 @@ async fn resolver_function_request_task(
 async fn resolver_function_request(
     metadata: Arc<ServerMetadata>,
     publisher: &Publisher<'_>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     cyclone_request: ResolverFunctionRequest,
     process_span: &Span,
 ) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
@@ -388,6 +398,7 @@ async fn resolver_function_request(
         .get()
         .await
         .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+
     let mut progress = client
         .execute_resolver(cyclone_request)
         .await
@@ -406,6 +417,10 @@ async fn resolver_function_request(
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
+                publisher
+                    .publish_keep_alive()
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Err(err) => {
                 warn!(error = ?err, "next progress message was an error, bailing out");
@@ -427,7 +442,7 @@ async fn process_validation_requests_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_validation_requests(
@@ -447,7 +462,7 @@ async fn process_validation_requests(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::validation(&nats, subject_prefix.as_deref()).await?;
@@ -497,7 +512,7 @@ async fn process_validation_requests(
 async fn validation_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -525,7 +540,7 @@ async fn validation_request_task(
 async fn validation_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -543,6 +558,7 @@ async fn validation_request(
         .get()
         .await
         .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+
     let mut progress = client
         .execute_validation(cyclone_request)
         .await
@@ -590,7 +606,7 @@ async fn process_schema_variant_definition_requests_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_schema_variant_definition_requests(
@@ -610,7 +626,7 @@ async fn process_schema_variant_definition_requests(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -661,7 +677,7 @@ async fn process_schema_variant_definition_requests(
 async fn schema_variant_definition_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<SchemaVariantDefinitionRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -691,7 +707,7 @@ async fn schema_variant_definition_request_task(
 async fn schema_variant_definition_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<SchemaVariantDefinitionRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -756,7 +772,7 @@ async fn process_action_run_requests_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_action_run_requests(
@@ -776,7 +792,7 @@ async fn process_action_run_requests(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::action_run(&nats, subject_prefix.as_deref()).await?;
@@ -826,7 +842,7 @@ async fn process_action_run_requests(
 async fn action_run_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ActionRunRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -854,7 +870,7 @@ async fn action_run_request_task(
 async fn action_run_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ActionRunRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -919,7 +935,7 @@ async fn process_reconciliation_requests_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_reconciliation_requests(
@@ -939,7 +955,7 @@ async fn process_reconciliation_requests(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::reconciliation(&nats, subject_prefix.as_deref()).await?;
@@ -989,7 +1005,7 @@ async fn process_reconciliation_requests(
 async fn reconciliation_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ReconciliationRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -1018,7 +1034,7 @@ async fn reconciliation_request_task(
 async fn reconciliation_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: Request<ReconciliationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -1031,6 +1047,7 @@ async fn reconciliation_request(
         .map_err(|err| span.record_err(err))?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
+
     let mut client = cyclone_pool
         .get()
         .await

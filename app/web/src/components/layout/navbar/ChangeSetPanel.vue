@@ -28,10 +28,6 @@
         variant="ghost"
         icon="git-branch-plus"
         size="sm"
-        :disabled="
-          actionsStore.actionsAreInProgress &&
-          featureFlagStore.DONT_BLOCK_ON_ACTIONS
-        "
         @click="openCreateModal"
       />
 
@@ -43,12 +39,7 @@
         variant="ghost"
         icon="trash"
         size="sm"
-        :disabled="
-          (actionsStore.actionsAreInProgress &&
-            featureFlagStore.DONT_BLOCK_ON_ACTIONS) ||
-          !selectedChangeSetName ||
-          changeSetsStore.headSelected
-        "
+        :disabled="!selectedChangeSetName || changeSetsStore.headSelected"
         @click="abandonConfirmationModalRef.open()"
       />
     </div>
@@ -165,7 +156,7 @@
         </template>
         <template v-else>
           <template v-if="!successfullyVoted">
-            <div class="flex w-full justify-center pt-2 gap-2">
+            <div class="flex w-full justify-center pt-2 gap-xs">
               <VButton
                 icon="thumbs-up"
                 variant="ghost"
@@ -196,7 +187,7 @@
             </div>
           </template>
           <template v-if="successfullyVoted">
-            <div class="flex gap-4 w-full p-2">
+            <div class="flex gap-4 w-full p-xs">
               <Icon name="lock" size="lg" tone="warning" />
               <span class="text-sm align-middle">
                 Changeset is locked until all users in the changeset have voted
@@ -212,7 +203,7 @@
                     changeSetId: 'head',
                   },
                 }"
-                class="border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300 p-2"
+                class="border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300 p-xs"
                 >Go to head</RouterLink
               >
             </div>
@@ -300,7 +291,7 @@
       <template #afterWipe>
         <div
           v-if="changeSetMergeStatus.isPending || wipeRef?.state === 'running'"
-          class="gap-2 items-center flex flex-row p-xl min-w-0 w-full justify-center"
+          class="gap-xs items-center flex flex-row p-xl min-w-0 w-full justify-center"
         >
           <Icon name="loader" size="2xl" />
           <span class="text-3xl italic truncate">
@@ -330,8 +321,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useActionsStore } from "@/store/actions.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
@@ -351,8 +340,6 @@ const statusStore = useStatusStore();
 const authStore = useAuthStore();
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagStore = useFeatureFlagsStore();
-const actionsStore = useActionsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 const selectedChangeSetName = computed(

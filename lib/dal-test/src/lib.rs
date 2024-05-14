@@ -35,6 +35,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use si_layer_cache::CaCacheTempFile;
 use si_std::ResultExt;
 use std::{
@@ -59,6 +60,7 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
+use dal::feature_flags::FeatureFlagService;
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
@@ -165,7 +167,8 @@ impl Config {
         config.pg.port = env::var(ENV_VAR_PG_PORT)
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
-        config.pg.pool_max_size *= 32;
+        //config.pg.pool_max_size *= 32;
+        config.pg.pool_max_size = 8;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
@@ -178,7 +181,8 @@ impl Config {
         config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
-        config.layer_cache_pg_pool.pool_max_size *= 32;
+        //config.layer_cache_pg_pool.pool_max_size *= 32;
+        config.layer_cache_pg_pool.pool_max_size = 8;
         config.layer_cache_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
 
@@ -253,6 +257,7 @@ impl TestContext {
     ///
     /// This functions wraps over a mutex which ensures that only the first caller will run global
     /// database creation, migrations, and other preparations.
+    #[allow(clippy::disallowed_methods)]
     pub async fn global(
         pg_dbname: &'static str,
         layer_cache_pg_dbname: &'static str,
@@ -265,7 +270,20 @@ impl TestContext {
                     .si_inspect_err(|err| {
                         *mutex_guard = ContextBuilderState::errored(err.to_string())
                     })?;
-                let test_context_builder = TestContextBuilder::create(config)
+
+                // We want to connect directly when we migrate, then connect to the pool after
+                let mut migrate_config = config.clone();
+                if env::var_os("USE_CI_PG_SETUP").is_some() {
+                    migrate_config.pg.hostname = "db-test".to_string();
+                    migrate_config.pg.port = 5432;
+                    migrate_config.layer_cache_pg_pool.hostname = "db-test".to_string();
+                    migrate_config.layer_cache_pg_pool.port = 5432;
+                } else {
+                    migrate_config.pg.port = 8432;
+                    migrate_config.layer_cache_pg_pool.port = 8432;
+                }
+
+                let migrate_test_context_builder = TestContextBuilder::create(migrate_config)
                     .await
                     .si_inspect_err(|err| {
                         *mutex_guard = ContextBuilderState::errored(err.to_string());
@@ -273,13 +291,18 @@ impl TestContext {
 
                 // The stack gets too deep here, so we'll spawn the work as a task with a new
                 // thread stack just for the global setup
-                let handle = tokio::spawn(global_setup(test_context_builder.clone()));
+                let handle = tokio::spawn(global_setup(migrate_test_context_builder));
 
                 // Join this task and wait on its completion
                 match handle.await {
                     // Global setup completed successfully
                     Ok(Ok(())) => {
                         debug!("task global_setup was successful");
+                        let test_context_builder = TestContextBuilder::create(config)
+                            .await
+                            .si_inspect_err(|err| {
+                                *mutex_guard = ContextBuilderState::errored(err.to_string());
+                            })?;
                         *mutex_guard = ContextBuilderState::created(test_context_builder.clone());
                         test_context_builder.build_for_test().await
                     }
@@ -316,10 +339,11 @@ impl TestContext {
     ) -> ServicesContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
-        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::initialize(
+        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
             self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
+            MemoryCacheConfig::default(),
             token,
         )
         .await
@@ -336,6 +360,7 @@ impl TestContext {
             None,
             self.symmetric_crypto_service.clone(),
             layer_db,
+            FeatureFlagService::default(),
         )
     }
 
@@ -472,7 +497,7 @@ impl TestContextBuilder {
         // (or displayed) during tests, while `println!(...)` will be captured the same as
         // "normal" test output, meaning it respects --nocapture and being displayed for
         // failing tests.
-        println!("Test database: {}", &dbname);
+        info!("Test database: {}", &dbname);
 
         // Return new PG pool that uess the new datatbase
         new_pg_pool_config.dbname = dbname;
@@ -524,7 +549,7 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
 
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::Server> {
+pub fn pinga_server(services_context: ServicesContext) -> Result<pinga_server::Server> {
     let config: pinga_server::Config = {
         let mut config_file = pinga_server::ConfigFile::default();
         pinga_server::detect_and_configure_development(&mut config_file)
@@ -537,7 +562,7 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
     let server = pinga_server::Server::from_services(
         config.instance_id(),
         config.concurrency(),
-        services_context.clone(),
+        services_context,
     )
     .wrap_err("failed to create Pinga server")?;
 
@@ -546,15 +571,18 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
 
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_server::Server> {
+pub fn rebaser_server(
+    services_context: ServicesContext,
+    shutdown_token: CancellationToken,
+) -> Result<rebaser_server::Server> {
+    let config: rebaser_server::Config = rebaser_server::ConfigFile::default()
+        .try_into()
+        .wrap_err("failed to build Rebaser server config")?;
+
     let server = rebaser_server::Server::from_services(
-        services_context.encryption_key(),
-        services_context.nats_conn().clone(),
-        services_context.pg_pool().clone(),
-        services_context.veritech().clone(),
-        services_context.job_processor(),
-        services_context.symmetric_crypto_service().clone(),
-        services_context.layer_db().clone(),
+        config.instance_id(),
+        services_context,
+        shutdown_token,
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -589,36 +617,30 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("running global test setup");
     let test_context = test_context_builer.build_for_global().await?;
 
+    // We need to be the only person connected to the real database. This drops all connections
+    // that aren't this one from the database. This disconnects the PgBouncers, any client
+    // terminals, and anyone else - ensuring we always get the global template to ourselves.
+    //
+    // PG is the best.
+    //
+    // Since we are connected to the same server, we only need to run this on one pool.
+    let conn = test_context.pg_pool.get().await?;
+    conn.query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid();",
+        &[],
+    )
+    .await?;
+
     debug!("initializing crypto");
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
 
     let token = CancellationToken::new();
-    let traker = TaskTracker::new();
+    let tracker = TaskTracker::new();
 
     // Create a `ServicesContext`
     let services_ctx = test_context
-        .create_services_context(token.clone(), traker.clone())
+        .create_services_context(token.clone(), tracker.clone())
         .await;
-
-    // Start up a Pinga server as a task exclusively to allow the migrations to run
-    info!("starting Pinga server for initial migrations");
-    let pinga_server = pinga_server(&services_ctx)?;
-    let pinga_server_handle = pinga_server.shutdown_handle();
-    traker.spawn(pinga_server.run());
-
-    // Start up a Rebaser server for migrations
-    info!("starting Rebaser server for initial migrations");
-    let rebaser_server = rebaser_server(&services_ctx)?;
-    let rebaser_server_handle = rebaser_server.shutdown_handle();
-    traker.spawn(rebaser_server.run());
-
-    // Start up a Veritech server as a task exclusively to allow the migrations to run
-    info!("starting Veritech server for initial migrations");
-    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
-    let veritech_server_handle = veritech_server.shutdown_handle();
-    traker.spawn(veritech_server.run());
-
-    traker.close();
 
     info!("creating client with pg pool for global Content Store test database");
 
@@ -669,6 +691,31 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to migrate layerdb")?;
 
+    // Start up a Pinga server as a task exclusively to allow the migrations to run
+    info!("starting Pinga server for initial migrations");
+    let srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone())
+        .await;
+    let pinga_server = pinga_server(srv_services_ctx)?;
+    let pinga_server_handle = pinga_server.shutdown_handle();
+    tracker.spawn(pinga_server.run());
+
+    // Start up a Rebaser server for migrations
+    info!("starting Rebaser server for initial migrations");
+    let srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone())
+        .await;
+    let rebaser_server = rebaser_server(srv_services_ctx, token.clone())?;
+    tracker.spawn(rebaser_server.run());
+
+    // Start up a Veritech server as a task exclusively to allow the migrations to run
+    info!("starting Veritech server for initial migrations");
+    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
+    let veritech_server_handle = veritech_server.shutdown_handle();
+    tracker.spawn(veritech_server.run());
+
+    tracker.close();
+
     // Check if the user would like to skip migrating schemas. This is helpful for boosting
     // performance when running integration tests that do not rely on builtin schemas.
     // let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
@@ -688,6 +735,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
         services_ctx.layer_db().clone(),
+        services_ctx.feature_flags_service().clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -697,19 +745,17 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("shutting down initial migrations Pinga server");
     pinga_server_handle.shutdown().await;
 
-    // Shutdown the Rebaser server (each test gets their own server instance with an exclusively
-    // unique subject prefix)
-    info!("shutting down initial migrations Rebaser server");
-    rebaser_server_handle.shutdown().await;
-
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)
     info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
 
+    // Rebaser shutdown is signaled with the `token` and tracked/awaited with the `tracker`
+    info!("shutting down initial migrations Rebaser server");
+
     // Cancel and wait for all outstanding tasks to complete
     token.cancel();
-    traker.wait().await;
+    tracker.wait().await;
 
     info!("global test setup complete");
     Ok(())
@@ -727,6 +773,7 @@ async fn migrate_local_builtins(
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
     layer_db: DalLayerDb,
+    feature_flag_service: FeatureFlagService,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -738,6 +785,7 @@ async fn migrate_local_builtins(
         Some(module_index_url),
         symmetric_crypto_service.clone(),
         layer_db.clone(),
+        feature_flag_service,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
@@ -754,6 +802,8 @@ async fn migrate_local_builtins(
     schema::migrate_pkg(&ctx, SI_COREOS_PKG, None).await?;
     schema::migrate_pkg(&ctx, SI_AWS_EC2_PKG, None).await?;
     schemas::migrate_test_exclusive_schema_starfield(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_etoiles(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_morningstar(&ctx).await?;
     schemas::migrate_test_exclusive_schema_fallout(&ctx).await?;
     schemas::migrate_test_exclusive_schema_dummy_secret(&ctx).await?;
     schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;

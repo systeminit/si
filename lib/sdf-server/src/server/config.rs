@@ -1,6 +1,7 @@
 use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
-use si_layer_cache::error::LayerDbError;
+use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
+use std::collections::HashSet;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -8,13 +9,14 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+use dal::feature_flags::FeatureFlag;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
-use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -22,7 +24,6 @@ pub use dal::MigrationMode;
 pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
-const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
 
 #[remain::sorted]
@@ -81,14 +82,12 @@ pub struct Config {
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
 
-    #[builder(default = "default_layer_cache_dbname()")]
-    layer_cache_pg_dbname: String,
+    #[builder(default = "default_layer_db_config()")]
+    layer_db_config: LayerDbConfig,
 
-    #[builder(default = "si_layer_cache::default_cache_path_for_service(\"sdf\")")]
-    layer_cache_disk_path: PathBuf,
-
-    signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
+
+    boot_feature_flags: HashSet<FeatureFlag>,
 }
 
 impl StandardConfig for Config {
@@ -132,12 +131,6 @@ impl Config {
         &self.crypto
     }
 
-    /// Gets a reference to the config's signup secret.
-    #[must_use]
-    pub fn signup_secret(&self) -> &SensitiveString {
-        &self.signup_secret
-    }
-
     /// Gets a reference to the config's pkg path.
     #[must_use]
     pub fn pkgs_path(&self) -> &Path {
@@ -160,14 +153,15 @@ impl Config {
         &self.module_index_url
     }
 
+    /// Feature flags defined at boot time, via config files or the FEATURES env variable
     #[must_use]
-    pub fn layer_cache_pg_dbname(&self) -> &str {
-        &self.layer_cache_pg_dbname
+    pub fn boot_feature_flags(&self) -> &HashSet<FeatureFlag> {
+        &self.boot_feature_flags
     }
 
     #[must_use]
-    pub fn layer_cache_disk_path(&self) -> &Path {
-        self.layer_cache_disk_path.as_path()
+    pub fn layer_db_config(&self) -> &LayerDbConfig {
+        &self.layer_db_config
     }
 }
 
@@ -185,8 +179,6 @@ impl ConfigBuilder {
 pub struct ConfigFile {
     #[serde(default)]
     pub pg: PgPoolConfig,
-    #[serde(default = "default_layer_cache_dbname")]
-    layer_cache_pg_dbname: String,
     #[serde(default)]
     pub nats: NatsConfig,
     #[serde(default)]
@@ -195,35 +187,34 @@ pub struct ConfigFile {
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
     pub crypto: CryptoConfig,
-    #[serde(default = "default_signup_secret")]
-    pub signup_secret: SensitiveString,
     #[serde(default = "default_pkgs_path")]
     pub pkgs_path: String,
-    #[serde(default = "default_layer_cache_disk_path")]
-    layer_cache_disk_path: PathBuf,
     #[serde(default)]
     pub posthog: PosthogConfig,
+    #[serde(default = "default_layer_db_config")]
+    layer_db_config: LayerDbConfig,
     #[serde(default)]
     pub module_index_url: String,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
+    #[serde(default)]
+    boot_feature_flags: Vec<FeatureFlag>,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
-            layer_cache_pg_dbname: default_layer_cache_dbname(),
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
             crypto: Default::default(),
-            signup_secret: default_signup_secret(),
             pkgs_path: default_pkgs_path(),
-            layer_cache_disk_path: default_layer_cache_disk_path(),
             posthog: Default::default(),
+            layer_db_config: default_layer_db_config(),
             module_index_url: default_module_index_url(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
+            boot_feature_flags: Default::default(),
         }
     }
 }
@@ -240,17 +231,16 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
-        config.layer_cache_pg_dbname(value.layer_cache_pg_dbname);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key(value.jwt_signing_public_key);
         config.crypto(value.crypto);
-        config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_cache_disk_path(value.layer_cache_disk_path);
+        config.layer_db_config(value.layer_db_config);
+        config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
         config.build().map_err(Into::into)
     }
 }
@@ -284,10 +274,6 @@ impl IncomingStream {
     }
 }
 
-fn default_signup_secret() -> SensitiveString {
-    DEFAULT_SIGNUP_SECRET.into()
-}
-
 fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
@@ -300,16 +286,12 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     }
 }
 
-fn default_layer_cache_dbname() -> String {
-    "si_layer_db".to_string()
-}
-
-fn default_layer_cache_disk_path() -> PathBuf {
-    si_layer_cache::default_cache_path_for_service("sdf")
-}
-
 fn default_module_index_url() -> String {
     DEFAULT_MODULE_INDEX_URL.into()
+}
+
+fn default_layer_db_config() -> LayerDbConfig {
+    LayerDbConfig::default_for_service("sdf")
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
@@ -384,7 +366,10 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.certificate_path =
+        Some(postgres_cert.clone().try_into()?);
     config.pkgs_path = pkgs_path;
+    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
 
     Ok(())
 }
@@ -442,6 +427,9 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.certificate_path =
+        Some(postgres_cert.clone().try_into()?);
+    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
     config.pkgs_path = pkgs_path;
 
     Ok(())

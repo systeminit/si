@@ -39,7 +39,6 @@ import { useRouter, useRoute } from "vue-router";
 import WorkspaceImportModal from "@/components/WorkspaceImportModal.vue";
 import WorkspaceExportModal from "@/components/WorkspaceExportModal.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import NavbarButton from "./NavbarButton.vue";
 
@@ -48,7 +47,6 @@ const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
 
 const workspacesStore = useWorkspacesStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const changeSetStore = useChangeSetsStore();
 const router = useRouter();
 const route = useRoute();
@@ -60,9 +58,7 @@ const openWorkspaceDetailsHandler = () => {
 };
 
 const showViz = computed(() => {
-  if (!changeSetStore.selectedChangeSetId) return false;
-  if (!featureFlagsStore.FEAT_GRAPHVIZ) return false;
-  return true;
+  return changeSetStore.selectedChangeSetId;
 });
 
 const gotoViz = () => {

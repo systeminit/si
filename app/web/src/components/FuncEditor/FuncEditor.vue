@@ -16,7 +16,12 @@
       "
     >
       <CodeEditor
-        :id="selectedFuncDetails ? `func-${selectedFuncDetails.id}` : undefined"
+        :id="
+          changeSetsStore.headChangeSetId !==
+            changeSetsStore.selectedChangeSetId && selectedFuncDetails
+            ? `func-${selectedFuncDetails.id}`
+            : undefined
+        "
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
         @change="updateFuncCode"
@@ -36,7 +41,10 @@ import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { LoadingMessage, ErrorMessage } from "@si/vue-lib/design-system";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "@/components/CodeEditor.vue";
+
+const changeSetsStore = useChangeSetsStore();
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },
@@ -72,7 +80,18 @@ watch(
   { immediate: true },
 );
 
+const updatedHead = ref(false);
+watch(
+  () => changeSetsStore.selectedChangeSetId,
+  () => {
+    updatedHead.value = false;
+  },
+);
 const updateFuncCode = (code: string) => {
+  if (updatedHead.value) return;
+
+  updatedHead.value =
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
   funcStore.updateFuncCode(props.funcId, code);
 };
 

@@ -2,7 +2,7 @@
   <TabGroup
     rememberSelectedTabKey="proposed_right"
     trackingSlug="actions_applied"
-    minimal
+    variant="minimal"
     marginTop="2xs"
   >
     <TabGroupItem
@@ -30,8 +30,6 @@
           </div>
         </div>
       </div>
-
-      <ChangeCard v-for="diff in diffs" :key="diff.componentId" :diff="diff" />
 
       <div
         v-for="action in actionsStore.proposedActions"
@@ -70,42 +68,11 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed } from "vue";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useComponentsStore } from "@/store/components.store";
 import ApplyHistory from "./ApplyHistory.vue";
 import ActionCard from "./ActionCard.vue";
-import ChangeCard from "./ChangeCard.vue";
 
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();
-const componentsStore = useComponentsStore();
-
-const diffs = computed(() => {
-  const arr = Object.values(componentsStore.componentsById)
-    .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => {
-      let updatedAt = c.updatedInfo.timestamp;
-      let actor = c.updatedInfo.actor.email || c.updatedInfo.actor.label;
-      if (c.changeStatus === "added") {
-        updatedAt = c.createdInfo.timestamp;
-        actor = c.createdInfo.actor.email || c.createdInfo.actor.label;
-      } else if (c.changeStatus === "deleted" && c.deletedInfo) {
-        updatedAt = c.deletedInfo.timestamp;
-        actor = c.deletedInfo.actor.email || c.deletedInfo.actor.label;
-      }
-
-      return {
-        componentId: c.id,
-        status: c.changeStatus,
-        updatedAt,
-        actor,
-      };
-    });
-  arr.sort(
-    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-  );
-  return arr;
-});
 </script>

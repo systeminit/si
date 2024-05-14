@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 use si_events::WorkspaceSnapshotAddress;
 use telemetry::prelude::*;
@@ -13,7 +14,7 @@ use crate::activity_client::ActivityClient;
 use crate::{error::LayerDbResult, event::LayeredEventMetadata};
 
 /// The message that the server receives to perform a rebase.
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct RebaseRequest {
     /// Corresponds to the change set whose pointer is to be updated.
     pub to_rebase_change_set_id: Ulid,
@@ -24,6 +25,9 @@ pub struct RebaseRequest {
     /// last change set before edits were made, or the change set that you are trying to rebase
     /// onto base.
     pub onto_vector_clock_id: Ulid,
+    /// A set of values that have changed, and need to have the impact of their
+    /// change reflected downstream of them by the dependent values update job
+    pub dvu_values: Option<Vec<Ulid>>,
 }
 
 impl RebaseRequest {
@@ -31,11 +35,13 @@ impl RebaseRequest {
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
     ) -> RebaseRequest {
         RebaseRequest {
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         }
     }
 }
@@ -75,7 +81,8 @@ impl RebaseFinished {
 
 // NOTE: We're basically smashing the data in here, and we really do have to figure out what we
 // actually want when things work / or don't work.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum RebaseStatus {
     /// Processing the request and performing updates were both successful. Additionally, no conflicts were found.
     Success {
@@ -113,30 +120,34 @@ impl<'a> ActivityRebase<'a> {
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         );
         let activity = Activity::rebase(payload, metadata);
         self.activity_base.publish(&activity).await?;
         Ok(activity)
     }
 
-    #[instrument(name = "activity::rebase::rebase_and_wait", level = "info")]
+    #[instrument(name = "activity::rebase::rebase_and_wait", level = "info", skip(self))]
     pub async fn rebase_and_wait(
         &self,
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
         onto_vector_clock_id: Ulid,
+        dvu_values: Option<Vec<Ulid>>,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(
             to_rebase_change_set_id,
             onto_workspace_snapshot_address,
             onto_vector_clock_id,
+            dvu_values,
         );
         let activity = Activity::rebase(payload, metadata);
         // println!("trigger: sending rebase and waiting for response");
@@ -156,6 +167,13 @@ impl<'a> ActivityRebase<'a> {
         Ok(rebase_finished_activity)
     }
 
+    /// Returns an `impl Stream` of [`Activity`] items which are of interest to a Rebaser.
+    pub async fn rebaser_activity_stream(&self) -> LayerDbResult<BroadcastStream<Activity>> {
+        self.activity_base
+            .subscribe(Some(ActivityPayloadDiscriminants::RebaseRequest))
+            .await
+    }
+
     pub async fn rebase_finished_activity_stream(
         &self,
     ) -> LayerDbResult<BroadcastStream<Activity>> {
@@ -164,7 +182,7 @@ impl<'a> ActivityRebase<'a> {
             .await
     }
 
-    #[instrument(name = "activity::rebase::rebase_finished", level = "info")]
+    #[instrument(name = "activity::rebase::rebase_finished", level = "info", skip(self))]
     pub async fn finished(
         &self,
         status: RebaseStatus,

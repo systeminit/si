@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
+use crate::func::associations::FuncAssociationsError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::workspace_snapshot::edge_weight::{
@@ -19,7 +20,10 @@ use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{id, implement_add_edge_to, DalContext, HelperError, Timestamp, TransactionsError};
+use crate::{
+    id, implement_add_edge_to, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
+    WsEvent, WsEventResult, WsPayload,
+};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -33,15 +37,12 @@ pub mod summary;
 pub mod view;
 
 mod associations;
-mod before;
 mod kind;
 
 pub use associations::AttributePrototypeArgumentBag;
 pub use associations::AttributePrototypeBag;
 pub use associations::FuncArgumentBag;
 pub use associations::FuncAssociations;
-pub use before::before_funcs_for_component;
-pub use before::BeforeFuncError;
 pub use kind::FuncKind;
 
 #[remain::sorted]
@@ -57,8 +58,12 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func associations error: {0}")]
+    FuncAssociations(#[from] Box<FuncAssociationsError>),
     #[error("func name already in use {0}")]
     FuncNameInUse(String),
+    #[error("func to be deleted has associations: {0}")]
+    FuncToBeDeletedHasAssociations(FuncId),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
@@ -339,6 +344,7 @@ impl Func {
                 IntrinsicFunc::SetArray
                 | IntrinsicFunc::SetBoolean
                 | IntrinsicFunc::SetInteger
+                | IntrinsicFunc::SetJson
                 | IntrinsicFunc::SetMap
                 | IntrinsicFunc::SetObject
                 | IntrinsicFunc::SetString
@@ -445,34 +451,50 @@ impl Func {
         Ok(Self::assemble(&node_weight, &updated))
     }
 
-    pub async fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
-        // to remove a func we must remove all incoming edges to it. It will then be
-        // garbage collected out of the graph
+    /// Deletes the [`Func`] and returns the name.
+    pub async fn delete_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<String> {
+        let func = Self::get_by_id_or_error(ctx, id).await?;
 
+        // Check that we can remove the func.
+        let (maybe_associations, _) = FuncAssociations::from_func(ctx, &func)
+            .await
+            .map_err(Box::new)?;
+        if let Some(associations) = maybe_associations {
+            let has_associations = match associations {
+                FuncAssociations::Action {
+                    schema_variant_ids,
+                    kind: _,
+                } => !schema_variant_ids.is_empty(),
+                FuncAssociations::Attribute {
+                    prototypes,
+                    arguments,
+                } => !prototypes.is_empty() || !arguments.is_empty(),
+                FuncAssociations::CodeGeneration {
+                    schema_variant_ids,
+                    component_ids,
+                    inputs: _,
+                } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
+                FuncAssociations::Qualification {
+                    schema_variant_ids,
+                    component_ids,
+                    inputs: _,
+                } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
+                FuncAssociations::Authentication { schema_variant_ids } => {
+                    !schema_variant_ids.is_empty()
+                }
+            };
+
+            if has_associations {
+                return Err(FuncError::FuncToBeDeletedHasAssociations(id));
+            }
+        };
+
+        // Now, we can remove the func.
         let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id).await?;
-
-        let users = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::new_use().into())
-            .await?;
-
         let change_set = ctx.change_set()?;
-        for user in users {
-            workspace_snapshot
-                .remove_edge(
-                    change_set,
-                    user,
-                    arg_node_idx,
-                    EdgeWeightKind::new_use().into(),
-                )
-                .await?;
-        }
-
-        // Removes the actual node from the graph
         workspace_snapshot.remove_node_by_id(change_set, id).await?;
 
-        Ok(())
+        Ok(func.name)
     }
 
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
@@ -531,25 +553,6 @@ impl Func {
         Ok(funcs)
     }
 
-    /// Checks if the [`Func`] is "revertible".
-    pub async fn is_revertible(&self, ctx: &DalContext) -> FuncResult<bool> {
-        Self::is_revertible_for_id(ctx, self.id).await
-    }
-
-    /// Checks if the [`Func`] corresponding to the provided id is "revertible".
-    pub async fn is_revertible_for_id(ctx: &DalContext, id: FuncId) -> FuncResult<bool> {
-        if Func::get_by_id(ctx, id).await?.is_none() {
-            return Ok(false);
-        }
-
-        let exists_on_base = {
-            let base_ctx = ctx.clone_with_base().await?;
-            Func::get_by_id(&base_ctx, id).await?.is_some()
-        };
-
-        Ok(exists_on_base)
-    }
-
     pub async fn duplicate(&self, ctx: &DalContext, new_name: String) -> FuncResult<Self> {
         if new_name == self.name.clone() {
             return Err(FuncError::FuncNameInUse(new_name));
@@ -574,120 +577,33 @@ impl Func {
     }
 }
 
-// impl Func {
-//     #[instrument(skip_all)]
-//     pub async fn new(
-//         ctx: &DalContext,
-//         name: impl AsRef<str>,
-//         backend_kind: FuncBackendKind,
-//         backend_response_type: FuncBackendResponseType,
-//     ) -> FuncResult<Self> {
-//         let name = name.as_ref();
-//         let row = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query_one(
-//                 "SELECT object FROM func_create_v1($1, $2, $3, $4, $5)",
-//                 &[
-//                     ctx.tenancy(),
-//                     ctx.visibility(),
-//                     &name,
-//                     &backend_kind.as_ref(),
-//                     &backend_response_type.as_ref(),
-//                 ],
-//             )
-//             .await?;
-//         let object = standard_model::finish_create_from_row(ctx, row).await?;
-//         Ok(object)
-//     }
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncWsEventPayload {
+    func_id: FuncId,
+    change_set_id: ChangeSetId,
+}
 
-//     #[allow(clippy::result_large_err)]
-//     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
-//         Ok(match self.code_base64() {
-//             Some(base64_code) => Some(String::from_utf8(
-//                 general_purpose::STANDARD_NO_PAD.decode(base64_code)?,
-//             )?),
-//             None => None,
-//         })
-//     }
+impl WsEvent {
+    pub async fn func_deleted(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncDeleted(FuncWsEventPayload {
+                func_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
 
-//     pub async fn is_builtin(&self, ctx: &DalContext) -> FuncResult<bool> {
-//         let row = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query_opt(
-//                 "SELECT id FROM funcs WHERE id = $1 and tenancy_workspace_pk = $2 LIMIT 1",
-//                 &[self.id(), &WorkspacePk::NONE],
-//             )
-//             .await?;
-
-//         Ok(row.is_some())
-//     }
-
-//     pub async fn set_code_plaintext(
-//         &mut self,
-//         ctx: &DalContext,
-//         code: Option<&'_ str>,
-//     ) -> FuncResult<()> {
-//         self.set_code_base64(
-//             ctx,
-//             code.as_ref()
-//                 .map(|code| general_purpose::STANDARD_NO_PAD.encode(code)),
-//         )
-//         .await
-//     }
-
-//     pub fn metadata_view(&self) -> FuncMetadataView {
-//         FuncMetadataView {
-//             display_name: self.display_name().unwrap_or_else(|| self.name()).into(),
-//             description: self.description().map(Into::into),
-//             link: self.description().map(Into::into),
-//         }
-//     }
-
-//     pub async fn for_binding(ctx: &DalContext, func_binding: &FuncBinding) -> FuncResult<Self> {
-//         let row = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query_one(
-//                 "SELECT row_to_json(funcs.*) AS object
-//                 FROM funcs_v1($1, $2) AS funcs
-//                 INNER JOIN func_binding_belongs_to_func_v1($1, $2) AS func_binding_belongs_to_func
-//                     ON funcs.id = func_binding_belongs_to_func.belongs_to_id
-//                 WHERE func_binding_belongs_to_func.object_id = $3",
-//                 &[ctx.tenancy(), ctx.visibility(), func_binding.id()],
-//             )
-//             .await?;
-//         let object = standard_model::finish_create_from_row(ctx, row).await?;
-//         Ok(object)
-//     }
-
-//     pub async fn find_by_name(ctx: &DalContext, name: &str) -> FuncResult<Option<Self>> {
-//         Ok(Self::find_by_attr(ctx, "name", &name).await?.pop())
-//     }
-
-//     /// Returns `true` if this function is one handled internally by the `dal`, `false` if the
-//     /// function is one that will be executed by `veritech`
-//     pub fn is_intrinsic(&self) -> bool {
-//         is_intrinsic(self.name())
-//     }
-
-//     standard_model_accessor!(name, String, FuncResult);
-//     standard_model_accessor!(display_name, Option<String>, FuncResult);
-//     standard_model_accessor!(description, Option<String>, FuncResult);
-//     standard_model_accessor!(link, Option<String>, FuncResult);
-//     standard_model_accessor!(hidden, bool, FuncResult);
-//     standard_model_accessor!(builtin, bool, FuncResult);
-//     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncResult);
-//     standard_model_accessor!(
-//         backend_response_type,
-//         Enum(FuncBackendResponseType),
-//         FuncResult
-//     );
-//     standard_model_accessor!(handler, Option<String>, FuncResult);
-//     standard_model_accessor!(code_base64, Option<String>, FuncResult);
-//     standard_model_accessor_ro!(code_sha256, String);
-// }
+    pub async fn func_saved(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncSaved(FuncWsEventPayload {
+                func_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+}

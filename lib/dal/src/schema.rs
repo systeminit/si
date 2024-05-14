@@ -146,7 +146,7 @@ impl Schema {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn get_default_schema_variant(
+    pub async fn get_default_schema_variant_id(
         &self,
         ctx: &DalContext,
     ) -> SchemaResult<Option<SchemaVariantId>> {
@@ -222,37 +222,40 @@ impl Schema {
                 )
                 .await?;
 
-            Self::add_edge_to_variant(ctx, self.id, schema_variant_id, EdgeWeightKind::new_use())
-                .await?;
-        }
-
-        for (edge_weight, source_index, target_index) in workspace_snapshot
-            .edges_directed_for_edge_weight_kind(
-                self.id,
-                Outgoing,
-                EdgeWeightKind::new_use().into(),
-            )
-            .await?
-        {
-            // We have found the existing Use edge between schema and schema variant
-            // we now need to update that edge to be a Default
-            workspace_snapshot
-                .remove_edge(
-                    ctx.change_set()?,
-                    source_index,
-                    target_index,
-                    edge_weight.kind().into(),
-                )
-                .await?;
-
             Self::add_edge_to_variant(
                 ctx,
                 self.id,
-                schema_variant_id,
-                EdgeWeightKind::new_use_default(),
+                workspace_snapshot
+                    .get_node_weight(target_index)
+                    .await?
+                    .id()
+                    .into(),
+                EdgeWeightKind::new_use(),
             )
             .await?;
         }
+
+        let source_index = workspace_snapshot.get_node_index_by_id(self.id).await?;
+        let target_index = workspace_snapshot
+            .get_node_index_by_id(schema_variant_id)
+            .await?;
+
+        workspace_snapshot
+            .remove_edge(
+                ctx.change_set()?,
+                source_index,
+                target_index,
+                EdgeWeightKind::new_use().into(),
+            )
+            .await?;
+
+        Self::add_edge_to_variant(
+            ctx,
+            self.id,
+            schema_variant_id,
+            EdgeWeightKind::new_use_default(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -413,84 +416,3 @@ impl Schema {
         Ok(None)
     }
 }
-
-// impl Schema {
-//     pub async fn default_variant(&self, ctx: &DalContext) -> SchemaResult<SchemaVariant> {
-//         match self.default_schema_variant_id() {
-//             Some(schema_variant_id) => Ok(SchemaVariant::get_by_id(ctx, schema_variant_id)
-//                 .await?
-//                 .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?),
-//             None => Err(SchemaError::NoDefaultVariant(*self.id())),
-//         }
-//     }
-//
-//     pub async fn is_builtin(&self, ctx: &DalContext) -> SchemaResult<bool> {
-//         let row = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query_opt(
-//                 "SELECT id FROM schemas WHERE id = $1 and tenancy_workspace_pk = $2 LIMIT 1",
-//                 &[self.id(), &WorkspacePk::NONE],
-//             )
-//             .await?;
-//
-//         Ok(row.is_some())
-//     }
-//
-//     pub async fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Schema> {
-//         let name = name.as_ref();
-//         let schemas = Schema::find_by_attr(ctx, "name", &name).await?;
-//         schemas
-//             .first()
-//             .ok_or_else(|| SchemaError::NotFoundByName(name.into()))
-//             .cloned()
-//     }
-//
-//     pub async fn find_by_name_builtin(
-//         ctx: &DalContext,
-//         name: impl AsRef<str>,
-//     ) -> SchemaResult<Option<Schema>> {
-//         let name = name.as_ref();
-//
-//         let builtin_ctx = ctx.clone_with_new_tenancy(Tenancy::new(WorkspacePk::NONE));
-//         let builtin_schema = Self::find_by_name(&builtin_ctx, name).await?;
-//
-//         Ok(Self::get_by_id(ctx, builtin_schema.id()).await?)
-//     }
-//
-//     pub async fn find_variant_by_name(
-//         &self,
-//         ctx: &DalContext,
-//         name: impl AsRef<str>,
-//     ) -> SchemaResult<Option<SchemaVariant>> {
-//         let name: &str = name.as_ref();
-//         let row = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query_opt(
-//                 FIND_SCHEMA_VARIANT_BY_NAME_FOR_SCHEMA,
-//                 &[ctx.tenancy(), ctx.visibility(), self.id(), &name],
-//             )
-//             .await?;
-//
-//         Ok(object_option_from_row_option(row)?)
-//     }
-//
-//     pub async fn default_schema_variant_id_for_name(
-//         ctx: &DalContext,
-//         name: impl AsRef<str>,
-//     ) -> SchemaResult<SchemaVariantId> {
-//         let name = name.as_ref();
-//         let schemas = Schema::find_by_attr(ctx, "name", &name).await?;
-//         let schema = schemas
-//             .first()
-//             .ok_or_else(|| SchemaError::NotFoundByName(name.into()))?;
-//         let schema_variant_id = schema
-//             .default_schema_variant_id()
-//             .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
-//
-//         Ok(*schema_variant_id)
-//     }
-// }

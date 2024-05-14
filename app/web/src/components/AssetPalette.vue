@@ -1,7 +1,7 @@
 <template>
   <div class="inset-0 absolute asset-palette">
     <template v-if="schemasReqStatus.isPending">
-      <div class="w-full p-lg flex flex-col gap-2 items-center">
+      <div class="w-full p-lg flex flex-col gap-xs items-center">
         <Icon name="loader" size="2xl" />
         <h2>Loading Asset Palette...</h2>
       </div>
@@ -13,7 +13,7 @@
             <template #label>
               <div class="flex flex-row gap-xs">
                 <div>Assets</div>
-                <PillCounter :count="assetCount" borderTone="action" />
+                <PillCounter :count="assetCount" />
               </div>
             </template>
             <div class="flex flex-row items-center gap-xs">
@@ -38,22 +38,20 @@
 
         <TreeNode
           v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
+          ref="collapsibleRefs"
           :key="categoryIndex"
           :label="category.displayName"
           :primaryIcon="getAssetIcon(category.displayName)"
           :color="category.schemas[0]?.color || '#000'"
-          classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
-          labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+          enableDefaultHoverClasses
           enableGroupToggle
           alwaysShowArrow
-          clickLabelToToggle
           indentationSize="none"
         >
           <template #icons>
             <PillCounter
               :count="category.schemas.length"
-              borderTone="action"
-              class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
+              showHoverInsideTreeNode
             />
           </template>
           <TreeNode
@@ -63,19 +61,12 @@
             :classes="
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
-                actionsAreRunning
-                  ? 'hover:cursor-progress'
-                  : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-                !actionsAreRunning &&
-                  componentsStore.selectedInsertSchemaId === schema.id
-                  ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
-                  : 'dark:hover:text-action-300 hover:text-action-500',
+                'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
               )
             "
             :isSelected="componentsStore.selectedInsertSchemaId === schema.id"
-            @mousedown.left.stop="
-              onSelect(schema.id, actionsAreRunning, $event)
-            "
+            showSelection
+            @mousedown.left.stop="onSelect(schema.id, $event)"
             @click.right.prevent
           >
             <template #label>
@@ -110,7 +101,6 @@
 import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import {
-  Collapsible,
   Icon,
   PillCounter,
   ScrollArea,
@@ -128,15 +118,13 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
-defineProps<{ actionsAreRunning: boolean }>();
-
 const componentsStore = useComponentsStore();
 
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
 );
 
-const collapsibleRefs = ref<InstanceType<typeof Collapsible>[]>([]);
+const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
 
 const filterString = ref("");
 const filterStringCleaned = computed(() =>
@@ -215,12 +203,7 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string, actionsAreRunning: boolean, e: MouseEvent) {
-  if (actionsAreRunning) {
-    // Prevent selection while actions are running
-    return;
-  }
-
+function onSelect(schemaId: string, e: MouseEvent) {
   if (componentsStore.selectedInsertSchemaId === schemaId) {
     componentsStore.cancelInsert();
   } else {

@@ -9,17 +9,14 @@
     :minSize="250"
   >
     <template #subpanel1>
-      <ComponentOutline
+      <DiagramOutline
         class=""
         :actionsAreRunning="actionsAreRunning"
         @right-click-item="onOutlineRightClick"
       />
     </template>
     <template #subpanel2>
-      <AssetPalette
-        class="border-t dark:border-neutral-600"
-        :actionsAreRunning="actionsAreRunning"
-      />
+      <AssetPalette class="border-t dark:border-neutral-600" />
     </template>
   </component>
 
@@ -91,7 +88,7 @@ import { useSecretsStore } from "@/store/secrets.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
-import ComponentOutline from "../ComponentOutline/ComponentOutline.vue";
+import DiagramOutline from "../DiagramOutline/DiagramOutline.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";

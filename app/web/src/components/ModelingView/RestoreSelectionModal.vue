@@ -77,9 +77,7 @@ function open() {
 }
 
 async function onConfirmRestore() {
-  if (componentsStore.selectedEdgeId) {
-    await componentsStore.RESTORE_EDGE(componentsStore.selectedEdgeId);
-  } else if (componentsStore.selectedComponentIds) {
+  if (componentsStore.selectedComponentIds) {
     await componentsStore.RESTORE_COMPONENTS(
       componentsStore.selectedComponentIds,
     );

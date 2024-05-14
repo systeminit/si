@@ -7,16 +7,18 @@ use petgraph::prelude::NodeIndex;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValueError;
 use crate::component::ControllingFuncData;
-use crate::property_editor::PropertyEditorResult;
+use crate::prop::PropPath;
+use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::validation::{ValidationOutput, ValidationOutputNode};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
-    PropId,
+    PropId, Secret,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,7 +43,7 @@ impl PropertyEditorValues {
             .map(|c| c.to_input_socket_id)
             .collect();
         let inferred_sockets_on_components: HashSet<InputSocketId> = component
-            .inferred_connections(ctx)
+            .inferred_incoming_connections(ctx)
             .await?
             .iter()
             .map(|c| c.to_input_socket_id)
@@ -213,11 +215,58 @@ impl PropertyEditorValues {
             child_values.insert(property_editor_value_id, child_property_editor_value_ids);
         }
 
-        Ok(PropertyEditorValues {
+        let mut property_editor_values = Self {
             root_value_id: root_property_editor_value_id,
             child_values,
             values,
-        })
+        };
+
+        // Before returning the resulting property editor values, we want to ensure we do not send
+        // up the encrypted secret key for values corresponding to secrets.
+        property_editor_values
+            .prepare_values_for_secrets_tree(ctx, component_id)
+            .await?;
+
+        Ok(property_editor_values)
+    }
+
+    async fn prepare_values_for_secrets_tree(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> PropertyEditorResult<()> {
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+        let secret_object_prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root", "secrets"]))
+                .await?;
+
+        // Collect a map of all secret ids by key in the graph. In the future, we may want to cache
+        // this or search while iterating. For now, the "list_ids_by_key_bench" test ensures that we
+        // meet a baseline performance target.
+        let ids_by_key = {
+            let start = tokio::time::Instant::now();
+            let ids_by_key = Secret::list_ids_by_key(ctx).await?;
+            debug!(%component_id, "listing secret ids by key took {:?}", start.elapsed());
+            ids_by_key
+        };
+
+        for secret_prop_id in Prop::direct_child_prop_ids(ctx, secret_object_prop_id).await? {
+            let attribute_value_id = self.find_by_prop_id(secret_prop_id).ok_or(
+                PropertyEditorError::PropertyEditorValueNotFoundByPropId(secret_object_prop_id),
+            )?;
+
+            if let Some(property_editor_value) = self.values.get_mut(&attribute_value_id.into()) {
+                if Value::Null != property_editor_value.value {
+                    property_editor_value.value = Secret::prepare_property_editor_value(
+                        &ids_by_key,
+                        property_editor_value.value.clone(),
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Finds the [`AttributeValueId`](AttributeValue) for a given [`PropId`](Prop).
@@ -315,7 +364,7 @@ impl PropertyEditorValue {
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
-        let prop = Prop::get_by_id(ctx, self.prop_id.into()).await?;
+        let prop = Prop::get_by_id_or_error(ctx, self.prop_id.into()).await?;
         Ok(prop)
     }
 }

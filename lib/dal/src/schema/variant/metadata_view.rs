@@ -1,12 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::schema::variant::SchemaVariantResult;
-use crate::{ComponentType, DalContext, Schema, SchemaVariant, SchemaVariantId, Timestamp};
+use crate::{
+    ComponentType, DalContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, Timestamp,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantMetadataView {
-    id: SchemaVariantId,
+    id: SchemaId,
+    default_schema_variant_id: SchemaVariantId,
     name: String,
     category: String,
     #[serde(alias = "display_name")]
@@ -28,7 +31,8 @@ impl SchemaVariantMetadataView {
             let default_schema_variant =
                 SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
             views.push(SchemaVariantMetadataView {
-                id: default_schema_variant.id,
+                id: schema.id,
+                default_schema_variant_id: default_schema_variant.id,
                 name: schema.name.to_owned(),
                 category: default_schema_variant.category.to_owned(),
                 color: default_schema_variant.get_color(ctx).await?,

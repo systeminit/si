@@ -1,9 +1,12 @@
 [package]
 name = "cyclone"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [[bin]]
 name = "cyclone"
@@ -13,6 +16,7 @@ path = "src/main.rs"
 clap = { workspace = true }
 color-eyre = { workspace = true }
 cyclone-server = { path = "../../lib/cyclone-server" }
+si-service = { path = "../../lib/si-service" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

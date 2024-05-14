@@ -1,7 +1,9 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use chrono::Utc;
 use itertools::Itertools;
+use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
@@ -10,9 +12,13 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
+use veritech_client::ResourceStatus;
 
 use si_events::{ulid::Ulid, ContentHash};
 
+use self::frame::{Frame, FrameError};
+use crate::action::prototype::ActionKind;
+use crate::action::Action;
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
@@ -22,6 +28,7 @@ use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSou
 use crate::attribute::value::{AttributeValueError, DependentValueGraph, ValueIsFor};
 use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
+use crate::diagram::SummaryDiagramComponent;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
@@ -38,14 +45,16 @@ use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_we
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::SocketArity;
+
 use crate::{
     func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
     AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
     DeprecatedAction, DeprecatedActionError, DeprecatedActionKind, DeprecatedActionPrototype,
     DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, Workspace,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -55,9 +64,6 @@ pub mod frame;
 pub mod properties;
 pub mod qualification;
 pub mod resource;
-// pub mod status;
-// pub mod validation;
-// pub mod view;
 
 pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
@@ -69,7 +75,7 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 pub enum ComponentError {
     #[error("action error: {0}")]
     Action(String),
-    #[error("action prototype error: {0}")]
+    #[error("deprecated action prototype error: {0}")]
     ActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
@@ -81,6 +87,8 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
+    #[error("component {0} has an unexpected schema variant id")]
+    ComponentIncorrectSchemaVariant(ComponentId),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
     #[error("component {0} has no attribute value for the root/domain prop")]
@@ -99,6 +107,8 @@ pub enum ComponentError {
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("frame error: {0}")]
+    Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("helper error: {0}")]
@@ -165,8 +175,14 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("workspace pk not found on context")]
+    WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("attribute value {0} has wrong type for operation: {0}")]
+    WrongAttributeValueType(AttributeValueId, ValueIsFor),
     #[error("WsEvent error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -186,12 +202,24 @@ pub struct IncomingConnection {
     pub deleted_info: Option<HistoryEventMetadata>,
 }
 
+#[derive(Clone, Debug)]
+pub struct OutgoingConnection {
+    pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    pub to_component_id: ComponentId,
+    pub to_input_socket_id: InputSocketId,
+    pub from_component_id: ComponentId,
+    pub from_output_socket_id: OutputSocketId,
+    pub created_info: HistoryEventMetadata,
+    pub deleted_info: Option<HistoryEventMetadata>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InferredIncomingConnection {
     pub to_component_id: ComponentId,
     pub to_input_socket_id: InputSocketId,
     pub from_component_id: ComponentId,
     pub from_output_socket_id: OutputSocketId,
+    pub to_delete: bool,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct InputSocketMatch {
@@ -279,10 +307,7 @@ impl Component {
         self.to_delete
     }
 
-    pub async fn materialized_view(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Option<serde_json::Value>> {
+    pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
         let schema_variant_id = Self::schema_variant_id(ctx, self.id()).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
@@ -292,7 +317,7 @@ impl Component {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == self.id() {
                 let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
-                return Ok(root_value.materialized_view(ctx).await?);
+                return Ok(root_value.view(ctx).await?);
             }
         }
 
@@ -438,6 +463,8 @@ impl Component {
             .await?;
 
             attribute_values.push(attribute_value.id());
+            ctx.enqueue_compute_validations(attribute_value.id())
+                .await?;
 
             if should_descend {
                 match prop_kind {
@@ -488,23 +515,40 @@ impl Component {
 
         component.set_name(ctx, &name).await?;
 
-        let component_graph = DependentValueGraph::for_values(ctx, attribute_values).await?;
+        let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
         let leaf_value_ids = component_graph.independent_values();
-        for leaf_value_id in &leaf_value_ids {
-            // Run these concurrently in a join set? They will serialize on the lock...
-            AttributeValue::update_from_prototype_function(ctx, *leaf_value_id).await?;
-        }
         ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
-        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
-            if prototype.kind == DeprecatedActionKind::Create {
-                DeprecatedAction::upsert(ctx, prototype.id, component.id())
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::new(ctx, prototype_id, Some(component.id))
                     .await
                     .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        } else {
+            for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
+                .await
+                .map_err(Box::new)?
+            {
+                if prototype.kind == DeprecatedActionKind::Create {
+                    DeprecatedAction::upsert(ctx, prototype.id, component.id())
+                        .await
+                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
             }
         }
 
@@ -520,6 +564,8 @@ impl Component {
         &self,
         ctx: &DalContext,
         copied_component_id: ComponentId,
+        reset_resource: bool,
+        reset_name: bool,
     ) -> ComponentResult<()> {
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
         let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
@@ -529,20 +575,9 @@ impl Component {
         // We could make this more efficient by skipping everything set by non builtins (si:setString, si:setObject, etc), since everything that is propagated will be re-propagated
         let mut work_queue: VecDeque<(AttributeValueId, AttributeValueId)> =
             vec![(copied_root_id, pasted_root_id)].into_iter().collect();
-        let mut all_avs = Vec::new();
         while let Some((copied_av_id, pasted_av_id)) = work_queue.pop_front() {
-            all_avs.push((copied_av_id, pasted_av_id));
-
-            let path = AttributeValue::get_path_for_id(ctx, copied_av_id)
-                .await?
-                .ok_or(ComponentError::MissingPathForAttributeValue(copied_av_id))?;
-            // Must empty resource and keep the name with the "- Copy" suffix
-            if path.starts_with("root/resource") || path == "root/si/name" {
-                continue;
-            }
-
             if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, copied_av_id).await? {
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 if prop.kind != PropKind::Object
                     && prop.kind != PropKind::Map
                     && prop.kind != PropKind::Array
@@ -593,10 +628,33 @@ impl Component {
             }
         }
 
+        if reset_resource {
+            self.set_resource(
+                ctx,
+                DeprecatedActionRunResult {
+                    status: Some(ResourceStatus::Ok),
+                    payload: None,
+                    message: None,
+                    logs: Vec::new(),
+                    last_synced: Some(Utc::now().to_rfc3339()),
+                },
+            )
+            .await?;
+        }
+        if reset_name {
+            self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
+                .await?;
+        }
+
+        let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
+        let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
+        let mut work_queue: VecDeque<(AttributeValueId, AttributeValueId)> =
+            vec![(copied_root_id, pasted_root_id)].into_iter().collect();
+
         // Paste attribute prototypes
         // - either updates component prototype to a copy of the original component
         // - or removes component prototype, restoring the schema one (needed because of manual update from the block above)
-        for (copied_av_id, pasted_av_id) in all_avs {
+        while let Some((copied_av_id, pasted_av_id)) = work_queue.pop_front() {
             if let Some(copied_prototype_id) =
                 AttributeValue::component_prototype_id(ctx, copied_av_id).await?
             {
@@ -619,7 +677,6 @@ impl Component {
 
                     let apa =
                         AttributePrototypeArgument::new(ctx, prototype.id(), func_arg_id).await?;
-
                     match value_source {
                         ValueSource::InputSocket(socket_id) => {
                             apa.set_value_from_input_socket_id(ctx, socket_id).await?;
@@ -629,6 +686,9 @@ impl Component {
                         }
                         ValueSource::Prop(prop_id) => {
                             apa.set_value_from_prop_id(ctx, prop_id).await?;
+                        }
+                        ValueSource::Secret(secret_id) => {
+                            apa.set_value_from_secret_id(ctx, secret_id).await?;
                         }
                         ValueSource::StaticArgumentValue(id) => {
                             apa.set_value_from_static_value_id(ctx, id).await?;
@@ -678,9 +738,101 @@ impl Component {
             {
                 AttributePrototype::remove(ctx, existing_prototype_id).await?;
             }
+
+            // Enqueue children
+            let copied_children = AttributeValue::list_all_children(ctx, copied_av_id).await?;
+            let pasted_children = AttributeValue::list_all_children(ctx, pasted_av_id).await?;
+            let mut pasted_children_paths = HashMap::new();
+
+            for pasted_child_av_id in &pasted_children {
+                let pasted_path = AttributeValue::get_path_for_id(ctx, *pasted_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        *pasted_child_av_id,
+                    ))?;
+                pasted_children_paths.insert(pasted_path, *pasted_child_av_id);
+            }
+
+            for copied_child_av_id in copied_children {
+                let copied_path = AttributeValue::get_path_for_id(ctx, copied_child_av_id)
+                    .await?
+                    .ok_or(ComponentError::MissingPathForAttributeValue(
+                        copied_child_av_id,
+                    ))?;
+
+                let pasted_child_av_id = if let Some(pasted_child_av_id) =
+                    pasted_children_paths.get(&copied_path).copied()
+                {
+                    pasted_child_av_id
+                } else {
+                    AttributeValue::new(
+                        ctx,
+                        AttributeValue::is_for(ctx, copied_child_av_id).await?,
+                        Some(self.id),
+                        Some(pasted_av_id),
+                        AttributeValue::key_for_id(ctx, copied_child_av_id).await?,
+                    )
+                    .await?
+                    .id
+                };
+                work_queue.push_back((copied_child_av_id, pasted_child_av_id));
+            }
         }
 
         Ok(())
+    }
+
+    pub async fn outgoing_connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<OutgoingConnection>> {
+        let mut outgoing_edges = vec![];
+
+        for (from_output_socket_id, to_value_id) in self.output_socket_attribute_values(ctx).await?
+        {
+            let prototype_id =
+                AttributeValue::prototype_id(ctx, to_value_id.attribute_value_id).await?;
+            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                prototype_id,
+                self.id,
+            )
+            .await?
+            {
+                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+
+                let created_info = {
+                    let history_actor = ctx.history_actor();
+                    let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+                    HistoryEventMetadata {
+                        actor,
+                        timestamp: apa.timestamp().created_at,
+                    }
+                };
+
+                if let Some(ArgumentTargets {
+                    source_component_id,
+                    destination_component_id,
+                }) = apa.targets()
+                {
+                    if let Some(ValueSource::InputSocket(to_input_socket_id)) =
+                        apa.value_source(ctx).await?
+                    {
+                        outgoing_edges.push(OutgoingConnection {
+                            attribute_prototype_argument_id: apa_id,
+                            to_component_id: destination_component_id,
+                            from_component_id: source_component_id,
+                            to_input_socket_id,
+                            from_output_socket_id,
+                            created_info,
+                            deleted_info: None,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(outgoing_edges)
     }
 
     pub async fn incoming_connections(
@@ -1023,7 +1175,7 @@ impl Component {
 
         let av = AttributeValue::get_by_id(ctx, value_id).await?;
 
-        Ok(match av.materialized_view(ctx).await? {
+        Ok(match av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => DeprecatedActionRunResult::default(),
         })
@@ -1039,7 +1191,7 @@ impl Component {
 
         let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
 
-        Ok(match name_av.materialized_view(ctx).await? {
+        Ok(match name_av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
@@ -1055,7 +1207,7 @@ impl Component {
 
         let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
-        Ok(match color_av.materialized_view(ctx).await? {
+        Ok(match color_av.view(ctx).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
             None => None,
         })
@@ -1073,7 +1225,7 @@ impl Component {
                 .ok_or(ComponentError::ComponentMissingTypeValue(component_id))?;
         let type_value = AttributeValue::get_by_id(ctx, type_value_id)
             .await?
-            .materialized_view(ctx)
+            .view(ctx)
             .await?
             .ok_or(ComponentError::ComponentMissingTypeValueMaterializedView(
                 component_id,
@@ -1340,6 +1492,38 @@ impl Component {
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
 
+        // check for socket arity on the input socket
+        // if the input socket has arity of one, and there's an existing edge, need to remove it before adding the new one
+        let input_socket = InputSocket::get_by_id(ctx, destination_input_socket_id).await?;
+        if input_socket.arity() == SocketArity::One {
+            let existing_attribute_prototype_args =
+                AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                    ctx,
+                    destination_prototype_id,
+                    destination_component_id,
+                )
+                .await?;
+            if !existing_attribute_prototype_args.is_empty() {
+                for attribute_prototype_argument_id in existing_attribute_prototype_args {
+                    let attribute_prototype_argument =
+                        AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id)
+                            .await?;
+                    if let Some(targets) = attribute_prototype_argument.targets() {
+                        if targets.destination_component_id == destination_component_id {
+                            debug!(
+                                "Removing existing prototype as we are trying to connect a new one"
+                            );
+                            AttributePrototypeArgument::remove(
+                                ctx,
+                                attribute_prototype_argument_id,
+                            )
+                            .await?;
+                        }
+                    }
+                }
+            }
+        }
+
         let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
             source_component_id,
@@ -1348,8 +1532,6 @@ impl Component {
             destination_prototype_id,
         )
         .await?;
-
-        AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
 
         drop(cycle_check_guard);
 
@@ -1419,6 +1601,14 @@ impl Component {
                     .entry(component.id)
                     .or_default()
                     .insert(incoming_connection.from_component_id);
+            }
+            for inferred_incoming_connections in
+                component.inferred_incoming_connections(ctx).await?
+            {
+                components_map
+                    .entry(component.id)
+                    .or_default()
+                    .insert(inferred_incoming_connections.from_component_id);
             }
         }
 
@@ -1520,7 +1710,37 @@ impl Component {
 
         Ok(result)
     }
-
+    /// Checks the destination and source component to determine if data flow between them
+    /// Both "deleted" and not deleted Components can feed data into
+    /// "deleted" Components. **ONLY** not deleted Components can feed
+    /// data into not deleted Components.
+    pub async fn should_data_flow_between_components(
+        ctx: &DalContext,
+        destination_component_id: ComponentId,
+        source_component_id: ComponentId,
+    ) -> ComponentResult<bool> {
+        let destination_component_is_delete =
+            Self::is_set_to_delete(ctx, destination_component_id).await?;
+        let source_component_is_delete = Self::is_set_to_delete(ctx, source_component_id).await?;
+        let should_data_flow = destination_component_is_delete || !source_component_is_delete;
+        Ok(should_data_flow)
+    }
+    /// Simply gets the to_delete status for a component via the Node Weight
+    async fn is_set_to_delete(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<bool> {
+        let component_idx = ctx
+            .workspace_snapshot()?
+            .get_node_index_by_id(component_id)
+            .await?;
+        let component_node_weight = ctx
+            .workspace_snapshot()?
+            .get_node_weight(component_idx)
+            .await?
+            .get_component_node_weight()?;
+        Ok(component_node_weight.to_delete())
+    }
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>
     where
         L: FnOnce(&mut Self) -> ComponentResult<()>,
@@ -1583,9 +1803,62 @@ impl Component {
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
         let change_set = ctx.change_set()?;
 
+        let component = Self::get_by_id(ctx, id).await?;
+
+        let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
+        let _ = Frame::orphan_child(ctx, id)
+            .await
+            .map_err(|e| ComponentError::Frame(Box::new(e)));
+        for incoming_connection in component.incoming_connections(ctx).await? {
+            Component::remove_connection(
+                ctx,
+                incoming_connection.from_component_id,
+                incoming_connection.from_output_socket_id,
+                incoming_connection.to_component_id,
+                incoming_connection.to_input_socket_id,
+            )
+            .await?;
+        }
+        for (output_socket_id, _) in
+            Component::output_socket_attribute_values_for_component_id(ctx, id).await?
+        {
+            let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+            let apa_ids = output_socket.prototype_arguments_using(ctx).await?;
+            for apa_id in apa_ids {
+                let prototype_argument = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+                if let Some(targets) = prototype_argument.targets() {
+                    if targets.source_component_id == id {
+                        AttributePrototypeArgument::remove(ctx, apa_id).await?;
+                    }
+                }
+            }
+        }
+
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)
             .await?;
+
+        // Remove Creation actions from queue
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::remove(ctx, prototype_id, Some(component.id))
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+            }
+        }
 
         WsEvent::component_deleted(ctx, id)
             .await?
@@ -1619,6 +1892,8 @@ impl Component {
 
     pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
         let component_id = self.id;
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+
         let modified = self
             .modify(ctx, |component| {
                 component.to_delete = to_delete;
@@ -1635,6 +1910,7 @@ impl Component {
         //
         // This will update more than is strictly necessary, but it will ensure that everything is
         // correct.
+
         let input_av_ids: Vec<AttributeValueId> = modified
             .input_socket_attribute_values(ctx)
             .await?
@@ -1642,9 +1918,7 @@ impl Component {
             .map(|f| &f.attribute_value_id)
             .cloned()
             .collect();
-        for av_id in &input_av_ids {
-            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
-        }
+
         ctx.enqueue_dependent_values_update(input_av_ids).await?;
 
         // We always want to make sure that everything "downstream" of us reacts appropriately
@@ -1656,39 +1930,74 @@ impl Component {
         // reflect that they're not getting data from this to_delete Component any more.
 
         let downstream_av_ids = modified.downstream_attribute_value_ids(ctx).await?;
-        for av_id in &downstream_av_ids {
-            AttributeValue::update_from_prototype_function(ctx, *av_id).await?;
-        }
+
         ctx.enqueue_dependent_values_update(downstream_av_ids)
             .await?;
 
+        // Deal with deletion actions
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
         if to_delete {
             // Enqueue delete actions for component
-            for prototype in DeprecatedActionPrototype::for_variant(
-                ctx,
-                Self::schema_variant_id(ctx, modified.id).await?,
-            )
-            .await
-            .map_err(Box::new)?
-            {
-                if prototype.kind == DeprecatedActionKind::Delete {
-                    DeprecatedAction::upsert(ctx, prototype.id, modified.id)
+            if workspace.uses_actions_v2() {
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Destroy,
+                )
+                .await?
+                {
+                    Action::new(ctx, prototype_id, Some(component_id))
                         .await
                         .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            } else {
+                for prototype in DeprecatedActionPrototype::for_variant(
+                    ctx,
+                    Self::schema_variant_id(ctx, modified.id).await?,
+                )
+                .await
+                .map_err(Box::new)?
+                {
+                    if prototype.kind == DeprecatedActionKind::Delete {
+                        DeprecatedAction::upsert(ctx, prototype.id, modified.id)
+                            .await
+                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    }
                 }
             }
         } else {
             // Remove delete actions for component
-            let actions = DeprecatedAction::build_graph(ctx)
-                .await
-                .map_err(|err| ComponentError::Action(err.to_string()))?;
-            for bag in actions.values() {
-                if bag.component_id == component_id {
-                    bag.action
-                        .clone()
-                        .delete(ctx)
+            if workspace.uses_actions_v2() {
+                // Get actions category node
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Destroy,
+                )
+                .await?
+                {
+                    Action::remove(ctx, prototype_id, Some(component_id))
                         .await
                         .map_err(|err| ComponentError::Action(err.to_string()))?;
+                }
+            } else {
+                let actions = DeprecatedAction::build_graph(ctx)
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                for bag in actions.values() {
+                    if bag.component_id == component_id {
+                        bag.action
+                            .clone()
+                            .delete(ctx)
+                            .await
+                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    }
                 }
             }
         }
@@ -1767,74 +2076,142 @@ impl Component {
             )
             .await?;
 
-        pasted_comp.clone_attributes_from(ctx, self.id()).await?;
+        pasted_comp
+            .clone_attributes_from(ctx, self.id(), true, true)
+            .await?;
 
-        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
-            .await
-            .map_err(Box::new)?
-        {
-            if prototype.kind != DeprecatedActionKind::Create {
-                continue;
+        // Enqueue creation actions
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ComponentError::WorkspacePkNone)?;
+
+        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+
+        if workspace.uses_actions_v2() {
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant.id(),
+                ActionKind::Create,
+            )
+            .await?
+            {
+                Action::new(ctx, prototype_id, Some(pasted_comp.id))
+                    .await
+                    .map_err(|err| ComponentError::Action(err.to_string()))?;
             }
-
-            let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
+        } else {
+            for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
                 .await
-                .map_err(Box::new)?;
+                .map_err(Box::new)?
+            {
+                if prototype.kind != DeprecatedActionKind::Create {
+                    continue;
+                }
+
+                let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
+                    .await
+                    .map_err(Box::new)?;
+            }
         }
 
         Ok(pasted_comp)
     }
-    /// For a given Component ID, get a map of every component's input socket and it's inferred output socket connection
-    /// if it exists. Inferred socket connections are determined by following the ancestry line of FrameContains edges
-    /// and matching the relevant input to output sockets.
-    /// At this time, an input socket can only take one output socket as it's inferred connection.
+    /// For a given [`ComponentId`], map each input socket to the inferred output sockets
+    /// it is connected to. Inferred socket connections are determined by following
+    /// the ancestry line of FrameContains edges and matching the relevant input to output sockets.
     #[instrument(level = "debug", skip_all)]
-    pub async fn build_map_for_component_id_input_sockets(
+    pub async fn build_map_for_component_id_inferred_incoming_connections(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<InputSocketMatch, OutputSocketMatch>> {
+    ) -> ComponentResult<HashMap<InputSocketMatch, Vec<OutputSocketMatch>>> {
         let mut results = HashMap::new();
-        let vet = Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        for (_, input_socket_match) in vet {
-            if let Some(output_socket) =
-                Component::find_inferred_connection_to_input_socket(ctx, input_socket_match).await?
-            {
-                results.entry(input_socket_match).or_insert(output_socket);
+        let input_sockets =
+            Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
+        for (_, input_socket_match) in input_sockets {
+            let output_matches =
+                Self::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
+                    .await?;
+            if !output_matches.is_empty() {
+                results.entry(input_socket_match).or_insert(output_matches);
             }
         }
+        debug!(
+            "Map of inferred input to output connections for component {:?}: {:?}",
+            component_id, results
+        );
         Ok(results)
     }
-    /// For a given [`InputSocketMatch`], find the single inferred [`OutputSocketMatch`] that is driving it
+    /// For a given [`ComponentId`], map each output socket to the inferred input sockets
+    /// it is connected to. Inferred socket connections are determined by following the
+    /// lineage of Frame Contains edges and matching relevant output to input sockets.
+    #[instrument(level = "debug", skip_all)]
+    pub async fn build_map_for_component_id_inferred_outgoing_connections(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<OutputSocketMatch, Vec<InputSocketMatch>>> {
+        let mut results = HashMap::new();
+        let output_sockets =
+            Self::output_socket_attribute_values_for_component_id(ctx, component_id).await?;
+        for (_, output_socket_match) in output_sockets {
+            let input_matches = Self::find_inferred_values_using_this_output_socket(
+                ctx,
+                output_socket_match.attribute_value_id,
+            )
+            .await?;
+            if !input_matches.is_empty() {
+                results.entry(output_socket_match).or_insert(input_matches);
+            }
+        }
+        debug!(
+            "Map of inferred input to output connections for component {:?}: {:?}",
+            component_id, results
+        );
+        Ok(results)
+    }
+    /// For a given [`InputSocketMatch`], find the inferred [`OutputSocketMatch`]es that are driving it
     /// if it exists. This walks up or down the component lineage tree depending on the [`ComponentType`]
     /// and finds the closest matching [`OutputSocket`]
-    #[instrument(level = "debug", skip_all)]
-    pub async fn find_inferred_connection_to_input_socket(
+    ///
+    /// When walking down the lineage tree, we allow multiple output sockets to drive an input socket
+    /// if the input socket has arity many and the matches are all siblings
+    ///
+    /// Note: this does not check for whether data should actually flow between components
+    #[instrument(level = "debug", skip(ctx))]
+    pub async fn find_available_inferred_connections_to_input_socket(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
+    ) -> ComponentResult<Vec<OutputSocketMatch>> {
+        let mut destination_sockets = vec![];
         if InputSocket::is_manually_configured(ctx, input_socket_match).await? {
             //if the input socket is being manually driven (the user has drawn an edge)
             // there will be no inferred connections to it
-            return Ok(None);
+            return Ok(destination_sockets);
         }
-        let maybe_source_socket =
+
+        destination_sockets =
             match Component::get_type_by_id(ctx, input_socket_match.component_id).await? {
                 ComponentType::Component | ComponentType::ConfigurationFrameDown => {
                     //For a component, or a down frame, check my parents and other ancestors
                     // find the first output socket match that is a down frame and use it!
 
-                    Self::find_first_output_socket_match_in_ancestors(
+                    if let Some(output_match) = Self::find_first_output_socket_match_in_ancestors(
                         ctx,
                         input_socket_match,
                         vec![ComponentType::ConfigurationFrameDown],
                     )
                     .await?
+                    {
+                        vec![output_match]
+                    } else {
+                        vec![]
+                    }
                 }
                 ComponentType::ConfigurationFrameUp => {
                     // An up frame's input sockets are sourced from its children's output sockets
                     // For now, we won't let down frames send outputs to parents and children
                     // This might need to change, but we can change it when we've got a use case.
-                    Self::find_first_output_socket_match_in_descendants(
+                    let mut matches = Self::find_available_output_socket_match_in_descendants(
                         ctx,
                         input_socket_match,
                         vec![
@@ -1842,17 +2219,27 @@ impl Component {
                             ComponentType::Component,
                         ],
                     )
-                    .await?
+                    .await?;
+                    // if there is more than one match, sort by component Ulid so they're
+                    // consistently ordered
+                    matches.sort_by_key(|output_socket| output_socket.component_id);
+                    matches
                 }
-                ComponentType::AggregationFrame => None,
+                ComponentType::AggregationFrame => vec![],
             };
+        debug!(
+            "Source socket for input socket {:?} is: {:?}",
+            input_socket_match, destination_sockets
+        );
 
-        Ok(maybe_source_socket)
+        Ok(destination_sockets)
     }
     /// Walk down the component lineage to find all matching input sockets that a given output
     /// socket is driving
+    ///
+    /// Note: This does not check if data should actually flow between the components
     #[instrument(level = "debug", skip(ctx))]
-    async fn find_all_input_socket_matches_in_descendants(
+    async fn find_all_potential_inferred_input_socket_matches_in_descendants(
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
         component_id: ComponentId,
@@ -1867,13 +2254,19 @@ impl Component {
                 // aggregate them as there might be many (for example a region frame passing values to many children)
 
                 let matchy_matchy =
-                    Component::build_map_for_component_id_input_sockets(ctx, component_id).await?;
+                    Component::build_map_for_component_id_inferred_incoming_connections(
+                        ctx,
+                        component_id,
+                    )
+                    .await?;
                 for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_match)) =
+                    if let Some((input_socket_match, output_socket_matches)) =
                         matchy_matchy.get_key_value(key)
                     {
-                        if output_socket_match.output_socket_id == output_socket_id {
-                            found_sockets.push(*input_socket_match);
+                        for output_socket_match in output_socket_matches {
+                            if output_socket_match.output_socket_id == output_socket_id {
+                                found_sockets.push(*input_socket_match);
+                            }
                         }
                     }
                 }
@@ -1888,14 +2281,16 @@ impl Component {
 
     /// For a given [`InputSocketMatch`], see if there are any [`OutputSocketMatch`]es for the provided
     /// [`ComponentId`]
+    ///
+    ///  Note: this does not check to see whether data should actually flow
     #[instrument(level = "debug" skip(ctx))]
-    async fn find_output_socket_matches_in_component(
+    async fn find_potential_inferred_output_socket_matches_in_component(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
-        destination_component_id: ComponentId,
+        source_component_id: ComponentId,
     ) -> ComponentResult<Vec<OutputSocketMatch>> {
         // check for matching output socket names for this input socket
-        let parent_sv_id = Self::schema_variant_id(ctx, destination_component_id).await?;
+        let parent_sv_id = Self::schema_variant_id(ctx, source_component_id).await?;
         let output_socket_ids =
             OutputSocket::list_ids_for_schema_variant(ctx, parent_sv_id).await?;
         let mut maybe_matches = vec![];
@@ -1909,11 +2304,10 @@ impl Component {
             .await?
             {
                 if let Some(output_socket_match) =
-                    Self::output_socket_match(ctx, destination_component_id, output_socket_id)
-                        .await?
+                    Self::output_socket_match(ctx, source_component_id, output_socket_id).await?
                 {
                     maybe_matches.push(OutputSocketMatch {
-                        component_id: destination_component_id,
+                        component_id: source_component_id,
                         output_socket_id,
                         attribute_value_id: output_socket_match.attribute_value_id,
                     });
@@ -1925,6 +2319,8 @@ impl Component {
     }
     /// Find all [`InputSocketMatch`]es in the ancestry tree for a [`Component`] with the provided [`ComponentId`]
     /// This searches for matches in the component's parents and up the entire lineage tree
+    ///
+    /// Note: this does not check if data should actually flow between the components with matches
     #[instrument(level = "debug" skip(ctx))]
     async fn find_all_input_socket_matches_in_ascendants(
         ctx: &DalContext,
@@ -1948,18 +2344,23 @@ impl Component {
                 // aggregate them as there might be many
 
                 let matchy_matchy =
-                    Component::build_map_for_component_id_input_sockets(ctx, working_component_id)
-                        .await?;
+                    Component::build_map_for_component_id_inferred_incoming_connections(
+                        ctx,
+                        working_component_id,
+                    )
+                    .await?;
                 for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_match)) =
+                    if let Some((input_socket_match, output_socket_matches)) =
                         matchy_matchy.get_key_value(key)
                     {
-                        if output_socket_match.output_socket_id == output_socket_id {
-                            debug!(
-                                "Found matching input socket {:?} for component id {}",
-                                input_socket_match, working_component_id
-                            );
-                            found_sockets.push(*input_socket_match);
+                        for output_socket_match in output_socket_matches {
+                            if output_socket_match.output_socket_id == output_socket_id {
+                                debug!(
+                                    "Found matching input socket {:?} for component id {}",
+                                    input_socket_match, working_component_id
+                                );
+                                found_sockets.push(*input_socket_match);
+                            }
                         }
                     }
                 }
@@ -1971,12 +2372,13 @@ impl Component {
 
         Ok(found_sockets)
     }
-    /// Finds all inferred connections for the [`Component`]
-    /// A connection is inferred if it's input or output sockets are being driven
-    /// as a result of parentage (for example, dropping a [`Component`] in another [`Component`]
-    /// that is either a [`ComponentType::ComponentFrameUp`] or [`ComponentType::ComponentFrameDown`])
+
+    /// Finds all inferred incoming connections for the [`Component`]
+    /// A connection is inferred if it's input socket is being driven
+    /// by another component's output socket as a result of lineage
+    /// via FrameContains Edges.
     #[instrument(level = "debug", skip(ctx))]
-    pub async fn inferred_connections(
+    pub async fn inferred_incoming_connections(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<Vec<InferredIncomingConnection>> {
@@ -1985,14 +2387,77 @@ impl Component {
         let input_sockets =
             Self::input_socket_attribute_values_for_component_id(ctx, to_component_id).await?;
         for (to_input_socket_id, input_socket_match) in input_sockets.into_iter() {
-            if let Some(output_socket_match) =
-                Self::find_inferred_connection_to_input_socket(ctx, input_socket_match).await?
+            for output_socket_match in
+                Self::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
+                    .await?
             {
+                // add the check for to_delete on either to or from component
+                // Both "deleted" and not deleted Components can feed data into
+                // "deleted" Components. **ONLY** not deleted Components can feed
+                // data into not deleted Components.
+                let destination_component = Self::get_by_id(ctx, to_component_id).await?;
+                let source_component =
+                    Self::get_by_id(ctx, output_socket_match.component_id).await?;
+                let to_delete = !Self::should_data_flow_between_components(
+                    ctx,
+                    destination_component.id,
+                    source_component.id,
+                )
+                .await?;
+
                 let implicit_edge = InferredIncomingConnection {
                     to_component_id,
                     to_input_socket_id,
                     from_component_id: output_socket_match.component_id,
                     from_output_socket_id: output_socket_match.output_socket_id,
+                    to_delete,
+                };
+                debug!("Found inferred edge: {:?}", implicit_edge);
+                connections.push(implicit_edge);
+            }
+        }
+        Ok(connections)
+    }
+    /// Finds all inferred outgoing connections for the [`Component`]
+    /// A connection is inferred if it's output sockets is driving
+    /// another component's [`InputSocket`] as a result of lineage via
+    /// the FrameContains edge.
+    #[instrument(level = "debug", skip(ctx))]
+    pub async fn inferred_outgoing_connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<InferredIncomingConnection>> {
+        let from_component_id = self.id();
+        let mut connections = vec![];
+        let output_sockets =
+            Self::output_socket_attribute_values_for_component_id(ctx, from_component_id).await?;
+        for (from_output_socket_id, output_socket_match) in output_sockets.into_iter() {
+            for input_socket_match in Self::find_inferred_values_using_this_output_socket(
+                ctx,
+                output_socket_match.attribute_value_id,
+            )
+            .await?
+            {
+                // add the check for to_delete on either to or from component
+                // Both "deleted" and not deleted Components can feed data into
+                // "deleted" Components. **ONLY** not deleted Components can feed
+                // data into not deleted Components.
+                let destination_component = input_socket_match.component_id;
+                let source_component = self.id();
+
+                let to_delete = !Self::should_data_flow_between_components(
+                    ctx,
+                    destination_component,
+                    source_component,
+                )
+                .await?;
+
+                let implicit_edge = InferredIncomingConnection {
+                    to_component_id: input_socket_match.component_id,
+                    to_input_socket_id: input_socket_match.input_socket_id,
+                    from_component_id,
+                    from_output_socket_id,
+                    to_delete,
                 };
                 debug!("Found inferred edge: {:?}", implicit_edge);
                 connections.push(implicit_edge);
@@ -2001,97 +2466,201 @@ impl Component {
         Ok(connections)
     }
 
-    /// For the provided [`InputSocketMatch`], find the first [`OutputSocketMatch`] that should
+    /// For the provided [`InputSocketMatch`], find any matching [`OutputSocketMatch`] that should
     /// drive this [`InputSocket`] by searching down the descendants of the [`Component`],
-    /// checking children first and walking down until we find a single match
-    /// Note: If we find multiple matches (for example, multiple children of a
-    /// [`ComponentType::ComponentFrameUp`], we return [`None`],
-    /// forcing the user to make an explicit, manual connection, by drawing an edge)
+    /// checking children first and walking down until we find any matches.
+    ///
+    /// If the provided [`InputSocketMatch`] has an arity of one, we look for only one
+    /// eligible [`OutputSocket`]. If we find multiple, we won't return any, forcing the
+    /// user to explicity draw the edge.
+    ///
+    /// If it has an arity of many, we will look for multiple matches, but they must
+    /// be at the same 'level' to be considered valid.
+    ///
+    /// Note: this does not check if data should actually flow between the components with matches,
+    /// it only checks if there are available sockets that might be driven
     #[instrument(level = "debug", skip(ctx))]
-    async fn find_first_output_socket_match_in_descendants(
+    async fn find_available_output_socket_match_in_descendants(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
         component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
-        let mut found_match: Option<OutputSocketMatch> = None;
+    ) -> ComponentResult<Vec<OutputSocketMatch>> {
+        let mut output_socket_matches: Vec<OutputSocketMatch> = vec![];
         let component_id = input_socket_match.component_id;
         let children = Component::get_children_for_id(ctx, component_id).await?;
+        let socket_arrity = InputSocket::get_by_id(ctx, input_socket_match.input_socket_id)
+            .await?
+            .arity();
         //load up the children and look for matches
         let mut work_queue: VecDeque<Vec<ComponentId>> = VecDeque::new();
         work_queue.push_front(children);
+        if socket_arrity == SocketArity::One {
+            while let Some(children) = work_queue.pop_front() {
+                if children.is_empty() {
+                    break;
+                }
+                let (maybe_match, next_children) = Self::find_single_match_in_children(
+                    ctx,
+                    input_socket_match,
+                    &component_types,
+                    children,
+                )
+                .await?;
+                // if there wasn't a match here, load up the next children
+                // if there was, return
+                match maybe_match {
+                    Some(output_match) => {
+                        output_socket_matches.push(output_match);
+                        break;
+                    }
+                    None => work_queue.push_back(next_children),
+                }
+            }
+        } else {
+            while let Some(children) = work_queue.pop_front() {
+                if children.is_empty() {
+                    break;
+                }
+                let (maybe_matches, next_children) = Self::find_all_matches_in_children(
+                    ctx,
+                    input_socket_match,
+                    &component_types,
+                    children,
+                )
+                .await?;
+                // if there are matches found, push them and stop looking
+                // otherwise, load up the next children if there are any
+                if maybe_matches.is_empty() && !next_children.is_empty() {
+                    work_queue.push_back(next_children);
+                } else {
+                    output_socket_matches.extend(maybe_matches);
+                    break;
+                }
+            }
+        }
+        Ok(output_socket_matches)
+    }
 
-        'parents: while let Some(children) = work_queue.pop_front() {
-            for child_component in children {
-                match found_match {
-                    Some(_) => {
-                        // we already have a match, but let's check siblings. If we find another one,
-                        // stop looking and return none, letting the user decide how to connect this
-                        // as for now, we aren't going to let input sockets infer their connection from
-                        // multiple output sockets
-                        if component_types
-                            .contains(&Self::get_type_by_id(ctx, child_component).await?)
-                        {
-                            let maybe_matches = Self::find_output_socket_matches_in_component(
+    #[instrument(level = "debug", skip(ctx))]
+    async fn find_single_match_in_children(
+        ctx: &DalContext,
+        input_socket_match: InputSocketMatch,
+        component_types: &[ComponentType],
+        children: Vec<ComponentId>,
+    ) -> ComponentResult<(Option<OutputSocketMatch>, Vec<ComponentId>)> {
+        let mut maybe_output_match = None;
+        let mut next_children = vec![];
+        // when the input socket is an arity of one, we need to find one single matching output socket
+        for child_component in children {
+            match maybe_output_match.is_some() {
+                true => {
+                    // we already have a match, but let's see if there are more
+                    // if there are, stop looking and return none, letting the user decide which
+                    // single child to connect to
+                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
+                    {
+                        let maybe_matches =
+                            Self::find_potential_inferred_output_socket_matches_in_component(
                                 ctx,
                                 input_socket_match,
                                 child_component,
                             )
                             .await?;
-                            {
-                                match maybe_matches.is_empty() {
-                                    // no match here, so let's keep looking
-                                    true => (),
-                                    // found another match, let's return none
-                                    false => {
-                                        found_match = None;
-                                        break 'parents;
-                                    }
-                                }
-                            }
+
+                        if !maybe_matches.is_empty() {
+                            // this component has too many matches,
+                            return Ok((None, vec![]));
                         }
                     }
-                    None => {
-                        // no match yet, let's find if this child has exactly one match!
-                        if component_types
-                            .contains(&Component::get_type_by_id(ctx, child_component).await?)
-                        {
-                            let maybe_matches = Component::find_output_socket_matches_in_component(
+                }
+                false => {
+                    // no match yet, keep looking!
+                    if component_types
+                        .contains(&Component::get_type_by_id(ctx, child_component).await?)
+                    {
+                        let maybe_matches =
+                            Self::find_potential_inferred_output_socket_matches_in_component(
                                 ctx,
                                 input_socket_match,
                                 child_component,
                             )
                             .await?;
+                        if !maybe_matches.is_empty() && maybe_matches.len() == 1 {
+                            // found exactly 1! it just might be the one!
+                            maybe_output_match = maybe_matches.first().cloned();
+                        }
+                    }
+                }
+            }
 
-                            if maybe_matches.len() > 1 {
-                                // this child has more than one match
-                                // stop looking and return None to force
-                                // the user to manually draw an edge
-                                // we don't care if other children might also be a match
-                                // let the user decide!
-                                return Ok(None);
-                            }
-                            if maybe_matches.len() == 1 {
-                                //one record find!
-                                found_match = maybe_matches.first().cloned();
+            let child_components = Component::get_children_for_id(ctx, child_component).await?;
+            next_children.extend(child_components);
+        }
+        Ok((maybe_output_match, next_children))
+    }
+
+    #[instrument(level = "debug", skip(ctx))]
+    async fn find_all_matches_in_children(
+        ctx: &DalContext,
+        input_socket_match: InputSocketMatch,
+        component_types: &[ComponentType],
+        children: Vec<ComponentId>,
+    ) -> ComponentResult<(Vec<OutputSocketMatch>, Vec<ComponentId>)> {
+        let mut maybe_output_matches = vec![];
+        let mut next_children = vec![];
+        for child_component in children {
+            match !maybe_output_matches.is_empty() {
+                true => {
+                    // we already have a match but we need to check siblings
+                    // as there might be more than one match!
+                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
+                    {
+                        let maybe_matches =
+                            Self::find_potential_inferred_output_socket_matches_in_component(
+                                ctx,
+                                input_socket_match,
+                                child_component,
+                            )
+                            .await?;
+                        // if there's only one match in this component, use it! otherwise keep looking in
+                        // the other children
+                        if maybe_matches.len() == 1 {
+                            // found a single match in descendants!
+                            if let Some(output_match) = maybe_matches.first().cloned() {
+                                maybe_output_matches.push(output_match);
                             }
                         }
                     }
                 }
-                let child_components = Component::get_children_for_id(ctx, child_component).await?;
-                work_queue.push_back(child_components);
-            }
+                false => {
+                    // no match yet, let's find if this child has any matches!
+                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
+                    {
+                        let maybe_matches =
+                            Self::find_potential_inferred_output_socket_matches_in_component(
+                                ctx,
+                                input_socket_match,
+                                child_component,
+                            )
+                            .await?;
 
-            // if we found a match after looping through these children, we're done.
-            //Otherwise, continue with next children
-            if found_match.is_some() {
-                break 'parents;
+                        if maybe_matches.len() == 1 {
+                            // found one match in this descendant!
+                            if let Some(output_match) = maybe_matches.first().cloned() {
+                                maybe_output_matches.push(output_match);
+                            }
+                        }
+                    }
+                }
             }
+            let child_components = Component::get_children_for_id(ctx, child_component).await?;
+            next_children.extend(child_components);
         }
-        Ok(found_match)
+        Ok((maybe_output_matches, next_children))
     }
 
     /// For the provided [`InputSocketMatch`], find the first [`OutputSocketMatch`] in the ancestry tree
-    /// that should drive this input socket (first searching parents and onwards up the ancestry tree)
+    /// that should drive this [`InputSocket`] (first searching parents and onwards up the ancestry tree)
     #[instrument(level = "debug", skip(ctx))]
     pub async fn find_first_output_socket_match_in_ancestors(
         ctx: &DalContext,
@@ -2107,12 +2676,13 @@ impl Component {
 
                 if component_types.contains(&Component::get_type_by_id(ctx, component_id).await?) {
                     // get all output sockets for this component
-                    let maybe_matches = Self::find_output_socket_matches_in_component(
-                        ctx,
-                        input_socket_match,
-                        component_id,
-                    )
-                    .await?;
+                    let maybe_matches =
+                        Self::find_potential_inferred_output_socket_matches_in_component(
+                            ctx,
+                            input_socket_match,
+                            component_id,
+                        )
+                        .await?;
                     {
                         if maybe_matches.len() > 1 {
                             // this ancestor has more than one match
@@ -2122,9 +2692,9 @@ impl Component {
                             return Ok(None);
                         }
                         if maybe_matches.len() == 1 {
-                            //this ancestor has 1 match! return it and stop looking!
-                            let output_sock = maybe_matches.first().cloned();
-                            return Ok(output_sock);
+                            // this ancestor has 1 match!
+                            // return and stop looking
+                            return Ok(maybe_matches.first().cloned());
                         }
                     }
                 }
@@ -2140,64 +2710,300 @@ impl Component {
         Ok(None)
     }
 
-    /// Find all [`InputSocketMatch`]es in the descendant tree for a [`Component`] with the provided [`ComponentId`]
-    /// This searches for matches in the component's children and down the entire lineage tree
+    /// Find all inferred [`InputSocketMatch`]es that are being driven by the provided
+    /// [`AttributeValueId`] that represents an [`OutputSocket`] for a specific [`Component`]
+    ///
+    /// Output sockets can drive Input Sockets through inference based on the following logic:
+    ///
+    /// Components and Up Frames can drive Input Sockets of their parents if the parent is an
+    /// Up Frame.
+    ///
+    /// Down Frames can drive Input Sockets of their children if the child is a Down Frame
+    /// or a Component.
     #[instrument(level = "debug", skip(ctx))]
     pub async fn find_inferred_values_using_this_output_socket(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> ComponentResult<Vec<InputSocketMatch>> {
         // let's make sure this av is actually for an output socket
-        let maybe_output_socket = match AttributeValue::is_for(ctx, attribute_value_id).await? {
-            ValueIsFor::Prop(_) | ValueIsFor::InputSocket(_) => None,
-            ValueIsFor::OutputSocket(sock) => Some(sock),
+        let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
+        let output_socket_id = match value_is_for {
+            ValueIsFor::Prop(_) | ValueIsFor::InputSocket(_) => {
+                return Err(ComponentError::WrongAttributeValueType(
+                    attribute_value_id,
+                    value_is_for,
+                ))
+            }
+            ValueIsFor::OutputSocket(sock) => sock,
+        };
+        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+        let maybe_target_sockets = match Component::get_type_by_id(ctx, component_id).await? {
+            ComponentType::Component | ComponentType::ConfigurationFrameUp => {
+                // if the type is a component, find all ascendants
+                // who have a matching input socket AND are an up frame
+                Component::find_all_input_socket_matches_in_ascendants(
+                    ctx,
+                    output_socket_id,
+                    component_id,
+                    vec![ComponentType::ConfigurationFrameUp],
+                )
+                .await?
+            }
+            ComponentType::ConfigurationFrameDown => {
+                // if the type is a down frame, find all descendants
+                // who have a matching input socket AND are a Down Frame or Component
+                Component::find_all_potential_inferred_input_socket_matches_in_descendants(
+                    ctx,
+                    output_socket_id,
+                    component_id,
+                    vec![
+                        ComponentType::ConfigurationFrameDown,
+                        ComponentType::Component,
+                    ],
+                )
+                .await?
+            }
+
+            // we are not supporting aggregation frames right now
+            _ => vec![],
         };
 
-        if maybe_output_socket.is_none() {
-            return Err(ComponentError::OutputSocketTooManyAttributeValues(
-                Ulid::new().into(),
+        Ok(maybe_target_sockets)
+    }
+
+    pub async fn remove_connection(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        source_output_socket_id: OutputSocketId,
+        destination_component_id: ComponentId,
+        destination_input_socket_id: InputSocketId,
+    ) -> ComponentResult<()> {
+        let input_socket_prototype_id =
+            AttributePrototype::find_for_input_socket(ctx, destination_input_socket_id)
+                .await?
+                .ok_or_else(|| InputSocketError::MissingPrototype(destination_input_socket_id))?;
+
+        let attribute_prototype_arguments = ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                input_socket_prototype_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::PrototypeArgument,
+            )
+            .await?;
+
+        for (_, _, attribute_prototype_arg_idx) in attribute_prototype_arguments {
+            let node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(attribute_prototype_arg_idx)
+                .await?;
+            let attribute_prototype_argument_node_weight =
+                node_weight.get_attribute_prototype_argument_node_weight()?;
+            if let Some(targets) = attribute_prototype_argument_node_weight.targets() {
+                if targets.source_component_id == source_component_id
+                    && targets.destination_component_id == destination_component_id
+                {
+                    let data_sources = ctx
+                        .workspace_snapshot()?
+                        .edges_directed_for_edge_weight_kind(
+                            attribute_prototype_argument_node_weight.id(),
+                            Outgoing,
+                            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+                        )
+                        .await?;
+
+                    for (_, _, data_source_idx) in data_sources {
+                        let node_weight = ctx
+                            .workspace_snapshot()?
+                            .get_node_weight(data_source_idx)
+                            .await?;
+                        if let Ok(output_socket_node_weight) = node_weight
+                            .get_content_node_weight_of_kind(
+                                ContentAddressDiscriminants::OutputSocket,
+                            )
+                        {
+                            if output_socket_node_weight.id() == source_output_socket_id.into() {
+                                AttributePrototypeArgument::remove(
+                                    ctx,
+                                    attribute_prototype_argument_node_weight.id().into(),
+                                )
+                                .await?;
+
+                                let destination_attribute_value_ids =
+                                    InputSocket::attribute_values_for_input_socket_id(
+                                        ctx,
+                                        destination_input_socket_id,
+                                    )
+                                    .await?;
+                                // filter the value ids by destination_component_id
+                                let mut destination_attribute_value_id: Option<AttributeValueId> =
+                                    None;
+                                for value_id in destination_attribute_value_ids {
+                                    let component_id =
+                                        AttributeValue::component_id(ctx, value_id).await?;
+                                    if component_id == destination_component_id {
+                                        destination_attribute_value_id = Some(value_id);
+                                        break;
+                                    }
+                                }
+
+                                let destination_attribute_value_id = destination_attribute_value_id.ok_or(
+                                ComponentError::DestinationComponentMissingAttributeValueForInputSocket(
+                                         destination_component_id,
+                                         destination_input_socket_id,
+                                       ),
+                                   )?;
+
+                                ctx.enqueue_dependent_values_update(vec![
+                                    destination_attribute_value_id,
+                                ])
+                                .await?;
+                                return Ok(());
+                            }
+                        }
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(ctx))]
+    pub async fn upgrade_to_new_variant(
+        &self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<Component> {
+        let original_component = Self::get_by_id(ctx, self.id).await?;
+
+        let original_component_name = self.name(ctx).await?;
+        let mut new_component =
+            Component::new(ctx, original_component_name.clone(), schema_variant_id).await?;
+
+        let new_comp_schema_variant_id = new_component.schema_variant(ctx).await?.id();
+        if new_comp_schema_variant_id != schema_variant_id {
+            return Err(ComponentError::ComponentIncorrectSchemaVariant(
+                new_component.id(),
             ));
         }
 
-        let mut maybe_target_sockets = vec![];
-        if let Some(output_socket_id) =
-            OutputSocket::find_for_attribute_value_id(ctx, attribute_value_id).await?
-        {
-            let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-            maybe_target_sockets = match Component::get_type_by_id(ctx, component_id).await? {
-                ComponentType::Component | ComponentType::ConfigurationFrameUp => {
-                    // if the type is a component, find all ascendants
-                    // who have a matching input socket AND are an up frame
-                    Component::find_all_input_socket_matches_in_ascendants(
-                        ctx,
-                        output_socket_id,
-                        component_id,
-                        vec![ComponentType::ConfigurationFrameUp],
-                    )
-                    .await?
-                }
-                ComponentType::ConfigurationFrameDown => {
-                    // if the type is a down frame, find all descendants
-                    // who have a matching input socket AND are a Down Frame or Component
-                    Component::find_all_input_socket_matches_in_descendants(
-                        ctx,
-                        output_socket_id,
-                        component_id,
-                        vec![
-                            ComponentType::ConfigurationFrameDown,
-                            ComponentType::Component,
-                        ],
-                    )
-                    .await?
-                }
+        new_component
+            .clone_attributes_from(ctx, self.id(), false, false)
+            .await?;
+        new_component
+            .set_geometry(ctx, self.x(), self.y(), self.width(), self.height())
+            .await?;
 
-                // we are not supporting aggregation frames right now
-                // and if it's an up frame, we do nothing, as the output sockets for up frames
-                // don't implicity drive any values, that would be insane I think
-                _ => vec![],
+        if schema_variant_id
+            != Component::get_by_id(ctx, new_component.id())
+                .await?
+                .schema_variant(ctx)
+                .await?
+                .id()
+        {
+            return Err(ComponentError::ComponentIncorrectSchemaVariant(
+                new_component.id(),
+            ));
+        }
+
+        //Re-attach to any parent it has
+        if let Some(parent) = original_component.parent(ctx).await? {
+            Frame::upsert_parent(ctx, new_component.id(), parent)
+                .await
+                .map_err(Box::new)?;
+        }
+
+        // Re-attach any children to the new component
+        for child in Component::get_children_for_id(ctx, original_component.id).await? {
+            Frame::upsert_parent(ctx, child, new_component.id())
+                .await
+                .map_err(Box::new)?;
+        }
+
+        // Let's change the incoming connections to the component!
+        for incoming in original_component.incoming_connections(ctx).await? {
+            Component::remove_connection(
+                ctx,
+                incoming.from_component_id,
+                incoming.from_output_socket_id,
+                incoming.to_component_id,
+                incoming.to_input_socket_id,
+            )
+            .await?;
+
+            let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
+            if let Some(socket) =
+                InputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
+            {
+                Component::connect(
+                    ctx,
+                    incoming.from_component_id,
+                    incoming.from_output_socket_id,
+                    new_component.id(),
+                    socket.id(),
+                )
+                .await?;
+            } else {
+                debug!(
+                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
+                    socket.id(),
+                    new_component.id()
+                );
             }
         }
-        Ok(maybe_target_sockets)
+
+        for outgoing in original_component.outgoing_connections(ctx).await? {
+            Component::remove_connection(
+                ctx,
+                outgoing.from_component_id,
+                outgoing.from_output_socket_id,
+                outgoing.to_component_id,
+                outgoing.to_input_socket_id,
+            )
+            .await?;
+
+            let socket = OutputSocket::get_by_id(ctx, outgoing.from_output_socket_id).await?;
+            if let Some(socket) =
+                OutputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
+            {
+                Component::connect(
+                    ctx,
+                    new_component.id(),
+                    socket.id(),
+                    outgoing.to_component_id,
+                    outgoing.to_input_socket_id,
+                )
+                .await?;
+            } else {
+                debug!(
+                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
+                    socket.id(),
+                    new_component.id()
+                );
+            }
+        }
+
+        // Let's remove the original resource so that we don't queue a delete action
+        original_component
+            .set_resource(
+                ctx,
+                DeprecatedActionRunResult {
+                    status: Some(ResourceStatus::Ok),
+                    payload: None,
+                    message: None,
+                    logs: Vec::new(),
+                    last_synced: Some(Utc::now().to_rfc3339()),
+                },
+            )
+            .await?;
+        original_component.delete(ctx).await?;
+
+        Ok(new_component)
     }
 }
 
@@ -2212,8 +3018,16 @@ pub struct ComponentCreatedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
-    component_id: ComponentId,
+    component: SummaryDiagramComponent,
     change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpgradedPayload {
+    component: SummaryDiagramComponent,
+    change_set_id: ChangeSetId,
+    original_component_id: ComponentId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -2225,32 +3039,101 @@ pub struct ComponentDeletedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentSetPositionPayload {
+pub struct ConnectionCreatedPayload {
+    from_component_id: ComponentId,
+    to_component_id: ComponentId,
+    from_socket_id: OutputSocketId,
+    to_socket_id: InputSocketId,
     change_set_id: ChangeSetId,
-    component_id: ComponentId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionDeletedPayload {
+    from_component_id: ComponentId,
+    to_component_id: ComponentId,
+    from_socket_id: OutputSocketId,
+    to_socket_id: InputSocketId,
+    change_set_id: ChangeSetId,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentPosition {
     x: i32,
     y: i32,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSize {
     width: Option<i32>,
     height: Option<i32>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSetPosition {
+    component_id: ComponentId,
+    position: ComponentPosition,
+    size: Option<ComponentSize>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSetPositionPayload {
+    change_set_id: ChangeSetId,
+    positions: Vec<ComponentSetPosition>,
     user_pk: Option<UserPk>,
 }
 
+impl ComponentSetPositionPayload {
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
+    }
+}
+
 impl WsEvent {
+    pub async fn reflect_component_position(
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        payload: ComponentSetPositionPayload,
+    ) -> WsEventResult<Self> {
+        WsEvent::new_raw(
+            workspace_pk,
+            Some(change_set_id),
+            WsPayload::SetComponentPosition(payload),
+        )
+        .await
+    }
+
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        component: &Component,
+        components: &Vec<Component>,
         user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
+        let mut positions: Vec<ComponentSetPosition> = vec![];
+        for component in components {
+            let position = ComponentPosition {
+                x: component.x.parse()?,
+                y: component.y.parse()?,
+            };
+            let size = ComponentSize {
+                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
+                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
+            };
+            positions.push(ComponentSetPosition {
+                component_id: component.id(),
+                position,
+                size: Some(size),
+            });
+        }
         WsEvent::new(
             ctx,
             WsPayload::SetComponentPosition(ComponentSetPositionPayload {
                 change_set_id,
-                component_id: component.id,
-                x: component.x.parse()?,
-                y: component.y.parse()?,
-                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
-                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
+                positions,
                 user_pk,
             }),
         )
@@ -2272,15 +3155,71 @@ impl WsEvent {
         .await
     }
 
+    pub async fn connection_created(
+        ctx: &DalContext,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_socket_id: OutputSocketId,
+        to_socket_id: InputSocketId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionCreated(ConnectionCreatedPayload {
+                from_component_id,
+                to_component_id,
+                from_socket_id,
+                change_set_id: ctx.change_set_id(),
+                to_socket_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn connection_deleted(
+        ctx: &DalContext,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_socket_id: OutputSocketId,
+        to_socket_id: InputSocketId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionDeleted(ConnectionDeletedPayload {
+                from_component_id,
+                to_component_id,
+                from_socket_id,
+                change_set_id: ctx.change_set_id(),
+                to_socket_id,
+            }),
+        )
+        .await
+    }
+
     pub async fn component_updated(
         ctx: &DalContext,
-        component_id: ComponentId,
+        payload: SummaryDiagramComponent,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ComponentUpdated(ComponentUpdatedPayload {
-                component_id,
+                component: payload,
                 change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn component_upgraded(
+        ctx: &DalContext,
+        payload: SummaryDiagramComponent,
+        original_component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentUpgraded(ComponentUpgradedPayload {
+                component: payload,
+                change_set_id: ctx.change_set_id(),
+                original_component_id,
             }),
         )
         .await

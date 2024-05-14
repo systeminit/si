@@ -1,7 +1,10 @@
+use serde::Deserialize;
+use si_data_pg::PgPoolConfig;
+use std::path::PathBuf;
 use std::{future::IntoFuture, io, path::Path, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::NatsClient;
+use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::PgPool;
 use si_events::FuncExecution;
 use telemetry::prelude::*;
@@ -10,6 +13,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::db::encrypted_secret::EncryptedSecretDb;
+use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
     error::LayerDbResult,
@@ -54,10 +58,30 @@ where
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub async fn initialize(
+    #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
+    pub async fn from_config(
+        config: LayerDbConfig,
+        token: CancellationToken,
+    ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
+        let pg_pool = PgPool::new(&config.pg_pool_config).await?;
+        let nats_client = NatsClient::new(&config.nats_config).await?;
+
+        Self::from_services(
+            config.disk_path,
+            pg_pool,
+            nats_client,
+            config.memory_cache_config,
+            token,
+        )
+        .await
+    }
+
+    #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
+    pub async fn from_services(
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,
         nats_client: NatsClient,
+        memory_cache_config: MemoryCacheConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let instance_id = Ulid::new();
@@ -69,17 +93,33 @@ where
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
-        let cas_cache: LayerCache<Arc<CasValue>> =
-            LayerCache::new(cas::CACHE_NAME, disk_path, pg_pool.clone())?;
+        let cas_cache: LayerCache<Arc<CasValue>> = LayerCache::new(
+            cas::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
 
-        let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> =
-            LayerCache::new(encrypted_secret::CACHE_NAME, disk_path, pg_pool.clone())?;
+        let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
+            encrypted_secret::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
 
-        let func_execution_cache: LayerCache<Arc<FuncExecution>> =
-            LayerCache::new(func_execution::CACHE_NAME, disk_path, pg_pool.clone())?;
+        let func_execution_cache: LayerCache<Arc<FuncExecution>> = LayerCache::new(
+            func_execution::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
 
-        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> =
-            LayerCache::new(workspace_snapshot::CACHE_NAME, disk_path, pg_pool.clone())?;
+        let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
+            workspace_snapshot::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
@@ -227,6 +267,27 @@ mod private {
     impl fmt::Debug for GracefulShutdownFuture {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("ShutdownFuture").finish_non_exhaustive()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct LayerDbConfig {
+    pub disk_path: PathBuf,
+    pub pg_pool_config: PgPoolConfig,
+    pub nats_config: NatsConfig,
+    pub memory_cache_config: MemoryCacheConfig,
+}
+
+impl LayerDbConfig {
+    pub fn default_for_service(service: &str) -> Self {
+        Self {
+            disk_path: tempfile::TempDir::with_prefix(format!("{service}-cache-"))
+                .expect("unable to create tmp dir for layerdb")
+                .into_path(),
+            pg_pool_config: Default::default(),
+            nats_config: Default::default(),
+            memory_cache_config: Default::default(),
         }
     }
 }

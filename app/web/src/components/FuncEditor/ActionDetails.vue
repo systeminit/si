@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 flex flex-col gap-2">
+  <div class="p-3 flex flex-col gap-xs">
     <ErrorMessage :requestStatus="props.requestStatus" />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox
@@ -53,7 +53,7 @@ import { ActionAssociations, FuncAssociations } from "@/store/func/types";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { ActionKind } from "@/store/actions.store";
+import { DeprecatedActionKind } from "@/store/actions.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
 const funcStore = useFuncStore();
@@ -72,9 +72,9 @@ const isRefresh = ref(false);
 watch(
   () => props.modelValue.kind,
   () => {
-    isCreate.value = props.modelValue.kind === ActionKind.Create;
-    isDelete.value = props.modelValue.kind === ActionKind.Delete;
-    isRefresh.value = props.modelValue.kind === ActionKind.Refresh;
+    isCreate.value = props.modelValue.kind === DeprecatedActionKind.Create;
+    isDelete.value = props.modelValue.kind === DeprecatedActionKind.Delete;
+    isRefresh.value = props.modelValue.kind === DeprecatedActionKind.Refresh;
   },
   { immediate: true },
 );
@@ -129,10 +129,10 @@ const updateKind = () => {
 const getUpdatedAssociations = (
   schemaVariantIds: string[],
 ): ActionAssociations => {
-  let kind = ActionKind.Other;
-  if (isCreate.value) kind = ActionKind.Create;
-  if (isDelete.value) kind = ActionKind.Delete;
-  if (isRefresh.value) kind = ActionKind.Refresh;
+  let kind = DeprecatedActionKind.Other;
+  if (isCreate.value) kind = DeprecatedActionKind.Create;
+  if (isDelete.value) kind = DeprecatedActionKind.Delete;
+  if (isRefresh.value) kind = DeprecatedActionKind.Refresh;
   return {
     kind,
     schemaVariantIds,

@@ -9,13 +9,22 @@ use ulid::Ulid;
 use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
-    ComponentUpdatedPayload,
+    ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
+    ConnectionDeletedPayload,
+};
+use crate::func::FuncWsEventPayload;
+use crate::pkg::{
+    ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
 };
 use crate::qualification::QualificationCheckPayload;
-use crate::schema::variant::{SchemaVariantClonedPayload, SchemaVariantCreatedPayload};
+use crate::schema::variant::{
+    SchemaVariantClonedPayload, SchemaVariantCreatedPayload, SchemaVariantSavedPayload,
+    SchemaVariantUpdatedPayload,
+};
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
+    action::ActionReturn,
     deprecated_action::prototype::ResourceRefreshedPayload,
     deprecated_action::{
         batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn, ActionId, ActionView,
@@ -63,6 +72,7 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
+    ActionReturn(ActionReturn),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
@@ -80,12 +90,17 @@ pub enum WsPayload {
     ComponentCreated(ComponentCreatedPayload),
     ComponentDeleted(ComponentDeletedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
+    ComponentUpgraded(ComponentUpgradedPayload),
+    ConnectionCreated(ConnectionCreatedPayload),
+    ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
     DeprecatedActionAdded(ActionView),
     DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),
     DeprecatedActionRemoved(ActionId),
     DeprecatedActionRunnerReturn(ActionRunnerReturn),
-    // ImportWorkspaceVote(ImportWorkspaceVotePayload),
+    FuncDeleted(FuncWsEventPayload),
+    FuncSaved(FuncWsEventPayload),
+    ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
@@ -93,15 +108,15 @@ pub enum WsPayload {
     // SchemaCreated(SchemaPk),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(SchemaVariantCreatedPayload),
-    // SchemaVariantFinished(FinishSchemaVariantPayload),
-    // SchemaVariantSaved(SchemaVariantSavedPayload),
+    SchemaVariantSaved(SchemaVariantSavedPayload),
+    SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
     // WorkspaceExported(WorkspaceExportPayload),
-    // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
-    // WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
+    WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
+    WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
     // WorkspaceImported(WorkspaceImportPayload),
 }
 
@@ -145,6 +160,16 @@ impl WsEvent {
         };
         let change_set_pk = ctx.change_set_id();
         Self::new_raw(workspace_pk, Some(change_set_pk), payload).await
+    }
+
+    pub async fn new_for_workspace(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
+        let workspace_pk = match ctx.tenancy().workspace_pk() {
+            Some(pk) => pk,
+            None => {
+                return Err(WsEventError::NoWorkspaceInTenancy);
+            }
+        };
+        Self::new_raw(workspace_pk, None, payload).await
     }
 
     pub fn workspace_pk(&self) -> WorkspacePk {
@@ -211,5 +236,8 @@ impl WsEvent {
     }
     pub async fn async_finish(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
+    }
+    pub async fn async_finish_workspace(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
+        WsEvent::new_for_workspace(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
     }
 }

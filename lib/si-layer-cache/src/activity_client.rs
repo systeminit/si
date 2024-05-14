@@ -1,26 +1,29 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use si_data_nats::NatsClient;
+use si_data_nats::{async_nats::jetstream, jetstream::Context, NatsClient};
+use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
-use tokio::pin;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::{pin, sync::mpsc::UnboundedReceiver};
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
-use crate::activities::rebase::ActivityRebase;
-use crate::activities::test::ActivityIntegrationTest;
-use crate::activities::{
-    Activity, ActivityId, ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
-    ActivityRebaseRequest, RebaserRequestWorkQueue,
+use crate::{
+    activities::{
+        rebase::ActivityRebase, test::ActivityIntegrationTest, Activity, ActivityId,
+        ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
+        ActivityRebaseRequest, RebaserRequestWorkQueue,
+    },
+    error::{LayerDbError, LayerDbResult},
+    nats,
 };
-use crate::error::{LayerDbError, LayerDbResult};
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct ActivityClient {
     instance_id: Ulid,
-    nats_client: NatsClient,
+    context: Context,
+    subject_prefix: Option<Arc<str>>,
     activity_publisher: ActivityPublisher,
     activity_multiplexer: ActivityMultiplexer,
     shutdown_token: CancellationToken,
@@ -32,21 +35,25 @@ impl ActivityClient {
         nats_client: NatsClient,
         shutdown_token: CancellationToken,
     ) -> ActivityClient {
-        let activity_publisher = ActivityPublisher::new(&nats_client);
-        let activity_multiplexer =
-            ActivityMultiplexer::new(instance_id, nats_client.clone(), shutdown_token.clone());
+        let subject_prefix = nats_client.metadata().subject_prefix().map(|s| s.into());
+        let context = si_data_nats::jetstream::new(nats_client);
+
+        let activity_publisher = ActivityPublisher::new(context.clone(), subject_prefix.clone());
+        let activity_multiplexer = ActivityMultiplexer::new(
+            instance_id,
+            context.clone(),
+            subject_prefix.clone(),
+            shutdown_token.clone(),
+        );
 
         ActivityClient {
             activity_publisher,
             activity_multiplexer,
             instance_id,
-            nats_client,
+            context,
+            subject_prefix,
             shutdown_token,
         }
-    }
-
-    pub fn nats_client(&self) -> &NatsClient {
-        &self.nats_client
     }
 
     pub fn activity_publisher(&self) -> &ActivityPublisher {
@@ -57,11 +64,27 @@ impl ActivityClient {
         &self.activity_multiplexer
     }
 
+    pub async fn rebaser_change_set_requests_work_queue_stream(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> LayerDbResult<jetstream::stream::Stream> {
+        nats::rebaser_change_set_requests_work_queue_stream(
+            &self.context,
+            self.subject_prefix.as_deref(),
+            workspace_id,
+            change_set_id,
+        )
+        .await
+        .map_err(Into::into)
+    }
+
     pub async fn rebaser_request_work_queue(
         &self,
     ) -> LayerDbResult<UnboundedReceiver<ActivityRebaseRequest>> {
         let (mut worker, rx) = RebaserRequestWorkQueue::create(
-            self.nats_client().clone(),
+            self.context.clone(),
+            self.subject_prefix.clone(),
             self.shutdown_token.clone(),
         )
         .await?;

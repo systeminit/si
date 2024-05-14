@@ -5,6 +5,7 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+mod attach;
 mod attribute;
 
 #[test]
@@ -65,7 +66,6 @@ async fn save_func_setup(ctx: &mut DalContext, func_name: impl AsRef<str>) -> (F
     let after = FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
-    assert!(after.is_revertible);
     assert_eq!(
         func_id,   // expected
         before.id  // actual

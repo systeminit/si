@@ -29,10 +29,13 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
+pub mod dependency_graph;
 pub mod deprecated_action;
 pub mod diagram;
+pub mod feature_flags;
 pub mod func;
 pub mod history_event;
+pub mod input_sources;
 pub mod job;
 pub mod job_failure;
 pub mod jwt_key;
@@ -63,16 +66,6 @@ pub mod workspace;
 pub mod workspace_snapshot;
 pub mod ws_event;
 
-// TODO(nick,jacob): this should self-destruct once the new engine is in place.
-// pub mod node;
-// pub mod socket;
-// pub mod edge;
-// pub mod index_map;
-// pub mod prop_tree;
-// pub mod prototype_context;
-// pub mod reconciliation_prototype;
-//pub mod tasks;
-
 pub use action::ActionPrototypeId;
 pub use actor_view::ActorView;
 pub use attribute::{
@@ -95,7 +88,6 @@ pub use deprecated_action::batch::{
 };
 pub use deprecated_action::prototype::{
     DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
-    DeprecatedActionPrototypeView,
 };
 pub use deprecated_action::runner::{
     ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,
@@ -130,7 +122,7 @@ pub use secret::SecretUpdatedPayload;
 pub use secret::SecretVersion;
 pub use secret::SecretView;
 pub use secret::SecretViewError;
-pub use si_events::ulid::Ulid;
+pub use si_events::{content_hash::ContentHash, ulid::Ulid};
 pub use socket::input::{InputSocket, InputSocketId};
 pub use socket::output::{OutputSocket, OutputSocketId};
 pub use socket::SocketArity;

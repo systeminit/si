@@ -1,10 +1,16 @@
-use std::{future::IntoFuture, io, sync::Arc};
+use std::{
+    future::IntoFuture,
+    io,
+    sync::atomic::{self, AtomicUsize},
+    sync::Arc,
+};
 
+use dal::feature_flags::FeatureFlagService;
 use dal::job::definition::compute_validation::ComputeValidation;
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{ActionsJob, DependentValuesUpdate},
+        definition::{ActionJob, DependentValuesUpdate, DeprecatedActionsJob, RefreshJob},
         producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
@@ -120,16 +126,8 @@ impl Server {
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
-        let mut pg_layer_db_pool = config.pg_pool().clone();
-        pg_layer_db_pool.dbname = config.layer_cache_pg_dbname().to_string();
-
-        let (layer_db, layer_db_graceful_shutdown) = LayerDb::initialize(
-            config.layer_cache_disk_path(),
-            PgPool::new(&pg_layer_db_pool).await?,
-            nats.clone(),
-            token,
-        )
-        .await?;
+        let (layer_db, layer_db_graceful_shutdown) =
+            LayerDb::from_config(config.layer_db_config().clone(), token).await?;
         tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         let services_context = ServicesContext::new(
@@ -142,6 +140,7 @@ impl Server {
             None,
             symmetric_crypto_service,
             layer_db,
+            FeatureFlagService::default(),
         );
 
         Self::from_services(
@@ -369,17 +368,30 @@ async fn receive_job_requests(
     Ok(())
 }
 
+static CONCURRENT_TASKS: AtomicUsize = AtomicUsize::new(0);
+
+#[instrument(level = "info", skip(rx))]
 async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_limit: usize) {
     UnboundedReceiverStream::new(rx)
         .for_each_concurrent(concurrency_limit, |job| async move {
+            let concurrency_count = CONCURRENT_TASKS.fetch_add(1, atomic::Ordering::Relaxed) + 1;
+
+            let span = Span::current();
+            span.record("concurrency.count", concurrency_count);
+
             // Got the next message from the subscriber
             trace!("pulled request into an available concurrent task");
 
             match job.request {
                 Ok(request) => {
                     // Spawn a task and process the request
-                    let join_handle =
-                        task::spawn(execute_job_task(job.metadata, job.ctx_builder, request));
+                    let join_handle = task::spawn(execute_job_task(
+                        job.metadata,
+                        job.ctx_builder,
+                        request,
+                        concurrency_count,
+                        concurrency_limit,
+                    ));
                     if let Err(err) = join_handle.await {
                         // NOTE(fnichol): This likely happens when there is contention or
                         // an error in the Tokio runtime so we will be loud and log an
@@ -396,6 +408,11 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
                     warn!(error = ?err, "next job request had an error, job will not be executed");
                 }
             }
+
+            let concurrency_count = CONCURRENT_TASKS.fetch_sub(1, atomic::Ordering::Relaxed) - 1;
+
+            let span = Span::current();
+            span.record("concurrency.count", concurrency_count);
         })
         .await;
 }
@@ -414,6 +431,9 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
         job.invoked_provider = metadata.job_invoked_provider,
         job.trigger = "pubsub",
         job.visibility = ?request.payload.visibility,
+        concurrency.count = concurrency_count,
+        concurrency.limit = concurrency_limit,
+        concurrency.at_capacity = concurrency_limit == concurrency_count,
         messaging.destination = Empty,
         messaging.destination_kind = "topic",
         messaging.operation = "process",
@@ -427,6 +447,8 @@ async fn execute_job_task(
     metadata: Arc<ServerMetadata>,
     ctx_builder: DalContextBuilder,
     request: Request<JobInfo>,
+    concurrency_count: usize,
+    concurrency_limit: usize,
 ) {
     let span = Span::current();
     let id = request.payload.id.clone();
@@ -486,8 +508,15 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
             Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
                 as Box<dyn JobConsumer + Send + Sync>
         }
-        stringify!(ActionsJob) => {
-            Box::new(ActionsJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
+        stringify!(ActionJob) => {
+            Box::new(ActionJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
+        }
+        stringify!(DeprecatedActionsJob) => {
+            Box::new(DeprecatedActionsJob::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>
+        }
+        stringify!(RefreshJob) => {
+            Box::new(RefreshJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
         }
         stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
             as Box<dyn JobConsumer + Send + Sync>,

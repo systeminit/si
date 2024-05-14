@@ -5,9 +5,10 @@ use axum::{
     Json, Router,
 };
 use dal::{
+    action::prototype::ActionPrototypeError, action::ActionError,
     ChangeSetApplyError as DalChangeSetApplyError, ChangeSetError as DalChangeSetError,
     ComponentError, DeprecatedActionError, DeprecatedActionPrototypeError, FuncError,
-    StandardModelError, TransactionsError, WsEventError,
+    StandardModelError, TransactionsError, WorkspaceError, WsEventError,
 };
 
 use telemetry::prelude::*;
@@ -31,9 +32,9 @@ pub mod remove_action;
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
     #[error("action error: {0}")]
-    Action(#[from] DeprecatedActionError),
+    Action(#[from] ActionError),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]
@@ -42,6 +43,10 @@ pub enum ChangeSetError {
     DalChangeSet(#[from] DalChangeSetError),
     #[error("dal change set apply error: {0}")]
     DalChangeSetApply(#[from] DalChangeSetApplyError),
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] DeprecatedActionError),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("invalid header name {0}")]
@@ -50,6 +55,8 @@ pub enum ChangeSetError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

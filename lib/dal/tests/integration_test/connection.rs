@@ -6,9 +6,221 @@ use dal::{
 use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
+use serde::Deserialize;
 
 #[test]
-async fn connect_components(ctx: &mut DalContext) {
+async fn make_multiple_trees(ctx: &mut DalContext) {
+    // create 2 even legos
+    let even_lego_1 = create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
+    let even_lego_2 = create_component_for_schema_name(ctx, "large even lego", "even lego 2").await;
+
+    let even_sv_id = even_lego_1
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant");
+    // get output socket id
+    let output_socket_id = OutputSocket::find_with_name(ctx, "one", even_sv_id.id())
+        .await
+        .expect("found output socket")
+        .expect("output socket exists")
+        .id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    //create 2 odd legos
+    let odd_lego_1 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
+    let odd_lego_2 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    let odd_sv = odd_lego_1
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // get input socket id
+    let input_socket_id = InputSocket::find_with_name(ctx, "one", odd_sv.id())
+        .await
+        .expect("found input socket")
+        .expect("exists")
+        .id();
+
+    //connect each of them
+    let _result = Component::connect(
+        ctx,
+        even_lego_1.id(),
+        output_socket_id,
+        odd_lego_1.id(),
+        input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let _result_2 = Component::connect(
+        ctx,
+        even_lego_2.id(),
+        output_socket_id,
+        odd_lego_2.id(),
+        input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        2,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        4,                        // expected
+        diagram.components.len()  // actual
+    );
+}
+#[test]
+async fn make_chain_remove_middle(ctx: &mut DalContext) {
+    // make chain of odd lego 1 -> even lego 1 -> odd lego 2
+    let odd_component_1 =
+        create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
+    let even_component_1 =
+        create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
+    let odd_component_2 =
+        create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        0,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+
+    // connect first two components
+    let odd_sv_id = odd_component_1
+        .schema_variant(ctx)
+        .await
+        .expect("got schema variant")
+        .id();
+    let odd_output_socket_id = OutputSocket::find_with_name(ctx, "two", odd_sv_id)
+        .await
+        .expect("got output socket")
+        .expect("output socket exists")
+        .id();
+
+    let even_sv_id = even_component_1
+        .schema_variant(ctx)
+        .await
+        .expect("got schema variant")
+        .id();
+
+    let even_input_socket_id = InputSocket::find_with_name(ctx, "two", even_sv_id)
+        .await
+        .expect("found input socket")
+        .expect("input socket exists")
+        .id();
+
+    let result = Component::connect(
+        ctx,
+        odd_component_1.id(),
+        odd_output_socket_id,
+        even_component_1.id(),
+        even_input_socket_id,
+    )
+    .await
+    .expect("could connect")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        1,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+    let apa = AttributePrototypeArgument::get_by_id(ctx, result)
+        .await
+        .expect("found apa");
+    let targets = apa.targets().expect("targets is some");
+    assert!(targets.destination_component_id == even_component_1.id());
+    assert!(targets.source_component_id == odd_component_1.id());
+    // connect second two components
+
+    let odd_2_sv_id = odd_component_2
+        .schema_variant(ctx)
+        .await
+        .expect("found schema variant")
+        .id();
+    let even_output_socket_id = OutputSocket::find_with_name(ctx, "one", even_sv_id)
+        .await
+        .expect("found output socket")
+        .expect("output socket exists")
+        .id();
+    let odd_input_socket_id = InputSocket::find_with_name(ctx, "one", odd_2_sv_id)
+        .await
+        .expect("found input socket")
+        .expect("input socket exists")
+        .id();
+    let apa_id = Component::connect(
+        ctx,
+        even_component_1.id(),
+        even_output_socket_id,
+        odd_component_2.id(),
+        odd_input_socket_id,
+    )
+    .await
+    .expect("created connection")
+    .expect("apa exists");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        2,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        3,                        // expected
+        diagram.components.len()  // actual
+    );
+    let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id)
+        .await
+        .expect("found apa");
+    let targets = apa.targets().expect("targets is some");
+    assert!(targets.destination_component_id == odd_component_2.id());
+    assert!(targets.source_component_id == even_component_1.id());
+    // delete even lego 2 component
+    let component = even_component_1.delete(ctx).await.expect("could delete");
+    // no resources here so we shouldn't have a component on the graph still
+    assert!(component.is_none());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    //make sure everything is cleaned up
+    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    assert_eq!(
+        0,                   // expected
+        diagram.edges.len()  // actual
+    );
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+}
+#[test]
+async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalContext) {
     // Get the source schema variant id.
     let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
         .await
@@ -106,8 +318,6 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
         .await
@@ -116,22 +326,21 @@ async fn connect_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    dbg!(lunch_component
-        .materialized_view(ctx)
+    assert!(matches!(view, serde_json::Value::Array(_)));
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
-        .expect("get docker image materialized_view"));
+        .expect("could not commit and update snapshot to visibility");
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
-
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(2, units_array.len())
     }
 
@@ -140,6 +349,77 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
+
+    // lunch, oysters - docker
+    // royel - butane
+
+    // disconnect oysters from butane
+    Component::remove_connection(
+        ctx,
+        oysters_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("able to remove connection");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .view(ctx)
+        .await
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    #[derive(Deserialize, Debug, PartialEq, Eq)]
+    struct Unit {
+        #[allow(unused)]
+        contents: String,
+        #[allow(unused)]
+        enabled: bool,
+        name: String,
+    }
+
+    let units: Vec<Unit> = serde_json::from_value(view).expect("able to deserialize");
+    assert_eq!(1, units.len());
+    assert_eq!(
+        "were-saving-for-lunch.service",
+        units
+            .first()
+            .map(|unit| unit.name.to_owned())
+            .expect("has the first unit")
+    );
+
+    // Disconnect lunch from butane
+    Component::remove_connection(
+        ctx,
+        lunch_component.id(),
+        output_socket.id(),
+        royel_component.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("able to remove connection");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
+        .view(ctx)
+        .await
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units: Vec<Unit> = serde_json::from_value(view).expect("able to deserialize");
+    let empty_vec: Vec<Unit> = vec![];
+    assert_eq!(empty_vec, units, "units should now be empty");
 }
 
 #[test]
@@ -296,8 +576,6 @@ async fn remove_connection(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
         .await
@@ -306,22 +584,17 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    dbg!(lunch_component
-        .materialized_view(ctx)
-        .await
-        .expect("get docker image materialized_view"));
+    assert!(matches!(view, serde_json::Value::Array(_)));
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
-
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(2, units_array.len())
     }
 
@@ -348,22 +621,17 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
+        .expect("able to get units view")
+        .expect("units has a view");
 
-    dbg!(lunch_component
-        .materialized_view(ctx)
-        .await
-        .expect("get docker image materialized_view"));
+    assert!(matches!(view, serde_json::Value::Array(_)));
 
-    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
-
-    if let serde_json::Value::Array(units_array) = materialized_view {
+    if let serde_json::Value::Array(units_array) = view {
         assert_eq!(1, units_array.len())
     }
 

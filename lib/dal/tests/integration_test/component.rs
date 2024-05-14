@@ -17,6 +17,7 @@ mod debug;
 mod get_code;
 mod get_diff;
 mod set_type;
+mod upgrade;
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;
@@ -94,10 +95,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    component
-        .materialized_view(ctx)
-        .await
-        .expect("materialized_view for component");
+    component.view(ctx).await.expect("view for component");
 
     // Confirm after rebase
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
@@ -292,7 +290,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = DependentValueGraph::for_values(ctx, vec![rigid_designator_value_id])
+    let update_graph = DependentValueGraph::new(ctx, vec![rigid_designator_value_id])
         .await
         .expect("able to generate update graph");
 
@@ -318,15 +316,15 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     .await
     .expect("able to set universe value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
+    let view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(rigid_designation, materialized_view);
+    assert_eq!(rigid_designation, view);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -335,9 +333,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
         .await
         .expect("able to get attribute value for `naming_and_necessity_value_id`")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get materialized_view for `naming_and_necessity_value_id`")
+        .expect("able to get view for `naming_and_necessity_value_id`")
         .expect("naming and necessity has a value");
 
     // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
@@ -360,15 +358,14 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         .expect("able to get the value for the root prop attriburte value id");
 
     let root_view = root_value
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to fetch materialized_view for root value")
-        .expect("there is a value for the root value materialized_view");
+        .expect("able to fetch view for root value")
+        .expect("there is a value for the root value view");
 
     assert_eq!(
         serde_json::json!({
                 "si": { "name": name, "color": "#ffffff", "type": "component" },
-                "resource": {},
                 "resource_value": {},
                 "domain": {
                     "name": name,
@@ -399,8 +396,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn set_the_universe(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
+async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
+    let name = "across the universe";
+    let component = create_component_for_schema_name(ctx, "starfield", name).await;
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -408,6 +406,294 @@ async fn set_the_universe(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_a_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new(["root", "domain", "possible_world_a"]),
+    )
+    .await
+    .expect("able to find 'possible_world' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    assert_eq!(1, possible_world_values.len());
+
+    let possible_world_a_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    assert_eq!(
+        component.id(),
+        AttributeValue::component_id(ctx, possible_world_a_value_id)
+            .await
+            .expect("able to get component id for universe value")
+    );
+
+    let naming_and_necessity_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant_id,
+        &PropPath::new([
+            "root",
+            "domain",
+            "possible_world_b",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+            "naming_and_necessity",
+        ]),
+    )
+    .await
+    .expect("able to find 'naming_and_necessity' prop");
+
+    let naming_and_necessity_value_id =
+        Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
+            .await
+            .expect("able to get values for naming_and_necessity")
+            .first()
+            .copied()
+            .expect("get first value id");
+
+    let update_graph = DependentValueGraph::new(ctx, vec![possible_world_a_value_id])
+        .await
+        .expect("able to generate update graph");
+
+    assert!(
+        update_graph.contains_value(naming_and_necessity_value_id),
+        "update graph has the value we aren't setting but which depends on the value we are setting"
+    );
+
+    let possible_world_a = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "hesperus"
+                }
+            }
+        }
+    });
+
+    AttributeValue::update(
+        ctx,
+        possible_world_a_value_id,
+        Some(possible_world_a.clone()),
+    )
+    .await
+    .expect("able to set universe value");
+
+    let view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
+        .await
+        .expect("get av")
+        .view(ctx)
+        .await
+        .expect("get view")
+        .expect("has a view");
+
+    assert_eq!(possible_world_a, view);
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
+        .await
+        .expect("able to get attribute value for `naming_and_necessity_value_id`")
+        .view(ctx)
+        .await
+        .expect("able to get view for `naming_and_necessity_value_id`")
+        .expect("naming and necessity has a value");
+
+    // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
+    // phosphorus if it receives hesperus)
+    assert_eq!("phosphorus", naming_and_necessity_view);
+
+    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(["root"]))
+        .await
+        .expect("able to find root prop");
+
+    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+        .await
+        .expect("get root prop value id")
+        .first()
+        .copied()
+        .expect("a value exists for the root prop");
+
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
+        .await
+        .expect("able to get the value for the root prop attriburte value id");
+
+    let root_view = root_value
+        .view(ctx)
+        .await
+        .expect("able to fetch view for root value")
+        .expect("there is a value for the root value view");
+
+    assert_eq!(
+        serde_json::json!({
+                "si": { "name": name, "color": "#ffffff", "type": "component" },
+                "resource_value": {},
+                "domain": {
+                    "name": name,
+                    "possible_world_a": possible_world_a,
+                    "possible_world_b": {
+                        "wormhole_1": {
+                            "wormhole_2": {
+                                "wormhole_3": {
+                                    "naming_and_necessity": "phosphorus"
+                                }
+                            }
+                        }
+                    },
+                    "universe": { "galaxies": [] },
+                }
+            }
+        ),
+        root_view
+    );
+}
+
+#[test]
+async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) {
+    let etoiles_name = "À la belle étoile";
+    let etoiles_component = create_component_for_schema_name(ctx, "etoiles", etoiles_name).await;
+    let etoiles_variant_id = Component::schema_variant_id(ctx, etoiles_component.id())
+        .await
+        .expect("find variant id for etoiles component");
+    let morningstar_name = "hesperus is phosphorus";
+    let morningstar_component =
+        create_component_for_schema_name(ctx, "morningstar", morningstar_name).await;
+    let morningstar_variant_id = Component::schema_variant_id(ctx, morningstar_component.id())
+        .await
+        .expect("find variant id for morningstar component");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_a_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        etoiles_variant_id,
+        &PropPath::new(["root", "domain", "possible_world_a"]),
+    )
+    .await
+    .expect("able to find 'possible_world_a' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    let possible_world_a_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let possible_world_a = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "hesperus"
+                }
+            }
+        }
+    });
+
+    AttributeValue::update(
+        ctx,
+        possible_world_a_value_id,
+        Some(possible_world_a.clone()),
+    )
+    .await
+    .expect("able to set universe value");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let possible_world_b_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        etoiles_variant_id,
+        &PropPath::new(["root", "domain", "possible_world_b"]),
+    )
+    .await
+    .expect("able to find 'possible_world_b' prop");
+
+    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_b_prop_id)
+        .await
+        .expect("able to get attribute value for possible world prop");
+
+    let possible_world_b_value_id = possible_world_values
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let value = AttributeValue::get_by_id(ctx, possible_world_b_value_id)
+        .await
+        .expect("able to get av by id");
+
+    let possible_world_b = serde_json::json!({
+        "wormhole_1": {
+            "wormhole_2": {
+                "wormhole_3": {
+                    "rigid_designator": "phosphorus"
+                }
+            }
+        }
+    });
+
+    assert_eq!(
+        Some(possible_world_b),
+        value.view(ctx).await.expect("able to get view")
+    );
+
+    connect_components_with_socket_names(
+        ctx,
+        etoiles_component.id(),
+        "naming_and_necessity",
+        morningstar_component.id(),
+        "naming_and_necessity",
+    )
+    .await;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let stars_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        morningstar_variant_id,
+        &PropPath::new(["root", "domain", "stars"]),
+    )
+    .await
+    .expect("able to find 'stars' prop");
+
+    let stars_value_id = Prop::attribute_values_for_prop_id(ctx, stars_prop_id)
+        .await
+        .expect("able to get attribute value for possible world prop")
+        .first()
+        .copied()
+        .expect("get first value id");
+
+    let stars_value = AttributeValue::get_by_id(ctx, stars_value_id)
+        .await
+        .expect("able to get av by id");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    assert_eq!(
+        Some(serde_json::to_value("phosphorus").expect("able to make phosphorus value")),
+        stars_value.view(ctx).await.expect("get stars value")
+    );
+}
+
+#[test]
+async fn set_the_universe(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
+    let variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("find variant id for component");
 
     let universe_prop_id = Prop::find_prop_id_by_path(
         ctx,
@@ -447,29 +733,29 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .await
         .expect("able to set universe value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(universe_json, materialized_view);
+    assert_eq!(universe_json, view);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
         .expect("get view")
         .expect("has a view");
 
-    assert_eq!(universe_json, materialized_view);
+    assert_eq!(universe_json, view);
 }
 
 #[test]
@@ -571,8 +857,6 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     // Verify data.
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
@@ -582,16 +866,14 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -600,12 +882,9 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -615,12 +894,11 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .expect("unable to ser resource");
 
     // Delete component.
-    let oysters_component = oysters_component
+    let _oysters_component = oysters_component
         .delete(ctx)
         .await
         .expect("Unable to delete oysters component")
         .expect("component fully deleted");
-    dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -635,16 +913,14 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }
@@ -748,8 +1024,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
-
     // Verify data.
     let units_value_id = royel_component
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
@@ -759,16 +1033,17 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -777,12 +1052,9 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -792,12 +1064,11 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .expect("unable to ser resource");
 
     // Delete component.
-    let oysters_component = oysters_component
+    let _oysters_component = oysters_component
         .delete(ctx)
         .await
         .expect("Unable to delete oysters component")
         .expect("component fully deleted");
-    dbg!(oysters_component);
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -812,16 +1083,14 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -830,12 +1099,9 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
             ctx,
             DeprecatedActionRunResult {
                 status: Some(ResourceStatus::Ok),
-                payload: Some(
-                    serde_json::to_string(&serde_json::json!({
-                        "key": "value",
-                    }))
-                    .expect("unable to serialize payload"),
-                ),
+                payload: Some(serde_json::json!({
+                    "key": "value",
+                })),
                 message: None,
                 logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
@@ -865,16 +1131,15 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 
@@ -896,16 +1161,15 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
-        .materialized_view(ctx)
+        .view(ctx)
         .await
-        .expect("able to get units materialized_view")
-        .expect("units has a materialized_view");
-    let units_json_string =
-        serde_json::to_string(&materialized_view).expect("Unable to stringify JSON");
-    dbg!(materialized_view);
+        .expect("able to get units view")
+        .expect("units has a view");
+
+    let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
 }
@@ -956,12 +1220,15 @@ async fn paste_component(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let view = pasted_pirate_component
-        .materialized_view(ctx)
+    let mut view = pasted_pirate_component
+        .view(ctx)
         .await
         .expect("unable to get materialized view of component")
         .expect("no view found");
 
+    *view
+        .pointer_mut("/resource/last_synced")
+        .expect("no last synced found") = serde_json::Value::Null;
     assert_eq!(
         view,
         serde_json::json!({
@@ -976,8 +1243,12 @@ async fn paste_component(ctx: &mut DalContext) {
                 //     "Captain Flint",
                 // ],
             },
-            "resource": {},
             "resource_value": {},
+            "resource": {
+                "last_synced": null,
+                "logs": [],
+                "status": "ok",
+            },
             "si": {
                 "color": "#ff00ff",
                 "name": "Long John Silver - Copy",

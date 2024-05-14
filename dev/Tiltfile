@@ -1,4 +1,9 @@
+# Set args to "True" if we want to allow positional arguments
 config.define_string_list("to-run", args = True)
+config.define_bool("standard-rustc-build-mode")
+config.define_bool("debug-rustc-build-mode")
+config.define_bool("debug-no-rebaser-rustc-build-mode")
+
 cfg = config.parse()
 
 # Define groups of services
@@ -7,6 +12,8 @@ groups = {
         "jaeger",
         "nats",
         "otelcol",
+        "db",
+        "db-test",
         "postgres",
         "postgres-test",
     ],
@@ -38,6 +45,24 @@ for arg in cfg.get("to-run", []):
         enabled_resources.append(arg)
 config.set_enabled_resources(enabled_resources)
 
+# Parse the CLI args to get the rustc build mode or default to release
+standard_rustc_build_mode = cfg.get('standard-rustc-build-mode', False)
+debug_rustc_build_mode = cfg.get('debug-rustc-build-mode', False)
+debug_no_rebaser_rustc_build_mode = cfg.get('debug-no-rebaser-rustc-build-mode', False)
+rustc_build_mode = 'release'
+
+# TODO(nick): the bzl logic for writing arguments out does not know how
+# to group string ("config.define_string") arguments with the argument
+# call (i.e. it thinks "--foo bar" is one argument rather than having
+# argument "--foo" be passed value "bar"). Thus, we use two booleans to
+# get around this. If we get both, greedily choose the standard mode.
+if standard_rustc_build_mode:
+    rustc_build_mode = 'standard'
+elif debug_rustc_build_mode:
+    rustc_build_mode = 'debug'
+elif debug_no_rebaser_rustc_build_mode:
+    rustc_build_mode = 'debug'
+
 # Default trigger mode to manual so that (importantly) backend services don't rebuild/restart
 # automatically. This is opt-in in the Tilt UI in the `Mode` column
 trigger_mode = TRIGGER_MODE_MANUAL
@@ -67,7 +92,7 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test"]
 for service in compose_services:
     if service == "jaeger":
         links = [
@@ -79,11 +104,24 @@ for service in compose_services:
 
 # Locally build and run `rebaser-server`
 rebaser_target = "//bin/rebaser:rebaser"
+
+cmd = "buck2 build @//mode/release {}".format(rebaser_target)
+serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(rebaser_target)
+    serve_cmd = "buck2 run {}".format(rebaser_target)
+elif debug_no_rebaser_rustc_build_mode:
+    cmd = "buck2 build @//mode/release {}".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/debug {}".format(rebaser_target)
+
 local_resource(
     "rebaser",
     labels = ["backend"],
-    cmd = "buck2 build @//mode/release {}".format(rebaser_target),
-    serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target),
+    cmd = cmd,
+    serve_cmd = serve_cmd,
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
@@ -97,11 +135,21 @@ local_resource(
 
 # Locally build and run `module-index`
 module_index_target = "//bin/module-index:module-index"
+
+cmd = "buck2 build @//mode/release {}".format(module_index_target)
+serve_cmd = "buck2 run @//mode/release {}".format(module_index_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(module_index_target)
+    serve_cmd = "buck2 run {}".format(module_index_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(module_index_target)
+    serve_cmd = "buck2 run @//mode/debug {}".format(module_index_target)
+
 local_resource(
     "module-index",
     labels = ["backend"],
-    cmd = "buck2 build {}".format(module_index_target),
-    serve_cmd = "buck2 run {}".format(module_index_target),
+    cmd = cmd,
+    serve_cmd = serve_cmd,
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     auto_init = False,
@@ -115,11 +163,21 @@ local_resource(
 
 # Locally build and run `pinga`
 pinga_target = "//bin/pinga:pinga"
+
+cmd = "buck2 build @//mode/release {}".format(pinga_target)
+serve_cmd = "buck2 run @//mode/release {}".format(pinga_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(pinga_target)
+    serve_cmd = "buck2 run {}".format(pinga_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(pinga_target)
+    serve_cmd = "buck2 run @//mode/debug {}".format(pinga_target)
+
 local_resource(
     "pinga",
     labels = ["backend"],
-    cmd = "buck2 build @//mode/release {}".format(pinga_target),
-    serve_cmd = "buck2 run @//mode/release {}".format(pinga_target),
+    cmd = cmd,
+    serve_cmd = serve_cmd,
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
@@ -133,11 +191,21 @@ local_resource(
 
 # Locally build and run `veritech`
 veritech_target = "//bin/veritech:veritech"
+
+cmd = "buck2 build @//mode/release {}".format(veritech_target)
+serve_cmd = "buck2 run @//mode/release {}".format(veritech_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(veritech_target)
+    serve_cmd = "buck2 run {}".format(veritech_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(veritech_target)
+    serve_cmd = "buck2 run @//mode/debug {}".format(veritech_target)
+
 local_resource(
     "veritech",
     labels = ["backend"],
-    cmd = "buck2 build @//mode/release {}".format(veritech_target),
-    serve_cmd = "SI_LOG=debug buck2 run @//mode/release {}".format(veritech_target),
+    cmd = cmd,
+    serve_cmd = serve_cmd,
     serve_env = {"SI_FORCE_COLOR": "true"},
     # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
@@ -153,11 +221,21 @@ local_resource(
 
 # Locally build and run `sdf`
 sdf_target = "//bin/sdf:sdf"
+
+cmd = "buck2 build @//mode/release {}".format(sdf_target)
+serve_cmd = "buck2 run @//mode/release {}".format(sdf_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(sdf_target)
+    serve_cmd = "buck2 run {}".format(sdf_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(sdf_target)
+    serve_cmd = "buck2 run @//mode/debug {}".format(sdf_target)
+
 local_resource(
     "sdf",
     labels = ["backend"],
-    cmd = "buck2 build @//mode/release {}".format(sdf_target),
-    serve_cmd = "buck2 run @//mode/release {}".format(sdf_target),
+    cmd = cmd,
+    serve_cmd = serve_cmd,
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [

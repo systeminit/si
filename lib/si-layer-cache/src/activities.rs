@@ -1,11 +1,11 @@
+use std::time::Duration;
 use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{
-    async_nats::jetstream::{self, Message},
-    jetstream::Stream,
-    NatsClient,
+    async_nats::jetstream::{self, consumer::pull::Stream, Message},
+    jetstream::Context,
 };
 use strum::EnumDiscriminants;
 use tokio::sync::{
@@ -155,13 +155,11 @@ impl ActivityPayloadDiscriminants {
 #[derive(Debug, Clone)]
 pub struct ActivityPublisher {
     prefix: Option<Arc<str>>,
-    context: jetstream::context::Context,
+    context: Context,
 }
 
 impl ActivityPublisher {
-    pub(crate) fn new(nats_client: &NatsClient) -> ActivityPublisher {
-        let prefix = nats_client.metadata().subject_prefix().map(|s| s.into());
-        let context = jetstream::new(nats_client.as_inner().clone());
+    pub(crate) fn new(context: Context, prefix: Option<Arc<str>>) -> ActivityPublisher {
         ActivityPublisher { context, prefix }
     }
 
@@ -184,7 +182,8 @@ impl ActivityPublisher {
 #[derive(Debug, Clone)]
 pub struct ActivityMultiplexer {
     instance_id: Ulid,
-    nats_client: NatsClient,
+    context: Context,
+    subject_prefix: Option<Arc<str>>,
     tracker: TaskTracker,
     shutdown_token: CancellationToken,
     channels: Arc<Mutex<HashMap<String, broadcast::Sender<Activity>>>>,
@@ -193,14 +192,16 @@ pub struct ActivityMultiplexer {
 impl ActivityMultiplexer {
     pub fn new(
         instance_id: Ulid,
-        nats_client: NatsClient,
+        context: Context,
+        subject_prefix: Option<Arc<str>>,
         shutdown_token: CancellationToken,
     ) -> Self {
         let tracker = TaskTracker::new();
         Self {
             tracker,
             instance_id,
-            nats_client,
+            context,
+            subject_prefix,
             shutdown_token,
             channels: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -231,7 +232,8 @@ impl ActivityMultiplexer {
         }
         let activity_stream = ActivityStream::run(
             self.instance_id,
-            &self.nats_client,
+            &self.context,
+            self.subject_prefix.clone(),
             self.tracker.clone(),
             has_filter_array,
         )
@@ -296,23 +298,17 @@ pub struct ActivityStream;
 impl ActivityStream {
     pub(crate) async fn run(
         instance_id: Ulid,
-        nats_client: &NatsClient,
+        context: &Context,
+        subject_prefix: Option<Arc<str>>,
         tracker: TaskTracker,
         filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
     ) -> LayerDbResult<UnboundedReceiver<Activity>> {
-        let context = jetstream::new(nats_client.as_inner().clone());
-
-        let stream =
-            nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
-                .await?
-                .create_consumer(Self::consumer_config(
-                    nats_client.metadata().subject_prefix(),
-                    instance_id,
-                    filters,
-                ))
-                .await?
-                .messages()
-                .await?;
+        let stream = nats::layerdb_activities_stream(context, subject_prefix.as_deref())
+            .await?
+            .create_consumer(Self::consumer_config(subject_prefix, instance_id, filters))
+            .await?
+            .messages()
+            .await?;
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let spawn_tracker = tracker.clone();
@@ -358,7 +354,7 @@ impl ActivityStream {
 
     #[inline]
     fn consumer_config(
-        prefix: Option<&str>,
+        prefix: Option<Arc<str>>,
         instance_id: Ulid,
         filters: Option<impl IntoIterator<Item = ActivityPayloadDiscriminants>>,
     ) -> jetstream::consumer::pull::Config {
@@ -368,15 +364,16 @@ impl ActivityStream {
         let mut config = jetstream::consumer::pull::Config {
             name: Some(name),
             description: Some(description),
-            deliver_policy: jetstream::consumer::DeliverPolicy::New,
+            deliver_policy: jetstream::consumer::DeliverPolicy::All,
             max_bytes: MAX_BYTES,
+            inactive_threshold: Duration::from_secs(180),
             ..Default::default()
         };
 
         if let Some(payload_types) = filters {
             config.filter_subjects = payload_types
                 .into_iter()
-                .map(|t| nats::subject::for_activity_discriminate(prefix, t))
+                .map(|t| nats::subject::for_activity_discriminate(prefix.as_deref(), t))
                 .map(|s| s.to_string())
                 .collect();
         }
@@ -422,28 +419,24 @@ impl RebaserRequestWorkQueue {
     const CONSUMER_NAME: &'static str = "rebaser-requests";
 
     pub async fn create(
-        nats_client: NatsClient,
+        context: Context,
+        subject_prefix: Option<Arc<str>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<(Self, UnboundedReceiver<ActivityRebaseRequest>)> {
         let tracker = TaskTracker::new();
-        let context = jetstream::new(nats_client.as_inner().clone());
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Ensure the sourced stream is created
         let _activities =
-            nats::layerdb_activities_stream(&context, nats_client.metadata().subject_prefix())
-                .await?;
+            nats::layerdb_activities_stream(&context, subject_prefix.as_deref()).await?;
 
-        let stream = nats::rebaser_requests_work_queue_stream(
-            &context,
-            nats_client.metadata().subject_prefix(),
-        )
-        .await?
-        .create_consumer(Self::consumer_config())
-        .await?
-        .messages()
-        .await?;
+        let stream = nats::rebaser_requests_work_queue_stream(&context, subject_prefix.as_deref())
+            .await?
+            .create_consumer(Self::consumer_config())
+            .await?
+            .messages()
+            .await?;
 
         Ok((
             Self {

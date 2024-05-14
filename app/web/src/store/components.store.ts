@@ -7,16 +7,14 @@ import { IconNames } from "@si/vue-lib/design-system";
 import mitt from "mitt";
 import { watch } from "vue";
 import {
-  ComponentType,
   DiagramEdgeDef,
   DiagramNodeDef,
-  DiagramSocketDef,
   DiagramStatusIcon,
   ElementHoverMeta,
-  GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
+  ComponentType,
   DiagramNode,
   DiagramSchema,
   DiagramSchemaVariant,
@@ -27,10 +25,14 @@ import {
   ChangeSetId,
 } from "@/api/sdf/dal/change_set";
 import router from "@/router";
-import { ComponentDiff } from "@/api/sdf/dal/component";
+import {
+  ComponentDiff,
+  RawComponent,
+  ComponentId,
+  ActorAndTimestamp,
+} from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -40,33 +42,10 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
 
-export type ComponentId = string;
 export type ComponentNodeId = string;
 export type EdgeId = string;
 export type SocketId = string;
 type SchemaId = string;
-
-type RawComponent = {
-  changeStatus: ChangeStatus;
-  color: string;
-  createdInfo: ActorAndTimestamp;
-  deletedInfo?: ActorAndTimestamp;
-  displayName: string;
-  id: ComponentId;
-  componentType: ComponentType;
-  parentId?: ComponentId;
-  position: GridPoint;
-  size?: Size2D;
-  hasResource: boolean;
-  schemaCategory: string;
-  schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
-  schemaName: string;
-  schemaVariantId: string;
-  schemaVariantName: string;
-  sockets: DiagramSocketDef[];
-  updatedInfo: ActorAndTimestamp;
-  toDelete: boolean;
-};
 
 export type FullComponent = RawComponent & {
   // array of parent IDs
@@ -77,25 +56,23 @@ export type FullComponent = RawComponent & {
   isGroup: false;
 };
 
-type Edge = {
-  id: EdgeId;
+type RawEdge = {
   fromComponentId: ComponentId;
   fromSocketId: SocketId;
   toComponentId: ComponentId;
   toSocketId: SocketId;
-  isInvisible?: boolean;
+  toDelete: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdInfo: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
-  toDelete: boolean;
 };
 
-export interface ActorAndTimestamp {
-  actor: ActorView;
-  timestamp: string;
-}
+type Edge = RawEdge & {
+  id: EdgeId;
+  isInferred: boolean;
+};
 
 export type StatusIconsSet = {
   change?: DiagramStatusIcon;
@@ -142,16 +119,25 @@ export interface AttributeDebugView {
   proxyFor?: string | null;
   funcName: string;
   funcId: string;
-  funcArgs: object;
-  argSources: { [key: string]: string | null } | null;
+  funcArgs: { [key: string]: FuncArgDebugView[] } | null;
   visibility: {
     visibility_change_set_pk: string;
     visibility_deleted_at: Date | undefined | null;
   };
   value: object | string | number | boolean | null;
   prototypeId: string;
+  prototypeIsComponentSpecific: boolean;
   kind: string;
-  materializedView?: string;
+  view?: string;
+}
+export interface FuncArgDebugView {
+  value: object | string | number | boolean | null;
+  name: string;
+  valueSource: string;
+  valueSourceId: string;
+  socketSourceKind: string | null;
+  path: string | null;
+  isUsed: boolean;
 }
 export interface SocketDebugView extends AttributeDebugView {
   socketId: string;
@@ -167,6 +153,25 @@ export interface ComponentDebugView {
   outputSockets: SocketDebugView[];
   parentId?: string | null;
 }
+
+export interface ComponentPositions {
+  componentId: string;
+  position: Vector2d;
+  size?: Size2D;
+}
+
+export interface ComponentConnection {
+  childId: ComponentId;
+  parentId: ComponentId;
+}
+
+type APIComponentPositions = {
+  componentId: string;
+  x: string;
+  y: string;
+  width?: string;
+  height?: string;
+};
 
 type EventBusEvents = {
   deleteSelection: void;
@@ -202,6 +207,15 @@ export const getAssetIcon = (name: string) => {
 
   return (icon || "logo-si") as IconNames; // fallback to SI logo
 };
+
+const edgeFromRawEdge =
+  (isInferred: boolean) =>
+  (e: RawEdge): Edge => {
+    const edge = structuredClone(e) as Edge;
+    edge.id = `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
+    edge.isInferred = isInferred;
+    return edge;
+  };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
@@ -374,8 +388,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           deletableSelectedComponents(): FullComponent[] {
+            const selectedAndChildren: Record<string, FullComponent> = {};
+            this.allComponents.forEach((component) => {
+              this.selectedComponents?.forEach((el) => {
+                if (component.ancestorIds?.includes(el.id)) {
+                  selectedAndChildren[component.id] = component;
+                }
+              });
+            });
+            this.selectedComponents?.forEach((el) => {
+              selectedAndChildren[el.id] = el;
+            });
             return _.reject(
-              this.selectedComponents,
+              Object.values(selectedAndChildren),
               (c) => c.changeStatus === "deleted",
             );
           },
@@ -431,6 +456,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 componentId: component.id,
                 title: component.displayName,
                 subtitle: component.schemaName,
+                canBeUpgraded: component.canBeUpgraded,
                 isLoading:
                   statusStore.getComponentStatus(componentId)?.isUpdating ??
                   false,
@@ -449,36 +475,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           diagramEdges(): DiagramEdgeDef[] {
-            const validEdges = _.filter(this.allEdges, (edge) => {
+            return _.filter(this.allEdges, (edge) => {
               return (
                 !!this.componentsById[edge.toComponentId] &&
                 !!this.componentsById[edge.fromComponentId]
               );
-            });
-
-            // If edge connects inside ancestry, don't show
-            return _.map(validEdges, (edge) => {
-              const fromComponent = this.componentsById[edge.fromComponentId];
-              if (!fromComponent)
-                throw Error(`Not finding from node for edge ${edge.id}`);
-              const fromParentage = [
-                fromComponent.id,
-                ...(fromComponent.ancestorIds ?? []),
-              ];
-
-              const toComponent = this.componentsById[edge.toComponentId];
-              if (!toComponent)
-                throw Error(`Not finding to node for edge ${edge.id}`);
-              const toParentage = [
-                toComponent.id,
-                ...(toComponent.ancestorIds ?? []),
-              ];
-
-              const isInvisible =
-                fromParentage.includes(toComponent.id) ||
-                toParentage.includes(fromComponent.id);
-
-              return { ...edge, isInvisible };
             });
           },
 
@@ -494,7 +495,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     id: variant.id,
                     name: variant.name,
                     builtin: variant.builtin,
-
+                    isDefault: true,
+                    componentType: variant.componentType,
                     color: variant.color,
                     category: variant.category,
                     inputSockets: variant.inputSockets,
@@ -613,7 +615,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async FETCH_DIAGRAM_DATA() {
             return new ApiRequest<{
               components: RawComponent[];
-              edges: Edge[];
+              edges: RawEdge[];
+              inferredEdges: RawEdge[];
             }>({
               url: "diagram/get_diagram",
               params: {
@@ -621,7 +624,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
-                this.edgesById = _.keyBy(response.edges, "id");
+                const edges =
+                  response.edges && response.edges.length > 0
+                    ? response.edges.map(edgeFromRawEdge(false))
+                    : [];
+                const inferred =
+                  response.inferredEdges && response.inferredEdges.length > 0
+                    ? response.inferredEdges.map(edgeFromRawEdge(true))
+                    : [];
+                this.edgesById = _.keyBy([...edges, ...inferred], "id");
 
                 // remove invalid component IDs from the selection
                 const validComponentIds = _.intersection(
@@ -645,8 +656,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 _.each(pendingComponentIdsThatAreComplete, (id) => {
                   const tempId = pendingInsertsByComponentId[id]?.tempId;
                   if (tempId) delete this.pendingInsertedComponents[tempId];
-                });
-                // and set the selection to the new component
+                }); // and set the selection to the new component
                 if (pendingComponentIdsThatAreComplete[0]) {
                   this.setSelectedComponentId(
                     pendingComponentIdsThatAreComplete[0],
@@ -683,26 +693,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async SET_COMPONENT_DIAGRAM_POSITION(
-            componentId: ComponentId,
-            position: Vector2d,
-            size?: Size2D,
+            positions: ComponentPositions[],
           ) {
-            let width;
-            let height;
-            if (size) {
-              width = Math.round(size.width).toString();
-              height = Math.round(size.height).toString();
-            }
+            const rounded_positions = positions.map((p) => {
+              const pos = {
+                componentId: p.componentId,
+              } as APIComponentPositions;
+              pos.x = Math.round(p.position.x).toString();
+              pos.y = Math.round(p.position.y).toString();
+              if (p.size?.width)
+                pos.width = Math.round(p.size?.width).toString();
+              if (p.size?.height)
+                pos.height = Math.round(p.size?.height).toString();
+              return pos;
+            });
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
               url: "diagram/set_component_position",
               params: {
-                componentId,
-                x: Math.round(position.x).toString(),
-                y: Math.round(position.y).toString(),
-                width,
-                height,
+                positions: rounded_positions,
                 diagramKind: "configuration",
                 ...visibilityParams,
               },
@@ -747,6 +757,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               optimistic: () => {
+                /**
+                 * NOTE: WsEvents are firing *BEFORE* the POST returns
+                 * And when a new changeset is created by the backend, we end up
+                 * re-creating componentStore, so the store for HEAD never runs onSuccess below
+                 * We end up with pending components on HEAD that never go away
+                 *
+                 * To fix: don't create pending components if we're on HEAD
+                 */
+                if (changeSetsStore.headSelected) return;
+
                 this.pendingInsertedComponents[tempInsertId] = {
                   tempId: tempInsertId,
                   position,
@@ -819,21 +839,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   toSocketId: to.socketId,
                   changeStatus: "added",
                   toDelete: false,
+                  isInferred: false,
                   createdInfo: {
                     timestamp: nowTs,
                     actor: { kind: "user", label: "You" },
                   },
                 };
+
+                const replacingEdge = this.allEdges
+                  .filter(
+                    (e) =>
+                      e.isInferred &&
+                      e.toSocketId === to.socketId &&
+                      e.toComponentId === to.componentId,
+                  )
+                  .pop();
+                if (replacingEdge) {
+                  delete this.edgesById[replacingEdge.id];
+                }
                 return () => {
                   delete this.edgesById[tempId];
+                  if (replacingEdge) {
+                    this.edgesById[replacingEdge.id] = replacingEdge;
+                  }
                 };
               },
             });
           },
-          async CONNECT_COMPONENT_TO_FRAME(
-            childId: ComponentId,
-            parentId: ComponentId,
-          ) {
+          async CONNECT_COMPONENT_TO_FRAME(connections: ComponentConnection[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -843,22 +876,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/connect_component_to_frame",
               params: {
-                childId,
-                parentId,
+                connections,
                 ...visibilityParams,
               },
               optimistic: () => {
-                const component = this.rawComponentsById[childId];
-                if (!component) return;
-                const prevParentId = component?.parentId;
-                component.parentId = parentId;
+                // NOTE: `onDragElementsMove` only looks at parentId
+                // so we don't have to manipulate `ancestorIds` here
+                type Parent = [RawComponent, string | undefined];
+                const prevParents: Parent[] = [];
+                connections.forEach(({ childId, parentId }) => {
+                  const component = this.rawComponentsById[childId];
+                  if (!component) return;
+                  prevParents.push([component, component?.parentId]);
+                  component.parentId = parentId;
+                });
                 return () => {
-                  component.parentId = prevParentId;
+                  for (const [component, parentId] of prevParents) {
+                    component.parentId = parentId;
+                  }
                 };
               },
             });
           },
-          async DETACH_COMPONENT(childId: ComponentId) {
+          async DETACH_COMPONENT(children: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -868,16 +908,44 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/detach_component",
               params: {
-                childId,
+                children,
                 ...visibilityParams,
               },
               optimistic: () => {
-                const component = this.rawComponentsById[childId];
-                if (!component) return;
-                const prevParentId = component?.parentId;
-                delete component.parentId;
+                const prevParents: Record<
+                  ComponentId,
+                  ComponentId | undefined
+                > = {};
+                for (const childId of children) {
+                  const component = this.rawComponentsById[childId];
+                  if (!component) return;
+                  const prevParentId = component?.parentId;
+                  prevParents[component.id] = prevParentId;
+                  component.parentId = undefined;
+
+                  // remove inferred edges between children and parents
+                  const full_component = this.componentsById[childId];
+                  for (const edge of _.filter(
+                    _.values(this.edgesById),
+                    (edge) =>
+                      !!(
+                        edge.isInferred &&
+                        edge.toComponentId === component.id &&
+                        full_component?.ancestorIds?.includes(
+                          edge.fromComponentId,
+                        )
+                      ),
+                  )) {
+                    delete this.edgesById[edge.id];
+                  }
+                }
+
                 return () => {
-                  component.parentId = prevParentId;
+                  for (const componentId of Object.keys(prevParents)) {
+                    const component = this.rawComponentsById[componentId];
+                    if (component)
+                      component.parentId = prevParents[componentId];
+                  }
                 };
               },
             });
@@ -936,9 +1004,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async MIGRATE_COMPONENT(componentId: ComponentId) {
+          async UPGRADE_COMPONENT(componentId: ComponentId) {
             return new ApiRequest({
-              url: "component/migrate_to_default_variant",
+              url: "component/upgrade_component",
               keyRequestStatusBy: componentId,
               method: "post",
               params: {
@@ -948,7 +1016,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async DELETE_EDGE(edgeId: EdgeId) {
+          async DELETE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+            toComponentId: ComponentId,
+            fromComponentId: ComponentId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -959,7 +1033,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/delete_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1000,7 +1077,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async RESTORE_EDGE(edgeId: EdgeId) {
+          /* async RESTORE_EDGE(
+            edgeId: EdgeId,
+            toSocketId: SocketId,
+            fromSocketId: SocketId,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -1011,7 +1092,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/restore_connection",
               keyRequestStatusBy: edgeId,
               params: {
-                edgeId,
+                toSocketId,
+                fromSocketId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -1035,7 +1117,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 };
               },
             });
-          },
+          }, */
 
           async DELETE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
@@ -1331,20 +1413,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async REFRESH_ALL_RESOURCE_INFO() {
-            return new ApiRequest({
-              method: "post",
-              url: "component/refresh",
-              params: {
-                workspaceId: visibilityParams.workspaceId,
-                visibility_change_set_pk: changeSetsStore.headChangeSetId,
-              },
-              onSuccess: (response) => {
-                // do nothing
-              },
-            });
-          },
-
           setComponentDisplayName(component: FullComponent, name: string) {
             const c = this.rawComponentsById[component.id];
             if (!c) return;
@@ -1382,6 +1450,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
             {
+              eventType: "ConnectionCreated",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
+              eventType: "ConnectionDeleted",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
               eventType: "ComponentDeleted",
               callback: (data) => {
                 if (data.changeSetId !== changeSetId) return;
@@ -1402,7 +1490,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
+                this.rawComponentsById[data.component.id] = data.component;
+                if (this.selectedComponentId === data.component.id)
+                  this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+              },
+            },
+            {
+              eventType: "ComponentUpgraded",
+              debounce: true,
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.rawComponentsById[data.component.id] = data.component;
+                this.setSelectedComponentId(data.component.id);
+                delete this.rawComponentsById[data.originalComponentId];
               },
             },
             {
@@ -1412,6 +1514,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.refreshingStatus[resourceRefreshedEvent.componentId] =
                     false;
                 }
+              },
+            },
+            {
+              eventType: "DeprecatedActionRunnerReturn",
+              callback: (update) => {
+                const component = this.componentsById[update.componentId];
+                if (!component) return;
+                component.hasResource = !!update.resource?.payload;
               },
             },
           ]);

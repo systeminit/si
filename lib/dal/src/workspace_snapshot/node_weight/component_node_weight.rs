@@ -9,6 +9,7 @@ use crate::{
         graph::LineageId,
         vector_clock::{VectorClock, VectorClockId},
     },
+    EdgeWeightKindDiscriminants,
 };
 
 use super::{NodeWeightError, NodeWeightResult};
@@ -47,6 +48,10 @@ impl ComponentNodeWeight {
 
     pub fn content_address(&self) -> ContentAddress {
         self.content_address
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![self.content_address.content_hash()]
     }
 
     pub fn content_hash(&self) -> ContentHash {
@@ -164,5 +169,14 @@ impl ComponentNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[
+            EdgeWeightKindDiscriminants::Use,
+            EdgeWeightKindDiscriminants::FrameContains,
+            EdgeWeightKindDiscriminants::Root,
+            EdgeWeightKindDiscriminants::SocketValue,
+        ]
     }
 }

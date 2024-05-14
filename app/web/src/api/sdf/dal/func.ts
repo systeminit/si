@@ -69,6 +69,7 @@ export enum FuncArgumentKind {
   Array = "Array",
   Boolean = "Boolean",
   Integer = "Integer",
+  Json = "Json",
   Object = "Object",
   String = "String",
   Map = "Map",

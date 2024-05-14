@@ -108,7 +108,7 @@ impl<T> Subscriber<T> {
     /// # Errors
     ///
     /// Returns [`SubscriberError`] if the [`Subscriber`] does not successfully unsubscribe.
-    pub async fn unsubscribe_after(self, unsub_after: u64) -> SubscriberResult<()> {
+    pub async fn unsubscribe_after(mut self, unsub_after: u64) -> SubscriberResult<()> {
         self.inner
             .unsubscribe_after(unsub_after)
             .await

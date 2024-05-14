@@ -6,7 +6,7 @@ mod config;
 mod error;
 mod sender;
 
-pub use client::{FeatureFlag, PosthogClient};
+pub use client::PosthogClient;
 pub use config::{PosthogConfig, PosthogConfigBuilder};
 pub use error::{PosthogError, PosthogResult};
 pub use sender::PosthogSender;

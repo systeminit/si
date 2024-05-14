@@ -2,22 +2,25 @@
 // used in the subscribe fn to limit valid event names and set callback payload type
 
 import { FuncId } from "@/store/func/funcs.store";
-import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Resource } from "@/api/sdf/dal/resource";
-import { ComponentId } from "../components.store";
+import { ComponentId, RawComponent } from "@/api/sdf/dal/component";
+import { ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import {
-  ActionStatus,
-  DeprecatedActionId,
-  ProposedAction,
+  DeprecatedActionStatus,
+  ActionId,
+  DeprecatedProposedAction,
 } from "../actions.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { SecretId } from "../secrets.store";
 
-export type WebsocketRequest = CursorRequest | OnlineRequest;
+export type WebsocketRequest =
+  | CursorRequest
+  | OnlineRequest
+  | ComponentPositionRequest;
 
 export interface CursorRequest {
   kind: "Cursor";
@@ -43,6 +46,15 @@ export interface OnlineRequest {
   };
 }
 
+export interface ComponentPositionRequest {
+  kind: "ComponentSetPosition";
+  data: {
+    userPk: UserId;
+    changeSetId: string | null;
+    positions: ComponentPositions[];
+  };
+}
+
 // TODO: a few of these use the same id objects (ex: componentId)
 // but in a few cases the changeset ID may have been accidentally left out?
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
@@ -63,12 +75,20 @@ export type WsEventPayloadMap = {
 
   SetComponentPosition: {
     changeSetId: ChangeSetId;
-    componentId: ComponentId;
     userPk: UserId;
-    x: number;
-    y: number;
-    width: number | undefined;
-    height: number | undefined;
+    positions: [
+      {
+        componentId: ComponentId;
+        position: {
+          x: number;
+          y: number;
+        };
+        size?: {
+          width: number | undefined;
+          height: number | undefined;
+        };
+      },
+    ];
   };
 
   ChangeSetBeginApprovalProcess: {
@@ -148,6 +168,7 @@ export type WsEventPayloadMap = {
 
   DeprecatedActionRunnerReturn: {
     id: string;
+    componentId: string;
     batchId: string;
     attributeValueId: string;
     action: string;
@@ -155,7 +176,7 @@ export type WsEventPayloadMap = {
   };
   DeprecatedActionBatchReturn: {
     id: string;
-    status: ActionStatus;
+    status: DeprecatedActionStatus;
   };
   ComponentCreated: {
     success: boolean;
@@ -167,7 +188,26 @@ export type WsEventPayloadMap = {
     changeSetId: string;
   };
   ComponentUpdated: {
-    componentId: string;
+    component: RawComponent;
+    changeSetId: string;
+  };
+  ComponentUpgraded: {
+    component: RawComponent;
+    originalComponentId: ComponentId;
+    changeSetId: string;
+  };
+  ConnectionCreated: {
+    fromComponentId: string;
+    toComponentId: string;
+    fromSocketId: string;
+    toSocketId: string;
+    changeSetId: string;
+  };
+  ConnectionDeleted: {
+    fromComponentId: string;
+    toComponentId: string;
+    fromSocketId: string;
+    toSocketId: string;
     changeSetId: string;
   };
   ModuleImported: {
@@ -205,16 +245,16 @@ export type WsEventPayloadMap = {
 
   ActionAdded: {
     componentId: ComponentId;
-    actionId: DeprecatedActionId;
+    actionId: ActionId;
     changeSetId: ChangeSetId;
   };
   ActionRemoved: {
     componentId: ComponentId;
-    actionId: DeprecatedActionId;
+    actionId: ActionId;
     changeSetId: ChangeSetId;
   };
-  DeprecatedActionAdded: ProposedAction;
-  DeprecatedActionRemoved: DeprecatedActionId;
+  DeprecatedActionAdded: DeprecatedProposedAction;
+  DeprecatedActionRemoved: ActionId;
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;
@@ -224,17 +264,16 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
   };
   SchemaVariantCreated: {
-    schemaVariantId: string;
+    schemaId: string;
     changeSetId: ChangeSetId;
   };
   SchemaVariantCloned: {
     schemaVariantId: string;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantFinished: {
-    taskId: string;
+  SchemaVariantUpdateFinished: {
+    changeSetId: string;
     schemaVariantId: string;
-    detachedAttributePrototypes: DetachedAttributePrototype[];
   };
   SchemaVariantSaved: {
     schemaVariantId: string;
@@ -245,10 +284,6 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
   };
   FuncDeleted: {
-    funcId: FuncId;
-    changeSetId: ChangeSetId;
-  };
-  FuncReverted: {
     funcId: FuncId;
     changeSetId: ChangeSetId;
   };

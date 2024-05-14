@@ -1,10 +1,10 @@
 <template>
-  <div
+  <EmptyStateCard
     v-if="!funcId"
-    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
-  >
-    Select a function to view its properties.
-  </div>
+    iconName="funcs"
+    primaryText="No Function Selected"
+    secondaryText="Select a function from the list on the left panel to view its details here."
+  />
   <LoadingMessage
     v-else-if="
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
@@ -32,12 +32,7 @@
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
             <div class="flex gap-1 flex-wrap">
               <VButton
-                v-if="
-                  testPanelEnabled &&
-                  funcStore.selectedFuncDetails &&
-                  funcStore.selectedFuncDetails?.associations?.type !==
-                    'authentication'
-                "
+                v-if="enableTestPanel"
                 class="--tone-action"
                 icon="save"
                 size="md"
@@ -59,18 +54,6 @@
                 :requestStatus="execFuncReqStatus"
                 successText="Finished"
                 @click="execFunc"
-              />
-
-              <VButton
-                class="--tone-neutral"
-                :disabled="!isRevertible"
-                icon="x"
-                size="md"
-                loadingText="Reverting..."
-                label="Revert"
-                :requestStatus="revertFuncReqStatus"
-                successText="Finished"
-                @click="revertFunc"
               />
 
               <VButton
@@ -122,11 +105,29 @@
             </ErrorMessage>
           </Stack>
 
-          <!-- <Collapsible label="Logs">
+          <!-- <TreeNode
+            label="Logs"
+            defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          >
             {{ lastExecutionLog }}
             <VButton @click="getLastExecution">Load</VButton>
-          </Collapsible> -->
-          <Collapsible label="Attributes" defaultOpen>
+          </TreeNode> -->
+
+          <TreeNode
+            label="Attributes"
+            defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            noIndentationOrLeftBorder
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+          >
             <Stack class="p-3">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this function a Name, Entrypoint and brief description
@@ -154,7 +155,8 @@
                 @blur="updateFunc"
               />
             </Stack>
-          </Collapsible>
+          </TreeNode>
+
           <ActionDetails
             v-if="editingFunc.associations?.type === 'action'"
             ref="detachRef"
@@ -190,10 +192,16 @@
             @change="updateFunc"
           />
 
-          <Collapsible
+          <TreeNode
             v-if="editingFunc.kind === FuncKind.Attribute"
             label="Arguments"
             defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
           >
             <FuncArguments
               v-if="
@@ -203,12 +211,18 @@
               v-model="editingFunc.associations"
               @change="updateFunc"
             />
-          </Collapsible>
+          </TreeNode>
 
-          <Collapsible
+          <TreeNode
             v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
             label="Binding"
             defaultOpen
+            enableGroupToggle
+            alwaysShowArrow
+            indentationSize="none"
+            leftBorderSize="none"
+            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
           >
             <AttributeBindings
               v-if="
@@ -220,7 +234,7 @@
               :schemaVariantId="schemaVariantId"
               @change="updateFunc"
             />
-          </Collapsible>
+          </TreeNode>
         </ScrollArea>
       </TabGroupItem>
 
@@ -241,15 +255,7 @@
         />
       </TabGroupItem>
 
-      <TabGroupItem
-        v-if="
-          testPanelEnabled &&
-          funcStore.selectedFuncDetails &&
-          funcStore.selectedFuncDetails?.associations?.type !== 'authentication'
-        "
-        label="Test"
-        slug="test"
-      >
+      <TabGroupItem v-if="enableTestPanel" label="Test" slug="test">
         <FuncTest />
       </TabGroupItem>
     </TabGroup>
@@ -267,13 +273,13 @@ import * as _ from "lodash-es";
 import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  Collapsible,
   ErrorMessage,
   LoadingMessage,
   ScrollArea,
   Stack,
   TabGroup,
   TabGroupItem,
+  TreeNode,
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
@@ -287,12 +293,13 @@ import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
+import EmptyStateCard from "../EmptyStateCard.vue";
 
 const props = defineProps<{
   funcId?: FuncId;
   schemaVariantId?: string;
   singleModelScreen?: boolean;
-  testPanelEnabled?: boolean;
+  allowTestPanel?: boolean;
 }>();
 
 const funcDetailsTabGroupRef = ref();
@@ -355,10 +362,6 @@ watch(
   },
 );
 
-const isRevertible = computed(() =>
-  funcId.value ? funcStore.funcDetailsById[funcId.value]?.isRevertible : false,
-);
-
 const updateFunc = () => {
   if (
     !editingFunc.value ||
@@ -366,14 +369,6 @@ const updateFunc = () => {
   )
     return;
   funcStore.UPDATE_FUNC(editingFunc.value);
-};
-
-const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
-const revertFunc = async () => {
-  if (!funcId.value) return;
-  await funcStore.REVERT_FUNC(funcId.value);
-  await funcStore.FETCH_FUNC_DETAILS(funcId.value);
-  resetEditingFunc();
 };
 
 const isConnectedToOtherAssetTypes = computed(() => {
@@ -444,15 +439,14 @@ const expandTestPanel = (selectedTabSlug: string | undefined) => {
   }
 };
 
-// const getExecutionReqStatus = funcStore.getRequestStatus(
-//   "GET_FUNC_LAST_EXECUTION",
-//   funcId,
-// );
-// function getLastExecution() {
-//   if (!funcId.value) return;
-//   funcStore.GET_FUNC_LAST_EXECUTION(funcId.value);
-// }
-// const lastExecutionLog = computed(
-//   () => funcStore.lastFuncExecutionLogByFuncId[funcId?.value || ""],
-// );
+// The parent component can allow the test panel to be enabled, but we need to dynamically enable
+// it based on the func kind.
+const enableTestPanel = computed((): boolean => {
+  return (
+    props.allowTestPanel &&
+    (funcStore.selectedFuncDetails?.associations?.type === "attribute" ||
+      funcStore.selectedFuncDetails?.associations?.type === "codeGeneration" ||
+      funcStore.selectedFuncDetails?.associations?.type === "qualification")
+  );
+});
 </script>

@@ -2,6 +2,7 @@ use si_events::ulid::Ulid;
 use si_events::{
     CasValue, FuncExecution, FuncExecutionKey, FuncExecutionMessage, FuncExecutionState,
 };
+use si_layer_cache::memory_cache::MemoryCacheConfig;
 use si_layer_cache::LayerDb;
 use tokio_util::sync::CancellationToken;
 
@@ -15,10 +16,11 @@ async fn write() {
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let dbfile = disk_cache_path(&tempdir, "mbd");
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_write").await,
         setup_nats_client(Some("fe_write".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -50,10 +52,11 @@ async fn write_with_message() {
 
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let dbfile = disk_cache_path(&tempdir, "mbd");
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_write_with_maessage").await,
         setup_nats_client(Some("fe_write_with_message".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -108,10 +111,11 @@ async fn write_and_read_many() {
 
     let dbfile = disk_cache_path(&tempdir, "mbd");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_write_and_read_many").await,
         setup_nats_client(Some("fe_write_and_read_many".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -167,10 +171,11 @@ async fn read_by_component_id() {
 
     let dbfile = disk_cache_path(&tempdir, "mbd");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_by_component_id").await,
         setup_nats_client(Some("fe_by_component_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -236,10 +241,11 @@ async fn read_by_prototype_id() {
 
     let dbfile = disk_cache_path(&tempdir, "mbd");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_by_prototype_id").await,
         setup_nats_client(Some("fe_by_prototype_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await
@@ -303,10 +309,11 @@ async fn read_by_component_id_and_prototype_id() {
 
     let dbfile = disk_cache_path(&tempdir, "mbd");
 
-    let (ldb, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("fe_by_component_id_and_prototype_id").await,
         setup_nats_client(Some("fe_by_component_id_and_prototype_id".to_string())).await,
+        MemoryCacheConfig::default(),
         token,
     )
     .await

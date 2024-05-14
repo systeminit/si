@@ -13,6 +13,7 @@ mod test {
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
+    use crate::workspace_snapshot::graph::tests::{add_edges, add_prop_nodes_to_graph};
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
     use crate::{PropKind, WorkspaceSnapshotGraph};
@@ -183,7 +184,6 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -224,7 +224,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -284,7 +283,6 @@ mod test {
             .expect("Unable to add root -> component edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -314,7 +312,6 @@ mod test {
             .expect("Unable to add root -> component edge");
 
         new_graph.cleanup();
-        println!("Updated new graph (Root: {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -405,7 +402,6 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -446,7 +442,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let new_onto_component_id = base_change_set
@@ -483,7 +478,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -601,7 +595,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -617,7 +610,6 @@ mod test {
             .expect("Unable to update Component A");
 
         new_graph.cleanup();
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         base_graph
@@ -629,7 +621,6 @@ mod test {
             .expect("Unable to update Component A");
 
         base_graph.cleanup();
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -742,7 +733,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -761,7 +751,6 @@ mod test {
             .expect("Unable to remove Component A");
 
         base_graph.cleanup();
-        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
         base_graph.dot();
 
         new_graph
@@ -773,7 +762,6 @@ mod test {
             .expect("Unable to update Component A");
 
         new_graph.cleanup();
-        println!("new graph (Root {:?}):", new_graph.root_index);
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -1180,7 +1168,6 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.cleanup();
-        println!("Initial base graph (Root {:?}):", base_graph.root_index);
         base_graph.dot();
 
         // Create a new change set to cause some problems!
@@ -1240,9 +1227,7 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        println!("base graph current root: {:?}", base_graph.root_index);
         base_graph.dot();
-        println!("new graph current root: {:?}", new_graph.root_index);
         new_graph.dot();
 
         let expected_conflicts = vec![
@@ -2593,6 +2578,106 @@ mod test {
                 edge_kind: EdgeWeightKindDiscriminants::Use,
             }],
             updates
+        );
+    }
+
+    #[test]
+    fn detect_exclusive_edge_conflict() {
+        let base_nodes = ["r", "q"];
+        let base_edges = [(None, "r"), (Some("r"), "q")];
+
+        let base_change_set = ChangeSet::new_local().expect("unable to create change set");
+        let base_change_set = &base_change_set;
+        let mut base_graph =
+            WorkspaceSnapshotGraph::new(base_change_set).expect("unable to make base graph");
+
+        let mut node_id_map =
+            add_prop_nodes_to_graph(&mut base_graph, base_change_set, &base_nodes);
+        add_edges(&mut base_graph, &node_id_map, base_change_set, &base_edges);
+        base_graph.cleanup();
+        base_graph
+            .mark_graph_seen(base_change_set.vector_clock_id())
+            .expect("unable to mark seen");
+
+        let a_new_nodes = ["a"];
+        let a_edges = [(Some("q"), "a")];
+
+        let change_set_a = ChangeSet::new_local().expect("unable to create change set");
+        let change_set_a = &change_set_a;
+        let mut graph_a = base_graph.clone();
+        node_id_map.extend(add_prop_nodes_to_graph(
+            &mut graph_a,
+            change_set_a,
+            &a_new_nodes,
+        ));
+        add_edges(&mut graph_a, &node_id_map, change_set_a, &a_edges);
+        graph_a.cleanup();
+        graph_a
+            .mark_graph_seen(change_set_a.vector_clock_id())
+            .expect("unable to mark seen");
+
+        let b_new_nodes = ["b"];
+        let b_edges = [(Some("q"), "b")];
+
+        let change_set_b = ChangeSet::new_local().expect("unable to create change set");
+        let change_set_b = &change_set_b;
+        let mut graph_b = base_graph.clone();
+        node_id_map.extend(add_prop_nodes_to_graph(
+            &mut graph_b,
+            change_set_b,
+            &b_new_nodes,
+        ));
+        add_edges(&mut graph_b, &node_id_map, change_set_b, &b_edges);
+        graph_b.cleanup();
+        graph_b
+            .mark_graph_seen(change_set_b.vector_clock_id())
+            .expect("unable to mark seen");
+
+        let (conflicts, _) = graph_a
+            .detect_conflicts_and_updates(
+                change_set_a.vector_clock_id(),
+                &graph_b,
+                change_set_b.vector_clock_id(),
+            )
+            .expect("able to detect conflicts and updates");
+
+        let a_q_node_idx = graph_a
+            .get_node_index_by_id(*node_id_map.get("q").expect("should have an id for 'q'"))
+            .expect("able to get q node index");
+        let b_q_node_idx = graph_b
+            .get_node_index_by_id(*node_id_map.get("q").expect("should have an id for 'q'"))
+            .expect("able to get q node index");
+        let a_node_idx = graph_a
+            .get_node_index_by_id(*node_id_map.get("a").expect("should have an id for 'a'"))
+            .expect("able to get a node index");
+        let b_node_idx = graph_b
+            .get_node_index_by_id(*node_id_map.get("b").expect("should have an id for 'b'"))
+            .expect("able to get b node index");
+
+        assert_eq!(
+            vec![Conflict::ExclusiveEdgeMismatch {
+                source: a_q_node_idx,
+                destination: a_node_idx,
+                edge_kind: EdgeWeightKindDiscriminants::Use,
+            }],
+            conflicts
+        );
+
+        let (conflicts, _) = graph_b
+            .detect_conflicts_and_updates(
+                change_set_b.vector_clock_id(),
+                &graph_a,
+                change_set_a.vector_clock_id(),
+            )
+            .expect("able to detect conflicts and updates");
+
+        assert_eq!(
+            vec![Conflict::ExclusiveEdgeMismatch {
+                source: b_q_node_idx,
+                destination: b_node_idx,
+                edge_kind: EdgeWeightKindDiscriminants::Use,
+            }],
+            conflicts
         );
     }
 }

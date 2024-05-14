@@ -18,7 +18,6 @@ import EmptySquare from "./custom-icons/empty-square.svg?raw";
 import AlertCircle from "~icons/heroicons/exclamation-circle-20-solid";
 import AlertSquare from "./custom-icons/exclamation-square.svg?raw";
 import AlertTriangle from "~icons/heroicons/exclamation-triangle-20-solid";
-import ArrowSquareOut from "~icons/heroicons/arrow-top-right-on-square-20-solid";
 
 import X from "~icons/heroicons/x-mark-20-solid";
 import XCircle from "~icons/heroicons/x-circle-20-solid";
@@ -52,7 +51,6 @@ import TrashRestore from "~icons/material-symbols/restore-from-trash";
 import ThumbsUp from "~icons/heroicons-solid/thumb-up";
 import ThumbsDown from "~icons/heroicons-solid/thumb-down";
 
-import PlayCircle from "~icons/heroicons-solid/play";
 import Beaker from "~icons/heroicons-solid/beaker";
 import Link from "~icons/heroicons-solid/link";
 import Moon from "~icons/heroicons-solid/moon";
@@ -179,7 +177,6 @@ export const ICONS = Object.freeze({
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,
-  "arrow-square-out": ArrowSquareOut,
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,
@@ -260,7 +257,6 @@ export const ICONS = Object.freeze({
   none: EmptyIcon,
   password: Password,
   play: Play,
-  "play-circle": PlayCircle,
   plug: Plug,
   plus: Plus,
   "plus-circle": PlusCircle,

@@ -1,16 +1,18 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::diagram::DiagramResult;
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
 use dal::component::frame::Frame;
-use dal::{ChangeSet, ComponentId, Visibility};
+use dal::diagram::SummaryDiagramComponent;
+use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DetachComponentRequest {
-    pub child_id: ComponentId,
+    pub children: Vec<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -18,25 +20,35 @@ pub struct DetachComponentRequest {
 pub async fn detach_component_from_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<DetachComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    Frame::orphan_child(&ctx, request.child_id).await?;
+    for child_id in &request.children {
+        Frame::orphan_child(&ctx, *child_id).await?;
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "detach_component_from_frame",
-    //     serde_json::json!({
-    //         "child_component_id": &request.component_id,
-    //         "parent_component_ids": &request.parent_ids,
-    //     }),
-    // );
+        let component: Component = Component::get_by_id(&ctx, *child_id).await?;
+        let payload: SummaryDiagramComponent =
+            SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        WsEvent::component_updated(&ctx, payload)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "detach_component_from_frame",
+        serde_json::json!({
+            "how": "/diagram/detach_component_from_frame",
+            "children": serde_json::json!(&request.children),
+        }),
+    );
 
     ctx.commit().await?;
 

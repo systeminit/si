@@ -1,5 +1,6 @@
 //! This module contains helpers for use when authoring dal integration tests.
 
+use async_recursion::async_recursion;
 use dal::key_pair::KeyPairPk;
 use dal::property_editor::schema::{
     PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
@@ -7,9 +8,8 @@ use dal::property_editor::schema::{
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use dal::{
-    Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    InputSocket, KeyPair, OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserClaim,
-    UserPk,
+    AttributeValue, Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Prop,
+    Schema, SchemaVariant, SchemaVariantId, User, UserClaim, UserPk,
 };
 use itertools::enumerate;
 use jwt_simple::algorithms::RSAKeyPairLike;
@@ -80,25 +80,6 @@ pub async fn create_user(ctx: &DalContext) -> User {
 pub async fn create_schema(ctx: &DalContext) -> Schema {
     let name = generate_fake_name();
     Schema::new(ctx, &name).await.expect("cannot create schema")
-}
-
-/// Creates an "empty" [`Func`] with [`FuncKind::Action`](dal::func::FuncKind::Action).
-pub async fn create_empty_action_func(ctx: &DalContext) -> Func {
-    Func::new(
-        ctx,
-        generate_fake_name(),
-        None::<String>,
-        None::<String>,
-        None::<String>,
-        false,
-        false,
-        FuncBackendKind::JsAction,
-        FuncBackendResponseType::Action,
-        None::<String>,
-        None::<String>,
-    )
-    .await
-    .expect("could not create func")
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
@@ -175,6 +156,85 @@ pub async fn connect_components_with_socket_names(
     )
     .await
     .expect("could not connect components");
+}
+
+/// Gets the [`Value`] for a specific [`Component`]'s [`InputSocket`] by the [`InputSocket`] name
+pub async fn get_component_input_socket_value(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    input_socket_name: impl AsRef<str>,
+) -> Option<serde_json::Value> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id)
+        .await
+        .expect("got schema variant id");
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("got component");
+    let component_input_sockets = component
+        .input_socket_attribute_values(ctx)
+        .await
+        .expect("got attribute values");
+    let input_socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
+        .await
+        .expect("got input socket")
+        .expect("has value");
+    let input_socket_match = component_input_sockets
+        .get(&input_socket.id())
+        .expect("got input socket av");
+    let input_socket_av = AttributeValue::get_by_id(ctx, input_socket_match.attribute_value_id)
+        .await
+        .expect("got input av");
+    input_socket_av.view(ctx).await.expect("got view")
+}
+
+/// Gets the [`Value`] for a specific [`Component`]'s [`OutputSocket`] by the [`OutputSocket`] name
+pub async fn get_component_output_socket_value(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    output_socket_name: impl AsRef<str>,
+) -> Option<serde_json::Value> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id)
+        .await
+        .expect("got schema variant id");
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("got component");
+    let component_output_sockets = component
+        .output_socket_attribute_values(ctx)
+        .await
+        .expect("got attribute values");
+    let output_socket = OutputSocket::find_with_name(ctx, output_socket_name, schema_variant_id)
+        .await
+        .expect("got output socket")
+        .expect("has value");
+    let output_socket_match = component_output_sockets
+        .get(&output_socket.id())
+        .expect("got output socket av");
+    let output_socket_av = AttributeValue::get_by_id(ctx, output_socket_match.attribute_value_id)
+        .await
+        .expect("got output av");
+    output_socket_av.view(ctx).await.expect("got view")
+}
+/// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
+pub async fn update_attribute_value_for_component(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prop_path: &[&str],
+    value: serde_json::Value,
+) {
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("got component");
+    let attribute_value_id = component
+        .attribute_values_for_prop(ctx, prop_path)
+        .await
+        .expect("found attribute values for prop")
+        .into_iter()
+        .next()
+        .expect("got attribute value id");
+    AttributeValue::update(ctx, attribute_value_id, Some(value))
+        .await
+        .expect("updated attribute value");
 }
 
 /// Encrypts a message with a given [`KeyPairPk`](KeyPair).
@@ -256,19 +316,23 @@ impl PropEditorTestView {
                 prop: prop.clone(),
                 value,
                 children: Self::property_editor_compile_children(
+                    ctx,
                     root_value_id,
                     &prop.kind,
                     &values,
                     &child_values,
                     &props,
-                ),
+                )
+                .await,
             }
         };
 
         root_view
     }
 
-    fn property_editor_compile_children(
+    #[async_recursion]
+    async fn property_editor_compile_children(
+        ctx: &DalContext,
         parent_value_id: PropertyEditorValueId,
         parent_prop_kind: &PropertyEditorPropKind,
         values: &HashMap<PropertyEditorValueId, PropertyEditorValue>,
@@ -286,6 +350,12 @@ impl PropEditorTestView {
                 .get(child_id)
                 .expect("get property editor root value")
                 .clone();
+            let real_prop = Prop::get_by_id_or_error(ctx, value.prop_id.into_inner().into())
+                .await
+                .expect("prop should exist");
+            if real_prop.hidden {
+                continue;
+            }
 
             let prop = props.get(&value.prop_id).expect("get property editor prop");
 
@@ -299,12 +369,14 @@ impl PropEditorTestView {
                 prop: prop.clone(),
                 value,
                 children: Self::property_editor_compile_children(
+                    ctx,
                     *child_id,
                     &prop.kind,
                     values,
                     child_values,
                     props,
-                ),
+                )
+                .await,
             };
 
             children.insert(key, child);

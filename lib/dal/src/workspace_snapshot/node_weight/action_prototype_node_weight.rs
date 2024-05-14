@@ -8,7 +8,7 @@ use crate::{
         graph::LineageId,
         vector_clock::{VectorClock, VectorClockId},
     },
-    ChangeSet,
+    ChangeSet, EdgeWeightKindDiscriminants,
 };
 
 use super::NodeWeightResult;
@@ -55,6 +55,10 @@ impl ActionPrototypeNodeWeight {
 
     pub fn content_hash(&self) -> ContentHash {
         self.node_hash()
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
     }
 
     pub fn id(&self) -> Ulid {
@@ -157,5 +161,9 @@ impl ActionPrototypeNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[EdgeWeightKindDiscriminants::Use]
     }
 }

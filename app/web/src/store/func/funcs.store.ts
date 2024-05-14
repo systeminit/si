@@ -17,13 +17,13 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
 import {
-  AttributePrototypeView,
+  AttributePrototypeBag,
   CreateFuncOptions,
   FuncAssociations,
+  InputSocketView,
   InputSourceProp,
-  InputSourceSocket,
   OutputLocation,
-  OutputSocket,
+  OutputSocketView,
 } from "./types";
 import { useRouterStore } from "../router.store";
 
@@ -41,7 +41,6 @@ export type FuncSummary = {
 export type FuncWithDetails = FuncSummary & {
   code: string;
   types: string;
-  isRevertible: boolean;
   associations?: FuncAssociations;
 };
 
@@ -64,7 +63,6 @@ export type FuncExecutionLog = {
 };
 
 export interface SaveFuncResponse {
-  isRevertible: boolean;
   types: string;
   associations?: FuncAssociations;
 }
@@ -81,8 +79,8 @@ export interface OutputLocationOption {
 const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
 
 export type InputSourceProps = { [key: string]: InputSourceProp[] };
-export type InputSourceSockets = { [key: string]: InputSourceSocket[] };
-export type OutputSockets = { [key: string]: OutputSocket[] };
+export type InputSocketViews = { [key: string]: InputSocketView[] };
+export type OutputSocketViews = { [key: string]: OutputSocketView[] };
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -107,9 +105,9 @@ export const useFuncStore = () => {
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
         // map from schema variant ids to the input sources
-        inputSourceSockets: {} as InputSourceSockets,
+        inputSourceSockets: {} as InputSocketViews,
         inputSourceProps: {} as InputSourceProps,
-        outputSockets: {} as OutputSockets,
+        outputSockets: {} as OutputSocketViews,
         openFuncIds: [] as FuncId[],
         lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
       }),
@@ -149,23 +147,9 @@ export const useFuncStore = () => {
             return undefined;
           },
 
-        proprForInputSocketId:
+        inputSocketForId:
           (state) =>
-          (inputSocketId: string): InputSourceProp | undefined => {
-            for (const props of Object.values(state.inputSourceProps)) {
-              const inputSourceProp = props.find(
-                (prop) => prop.inputSocketId === inputSocketId,
-              );
-              if (inputSourceProp) {
-                return inputSourceProp;
-              }
-            }
-            return undefined;
-          },
-
-        inputSocketForInputSocketId:
-          (state) =>
-          (inputSocketId: string): InputSourceSocket | undefined => {
+          (inputSocketId: string): InputSocketView | undefined => {
             for (const sockets of Object.values(state.inputSourceSockets)) {
               const inputSourceSocket = sockets.find(
                 (socket) => socket.inputSocketId === inputSocketId,
@@ -179,7 +163,7 @@ export const useFuncStore = () => {
 
         outputSocketForId:
           (state) =>
-          (outputSocketId: string): OutputSocket | undefined => {
+          (outputSocketId: string): OutputSocketView | undefined => {
             for (const sockets of Object.values(state.outputSockets)) {
               const outputSocket = sockets.find(
                 (socket) => socket.outputSocketId === outputSocketId,
@@ -197,7 +181,7 @@ export const useFuncStore = () => {
             ? _.flatten(Object.values(state.inputSourceProps))
             : state.inputSourceProps[schemaVariantId]
           )?.map((prop) => ({
-            label: `${prop.path}${prop.name}`,
+            label: prop.path,
             value: prop.propId,
           })) ?? [],
 
@@ -221,24 +205,10 @@ export const useFuncStore = () => {
       },
 
       actions: {
-        inputSocketIdToSourceName(inputSocketId: string) {
-          const socket = this.inputSocketForInputSocketId(inputSocketId);
-          if (socket) {
-            return `Input Socket: ${socket.name}`;
-          }
-
-          const prop = this.proprForInputSocketId(inputSocketId);
-          if (prop) {
-            return `Attribute: ${prop.path}${prop.name}`;
-          }
-
-          return undefined;
-        },
-
         propIdToSourceName(propId: string) {
           const prop = this.propForId(propId);
           if (prop) {
-            return `Attribute: ${prop.path}${prop.name}`;
+            return `Attribute: ${prop.path}`;
           }
         },
 
@@ -250,9 +220,7 @@ export const useFuncStore = () => {
           return undefined;
         },
 
-        schemaVariantIdForAttributePrototype(
-          prototype: AttributePrototypeView,
-        ) {
+        schemaVariantIdForAttributePrototype(prototype: AttributePrototypeBag) {
           if (prototype.propId) {
             return this.propForId(prototype.propId)?.schemaVariantId;
           }
@@ -264,7 +232,7 @@ export const useFuncStore = () => {
         },
 
         outputLocationForAttributePrototype(
-          prototype: AttributePrototypeView,
+          prototype: AttributePrototypeBag,
         ): OutputLocation | undefined {
           if (prototype.propId) {
             return {
@@ -364,8 +332,6 @@ export const useFuncStore = () => {
             changeSetStore.creatingChangeSet = true;
           const isHead = changeSetStore.headSelected;
 
-          const oldAssociations = this.funcDetailsById[func.id]?.associations;
-
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_func",
@@ -390,64 +356,8 @@ export const useFuncStore = () => {
               };
             },
             keyRequestStatusBy: func.id,
-            onSuccess: (response) => {
-              if (isHead) return;
-
-              if (
-                response.associations &&
-                "schemaVariantIds" in response.associations &&
-                oldAssociations &&
-                "schemaVariantIds" in oldAssociations
-              ) {
-                const addedVariantIds = _.difference(
-                  response.associations.schemaVariantIds,
-                  oldAssociations.schemaVariantIds,
-                );
-
-                const removedVariantIds = _.difference(
-                  oldAssociations.schemaVariantIds,
-                  response.associations.schemaVariantIds,
-                );
-
-                for (const schemaVariantId of _.concat(
-                  addedVariantIds,
-                  removedVariantIds,
-                )) {
-                  const assetStore = useAssetStore();
-                  const asset =
-                    assetStore.assetBySchemaVariantId[schemaVariantId];
-
-                  if (asset) {
-                    useAssetStore().LOAD_ASSET(asset.id);
-                  }
-                }
-              }
-
-              func.associations = response.associations;
-              func.isRevertible = response.isRevertible;
-              this.funcDetailsById[func.id] = func;
-
-              // Forces a reload if the types have changed (reloads typescript compiler)
-              if (func.types !== response.types) {
-                this.FETCH_FUNC_DETAILS(func.id);
-              }
-            },
           });
         },
-
-        async REVERT_FUNC(funcId: FuncId) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
-          return new ApiRequest<{ success: true }>({
-            method: "post",
-            url: "func/revert_func",
-            params: { id: funcId, ...visibility },
-          });
-        },
-
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
           const func = this.funcById(funcId);
           if (func) {
@@ -458,36 +368,15 @@ export const useFuncStore = () => {
             throw new Error("race, wait until the change set is created");
           if (changeSetStore.headSelected)
             changeSetStore.creatingChangeSet = true;
-          const isHead = changeSetStore.headSelected;
 
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_and_exec",
             keyRequestStatusBy: funcId,
             params: { ...func, ...visibility },
-            onSuccess: (response) => {
-              if (isHead) return;
-              const func = this.funcDetailsById[funcId];
-              if (func) {
-                func.associations = response.associations;
-                func.isRevertible = response.isRevertible;
-                this.funcDetailsById[funcId] = func;
-              }
-            },
           });
         },
-        async GET_FUNC_LAST_EXECUTION(funcId: FuncId) {
-          return new ApiRequest({
-            method: "get",
-            url: "func/get_func_last_execution",
-            params: { id: funcId, ...visibility },
-            onSuccess: (response) => {
-              this.lastFuncExecutionLogByFuncId[funcId] = response;
-            },
-          });
-        },
-
-        async EXECUTE(executeRequest: {
+        async TEST_EXECUTE(executeRequest: {
           id: FuncId;
           args: unknown;
           executionKey: string;
@@ -515,11 +404,10 @@ export const useFuncStore = () => {
             }[];
           }>({
             method: "post",
-            url: "func/execute",
+            url: "func/test_execute",
             params: { ...executeRequest, ...visibility },
           });
         },
-
         async CREATE_FUNC(createFuncRequest: {
           kind: FuncKind;
           name?: string;
@@ -539,11 +427,10 @@ export const useFuncStore = () => {
             },
           });
         },
-
         async FETCH_INPUT_SOURCE_LIST(schemaVariantId?: string) {
           return new ApiRequest<{
-            inputSockets: InputSourceSocket[];
-            outputSockets: OutputSocket[];
+            inputSockets: InputSocketView[];
+            outputSockets: OutputSocketView[];
             props: InputSourceProp[];
           }>({
             url: "func/list_input_sources",
@@ -582,6 +469,17 @@ export const useFuncStore = () => {
               }
               this.outputSockets = outputSockets;
             },
+          });
+        },
+        async FETCH_PROTOTYPE_ARGUMENTS(
+          propId?: string,
+          outputSocketId?: string,
+        ) {
+          return new ApiRequest<{
+            preparedArguments: Record<string, unknown>;
+          }>({
+            url: "attribute/get_prototype_arguments",
+            params: { propId, outputSocketId, ...visibility },
           });
         },
 
@@ -672,7 +570,9 @@ export const useFuncStore = () => {
           }
         });
 
+        const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
+
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
             eventType: "ChangeSetWritten",
@@ -693,13 +593,15 @@ export const useFuncStore = () => {
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
-            },
-          },
-          {
-            eventType: "FuncReverted",
-            callback: (data) => {
-              if (data.changeSetId !== selectedChangeSetId) return;
-              this.FETCH_FUNC_LIST();
+
+              const assetId = assetStore.getLastSelectedAssetId();
+              if (
+                assetId &&
+                assetStore.selectedFuncId &&
+                assetStore.selectedFuncId === this.selectedFuncId
+              ) {
+                assetStore.closeFunc(assetId, this.selectedFuncId);
+              }
             },
           },
           {
@@ -707,6 +609,36 @@ export const useFuncStore = () => {
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
+
+              // Reload the last selected asset to ensure that its func list is up to date.
+              const assetId = assetStore.getLastSelectedAssetId();
+              if (assetId) {
+                assetStore.LOAD_ASSET(assetId);
+              }
+
+              if (this.selectedFuncId) {
+                // only fetch if we don't have this one already in our state,
+                // otherwise we can overwrite functions with their previous value
+                // before the save queue is drained.
+                if (
+                  typeof this.funcDetailsById[this.selectedFuncId] ===
+                    "undefined" &&
+                  data.funcId === this.selectedFuncId
+                ) {
+                  this.FETCH_FUNC_DETAILS(this.selectedFuncId);
+                }
+
+                // // NOTE(nick): since we removed the response body from routes involving saving
+                // // funcs, we may need to re-introduce logic related to reloading the typescript
+                // // compiler as well as some other tasks. If this comment becomes old and the
+                // // associated code remains commented out, we can likely delete this.
+                //
+                // // NOTE(nick): force a reload if the types have changed in order to reload the
+                // // typescript compiler.
+                // if (func.types !== response.types) {
+                //   this.FETCH_FUNC_DETAILS(func.id);
+                // }
+              }
             },
           },
         ]);

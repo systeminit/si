@@ -6,8 +6,9 @@ use crate::ChangeSetId;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Visibility {
-    // FIXME(nick): if we change the serialization name, we will blow the fuck up. We need to change
-    // that.
+    // FIXME(nick): if we change the serialization name, you will have downstream problems. As we
+    // get rid of standard model, we should remove "visibility_change_set_pk" entirely and just
+    // use "change_set_id".
     #[serde(
         rename = "visibility_change_set_pk",
         deserialize_with = "deserialize_number_from_string"
@@ -20,8 +21,9 @@ impl Visibility {
         Visibility { change_set_id }
     }
 
-    // FIXME(nick): this is bullshit.
-    pub fn new_head() -> Self {
+    // FIXME(nick): do not trust this method. It is purely used during bootstrapping and should be
+    // removed.
+    pub fn new_head_fake() -> Self {
         Self {
             change_set_id: Ulid::new().into(),
         }

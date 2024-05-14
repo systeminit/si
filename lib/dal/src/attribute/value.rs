@@ -41,27 +41,31 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
+use async_recursion::async_recursion;
+use indexmap::IndexMap;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_events::ulid::Ulid;
 use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{RwLock, TryLockError};
-use ulid::Ulid;
 
 pub use dependent_value_graph::DependentValueGraph;
 
+use crate::action::prototype::ActionKind;
+use crate::action::Action;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::PropError;
+use crate::secret::before_funcs_for_component;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
@@ -76,7 +80,8 @@ use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotErr
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, TransactionsError,
+    OutputSocketId, Prop, PropId, PropKind, SchemaVariant, Secret, SecretError, TransactionsError,
+    Workspace,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -88,11 +93,12 @@ use super::prototype::argument::{
 
 pub mod debug;
 pub mod dependent_value_graph;
-pub mod view;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AttributeValueError {
+    #[error("action error: {0}")]
+    Action(String),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -183,6 +189,8 @@ pub enum AttributeValueError {
     PropNotFound(AttributeValueId),
     #[error("trying to delete av that's not related to child of map or array: {0}")]
     RemovingWhenNotChildOrMapOrArray(AttributeValueId),
+    #[error("secret error: {0}")]
+    Secret(#[from] Box<SecretError>),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -197,6 +205,8 @@ pub enum AttributeValueError {
     Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
     ValueSource(#[from] ValueSourceError),
+    #[error("workspace error: {0}")]
+    Workspace(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -215,13 +225,12 @@ pub struct AttributeValue {
     /// The processed return value.
     /// Example: empty array.
     pub value: Option<ContentAddress>,
-    pub materialized_view: Option<ContentAddress>,
     pub func_execution_pk: Option<FuncExecutionPk>,
 }
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
 /// is a particular value the value of/for?
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "kind", content = "id")]
 pub enum ValueIsFor {
     Prop(PropId),
@@ -249,6 +258,23 @@ impl ValueIsFor {
             ValueIsFor::InputSocket(id) => Some(*id),
             _ => None,
         }
+    }
+
+    pub async fn debug_info(&self, ctx: &DalContext) -> AttributeValueResult<String> {
+        Ok(match self {
+            ValueIsFor::OutputSocket(output_socket_id) => {
+                let socket = OutputSocket::get_by_id(ctx, *output_socket_id).await?;
+                format!("Output Socket: {}", socket.name())
+            }
+            ValueIsFor::InputSocket(input_socket_id) => {
+                let socket = InputSocket::get_by_id(ctx, *input_socket_id).await?;
+                format!("Input Socket: {}", socket.name())
+            }
+            ValueIsFor::Prop(prop_id) => {
+                let prop = Prop::get_by_id_or_error(ctx, *prop_id).await?;
+                format!("Prop: {}", prop.path(ctx).await?.with_replaced_sep("."))
+            }
+        })
     }
 }
 
@@ -293,7 +319,6 @@ impl From<AttributeValueNodeWeight> for AttributeValue {
             id: value.id().into(),
             unprocessed_value: value.unprocessed_value(),
             value: value.value(),
-            materialized_view: value.materialized_view(),
             func_execution_pk: value.func_execution_pk(),
         }
     }
@@ -349,7 +374,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Self> {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None, None)?;
+        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None)?;
         let is_for = is_for.into();
 
         let ordered = if let Some(prop_id) = is_for.prop_id() {
@@ -510,6 +535,7 @@ impl AttributeValue {
         )
         .into())
     }
+
     #[instrument(level = "info" skip(ctx, read_lock))]
     pub async fn execute_prototype_function(
         ctx: &DalContext,
@@ -526,31 +552,96 @@ impl AttributeValue {
         // execution result is being written to the graph.
 
         let read_guard = read_lock.read().await;
-        let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
-        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        let destination_component_id =
-            AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-        info!(
-            "Attribute value Id {} value is for {:?}",
-            attribute_value_id, value_is_for
-        );
-        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-        let mut func_binding_args: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
-        if apa_ids.is_empty() {
-            if let Some(implicit_input) =
-                Self::get_inferred_input_value(ctx, attribute_value_id).await?
-            {
-                let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
 
-                match Func::get_by_id(ctx, input_func).await? {
-                    Some(_) => match FuncArgument::list_for_func(ctx, input_func).await?.pop() {
-                        Some(id) => func_binding_args.insert(id.name, vec![implicit_input]),
-                        None => None,
-                    },
-                    None => None,
-                };
-            };
+        // Prepare arguments for prototype function execution.
+        let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
+        let (prototype_func_id, prepared_func_binding_args) =
+            Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
+                .await?;
+
+        // We need the associated [`ComponentId`] for this function--this is how we resolve and
+        // prepare before functions
+        let associated_component_id = Self::component_id(ctx, attribute_value_id).await?;
+        let before = before_funcs_for_component(ctx, associated_component_id)
+            .await
+            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
+
+        // We have gathered all our inputs and so no longer need a lock on the graph. Be sure not to
+        // add graph walk operations below this drop.
+        drop(read_guard);
+
+        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
+            ctx,
+            prepared_func_binding_args.clone(),
+            prototype_func_id,
+            before,
+        )
+        .instrument(debug_span!(
+            "Func execution",
+            "func.id" = %prototype_func_id,
+            ?prepared_func_binding_args,
+        ))
+        .await
+        {
+            Ok(function_return_value) => function_return_value,
+            Err(FuncBindingError::FuncBackendResultFailure {
+                kind,
+                message,
+                backend,
+            }) => {
+                return Err(AttributeValueError::FuncBackendResultFailure {
+                    kind,
+                    message,
+                    backend,
+                });
+            }
+            Err(err) => Err(err)?,
+        };
+
+        let unprocessed_value = func_binding_return_value.unprocessed_value().cloned();
+        let processed_value = match value_is_for {
+            ValueIsFor::Prop(prop_id) => match &unprocessed_value {
+                Some(unprocessed_value) => {
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    match prop.kind {
+                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
+                        PropKind::Array => Some(serde_json::json!([])),
+                        _ => Some(unprocessed_value.to_owned()),
+                    }
+                }
+                None => None,
+            },
+            _ => func_binding_return_value.value().cloned(),
+        };
+
+        Ok(PrototypeExecutionResult {
+            value: processed_value,
+            unprocessed_value,
+            func_execution_pk: func_binding_return_value.func_execution_pk(),
+        })
+    }
+
+    #[instrument(level = "info" skip(ctx))]
+    pub async fn prepare_arguments_for_prototype_function_execution(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<(FuncId, Value)> {
+        // Cache the values we need for preparing arguments for execution.
+        let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
+        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        let destination_component_id = Self::component_id(ctx, attribute_value_id).await?;
+
+        // Gather the raw func bindings args into a map.
+        let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        if apa_ids.is_empty() {
+            let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
+            if !inferred_inputs.is_empty() {
+                let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
+                if let Some(func_arg) = FuncArgument::list_for_func(ctx, input_func).await?.pop() {
+                    func_binding_args.insert(func_arg.name, inferred_inputs);
+                }
+            }
         } else {
             for apa_id in apa_ids {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
@@ -599,6 +690,11 @@ impl AttributeValue {
                                         .value,
                                 ]
                             }
+                            ValueSource::Secret(secret_id) => {
+                                vec![Secret::payload_for_prototype_execution(ctx, secret_id)
+                                    .await
+                                    .map_err(Box::new)?]
+                            }
                             other_source => {
                                 let mut values = vec![];
 
@@ -615,10 +711,7 @@ impl AttributeValue {
                                     // XXX: no value" vs "the value is null", but right now we collapse
                                     // XXX: the two to just be "null" when passing these to a function.
                                     values.push(
-                                        attribute_value
-                                            .materialized_view(ctx)
-                                            .await?
-                                            .unwrap_or(Value::Null),
+                                        attribute_value.view(ctx).await?.unwrap_or(Value::Null),
                                     );
                                 }
 
@@ -643,7 +736,6 @@ impl AttributeValue {
         // functions.
         let mut args_map = HashMap::new();
         for (arg_name, values) in func_binding_args {
-            info!("arg name {} and values {:?}", arg_name, values);
             match values.len() {
                 1 => {
                     args_map.insert(arg_name, values[0].to_owned());
@@ -658,75 +750,18 @@ impl AttributeValue {
                 }
             }
         }
+
+        // Serialize the raw args and we're good to go.
         let prepared_func_binding_args = serde_json::to_value(args_map)?;
 
-        // We need the associated [`ComponentId`] for this function--this is how we resolve and
-        // prepare before functions
-        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, &associated_component_id)
-            .await
-            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
-
-        // We have gathered up all our inputs and so no longer need a lock on
-        // the graph. Be sure not to add graph walk operations below this drop
-        drop(read_guard);
-
-        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
-            ctx,
-            prepared_func_binding_args.clone(),
-            prototype_func_id,
-            before,
-        )
-        .instrument(debug_span!(
-            "Func execution",
-            "func.id" = %prototype_func_id,
-            ?prepared_func_binding_args,
-        ))
-        .await
-        {
-            Ok(function_return_value) => function_return_value,
-            Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }) => {
-                return Err(AttributeValueError::FuncBackendResultFailure {
-                    kind,
-                    message,
-                    backend,
-                });
-            }
-            Err(err) => Err(err)?,
-        };
-
-        let unprocessed_value = func_binding_return_value.unprocessed_value().cloned();
-        let processed_value = match value_is_for {
-            ValueIsFor::Prop(prop_id) => match &unprocessed_value {
-                Some(unprocessed_value) => {
-                    let prop = Prop::get_by_id(ctx, prop_id).await?;
-                    match prop.kind {
-                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
-                        PropKind::Array => Some(serde_json::json!([])),
-                        _ => Some(unprocessed_value.to_owned()),
-                    }
-                }
-                None => None,
-            },
-            _ => func_binding_return_value.value().cloned(),
-        };
-
-        Ok(PrototypeExecutionResult {
-            value: processed_value,
-            unprocessed_value,
-            func_execution_pk: func_binding_return_value.func_execution_pk(),
-        })
+        Ok((prototype_func_id, prepared_func_binding_args))
     }
 
-    #[instrument(level = "info", skip_all)]
-    async fn get_inferred_input_value(
+    #[instrument(level = "debug", skip_all)]
+    async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<Value>> {
+    ) -> AttributeValueResult<Vec<Value>> {
         // let mut maybe_result: Option<Value> = None;
         let maybe_input_socket_id =
             match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
@@ -735,7 +770,7 @@ impl AttributeValue {
             };
 
         let Some(input_socket_id) = maybe_input_socket_id else {
-            return Ok(None);
+            return Ok(vec![]);
         };
 
         let component_id = Self::component_id(ctx, input_attribute_value_id).await?;
@@ -744,47 +779,66 @@ impl AttributeValue {
             input_socket_id,
             attribute_value_id: input_attribute_value_id,
         };
-        info!(
-            " AV: Finding inferred input value for input value {}",
-            input_attribute_value_id
-        );
-
-        Ok(
-            match Component::find_inferred_connection_to_input_socket(ctx, input_socket_match).await
-            {
-                Ok(Some(output_match)) => {
-                    // Both deleted and non deleted components can feed data into deleted components.
-                    // ** ONLY ** non-deleted components can feed data into non-deleted components
-                    let source_component =
-                        Component::get_by_id(ctx, input_socket_match.component_id)
-                            .await
-                            .map_err(Box::new)?;
-                    let destination_component =
-                        Component::get_by_id(ctx, output_match.component_id)
-                            .await
-                            .map_err(Box::new)?;
-
-                    if destination_component.to_delete()
-                        || (!destination_component.to_delete() && !source_component.to_delete())
-                    {
-                        // XXX: We need to properly handle the difference between "there is
-                        // XXX: no value" vs "the value is null", but right now we collapse
-                        // XXX: the two to just be "null" when passing these to a function.
-                        let output_av =
-                            AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                        let mat_view = output_av
-                            .materialized_view(ctx)
-                            .await?
-                            .unwrap_or(Value::Null);
-                        Some(mat_view)
-                    } else {
-                        None
-                    }
+        let mut inputs = vec![];
+        if let Ok(maybe_matches) =
+            Component::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))
+        {
+            for output_match in maybe_matches {
+                // Both deleted and non deleted components can feed data into deleted components.
+                // ** ONLY ** non-deleted components can feed data into non-deleted components
+                if !Component::should_data_flow_between_components(
+                    ctx,
+                    input_socket_match.component_id,
+                    output_match.component_id,
+                )
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                {
+                    return Ok(vec![]);
                 }
-                _ => None,
-            },
+                // XXX: We need to properly handle the difference between "there is
+                // XXX: no value" vs "the value is null", but right now we collapse
+                // XXX: the two to just be "null" when passing these to a function.
+                let output_av =
+                    AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
+                let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                inputs.push(view);
+            }
+        };
+
+        Ok(inputs)
+    }
+
+    pub async fn prototype_func(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Func> {
+        let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
+        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        Ok(Func::get_by_id_or_error(ctx, prototype_func_id).await?)
+    }
+
+    pub async fn is_set_by_dependent_function(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(Self::prototype_func(ctx, attribute_value_id)
+            .await?
+            .is_dynamic())
+    }
+
+    pub async fn is_set_by_unset(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(
+            Self::prototype_func(ctx, attribute_value_id).await?.name
+                == IntrinsicFunc::Unset.name(),
         )
     }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn set_values_from_execution_result(
         ctx: &DalContext,
@@ -810,7 +864,10 @@ impl AttributeValue {
             Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
         }
 
-        let values_are_different = value != unprocessed_value;
+        let should_populate_nested = Self::prop_for_id(ctx, attribute_value_id)
+            .await?
+            .map(|prop| prop.kind.is_container())
+            .unwrap_or(false);
 
         Self::set_real_values(
             ctx,
@@ -821,12 +878,8 @@ impl AttributeValue {
         )
         .await?;
 
-        if values_are_different {
+        if should_populate_nested {
             Self::populate_nested_values(ctx, attribute_value_id, unprocessed_value).await?;
-        } else {
-            let materialized_view =
-                AttributeValue::create_materialized_view(ctx, attribute_value_id).await?;
-            Self::set_materialized_view(ctx, attribute_value_id, materialized_view).await?;
         }
 
         Ok(())
@@ -1144,7 +1197,7 @@ impl AttributeValue {
                             attribute_value_id,
                         ),
                     )?;
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
                 (prop.kind, prop_id)
             };
@@ -1190,84 +1243,71 @@ impl AttributeValue {
             view_stack.extend(view_stack_extension);
         }
 
-        // walk up the tree that we touched, creating materialized views
-        while let Some(attribute_value_id) = view_stack.pop() {
-            let materialized_view =
-                AttributeValue::create_materialized_view(ctx, attribute_value_id).await?;
-            Self::set_materialized_view(ctx, attribute_value_id, materialized_view).await?;
-        }
-
         Ok(())
     }
 
-    pub async fn create_materialized_view(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<serde_json::Value>> {
-        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-        if av.value(ctx).await?.is_none() {
-            return Ok(None);
-        }
+    #[async_recursion]
+    pub async fn view(&self, ctx: &DalContext) -> AttributeValueResult<Option<serde_json::Value>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let attribute_value_id = self.id;
 
         match AttributeValue::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => {
-                let prop_kind = workspace_snapshot
-                    .get_node_weight_by_id(prop_id)
-                    .await?
-                    .get_prop_node_weight()?
-                    .kind();
+                let self_value = self.value(ctx).await?;
+                if self_value.is_none() {
+                    // If we are None, but our prototype hasn't been overridden
+                    // for this component, look for a default value
+                    if Self::component_prototype_id(ctx, self.id).await?.is_none() {
+                        return Ok(Prop::default_value(ctx, prop_id).await?);
+                    }
+                    return Ok(None);
+                }
 
-                match prop_kind {
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+
+                match prop.kind {
                     PropKind::Object => {
-                        let mut object_view: HashMap<String, serde_json::Value> = HashMap::new();
-                        let mut child_av_ids = vec![];
+                        let mut object_view: IndexMap<String, serde_json::Value> = IndexMap::new();
+                        let mut av_prop_map = HashMap::new();
 
+                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                            ctx,
+                            attribute_value_id,
+                        )
+                        .await?
                         {
-                            for child_target in workspace_snapshot
-                                .outgoing_targets_for_edge_weight_kind(
-                                    attribute_value_id,
-                                    EdgeWeightKindDiscriminants::Contain,
-                                )
-                                .await?
-                            {
-                                let av_id =
-                                    workspace_snapshot.get_node_weight(child_target).await?.id();
-                                child_av_ids.push(av_id.into());
-                            }
-                        }
-
-                        for child_av_id in child_av_ids {
                             let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
 
                             if let ValueIsFor::Prop(child_prop_id) =
                                 AttributeValue::is_for(ctx, child_av.id()).await?
                             {
-                                let child_prop_name = {
-                                    workspace_snapshot
-                                        .get_node_weight_by_id(child_prop_id)
-                                        .await?
-                                        .get_prop_node_weight()?
-                                        .name()
-                                        .to_owned()
-                                };
-
-                                let child_materialized_view =
-                                    child_av.materialized_view(ctx).await?;
-                                if let Some(view) = child_materialized_view {
-                                    object_view.insert(child_prop_name, view);
-                                }
+                                av_prop_map.insert(child_prop_id, child_av);
                             } else {
                                 return Err(AttributeValueError::UnexpectedGraphLayout("a child attribute value of an object has no outgoing Prop edge but has an outgoing Socket edge"));
+                            }
+                        }
+
+                        // Unlike maps or arrays, we want to walk the
+                        // attribute values in prop order, not attribute
+                        // value order, so that we always return them in the
+                        // same order (the order the props were created for
+                        // the schema variant), not the order they were set
+                        // on the attribute value
+                        for child_prop in Prop::direct_child_props_ordered(ctx, prop_id).await? {
+                            if let Some(child_av) = av_prop_map.get(&child_prop.id()) {
+                                let child_view = child_av.view(ctx).await?;
+                                if let Some(view) = child_view {
+                                    object_view.insert(child_prop.name, view);
+                                }
                             }
                         }
 
                         Ok(Some(serde_json::to_value(object_view)?))
                     }
                     PropKind::Map => {
-                        let mut map_view: HashMap<String, serde_json::Value> = HashMap::new();
+                        let mut map_view: IndexMap<String, serde_json::Value> = IndexMap::new();
 
-                        let child_av_idxs_and_keys: HashMap<String, NodeIndex> = {
+                        let child_av_keys: HashMap<NodeIndex, String> = {
                             workspace_snapshot
                                 .edges_directed_for_edge_weight_kind(
                                     attribute_value_id,
@@ -1278,7 +1318,7 @@ impl AttributeValue {
                                 .iter()
                                 .filter_map(|(edge_weight, _, target_idx)| {
                                     if let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() {
-                                        Some((key.to_owned(), *target_idx))
+                                        Some((*target_idx, key.to_owned()))
                                     } else {
                                         None
                                     }
@@ -1286,18 +1326,20 @@ impl AttributeValue {
                                 .collect()
                         };
 
-                        for (key, node_index) in child_av_idxs_and_keys {
-                            let child_av_id: AttributeValueId = {
-                                workspace_snapshot
-                                    .get_node_weight(node_index)
-                                    .await?
-                                    .id()
-                                    .into()
-                            };
+                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                            ctx,
+                            attribute_value_id,
+                        )
+                        .await?
+                        {
+                            let node_index =
+                                workspace_snapshot.get_node_index_by_id(child_av_id).await?;
 
-                            let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
-                            if let Some(view) = child_av.materialized_view(ctx).await? {
-                                map_view.insert(key, view);
+                            if let Some(key) = child_av_keys.get(&node_index) {
+                                let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
+                                if let Some(view) = child_av.view(ctx).await? {
+                                    map_view.insert(key.to_owned(), view);
+                                }
                             }
                         }
 
@@ -1317,17 +1359,17 @@ impl AttributeValue {
 
                         for element_av_id in element_av_ids {
                             let av = AttributeValue::get_by_id(ctx, element_av_id.into()).await?;
-                            if let Some(view) = av.materialized_view(ctx).await? {
+                            if let Some(view) = av.view(ctx).await? {
                                 array_view.push(view);
                             }
                         }
 
                         Ok(Some(serde_json::to_value(array_view)?))
                     }
-                    _ => Ok(av.value(ctx).await?),
+                    _ => Ok(self_value),
                 }
             }
-            ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(av.value(ctx).await?),
+            ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(self.value(ctx).await?),
         }
     }
 
@@ -1581,7 +1623,7 @@ impl AttributeValue {
             .await?
         {
             if let EdgeWeightKind::Contain(contain_key) = edge_weight.kind() {
-                key = contain_key.to_owned();
+                contain_key.clone_into(&mut key);
             }
         }
 
@@ -1744,6 +1786,7 @@ impl AttributeValue {
     }
 
     /// Set's the component specific prototype id for this attribute value.
+    #[instrument(level = "info", skip(ctx))]
     pub async fn set_component_prototype_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1766,7 +1809,7 @@ impl AttributeValue {
 
         Ok(())
     }
-    #[instrument(level="info" skip_all)]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn use_default_prototype(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1786,7 +1829,9 @@ impl AttributeValue {
             )
             .await?;
 
-        AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        if !AttributeValue::is_set_by_dependent_function(ctx, attribute_value_id).await? {
+            AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        }
         ctx.enqueue_dependent_values_update(vec![attribute_value_id])
             .await?;
 
@@ -1860,7 +1905,7 @@ impl AttributeValue {
         };
 
         let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, &associated_component_id)
+        let before = before_funcs_for_component(ctx, associated_component_id)
             .await
             .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
 
@@ -1896,63 +1941,6 @@ impl AttributeValue {
             func_binding_return_value.func_execution_pk(),
         )
         .await?;
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    async fn set_materialized_view(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        view: Option<serde_json::Value>,
-    ) -> AttributeValueResult<()> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let (av_idx, av_node_weight) = {
-            let av_idx = workspace_snapshot
-                .get_node_index_by_id(attribute_value_id)
-                .await?;
-
-            (
-                av_idx,
-                workspace_snapshot
-                    .get_node_weight(av_idx)
-                    .await?
-                    .get_attribute_value_node_weight()?,
-            )
-        };
-
-        let content_view: Option<si_events::CasValue> = view.clone().map(Into::into);
-
-        let view_address = match content_view {
-            Some(view) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(view.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?
-                    .0,
-            ),
-            None => None,
-        };
-
-        debug!(
-            "set_materialized_view: {:?}, {:?}, {}",
-            &view, &view_address, attribute_value_id
-        );
-
-        let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
-
-        new_av_node_weight.set_materialized_view(view_address.map(ContentAddress::JsonValue));
-
-        workspace_snapshot
-            .add_node(NodeWeight::AttributeValue(new_av_node_weight))
-            .await?;
-        workspace_snapshot.replace_references(av_idx).await?;
-
         Ok(())
     }
 
@@ -2036,6 +2024,45 @@ impl AttributeValue {
             ctx.enqueue_compute_validations(attribute_value_id).await?;
         }
 
+        // Enqueue update actions if they exist
+        {
+            let workspace_pk = ctx
+                .tenancy()
+                .workspace_pk()
+                .ok_or(ComponentError::WorkspacePkNone)
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+
+            let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk)
+                .await
+                .map_err(|err| AttributeValueError::Workspace(err.to_string()))?;
+
+            let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            let schema_variant_id = Component::schema_variant_id(ctx, component_id)
+                .await
+                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
+
+            if workspace.uses_actions_v2() {
+                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                    ctx,
+                    schema_variant_id,
+                    ActionKind::Update,
+                )
+                .await
+                .map_err(|err| AttributeValueError::Action(err.to_string()))?
+                {
+                    if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                        .await
+                        .map_err(|err| AttributeValueError::Action(err.to_string()))?
+                        .is_none()
+                    {
+                        Action::new(ctx, prototype_id, Some(component_id))
+                            .await
+                            .map_err(|err| AttributeValueError::Action(err.to_string()))?;
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -2054,6 +2081,17 @@ impl AttributeValue {
             .get_attribute_value_node_weight()?;
 
         Ok(node_weight.into())
+    }
+
+    pub async fn prop_for_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<Prop>> {
+        let prop_id = Self::prop_id_for_id(ctx, attribute_value_id).await?;
+        Ok(match prop_id {
+            Some(prop_id) => Some(Prop::get_by_id_or_error(ctx, prop_id).await?),
+            None => None,
+        })
     }
 
     pub async fn prop_id_for_id(
@@ -2123,13 +2161,6 @@ impl AttributeValue {
         Self::fetch_value_from_store(ctx, self.unprocessed_value).await
     }
 
-    pub async fn materialized_view(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<serde_json::Value>> {
-        Self::fetch_value_from_store(ctx, self.materialized_view).await
-    }
-
     pub async fn func_execution(
         &self,
         ctx: &DalContext,
@@ -2173,7 +2204,7 @@ impl AttributeValue {
 
             let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
 
-            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
+            let parent_prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
             if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
                 return Ok(None);
@@ -2243,7 +2274,7 @@ impl AttributeValue {
     /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_path_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -2254,7 +2285,7 @@ impl AttributeValue {
         while let Some(mut attribute_value_id) = work_queue.pop_front() {
             let attribute_path = match Self::is_for(ctx, attribute_value_id).await? {
                 ValueIsFor::Prop(prop_id) => {
-                    let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
+                    let prop_name = Prop::get_by_id_or_error(ctx, prop_id).await?.name;
                     let attribute_path = AttributeValuePath::Prop {
                         path: prop_name,
                         key_or_index: None,
@@ -2328,6 +2359,35 @@ impl AttributeValue {
             work_queue.extend(children);
         }
         Ok(child_values)
+    }
+
+    /// Walk the tree below `id` and gather up all children if the children are
+    /// children of an object. The returned list is in breadth-first pre-order
+    pub async fn all_object_children_to_leaves(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let mut values = vec![];
+        let mut work_queue = VecDeque::from([id]);
+
+        while let Some(attribute_value_id) = work_queue.pop_front() {
+            if let ValueIsFor::Prop(prop_id) =
+                AttributeValue::is_for(ctx, attribute_value_id).await?
+            {
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                if prop.kind == PropKind::Object {
+                    for child_value_id in
+                        AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                            .await?
+                    {
+                        values.push(child_value_id);
+                        work_queue.push_back(child_value_id);
+                    }
+                }
+            }
+        }
+
+        Ok(values)
     }
 
     pub async fn list_all_children(

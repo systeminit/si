@@ -4,6 +4,7 @@ use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::{ulid::Ulid, ContentHash};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::EdgeWeightKindDiscriminants;
 use crate::{
     change_set::ChangeSet,
     workspace_snapshot::{
@@ -65,6 +66,10 @@ impl ContentNodeWeight {
 
     pub fn content_hash(&self) -> ContentHash {
         self.content_address.content_hash()
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![self.content_address.content_hash()]
     }
 
     pub fn id(&self) -> Ulid {
@@ -145,7 +150,12 @@ impl ContentNodeWeight {
             ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
-            ContentAddress::Secret(_) => ContentAddress::Secret(content_hash),
+            ContentAddress::Secret(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Secret".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::StaticArgumentValue(_) => {
                 ContentAddress::StaticArgumentValue(content_hash)
             }
@@ -201,6 +211,10 @@ impl ContentNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
 }
 

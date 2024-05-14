@@ -1,0 +1,2 @@
+ARG BASE_VERSION
+FROM edoburu/pgbouncer:${BASE_VERSION}

@@ -1,8 +1,16 @@
+use dal::prop::PropPath;
+use dal::property_editor::values::PropertyEditorValues;
+use dal::qualification::QualificationSubCheckStatus;
 use dal::secret::DecryptedSecret;
-use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion};
+use dal::{Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm, SecretVersion};
+use dal_test::helpers::{create_component_for_schema_name, encrypt_message, ChangeSetTestHelpers};
 use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
+
+mod before_funcs;
+mod bench;
+mod with_actions;
 
 #[test]
 async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
@@ -26,7 +34,7 @@ async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(Some("Description"), secret.description().as_deref());
 
     // Ensure that the underlying encrypted secret was created and that we can fetch its key pair.
-    let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.key())
+    let encrypted_secret = EncryptedSecret::get_by_key(ctx, secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found");
@@ -76,10 +84,13 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret.name(), found_secret.name());
     assert_eq!(secret.description(), found_secret.description());
     assert_eq!(secret.definition(), found_secret.definition());
-    assert_eq!(secret.key(), found_secret.key());
+    assert_eq!(
+        secret.encrypted_secret_key(),
+        found_secret.encrypted_secret_key()
+    );
 
-    // Ensure that the decrypted contents match our messag.e
-    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+    // Ensure that the decrypted contents match our message.
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found")
@@ -126,10 +137,13 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     assert_eq!(secret.name(), found_secret.name());
     assert_eq!(secret.description(), found_secret.description());
     assert_eq!(secret.definition(), found_secret.definition());
-    assert_eq!(secret.key(), found_secret.key());
+    assert_eq!(
+        secret.encrypted_secret_key(),
+        found_secret.encrypted_secret_key()
+    );
 
     // Ensure that the decrypted message matches the original message.
-    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.key())
+    let decrypted = EncryptedSecret::get_by_key(ctx, found_secret.encrypted_secret_key())
         .await
         .expect("failed to perform get by key for encrypted secret")
         .expect("no encrypted secret found")
@@ -146,7 +160,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         &serde_json::to_vec(&updated_message).expect("failed to serialize message"),
         pkey,
     );
-    let original_key = secret.key();
+    let original_key = secret.encrypted_secret_key();
     let updated_secret = secret
         .update_encrypted_contents(
             ctx,
@@ -162,17 +176,21 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         .expect("could not perform get by id or secret not found");
 
     // Check that the key has changed.
-    assert_ne!(original_key, updated_secret.key());
-    assert_eq!(found_updated_secret.key(), updated_secret.key());
+    assert_ne!(original_key, updated_secret.encrypted_secret_key());
+    assert_eq!(
+        found_updated_secret.encrypted_secret_key(),
+        updated_secret.encrypted_secret_key()
+    );
 
     // Check that the decrypted contents match.
-    let updated_decrypted = EncryptedSecret::get_by_key(ctx, found_updated_secret.key())
-        .await
-        .expect("failed to perform get by key for encrypted secret")
-        .expect("no encrypted secret found")
-        .decrypt(ctx)
-        .await
-        .expect("failed to decrypt encrypted secret");
+    let updated_decrypted =
+        EncryptedSecret::get_by_key(ctx, found_updated_secret.encrypted_secret_key())
+            .await
+            .expect("failed to perform get by key for encrypted secret")
+            .expect("no encrypted secret found")
+            .decrypt(ctx)
+            .await
+            .expect("failed to decrypt encrypted secret");
     let actual_updated_message = prepare_decrypted_secret_for_assertions(&updated_decrypted);
     assert_eq!(updated_message, actual_updated_message);
 
@@ -203,10 +221,13 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Ensure the key has not changed.
     assert_eq!(
-        double_updated_secret.key(),
-        found_double_updated_secret.key()
+        double_updated_secret.encrypted_secret_key(),
+        found_double_updated_secret.encrypted_secret_key()
     );
-    assert_eq!(double_updated_secret.key(), found_updated_secret.key());
+    assert_eq!(
+        double_updated_secret.encrypted_secret_key(),
+        found_updated_secret.encrypted_secret_key()
+    );
 
     // Ensure the definition has not changed.
     assert_eq!(
@@ -220,7 +241,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Check that the decrypted contents have not changed.
     let updated_decrypted_should_not_have_changed =
-        EncryptedSecret::get_by_key(ctx, found_double_updated_secret.key())
+        EncryptedSecret::get_by_key(ctx, found_double_updated_secret.encrypted_secret_key())
             .await
             .expect("failed to perform get by key for encrypted secret")
             .expect("no encrypted secret found")
@@ -232,6 +253,176 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     assert_eq!(
         updated_message,
         actual_updated_message_should_not_have_changed
+    );
+}
+
+#[test]
+async fn update_encrypted_contents_with_dependent_values(
+    ctx: &mut DalContext,
+    nw: &WorkspaceSignup,
+) {
+    // Create a component and commit.
+    let component =
+        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition").await;
+    let schema_variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("could not get schema variant id for component");
+    let component_id = component.id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Cache the name of the secret definition from the test exclusive schema and cache the prop we
+    // need for attribute value update.
+    let secret_definition_name = "dummy";
+    let dummy_secret_prop = Prop::find_prop_by_path(
+        ctx,
+        schema_variant_id,
+        &PropPath::new(["root", "secrets", secret_definition_name]),
+    )
+    .await
+    .expect("could not find prop by path");
+
+    // Create a secret with a value that will fail the qualification and commit.
+    let encrypted_message_that_will_fail_the_qualification = encrypt_message(
+        ctx,
+        nw.key_pair.pk(),
+        &serde_json::json![{"value": "howard"}],
+    )
+    .await;
+    let secret = Secret::new(
+        ctx,
+        generate_fake_name(),
+        secret_definition_name,
+        None,
+        &encrypted_message_that_will_fail_the_qualification,
+        nw.key_pair.pk(),
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Use the secret in the component and commit.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
+        .await
+        .expect("could not attach secret");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Check that the qualification fails.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Failure, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Update the encrypted contents.
+    let encrypted_message_that_will_pass_the_qualification =
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await;
+    let updated_secret = secret
+        .update_encrypted_contents(
+            ctx,
+            encrypted_message_that_will_pass_the_qualification.as_slice(),
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("could not update encrypted contents");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Check that the qualification succeeds.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Success, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Unset the secret and commit.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, None)
+        .await
+        .expect("could not attach for attribute value");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Ensure that the qualification fails.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Failure, // expected
+        qualification.result.expect("no result found").status  // actual
+    );
+
+    // Use the secret again.
+    let property_values = PropertyEditorValues::assemble(ctx, component_id)
+        .await
+        .expect("unable to list prop values");
+    let dummy_secret_attribute_value_id = property_values
+        .find_by_prop_id(dummy_secret_prop.id)
+        .expect("unable to find attribute value");
+    Secret::attach_for_attribute_value(
+        ctx,
+        dummy_secret_attribute_value_id,
+        Some(updated_secret.id()),
+    )
+    .await
+    .expect("could not attach secret");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Ensure that the qualification succeeds.
+    let qualifications = Component::list_qualifications(ctx, component_id)
+        .await
+        .expect("could not list qualifications");
+    let qualification = qualifications
+        .iter()
+        .find(|q| q.qualification_name == "test:qualificationDummySecretStringIsTodd")
+        .expect("qualification not found")
+        .to_owned();
+    assert_eq!(
+        QualificationSubCheckStatus::Success, // expected
+        qualification.result.expect("no result found").status  // actual
     );
 }
 

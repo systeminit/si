@@ -83,11 +83,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "RebaserShutdownHandle" => {
-                                let var = expander.setup_rebaser_shutdown_handle();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -205,12 +200,10 @@ struct DalTestFnSetupExpander {
     test_context: Option<Rc<Ident>>,
     cancellation_token: Option<Rc<Ident>>,
     task_tracker: Option<Rc<Ident>>,
-    nats_subject_prefix: Option<Rc<Ident>>,
     pinga_server: Option<Rc<Ident>>,
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
     rebaser_server: Option<Rc<Ident>>,
-    rebaser_shutdown_handle: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
     veritech_shutdown_handle: Option<Rc<Ident>>,
@@ -234,12 +227,10 @@ impl DalTestFnSetupExpander {
             test_context: None,
             cancellation_token: None,
             task_tracker: None,
-            nats_subject_prefix: None,
             pinga_server: None,
             pinga_shutdown_handle: None,
             start_pinga_server: None,
             rebaser_server: None,
-            rebaser_shutdown_handle: None,
             start_rebaser_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
@@ -302,14 +293,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
         self.task_tracker = value;
     }
 
-    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>> {
-        self.nats_subject_prefix.as_ref()
-    }
-
-    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>) {
-        self.nats_subject_prefix = value;
-    }
-
     fn pinga_server(&self) -> Option<&Rc<Ident>> {
         self.pinga_server.as_ref()
     }
@@ -340,14 +323,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>) {
         self.rebaser_server = value;
-    }
-
-    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>> {
-        self.rebaser_shutdown_handle.as_ref()
-    }
-
-    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
-        self.rebaser_shutdown_handle = value;
     }
 
     fn start_rebaser_server(&self) -> Option<()> {

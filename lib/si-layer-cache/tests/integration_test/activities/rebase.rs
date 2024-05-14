@@ -4,7 +4,9 @@ use std::sync::{
 };
 
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk, WorkspaceSnapshotAddress};
-use si_layer_cache::{activities::ActivityId, event::LayeredEventMetadata, LayerDb};
+use si_layer_cache::{
+    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
+};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
@@ -24,10 +26,11 @@ async fn subscribe_rebaser_requests_work_queue() {
     let db = setup_pg_db("subscribe_rebaser_requests_work_queue").await;
 
     // we need a layerdb for slash, which will be a consumer of our work queue
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -35,10 +38,11 @@ async fn subscribe_rebaser_requests_work_queue() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for axl, who will also be a consumer for our work queue
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -46,10 +50,11 @@ async fn subscribe_rebaser_requests_work_queue() {
     ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for duff, who will also be a consumer for our work queue
-    let (ldb_duff, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_duff, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_duff,
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -81,6 +86,7 @@ async fn subscribe_rebaser_requests_work_queue() {
             Ulid::new(),
             WorkspaceSnapshotAddress::new(b"poop"),
             Ulid::new(),
+            None,
             metadata.clone(),
         )
         .await
@@ -152,10 +158,11 @@ async fn rebase_and_wait() {
     let db = setup_pg_db("rebase_and_wait").await;
 
     // we need a layerdb for slash, who will send the rebase request
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -163,10 +170,11 @@ async fn rebase_and_wait() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for axl, who will send the reply
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -194,6 +202,7 @@ async fn rebase_and_wait() {
                 Ulid::new(),
                 WorkspaceSnapshotAddress::new(b"poop"),
                 Ulid::new(),
+                None,
                 metadata_for_task,
             )
             .await
@@ -240,10 +249,11 @@ async fn rebase_requests_work_queue_stress() {
     let db = setup_pg_db("rebase_requests_work_queue_stress").await;
 
     // we need a layerdb for slash, which will be a consumer of our work queue
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -251,10 +261,11 @@ async fn rebase_requests_work_queue_stress() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for axl, who will also be a consumer for our work queue
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -262,10 +273,11 @@ async fn rebase_requests_work_queue_stress() {
     ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for duff, who will also be a producer for our work queue
-    let (ldb_duff, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_duff, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_duff,
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -327,6 +339,7 @@ async fn rebase_requests_work_queue_stress() {
                     Ulid::new(),
                     WorkspaceSnapshotAddress::new(b"poop"),
                     Ulid::new(),
+                    None,
                     send_meta.clone(),
                 )
                 .await
@@ -401,10 +414,11 @@ async fn rebase_and_wait_stress() {
     let db = setup_pg_db("rebase_and_wait_stress").await;
 
     // we need a layerdb for slash, who will send the rebase request
-    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -412,10 +426,11 @@ async fn rebase_and_wait_stress() {
     ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // we need a layerdb for axl, who will send the reply
-    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::initialize(
+    let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
+        MemoryCacheConfig::default(),
         token.clone(),
     )
     .await
@@ -480,6 +495,7 @@ async fn rebase_and_wait_stress() {
                         Ulid::new(),
                         WorkspaceSnapshotAddress::new(b"poop"),
                         Ulid::new(),
+                        None,
                         mp,
                     )
                     .await;

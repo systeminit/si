@@ -32,10 +32,9 @@
 import { DropdownMenuItem } from "@si/vue-lib/design-system";
 import SiArrow from "@/components/SiArrow.vue";
 import { useAuthStore } from "@/store/auth.store";
+import { isDevMode } from "@/utils/debug";
 import NavbarButton from "./NavbarButton.vue";
 import UserIcon from "./UserIcon.vue";
 
 const authStore = useAuthStore();
-
-const isDevMode = import.meta.env.DEV;
 </script>

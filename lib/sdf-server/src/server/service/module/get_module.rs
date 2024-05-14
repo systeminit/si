@@ -9,6 +9,7 @@ use dal::module::Module;
 use dal::Visibility;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 use super::{ModuleError, ModuleResult};
 
@@ -57,8 +58,8 @@ pub struct PkgGetResponse {
 pub async fn get_module_by_hash(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Query(request): Query<PkgGetRequest>,
 ) -> ModuleResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -88,19 +89,18 @@ pub async fn get_module_by_hash(
         .collect();
     pkg_funcs.sort();
 
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "get_pkg",
-    //     serde_json::json!({
-    //                 "pkg_name": metadata.clone().name(),
-    //                 "pkg_version": metadata.clone().version(),
-    //                 "pkg_schema_count": schemas.len(),
-    //                 "pkg_funcs_count":  funcs.len(),
-    //                 "pkg_is_installed":  installed.clone(),
-    //     }),
-    // );
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "get_module",
+        serde_json::json!({
+                    "pkg_name": installed_pkg.clone().name(),
+                    "pkg_version": installed_pkg.clone().version(),
+                    "pkg_schema_count": pkg_schemas.len(),
+                    "pkg_funcs_count":  pkg_funcs.len(),
+        }),
+    );
 
     Ok(Json(PkgGetResponse {
         hash: installed_pkg.root_hash().to_string(),

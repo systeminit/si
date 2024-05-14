@@ -25,6 +25,7 @@
     while_true
 )]
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
@@ -36,35 +37,50 @@ use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
 use sodiumoxide::crypto::sealedbox;
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::Arc;
+use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
+use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::binding::FuncBindingError;
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::key_pair::KeyPairPk;
 use crate::layer_db_types::{SecretContent, SecretContentV1};
 use crate::prop::PropError;
 use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, ChangeSetError, DalContext, HelperError, HistoryActor,
+    id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
+    ChangeSetError, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor,
     HistoryEventError, KeyPair, KeyPairError, SchemaVariantError, StandardModelError, Timestamp,
     TransactionsError, UserPk,
 };
+use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 
 mod algorithm;
+mod before_funcs;
 mod definition_view;
 mod event;
 mod view;
 
 pub use algorithm::SecretAlgorithm;
 pub use algorithm::SecretVersion;
+pub use before_funcs::before_funcs_for_component;
+pub use before_funcs::BeforeFuncError;
 pub use definition_view::SecretDefinitionView;
 pub use definition_view::SecretDefinitionViewError;
 pub use event::SecretCreatedPayload;
@@ -77,16 +93,32 @@ pub use view::SecretViewResult;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("error when decrypting crypted secret")]
+    #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("encrypted secret not found for corresponding secret: {0}")]
-    EncryptedSecretNotFound(SecretId),
+    #[error("encrypted secret key parse error: {0}")]
+    EncryptedSecretKeyParse(#[from] EncryptedSecretKeyParseError),
+    #[error("encrypted secret not found for key: {0}")]
+    EncryptedSecretNotFound(EncryptedSecretKey),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument not found for func ({0}) and name ({1})")]
+    FuncArgumentNotFound(FuncId, String),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("history event error: {0}")]
@@ -107,6 +139,8 @@ pub enum SecretError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
+    #[error("secret not found for encrypted secret key: [REDACTED]")]
+    SecretNotFoundForEncryptedSecretKey,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
@@ -131,7 +165,7 @@ id!(SecretId);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Secret {
     id: SecretId,
-    key: EncryptedSecretKey,
+    encrypted_secret_key: EncryptedSecretKey,
     #[serde(flatten)]
     timestamp: Timestamp,
     created_by: Option<UserPk>,
@@ -144,7 +178,6 @@ pub struct Secret {
 impl From<Secret> for SecretContentV1 {
     fn from(value: Secret) -> Self {
         Self {
-            key: value.key,
             timestamp: value.timestamp,
             created_by: value.created_by,
             updated_by: value.updated_by,
@@ -157,16 +190,16 @@ impl From<Secret> for SecretContentV1 {
 
 impl Secret {
     #[allow(missing_docs)]
-    pub fn assemble(id: SecretId, inner: SecretContentV1) -> Self {
+    pub fn assemble(secret_node_weight: SecretNodeWeight, content: SecretContentV1) -> Self {
         Self {
-            id,
-            key: inner.key,
-            timestamp: inner.timestamp,
-            created_by: inner.created_by,
-            updated_by: inner.updated_by,
-            name: inner.name,
-            definition: inner.definition,
-            description: inner.description,
+            id: secret_node_weight.id().into(),
+            encrypted_secret_key: secret_node_weight.encrypted_secret_key().to_owned(),
+            timestamp: content.timestamp,
+            created_by: content.created_by,
+            updated_by: content.updated_by,
+            name: content.name,
+            definition: content.definition,
+            description: content.description,
         }
     }
 
@@ -203,7 +236,6 @@ impl Secret {
         let key = Self::generate_key(ctx, secret_id)?;
 
         let content = SecretContentV1 {
-            key,
             timestamp: Timestamp::now(),
             created_by: user,
             updated_by: user,
@@ -223,7 +255,8 @@ impl Secret {
             )
             .await?;
 
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Secret(hash))?;
+        let node_weight = NodeWeight::new_secret(change_set, id, key, hash)?;
+        let secret_node_weight = node_weight.get_secret_node_weight()?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight).await?;
@@ -240,7 +273,7 @@ impl Secret {
         )
         .await?;
 
-        let secret = Self::assemble(secret_id, content);
+        let secret = Self::assemble(secret_node_weight, content);
 
         // After creating the secret on the graph, create an underlying encrypted secret and use
         // the key we assembled.
@@ -258,12 +291,12 @@ impl Secret {
     fn generate_key(ctx: &DalContext, secret_id: SecretId) -> SecretResult<EncryptedSecretKey> {
         let new_ulid = ctx.change_set()?.generate_ulid()?;
 
-        let mut hasher = blake3::Hasher::new();
+        let mut hasher = EncryptedSecretKey::hasher();
         hasher.update(&ctx.tenancy().to_bytes());
         hasher.update(secret_id.to_string().as_bytes());
         hasher.update(new_ulid.to_string().as_bytes());
 
-        Ok(hasher.finalize().into())
+        Ok(hasher.finalize())
     }
 
     /// Returns the [`id`](SecretId).
@@ -286,9 +319,72 @@ impl Secret {
         &self.description
     }
 
-    /// Returns the key corresponding to the underlying [`EncryptedSecret`].
-    pub fn key(&self) -> EncryptedSecretKey {
-        self.key
+    /// Returns the key corresponding to the corresponding [`EncryptedSecret`].
+    pub fn encrypted_secret_key(&self) -> EncryptedSecretKey {
+        self.encrypted_secret_key
+    }
+
+    /// Attach a [`Secret`] to a given [`AttributeValue`] corresponding to a
+    /// "/root/secrets/\<secret\>" [`Prop`](crate::Prop).
+    ///
+    /// - If a [`Secret`] has already been attached to the given [`AttributeValue`], the existing
+    ///   attachment will be replaced with a new one.
+    /// - If no [`Secret`] is provided, then the [`AttributeValue`] will be updated to its original
+    ///   state via [`AttributeValue::use_default_prototype`].
+    ///
+    /// This method will enqueue
+    /// [`DependentValuesUpdate`](crate::job::definition::DependentValuesUpdate).
+    pub async fn attach_for_attribute_value(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        secret_id: Option<SecretId>,
+    ) -> SecretResult<()> {
+        // First, check if the caller would like to unset the secret.
+        let secret_id = match secret_id {
+            Some(provided_secret_id) => provided_secret_id,
+            None => {
+                // We use the default prototype here rather than passing "None" to
+                // "AttributeValue::update" because we neither want nor need existing prototype
+                // arguments and the user cannot override the prototype for values corresponding
+                // to a given "/root/secrets/<secret>".
+                AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
+                return Ok(());
+            }
+        };
+
+        // Cache the variables we need for creating the attachment.
+        let func_argument_name = "identity";
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+
+        // Create a new prototype and replace the existing one. If we are updating which secret is
+        // used for the provided attribute value, this will remove the attribute prototype argument
+        // that uses the previous secret. Despite having the ability to update the attribute
+        // prototype argument value source, we need to re-create the prototype every time this
+        // method is called. Why? We cannot be certain that the existing prototype and its arguments
+        // (0 to N) will be what we need.
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        AttributeValue::set_component_prototype_id(
+            ctx,
+            attribute_value_id,
+            attribute_prototype.id(),
+        )
+        .await?;
+
+        // Create an attribute prototype argument whose value source is the secret provided. Then,
+        // enqueue dependent values update with the secret.
+        let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
+            .await?
+            .ok_or(SecretError::FuncArgumentNotFound(
+                func_id,
+                func_argument_name.to_owned(),
+            ))?;
+        AttributePrototypeArgument::new(ctx, attribute_prototype.id(), func_argument.id)
+            .await?
+            .set_value_from_secret_id(ctx, secret_id)
+            .await?;
+        ctx.enqueue_dependent_values_update(vec![secret_id]).await?;
+
+        Ok(())
     }
 
     /// Gets the [`Secret`] with a given [`SecretId`]. If a [`Secret`] is not found, then return an
@@ -296,23 +392,136 @@ impl Secret {
     ///
     /// _Note:_ this does not contain the encrypted or sensitive bits and is safe for external use.
     pub async fn get_by_id_or_error(ctx: &DalContext, id: SecretId) -> SecretResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let ulid: Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
+        let (secret_node_weight, hash) =
+            Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
 
         let content: SecretContent = ctx
             .layer_db()
             .cas()
             .try_read_as(&hash)
             .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // NOTE(nick): if we had a v2, then there would be migration logic here.
         let SecretContent::V1(inner) = content;
 
-        Ok(Self::assemble(id, inner))
+        Ok(Self::assemble(secret_node_weight, inner))
+    }
+
+    async fn get_node_weight_and_content_hash_or_error(
+        ctx: &DalContext,
+        id: SecretId,
+    ) -> SecretResult<(SecretNodeWeight, ContentHash)> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let ulid: Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+
+        let hash = node_weight.content_hash();
+        let secret_node_weight = node_weight.get_secret_node_weight()?;
+        Ok((secret_node_weight, hash))
+    }
+
+    /// Prepares the serialized payload for prototype execution for a given [`SecretId`](Secret).
+    ///
+    /// The corresponding [`EncryptedSecretKey`] will be converted to a string and then serialized
+    /// as JSON.
+    pub async fn payload_for_prototype_execution(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<Value> {
+        let secret = Self::get_by_id_or_error(ctx, secret_id).await?;
+        Ok(serde_json::to_value(
+            secret.encrypted_secret_key.to_string(),
+        )?)
+    }
+
+    /// Deserializes the value contained in an [`AttributeValue`] corresponding to a secret. The
+    /// value will be a string, which then needs to be parsed to get the [`EncryptedSecretKey`].
+    pub fn key_from_value_in_attribute_value(value: Value) -> SecretResult<EncryptedSecretKey> {
+        let deserialized: String = serde_json::from_value(value)?;
+        let key = EncryptedSecretKey::from_str(&deserialized)?;
+        Ok(key)
+    }
+
+    /// Prepares the value for the property editor by looking at the real value and using a provided
+    /// lookup map (generated by [`Self::list_ids_by_key`]).
+    pub fn prepare_property_editor_value(
+        ids_by_key: &HashMap<EncryptedSecretKey, SecretId>,
+        real_value: Value,
+    ) -> SecretResult<Value> {
+        let key = Self::key_from_value_in_attribute_value(real_value)?;
+        match ids_by_key.get(&key) {
+            Some(secret_id) => Ok(serde_json::to_value(secret_id.to_string())?),
+            None => Err(SecretError::SecretNotFoundForEncryptedSecretKey),
+        }
+    }
+
+    /// Find all [`AttributeValues`](AttributeValue) that _directly_ depend on the [`Secret`]
+    /// corresponding to the provided [`SecretId`](Secret).
+    pub async fn direct_dependent_attribute_values(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<Vec<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let attribute_prototype_argument_indices = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                secret_id,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )
+            .await?;
+
+        let mut attribute_value_ids = Vec::new();
+        for attribute_prototype_argument_index in attribute_prototype_argument_indices {
+            let attribute_prototype_argument_node_weight = workspace_snapshot
+                .get_node_weight(attribute_prototype_argument_index)
+                .await?
+                .get_attribute_prototype_argument_node_weight()?;
+            let attribute_prototype_id = AttributePrototypeArgument::prototype_id_for_argument_id(
+                ctx,
+                attribute_prototype_argument_node_weight.id().into(),
+            )
+            .await?;
+            attribute_value_ids.extend(
+                AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id).await?,
+            );
+        }
+
+        Ok(attribute_value_ids)
+    }
+
+    /// Assemble an object that maps all [`keys`](EncryptedSecretKey) to their corresponding
+    /// [`SecretIds`](Secret).
+    #[instrument(level = "debug", skip(ctx))]
+    pub async fn list_ids_by_key(
+        ctx: &DalContext,
+    ) -> SecretResult<HashMap<EncryptedSecretKey, SecretId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let secret_category_node_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Secret)
+            .await?;
+
+        let indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                secret_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+
+        let mut id_by_key = HashMap::new();
+        for index in indices {
+            let secret_node_weight = workspace_snapshot
+                .get_node_weight(index)
+                .await?
+                .get_secret_node_weight()?;
+            id_by_key.insert(
+                secret_node_weight.encrypted_secret_key().to_owned(),
+                secret_node_weight.id().into(),
+            );
+        }
+
+        Ok(id_by_key)
     }
 
     /// Lists all [`Secrets`](Secret) in the current [`snapshot`](crate::WorkspaceSnapshot).
@@ -331,15 +540,15 @@ impl Secret {
             )
             .await?;
 
-        let mut node_weights = vec![];
+        let mut secret_node_weights = vec![];
         let mut hashes = vec![];
         for index in secret_node_indices {
-            let node_weight = workspace_snapshot
+            let secret_node_weight = workspace_snapshot
                 .get_node_weight(index)
                 .await?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Secret)?;
-            hashes.push(node_weight.content_hash());
-            node_weights.push(node_weight);
+                .get_secret_node_weight()?;
+            hashes.push(secret_node_weight.content_hash());
+            secret_node_weights.push(secret_node_weight);
         }
 
         let contents: HashMap<ContentHash, SecretContent> = ctx
@@ -348,16 +557,16 @@ impl Secret {
             .try_read_many_as(hashes.as_slice())
             .await?;
 
-        for node_weight in node_weights {
-            match contents.get(&node_weight.content_hash()) {
+        for secret_node_weight in secret_node_weights {
+            match contents.get(&secret_node_weight.content_hash()) {
                 Some(content) => {
                     // NOTE(nick): if we had a v2, then there would be migration logic here.
                     let SecretContent::V1(inner) = content;
 
-                    secrets.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                    secrets.push(Self::assemble(secret_node_weight, inner.to_owned()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
-                    node_weight.id(),
+                    secret_node_weight.id(),
                 ))?,
             }
         }
@@ -375,12 +584,6 @@ impl Secret {
         self.modify(ctx, |s| {
             s.name = name.into();
             s.description = description;
-            match ctx.history_actor() {
-                HistoryActor::SystemInit => {}
-                HistoryActor::User(id) => {
-                    s.updated_by = Some(*id);
-                }
-            }
             Ok(())
         })
         .await
@@ -398,26 +601,65 @@ impl Secret {
     ) -> SecretResult<Self> {
         // Generate a new key and insert a new encrypted secret.
         let new_key = Self::generate_key(ctx, self.id)?;
+
+        // NOTE(nick): we do not clean up the existing encrypted secret yet.
         EncryptedSecret::insert(ctx, new_key, crypted, key_pair_pk, version, algorithm).await?;
 
-        // Now, update the key on the secret on the graph.
-        // TODO(nick): ensure that the old encrypted secret gets garbage collected.
+        // Since we are updating encrypted contents, we have a new key and need to enqueue ourselves
+        // into dependent values update.
+        ctx.enqueue_dependent_values_update(vec![self.id]).await?;
+
         self.modify(ctx, |s| {
-            s.key = new_key;
+            s.encrypted_secret_key = new_key;
             Ok(())
         })
         .await
     }
 
-    /// Modifies the [`Secret`] and persists modifications as applicable.
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> SecretResult<Self>
     where
         L: FnOnce(&mut Self) -> SecretResult<()>,
     {
         let mut secret = self;
 
+        // NOTE(nick): I don't love the current timestamp and actor system. These likely shouldn't
+        // be in the contents, but abstracted out into another service. Because of this, we have to
+        // manually ensure that the actor and timestamp information is correct, regardless of what
+        // the user passes in as the lambda.
         let before = SecretContentV1::from(secret.clone());
         lambda(&mut secret)?;
+        if before != SecretContentV1::from(secret.clone()) {
+            match ctx.history_actor() {
+                HistoryActor::SystemInit => {}
+                HistoryActor::User(id) => {
+                    secret.updated_by = Some(*id);
+                }
+            }
+            secret.timestamp.updated_at = Utc::now();
+        }
+
+        let (mut secret_node_weight, _) =
+            Self::get_node_weight_and_content_hash_or_error(ctx, secret.id).await?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        // If the encrypted secret key has changed, we end up updating the secret node twice because
+        // we always update the actor and timestamp data if anything has changed. This could be
+        // optimized to do it only once.
+        if secret.encrypted_secret_key() != secret_node_weight.encrypted_secret_key() {
+            let original_node_index = workspace_snapshot.get_node_index_by_id(secret.id).await?;
+
+            secret_node_weight.set_encrypted_secret_key(secret.encrypted_secret_key);
+
+            workspace_snapshot
+                .add_node(NodeWeight::Secret(
+                    secret_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
+                ))
+                .await?;
+
+            workspace_snapshot
+                .replace_references(original_node_index)
+                .await?;
+        }
         let updated = SecretContentV1::from(secret.clone());
 
         if updated != before {
@@ -431,13 +673,12 @@ impl Secret {
                     ctx.events_actor(),
                 )
                 .await?;
-
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set()?, secret.id.into(), hash)
                 .await?;
         }
 
-        Ok(secret)
+        Ok(Self::assemble(secret_node_weight, updated))
     }
 }
 
@@ -511,7 +752,7 @@ impl EncryptedSecret {
         Ok(())
     }
 
-    /// Gets the [`EncryptedSecret`] by a given [`SecretId`].
+    /// Gets the [`EncryptedSecret`] with a given key.
     ///
     /// _Warning:_ sensitive, but encrypted, contents will be returned.
     pub async fn get_by_key(

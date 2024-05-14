@@ -13,13 +13,14 @@ use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
+use crate::func;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::SocketKind;
-use crate::{func, ChangeSetId};
 use crate::{
+    action::prototype::ActionPrototype,
     func::argument::FuncArgument,
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
@@ -32,8 +33,9 @@ use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 pub enum Thing {
-    ActionPrototype(DeprecatedActionPrototype),
+    ActionPrototype(ActionPrototype),
     AuthPrototype(AuthenticationPrototype),
+    DeprecatedActionPrototype(DeprecatedActionPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
     // Edge(Edge),
@@ -64,7 +66,6 @@ const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normaliz
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     metadata: &SiPkgMetadata,
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
@@ -92,14 +93,9 @@ async fn import_change_set(
             if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
-                thing_map.insert(
-                    change_set_id,
-                    unique_id.to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
             } else if let Some(func) = import_func(
                 ctx,
-                None,
                 func_spec,
                 installed_pkg.clone(),
                 thing_map,
@@ -110,7 +106,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
+                    import_func_arguments(ctx, func.id, &args, thing_map).await?;
                 }
             }
         } else {
@@ -127,7 +123,6 @@ async fn import_change_set(
 
                 // We're not going to import this func but we need it in the map for lookups later
                 thing_map.insert(
-                    change_set_id,
                     func_spec.unique_id().to_owned(),
                     Thing::Func(func.to_owned()),
                 );
@@ -136,7 +131,6 @@ async fn import_change_set(
             } else {
                 import_func(
                     ctx,
-                    change_set_id,
                     func_spec,
                     installed_pkg.clone(),
                     thing_map,
@@ -146,11 +140,7 @@ async fn import_change_set(
             };
 
             if let Some(func) = func {
-                thing_map.insert(
-                    change_set_id,
-                    unique_id.to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+                thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
 
                 if let Some(module) = installed_pkg.clone() {
                     module.create_association(ctx, func.id.into()).await?;
@@ -159,7 +149,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    import_func_arguments(ctx, change_set_id, func.id, &args, thing_map).await?;
+                    import_func_arguments(ctx, func.id, &args, thing_map).await?;
                 }
             }
         };
@@ -194,14 +184,8 @@ async fn import_change_set(
             metadata.name(),
         );
 
-        let (_, schema_variant_ids) = import_schema(
-            ctx,
-            change_set_id,
-            schema_spec,
-            installed_pkg.clone(),
-            thing_map,
-        )
-        .await?;
+        let (_, schema_variant_ids) =
+            import_schema(ctx, schema_spec, installed_pkg.clone(), thing_map).await?;
 
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
@@ -214,1170 +198,12 @@ async fn import_change_set(
         );
     }
 
-    // let mut component_attribute_skips = vec![];
-    // for component_spec in components {
-    //     let skips = import_component(ctx, change_set_pk, component_spec, thing_map).await?;
-    //     if !skips.is_empty() {
-    //         component_attribute_skips.push((component_spec.name().to_owned(), skips));
-    //     }
-    // }
-
-    // let mut edge_skips = vec![];
-    // for edge_spec in edges {
-    //     if let Some(skip) = import_edge(ctx, change_set_pk, edge_spec, thing_map).await? {
-    //         edge_skips.push(skip);
-    //     }
-    // }
-    //
-
     Ok((
         installed_schema_variant_ids,
         vec![], // component_attribute_skips,
         vec![], // edge_skips,
     ))
 }
-
-// #[derive(Eq, PartialEq, Hash, Debug, Clone)]
-// struct ValueCacheKey {
-//     context: AttributeContext,
-//     key: Option<String>,
-//     index: Option<i64>,
-// }
-
-// impl ValueCacheKey {
-//     pub fn new(
-//         component_id: ComponentId,
-//         prop_id: PropId,
-//         key: Option<String>,
-//         index: Option<i64>,
-//     ) -> Self {
-//         let mut context_builder = AttributeContextBuilder::new();
-//         context_builder
-//             .set_prop_id(prop_id)
-//             .set_component_id(component_id);
-
-//         Self {
-//             context: context_builder.to_context_unchecked(),
-//             key,
-//             index,
-//         }
-//     }
-// }
-
-// async fn import_edge(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     edge_spec: &SiPkgEdge<'_>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<Option<ImportEdgeSkip>> {
-//     let edge = match thing_map.get(change_set_pk, &edge_spec.unique_id().to_owned()) {
-//         Some(Thing::Edge(edge)) => Some(edge.to_owned()),
-//         _ => {
-//             if !edge_spec.deleted() {
-//                 let head_component_unique_id = edge_spec.to_component_unique_id().to_owned();
-//                 let (_, head_node) = match thing_map.get(change_set_pk, &head_component_unique_id) {
-//                     Some(Thing::Component((component, node))) => (component, node),
-//                     _ => {
-//                         return Err(PkgError::MissingComponentForEdge(
-//                             head_component_unique_id,
-//                             edge_spec.from_socket_name().to_owned(),
-//                             edge_spec.to_socket_name().to_owned(),
-//                         ))
-//                     }
-//                 };
-
-//                 let tail_component_unique_id = edge_spec.from_component_unique_id().to_owned();
-//                 let (_, tail_node) = match thing_map.get(change_set_pk, &tail_component_unique_id) {
-//                     Some(Thing::Component((component, node))) => (component, node),
-//                     _ => {
-//                         return Err(PkgError::MissingComponentForEdge(
-//                             tail_component_unique_id,
-//                             edge_spec.from_socket_name().to_owned(),
-//                             edge_spec.to_socket_name().to_owned(),
-//                         ))
-//                     }
-//                 };
-
-//                 let to_socket = match Socket::find_by_name_for_edge_kind_and_node(
-//                     ctx,
-//                     edge_spec.to_socket_name(),
-//                     SocketEdgeKind::ConfigurationInput,
-//                     *head_node.id(),
-//                 )
-//                 .await?
-//                 {
-//                     Some(socket) => socket,
-//                     None => {
-//                         return Ok(Some(ImportEdgeSkip::MissingInputSocket(
-//                             edge_spec.to_socket_name().to_owned(),
-//                         )))
-//                     }
-//                 };
-
-//                 let from_socket = match Socket::find_by_name_for_edge_kind_and_node(
-//                     ctx,
-//                     edge_spec.from_socket_name(),
-//                     SocketEdgeKind::ConfigurationOutput,
-//                     *tail_node.id(),
-//                 )
-//                 .await?
-//                 {
-//                     Some(socket) => socket,
-//                     None => {
-//                         return Ok(Some(ImportEdgeSkip::MissingOutputSocket(
-//                             edge_spec.from_socket_name().to_owned(),
-//                         )))
-//                     }
-//                 };
-
-//                 Some(
-//                     Edge::new_for_connection(
-//                         ctx,
-//                         *head_node.id(),
-//                         *to_socket.id(),
-//                         *tail_node.id(),
-//                         *from_socket.id(),
-//                         match edge_spec.edge_kind() {
-//                             EdgeSpecKind::Configuration => EdgeKind::Configuration,
-//                             EdgeSpecKind::Symbolic => EdgeKind::Symbolic,
-//                         },
-//                     )
-//                     .await?,
-//                 )
-//             } else {
-//                 None
-//             }
-//         }
-//     };
-
-//     if let Some(mut edge) = edge {
-//         let creation_user_pk = match edge_spec.creation_user_pk() {
-//             Some(pk_str) => Some(UserPk::from_str(pk_str)?),
-//             None => None,
-//         };
-//         if creation_user_pk.as_ref() != edge.creation_user_pk() {
-//             edge.set_creation_user_pk(ctx, creation_user_pk).await?;
-//         }
-
-//         let deletion_user_pk = match edge_spec.deletion_user_pk() {
-//             Some(pk_str) => Some(UserPk::from_str(pk_str)?),
-//             None => None,
-//         };
-
-//         if deletion_user_pk.as_ref() != edge.deletion_user_pk() {
-//             edge.set_deletion_user_pk(ctx, deletion_user_pk).await?;
-//         }
-
-//         if edge.deleted_implicitly() != edge_spec.deleted_implicitly() {
-//             edge.set_deleted_implicitly(ctx, edge_spec.deleted_implicitly())
-//                 .await?;
-//         }
-
-//         if edge.visibility().is_deleted() && !edge_spec.deleted() {
-//             Edge::restore_by_id(ctx, *edge.id()).await?;
-//         } else if !edge.visibility().is_deleted() && edge_spec.deleted() {
-//             edge.delete_and_propagate(ctx).await?;
-//         }
-
-//         thing_map.insert(
-//             change_set_pk,
-//             edge_spec.unique_id().to_owned(),
-//             Thing::Edge(edge),
-//         );
-//     }
-
-//     Ok(None)
-// }
-
-// async fn import_component(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     component_spec: &SiPkgComponent<'_>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<Vec<ImportAttributeSkip>> {
-//     let _change_set_pk_inner = change_set_pk.ok_or(PkgError::ComponentImportWithoutChangeSet)?;
-
-//     let variant = match component_spec.variant() {
-//         ComponentSpecVariant::BuiltinVariant {
-//             schema_name,
-//             variant_name,
-//         } => {
-//             let schema = Schema::find_by_name_builtin(ctx, schema_name.as_str())
-//                 .await?
-//                 .ok_or(PkgError::ComponentMissingBuiltinSchema(
-//                     schema_name.to_owned(),
-//                     component_spec.name().into(),
-//                 ))?;
-
-//             schema
-//                 .find_variant_by_name(ctx, variant_name.as_str())
-//                 .await?
-//                 .ok_or(PkgError::ComponentMissingBuiltinSchemaVariant(
-//                     schema_name.to_owned(),
-//                     variant_name.to_owned(),
-//                     component_spec.name().into(),
-//                 ))?
-//         }
-//         ComponentSpecVariant::WorkspaceVariant { variant_unique_id } => {
-//             match thing_map.get(change_set_pk, variant_unique_id) {
-//                 Some(Thing::SchemaVariant(variant)) => variant.to_owned(),
-//                 _ => {
-//                     return Err(PkgError::ComponentMissingSchemaVariant(
-//                         variant_unique_id.to_owned(),
-//                         component_spec.name().into(),
-//                     ))
-//                 }
-//             }
-//         }
-//     };
-
-//     let (mut component, mut node) =
-//         match thing_map.get(change_set_pk, &component_spec.unique_id().to_owned()) {
-//             Some(Thing::Component((existing_component, node))) => {
-//                 (existing_component.to_owned(), node.to_owned())
-//             }
-//             _ => {
-//                 let (component, node) =
-//                     Component::new(ctx, component_spec.name(), *variant.id()).await?;
-//                 thing_map.insert(
-//                     change_set_pk,
-//                     component_spec.unique_id().into(),
-//                     Thing::Component((component.to_owned(), node.to_owned())),
-//                 );
-
-//                 (component, node)
-//             }
-//         };
-
-//     if component.name(ctx).await? != component_spec.name() {
-//         component.set_name(ctx, Some(component_spec.name())).await?;
-//     }
-
-//     let position = component_spec
-//         .position()?
-//         .pop()
-//         .ok_or(PkgError::ComponentSpecMissingPosition)?;
-
-//     if node.x() != position.x() {
-//         node.set_x(ctx, position.x()).await?;
-//     }
-//     if node.y() != position.y() {
-//         node.set_y(ctx, position.y()).await?;
-//     }
-
-//     if node.height() != position.height() {
-//         node.set_height(ctx, position.height().map(ToOwned::to_owned))
-//             .await?;
-//     }
-//     if node.width() != position.width() {
-//         node.set_width(ctx, position.width().map(ToOwned::to_owned))
-//             .await?;
-//     }
-
-//     let mut value_cache: HashMap<ValueCacheKey, AttributeValue> = HashMap::new();
-//     let mut prop_cache: HashMap<String, Option<Prop>> = HashMap::new();
-
-//     let mut skips = vec![];
-
-//     for attribute in component_spec.attributes()? {
-//         if let Some(skip) = import_component_attribute(
-//             ctx,
-//             change_set_pk,
-//             &component,
-//             &variant,
-//             attribute,
-//             &mut value_cache,
-//             &mut prop_cache,
-//             thing_map,
-//         )
-//         .await?
-//         {
-//             skips.push(skip);
-//         }
-//     }
-//     for attribute in component_spec.input_sockets()? {
-//         if let Some(skip) = import_component_attribute(
-//             ctx,
-//             change_set_pk,
-//             &component,
-//             &variant,
-//             attribute,
-//             &mut value_cache,
-//             &mut prop_cache,
-//             thing_map,
-//         )
-//         .await?
-//         {
-//             skips.push(skip);
-//         }
-//     }
-//     for attribute in component_spec.output_sockets()? {
-//         if let Some(skip) = import_component_attribute(
-//             ctx,
-//             change_set_pk,
-//             &component,
-//             &variant,
-//             attribute,
-//             &mut value_cache,
-//             &mut prop_cache,
-//             thing_map,
-//         )
-//         .await?
-//         {
-//             skips.push(skip);
-//         }
-//     }
-
-//     if component_spec.needs_destroy() {
-//         component.set_needs_destroy(ctx, true).await?;
-//     }
-
-//     if component.visibility().is_deleted() && !component_spec.deleted() {
-//         Component::restore_and_propagate(ctx, *component.id()).await?;
-//     } else if !component.visibility().is_deleted() && component_spec.deleted() {
-//         component.delete_and_propagate(ctx).await?;
-//     }
-
-//     Ok(skips)
-// }
-
-// fn get_prop_kind_for_value(value: Option<&serde_json::Value>) -> Option<PropKind> {
-//     match value {
-//         Some(serde_json::Value::Array(_)) => Some(PropKind::Array),
-//         Some(serde_json::Value::Bool(_)) => Some(PropKind::Boolean),
-//         Some(serde_json::Value::Number(_)) => Some(PropKind::Integer),
-//         Some(serde_json::Value::Object(_)) => Some(PropKind::Object),
-//         Some(serde_json::Value::String(_)) => Some(PropKind::String),
-
-//         _ => None,
-//     }
-// }
-
-// #[allow(clippy::too_many_arguments)]
-// async fn import_component_attribute(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     component: &Component,
-//     variant: &SchemaVariant,
-//     attribute: &SiPkgAttributeValue<'_>,
-//     value_cache: &mut HashMap<ValueCacheKey, AttributeValue>,
-//     prop_cache: &mut HashMap<String, Option<Prop>>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<Option<ImportAttributeSkip>> {
-//     match attribute.path() {
-//         AttributeValuePath::Prop { path, key, index } => {
-//             if attribute.parent_path().is_none() && (key.is_some() || index.is_some()) {
-//                 return Err(PkgError::AttributeValueWithKeyOrIndexButNoParent);
-//             }
-
-//             let prop = match prop_cache.get(path) {
-//                 Some(prop) => prop.to_owned(),
-//                 None => {
-//                     let prop = Prop::find_prop_by_path_opt(
-//                         ctx,
-//                         *variant.id(),
-//                         &PropPath::from(path.to_owned()),
-//                     )
-//                     .await?;
-//                     prop_cache.insert(path.to_owned(), prop.to_owned());
-
-//                     prop
-//                 }
-//             };
-
-//             struct ParentData<'a> {
-//                 prop: Option<&'a Prop>,
-//                 attribute_value: Option<AttributeValue>,
-//                 default_attribute_value: Option<AttributeValue>,
-//             }
-
-//             match prop {
-//                 Some(prop) => {
-//                     // Validate type if possible
-//                     let expected_prop_kind = get_prop_kind_for_value(attribute.value());
-//                     if let Some(expected_kind) = expected_prop_kind {
-//                         if expected_kind
-//                             != match prop.kind() {
-//                                 PropKind::Map | PropKind::Object => PropKind::Object,
-//                                 other => *other,
-//                             }
-//                         {
-//                             return Ok(Some(ImportAttributeSkip::KindMismatch {
-//                                 path: PropPath::from(path),
-//                                 expected_kind,
-//                                 variant_kind: *prop.kind(),
-//                             }));
-//                         }
-//                     }
-
-//                     let parent_data = if let Some(AttributeValuePath::Prop { path, key, index }) =
-//                         attribute.parent_path()
-//                     {
-//                         let parent_prop = prop_cache
-//                             .get(path)
-//                             .and_then(|p| p.as_ref())
-//                             .ok_or(PkgError::AttributeValueParentPropNotFound(path.to_owned()))?;
-
-//                         let parent_value_cache_key = ValueCacheKey::new(
-//                             *component.id(),
-//                             *parent_prop.id(),
-//                             key.to_owned(),
-//                             index.to_owned(),
-//                         );
-
-//                         let parent_av = value_cache.get(&parent_value_cache_key).ok_or(
-//                             PkgError::AttributeValueParentValueNotFound(
-//                                 path.to_owned(),
-//                                 key.to_owned(),
-//                                 index.to_owned(),
-//                             ),
-//                         )?;
-
-//                         let parent_default_value_cache_key = ValueCacheKey::new(
-//                             ComponentId::NONE,
-//                             *parent_prop.id(),
-//                             key.to_owned(),
-//                             index.to_owned(),
-//                         );
-
-//                         let parent_default_av =
-//                             value_cache.get(&parent_default_value_cache_key).cloned();
-
-//                         ParentData {
-//                             prop: Some(parent_prop),
-//                             attribute_value: Some(parent_av.to_owned()),
-//                             default_attribute_value: parent_default_av,
-//                         }
-//                     } else {
-//                         ParentData {
-//                             prop: None,
-//                             attribute_value: None,
-//                             default_attribute_value: None,
-//                         }
-//                     };
-
-//                     // If we're an array element, we might already exist in the index map
-//                     let av_id_from_index_map = match index {
-//                         Some(index) => match parent_data.attribute_value.as_ref() {
-//                             Some(parent_av) => {
-//                                 match parent_av
-//                                     .index_map()
-//                                     .and_then(|index_map| index_map.order().get(*index as usize))
-//                                 {
-//                                     None => {
-//                                         let attribute_context = AttributeContext::builder()
-//                                             .set_prop_id(*prop.id())
-//                                             .set_component_id(*component.id())
-//                                             .to_context_unchecked();
-
-//                                         // This value will get updated by
-//                                         // update_attribute_value
-//                                         Some(
-//                                             AttributeValue::insert_for_context(
-//                                                 ctx,
-//                                                 attribute_context,
-//                                                 *parent_av.id(),
-//                                                 None,
-//                                                 None,
-//                                             )
-//                                             .await?,
-//                                         )
-//                                     }
-//                                     Some(av_id) => Some(*av_id),
-//                                 }
-//                             }
-//                             None => None,
-//                         },
-//                         None => None,
-//                     };
-
-//                     let default_value_cache_key = ValueCacheKey::new(
-//                         ComponentId::NONE,
-//                         *prop.id(),
-//                         key.to_owned(),
-//                         index.to_owned(),
-//                     );
-
-//                     let default_av = match value_cache.entry(default_value_cache_key) {
-//                         Entry::Occupied(occupied) => Some(occupied.get().to_owned()),
-//                         Entry::Vacant(vacant) => {
-//                             if parent_data.default_attribute_value.is_none()
-//                                 && parent_data.prop.is_some()
-//                             {
-//                                 None
-//                             } else {
-//                                 let default_parent_av_id =
-//                                     parent_data.default_attribute_value.map(|av| *av.id());
-
-//                                 let default_value_context = AttributeReadContext {
-//                                     prop_id: Some(*prop.id()),
-//                                     internal_provider_id: Some(InternalProviderId::NONE),
-//                                     external_provider_id: Some(ExternalProviderId::NONE),
-//                                     component_id: None,
-//                                 };
-
-//                                 let value = AttributeValue::find_with_parent_and_key_for_context(
-//                                     ctx,
-//                                     default_parent_av_id,
-//                                     key.to_owned(),
-//                                     default_value_context,
-//                                 )
-//                                 .await?;
-
-//                                 if let Some(value) = &value {
-//                                     vacant.insert(value.to_owned());
-//                                 }
-
-//                                 value
-//                             }
-//                         }
-//                     };
-
-//                     let context = AttributeReadContext {
-//                         prop_id: Some(*prop.id()),
-//                         internal_provider_id: Some(InternalProviderId::NONE),
-//                         external_provider_id: Some(ExternalProviderId::NONE),
-//                         component_id: Some(*component.id()),
-//                     };
-
-//                     let parent_av_id = parent_data.attribute_value.as_ref().map(|av| *av.id());
-//                     let maybe_av = match av_id_from_index_map {
-//                         Some(av_id) => Some(AttributeValue::get_by_id(ctx, &av_id).await?.ok_or(
-//                             AttributeValueError::NotFound(av_id, ctx.visibility().to_owned()),
-//                         )?),
-//                         None => {
-//                             AttributeValue::find_with_parent_and_key_for_context(
-//                                 ctx,
-//                                 parent_av_id,
-//                                 key.to_owned(),
-//                                 context,
-//                             )
-//                             .await?
-//                         }
-//                     };
-
-//                     let mut av_to_update = match maybe_av {
-//                         Some(av) => av,
-//                         None => {
-//                             if index.is_some() {
-//                                 dbg!(
-//                                     "should always have an attribute value here for an indexed av"
-//                                 );
-//                             }
-//                             let context = AttributeReadContext {
-//                                 prop_id: Some(*prop.id()),
-//                                 internal_provider_id: None,
-//                                 external_provider_id: None,
-//                                 component_id: None,
-//                             };
-//                             let maybe_av = AttributeValue::find_with_parent_and_key_for_context(
-//                                 ctx,
-//                                 parent_av_id,
-//                                 key.to_owned(),
-//                                 context,
-//                             )
-//                             .await?;
-
-//                             match maybe_av {
-//                                 Some(av) => av,
-//                                 None => {
-//                                     let parent_av_id = parent_av_id.ok_or(
-//                                         PkgError::AttributeValueParentValueNotFound(
-//                                             "in av search".into(),
-//                                             key.to_owned(),
-//                                             index.to_owned(),
-//                                         ),
-//                                     )?;
-
-//                                     let attribute_context = AttributeContext::builder()
-//                                         .set_prop_id(*prop.id())
-//                                         .set_component_id(*component.id())
-//                                         .to_context_unchecked();
-
-//                                     if key.is_some() {
-//                                         let av_id = AttributeValue::insert_for_context(
-//                                             ctx,
-//                                             attribute_context,
-//                                             parent_av_id,
-//                                             None,
-//                                             key.to_owned(),
-//                                         )
-//                                         .await?;
-
-//                                         AttributeValue::get_by_id(ctx, &av_id).await?.ok_or(
-//                                             AttributeValueError::NotFound(
-//                                                 av_id,
-//                                                 ctx.visibility().to_owned(),
-//                                             ),
-//                                         )?
-//                                     } else {
-//                                         let (_, value) = create_attribute_value(
-//                                             ctx,
-//                                             change_set_pk,
-//                                             attribute_context,
-//                                             *component.id(),
-//                                             key,
-//                                             parent_data.attribute_value.as_ref(),
-//                                             default_av.as_ref(),
-//                                             &attribute,
-//                                             thing_map,
-//                                         )
-//                                         .await?;
-
-//                                         value
-//                                     }
-//                                 }
-//                             }
-//                         }
-//                     };
-
-//                     let updated_av = update_attribute_value(
-//                         ctx,
-//                         change_set_pk,
-//                         *variant.id(),
-//                         *component.id(),
-//                         &attribute,
-//                         &mut av_to_update,
-//                         parent_data.attribute_value.as_ref(),
-//                         default_av.as_ref(),
-//                         thing_map,
-//                     )
-//                     .await?;
-
-//                     let this_cache_key = ValueCacheKey::new(
-//                         *component.id(),
-//                         *prop.id(),
-//                         key.to_owned(),
-//                         index.to_owned(),
-//                     );
-
-//                     value_cache.insert(this_cache_key, updated_av);
-//                 }
-//                 None => {
-//                     // collect missing props and log them
-//                     return Ok(Some(ImportAttributeSkip::MissingProp(PropPath::from(path))));
-//                 }
-//             }
-//         }
-//         AttributeValuePath::InputSocket(socket_name)
-//         | AttributeValuePath::OutputSocket(socket_name) => {
-//             let (default_read_context, read_context, write_context) =
-//                 if matches!(attribute.path(), AttributeValuePath::InputSocket(_)) {
-//                     let internal_provider =
-//                         match InternalProvider::find_explicit_for_schema_variant_and_name(
-//                             ctx,
-//                             *variant.id(),
-//                             socket_name.as_str(),
-//                         )
-//                         .await?
-//                         {
-//                             None => {
-//                                 return Ok(Some(ImportAttributeSkip::MissingInputSocket(
-//                                     socket_name.to_owned(),
-//                                 )))
-//                             }
-//                             Some(ip) => ip,
-//                         };
-
-//                     let default_read_context = AttributeReadContext {
-//                         prop_id: Some(PropId::NONE),
-//                         internal_provider_id: Some(*internal_provider.id()),
-//                         external_provider_id: Some(ExternalProviderId::NONE),
-//                         component_id: None,
-//                     };
-//                     let read_context = AttributeReadContext {
-//                         prop_id: Some(PropId::NONE),
-//                         internal_provider_id: Some(*internal_provider.id()),
-//                         external_provider_id: Some(ExternalProviderId::NONE),
-//                         component_id: Some(*component.id()),
-//                     };
-//                     let write_context = AttributeContext::builder()
-//                         .set_internal_provider_id(*internal_provider.id())
-//                         .set_component_id(*component.id())
-//                         .to_context_unchecked();
-
-//                     (default_read_context, read_context, write_context)
-//                 } else {
-//                     let external_provider =
-//                         match ExternalProvider::find_for_schema_variant_and_name(
-//                             ctx,
-//                             *variant.id(),
-//                             socket_name.as_str(),
-//                         )
-//                         .await?
-//                         {
-//                             None => {
-//                                 return Ok(Some(ImportAttributeSkip::MissingOutputSocket(
-//                                     socket_name.to_owned(),
-//                                 )))
-//                             }
-//                             Some(ep) => ep,
-//                         };
-
-//                     let default_read_context = AttributeReadContext {
-//                         prop_id: Some(PropId::NONE),
-//                         internal_provider_id: Some(InternalProviderId::NONE),
-//                         external_provider_id: Some(*external_provider.id()),
-//                         component_id: None,
-//                     };
-//                     let read_context = AttributeReadContext {
-//                         prop_id: Some(PropId::NONE),
-//                         internal_provider_id: Some(InternalProviderId::NONE),
-//                         external_provider_id: Some(*external_provider.id()),
-//                         component_id: Some(*component.id()),
-//                     };
-//                     let write_context = AttributeContext::builder()
-//                         .set_external_provider_id(*external_provider.id())
-//                         .set_component_id(*component.id())
-//                         .to_context_unchecked();
-
-//                     (default_read_context, read_context, write_context)
-//                 };
-
-//             let default_value = AttributeValue::find_for_context(ctx, default_read_context).await?;
-
-//             match AttributeValue::find_for_context(ctx, read_context).await? {
-//                 Some(mut existing_av) => {
-//                     update_attribute_value(
-//                         ctx,
-//                         change_set_pk,
-//                         *variant.id(),
-//                         *component.id(),
-//                         &attribute,
-//                         &mut existing_av,
-//                         None,
-//                         default_value.as_ref(),
-//                         thing_map,
-//                     )
-//                     .await?;
-//                 }
-//                 None => {
-//                     create_attribute_value(
-//                         ctx,
-//                         change_set_pk,
-//                         write_context,
-//                         *component.id(),
-//                         &None,
-//                         None,
-//                         default_value.as_ref(),
-//                         &attribute,
-//                         thing_map,
-//                     )
-//                     .await?;
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(None)
-// }
-
-// async fn get_ip_for_input(
-//     ctx: &DalContext,
-//     schema_variant_id: SchemaVariantId,
-//     input: &SiPkgAttrFuncInput<'_>,
-// ) -> PkgResult<Option<InternalProviderId>> {
-//     Ok(match input {
-//         SiPkgAttrFuncInput::Prop { prop_path, .. } => {
-//             let input_source_prop = match Prop::find_prop_by_path_opt(
-//                 ctx,
-//                 schema_variant_id,
-//                 &PropPath::from(prop_path),
-//             )
-//             .await?
-//             {
-//                 Some(p) => p,
-//                 None => return Ok(None),
-//             };
-
-//             let ip = InternalProvider::find_for_prop(ctx, *input_source_prop.id())
-//                 .await?
-//                 .ok_or(PkgError::MissingInternalProviderForProp(
-//                     *input_source_prop.id(),
-//                 ))?;
-
-//             Some(*ip.id())
-//         }
-//         SiPkgAttrFuncInput::InputSocket { socket_name, .. } => {
-//             let explicit_ip = match InternalProvider::find_explicit_for_schema_variant_and_name(
-//                 ctx,
-//                 schema_variant_id,
-//                 &socket_name,
-//             )
-//             .await?
-//             {
-//                 Some(ip) => ip,
-//                 None => return Ok(None),
-//             };
-
-//             Some(*explicit_ip.id())
-//         }
-//         SiPkgAttrFuncInput::OutputSocket { .. } => None,
-//     })
-// }
-
-// #[allow(clippy::too_many_arguments)]
-// async fn create_attribute_value(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     context: AttributeContext,
-//     component_id: ComponentId,
-//     real_key: &Option<String>,
-//     parent_attribute_value: Option<&AttributeValue>,
-//     default_attribute_value: Option<&AttributeValue>,
-//     attribute_spec: &SiPkgAttributeValue<'_>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<(AttributePrototype, AttributeValue)> {
-//     let attribute_func =
-//         match thing_map.get(change_set_pk, &attribute_spec.func_unique_id().to_owned()) {
-//             Some(Thing::Func(func)) => func,
-//             _ => {
-//                 return Err(PkgError::MissingFuncUniqueId(format!(
-//                     "here, {}",
-//                     attribute_spec.func_unique_id().to_owned()
-//                 )));
-//             }
-//         };
-
-//     let new_context = AttributeContext::builder()
-//         .set_prop_id(context.prop_id())
-//         .set_internal_provider_id(context.internal_provider_id())
-//         .set_external_provider_id(context.external_provider_id())
-//         .set_component_id(component_id)
-//         .to_context_unchecked();
-
-//     let func_binding = FuncBinding::new(
-//         ctx,
-//         attribute_spec.func_binding_args().to_owned(),
-//         *attribute_func.id(),
-//         attribute_spec.backend_kind().into(),
-//     )
-//     .await?;
-
-//     let mut func_binding_return_value = FuncBindingReturnValue::new(
-//         ctx,
-//         attribute_spec.unprocessed_value().cloned(),
-//         attribute_spec.value().cloned(),
-//         *attribute_func.id(),
-//         *func_binding.id(),
-//         FuncExecutionPk::NONE,
-//     )
-//     .await?;
-
-//     let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-//     // TODO: add output stream?
-
-//     func_binding_return_value
-//         .set_func_execution_pk(ctx, execution.pk())
-//         .await?;
-
-//     let mut new_value = AttributeValue::new(
-//         ctx,
-//         *func_binding.id(),
-//         *func_binding_return_value.id(),
-//         new_context,
-//         real_key.to_owned(),
-//     )
-//     .await?;
-
-//     if let Some(parent_attribute_value) = parent_attribute_value.as_ref() {
-//         new_value
-//             .set_parent_attribute_value_unchecked(ctx, parent_attribute_value.id())
-//             .await?;
-//     }
-
-//     if attribute_spec.is_proxy() {
-//         let default_av =
-//             default_attribute_value.ok_or(PkgError::AttributeValueSetToProxyButNoProxyFound)?;
-
-//         new_value
-//             .set_proxy_for_attribute_value_id(ctx, Some(*default_av.id()))
-//             .await?;
-//     }
-
-//     let prototype_context = AttributeContext::builder()
-//         .set_prop_id(new_context.prop_id())
-//         .set_external_provider_id(new_context.external_provider_id())
-//         .set_internal_provider_id(new_context.internal_provider_id())
-//         .set_component_id(if attribute_spec.component_specific() {
-//             new_context.component_id()
-//         } else {
-//             ComponentId::NONE
-//         })
-//         .to_context_unchecked();
-
-//     let prototype =
-//         match AttributePrototype::find_for_context_and_key(ctx, prototype_context, real_key)
-//             .await?
-//             .pop()
-//         {
-//             Some(existing_proto) => {
-//                 new_value
-//                     .set_attribute_prototype(ctx, existing_proto.id())
-//                     .await?;
-
-//                 existing_proto
-//             }
-//             None => {
-//                 AttributePrototype::new_with_existing_value(
-//                     ctx,
-//                     *attribute_func.id(),
-//                     new_context,
-//                     real_key.to_owned(),
-//                     parent_attribute_value.map(|pav| *pav.id()),
-//                     *new_value.id(),
-//                 )
-//                 .await?
-//             }
-//         };
-
-//     Ok((prototype, new_value))
-// }
-
-// #[allow(clippy::too_many_arguments)]
-// async fn update_attribute_value(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_variant_id: SchemaVariantId,
-//     component_id: ComponentId,
-//     attribute_spec: &SiPkgAttributeValue<'_>,
-//     attribute_value: &mut AttributeValue,
-//     parent_attribute_value: Option<&AttributeValue>,
-//     default_attribute_value: Option<&AttributeValue>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<AttributeValue> {
-//     let prototype = attribute_value
-//         .attribute_prototype(ctx)
-//         .await?
-//         .ok_or(AttributeValueError::MissingAttributePrototype)?;
-
-//     let attribute_func =
-//         match thing_map.get(change_set_pk, &attribute_spec.func_unique_id().to_owned()) {
-//             Some(Thing::Func(func)) => func,
-//             _ => {
-//                 return Err(PkgError::MissingFuncUniqueId(format!(
-//                     "here, {}",
-//                     attribute_spec.func_unique_id().to_owned()
-//                 )));
-//             }
-//         };
-
-//     let (mut prototype, value) = if prototype.context.component_id().is_none()
-//         && attribute_spec.component_specific()
-//     {
-//         let current_context = attribute_value.context;
-//         let new_context = AttributeContext::builder()
-//             .set_prop_id(current_context.prop_id())
-//             .set_internal_provider_id(current_context.internal_provider_id())
-//             .set_external_provider_id(current_context.external_provider_id())
-//             .set_component_id(component_id)
-//             .to_context_unchecked();
-
-//         let func_binding = FuncBinding::new(
-//             ctx,
-//             attribute_spec.func_binding_args().to_owned(),
-//             *attribute_func.id(),
-//             attribute_spec.backend_kind().into(),
-//         )
-//         .await?;
-
-//         let mut func_binding_return_value = FuncBindingReturnValue::new(
-//             ctx,
-//             attribute_spec.unprocessed_value().cloned(),
-//             attribute_spec.value().cloned(),
-//             *attribute_func.id(),
-//             *func_binding.id(),
-//             FuncExecutionPk::NONE,
-//         )
-//         .await?;
-
-//         let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-//         // TODO: add output stream?
-
-//         func_binding_return_value
-//             .set_func_execution_pk(ctx, execution.pk())
-//             .await?;
-
-//         let mut new_value = AttributeValue::new(
-//             ctx,
-//             *func_binding.id(),
-//             *func_binding_return_value.id(),
-//             new_context,
-//             attribute_value.key(),
-//         )
-//         .await?;
-
-//         if attribute_spec.is_proxy() {
-//             let default_av =
-//                 default_attribute_value.ok_or(PkgError::AttributeValueSetToProxyButNoProxyFound)?;
-
-//             new_value
-//                 .set_proxy_for_attribute_value_id(ctx, Some(*default_av.id()))
-//                 .await?;
-//         }
-
-//         (
-//             AttributePrototype::new_with_existing_value(
-//                 ctx,
-//                 *attribute_func.id(),
-//                 new_context,
-//                 attribute_value.key().map(|k| k.to_owned()),
-//                 parent_attribute_value.map(|pav| *pav.id()),
-//                 *new_value.id(),
-//             )
-//             .await?,
-//             new_value,
-//         )
-//     } else {
-//         let current_fb = FuncBinding::get_by_id(ctx, &attribute_value.func_binding_id())
-//             .await?
-//             .ok_or(FuncBindingError::NotFound(
-//                 attribute_value.func_binding_id(),
-//             ))?;
-
-//         let current_fbrv =
-//             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-//                 .await?
-//                 .ok_or(FuncBindingReturnValueError::NotFound(
-//                     attribute_value.func_binding_return_value_id(),
-//                 ))?;
-
-//         if current_fb.args() != attribute_spec.func_binding_args()
-//             || current_fbrv.unprocessed_value() != attribute_spec.unprocessed_value()
-//             || current_fbrv.func_id() != attribute_func.id()
-//             || current_fb.code_sha256() != attribute_func.code_sha256()
-//         {
-//             let func_binding = FuncBinding::new(
-//                 ctx,
-//                 attribute_spec.func_binding_args().to_owned(),
-//                 *attribute_func.id(),
-//                 attribute_spec.backend_kind().into(),
-//             )
-//             .await?;
-
-//             let mut func_binding_return_value = FuncBindingReturnValue::new(
-//                 ctx,
-//                 attribute_spec.unprocessed_value().cloned(),
-//                 attribute_spec.value().cloned(),
-//                 *attribute_func.id(),
-//                 *func_binding.id(),
-//                 FuncExecutionPk::NONE,
-//             )
-//             .await?;
-
-//             let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-//             // TODO: add output stream?
-
-//             func_binding_return_value
-//                 .set_func_execution_pk(ctx, execution.pk())
-//                 .await?;
-
-//             attribute_value
-//                 .set_func_binding_id(ctx, *func_binding.id())
-//                 .await?;
-
-//             attribute_value
-//                 .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-//                 .await?;
-//         }
-
-//         (prototype, attribute_value.to_owned())
-//     };
-
-//     if prototype.func_id() != *attribute_func.id() {
-//         prototype.set_func_id(ctx, attribute_func.id()).await?;
-//     }
-
-//     let inputs = attribute_spec.inputs()?;
-
-//     let mut current_apas =
-//         AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id()).await?;
-
-//     if inputs.is_empty() && !current_apas.is_empty() {
-//         for apa in current_apas.iter_mut() {
-//             apa.delete_by_id(ctx).await?;
-//         }
-//     } else if !inputs.is_empty() {
-//         let mut processed_inputs = HashSet::new();
-//         for apa in current_apas.iter_mut() {
-//             let func_arg = FuncArgument::get_by_id(ctx, &apa.func_argument_id())
-//                 .await?
-//                 .ok_or(PkgError::MissingFuncArgumentById(apa.func_argument_id()))?;
-
-//             let matching_input = inputs.iter().find(|input| input.name() == func_arg.name());
-
-//             match matching_input {
-//                 Some(input) => {
-//                     if let Some(ip_id) = get_ip_for_input(ctx, schema_variant_id, input).await? {
-//                         if apa.internal_provider_id() != ip_id {
-//                             apa.set_internal_provider_id(ctx, ip_id).await?;
-//                         }
-//                     }
-
-//                     processed_inputs.insert(input.name());
-//                 }
-//                 None => apa.delete_by_id(ctx).await?,
-//             }
-//         }
-
-//         for input in &inputs {
-//             let name = input.name();
-
-//             if processed_inputs.contains(name) {
-//                 continue;
-//             }
-
-//             let func_arg = FuncArgument::find_by_name_for_func(ctx, name, *attribute_func.id())
-//                 .await?
-//                 .ok_or(PkgError::MissingFuncArgument(
-//                     name.into(),
-//                     *attribute_func.id(),
-//                 ))?;
-
-//             if let Some(ip_id) = get_ip_for_input(ctx, schema_variant_id, input).await? {
-//                 AttributePrototypeArgument::new_for_intra_component(
-//                     ctx,
-//                     *prototype.id(),
-//                     *func_arg.id(),
-//                     ip_id,
-//                 )
-//                 .await?;
-//             }
-//         }
-//     }
-
-//     Ok(value)
-// }
-
-// #[derive(Debug, Clone, Deserialize, Serialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ImportSkips {
-//     change_set_pk: ChangeSetPk,
-//     edge_skips: Vec<ImportEdgeSkip>,
-//     attribute_skips: Vec<(String, Vec<ImportAttributeSkip>)>,
-// }
-
-// #[remain::sorted]
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// #[serde(tag = "type", rename_all = "camelCase")]
-// pub enum ImportAttributeSkip {
-//     #[serde(rename_all = "camelCase")]
-//     KindMismatch {
-//         path: PropPath,
-//         expected_kind: PropKind,
-//         variant_kind: PropKind,
-//     },
-//     MissingInputSocket(String),
-//     MissingOutputSocket(String),
-//     MissingProp(PropPath),
-// }
-
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// #[serde(tag = "type", rename_all = "camelCase")]
-// pub enum ImportEdgeSkip {
-//     MissingInputSocket(String),
-//     MissingOutputSocket(String),
-// }
 
 pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
@@ -1414,14 +240,12 @@ pub async fn import_pkg_from_pkg(
             .await?,
         )
     };
-    let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-    let mut change_set_things = ThingMap::new(default_change_set_id);
+    let mut change_set_things = ThingMap::new();
 
     match metadata.kind() {
         SiPkgKind::Module => {
             let (installed_schema_variant_ids, _, _) = import_change_set(
                 ctx,
-                None,
                 &metadata,
                 &pkg.funcs()?,
                 &pkg.schemas()?,
@@ -1435,87 +259,7 @@ pub async fn import_pkg_from_pkg(
 
             Ok((None, installed_schema_variant_ids, None))
         }
-        SiPkgKind::WorkspaceBackup => {
-            // let mut ctx = ctx.clone_with_new_visibility(ctx.visibility().to_head());
-
-            // let mut import_skips = vec![];
-
-            // let workspace_pk = WorkspacePk::from_str(
-            //     metadata
-            //         .workspace_pk()
-            //         .ok_or(PkgError::WorkspacePkNotInBackup)?,
-            // )?;
-            // let workspace_name = metadata
-            //     .workspace_name()
-            //     .ok_or(PkgError::WorkspaceNameNotInBackup)?;
-            // let default_change_set_name = metadata.default_change_set().unwrap_or("head");
-
-            // Workspace::clear_or_create_workspace(&mut ctx, workspace_pk, workspace_name).await?;
-
-            // ctx.update_tenancy(Tenancy::new(workspace_pk));
-
-            // let change_sets = pkg.change_sets()?;
-            // let default_change_set = change_sets
-            //     .iter()
-            //     .find(|cs| cs.name() == default_change_set_name)
-            //     .ok_or(PkgError::WorkspaceBackupNoDefaultChangeSet(
-            //         default_change_set_name.into(),
-            //     ))?;
-
-            // let (_, attribute_skips, edge_skips) = import_change_set(
-            //     &ctx,
-            //     Some(ChangeSetPk::NONE),
-            //     &metadata,
-            //     &default_change_set.funcs()?,
-            //     &default_change_set.schemas()?,
-            //     &default_change_set.components()?,
-            //     &default_change_set.edges()?,
-            //     installed_pkg_id,
-            //     &mut change_set_things,
-            //     &options,
-            // )
-            // .await?;
-
-            // import_skips.push(ImportSkips {
-            //     change_set_pk: ChangeSetPk::NONE,
-            //     attribute_skips,
-            //     edge_skips,
-            // });
-
-            // for change_set in change_sets {
-            //     if change_set.name() == default_change_set_name {
-            //         continue;
-            //     }
-
-            //     // Revert to head to create new change set
-            //     let ctx = ctx.clone_with_new_visibility(ctx.visibility().to_head());
-            //     let new_cs = ChangeSet::new(&ctx, change_set.name(), None).await?;
-            //     // Switch to new change set visibility
-            //     let ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_cs.pk));
-
-            //     let (_, attribute_skips, edge_skips) = import_change_set(
-            //         &ctx,
-            //         Some(new_cs.pk),
-            //         &metadata,
-            //         &change_set.funcs()?,
-            //         &change_set.schemas()?,
-            //         &change_set.components()?,
-            //         &change_set.edges()?,
-            //         installed_pkg_id,
-            //         &mut change_set_things,
-            //         &options,
-            //     )
-            //     .await?;
-
-            //     import_skips.push(ImportSkips {
-            //         change_set_pk: new_cs.pk,
-            //         attribute_skips,
-            //         edge_skips,
-            //     });
-            // }
-
-            Ok((None, vec![], None))
-        }
+        SiPkgKind::WorkspaceBackup => Err(PkgError::WorkspaceExportNotSupported()),
     }
 }
 
@@ -1567,7 +311,7 @@ async fn update_func(
 ) -> PkgResult<Func> {
     let func = func
         .modify(ctx, |func| {
-            func.name = func_spec_data.name().to_owned();
+            func_spec_data.name().clone_into(&mut func.name);
             func.backend_kind = func_spec_data.backend_kind().into();
             func.backend_response_type = func_spec_data.response_type().into();
             func.display_name = func_spec_data
@@ -1588,85 +332,49 @@ async fn update_func(
 
 pub async fn import_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_spec: &SiPkgFunc<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     is_builtin: bool,
 ) -> PkgResult<Option<Func>> {
-    let func = match change_set_id {
-        None => {
-            let mut existing_func: Option<Func> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
-                let mut maybe_matching_func: Vec<Func> = associated_funcs
-                    .into_iter()
-                    .filter(|f| f.name.clone() == func_spec.name())
-                    .collect();
-                if let Some(matching_func) = maybe_matching_func.pop() {
-                    existing_func = Some(matching_func);
-                }
-            }
-
-            let (func, created) = match existing_func {
-                None => (create_func(ctx, func_spec, is_builtin).await?, true),
-                Some(installed_func_record) => (installed_func_record, true),
-            };
-
-            if let Some(installed_pkg) = installed_module {
-                installed_pkg
-                    .create_association(ctx, func.id.into())
-                    .await?;
-            }
-
-            thing_map.insert(
-                change_set_id,
-                func_spec.unique_id().to_owned(),
-                Thing::Func(func.to_owned()),
-            );
-
-            if created {
-                Some(func)
-            } else {
-                None
+    let func = {
+        let mut existing_func: Option<Func> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
+            let mut maybe_matching_func: Vec<Func> = associated_funcs
+                .into_iter()
+                .filter(|f| f.name.clone() == func_spec.name())
+                .collect();
+            if let Some(matching_func) = maybe_matching_func.pop() {
+                existing_func = Some(matching_func);
             }
         }
-        Some(_) => {
-            unimplemented!("workspace import not fixed");
-            // let existing_func = thing_map.get(change_set_pk, &func_spec.unique_id().to_owned());
 
-            // match existing_func {
-            //     Some(Thing::Func(existing_func)) => {
-            //         let mut existing_func = existing_func.to_owned();
+        let (func, created) = match existing_func {
+            None => (create_func(ctx, func_spec, is_builtin).await?, true),
+            Some(installed_func_record) => (installed_func_record, true),
+        };
 
-            //         if func_spec.deleted() {
-            //             existing_func.delete_by_id(ctx).await?;
+        if let Some(installed_pkg) = installed_module {
+            installed_pkg
+                .create_association(ctx, func.id.into())
+                .await?;
+        }
 
-            //             None
-            //         } else {
-            //             if let Some(data) = func_spec.data() {
-            //                 update_func(ctx, &mut existing_func, data).await?;
-            //             }
+        thing_map.insert(
+            func_spec.unique_id().to_owned(),
+            Thing::Func(func.to_owned()),
+        );
 
-            //             Some(existing_func)
-            //         }
-            //     }
-            //     _ => {
-            //         if func_spec.deleted() {
-            //             // If we're "deleted" but there is no existing function, this means we're
-            //             // deleted only in a change set. Do nothing
-            //             None
-            //         } else {
-            //             Some(create_func(ctx, func_spec).await?)
-            //         }
-            //     }
-            // }
+        if created {
+            Some(func)
+        } else {
+            None
         }
     };
 
     if let Some(func) = func.as_ref() {
         thing_map.insert(
-            change_set_id,
             func_spec.unique_id().to_owned(),
             Thing::Func(func.to_owned()),
         );
@@ -1690,70 +398,14 @@ async fn create_func_argument(
     .await?)
 }
 
-// async fn update_func_argument(
-//     ctx: &DalContext,
-//     existing_arg: &mut FuncArgument,
-//     func_id: FuncId,
-//     func_arg: &SiPkgFuncArgument<'_>,
-// ) -> PkgResult<()> {
-//     existing_arg.set_name(ctx, func_arg.name()).await?;
-//     existing_arg.set_kind(ctx, func_arg.kind()).await?;
-//     let element_kind: Option<FuncArgumentKind> = func_arg.element_kind().map(|&kind| kind.into());
-//     existing_arg.set_element_kind(ctx, element_kind).await?;
-//     existing_arg.set_func_id(ctx, func_id).await?;
-//
-//     Ok(())
-// }
-
 async fn import_func_arguments(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_id: FuncId,
     func_arguments: &[SiPkgFuncArgument<'_>],
     _thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match change_set_id {
-        None => {
-            for arg in func_arguments {
-                create_func_argument(ctx, func_id, arg).await?;
-            }
-        }
-        Some(_) => {} //             for arg in func_arguments {
-                      //                 let unique_id =
-                      //                     arg.unique_id()
-                      //                         .ok_or(PkgError::MissingUniqueIdForNode(format!(
-                      //                             "func-argument-{}",
-                      //                             arg.hash()
-                      //                         )))?;
-                      //
-                      //                 match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-                      //                     Some(Thing::FuncArgument(existing_arg)) => {
-                      //                         let mut existing_arg = existing_arg.to_owned();
-                      //
-                      //                         if arg.deleted() {
-                      //                             existing_arg.delete_by_id(ctx).await?;
-                      //                         } else {
-                      //                             update_func_argument(ctx, &mut existing_arg, func_id, arg).await?;
-                      //                             thing_map.insert(
-                      //                                 change_set_pk,
-                      //                                 unique_id.to_owned(),
-                      //                                 Thing::FuncArgument(existing_arg.to_owned()),
-                      //                             );
-                      //                         }
-                      //                     }
-                      //                     _ => {
-                      //                         if !arg.deleted() {
-                      //                             let new_arg = create_func_argument(ctx, func_id, arg).await?;
-                      //                             thing_map.insert(
-                      //                                 change_set_pk,
-                      //                                 unique_id.to_owned(),
-                      //                                 Thing::FuncArgument(new_arg),
-                      //                             );
-                      //                         }
-                      //                     }
-                      //                 }
-                      //             }
-                      //         }
+    for arg in func_arguments {
+        create_func_argument(ctx, func_id, arg).await?;
     }
 
     Ok(())
@@ -1770,140 +422,61 @@ async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> 
     Ok(schema)
 }
 
-// async fn update_schema(
-//     ctx: &DalContext,
-//     schema: &mut Schema,
-//     schema_spec_data: &SiPkgSchemaData,
-// ) -> PkgResult<()> {
-//     if schema_spec_data.name() != schema.name() {
-//         schema.set_name(ctx, schema_spec_data.name()).await?;
-//     }
-
-//     if schema_spec_data.ui_hidden() != schema.ui_hidden() {
-//         schema
-//             .set_ui_hidden(ctx, schema_spec_data.ui_hidden())
-//             .await?;
-//     }
-
-//     if let Some(mut ui_menu) = schema.ui_menus(ctx).await?.pop() {
-//         if let Some(category_name) = schema_spec_data.category_name() {
-//             if category_name != ui_menu.name() {
-//                 ui_menu.set_name(ctx, category_name).await?;
-//             }
-//             if schema_spec_data.category() != ui_menu.category() {
-//                 ui_menu.set_name(ctx, schema_spec_data.category()).await?;
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
-
 async fn import_schema(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_spec: &SiPkgSchema<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-    let schema_and_category = match change_set_id {
-        None => {
-            let mut existing_schema: Option<Schema> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
-                let mut maybe_matching_schema: Vec<Schema> = associated_schemas
-                    .into_iter()
-                    .filter(|s| s.name.clone() == schema_spec.name())
-                    .collect();
-                if let Some(matching_schema) = maybe_matching_schema.pop() {
-                    existing_schema = Some(matching_schema);
-                }
+    let schema_and_category = {
+        let mut existing_schema: Option<Schema> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
+            let mut maybe_matching_schema: Vec<Schema> = associated_schemas
+                .into_iter()
+                .filter(|s| s.name.clone() == schema_spec.name())
+                .collect();
+            if let Some(matching_schema) = maybe_matching_schema.pop() {
+                existing_schema = Some(matching_schema);
             }
-            let data = schema_spec
-                .data()
-                .ok_or(PkgError::DataNotFound("schema".into()))?;
-
-            // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
-            // to pull it off here, even if we find an existing schema.
-            let category = data.category.clone();
-
-            let schema = match existing_schema {
-                None => create_schema(ctx, data).await?,
-                Some(installed_schema_record) => installed_schema_record,
-            };
-
-            // Even if the asset is already installed, we write a record of the asset installation so that
-            // we can track the installed packages that share schemas.
-            if let Some(module) = installed_module.clone() {
-                module.create_association(ctx, schema.id().into()).await?;
-            }
-
-            Some((schema, category))
         }
-        Some(_) => {
-            unimplemented!("workspace import not yet implemented")
-            // let unique_id = schema_spec
-            //     .unique_id()
-            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
-            //         "schema {}",
-            //         schema_spec.hash()
-            //     )))?;
-            //
-            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-            //     Some(Thing::Schema(schema)) => {
-            //         let mut schema = schema.to_owned();
-            //
-            //         if schema_spec.deleted() {
-            //             schema.delete_by_id(ctx).await?;
-            //             // delete all schema children?
-            //
-            //             None
-            //         } else {
-            //             if let Some(data) = schema_spec.data() {
-            //                 update_schema(ctx, &mut schema, data).await?;
-            //             }
-            //
-            //             Some(schema)
-            //         }
-            //     }
-            //     _ => {
-            //         if schema_spec.deleted() {
-            //             None
-            //         } else {
-            //             Some(
-            //                 create_schema(
-            //                     ctx,
-            //                     schema_spec
-            //                         .data()
-            //                         .ok_or(PkgError::DataNotFound("schema".into()))?,
-            //                 )
-            //                 .await?,
-            //             )
-            //         }
-            //     }
-            // }
+        let data = schema_spec
+            .data()
+            .ok_or(PkgError::DataNotFound("schema".into()))?;
+
+        // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
+        // to pull it off here, even if we find an existing schema.
+        let category = data.category.clone();
+
+        let schema = match existing_schema {
+            None => create_schema(ctx, data).await?,
+            Some(installed_schema_record) => installed_schema_record,
+        };
+
+        // Even if the asset is already installed, we write a record of the asset installation so that
+        // we can track the installed packages that share schemas.
+        if let Some(module) = installed_module.clone() {
+            module.create_association(ctx, schema.id().into()).await?;
         }
+
+        Some((schema, category))
     };
 
     if let Some((mut schema, _category)) = schema_and_category {
         if let Some(unique_id) = schema_spec.unique_id() {
-            thing_map.insert(
-                change_set_id,
-                unique_id.to_owned(),
-                Thing::Schema(schema.to_owned()),
-            );
+            thing_map.insert(unique_id.to_owned(), Thing::Schema(schema.to_owned()));
         }
 
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
             let variant = import_schema_variant(
                 ctx,
-                change_set_id,
                 &mut schema,
                 schema_spec.clone(),
                 variant_spec,
                 installed_module.clone(),
                 thing_map,
+                None,
             )
             .await?;
 
@@ -1912,7 +485,6 @@ async fn import_schema(
 
                 set_default_schema_variant_id(
                     ctx,
-                    change_set_id,
                     &mut schema,
                     schema_spec
                         .data()
@@ -1933,22 +505,21 @@ async fn import_schema(
 
 async fn set_default_schema_variant_id(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema: &mut Schema,
     spec_default_unique_id: Option<&str>,
     variant_unique_id: Option<&str>,
     variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    match (change_set_id, variant_unique_id, spec_default_unique_id) {
-        (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
-            if schema.get_default_schema_variant(ctx).await?.is_none() {
+    match (variant_unique_id, spec_default_unique_id) {
+        (None, _) | (Some(_), None) => {
+            if schema.get_default_schema_variant_id(ctx).await?.is_none() {
                 schema.set_default_schema_variant(ctx, variant_id).await?;
             }
         }
-        (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
+        (Some(variant_unique_id), Some(spec_default_unique_id)) => {
             if variant_unique_id == spec_default_unique_id {
                 let current_default_variant_id = schema
-                    .get_default_schema_variant(ctx)
+                    .get_default_schema_variant_id(ctx)
                     .await?
                     .unwrap_or(SchemaVariantId::NONE);
 
@@ -1994,12 +565,10 @@ struct PropVisitContext<'a> {
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
     pub default_values: Mutex<Vec<DefaultValueInfo>>,
     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-    pub change_set_id: Option<ChangeSetId>,
 }
 
 async fn import_leaf_function(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     leaf_func: SiPkgLeafFunction<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
@@ -2012,7 +581,7 @@ async fn import_leaf_function(
 
     let kind: LeafKind = leaf_func.leaf_kind().into();
 
-    match thing_map.get(change_set_id, &leaf_func.func_unique_id().to_owned()) {
+    match thing_map.get(&leaf_func.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
                 .await?;
@@ -2065,8 +634,6 @@ async fn create_socket(
                 let cas_value = ConnectionAnnotation::from_tokens_array(vec![raw_cas_value]);
                 stash.push(cas_value);
             }
-            // let cas_values = ConnectionAnnotation::from_tokens_array(raw_cas_values);
-            // stash.push(cas_values);
 
             stash
         };
@@ -2111,52 +678,20 @@ async fn create_socket(
 
 async fn import_socket(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     socket_spec: SiPkgSocket<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    let (input_socket, output_socket) = match change_set_id {
-        None => {
-            let data = socket_spec
-                .data()
-                .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
+    let (input_socket, output_socket) = {
+        let data = socket_spec
+            .data()
+            .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
 
-            create_socket(ctx, data, schema_variant_id).await?
-        }
-        Some(_) => {
-            todo!("workspace backup imports");
-            //            let unique_id = socket_spec
-            //                .unique_id()
-            //                .ok_or(PkgError::MissingUniqueIdForNode(format!(
-            //                    "socket {}",
-            //                    socket_spec.hash()
-            //                )))?;
-            //
-            //            match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-            //                Some(Thing::Socket(socket_box)) => {
-            //                    (
-            //                        socket_box.0.to_owned(),
-            //                        socket_box.1.to_owned(),
-            //                        socket_box.2.to_owned(),
-            //                    )
-            //                    // prop trees, including sockets and providers, are created whole cloth, so
-            //                    // should not have differences in change sets (currently)
-            //                }
-            //                _ => {
-            //                    let data = socket_spec
-            //                        .data()
-            //                        .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
-            //
-            //                    create_socket(ctx, data, schema_id, schema_variant_id).await?
-            //                }
-            //            }
-        }
+        create_socket(ctx, data, schema_variant_id).await?
     };
 
     if let Some(unique_id) = socket_spec.unique_id() {
         thing_map.insert(
-            change_set_id,
             unique_id.to_owned(),
             Thing::Socket(Box::new((
                 input_socket.to_owned(),
@@ -2173,7 +708,6 @@ async fn import_socket(
         (Some(func_unique_id), Some(output_socket), None) => {
             import_attr_func_for_output_socket(
                 ctx,
-                change_set_id,
                 schema_variant_id,
                 output_socket.id(),
                 func_unique_id,
@@ -2194,8 +728,8 @@ async fn create_action_protoype(
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<DeprecatedActionPrototype> {
-    let proto = DeprecatedActionPrototype::new(
+) -> PkgResult<(DeprecatedActionPrototype, ActionPrototype)> {
+    let deprecated_proto = DeprecatedActionPrototype::new(
         ctx,
         action_func_spec.name(),
         action_func_spec.kind().into(),
@@ -2204,92 +738,55 @@ async fn create_action_protoype(
     )
     .await?;
 
-    Ok(proto)
+    let kind: crate::action::prototype::ActionKind = action_func_spec.kind().into();
+    let name = action_func_spec
+        .name()
+        .map_or_else(|| kind.to_string(), |n| n.to_owned());
+    let proto = ActionPrototype::new(ctx, kind, name, None, schema_variant_id, func_id).await?;
+
+    Ok((deprecated_proto, proto))
 }
-
-// async fn update_action_prototype(
-//     ctx: &DalContext,
-//     prototype: &mut ActionPrototype,
-//     action_func_spec: &SiPkgActionFunc<'_>,
-//     func_id: FuncId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<()> {
-//     if prototype.schema_variant_id() != schema_variant_id {
-//         prototype
-//             .set_schema_variant_id(ctx, schema_variant_id)
-//             .await?;
-//     }
-
-//     if prototype.name() != action_func_spec.name() {
-//         prototype.set_name(ctx, action_func_spec.name()).await?;
-//     }
-
-//     if prototype.func_id() != func_id {
-//         prototype.set_func_id(ctx, func_id).await?;
-//     }
-
-//     let kind: ActionKind = action_func_spec.kind().into();
-//     if *prototype.kind() != kind {
-//         prototype.set_kind(ctx, kind).await?;
-//     }
-
-//     Ok(())
-// }
 
 async fn import_action_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     action_func_spec: &SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<Option<DeprecatedActionPrototype>> {
-    let prototype =
-        match thing_map.get(change_set_id, &action_func_spec.func_unique_id().to_owned()) {
+) -> PkgResult<(Option<DeprecatedActionPrototype>, Option<ActionPrototype>)> {
+    let (deprecated_prototype, prototype) =
+        match thing_map.get(&action_func_spec.func_unique_id().to_owned()) {
             Some(Thing::Func(func)) => {
                 let func_id = func.id;
 
                 if let Some(unique_id) = action_func_spec.unique_id() {
-                    match thing_map.get(change_set_id, &unique_id.to_owned()) {
+                    match thing_map.get(&unique_id.to_owned()) {
                         Some(Thing::ActionPrototype(_prototype)) => {
-                            todo!("workspace import paths not yet implemented");
-                            //                            let mut prototype = prototype.to_owned();
-                            //
-                            //                            if action_func_spec.deleted() {
-                            //                                prototype.delete_by_id(ctx).await?;
-                            //                            } else {
-                            //                                update_action_prototype(
-                            //                                    ctx,
-                            //                                    &mut prototype,
-                            //                                    action_func_spec,
-                            //                                    func_id,
-                            //                                    schema_variant_id,
-                            //                                )
-                            //                                .await?;
-                            //                            }
-                            //
-                            //                            Some(prototype)
+                            return Err(PkgError::WorkspaceExportNotSupported())
+                        }
+                        Some(Thing::DeprecatedActionPrototype(_prototype)) => {
+                            return Err(PkgError::WorkspaceExportNotSupported())
                         }
                         _ => {
                             if action_func_spec.deleted() {
-                                None
+                                (None, None)
                             } else {
-                                Some(
+                                let (deprecated_action_prototype, action_prototype) =
                                     create_action_protoype(
                                         ctx,
                                         action_func_spec,
                                         func_id,
                                         schema_variant_id,
                                     )
-                                    .await?,
-                                )
+                                    .await?;
+                                (Some(deprecated_action_prototype), Some(action_prototype))
                             }
                         }
                     }
                 } else {
-                    Some(
+                    let (deprecated_action_prototype, action_prototype) =
                         create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
-                            .await?,
-                    )
+                            .await?;
+                    (Some(deprecated_action_prototype), Some(action_prototype))
                 }
             }
             _ => {
@@ -2299,43 +796,23 @@ async fn import_action_func(
             }
         };
 
-    Ok(prototype)
+    Ok((deprecated_prototype, prototype))
 }
 
 async fn import_auth_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     func_spec: &SiPkgAuthFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
 ) -> PkgResult<Option<AuthenticationPrototype>> {
-    let prototype = match thing_map.get(change_set_id, &func_spec.func_unique_id().to_owned()) {
+    let prototype = match thing_map.get(&func_spec.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
             let func_id = func.id;
 
             if let Some(unique_id) = func_spec.unique_id() {
-                match thing_map.get(change_set_id, &unique_id.to_owned()) {
+                match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::AuthPrototype(_prototype)) => {
-                        todo!("workspace import paths not yet implemented");
-                        // AuthenticationPrototype is represented by just and edge,
-                        // Since the info that matters is only then func_id and the schema_variant_id
-                        // Do we need to update it?
-
-                        // let mut prototype = prototype.to_owned();
-                        //
-                        // if func_spec.deleted() {
-                        //     prototype.delete_by_id(ctx).await?;
-                        // } else {
-                        //     update_authentication_prototype(
-                        //         ctx,
-                        //         &mut prototype,
-                        //         func_id,
-                        //         schema_variant_id,
-                        //     )
-                        //     .await?;
-                        // }
-                        //
-                        // Some(prototype)
+                        return Err(PkgError::WorkspaceExportNotSupported())
                     }
                     _ => {
                         if func_spec.deleted() {
@@ -2403,7 +880,6 @@ impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
 
 async fn create_props(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     variant_spec: &SiPkgSchemaVariant<'_>,
     prop_root: SchemaVariantSpecPropRoot,
     prop_root_prop_id: PropId,
@@ -2415,12 +891,10 @@ async fn create_props(
         attr_funcs: Mutex::new(vec![]),
         default_values: Mutex::new(vec![]),
         map_key_funcs: Mutex::new(vec![]),
-        change_set_id,
     };
 
     let parent_info = ParentPropInfo {
         prop_id: prop_root_prop_id,
-        path: PropPath::new(prop_root.path_parts()),
     };
 
     variant_spec
@@ -2434,136 +908,113 @@ async fn create_props(
     })
 }
 
-// async fn update_schema_variant(
-//     ctx: &DalContext,
-//     schema_variant: &mut SchemaVariant,
-//     name: &str,
-//     schema_id: SchemaId,
-// ) -> PkgResult<()> {
-//     let current_schema_id = schema_variant
-//         .schema(ctx)
-//         .await?
-//         .map(|schema| *schema.id())
-//         .ok_or(SchemaVariantError::MissingSchema(*schema_variant.id()))?;
-
-//     if schema_id != current_schema_id {
-//         schema_variant.set_schema(ctx, &schema_id).await?;
-//     }
-
-//     if schema_variant.name() != name {
-//         schema_variant.set_name(ctx, name).await?;
-//     }
-
-//     Ok(())
-// }
-
-async fn import_schema_variant(
+/// Duplicate all the functions, and return a thing_map with them included, so
+/// that we can import a standalone schema variant.
+pub async fn clone_and_import_funcs(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
+    funcs: Vec<SiPkgFunc<'_>>,
+) -> PkgResult<ThingMap> {
+    let mut thing_map = ThingMap::new();
+
+    for func_spec in funcs {
+        let func = if func::is_intrinsic(func_spec.name())
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
+        {
+            let func_id = Func::find_by_name(ctx, &func_spec.name())
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_owned()))?;
+
+            Func::get_by_id_or_error(ctx, func_id).await?
+        } else {
+            let func = create_func(ctx, &func_spec, false).await?;
+
+            if !func_spec.arguments()?.is_empty() {
+                import_func_arguments(ctx, func.id, &func_spec.arguments()?, &mut thing_map)
+                    .await?;
+            }
+
+            func
+        };
+
+        thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
+    }
+
+    Ok(thing_map)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn import_schema_variant(
+    ctx: &DalContext,
     schema: &mut Schema,
     schema_spec: SiPkgSchema<'_>,
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
+    installed_schema_variant: Option<SchemaVariant>,
 ) -> PkgResult<Option<SchemaVariant>> {
-    let schema_variant = match change_set_id {
-        None => {
-            let mut existing_schema_variant: Option<SchemaVariant> = None;
-            if let Some(installed_pkg) = installed_module.clone() {
-                let associated_schema_variants =
-                    installed_pkg.list_associated_schema_variants(ctx).await?;
-                let mut maybe_matching_schema_variant: Vec<SchemaVariant> =
-                    associated_schema_variants
-                        .into_iter()
-                        .filter(|s| s.name() == schema_spec.name())
-                        .collect();
-                if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
-                    existing_schema_variant = Some(matching_schema_variant);
-                }
-            }
-
-            let (variant, created) = match existing_schema_variant {
-                None => {
-                    let spec = schema_spec.to_spec().await?;
-                    let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
-
-                    let mut asset_func_id: Option<FuncId> = None;
-                    if let Some(variant_spec_data) = variant_spec.data() {
-                        let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-                        if let Thing::Func(asset_func) = thing_map
-                            .get(change_set_id, &func_unique_id)
-                            .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-                        {
-                            asset_func_id = Some(asset_func.id)
-                        }
-                    }
-                    (
-                        SchemaVariant::new(
-                            ctx,
-                            schema.id(),
-                            variant_spec.name(),
-                            metadata.menu_name,
-                            metadata.category,
-                            metadata.color,
-                            metadata.component_type,
-                            metadata.link,
-                            metadata.description,
-                            asset_func_id,
-                            variant_spec.is_builtin(),
-                        )
-                        .await?
-                        .0,
-                        true,
-                    )
-                }
-                Some(installed_variant) => (installed_variant, true),
-            };
-
-            if let Some(module) = installed_module.clone() {
-                module.create_association(ctx, variant.id().into()).await?;
-            }
-
-            if created {
-                Some(variant)
-            } else {
-                None
+    let schema_variant = {
+        let mut existing_schema_variant: Option<SchemaVariant> = None;
+        if let Some(installed_pkg) = installed_module.clone() {
+            let associated_schema_variants =
+                installed_pkg.list_associated_schema_variants(ctx).await?;
+            let mut maybe_matching_schema_variant: Vec<SchemaVariant> = associated_schema_variants
+                .into_iter()
+                .filter(|s| s.name() == schema_spec.name())
+                .collect();
+            if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
+                existing_schema_variant = Some(matching_schema_variant);
             }
         }
-        Some(_) => {
-            unimplemented!("workspace import is not working at this time")
-            // let unique_id = variant_spec
-            //     .unique_id()
-            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
-            //         "variant {}",
-            //         variant_spec.hash()
-            //     )))?;
-            //
-            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-            //     Some(Thing::SchemaVariant(variant)) => {
-            //         let mut variant = variant.to_owned();
-            //         update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
-            //             .await?;
-            //
-            //         if variant_spec.deleted() {
-            //             variant.delete_by_id(ctx).await?;
-            //
-            //             None
-            //         } else {
-            //             Some(variant)
-            //         }
-            //     }
-            //     _ => {
-            //         if variant_spec.deleted() {
-            //             None
-            //         } else {
-            //             Some(
-            //                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-            //                     .await?
-            //                     .0,
-            //             )
-            //         }
-            //     }
-            // }
+
+        if let Some(existing_sv) = installed_schema_variant {
+            existing_schema_variant = Some(existing_sv);
+        }
+
+        let (variant, created) = match existing_schema_variant {
+            None => {
+                let spec = schema_spec.to_spec().await?;
+                let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
+
+                let mut asset_func_id: Option<FuncId> = None;
+                if let Some(variant_spec_data) = variant_spec.data() {
+                    let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+                    if let Thing::Func(asset_func) = thing_map
+                        .get(&func_unique_id)
+                        .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                    {
+                        asset_func_id = Some(asset_func.id)
+                    }
+                }
+                (
+                    SchemaVariant::new(
+                        ctx,
+                        schema.id(),
+                        variant_spec.name(),
+                        metadata.menu_name,
+                        metadata.category,
+                        metadata.color,
+                        metadata.component_type,
+                        metadata.link,
+                        metadata.description,
+                        asset_func_id,
+                        variant_spec.is_builtin(),
+                    )
+                    .await?
+                    .0,
+                    true,
+                )
+            }
+            Some(installed_variant) => (installed_variant, true),
+        };
+
+        if let Some(module) = installed_module.clone() {
+            module.create_association(ctx, variant.id().into()).await?;
+        }
+
+        if created {
+            Some(variant)
+        } else {
+            None
         }
     };
 
@@ -2572,7 +1023,6 @@ async fn import_schema_variant(
         Some(schema_variant) => {
             if let Some(unique_id) = variant_spec.unique_id() {
                 thing_map.insert(
-                    change_set_id,
                     unique_id.to_owned(),
                     Thing::SchemaVariant(schema_variant.to_owned()),
                 );
@@ -2603,7 +1053,6 @@ async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::Domain,
                     domain_prop_id,
@@ -2622,7 +1071,6 @@ async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::ResourceValue,
                     resource_value_prop_id,
@@ -2641,7 +1089,6 @@ async fn import_schema_variant(
             side_effects.extend(
                 create_props(
                     ctx,
-                    change_set_id,
                     variant_spec,
                     SchemaVariantSpecPropRoot::Secrets,
                     secrets_prop_id,
@@ -2667,7 +1114,6 @@ async fn import_schema_variant(
                 side_effects.extend(
                     create_props(
                         ctx,
-                        change_set_id,
                         variant_spec,
                         SchemaVariantSpecPropRoot::SecretDefinition,
                         secret_definition_prop_id,
@@ -2680,56 +1126,38 @@ async fn import_schema_variant(
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
             for socket in variant_spec.sockets()? {
-                import_socket(ctx, change_set_id, socket, schema_variant.id(), thing_map).await?;
+                import_socket(ctx, socket, schema_variant.id(), thing_map).await?;
             }
 
             for action_func in &variant_spec.action_funcs()? {
-                let prototype = import_action_func(
-                    ctx,
-                    change_set_id,
-                    action_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                let (deprecated_prototype, prototype) =
+                    import_action_func(ctx, action_func, schema_variant.id(), thing_map).await?;
+
+                if let (Some(prototype), Some(unique_id)) =
+                    (deprecated_prototype, action_func.unique_id())
+                {
+                    thing_map.insert(
+                        unique_id.to_owned(),
+                        Thing::DeprecatedActionPrototype(prototype),
+                    );
+                }
 
                 if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-                    thing_map.insert(
-                        change_set_id,
-                        unique_id.to_owned(),
-                        Thing::ActionPrototype(prototype),
-                    );
+                    thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));
                 }
             }
 
             for auth_func in &variant_spec.auth_funcs()? {
-                let prototype = import_auth_func(
-                    ctx,
-                    change_set_id,
-                    auth_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                let prototype =
+                    import_auth_func(ctx, auth_func, schema_variant.id(), thing_map).await?;
 
                 if let (Some(prototype), Some(unique_id)) = (prototype, auth_func.unique_id()) {
-                    thing_map.insert(
-                        change_set_id,
-                        unique_id.to_owned(),
-                        Thing::AuthPrototype(prototype),
-                    );
+                    thing_map.insert(unique_id.to_owned(), Thing::AuthPrototype(prototype));
                 }
             }
 
             for leaf_func in variant_spec.leaf_functions()? {
-                import_leaf_function(
-                    ctx,
-                    change_set_id,
-                    leaf_func,
-                    schema_variant.id(),
-                    thing_map,
-                )
-                .await?;
+                import_leaf_function(ctx, leaf_func, schema_variant.id(), thing_map).await?;
             }
 
             // Default values must be set before attribute functions are configured so they don't
@@ -2764,7 +1192,6 @@ async fn import_schema_variant(
                 .await?;
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     AttrFuncInfo {
                         func_unique_id: si_prop_func.func_unique_id().to_owned(),
@@ -2795,7 +1222,6 @@ async fn import_schema_variant(
                 .await?;
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     AttrFuncInfo {
                         func_unique_id: root_prop_func.func_unique_id().to_owned(),
@@ -2816,21 +1242,13 @@ async fn import_schema_variant(
             }
 
             for attr_func in side_effects.attr_funcs {
-                import_attr_func_for_prop(
-                    ctx,
-                    change_set_id,
-                    schema_variant.id(),
-                    attr_func,
-                    None,
-                    thing_map,
-                )
-                .await?;
+                import_attr_func_for_prop(ctx, schema_variant.id(), attr_func, None, thing_map)
+                    .await?;
             }
 
             for (key, map_key_func) in side_effects.map_key_funcs {
                 import_attr_func_for_prop(
                     ctx,
-                    change_set_id,
                     schema_variant.id(),
                     map_key_func,
                     Some(key),
@@ -2873,7 +1291,6 @@ async fn set_default_value(
 
 async fn import_attr_func_for_prop(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_variant_id: SchemaVariantId,
     AttrFuncInfo {
         func_unique_id,
@@ -2883,11 +1300,10 @@ async fn import_attr_func_for_prop(
     key: Option<String>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match thing_map.get(change_set_id, &func_unique_id.to_owned()) {
+    match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
                 ctx,
-                change_set_id,
                 AttrFuncContext::Prop(prop_id),
                 key,
                 schema_variant_id,
@@ -2905,18 +1321,16 @@ async fn import_attr_func_for_prop(
 
 async fn import_attr_func_for_output_socket(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     schema_variant_id: SchemaVariantId,
     output_socket_id: OutputSocketId,
     func_unique_id: &str,
     inputs: Vec<SiPkgAttrFuncInputView>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    match thing_map.get(change_set_id, &func_unique_id.to_owned()) {
+    match thing_map.get(&func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
                 ctx,
-                change_set_id,
                 AttrFuncContext::OutputSocket(output_socket_id),
                 None,
                 schema_variant_id,
@@ -2946,7 +1360,7 @@ async fn get_prototype_for_context(
                 key.to_owned().expect("check above ensures this is some"),
             ))?,
         };
-        let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
+        let map_prop = Prop::get_by_id_or_error(ctx, map_prop_id).await?;
 
         if map_prop.kind != PropKind::Map {
             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
@@ -3041,62 +1455,6 @@ async fn create_attr_proto_arg(
     })
 }
 
-// async fn update_attr_proto_arg(
-//     ctx: &DalContext,
-//     apa: &mut AttributePrototypeArgument,
-//     _prototype_id: AttributePrototypeId,
-//     input: &SiPkgAttrFuncInputView,
-//     func_id: FuncId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<()> {
-//     let arg = match &input {
-//         SiPkgAttrFuncInputView::Prop { name, .. }
-//         | SiPkgAttrFuncInputView::InputSocket { name, .. }
-//         | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
-//             FuncArgument::find_by_name_for_func(ctx, name, func_id)
-//                 .await?
-//                 .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
-//         }
-//     };
-
-//     if apa.func_argument_id() != *arg.id() {
-//         apa.set_func_argument_id(ctx, arg.id()).await?;
-//     }
-
-//     match input {
-//         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
-//             let prop = Prop::find_prop_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
-//             let prop_ip = InternalProvider::find_for_prop(ctx, *prop.id())
-//                 .await?
-//                 .ok_or(PkgError::MissingInternalProviderForProp(*prop.id()))?;
-
-//             if apa.internal_provider_id() != *prop_ip.id() {
-//                 apa.set_internal_provider_id_safe(ctx, *prop_ip.id())
-//                     .await?;
-//             }
-//         }
-//         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
-//             let explicit_ip = InternalProvider::find_explicit_for_schema_variant_and_name(
-//                 ctx,
-//                 schema_variant_id,
-//                 &socket_name,
-//             )
-//             .await?
-//             .ok_or(PkgError::MissingInternalProviderForSocketName(
-//                 socket_name.to_owned(),
-//             ))?;
-
-//             if apa.internal_provider_id() != *explicit_ip.id() {
-//                 apa.set_internal_provider_id_safe(ctx, *explicit_ip.id())
-//                     .await?;
-//             }
-//         }
-//         _ => {}
-//     }
-
-//     Ok(())
-// }
-
 #[derive(Debug, Clone)]
 pub enum AttrFuncContext {
     Prop(PropId),
@@ -3106,7 +1464,6 @@ pub enum AttrFuncContext {
 #[allow(clippy::too_many_arguments)]
 async fn import_attr_func(
     ctx: &DalContext,
-    change_set_id: Option<ChangeSetId>,
     context: AttrFuncContext,
     key: Option<String>,
     schema_variant_id: SchemaVariantId,
@@ -3123,75 +1480,7 @@ async fn import_attr_func(
     }
 
     for input in &inputs {
-        match change_set_id {
-            None => {
-                create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
-            }
-            Some(_) => {
-                todo!();
-                //                let (unique_id, deleted) = match input {
-                //                    SiPkgAttrFuncInputView::Prop {
-                //                        unique_id, deleted, ..
-                //                    }
-                //                    | SiPkgAttrFuncInputView::InputSocket {
-                //                        unique_id, deleted, ..
-                //                    }
-                //                    | SiPkgAttrFuncInputView::OutputSocket {
-                //                        unique_id, deleted, ..
-                //                    } => (
-                //                        unique_id
-                //                            .as_deref()
-                //                            .ok_or(PkgError::MissingUniqueIdForNode("attr-func-input".into()))?,
-                //                        *deleted,
-                //                    ),
-                //                };
-                //
-                //                let apa = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-                //                    Some(Thing::AttributePrototypeArgument(apa)) => {
-                //                        let mut apa = apa.to_owned();
-                //                        if deleted {
-                //                            apa.delete_by_id(ctx).await?;
-                //                        } else {
-                //                            update_attr_proto_arg(
-                //                                ctx,
-                //                                &mut apa,
-                //                                *prototype.id(),
-                //                                input,
-                //                                func_id,
-                //                                schema_variant_id,
-                //                            )
-                //                            .await?;
-                //                        }
-                //
-                //                        Some(apa)
-                //                    }
-                //                    _ => {
-                //                        if deleted {
-                //                            None
-                //                        } else {
-                //                            Some(
-                //                                create_attr_proto_arg(
-                //                                    ctx,
-                //                                    *prototype.id(),
-                //                                    input,
-                //                                    func_id,
-                //                                    schema_variant_id,
-                //                                )
-                //                                .await?,
-                //                            )
-                //                        }
-                // }
-                //                };
-
-                //                if let Some(apa) = apa {
-                //                    thing_map.insert(
-                //                        change_set_pk,
-                //                        unique_id.to_owned(),
-                //                        Thing::AttributePrototypeArgument(apa),
-                //                    );
-                //                }
-            }
-        }
+        create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
     }
 
     Ok(())
@@ -3201,6 +1490,7 @@ fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
     match pkg_prop {
         SiPkgProp::Array { .. } => PropKind::Array,
         SiPkgProp::Boolean { .. } => PropKind::Boolean,
+        SiPkgProp::Json { .. } => PropKind::Json,
         SiPkgProp::Map { .. } => PropKind::Map,
         SiPkgProp::Number { .. } => PropKind::Integer,
         SiPkgProp::Object { .. } => PropKind::Object,
@@ -3248,7 +1538,6 @@ async fn create_dal_prop(
 #[derive(Debug, Clone)]
 struct ParentPropInfo {
     prop_id: PropId,
-    path: PropPath,
 }
 
 async fn create_prop(
@@ -3256,41 +1545,16 @@ async fn create_prop(
     parent_prop_info: Option<ParentPropInfo>,
     ctx: &PropVisitContext<'_>,
 ) -> PkgResult<Option<ParentPropInfo>> {
-    let prop = match ctx.change_set_id {
-        None => {
-            let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-            create_dal_prop(
-                ctx.ctx,
-                data,
-                prop_kind_for_pkg_prop(&spec),
-                ctx.schema_variant_id,
-                parent_prop_info,
-            )
-            .await?
-        }
-        Some(_) => {
-            let parent_path = parent_prop_info
-                .as_ref()
-                .map(|info| info.path.to_owned())
-                .unwrap_or(PropPath::new(["root"]));
-
-            let path = parent_path.join(&PropPath::new([spec.name()]));
-
-            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path).await? {
-                None => {
-                    let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-                    create_dal_prop(
-                        ctx.ctx,
-                        data,
-                        prop_kind_for_pkg_prop(&spec),
-                        ctx.schema_variant_id,
-                        parent_prop_info,
-                    )
-                    .await?
-                }
-                Some(prop_id) => Prop::get_by_id(ctx.ctx, prop_id).await?,
-            }
-        }
+    let prop = {
+        let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+        create_dal_prop(
+            ctx.ctx,
+            data,
+            prop_kind_for_pkg_prop(&spec),
+            ctx.schema_variant_id,
+            parent_prop_info,
+        )
+        .await?
     };
 
     let prop_id = prop.id();
@@ -3372,10 +1636,7 @@ async fn create_prop(
         });
     }
 
-    Ok(Some(ParentPropInfo {
-        prop_id: prop.id(),
-        path: prop.path(ctx.ctx).await?,
-    }))
+    Ok(Some(ParentPropInfo { prop_id: prop.id() }))
 }
 
 pub async fn attach_resource_payload_to_value(
@@ -3432,7 +1693,6 @@ pub async fn attach_resource_payload_to_value(
 
     match rv_input_apa_id {
         Some(apa_id) => {
-            dbg!("existing apa");
             if !{
                 if let Some(ValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?

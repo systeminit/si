@@ -2,7 +2,7 @@
   <div>
     <div
       v-if="!schemaVariantId"
-      class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
+      class="w-full flex p-xs gap-1 border-b dark:border-neutral-600"
     >
       <VButton
         :disabled="disabled"
@@ -46,7 +46,7 @@
             <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
           </li>
         </ul>
-        <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+        <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
           <VButton
             :disabled="disabled"
             tone="neutral"
@@ -82,7 +82,7 @@ import { computed, inject, ref, Ref, watch } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import {
   AttributeAssociations,
-  AttributePrototypeView,
+  AttributePrototypeBag,
   FuncAssociations,
 } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
@@ -115,7 +115,7 @@ watch(
   { immediate: true },
 );
 
-const makeEmptyPrototype = (): AttributePrototypeView => ({
+const makeEmptyPrototype = (): AttributePrototypeBag => ({
   id: nilId(),
   componentId: nilId(),
   propId: nilId(),
@@ -134,7 +134,7 @@ const removeBinding = (prototypeId: string) => {
 
 const addOrUpdateBinding = (
   associations: AttributeAssociations,
-  prototype: AttributePrototypeView,
+  prototype: AttributePrototypeBag,
 ) => {
   if (prototype.id !== nilId()) {
     const currentPrototypeIdx = associations.prototypes.findIndex(
@@ -152,7 +152,7 @@ const closeModal = () => {
   bindingsModalRef.value?.close();
 };
 
-const saveModal = (prototype?: AttributePrototypeView) => {
+const saveModal = (prototype?: AttributePrototypeBag) => {
   if (prototype) {
     associations.value = addOrUpdateBinding(associations.value, prototype);
     emit("update:modelValue", associations.value);
@@ -200,8 +200,8 @@ const prototypeViews = computed(() =>
 
       const args = proto.prototypeArguments.map((arg) => ({
         name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
-        prop: arg.inputSocketId
-          ? funcStore.inputSocketIdToSourceName(arg.inputSocketId) ?? "none"
+        prop: arg.propId
+          ? funcStore.propIdToSourceName(arg.propId) ?? "none"
           : "none",
       }));
 

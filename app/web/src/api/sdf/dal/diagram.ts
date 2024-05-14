@@ -1,5 +1,12 @@
 import * as _ from "lodash-es";
 
+export enum ComponentType {
+  Component = "component",
+  ConfigurationFrameDown = "configurationFrameDown",
+  ConfigurationFrameUp = "configurationFrameUp",
+  AggregationFrame = "aggregationFrame",
+}
+
 export type DiagramKind = "configuration";
 
 export interface DiagramOutputSocket {
@@ -16,6 +23,8 @@ export interface DiagramSchemaVariant {
   id: string;
   name: string;
   builtin: boolean;
+  isDefault: boolean;
+  componentType: ComponentType;
 
   color: string;
   category: string;

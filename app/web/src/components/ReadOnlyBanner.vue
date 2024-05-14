@@ -27,44 +27,13 @@
         </div>
       </div>
     </div>
-    <VButton
-      v-if="showRefreshAllButton"
-      icon="refresh"
-      variant="ghost"
-      loadingIcon="refresh-active"
-      loadingText="Refreshing..."
-      :loading="refreshing"
-      @click="onClickRefreshButton"
-      >Resources</VButton
-    >
   </div>
 </template>
 
 <script lang="ts" setup>
-import { VButton } from "@si/vue-lib/design-system";
-import { ref, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
-import { useComponentsStore } from "@/store/components.store";
-
-const componentsStore = useComponentsStore();
-
-const refreshing = ref(false);
 
 defineProps({
   showRefreshAllButton: { type: Boolean, default: false },
-});
-
-let timeout: Timeout;
-
-const onClickRefreshButton = () => {
-  refreshing.value = true;
-  componentsStore.REFRESH_ALL_RESOURCE_INFO();
-  timeout = setTimeout(() => {
-    refreshing.value = false;
-  }, 3000);
-};
-
-onBeforeUnmount(() => {
-  clearTimeout(timeout);
 });
 </script>

@@ -1,4 +1,3 @@
-use deadpool_cyclone::PoolNoodle;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -8,16 +7,16 @@ use std::{
 use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
-use deadpool_cyclone::{
+use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
+use si_data_nats::NatsConfig;
+use si_pool_noodle::{
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
         LocalUdsInstanceSpec, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
     },
     Instance,
 };
-use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-use si_data_nats::NatsConfig;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -404,7 +403,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 }
                 builder.pool_size(pool_size);
                 builder.connect_timeout(connect_timeout);
-                builder.pool_noodle(PoolNoodle::new(pool_size.into()));
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
@@ -477,7 +475,7 @@ fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
 }
 
 fn default_pool_size() -> u16 {
-    100
+    5
 }
 
 fn default_connect_timeout() -> u64 {

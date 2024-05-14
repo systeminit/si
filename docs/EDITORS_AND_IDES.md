@@ -4,4 +4,4 @@ This document contains information related to using editors and IDEs when develo
 
 ## Direnv
 
-For notes on using plugins with `direnv`, see [`DEVELOPMENT_ENVIRONMENT`](./DEVELOPMENT_ENVIRONMENT.md).
+For notes on using plugins with `direnv`, see the [development environment documentation](./DEVELOPMENT_ENVIRONMENT.md).

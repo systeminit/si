@@ -55,7 +55,7 @@ import { useTheme } from "../utils/theme_tools";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
-type ButtonSizes = "xs" | "sm" | "md" | "lg" | "xl";
+type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 type ButtonVariants = "solid" | "ghost" | "soft" | "transparent";
 type ButtonTones = Tones;
 
@@ -279,6 +279,21 @@ const computedClasses = computed(() => ({
   // }
 
   // Size options (medium is default)
+  &.--size-2xs {
+    font-size: 8px;
+    padding: 1px 1px;
+    // border-radius: 8px;
+    .vbutton__icon {
+      padding: 0px;
+    }
+    .vbutton__inner {
+      gap: 1px;
+      padding: 0 0px;
+    }
+    .vbutton__text {
+      padding: 0 1px;
+    }
+  }
   &.--size-xs {
     font-size: 12px;
     padding: 2px 2px;
@@ -365,9 +380,14 @@ const computedClasses = computed(() => ({
 
     &.--variant-solid {
       background-color: @color;
-      color: contrast(
-        @color
-      ); // sets legible text color based on the background color
+
+      color: if(
+        @color = @colors-action-300,
+        // an exception to the rule for action 300
+        "white",
+        // sets legible text color based on the background color
+        contrast(@color)
+      );
 
       // set hover to either lighten or darken depending on if color is bright or dark
       &:hover when (lightness(@color) > 50%) {
@@ -421,7 +441,12 @@ const computedClasses = computed(() => ({
   }
 
   &.--tone-action {
-    .button-theme-generator(@colors-action-500);
+    &.--within-dark {
+      .button-theme-generator(@colors-action-300);
+    }
+    &.--within-light {
+      .button-theme-generator(@colors-action-500);
+    }
   }
   &.--tone-destructive {
     .button-theme-generator(@colors-destructive-500);

@@ -87,9 +87,11 @@ export function getToneTextColorClass(tone: Tones) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toneSettings = TONES[tone] as any;
 
-  if (theme.value === "dark")
-    return toneSettings.textColorClassDark || toneSettings.textColorClass;
-  return toneSettings.textColorClassLight || toneSettings.textColorClass;
+  if (theme?.value === "dark") {
+    return toneSettings?.textColorClassDark ?? toneSettings.textColorClass;
+  }
+
+  return toneSettings?.textColorClassLight ?? toneSettings.textColorClass;
 }
 
 export function getToneBorderColorClass(tone: Tones) {

@@ -187,11 +187,10 @@ impl QualificationView {
             None => return Ok(None),
         };
 
-        let qualification_entry: QualificationEntry =
-            match attribute_value.materialized_view(ctx).await? {
-                Some(value) => serde_json::from_value(value)?,
-                None => return Ok(None),
-            };
+        let qualification_entry: QualificationEntry = match attribute_value.view(ctx).await? {
+            Some(value) => serde_json::from_value(value)?,
+            None => return Ok(None),
+        };
 
         let func = Func::get_by_id_or_error(ctx, *func_execution.func_id()).await?;
 
@@ -261,7 +260,7 @@ impl QualificationView {
 
                 let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id).await?;
 
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
 
                 output.push(QualificationOutputStreamView {
                     stream: "stdout".to_owned(),

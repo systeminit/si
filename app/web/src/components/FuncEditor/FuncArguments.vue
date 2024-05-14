@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 flex flex-col gap-2">
+  <div class="p-3 flex flex-col gap-xs">
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
       Add the names of the arguments to this function and their types.
     </h1>

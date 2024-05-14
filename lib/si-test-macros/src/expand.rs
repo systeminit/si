@@ -174,9 +174,6 @@ pub(crate) trait FnSetupExpander {
     fn task_tracker(&self) -> Option<&Rc<Ident>>;
     fn set_task_tracker(&mut self, value: Option<Rc<Ident>>);
 
-    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>>;
-    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>);
-
     fn pinga_server(&self) -> Option<&Rc<Ident>>;
     fn set_pinga_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -188,9 +185,6 @@ pub(crate) trait FnSetupExpander {
 
     fn rebaser_server(&self) -> Option<&Rc<Ident>>;
     fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>);
-
-    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>>;
-    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
 
     fn start_rebaser_server(&self) -> Option<()>;
     fn set_start_rebaser_server(&mut self, value: Option<()>);
@@ -276,31 +270,31 @@ pub(crate) trait FnSetupExpander {
         self.task_tracker().unwrap().clone()
     }
 
-    fn setup_nats_subject_prefix(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.nats_subject_prefix() {
-            return ident.clone();
-        }
-
-        let var = Ident::new("nats_subject_prefix", Span::call_site());
-        self.code_extend(quote! {
-            let #var = ::dal_test::random_identifier_string();
-        });
-        self.set_nats_subject_prefix(Some(Rc::new(var)));
-
-        self.nats_subject_prefix().unwrap().clone()
-    }
-
     fn setup_pinga_server(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.pinga_server() {
             return ident.clone();
         }
 
-        let services_context = self.setup_services_context();
-        let services_context = services_context.as_ref();
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
+        let task_tracker = self.setup_task_tracker();
+        let task_tracker = task_tracker.as_ref();
 
         let var = Ident::new("pinga_server", Span::call_site());
         self.code_extend(quote! {
-            let #var = ::dal_test::pinga_server(&#services_context)?;
+            let #var = {
+                let s_ctx = #test_context
+                    .create_services_context(
+                        #cancellation_token.clone(),
+                        #task_tracker.clone(),
+                    )
+                    .await;
+                ::dal_test::pinga_server(s_ctx)?
+            };
         });
         self.set_pinga_server(Some(Rc::new(var)));
 
@@ -343,33 +337,33 @@ pub(crate) trait FnSetupExpander {
             return ident.clone();
         }
 
-        let services_context = self.setup_services_context();
-        let services_context = services_context.as_ref();
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
 
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
+        let task_tracker = self.setup_task_tracker();
+        let task_tracker = task_tracker.as_ref();
         let var = Ident::new("rebaser_server", Span::call_site());
+
         self.code_extend(quote! {
-            let #var = ::dal_test::rebaser_server(&#services_context)?;
+            let #var = {
+                let s_ctx = #test_context
+                    .create_services_context(
+                        #cancellation_token.clone(),
+                        #task_tracker.clone(),
+                    )
+                    .await;
+                ::dal_test::rebaser_server(
+                    s_ctx,
+                    #cancellation_token.clone(),
+                )?
+            };
         });
         self.set_rebaser_server(Some(Rc::new(var)));
 
         self.rebaser_server().unwrap().clone()
-    }
-
-    fn setup_rebaser_shutdown_handle(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.rebaser_shutdown_handle() {
-            return ident.clone();
-        }
-
-        let rebaser_server = self.setup_rebaser_server();
-        let rebaser_server = rebaser_server.as_ref();
-
-        let var = Ident::new("rebaser_shutdown_handle", Span::call_site());
-        self.code_extend(quote! {
-            let #var = #rebaser_server.shutdown_handle();
-        });
-        self.set_rebaser_shutdown_handle(Some(Rc::new(var)));
-
-        self.rebaser_shutdown_handle().unwrap().clone()
     }
 
     fn setup_start_rebaser_server(&mut self) {

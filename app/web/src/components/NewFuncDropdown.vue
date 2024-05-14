@@ -1,22 +1,22 @@
 <template>
   <VButton
+    v-tooltip="'Create Function'"
     tone="action"
     icon="plus"
     iconRight="chevron--down"
-    :variant="menuRef?.isOpen ? 'ghost' : 'solid'"
+    variant="ghost"
     :requestStatus="requestStatus"
     loadingText="Creating new function..."
-    size="sm"
+    size="2xs"
     @click="menuRef?.open"
   >
-    {{ label }}
-    <DropdownMenu ref="menuRef">
+    <DropdownMenu ref="menuRef" compact>
       <DropdownMenuItem
         v-for="(fnLabel, fnKind) in CUSTOMIZABLE_FUNC_TYPES"
         :key="fnKind"
+        icon="func"
         @select="emit('selectedFuncKind', fnKind)"
       >
-        <template #icon><FuncSkeleton /></template>
         {{ fnLabel.singularLabel }}
       </DropdownMenuItem>
     </DropdownMenu>
@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   VButton,
 } from "@si/vue-lib/design-system";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,

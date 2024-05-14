@@ -19,7 +19,6 @@ members = [
     "lib/cyclone-server",
     "lib/dal",
     "lib/dal-test",
-    "lib/deadpool-cyclone",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-multiplexer",
@@ -32,7 +31,6 @@ members = [
     "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
-    "lib/si-cbor",
     "lib/si-crypto",
     "lib/si-data-nats",
     "lib/si-data-pg",
@@ -40,6 +38,7 @@ members = [
     "lib/si-hash",
     "lib/si-layer-cache",
     "lib/si-pkg",
+    "lib/si-pool-noodle",
     "lib/si-posthog-rs",
     "lib/si-service",
     "lib/si-settings",
@@ -54,15 +53,20 @@ members = [
     "lib/veritech-server",
 ]
 
+[workspace.package]
+version = "0.1.0"
+authors = ["System Initiative Inc. <info@systeminit.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/systeminit/si"
+edition = "2021"
+rust-version = "1.78"
+publish = false
+
 [workspace.dependencies]
 async-nats = { version = "0.34.0", features = ["service"] }
 async-recursion = "1.0.5"
 async-trait = "0.1.79"
-axum = { version = "0.6.20", features = [
-    "macros",
-    "multipart",
-    "ws",
-] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
+axum = { version = "0.6.20", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
 base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
@@ -73,16 +77,13 @@ ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.3"
 colored = "2.1.0"
-comfy-table = { version = "7.1.0", features = [
-    "crossterm",
-    "tty",
-    "custom_styling",
-] }
+comfy-table = { version = "7.1.0", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.14.0", default-features = false, features = ["toml"] }
 console = "0.15.8"
 convert_case = "0.6.0"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 crossbeam-channel = "0.5.12"
+crossbeam-queue = {version = "0.3.10"}
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"
 derive_builder = "0.20.0"
@@ -93,26 +94,18 @@ dyn-clone = "1.0.17"
 flate2 = "1.0.28"
 futures = "0.3.30"
 futures-lite = "2.3.0"
+glob = "0.3.1"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
-hyper = { version = "0.14.28", features = [
-    "client",
-    "http1",
-    "runtime",
-    "server",
-] } # todo: upgrade this alongside http/axum/tokio-tungstenite/tower-http
-hyperlocal = { version = "0.8.0", default-features = false, features = [
-    "client",
-] } # todo: using the very latest of hyper client 1.x, we _may_ be able to phase this crate
+hyper = { version = "0.14.28", features = ["client", "http1", "runtime", "server"] } # todo: upgrade this alongside http/axum/tokio-tungstenite/tower-http
+hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] } # todo: using the very latest of hyper client 1.x, we _may_ be able to phase this crate
 iftree = "1.0.5"
+indexmap = { version = "2.2.6", features = ["serde", "std"] }
 indicatif = "0.17.8"
-indexmap = "2.2.6"
 indoc = "2.0.5"
 inquire = "0.7.4"
 itertools = "0.12.1"
-jwt-simple = { version = "0.12.9", default-features = false, features = [
-    "pure-rust",
-] }
+jwt-simple = { version = "0.12.9", default-features = false, features = ["pure-rust"] }
 lazy_static = "1.4.0"
 miniz_oxide = { version = "0.7.2", features = ["simd"] }
 moka = { version = "0.12.5", features = ["future"] }
@@ -141,24 +134,13 @@ rand = "0.8.5"
 refinery = { version = "= 0.8.12", features = ["tokio-postgres"] }
 regex = "1.10.4"
 remain = "0.2.13"
-reqwest = { version = "0.12.2", default-features = false, features = [
-    "rustls-tls",
-    "json",
-    "multipart",
-] }
+reqwest = { version = "0.12.2", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
+rust-s3 = { version = "0.34.0-rc4", default-features = false, features = ["tokio-rustls-tls"] }
 rustls = { version = "0.22.3" }
+rustls-native-certs = "0.7.0"
 rustls-pemfile = { version = "2.1.1" }
-rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
-    "tokio-rustls-tls",
-] }
-sea-orm = { version = "0.12.15", features = [
-    "sqlx-postgres",
-    "runtime-tokio-rustls",
-    "macros",
-    "with-chrono",
-    "debug-print",
-] }
+sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
 self-replace = "1.3.7"
 serde = { version = "1.0.197", features = ["derive", "rc"] }
 serde-aux = "4.5.0"
@@ -172,16 +154,10 @@ strum = { version = "0.26.2", features = ["derive"] }
 syn = { version = "2.0.55", features = ["full", "extra-traits"] }
 tar = "0.4.40"
 tempfile = "3.10.1"
-test-log = { version = "0.2.15", default-features = false, features = [
-    "trace",
-] }
+test-log = { version = "0.2.15", default-features = false, features = ["trace"] }
 thiserror = "1.0.58"
 tokio = { version = "1.37.0", features = ["full"] }
-tokio-postgres = { version = "0.7.10", features = [
-    "runtime",
-    "with-chrono-0_4",
-    "with-serde_json-1",
-] }
+tokio-postgres = { version = "0.7.10", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-postgres-rustls = { version = "0.11.1" }
 tokio-serde = { version = "0.9.0", features = ["json"] }
 tokio-stream = { version = "0.1.15", features = ["sync"] }
@@ -191,20 +167,10 @@ tokio-util = { version = "0.7.10", features = ["codec", "rt"] }
 tokio-vsock = { version = "0.4.0" }
 toml = { version = "0.8.12" }
 tower = { version = "0.4.13", features = ["full"] }
-tower-http = { version = "0.4.4", features = [
-    "compression-br",
-    "compression-deflate",
-    "compression-gzip",
-    "cors",
-    "trace",
-] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
+tower-http = { version = "0.4.4", features = ["compression-br", "compression-deflate", "compression-gzip", "cors", "trace"] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
 tracing = { version = "0.1.40" }
 tracing-opentelemetry = "0.23.0"
-tracing-subscriber = { version = "0.3.18", features = [
-    "env-filter",
-    "json",
-    "std",
-] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "std"] }
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 uuid = { version = "1.8.0", features = ["serde", "v4"] }

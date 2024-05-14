@@ -6,6 +6,7 @@ use strum::Display;
 use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
+use crate::EdgeWeightKindDiscriminants;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display)]
 pub enum CategoryNodeKind {
@@ -23,6 +24,7 @@ pub struct CategoryNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
     kind: CategoryNodeKind,
+    // TODO This should not be a content hash, since it does not point to a value in cas
     content_hash: ContentHash,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -33,6 +35,10 @@ pub struct CategoryNodeWeight {
 impl CategoryNodeWeight {
     pub fn content_hash(&self) -> ContentHash {
         self.content_hash
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
     }
 
     pub fn id(&self) -> Ulid {
@@ -142,6 +148,10 @@ impl CategoryNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
 }
 

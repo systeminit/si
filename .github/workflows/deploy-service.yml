@@ -1,0 +1,64 @@
+name: Deploy Service to Tools Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        type: choice
+        required: true
+        description: "service to deploy"
+        options:
+          - all
+          - pinga
+          - rebaser
+          - sdf
+          - veritech
+          - web
+
+jobs:
+  deploy:
+    name: Deploy Service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for shared-prod
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
+          aws-region: us-east-1
+      - name: Invalidate Artifacts Cache
+        run: |
+          DIST_ID=E2HW6000JEVIPB
+          # Create a CloudFront invalidation for all objects (/*)
+          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
+          # Check the status of the invalidation until it's completed
+          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+              echo "Invalidation is still in progress. Waiting..."
+              sleep 5
+          done
+          echo "Invalidation is complete."
+
+      - name: Configure AWS credentials for tools-prod
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_TOOLS_PROD_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_TOOLS_PROD_SECRET_KEY }}
+          aws-region: us-east-1
+      - name: Instance Refresh for chosen services
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          if [ "$SERVICE" = "all" ]; then
+            echo "Deploying errything!"
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-pinga
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-rebaser
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-sdf
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-veritech
+            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
+          elif [ "$SERVICE" = "web" ]; then
+            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
+          else
+            echo "Deploying $SERVICE!"
+            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
+          fi
+
+

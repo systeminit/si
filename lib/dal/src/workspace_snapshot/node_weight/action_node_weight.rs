@@ -4,11 +4,12 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     action::ActionState,
+    func::execution::FuncExecutionPk,
     workspace_snapshot::{
         graph::LineageId,
         vector_clock::{VectorClock, VectorClockId},
     },
-    ChangeSet, ChangeSetId,
+    ChangeSet, ChangeSetId, EdgeWeightKindDiscriminants,
 };
 
 use super::NodeWeightResult;
@@ -18,6 +19,7 @@ pub struct ActionNodeWeight {
     id: Ulid,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
+    func_execution_pk: Option<FuncExecutionPk>,
     lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -26,13 +28,18 @@ pub struct ActionNodeWeight {
 }
 
 impl ActionNodeWeight {
-    pub fn new(change_set: &ChangeSet, id: Ulid) -> NodeWeightResult<Self> {
+    pub fn new(
+        change_set: &ChangeSet,
+        originating_change_set_id: ChangeSetId,
+        id: Ulid,
+    ) -> NodeWeightResult<Self> {
         let new_vector_clock = VectorClock::new(change_set.vector_clock_id())?;
 
         Ok(Self {
             id,
             state: ActionState::Queued,
-            originating_changeset_id: change_set.id,
+            func_execution_pk: None,
+            originating_changeset_id: originating_change_set_id,
             lineage_id: change_set.generate_ulid()?,
             merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: new_vector_clock.clone(),
@@ -45,8 +52,16 @@ impl ActionNodeWeight {
         self.node_hash()
     }
 
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        vec![]
+    }
+
     pub fn id(&self) -> Ulid {
         self.id
+    }
+
+    pub fn set_state(&mut self, state: ActionState) {
+        self.state = state;
     }
 
     pub fn state(&self) -> ActionState {
@@ -55,6 +70,14 @@ impl ActionNodeWeight {
 
     pub fn originating_changeset_id(&self) -> ChangeSetId {
         self.originating_changeset_id
+    }
+
+    pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
+        self.func_execution_pk = func_execution_pk
+    }
+
+    pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
+        self.func_execution_pk
     }
 
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
@@ -139,5 +162,9 @@ impl ActionNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[EdgeWeightKindDiscriminants::Use]
     }
 }

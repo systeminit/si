@@ -1,7 +1,9 @@
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
@@ -41,6 +43,10 @@ export class DiagramNodeData extends DiagramElementData {
   static generateUniqueKey(id: string | number) {
     return `n-${id}`;
   }
+
+  static componentIdFromUniqueKey(uniqueKey: string): ComponentId {
+    return uniqueKey.replace("n-", "");
+  }
 }
 
 export class DiagramGroupData extends DiagramElementData {
@@ -58,6 +64,10 @@ export class DiagramGroupData extends DiagramElementData {
 
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;
+  }
+
+  static componentIdFromUniqueKey(uniqueKey: string): string {
+    return uniqueKey.replace("g-", "");
   }
 }
 
@@ -160,13 +170,6 @@ export enum SchemaKind {
   Concrete = "concrete",
 }
 
-export enum ComponentType {
-  Component = "component",
-  ConfigurationFrameDown = "configurationFrameDown",
-  ConfigurationFrameUp = "configurationFrameUp",
-  AggregationFrame = "aggregationFrame",
-}
-
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
@@ -208,6 +211,8 @@ export type DiagramNodeDef = {
   changeStatus?: ChangeStatus;
   /** component will be deleted after next action run */
   toDelete: boolean;
+  /** can the component be upgraded */
+  canBeUpgraded: boolean;
 };
 
 export type DiagramSocketDef = {
@@ -239,7 +244,7 @@ export type DiagramEdgeDef = {
   toComponentId: DiagramElementId;
   toSocketId: DiagramElementId;
   isBidirectional?: boolean;
-  isInvisible?: boolean;
+  isInferred?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdAt?: Date;
