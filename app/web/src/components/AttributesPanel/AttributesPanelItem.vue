@@ -389,7 +389,7 @@
               :name="newValueBoolean === true ? 'check-square' : 'empty-square'"
               class="attributes-panel-item__checkbox-icon"
             />
-          {{ newValueBoolean ? "TRUE" : "FALSE" }}
+            {{ newValueBoolean ? "TRUE" : "FALSE" }}
           </div>
         </template>
         <template
