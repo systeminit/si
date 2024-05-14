@@ -329,8 +329,7 @@ impl AttributePrototypeDebugView {
         let attribute_values = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
 
-        let func_execution =
-            Some(FuncExecution::get_latest_execution_by_func_id(ctx, &func_id).await?);
+        let func_execution = FuncExecution::get_latest_execution_by_func_id(ctx, &func_id).await?;
         let func_name = Func::get_by_id_or_error(ctx, func_id).await?.name;
         let view = AttributePrototypeDebugView {
             func_args: func_binding_args,
