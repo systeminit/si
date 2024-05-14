@@ -1447,7 +1447,7 @@ impl Component {
     ) -> ComponentResult<HashMap<InputSocketId, InputSocketMatch>> {
         Self::input_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
-
+    #[instrument(level = "info", skip(ctx))]
     async fn connect_inner(
         ctx: &DalContext,
         source_component_id: ComponentId,
@@ -1455,6 +1455,8 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<Option<(AttributeValueId, AttributePrototypeArgumentId)>> {
+        let total_start = std::time::Instant::now();
+
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
         let destination_component = Component::get_by_id(ctx, destination_component_id).await?;
@@ -1534,6 +1536,10 @@ impl Component {
         .await?;
 
         drop(cycle_check_guard);
+        info!(
+            "Cycle Check Guard dropped, add edge took {:?}",
+            total_start.elapsed()
+        );
 
         Ok(Some((
             destination_attribute_value_id,

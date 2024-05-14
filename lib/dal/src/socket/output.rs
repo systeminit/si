@@ -368,7 +368,7 @@ impl OutputSocket {
         }
         Ok(maybe_output_socket)
     }
-    #[instrument(level="info" skip(ctx))]
+    #[instrument(level="debug" skip(ctx))]
     pub async fn fits_input_by_id(
         ctx: &DalContext,
         input_socket_id: InputSocketId,

@@ -86,12 +86,14 @@ impl Frame {
         }
         Ok(())
     }
-
+    #[instrument(level = "info", skip(ctx))]
     async fn attach_child_to_parent_inner(
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
+        let total_start = std::time::Instant::now();
+
         // is the current child already connected to a parent?
         let mut cached_impacted_values: HashSet<SocketAttributeValuePair> = HashSet::new();
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
@@ -102,12 +104,20 @@ impl Frame {
             cached_impacted_values.extend(before_remove_edge_input_sockets);
             //remove the edge
             Component::remove_edge_from_frame(ctx, current_parent_id, child_id).await?;
+            info!(
+                "Remove existing edge from frame took: {:?}",
+                total_start.elapsed()
+            );
         }
 
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
         drop(cycle_check_guard);
+        info!(
+            "Cycle Check Guard dropped, add edge took {:?}",
+            total_start.elapsed()
+        );
         let mut values_to_run: HashSet<SocketAttributeValuePair> = HashSet::new();
         let current_impacted_values = Self::get_impacted_connections(ctx, child_id).await?;
         // if an input socket + output socket is in both sets, we don't need to rerun it
