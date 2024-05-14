@@ -52,4 +52,4 @@ $SI_NATS_CREDS
 url = "$SI_NATS_URL"
 
 [layer_db_config.memory_cache_config]
-seconds_to_idle = 900
+seconds_to_idle = "$SI_CACHE_EVICTION_SECONDS_TO_IDLE"
