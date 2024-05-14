@@ -99,16 +99,17 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
                     .ok_or(RebaseError::MissingChangeSet(
                         ctx.visibility().change_set_id,
                     ))?;
-                WorkspaceSnapshot::dispatch_actions(&ctx).await?;
-                // Write out the snapshot to get the new address/id.
-                let new_snapshot_id = ctx
-                    .write_snapshot()
-                    .await?
-                    .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
-                // Manually update the pointer to the new address/id that reflects the new Action states.
-                change_set.update_pointer(&ctx, new_snapshot_id).await?;
-                // No need to send the request over to the rebaser as we are the rebaser.
-                ctx.commit_no_rebase().await?;
+                if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
+                    // Write out the snapshot to get the new address/id.
+                    let new_snapshot_id = ctx
+                        .write_snapshot()
+                        .await?
+                        .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
+                    // Manually update the pointer to the new address/id that reflects the new Action states.
+                    change_set.update_pointer(&ctx, new_snapshot_id).await?;
+                    // No need to send the request over to the rebaser as we are the rebaser.
+                    ctx.commit_no_rebase().await?;
+                }
             }
         }
     }
