@@ -57,7 +57,7 @@ impl Frame {
         Ok(())
     }
     /// Provides the ability to attach or replace a child [`Component`]'s parent
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn upsert_parent(
         ctx: &DalContext,
         child_id: ComponentId,

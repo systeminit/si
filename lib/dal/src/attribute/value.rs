@@ -634,95 +634,96 @@ impl AttributeValue {
         // Gather the raw func bindings args into a map.
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-        if apa_ids.is_empty() {
+        for apa_id in apa_ids {
+            let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+            let expected_source_component_id = apa
+                .targets()
+                .map(|targets| targets.source_component_id)
+                .unwrap_or(destination_component_id);
+
+            if apa.targets().map_or(true, |targets| {
+                targets.destination_component_id == destination_component_id
+            }) {
+                // If the "source" Component is marked for deletion, and we (the destination) are
+                // *NOT*, then we should ignore the argument as data should not flow from things
+                // that are marked for deletion to ones that are not.
+                let destination_component = Component::get_by_id(ctx, destination_component_id)
+                    .await
+                    .map_err(Box::new)?;
+                let source_component = Component::get_by_id(ctx, expected_source_component_id)
+                    .await
+                    .map_err(Box::new)?;
+                if source_component.to_delete() && !destination_component.to_delete() {
+                    continue;
+                }
+
+                let func_arg_id =
+                    AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
+                let func_arg_name = ctx
+                    .workspace_snapshot()?
+                    .get_node_weight_by_id(func_arg_id)
+                    .await?
+                    .get_func_argument_node_weight()?
+                    .name()
+                    .to_owned();
+                let values_for_arg =
+                    match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
+                        .await?
+                        .ok_or(
+                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
+                                apa_id,
+                            ),
+                        )? {
+                        ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                            vec![
+                                StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                                    .await?
+                                    .value,
+                            ]
+                        }
+                        ValueSource::Secret(secret_id) => {
+                            vec![Secret::payload_for_prototype_execution(ctx, secret_id)
+                                .await
+                                .map_err(Box::new)?]
+                        }
+                        other_source => {
+                            let mut values = vec![];
+
+                            for av_id in other_source
+                                .attribute_values_for_component_id(
+                                    ctx,
+                                    expected_source_component_id,
+                                )
+                                .await?
+                            {
+                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                                // XXX: We need to properly handle the difference between "there is
+                                // XXX: no value" vs "the value is null", but right now we collapse
+                                // XXX: the two to just be "null" when passing these to a function.
+                                values
+                                    .push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
+                            }
+
+                            values
+                        }
+                    };
+
+                func_binding_args
+                    .entry(func_arg_name)
+                    .and_modify(|values| values.extend(values_for_arg.clone()))
+                    .or_insert(values_for_arg);
+            }
+        }
+        // if we haven't found func binding args by now, let's see if there are any inferred inputs
+        // Note: a given input only takes args through inferences (i.e. frames) if it doesn't have any
+        // explicitly configured args
+
+        if func_binding_args.is_empty() {
             let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
             if !inferred_inputs.is_empty() {
                 let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
                 if let Some(func_arg) = FuncArgument::list_for_func(ctx, input_func).await?.pop() {
                     func_binding_args.insert(func_arg.name, inferred_inputs);
-                }
-            }
-        } else {
-            for apa_id in apa_ids {
-                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-                let expected_source_component_id = apa
-                    .targets()
-                    .map(|targets| targets.source_component_id)
-                    .unwrap_or(destination_component_id);
-
-                if apa.targets().map_or(true, |targets| {
-                    targets.destination_component_id == destination_component_id
-                }) {
-                    // If the "source" Component is marked for deletion, and we (the destination) are
-                    // *NOT*, then we should ignore the argument as data should not flow from things
-                    // that are marked for deletion to ones that are not.
-                    let destination_component = Component::get_by_id(ctx, destination_component_id)
-                        .await
-                        .map_err(Box::new)?;
-                    let source_component = Component::get_by_id(ctx, expected_source_component_id)
-                        .await
-                        .map_err(Box::new)?;
-                    if source_component.to_delete() && !destination_component.to_delete() {
-                        continue;
-                    }
-
-                    let func_arg_id =
-                        AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
-                    let func_arg_name = ctx
-                        .workspace_snapshot()?
-                        .get_node_weight_by_id(func_arg_id)
-                        .await?
-                        .get_func_argument_node_weight()?
-                        .name()
-                        .to_owned();
-                    let values_for_arg =
-                        match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
-                            .await?
-                            .ok_or(
-                                AttributeValueError::AttributePrototypeArgumentMissingValueSource(
-                                    apa_id,
-                                ),
-                            )? {
-                            ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                                vec![
-                                    StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
-                                        .await?
-                                        .value,
-                                ]
-                            }
-                            ValueSource::Secret(secret_id) => {
-                                vec![Secret::payload_for_prototype_execution(ctx, secret_id)
-                                    .await
-                                    .map_err(Box::new)?]
-                            }
-                            other_source => {
-                                let mut values = vec![];
-
-                                for av_id in other_source
-                                    .attribute_values_for_component_id(
-                                        ctx,
-                                        expected_source_component_id,
-                                    )
-                                    .await?
-                                {
-                                    let attribute_value =
-                                        AttributeValue::get_by_id(ctx, av_id).await?;
-                                    // XXX: We need to properly handle the difference between "there is
-                                    // XXX: no value" vs "the value is null", but right now we collapse
-                                    // XXX: the two to just be "null" when passing these to a function.
-                                    values.push(
-                                        attribute_value.view(ctx).await?.unwrap_or(Value::Null),
-                                    );
-                                }
-
-                                values
-                            }
-                        };
-
-                    func_binding_args
-                        .entry(func_arg_name)
-                        .and_modify(|values| values.extend(values_for_arg.clone()))
-                        .or_insert(values_for_arg);
                 }
             }
         }
@@ -757,7 +758,7 @@ impl AttributeValue {
         Ok((prototype_func_id, prepared_func_binding_args))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip(ctx))]
     async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
@@ -807,7 +808,6 @@ impl AttributeValue {
                 inputs.push(view);
             }
         };
-
         Ok(inputs)
     }
 

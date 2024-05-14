@@ -2771,6 +2771,7 @@ impl Component {
         Ok(maybe_target_sockets)
     }
 
+    #[instrument(level = "info", skip(ctx))]
     pub async fn remove_connection(
         ctx: &DalContext,
         source_component_id: ComponentId,

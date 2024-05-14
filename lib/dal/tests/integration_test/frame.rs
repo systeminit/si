@@ -13,6 +13,78 @@ use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
 #[test]
+async fn frames_and_connections(ctx: &mut DalContext) {
+    //create 1 components and draw edges to another 1
+    let first_component =
+        create_component_for_schema_name(ctx, "small even lego", "first_component").await;
+    let second_component =
+        create_component_for_schema_name(ctx, "small odd lego", "second_component").await;
+
+    //connect them
+    connect_components_with_socket_names(
+        ctx,
+        first_component.id(),
+        "one",
+        second_component.id(),
+        "one",
+    )
+    .await;
+    update_attribute_value_for_component(
+        ctx,
+        first_component.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // make sure the value propagates
+    let input_value = get_component_input_socket_value(ctx, second_component.id(), "one")
+        .await
+        .expect("has value");
+    assert_eq!(
+        "1",         // expected
+        input_value, // actual
+    );
+    //create 2 of the same schema variant, only use frames to connect them
+    //create 1 components and draw edges to another 1
+    let third_component =
+        create_component_for_schema_name(ctx, "small even lego", "third_component").await;
+    let fourth_component =
+        create_component_for_schema_name(ctx, "small odd lego", "fourth_component").await;
+    fourth_component
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await
+        .expect("set type");
+    Frame::upsert_parent(ctx, third_component.id(), fourth_component.id())
+        .await
+        .expect("upserted parent");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // set a value
+    update_attribute_value_for_component(
+        ctx,
+        third_component.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["2"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // values should propagate
+    let input_value = get_component_input_socket_value(ctx, fourth_component.id(), "one")
+        .await
+        .expect("has value");
+    assert_eq!(
+        "2",         // expected
+        input_value, // actual
+    );
+}
+#[test]
 async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) {
     let starfield_schema = Schema::find_by_name(ctx, "starfield")
         .await
