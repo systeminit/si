@@ -601,6 +601,10 @@ impl PkgExporter {
                 builder.validation_format(validations.as_str());
             }
 
+            if let Some(default_val) = Prop::default_value(ctx, prop_id).await? {
+                builder.default_value(default_val);
+            }
+
             traversal_stack.push(TraversalStackEntry {
                 builder,
                 prop_id,

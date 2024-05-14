@@ -194,6 +194,9 @@ impl PropSpec {
             if let Some(docs) = data.documentation.as_deref() {
                 builder.documentation(docs);
             }
+            if let Some(hidden) = data.hidden {
+                builder.hidden(hidden);
+            }
         }
 
         if let PropSpec::Map {
