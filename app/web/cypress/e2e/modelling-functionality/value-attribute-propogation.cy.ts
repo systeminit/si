@@ -1,5 +1,9 @@
 // @ts-check
-///<reference path="../global.d.ts"/>
+///<reference path="../../global.d.ts"/>
+
+import {
+  componentAttributes
+} from "../../support/attribute-panel-actions/component-attributes";
 
 const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
 const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
@@ -23,7 +27,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
-      
+
       cy.get('#vorm-input-3').clear().type(UUID);
 
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);
@@ -33,8 +37,9 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Give time to redirect onto the new changeset
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
-      // Find the AWS Credential
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('Region').as('awsRegion');
+      // Needs a proper way to select from the updated asset tree panel
+      // Find the region asset
+      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('Region').as('awsRegion');
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
@@ -50,7 +55,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
       cy.wait(1000);
 
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
+      // Needs a proper way to select from the updated asset tree panel
+      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentB');
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
@@ -62,12 +68,12 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.wait(1000);
 
       cy.url().then(currentUrl => {
-        // Construct a new URL with desired query parameters for selecting 
+        // Construct a new URL with desired query parameters for selecting
         // the attribute panel for a known component
         let newUrl = new URL(currentUrl);
         newUrl.searchParams.set('s', 'c_'+componentIDA);
         newUrl.searchParams.set('t', 'attributes');
-      
+
         // Visit the new URL
         console.log(newUrl.href);
         cy.visit(newUrl.href);
@@ -79,14 +85,15 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
 
       // Find the attribute for the Integer Input
-      cy.get('.attributes-panel-item__input-wrap select:first')
-      .select('us-east-1');
+      //cy.get('.attributes-panel-item__input-wrap select:first')
+      //.select('us-east-1');
+      componentAttributes.enterInputField('select','region', 'us-east-1')
 
       // Intercept the API call and alias it
       cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
 
       cy.url().then(currentUrl => {
-        // Construct a new URL with desired query parameters for selecting 
+        // Construct a new URL with desired query parameters for selecting
         // the attribute panel for a known connected component
         let newUrl = new URL(currentUrl);
         newUrl.searchParams.set('s', 'c_'+componentIDB);
@@ -95,7 +102,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // Wait for the values to propagate
-      cy.wait(3000);
+      cy.wait(5000);
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')
