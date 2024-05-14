@@ -31,3 +31,4 @@ We contributors to System Initiative:
 * Justin Carter (@bodymindarts)
 * Ryan Benasutti (@Octogonapus)
 * John Obelenus (@jobelenus)
+* Meg Watson (@MegaWatt01)

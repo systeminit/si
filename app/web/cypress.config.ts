@@ -5,7 +5,7 @@ import vitePreprocessor from 'cypress-vite'
 export default defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
-      on('file:preprocessor', 
+      on('file:preprocessor',
         vitePreprocessor(
           path.resolve('./vite.config.ts'),
         )
@@ -17,9 +17,9 @@ export default defineConfig({
         }
       })
     },
-    
+
     // Hotfix, needs amended
-    baseUrl: 'https://app.systeminit.com',
+    baseUrl: process.env.VITE_HOST_URL ? process.env.VITE_HOST_URL : 'http://127.0.0.1:8080',
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
