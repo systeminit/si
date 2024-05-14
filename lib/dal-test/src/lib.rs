@@ -21,9 +21,18 @@
     while_true
 )]
 
+use std::{
+    borrow::Cow,
+    env, fmt,
+    future::IntoFuture,
+    path::{Path, PathBuf},
+    sync::{Arc, Once},
+};
+
 use buck2_resources::Buck2Resources;
-use dal::builtins::{func, schema};
 use dal::{
+    builtins::{func, schema},
+    feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
 };
@@ -35,16 +44,8 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::memory_cache::MemoryCacheConfig;
-use si_layer_cache::CaCacheTempFile;
+use si_layer_cache::{memory_cache::MemoryCacheConfig, CaCacheTempFile};
 use si_std::ResultExt;
-use std::{
-    borrow::Cow,
-    env,
-    future::IntoFuture,
-    path::{Path, PathBuf},
-    sync::{Arc, Once},
-};
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -60,7 +61,6 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
-use dal::feature_flags::FeatureFlagService;
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
@@ -92,24 +92,40 @@ lazy_static! {
 ///
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
-#[derive(Debug)]
 pub struct DalContextHead(pub DalContext);
+
+impl fmt::Debug for DalContextHead {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DalContextHead").finish_non_exhaustive()
+    }
+}
 
 /// A reference to a [`DalContext`] for a workspace in a visibility which is not in a change
 /// set
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
-#[derive(Debug)]
 pub struct DalContextHeadRef<'a>(pub &'a DalContext);
+
+impl<'a> fmt::Debug for DalContextHeadRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DalContextHeadRef").finish_non_exhaustive()
+    }
+}
 
 /// A mutable reference to a [`DalContext`] for a workspace in a visibility which is not in a
 /// change set
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
-#[derive(Debug)]
 pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
+
+impl<'a> fmt::Debug for DalContextHeadMutRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DalContextHeadMutRef")
+            .finish_non_exhaustive()
+    }
+}
 
 /// An authentication token, used when making SDF API requests
 #[derive(Debug)]
