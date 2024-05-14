@@ -54,12 +54,7 @@ async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
     let config = Config::builder()
         .nats(nats_config(subject_prefix.clone()))
         .cyclone_spec(cyclone_spec)
-        .decryption_key_path(
-            config_file
-                .decryption_key_path
-                .try_into()
-                .expect("failed to setup the decryption_key_path"),
-        )
+        .crypto(config_file.crypto)
         .build()
         .expect("failed to build spec");
     Server::for_cyclone_uds(config)

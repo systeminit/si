@@ -1,4 +1,4 @@
-use si_crypto::CryptoConfig;
+use si_crypto::VeritechCryptoConfig;
 use si_layer_cache::db::LayerDbConfig;
 use std::{env, path::Path};
 use ulid::Ulid;
@@ -51,8 +51,8 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "CryptoConfig::default()")]
-    crypto: CryptoConfig,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
@@ -91,7 +91,7 @@ impl Config {
 
     /// Gets a reference to the config's crypto config.
     #[must_use]
-    pub fn crypto(&self) -> &CryptoConfig {
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
         &self.crypto
     }
 
@@ -125,7 +125,7 @@ pub struct ConfigFile {
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
-    crypto: CryptoConfig,
+    crypto: VeritechCryptoConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]

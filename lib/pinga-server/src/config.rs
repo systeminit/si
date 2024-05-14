@@ -3,7 +3,9 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
+use si_crypto::{
+    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, VeritechCryptoConfig,
+};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
@@ -47,8 +49,8 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "CryptoConfig::default()")]
-    crypto: CryptoConfig,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "default_concurrency_limit()")]
     concurrency: usize,
@@ -87,7 +89,7 @@ impl Config {
 
     /// Gets a reference to the config's crypto config.
     #[must_use]
-    pub fn crypto(&self) -> &CryptoConfig {
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
         &self.crypto
     }
 
@@ -118,7 +120,7 @@ pub struct ConfigFile {
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
-    crypto: CryptoConfig,
+    crypto: VeritechCryptoConfig,
     #[serde(default = "default_concurrency_limit")]
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]

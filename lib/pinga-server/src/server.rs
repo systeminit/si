@@ -20,8 +20,8 @@ use dal::{
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
 use si_crypto::{
-    CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
-    VeritechEncryptionKey, VeritechEncryptionKeyError,
+    SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    VeritechCryptoConfig, VeritechEncryptionKey, VeritechEncryptionKeyError,
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
@@ -227,7 +227,7 @@ impl Server {
 
     #[instrument(name = "pinga.init.load_encryption_key", level = "info", skip_all)]
     async fn load_encryption_key(
-        crypto_config: CryptoConfig,
+        crypto_config: VeritechCryptoConfig,
     ) -> Result<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
             VeritechEncryptionKey::from_config(crypto_config).await?,

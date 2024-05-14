@@ -1,3 +1,4 @@
+use crate::VeritechCryptoConfig;
 use std::{io, path::Path};
 
 use base64::{engine::general_purpose, Engine};
@@ -17,6 +18,9 @@ pub enum VeritechDecryptionKeyError {
     /// When a message fails to be decrypted using the decryption key
     #[error("failed to decrypt encryption key from bytes")]
     DecryptionFailed,
+    /// When a key cannot be made from the supplied config
+    #[error("key cannot be made from the supplied config, must supply either a base64 string or a filepath")]
+    FromConfig,
     /// When a key fails to be parsed from bytes
     #[error("failed to load key from bytes")]
     KeyParse,
@@ -35,6 +39,26 @@ pub struct VeritechDecryptionKey {
 }
 
 impl VeritechDecryptionKey {
+    /// Creates an instance of [`VeritechDecryptionKey`] based on the
+    /// supplied configuration.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key file was not readable (i.e. incorrect permission and/or ownership)
+    /// - A key file could not be successfuly parsed
+    /// - A key string could not be successfully parsed
+    /// - An invalid configuration was passed in
+    pub async fn from_config(
+        config: VeritechCryptoConfig,
+    ) -> Result<Self, VeritechDecryptionKeyError> {
+        match (config.decryption_key_file, config.decryption_key_base64) {
+            (Some(path), None) => Self::load(path).await,
+            (None, Some(b64_string)) => Self::decode(b64_string).await,
+            _ => Err(VeritechDecryptionKeyError::FromConfig),
+        }
+    }
     /// Loads a [`VeritechDecryptionKey`] from a file path.
     ///
     /// # Errors
@@ -60,6 +84,36 @@ impl VeritechDecryptionKey {
         let secret_key =
             BoxSecretKey::from_slice(&buf).ok_or(VeritechDecryptionKeyError::KeyParse)?;
 
+        let public_key = secret_key.public_key();
+
+        let public_key_hash = Hash::new(public_key.as_ref());
+        let public_key_hash_string = public_key_hash.to_string();
+
+        Ok(Self {
+            secret_key,
+            public_key,
+            public_key_hash,
+            public_key_hash_string,
+        })
+    }
+
+    /// Loads a [`VeritechDecryptionKey`] from a base64 encoded string.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key string could not be successfully parsed
+    pub async fn decode(encryption_key_string: String) -> Result<Self, VeritechDecryptionKeyError> {
+        trace!(
+            "loading veritech encryption key from base64 string {}",
+            encryption_key_string
+        );
+        let buf = general_purpose::STANDARD
+            .decode(encryption_key_string)
+            .map_err(VeritechDecryptionKeyError::Base64Decode)?;
+        let secret_key =
+            BoxSecretKey::from_slice(&buf).ok_or(VeritechDecryptionKeyError::KeyParse)?;
         let public_key = secret_key.public_key();
 
         let public_key_hash = Hash::new(public_key.as_ref());

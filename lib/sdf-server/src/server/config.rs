@@ -1,5 +1,5 @@
 use dal::jwt_key::JwtConfig;
-use si_crypto::CryptoConfig;
+use si_crypto::VeritechCryptoConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
 use std::{
@@ -76,8 +76,8 @@ pub struct Config {
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
-    #[builder(default = "CryptoConfig::default()")]
-    crypto: CryptoConfig,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
@@ -127,7 +127,7 @@ impl Config {
 
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
-    pub fn crypto(&self) -> &CryptoConfig {
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
         &self.crypto
     }
 
@@ -186,7 +186,7 @@ pub struct ConfigFile {
     #[serde(default)]
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
-    pub crypto: CryptoConfig,
+    pub crypto: VeritechCryptoConfig,
     #[serde(default = "default_pkgs_path")]
     pub pkgs_path: String,
     #[serde(default)]

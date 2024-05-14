@@ -1,4 +1,5 @@
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_crypto::VeritechCryptoConfig;
+use si_std::CanonicalFileError;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -55,7 +56,8 @@ pub struct Config {
 
     cyclone_spec: CycloneSpec,
 
-    decryption_key_path: CanonicalFile,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -76,7 +78,7 @@ impl StandardConfig for Config {
 pub struct ConfigFile {
     pub nats: NatsConfig,
     pub cyclone: CycloneConfig,
-    pub decryption_key_path: String,
+    pub crypto: VeritechCryptoConfig,
 }
 
 impl ConfigFile {
@@ -84,7 +86,7 @@ impl ConfigFile {
         Self {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_http(),
-            decryption_key_path: default_decryption_key_path(),
+            crypto: Default::default(),
         }
     }
 
@@ -92,7 +94,7 @@ impl ConfigFile {
         Self {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_uds(),
-            decryption_key_path: default_decryption_key_path(),
+            crypto: Default::default(),
         }
     }
 }
@@ -110,7 +112,7 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.nats(value.nats);
         config.cyclone_spec(value.cyclone.try_into()?);
-        config.decryption_key_path(value.decryption_key_path.try_into()?);
+        config.crypto(value.crypto);
         config.build().map_err(Into::into)
     }
 }
@@ -132,9 +134,9 @@ impl Config {
         self.nats.subject_prefix.as_deref()
     }
 
-    /// Gets a reference to the config's decryption key path.
-    pub fn decryption_key_path(&self) -> &CanonicalFile {
-        &self.decryption_key_path
+    /// Gets a reference to the config's cyclone public key path.
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
+        &self.crypto
     }
 
     /// Gets the config's instance ID.
@@ -432,10 +434,6 @@ fn default_cyclone_cmd_path() -> String {
     "/usr/local/bin/cyclone".to_string()
 }
 
-fn default_decryption_key_path() -> String {
-    "/run/veritech/decryption.key".to_string()
-}
-
 fn default_lang_server_cmd_path() -> String {
     "/usr/local/bin/lang-js".to_string()
 }
@@ -502,7 +500,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     );
 
     config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    config.decryption_key_path = decryption_key_path;
+    config.crypto.decryption_key_file = decryption_key_path.parse().ok();
     config
         .cyclone
         .set_lang_server_cmd_path(lang_server_cmd_path);
@@ -540,7 +538,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     );
 
     config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    config.decryption_key_path = decryption_key_path;
+    config.crypto.decryption_key_file = decryption_key_path.parse().ok();
     config
         .cyclone
         .set_lang_server_cmd_path(lang_server_cmd_path);

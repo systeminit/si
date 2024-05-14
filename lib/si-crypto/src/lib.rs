@@ -26,7 +26,7 @@ pub use symmetric::{
     SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, SymmetricKey, SymmetricNonce,
 };
 pub use veritech::{
-    config::CryptoConfig,
+    config::VeritechCryptoConfig,
     decryption_key::{VeritechDecryptionKey, VeritechDecryptionKeyError},
     encryption_key::{VeritechEncryptionKey, VeritechEncryptionKeyError},
     key_pair::{VeritechKeyPair, VeritechKeyPairError},

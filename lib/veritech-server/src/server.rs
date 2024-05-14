@@ -146,7 +146,7 @@ impl Server {
                     prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx.clone())?;
 
                 let decryption_key =
-                    VeritechDecryptionKey::load(config.decryption_key_path()).await?;
+                    VeritechDecryptionKey::from_config(config.crypto().clone()).await?;
 
                 Ok(Server {
                     nats,

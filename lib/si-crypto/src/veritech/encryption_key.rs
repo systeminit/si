@@ -1,4 +1,4 @@
-use crate::CryptoConfig;
+use crate::VeritechCryptoConfig;
 use std::{io, path::Path};
 
 use base64::{engine::general_purpose, Engine};
@@ -45,7 +45,9 @@ impl VeritechEncryptionKey {
     /// - A key file could not be successfuly parsed
     /// - A key string could not be successfully parsed
     /// - An invalid configuration was passed in
-    pub async fn from_config(config: CryptoConfig) -> Result<Self, VeritechEncryptionKeyError> {
+    pub async fn from_config(
+        config: VeritechCryptoConfig,
+    ) -> Result<Self, VeritechEncryptionKeyError> {
         match (config.encryption_key_file, config.encryption_key_base64) {
             (Some(path), None) => Self::load(path).await,
             (None, Some(b64_string)) => Self::decode(b64_string).await,
