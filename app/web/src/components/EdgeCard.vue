@@ -14,7 +14,8 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
-import { EdgeId, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
+import { EdgeId } from "@/api/sdf/dal/component";
 import ComponentCard from "./ComponentCard.vue";
 
 const props = defineProps({

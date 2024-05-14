@@ -10,7 +10,7 @@ use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload}
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
-    ConnectionDeletedPayload,
+    ConnectionDeletedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
 use crate::func::FuncWsEventPayload;
 use crate::pkg::{
@@ -101,6 +101,8 @@ pub enum WsPayload {
     FuncDeleted(FuncWsEventPayload),
     FuncSaved(FuncWsEventPayload),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
+    InferredEdgeRemove(InferredEdgeRemovePayload),
+    InferredEdgeUpsert(InferredEdgeUpsertPayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),

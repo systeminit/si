@@ -143,10 +143,10 @@ pub fn routes() -> Router<AppState> {
             "/connect_component_to_frame",
             post(connect_component_to_frame::connect_component_to_frame),
         )
-        .route(
+        /*.route(
             "/create_connection",
             post(create_connection::create_connection),
-        )
+        )*/
         .route(
             "/create_component",
             post(create_component::create_component),
@@ -157,8 +157,8 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_diagram", get(get_diagram::get_diagram))
         .route("/list_schemas", get(list_schemas::list_schemas))
-        .route(
-            "/detach_component",
-            post(detach_component_from_frame::detach_component_from_frame),
-        )
+    /*.route(
+        "/detach_component",
+        post(detach_component_from_frame::detach_component_from_frame),
+    )*/
 }

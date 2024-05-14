@@ -53,3 +53,24 @@ export interface RawComponent {
   toDelete: boolean;
   canBeUpgraded: boolean;
 }
+
+export type EdgeId = string;
+export type SocketId = string;
+
+export type RawEdge = {
+  fromComponentId: ComponentId;
+  fromSocketId: SocketId;
+  toComponentId: ComponentId;
+  toSocketId: SocketId;
+  toDelete: boolean;
+  /** change status of edge in relation to head */
+  changeStatus?: ChangeStatus;
+  createdInfo: ActorAndTimestamp;
+  // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
+  deletedInfo?: ActorAndTimestamp;
+};
+
+export type Edge = RawEdge & {
+  id: EdgeId;
+  isInferred: boolean;
+};

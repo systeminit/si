@@ -6,12 +6,13 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::value::AttributeValueError;
+use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributeValueId, Component, ComponentError, ComponentId, ComponentType, DalContext,
-    TransactionsError,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, WsEvent,
+    WsEventError,
 };
 
 use super::{InputSocketMatch, OutputSocketMatch};
@@ -35,11 +36,13 @@ pub enum FrameError {
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("WsEvent error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 #[derive(Eq, Hash, PartialEq, Copy, Clone)]
 struct SocketAttributeValuePair {
-    input_attribute_value_id: AttributeValueId,
-    output_attribute_value_id: AttributeValueId,
+    input_socket_match: InputSocketMatch,
+    output_socket_match: OutputSocketMatch,
 }
 
 pub type FrameResult<T> = Result<T, FrameError>;
@@ -113,6 +116,20 @@ impl Frame {
                 .difference(&current_impacted_values)
                 .copied(),
         );
+        let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        for pair in &values_to_run {
+            inferred_edges.push(SummaryDiagramInferredEdge {
+                to_socket_id: pair.input_socket_match.input_socket_id,
+                to_component_id: pair.input_socket_match.component_id,
+                from_socket_id: pair.output_socket_match.output_socket_id,
+                from_component_id: pair.output_socket_match.component_id,
+                to_delete: false, // irrelevant
+            })
+        }
+        WsEvent::remove_inferred_edges(ctx, inferred_edges)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         values_to_run.extend(
             current_impacted_values
@@ -122,7 +139,7 @@ impl Frame {
         ctx.enqueue_dependent_values_update(
             values_to_run
                 .into_iter()
-                .map(|values| values.input_attribute_value_id)
+                .map(|values| values.input_socket_match.attribute_value_id)
                 .collect_vec(),
         )
         .await?;
@@ -139,10 +156,25 @@ impl Frame {
         //when detaching a child, need to re-run any attribute value functions for those impacted input sockets then queue up dvu!
         Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
 
+        let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        for pair in &before_change_impacted_input_sockets {
+            inferred_edges.push(SummaryDiagramInferredEdge {
+                to_socket_id: pair.input_socket_match.input_socket_id,
+                to_component_id: pair.input_socket_match.component_id,
+                from_socket_id: pair.output_socket_match.output_socket_id,
+                from_component_id: pair.output_socket_match.component_id,
+                to_delete: false, // irrelevant
+            })
+        }
+        WsEvent::remove_inferred_edges(ctx, inferred_edges)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
         ctx.enqueue_dependent_values_update(
             before_change_impacted_input_sockets
                 .into_iter()
-                .map(|values| values.input_attribute_value_id)
+                .map(|values| values.input_socket_match.attribute_value_id)
                 .collect_vec(),
         )
         .await?;
@@ -167,16 +199,16 @@ impl Frame {
         for (input_socket, output_sockets) in input_map.into_iter() {
             for output_socket in output_sockets {
                 impacted_connections.insert(SocketAttributeValuePair {
-                    input_attribute_value_id: input_socket.attribute_value_id,
-                    output_attribute_value_id: output_socket.attribute_value_id,
+                    input_socket_match: input_socket,
+                    output_socket_match: output_socket,
                 });
             }
         }
         for (output_socket, input_sockets) in output_map.into_iter() {
             for input_socket in input_sockets {
                 impacted_connections.insert(SocketAttributeValuePair {
-                    input_attribute_value_id: input_socket.attribute_value_id,
-                    output_attribute_value_id: output_socket.attribute_value_id,
+                    input_socket_match: input_socket,
+                    output_socket_match: output_socket,
                 });
             }
         }

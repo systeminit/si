@@ -4,7 +4,7 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Resource } from "@/api/sdf/dal/resource";
-import { ComponentId, RawComponent } from "@/api/sdf/dal/component";
+import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
 import { ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import {
@@ -195,6 +195,14 @@ export type WsEventPayloadMap = {
     component: RawComponent;
     originalComponentId: ComponentId;
     changeSetId: string;
+  };
+  InferredEdgeUpsert: {
+    changeSetId: string;
+    edges: RawEdge[];
+  };
+  InferredEdgeRemove: {
+    changeSetId: string;
+    edges: RawEdge[];
   };
   ConnectionCreated: {
     fromComponentId: string;
