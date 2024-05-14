@@ -105,14 +105,15 @@
           y: nodeHeight - 2,
         }"
       >
-        HERE
         <DiagramIcon
           v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
           :key="`status-icon-${i}`"
           :icon="statusIcon.icon"
-          :color="statusIcon.color || statusIcon.tone
-            ? getToneColorHex(statusIcon.tone!)
-            : getToneColorHex('neutral')"
+          :color="
+            statusIcon.color || statusIcon.tone
+              ? getToneColorHex(statusIcon.tone!)
+              : getToneColorHex('neutral')
+          "
           :size="24 + (statusIconHovers[i] ? 4 : 0)"
           :x="i * -26 + (statusIconHovers[i] ? 2 : 0)"
           :y="statusIconHovers[i] ? 2 : 0"
@@ -141,15 +142,8 @@
             x: 0,
             y: 0,
             cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-            fill: 'rgba(255,255,255,0.70)',
+            fill: 'rgba(255,255,255,0.30)',
           }"
-        />
-        <DiagramIcon
-          icon="loader"
-          :color="getToneColorHex('info')"
-          :size="overlayIconSize"
-          :x="halfWidth"
-          :y="nodeBodyHeight / 2"
         />
       </v-group>
 
@@ -391,8 +385,6 @@ const truncatedNodeTitle = computed(() => {
 
 const nodeWidth = computed(() => NODE_WIDTH);
 const halfWidth = computed(() => nodeWidth.value / 2);
-
-const overlayIconSize = computed(() => nodeWidth.value / 3);
 
 const headerTextHeight = ref(20);
 const subtitleTextHeight = ref(0);
