@@ -153,12 +153,6 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Other)
-                        .func_unique_id(&update_action_func.unique_id)
-                        .build()?,
-                )
-                .action_func(
-                    ActionFuncSpec::builder()
                         .kind(&DeprecatedActionKind::Update)
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
