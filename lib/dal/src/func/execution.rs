@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
 use veritech_client::{FunctionResultFailure, OutputStream};
 
-use crate::standard_model::object_from_row;
+use crate::standard_model::object_option_from_row_option;
 use crate::{
     pk, DalContext, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError,
     StandardModel, StandardModelError, Timestamp,
@@ -256,17 +256,17 @@ impl FuncExecution {
     pub async fn get_latest_execution_by_func_id(
         ctx: &DalContext,
         func_id: &FuncId,
-    ) -> FuncExecutionResult<Self> {
+    ) -> FuncExecutionResult<Option<Self>> {
         let row = ctx
             .txns()
             .await?
             .pg()
-            .query_one(
+            .query_opt(
                 "SELECT row_to_json(fe.*) as object FROM func_executions fe WHERE func_id = $1 ORDER BY updated_at LIMIT 1",
                 &[func_id],
             )
             .await?;
-        Ok(object_from_row(row)?)
+        Ok(object_option_from_row_option(row)?)
     }
 
     pub fn func_binding_return_value_id(&self) -> Option<FuncBindingReturnValueId> {

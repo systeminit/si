@@ -1,6 +1,7 @@
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
+use std::fmt;
 use std::{ops::Deref, sync::Arc};
 use tokio::sync::{broadcast, mpsc, Mutex};
 
@@ -98,8 +99,14 @@ impl From<PosthogClient> for si_posthog::PosthogClient {
     }
 }
 
-#[derive(Clone, Debug, FromRef)]
+#[derive(Clone, FromRef)]
 pub struct ServicesContext(dal::ServicesContext);
+
+impl fmt::Debug for ServicesContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServicesContext").finish_non_exhaustive()
+    }
+}
 
 impl ServicesContext {
     pub fn into_inner(self) -> dal::ServicesContext {

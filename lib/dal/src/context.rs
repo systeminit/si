@@ -1,4 +1,4 @@
-use std::{mem, path::PathBuf, sync::Arc};
+use std::{fmt, mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGr
 ///
 /// These services are typically used by most DAL objects, such as a database connection pool, a
 /// function execution client, etc.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ServicesContext {
     /// A PostgreSQL connection pool.
     pg_pool: PgPool,
@@ -281,7 +281,7 @@ impl ConnectionState {
 pub enum DalContextError {}
 
 /// A context type which holds references to underlying services, transactions, and context for DAL objects.
-#[derive(Clone, Debug)]
+#[derive(Clone)] // NOTE: don't auto-derive a `Debug` implementation on this type!
 pub struct DalContext {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
     services_context: ServicesContext,
@@ -909,7 +909,7 @@ impl From<DalContext> for AccessBuilder {
 }
 
 /// A builder for a [`DalContext`].
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct DalContextBuilder {
     /// A [`ServicesContext`] which has handles to common core services.
     services_context: ServicesContext,
@@ -920,6 +920,15 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
+}
+
+impl fmt::Debug for DalContextBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DalContextBuilder")
+            .field("blocking", &self.blocking)
+            .field("no_dependent_values", &self.no_dependent_values)
+            .finish_non_exhaustive()
+    }
 }
 
 impl DalContextBuilder {
@@ -1152,7 +1161,9 @@ pub struct Updates {
 // TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
 // the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
 // not want it long term.
-#[instrument(level="info", skip_all, 
+#[instrument(
+    level="info",
+    skip_all,
     fields(
             si.change_set.id = Empty,
             si.workspace.pk = Empty,
