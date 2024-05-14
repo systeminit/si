@@ -35,16 +35,22 @@ async fn list_ids_by_key_bench(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     );
 
     // Now that we have a graph with many secrets, let's run the function and cache the result.
+    // Ensure that the result meets our expectations for wall clock time.
     let list_ids_by_key_instant = tokio::time::Instant::now();
-    let _map = Secret::list_ids_by_key(ctx)
+    let ids_by_key = Secret::list_ids_by_key(ctx)
         .await
         .expect("could not list ids by key");
     let list_ids_by_key_instant_elapsed = list_ids_by_key_instant.elapsed();
-
-    // Ensure that the result meets our expectations for wall clock time.
     assert!(Duration::from_millis(10) > list_ids_by_key_instant_elapsed);
     println!(
         "list ids by key for {secrets_count} secrets took: {:?}",
         list_ids_by_key_instant_elapsed
+    );
+
+    // Check the number of keys in the map. Their length should be the same as the number of secrets
+    // created.
+    assert_eq!(
+        secrets_count,           // expected
+        ids_by_key.keys().len(), // actual
     );
 }

@@ -177,6 +177,7 @@
               editingFunc.associations &&
               editingFunc.associations.type === 'codeGeneration'
             "
+            ref="detachRef"
             v-model="editingFunc.associations"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"

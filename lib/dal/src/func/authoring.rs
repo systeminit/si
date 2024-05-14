@@ -84,8 +84,6 @@ pub enum FuncAuthoringError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("attribute value not found for attribute prototype: {0}")]
-    AttributeValueNotFoundForAttributePrototype(AttributePrototypeId),
     #[error("before func error: {0}")]
     BeforeFunc(#[from] BeforeFuncError),
     #[error("component error: {0}")]
@@ -335,19 +333,4 @@ pub struct TestExecuteFuncResult {
     pub execution_key: String,
     /// The logs corresponding to the output stream of the test execution.
     pub logs: Vec<OutputStream>,
-}
-
-/// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and
-/// [`AttributeValues`](dal::AttributeValue) that are currently associated with a function but
-/// that are having their association removed.
-///
-/// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that
-/// value using a builtin value function, like `si:setString`, etc.
-///
-/// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
-#[remain::sorted]
-#[derive(Debug, Copy, Clone)]
-enum RemovedPrototypeOp {
-    Delete,
-    Reset,
 }

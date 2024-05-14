@@ -7,6 +7,7 @@ use pretty_assertions_sorted::assert_eq;
 
 mod attach;
 mod attribute;
+mod detach;
 
 #[test]
 async fn action(ctx: &mut DalContext) {

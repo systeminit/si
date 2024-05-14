@@ -6,7 +6,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
 use crate::func::associations::{FuncArgumentBag, FuncAssociations};
-use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult, RemovedPrototypeOp};
+use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
 use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
@@ -163,7 +163,7 @@ async fn update_attribute_associations(
     // Now that we know what func arguments exist and have been modified, we can work
     // within the attribute subsystem.
     let backend_response_type =
-        save_attr_func_prototypes(ctx, func, prototypes, RemovedPrototypeOp::Reset, None).await?;
+        save_attr_func_prototypes(ctx, func, prototypes, true, None).await?;
 
     Func::modify_by_id(ctx, func.id, |func| {
         func.backend_response_type = backend_response_type;
@@ -256,7 +256,7 @@ async fn update_leaf_associations(
 
     let key = Some(func.name.to_owned());
 
-    save_attr_func_prototypes(ctx, func, views, RemovedPrototypeOp::Delete, key).await?;
+    save_attr_func_prototypes(ctx, func, views, false, key).await?;
 
     Ok(())
 }
@@ -265,7 +265,7 @@ async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
     prototype_bags: Vec<AttributePrototypeBag>,
-    removed_protoype_op: RemovedPrototypeOp,
+    attempt_to_reset_prototype: bool,
     key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
     let mut id_set = HashSet::new();
@@ -295,8 +295,12 @@ async fn save_attr_func_prototypes(
     // Remove or reset all prototypes not included in the views that use the func.
     for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func.id).await? {
         if !id_set.contains(&attribute_prototype_id) {
-            remove_or_reset_attr_prototype(ctx, attribute_prototype_id, removed_protoype_op)
-                .await?;
+            remove_or_reset_attribute_prototype(
+                ctx,
+                attribute_prototype_id,
+                attempt_to_reset_prototype,
+            )
+            .await?;
         }
     }
 
@@ -308,29 +312,23 @@ async fn save_attr_func_prototypes(
     Ok(computed_backend_response_type)
 }
 
-async fn remove_or_reset_attr_prototype(
+// By default, remove the attribute prototype. If the user wishes to reset the prototype, they can,
+// but only if the prototype is for an attribute value (i.e. if it is a component-specific
+// prototype). If the prototype cannot be reset, it will be removed.
+async fn remove_or_reset_attribute_prototype(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
-    removed_protoype_op: RemovedPrototypeOp,
+    attempt_to_reset_prototype: bool,
 ) -> FuncAuthoringResult<()> {
-    match removed_protoype_op {
-        RemovedPrototypeOp::Reset => {
-            // NOTE(nick): will there always be an attribute value when resetting? If not,
-            // we should not error here.
-            let attribute_value_id =
-                AttributePrototype::attribute_value_id(ctx, attribute_prototype_id)
-                    .await?
-                    .ok_or(
-                        FuncAuthoringError::AttributeValueNotFoundForAttributePrototype(
-                            attribute_prototype_id,
-                        ),
-                    )?;
-            AttributeValue::use_default_prototype(ctx, attribute_value_id).await?
-        }
-        RemovedPrototypeOp::Delete => {
-            AttributePrototype::remove(ctx, attribute_prototype_id).await?
+    if attempt_to_reset_prototype {
+        if let Some(attribute_value_id) =
+            AttributePrototype::attribute_value_id(ctx, attribute_prototype_id).await?
+        {
+            AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
+            return Ok(());
         }
     }
+    AttributePrototype::remove(ctx, attribute_prototype_id).await?;
     Ok(())
 }
 
