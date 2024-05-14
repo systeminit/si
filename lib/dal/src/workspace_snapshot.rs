@@ -30,10 +30,12 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use futures::executor;
 use si_pkg::KeyOrIndex;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::task::JoinError;
 
 use petgraph::prelude::*;
 use si_data_pg::PgError;
@@ -69,6 +71,8 @@ pub enum WorkspaceSnapshotError {
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("join error: {0}")]
+    Join(#[from] JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing content from store for id: {0}")]
@@ -475,11 +479,12 @@ impl WorkspaceSnapshot {
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
         Ok(if self.cycle_check().await {
-            self.working_copy_mut().await.add_edge_with_cycle_check(
-                from_node_index,
-                edge_weight,
-                to_node_index,
-            )?
+            let self_clone = self.clone();
+            tokio::task::spawn_blocking(move || {
+                let mut working_copy = executor::block_on(self_clone.working_copy_mut());
+                working_copy.add_edge_with_cycle_check(from_node_index, edge_weight, to_node_index)
+            })
+            .await??
         } else {
             self.working_copy_mut()
                 .await
