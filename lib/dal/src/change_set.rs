@@ -566,7 +566,7 @@ impl ChangeSet {
 
         Ok(None)
     }
-    #[instrument(level = "info")]
+    #[instrument(level = "info", skip_all)]
     async fn list_actions_to_run(
         ctx: &DalContext,
     ) -> ChangeSetApplyResult<(
