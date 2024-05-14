@@ -462,7 +462,7 @@ impl AttributeValue {
         Self::set_value(ctx, attribute_value_id, value.clone()).await?;
         Self::populate_nested_values(ctx, attribute_value_id, value).await?;
 
-        ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+        ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
             .await?;
 
         Ok(())
@@ -1829,7 +1829,7 @@ impl AttributeValue {
         if !AttributeValue::is_set_by_dependent_function(ctx, attribute_value_id).await? {
             AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
         }
-        ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+        ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
             .await?;
 
         Ok(())
@@ -2247,8 +2247,11 @@ impl AttributeValue {
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set()?, id)
             .await?;
+        ctx.workspace_snapshot()?
+            .remove_dependent_value_root(ctx.change_set()?, id)
+            .await?;
 
-        ctx.enqueue_dependent_values_update(vec![parent_av_id])
+        ctx.add_dependent_values_and_enqueue(vec![parent_av_id])
             .await?;
         Ok(())
     }

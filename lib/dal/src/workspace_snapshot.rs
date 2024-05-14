@@ -34,15 +34,16 @@ use futures::executor;
 use si_pkg::KeyOrIndex;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use petgraph::prelude::*;
 pub use petgraph::Direction;
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
@@ -66,6 +67,8 @@ use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 pub enum WorkspaceSnapshotError {
     #[error("Action error: {0}")]
     Action(#[from] Box<ActionError>),
+    #[error("could not find category node of kind: {0:?}")]
+    CategoryNodeNotFound(CategoryNodeKind),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} has no workspace snapshot address")]
@@ -237,52 +240,14 @@ impl WorkspaceSnapshot {
         let mut graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(change_set)?;
 
         // Create the category nodes under root.
-        let component_node_index =
-            graph.add_category_node(change_set, CategoryNodeKind::Component)?;
-        let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
-        let action_batch_node_index =
-            graph.add_category_node(change_set, CategoryNodeKind::DeprecatedActionBatch)?;
-        let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
-        let secret_node_index = graph.add_category_node(change_set, CategoryNodeKind::Secret)?;
-        let module_node_index = graph.add_category_node(change_set, CategoryNodeKind::Module)?;
-        let action_node_index = graph.add_category_node(change_set, CategoryNodeKind::Action)?;
-
-        // Connect them to root.
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            action_batch_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            component_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            func_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            schema_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            secret_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            module_node_index,
-        )?;
-        graph.add_edge(
-            graph.root(),
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-            action_node_index,
-        )?;
+        for category_node_kind in CategoryNodeKind::iter() {
+            let category_node_index = graph.add_category_node(change_set, category_node_kind)?;
+            graph.add_edge(
+                graph.root(),
+                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                category_node_index,
+            )?;
+        }
 
         // We do not care about any field other than "working_copy" because "write" will populate
         // them using the assigned working copy.
@@ -552,11 +517,17 @@ impl WorkspaceSnapshot {
         onto_workspace_snapshot: &WorkspaceSnapshot,
         onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<(Vec<Conflict>, Vec<Update>)> {
-        Ok(self.working_copy().await.detect_conflicts_and_updates(
-            to_rebase_vector_clock_id,
-            &*onto_workspace_snapshot.working_copy().await,
-            onto_vector_clock_id,
-        )?)
+        let self_clone = self.clone();
+        let onto_clone = onto_workspace_snapshot.clone();
+
+        Ok(tokio::task::spawn_blocking(move || {
+            executor::block_on(self_clone.working_copy()).detect_conflicts_and_updates(
+                to_rebase_vector_clock_id,
+                &executor::block_on(onto_clone.working_copy()),
+                onto_vector_clock_id,
+            )
+        })
+        .await??)
     }
 
     // NOTE(nick): this should only be used by the rebaser.
@@ -792,13 +763,32 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn get_category_node(
+    pub async fn get_category_node_or_err(
         &self,
         source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Ulid> {
-        let (category_node_id, _) = self.working_copy().await.get_category_node(source, kind)?;
-        Ok(category_node_id)
+        self.get_category_node(source, kind)
+            .await?
+            .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
+    }
+
+    #[instrument(
+        name = "workspace_snapshot.get_category_node_opt",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
+    pub async fn get_category_node(
+        &self,
+        source: Option<Ulid>,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+        Ok(self
+            .working_copy()
+            .await
+            .get_category_node(source, kind)?
+            .map(|(category_node_id, _)| category_node_id))
     }
 
     #[instrument(
@@ -1283,5 +1273,159 @@ impl WorkspaceSnapshot {
         }
 
         Ok(did_dispatch)
+    }
+
+    async fn find_existing_dependent_value_root(
+        &self,
+        change_set: &ChangeSet,
+        value_id: Ulid,
+    ) -> WorkspaceSnapshotResult<(Ulid, Option<Ulid>)> {
+        let dv_category_id = match self
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .await?
+        {
+            Some(dv_category_id) => dv_category_id,
+            None => {
+                let mut working_copy = self.working_copy_mut().await;
+                let root_idx = working_copy.root();
+                let category_node_idx = working_copy
+                    .add_category_node(change_set, CategoryNodeKind::DependentValueRoots)?;
+                working_copy.add_edge(
+                    root_idx,
+                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    category_node_idx,
+                )?;
+
+                working_copy.get_node_weight(category_node_idx)?.id()
+            }
+        };
+
+        for dv_node_idx in self
+            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let dv_value_node_weight = self
+                .get_node_weight(dv_node_idx)
+                .await?
+                .get_dependent_value_root_node_weight()?;
+
+            if value_id == dv_value_node_weight.value_id() {
+                return Ok((dv_category_id, Some(dv_value_node_weight.id())));
+            }
+        }
+
+        Ok((dv_category_id, None))
+    }
+
+    pub async fn add_dependent_value_root(
+        &self,
+        change_set: &ChangeSet,
+        value_id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<()> {
+        let value_id = value_id.into();
+        let (dv_category_id, existing_value_root_id) = self
+            .find_existing_dependent_value_root(change_set, value_id)
+            .await?;
+
+        match existing_value_root_id {
+            Some(value_root_id) => {
+                let existing_value_index = self.get_node_index_by_id(value_root_id).await?;
+                let value_root_node_weight = self
+                    .get_node_weight_by_id(value_root_id)
+                    .await?
+                    .get_dependent_value_root_node_weight()?
+                    .touch(change_set)?;
+                self.add_node(NodeWeight::DependentValueRoot(value_root_node_weight))
+                    .await?;
+                self.replace_references(existing_value_index).await?;
+            }
+            None => {
+                let new_dependent_value_node =
+                    NodeWeight::new_dependent_value_root(change_set, value_id)?;
+                let new_dv_node_id = new_dependent_value_node.id();
+                self.add_node(new_dependent_value_node).await?;
+
+                self.add_edge(
+                    dv_category_id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    new_dv_node_id,
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_dependent_value_root(
+        &self,
+        change_set: &ChangeSet,
+        value_id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<()> {
+        let value_id = value_id.into();
+        let (_, existing_value_id) = self
+            .find_existing_dependent_value_root(change_set, value_id)
+            .await?;
+
+        if let Some(existing_id) = existing_value_id {
+            self.remove_node_by_id(change_set, existing_id).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn has_dependent_value_roots(&self) -> WorkspaceSnapshotResult<bool> {
+        Ok(
+            match self
+                .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+                .await?
+            {
+                Some(dv_category_id) => !self
+                    .outgoing_targets_for_edge_weight_kind(
+                        dv_category_id,
+                        EdgeWeightKindDiscriminants::Use,
+                    )
+                    .await?
+                    .is_empty(),
+                None => false,
+            },
+        )
+    }
+
+    /// Removes all the dependent value nodes from the category and returns the value_ids
+    pub async fn take_dependent_values(
+        &self,
+        change_set: &ChangeSet,
+    ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
+        let dv_category_id = match self
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .await?
+        {
+            Some(cat_id) => cat_id,
+            None => {
+                return Ok(vec![]);
+            }
+        };
+
+        let mut value_ids = vec![];
+        let mut pending_removes = vec![];
+
+        for dv_node_idx in self
+            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let dv_value_node_weight = self
+                .get_node_weight(dv_node_idx)
+                .await?
+                .get_dependent_value_root_node_weight()?;
+            value_ids.push(dv_value_node_weight.value_id());
+            pending_removes.push(dv_value_node_weight.id());
+        }
+
+        for to_remove_id in pending_removes {
+            self.remove_node_by_id(change_set, to_remove_id).await?;
+        }
+
+        Ok(value_ids)
     }
 }

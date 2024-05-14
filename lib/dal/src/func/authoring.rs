@@ -62,7 +62,7 @@ use crate::{
     AttributePrototypeId, ComponentError, ComponentId, DalContext, DeprecatedActionKind,
     DeprecatedActionPrototypeError, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
     FuncId, OutputSocketId, PropId, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WsEventError,
+    WorkspaceSnapshotError, WsEventError,
 };
 
 mod create;
@@ -133,6 +133,8 @@ pub enum FuncAuthoringError {
     Transactions(#[from] TransactionsError),
     #[error("unexpected func kind ({0}) creating attribute func")]
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

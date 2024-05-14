@@ -1,11 +1,13 @@
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::prelude::EdgeRef;
+    use petgraph::prelude::*;
     use petgraph::Outgoing;
     use pretty_assertions_sorted::assert_eq;
+    use si_events::ulid::Ulid;
     use si_events::ContentHash;
     use std::collections::HashMap;
+    use std::collections::HashSet;
 
     use crate::change_set::ChangeSet;
     use crate::workspace_snapshot::conflict::Conflict;
@@ -14,6 +16,7 @@ mod test {
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
     use crate::workspace_snapshot::graph::tests::{add_edges, add_prop_nodes_to_graph};
+    use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind::DependentValueRoots;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
     use crate::{PropKind, WorkspaceSnapshotGraph};
@@ -3040,5 +3043,156 @@ mod test {
                 removed_item
             }
         );
+    }
+
+    #[test]
+    fn test_merge_dependent_value_roots() {
+        let to_rebase_change_set = ChangeSet::new_local().expect("create cset");
+        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(&to_rebase_change_set)
+            .expect("unable to make to_rebase_graph");
+
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        let onto_change_set = ChangeSet::new_local().expect("new_local");
+        let mut onto_graph = to_rebase_graph.clone();
+
+        let cat_node_idx = to_rebase_graph
+            .add_category_node(&to_rebase_change_set, DependentValueRoots)
+            .expect("able to add dvu root cat node");
+        let to_rebase_cat_node_orig_weight = to_rebase_graph
+            .get_node_weight(cat_node_idx)
+            .expect("unable to get node weight")
+            .to_owned();
+        to_rebase_graph
+            .add_edge(
+                to_rebase_graph.root_index,
+                EdgeWeight::new(&to_rebase_change_set, EdgeWeightKind::new_use())
+                    .expect("unable to make edge weigh"),
+                cat_node_idx,
+            )
+            .expect("unable add edge ");
+
+        let cat_node_idx = onto_graph
+            .add_category_node(&onto_change_set, DependentValueRoots)
+            .expect("unable to add dvu root cat node");
+        onto_graph
+            .add_edge(
+                onto_graph.root_index,
+                EdgeWeight::new(&onto_change_set, EdgeWeightKind::new_use())
+                    .expect("unable to make edge weigh"),
+                cat_node_idx,
+            )
+            .expect("unable add edge ");
+
+        let shared_value_id = to_rebase_change_set
+            .generate_ulid()
+            .expect("unable to gen ulid");
+
+        let unique_to_rebase_value_id = to_rebase_change_set
+            .generate_ulid()
+            .expect("unable to generate ulid");
+
+        let unique_to_onto_value_id = onto_change_set
+            .generate_ulid()
+            .expect("unable to generate ulid");
+
+        let to_rebase_value_ids = [unique_to_rebase_value_id, shared_value_id];
+        let onto_value_ids = [unique_to_onto_value_id, shared_value_id];
+
+        for (graph, change_set, values) in [
+            (
+                &mut to_rebase_graph,
+                &to_rebase_change_set,
+                &to_rebase_value_ids,
+            ),
+            (&mut onto_graph, &onto_change_set, &onto_value_ids),
+        ] {
+            let (cat_id, _) = graph
+                .get_category_node(None, DependentValueRoots)
+                .expect("unable to get cat node")
+                .expect("cat node for dvu roots not there");
+
+            for value_id in values {
+                let node_weight = NodeWeight::new_dependent_value_root(change_set, *value_id)
+                    .expect("unable to make root node weight");
+                let dvu_root_idx = graph.add_node(node_weight).expect("unable to add node");
+                graph
+                    .add_edge(
+                        graph
+                            .get_node_index_by_id(cat_id)
+                            .expect("unable to get node index for category"),
+                        EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                            .expect("unable to make edge weight"),
+                        dvu_root_idx,
+                    )
+                    .expect("unable to add edge");
+            }
+        }
+
+        to_rebase_graph.cleanup();
+        onto_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+        onto_graph
+            .mark_graph_seen(onto_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        let (conflicts, updates) = to_rebase_graph
+            .detect_conflicts_and_updates(
+                to_rebase_change_set.vector_clock_id(),
+                &onto_graph,
+                onto_change_set.vector_clock_id(),
+            )
+            .expect("able to detect conflicts and updates");
+
+        assert!(conflicts.is_empty());
+
+        to_rebase_graph
+            .perform_updates(&to_rebase_change_set, &onto_graph, &updates)
+            .expect("unable to perform updates");
+
+        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        let neighbors_of_root: Vec<NodeIndex> = to_rebase_graph
+            .edges_directed(to_rebase_graph.root_index, Outgoing)
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(1, neighbors_of_root.len());
+        let cat_node_idx = neighbors_of_root[0];
+        let cat_node_weight = to_rebase_graph
+            .get_node_weight(cat_node_idx)
+            .expect("unable to get cat node weight")
+            .to_owned();
+
+        assert_eq!(to_rebase_cat_node_orig_weight.id(), cat_node_weight.id());
+        let neighbors_of_cat: Vec<NodeIndex> = to_rebase_graph
+            .edges_directed(cat_node_idx, Outgoing)
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(4, neighbors_of_cat.len());
+        let mut expected_id_set: HashSet<Ulid> = HashSet::new();
+        expected_id_set.extend(&to_rebase_value_ids);
+        expected_id_set.extend(&onto_value_ids);
+
+        let mut found_id_set = HashSet::new();
+        for neighbor_idx in neighbors_of_cat {
+            let node_weight = to_rebase_graph
+                .get_node_weight(neighbor_idx)
+                .expect("unable to get node weight")
+                .get_dependent_value_root_node_weight()
+                .expect("unable to get dvu root");
+
+            found_id_set.insert(node_weight.value_id());
+        }
+
+        assert_eq!(expected_id_set, found_id_set);
     }
 }

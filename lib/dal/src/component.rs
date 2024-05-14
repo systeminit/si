@@ -406,7 +406,7 @@ impl Component {
 
         // Root --> Component Category --> Component (this)
         let component_category_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::Component)
+            .get_category_node_or_err(None, CategoryNodeKind::Component)
             .await?;
         Self::add_category_edge(
             ctx,
@@ -519,7 +519,7 @@ impl Component {
 
         let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
         let leaf_value_ids = component_graph.independent_values();
-        ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
+        ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
         for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
@@ -971,7 +971,7 @@ impl Component {
 
         let mut components = vec![];
         let component_category_node_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::Component)
+            .get_category_node_or_err(None, CategoryNodeKind::Component)
             .await?;
 
         let component_node_indices = workspace_snapshot
@@ -1573,7 +1573,7 @@ impl Component {
         .await?;
 
         if let Some((destination_attribute_value_id, attribute_prototype_argument_id)) = maybe {
-            ctx.enqueue_dependent_values_update(vec![destination_attribute_value_id])
+            ctx.add_dependent_values_and_enqueue(vec![destination_attribute_value_id])
                 .await?;
 
             Ok(Some(attribute_prototype_argument_id))
@@ -1904,7 +1904,7 @@ impl Component {
             .cloned()
             .collect();
 
-        ctx.enqueue_dependent_values_update(input_av_ids).await?;
+        ctx.add_dependent_values_and_enqueue(input_av_ids).await?;
 
         // We always want to make sure that everything "downstream" of us reacts appropriately
         // regardless of whether we're setting, or clearing the `to_delete` flag.
@@ -1916,7 +1916,7 @@ impl Component {
 
         let downstream_av_ids = modified.downstream_attribute_value_ids(ctx).await?;
 
-        ctx.enqueue_dependent_values_update(downstream_av_ids)
+        ctx.add_dependent_values_and_enqueue(downstream_av_ids)
             .await?;
 
         // Deal with deletion actions
@@ -2788,7 +2788,7 @@ impl Component {
                                        ),
                                    )?;
 
-                                ctx.enqueue_dependent_values_update(vec![
+                                ctx.add_dependent_values_and_enqueue(vec![
                                     destination_attribute_value_id,
                                 ])
                                 .await?;

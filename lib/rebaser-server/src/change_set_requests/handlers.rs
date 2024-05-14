@@ -128,13 +128,6 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
         .await
         .map_err(HandlerError::SendRebaseFinished)?;
 
-    // only enqueue values if rebase succeeded. if it failed, there's no work to do
-    if let RebaseStatus::Success { .. } = rebase_status {
-        if let Some(values) = message.payload.dvu_values {
-            state.dvu_debouncer.enqueue_values(values);
-        }
-    }
-
     let mut event =
         WsEvent::change_set_written(&ctx, message.payload.to_rebase_change_set_id.into()).await?;
     event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_inner().into());

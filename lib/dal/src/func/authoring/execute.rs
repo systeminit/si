@@ -27,7 +27,7 @@ pub(crate) async fn execute_attribute_func(
             AttributeValue::update_from_prototype_function(ctx, *attribute_value_id).await?;
         }
 
-        ctx.enqueue_dependent_values_update(attribute_value_ids)
+        ctx.add_dependent_values_and_enqueue(attribute_value_ids)
             .await?;
     }
 

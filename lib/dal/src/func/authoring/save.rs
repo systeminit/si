@@ -523,7 +523,7 @@ async fn create_new_attribute_prototype(
     }
 
     if !affected_attribute_value_ids.is_empty() {
-        ctx.enqueue_dependent_values_update(affected_attribute_value_ids)
+        ctx.add_dependent_values_and_enqueue(affected_attribute_value_ids)
             .await?;
     }
 

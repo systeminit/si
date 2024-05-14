@@ -17,7 +17,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
-use ulid::Ulid;
 use veritech_client::Client as VeritechClient;
 
 use crate::feature_flags::FeatureFlagService;
@@ -388,9 +387,6 @@ impl DalContext {
             // of the current change set
             to_rebase_change_set_id: self.change_set_id(),
             onto_vector_clock_id: vector_clock_id,
-            // dependent values to be processed will be added later, if any
-            // exist
-            dvu_values: None,
         })
     }
 
@@ -694,10 +690,31 @@ impl DalContext {
         Ok(())
     }
 
-    pub async fn enqueue_dependent_values_update(
+    /// Add the node ids to the workspace snapshot graph and enqueue a dependent values update.
+    /// This update will only be run on commit if blocking_commit is used. If commit is used, the
+    /// DVU debouncer will run the job. Note that the DVU debouncer might still pick up the job
+    /// before blocking_commit does, so blocking_commit might do extra work.
+    pub async fn add_dependent_values_and_enqueue(
         &self,
-        ids: Vec<impl Into<Ulid>>,
-    ) -> Result<(), TransactionsError> {
+        ids: Vec<impl Into<si_events::ulid::Ulid>>,
+    ) -> Result<(), WorkspaceSnapshotError> {
+        for id in ids {
+            self.workspace_snapshot()?
+                .add_dependent_value_root(self.change_set()?, id)
+                .await?;
+        }
+
+        self.enqueue_dependent_values_update().await?;
+
+        Ok(())
+    }
+
+    /// Adds a dependent values update job to the queue. Most users will instead want to use
+    /// [`Self::add_dependent_values_and_enqueue`] which will add the values that need to be
+    /// processed to the graph, and enqueue the job.
+    pub async fn enqueue_dependent_values_update(&self) -> Result<(), TransactionsError> {
+        // The values that the DVU job will process are part of the snapshot now
+        let empty_vec: Vec<ulid::Ulid> = vec![];
         self.txns()
             .await?
             .job_queue
@@ -705,9 +722,10 @@ impl DalContext {
                 self.change_set_id(),
                 self.access_builder(),
                 AttributeValueBasedJobIdentifier::DependentValuesUpdate,
-                ids,
+                empty_vec,
             )
             .await;
+
         Ok(())
     }
 
@@ -1146,7 +1164,6 @@ pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
     pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub onto_vector_clock_id: VectorClockId,
-    pub dvu_values: Option<Vec<ulid::Ulid>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1208,9 +1225,6 @@ async fn rebase(
             rebase_request.to_rebase_change_set_id.into(),
             rebase_request.onto_workspace_snapshot_address,
             rebase_request.onto_vector_clock_id.into(),
-            rebase_request
-                .dvu_values
-                .map(|values| values.into_iter().map(Into::into).collect()),
             metadata,
         )
         .await?;
@@ -1310,17 +1324,17 @@ impl Transactions {
         );
         let pg_conn = self.pg_txn.commit_into_conn().await?;
 
-        let conflicts = if let Some(mut rebase_request) = rebase_request {
+        let conflicts = if let Some(rebase_request) = rebase_request {
             span.record(
                 "si.change_set.id",
                 rebase_request.to_rebase_change_set_id.to_string(),
             );
 
-            rebase_request.dvu_values = self
+            // remove the dependent value job since it will be handled by the rebaser
+            let _ = self
                 .job_queue
                 .take_dependent_values_for_change_set(rebase_request.to_rebase_change_set_id)
                 .await;
-            span.record("si.dvu.values", format!("{:?}", rebase_request.dvu_values));
             rebase(tenancy, layer_db, rebase_request).await?
         } else {
             None
