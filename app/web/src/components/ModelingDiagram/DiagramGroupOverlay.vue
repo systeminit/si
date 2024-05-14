@@ -26,15 +26,8 @@
           x: 0,
           y: 0,
           cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-          fill: 'rgba(255,255,255,0.70)',
+          fill: 'rgba(255,255,255,0.30)',
         }"
-      />
-      <DiagramIcon
-        icon="loader"
-        :color="getToneColorHex('info')"
-        :size="overlayIconSize"
-        :x="halfWidth"
-        :y="nodeBodyHeight / 2"
       />
     </v-group>
 
@@ -86,8 +79,6 @@ const size = computed(
 
 const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
-
-const overlayIconSize = computed(() => nodeWidth.value / 3);
 
 const headerTextHeight = ref(20);
 watch(
