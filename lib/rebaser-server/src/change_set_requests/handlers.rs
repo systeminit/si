@@ -3,8 +3,8 @@
 use std::result;
 
 use dal::{
-    HistoryActor, RequestContext, Tenancy, Visibility, Workspace, WorkspaceError,
-    WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent,
+    ChangeSet, ChangeSetError, HistoryActor, RequestContext, Tenancy, Visibility, Workspace,
+    WorkspaceError, WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent,
 };
 use naxum::{
     extract::State,
@@ -22,7 +22,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::rebase::perform_rebase;
+use crate::rebase::{perform_rebase, RebaseError};
 
 use super::app_state::AppState;
 
@@ -30,12 +30,18 @@ use super::app_state::AppState;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum HandlerError {
+    /// Failures related to ChangeSets
+    #[error("Change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     /// When failing to create a DAL context
     #[error("error creating a dal ctx: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
     /// When failing to deserialize a message from bytes
     #[error("failed to deserialize message from bytes: {0}")]
     Deserialize(#[source] si_layer_cache::LayerDbError),
+    /// Failures related to rebasing/updating a snapshot or change set pointer.
+    #[error("Rebase error: {0}")]
+    Rebase(#[from] RebaseError),
     /// When failing to successfully send a "rebase finished" message
     #[error("failed to send rebase finished activity: {0}")]
     SendRebaseFinished(#[source] si_layer_cache::LayerDbError),
@@ -88,10 +94,21 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
         if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk.into()).await? {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+                    .await?
+                    .ok_or(RebaseError::MissingChangeSet(
+                        ctx.visibility().change_set_id,
+                    ))?;
                 WorkspaceSnapshot::dispatch_actions(&ctx).await?;
-                // Disable until we fix the issue of commiting inside the rebaser
-                // Without this commit the dispatch is never persisted (or enqueued to pinga)
-                // ctx.commit().await?;
+                // Write out the snapshot to get the new address/id.
+                let new_snapshot_id = ctx
+                    .write_snapshot()
+                    .await?
+                    .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
+                // Manually update the pointer to the new address/id that reflects the new Action states.
+                change_set.update_pointer(&ctx, new_snapshot_id).await?;
+                // No need to send the request over to the rebaser as we are the rebaser.
+                ctx.commit_no_rebase().await?;
             }
         }
     }

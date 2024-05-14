@@ -10,7 +10,7 @@ use tokio::time::Instant;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
-pub(crate) enum RebaseError {
+pub enum RebaseError {
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("missing change set")]

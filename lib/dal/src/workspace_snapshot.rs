@@ -101,6 +101,8 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotGraphMissing(WorkspaceSnapshotAddress),
     #[error("no workspace snapshot was fetched for this dal context")]
     WorkspaceSnapshotNotFetched,
+    #[error("Unable to write workspace snapshot")]
+    WorkspaceSnapshotNotWritten,
 }
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
