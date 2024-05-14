@@ -679,6 +679,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             detach?: boolean,
             newParent?: ComponentId,
           ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === changeSetsStore.headChangeSetId)
+              changeSetsStore.creatingChangeSet = true;
+
             const string_positions = positions.map((p) => {
               const pos = {
                 componentId: p.componentId,
