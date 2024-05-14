@@ -1,5 +1,6 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
+use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -65,10 +66,16 @@ pub async fn delete_components(
             delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;
         components.insert(component_id, maybe.is_some());
 
-        WsEvent::component_deleted(&ctx, component_id)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
+        if let Some(maybe) = maybe {
+            // to_delete=True
+            let component: Component = Component::get_by_id(&ctx, maybe.id()).await?;
+            let payload: SummaryDiagramComponent =
+                SummaryDiagramComponent::assemble(&ctx, &component).await?;
+            WsEvent::component_updated(&ctx, payload)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        } // component_deleted called further down the stack
     }
 
     ctx.commit().await?;
