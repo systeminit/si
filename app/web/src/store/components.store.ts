@@ -1492,14 +1492,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 }
               },
             },
-            {
+            /* { TODO PUT BACK
               eventType: "DeprecatedActionRunnerReturn",
               callback: (update) => {
                 const component = this.componentsById[update.componentId];
                 if (!component) return;
                 component.hasResource = !!update.resource?.payload;
               },
-            },
+            }, */
           ]);
 
           return () => {

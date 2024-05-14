@@ -27,7 +27,12 @@
       class="mr-2xs shrink-0 pointer-events-none"
     />
     <slot name="icon">
-      <Icon v-if="icon" :name="icon" size="sm" class="shrink-0" />
+      <Icon
+        v-if="icon"
+        :name="icon"
+        size="sm"
+        :class="clsx('shrink-0', props.iconClass ? props.iconClass : '')"
+      />
     </slot>
 
     <div ref="labelRef" class="capsize max-w-[220px] shrink-0">
@@ -58,6 +63,7 @@ import { useDropdownMenuContext } from "./DropdownMenu.vue";
 
 const props = defineProps({
   icon: { type: String as PropType<IconNames> },
+  iconClass: { type: String },
 
   label: { type: String },
 

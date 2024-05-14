@@ -14,19 +14,12 @@
         v-if="!changeSetStore.headSelected"
         :class="
           clsx(
-            'flex flex-row items-center justify-center text-neutral-400 gap-xs p-xs border-b shrink-0',
+            'flex flex-row items-center justify-center text-neutral-400 gap-xs border-b shrink-0',
             themeClasses('border-neutral-200', 'border-neutral-600'),
           )
         "
       >
         <ApplyChangeSetButton class="grow" />
-        <PillCounter
-          tone="action"
-          :count="displayCount"
-          size="xl"
-          :paddingX="displayCount > 10 ? '2xs' : 'xs'"
-          class="bg-action-100 dark:bg-action-800 font-bold"
-        />
       </div>
     </template>
 
@@ -37,10 +30,10 @@
         trackingSlug="no-selection-details-panel"
         variant="fullsize"
       >
-        <TabGroupItem label="Changes" slug="changes">
+        <TabGroupItem label="CHANGES" slug="changes">
           <ChangesPanel />
         </TabGroupItem>
-        <TabGroupItem label="Secrets" slug="secrets">
+        <TabGroupItem label="SECRETS" slug="secrets">
           <SecretsPanel />
         </TabGroupItem>
       </TabGroup>
@@ -55,21 +48,13 @@ import {
   TabGroupItem,
   themeClasses,
   ScrollArea,
-  PillCounter,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useActionsStore } from "@/store/actions.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import ChangesPanel from "./ChangesPanel.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
-const actionsStore = useActionsStore();
-
-const displayCount = computed(
-  () => 1 + _.keys(actionsStore.proposedActions).length,
-);
 </script>

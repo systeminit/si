@@ -119,7 +119,7 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import { DeprecatedActionKind } from "@/store/actions.store";
+import { ActionKind } from "@/store/actions.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
@@ -301,7 +301,7 @@ const newFuncOptions = (
     schemaVariantId,
   };
 
-  let kind = DeprecatedActionKind.Other;
+  let kind = ActionKind.Manual;
   switch (funcKind) {
     case FuncKind.Authentication:
       return {
@@ -309,9 +309,9 @@ const newFuncOptions = (
         ...baseOptions,
       };
     case FuncKind.Action:
-      if (isCreate.value) kind = DeprecatedActionKind.Create;
-      if (isDelete.value) kind = DeprecatedActionKind.Delete;
-      if (isRefresh.value) kind = DeprecatedActionKind.Refresh;
+      if (isCreate.value) kind = ActionKind.Create;
+      if (isDelete.value) kind = ActionKind.Destroy;
+      if (isRefresh.value) kind = ActionKind.Refresh;
 
       return {
         type: "actionOptions",

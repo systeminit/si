@@ -82,7 +82,7 @@
             </button>
           </a>
           <div
-            v-if="variant !== 'fullsize'"
+            v-if="variant !== 'fullsize' && !growTabs"
             class="border-b border-neutral-300 dark:border-neutral-600 w-2xs shrink-0"
           />
         </template>

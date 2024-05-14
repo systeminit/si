@@ -37,7 +37,8 @@ const TONES = {
   },
   success: {
     colorHex: COLOR_PALETTE.success[500],
-    bgColorClass: tw`bg-success-500`,
+    bgColorClassLight: tw`bg-success-500`,
+    bgColorClassDark: tw`bg-success-300`,
     textColorClass: tw`text-success-500`,
     borderColorClass: tw`border-success-500`,
   },

@@ -46,7 +46,7 @@ import { TreeNode, useTheme } from "@si/vue-lib/design-system";
 import { ActionView } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();

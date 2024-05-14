@@ -92,6 +92,7 @@ import Key from "~icons/material-symbols/key";
 import Scissors from "~icons/clarity/scissors-solid";
 import Frame from "~icons/iconamoon/frame-light";
 import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
+import MaterialSymbolsStopCircleOutlineRounded from "~icons/material-symbols/stop-circle-outline-rounded";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
@@ -197,6 +198,7 @@ export const ICONS = Object.freeze({
   "circle-empty": MdiCheckboxBlankCircleOutline,
   "circle-full": MdiCheckboxBlankCircle,
   "circle-slash": CircleSlash,
+  "circle-stop": MaterialSymbolsStopCircleOutlineRounded,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   "cloud-download": CloudDownload,
