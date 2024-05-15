@@ -293,7 +293,7 @@ impl Action {
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
     }
-
+    #[instrument(level = "info", skip(ctx))]
     pub async fn new(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,

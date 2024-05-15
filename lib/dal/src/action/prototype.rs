@@ -1,4 +1,4 @@
-use petgraph::Outgoing;
+use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
@@ -42,6 +42,8 @@ pub enum ActionPrototypeError {
     NodeWeight(#[from] NodeWeightError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not found for prototype: {0}")]
+    SchemaVariantFoundForPrototype(ActionPrototypeId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("Transactions error: {0}")]
@@ -185,6 +187,30 @@ impl ActionPrototype {
         Err(ActionPrototypeError::FuncNotFoundForPrototype(id))
     }
 
+    async fn schema_variant_id(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<SchemaVariantId> {
+        for (_, tail_node_idx, _head_node_idx) in ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                id,
+                Incoming,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )
+            .await?
+        {
+            if let NodeWeight::Content(node_weight) = ctx
+                .workspace_snapshot()?
+                .get_node_weight(tail_node_idx)
+                .await?
+            {
+                return Ok(node_weight.id().into());
+            }
+        }
+        Err(ActionPrototypeError::SchemaVariantFoundForPrototype(id))
+    }
+
     pub async fn run(
         ctx: &DalContext,
         id: ActionPrototypeId,
@@ -264,5 +290,27 @@ impl ActionPrototype {
         }
 
         Ok(prototypes)
+    }
+
+    pub async fn get_prototypes_to_trigger(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<Vec<ActionPrototypeId>> {
+        // for now we are only defaulting to triggering a
+        // refresh when a create action succeeds
+        // in the future, this will be configurable and we'll look up edges
+        let mut triggered_actions = vec![];
+        let action_prototype = Self::get_by_id(ctx, id).await?;
+        if action_prototype.kind == ActionKind::Create {
+            // find refresh func for schema variant
+            let schema_variant_id = Self::schema_variant_id(ctx, id).await?;
+            let prototypes = Self::for_variant(ctx, schema_variant_id).await?;
+            for prototype in prototypes {
+                if prototype.kind == ActionKind::Refresh {
+                    triggered_actions.push(prototype.id());
+                }
+            }
+        }
+        Ok(triggered_actions)
     }
 }

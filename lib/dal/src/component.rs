@@ -2089,41 +2089,6 @@ impl Component {
             .clone_attributes_from(ctx, self.id(), true, true)
             .await?;
 
-        // Enqueue creation actions
-        let workspace_pk = ctx
-            .tenancy()
-            .workspace_pk()
-            .ok_or(ComponentError::WorkspacePkNone)?;
-
-        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
-
-        if workspace.uses_actions_v2() {
-            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-                ctx,
-                schema_variant.id(),
-                ActionKind::Create,
-            )
-            .await?
-            {
-                Action::new(ctx, prototype_id, Some(pasted_comp.id))
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            }
-        } else {
-            for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
-                .await
-                .map_err(Box::new)?
-            {
-                if prototype.kind != DeprecatedActionKind::Create {
-                    continue;
-                }
-
-                let _action = DeprecatedAction::upsert(ctx, prototype.id, pasted_comp.id())
-                    .await
-                    .map_err(Box::new)?;
-            }
-        }
-
         Ok(pasted_comp)
     }
     /// For a given [`ComponentId`], map each input socket to the inferred output sockets

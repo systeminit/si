@@ -6,7 +6,7 @@ use telemetry::prelude::*;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    action::prototype::{ActionKind, ActionPrototype},
+    action::prototype::ActionPrototype,
     action::{Action, ActionError, ActionState},
     func::backend::js_action::DeprecatedActionRunResult,
     job::{
@@ -99,8 +99,7 @@ impl JobConsumer for ActionJob {
             }
         }
 
-        // Waits for all data propagation to finish
-        ctx.blocking_commit().await?;
+        ctx.commit().await?;
 
         Ok(JobCompletionState::Done)
     }
@@ -128,6 +127,8 @@ impl TryFrom<JobInfo> for ActionJob {
     level = "info",
     fields(
         ?id,
+        si.action.kind = Empty,
+        si.component.id = Empty,
     )
 )]
 async fn action_task(
@@ -135,13 +136,15 @@ async fn action_task(
     id: ActionId,
     parent_span: Span,
 ) -> JobConsumerResult<(Option<DeprecatedActionRunResult>, Vec<String>)> {
+    let span = Span::current();
     let component_id = Action::component_id(ctx, id)
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(id))?;
 
     let prototype_id = Action::prototype_id(ctx, id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-
+    span.record("si.action.kind", &tracing::field::debug(&prototype.kind));
+    span.record("si.component.id", &tracing::field::debug(&component_id));
     Action::set_state(ctx, id, ActionState::Running).await?;
 
     // Updates the action's state
@@ -168,24 +171,11 @@ async fn action_task(
     if matches!(
         resource.as_ref().and_then(|r| r.status),
         Some(ResourceStatus::Ok)
-    ) && prototype.kind == ActionKind::Create
-    {
-        ctx.blocking_commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-
-        let variant = Component::schema_variant_for_component_id(ctx, component_id).await?;
-
-        let all_prototypes_for_variant: Vec<ActionPrototype> =
-            ActionPrototype::for_variant(ctx, variant.id()).await?;
-        for prototype in all_prototypes_for_variant {
-            if prototype.kind == ActionKind::Refresh {
-                ActionPrototype::run(ctx, prototype.id, component_id).await?;
-
-                WsEvent::resource_refreshed(ctx, component_id)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            }
+    ) {
+        let triggered_prototypes =
+            ActionPrototype::get_prototypes_to_trigger(ctx, prototype_id).await?;
+        for dependency_prototype_id in triggered_prototypes {
+            Action::new(ctx, dependency_prototype_id, Some(component_id)).await?;
         }
     }
 
