@@ -1436,60 +1436,53 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         original_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        // Climb from the original node, up to root, rewriting outgoing edges along the way. But we
-        // have to be sure to climb to root once for each sibling node that we encounter as we
-        // walk up to root.
-        let mut outer_queue = VecDeque::from([original_node_index]);
+        let mut work_q = VecDeque::from([original_node_index]);
+        let mut seen_list = HashSet::new();
 
-        while let Some(old_node_index) = outer_queue.pop_front() {
-            let mut work_queue = VecDeque::from([old_node_index]);
-
-            while let Some(old_node_index) = work_queue.pop_front() {
-                for edge_ref in self.edges_directed(old_node_index, Direction::Incoming) {
-                    work_queue.push_back(edge_ref.source());
-                    outer_queue.push_back(edge_ref.source())
-                }
-
-                let latest_node_idx = self.get_latest_node_idx(old_node_index)?;
-                let new_node_index = if latest_node_idx != old_node_index {
-                    latest_node_idx
-                } else {
-                    self.copy_node_by_index(old_node_index)?
-                };
-
-                // Find all outgoing edges weights and find the edge targets.
-                let mut edges_to_create = Vec::new();
-                for edge_ref in self.graph.edges_directed(old_node_index, Outgoing) {
-                    edges_to_create.push((
-                        edge_ref.weight().clone(),
-                        edge_ref.target(),
-                        edge_ref.id(),
-                    ));
-                }
-
-                // Make copies of these edges where the source is the new node index and the
-                // destination is one of the following...
-                // - If an entry exists in `old_to_new_node_indices` for the destination node index,
-                //   use the value of the entry (the destination was affected by the replacement,
-                //   and needs to use the new node index to reflect this).
-                // - There is no entry in `old_to_new_node_indices`; use the same destination node
-                //   index as the old edge (the destination was *NOT* affected by the replacement,
-                //   and does not have any new information to reflect).
-                for (edge_weight, destination_node_index, edge_idx) in edges_to_create {
-                    // Need to directly add the edge, without going through `self.add_edge` to avoid
-                    // infinite recursion, and because we're the place doing all the book keeping
-                    // that we'd be interested in happening from `self.add_edge`.
-                    let destination_node_index =
-                        self.get_latest_node_idx(destination_node_index)?;
-
-                    self.graph.remove_edge(edge_idx);
-
-                    self.graph
-                        .update_edge(new_node_index, destination_node_index, edge_weight);
-                }
-
-                self.update_merkle_tree_hash(new_node_index)?;
+        while let Some(old_node_index) = work_q.pop_front() {
+            if seen_list.contains(&old_node_index) {
+                continue;
             }
+            seen_list.insert(old_node_index);
+
+            for edge_ref in self.edges_directed(old_node_index, Direction::Incoming) {
+                work_q.push_back(edge_ref.source())
+            }
+
+            let latest_node_idx = self.get_latest_node_idx(old_node_index)?;
+            let new_node_index = if latest_node_idx != old_node_index {
+                latest_node_idx
+            } else {
+                self.copy_node_by_index(old_node_index)?
+            };
+
+            // Find all outgoing edges weights and find the edge targets.
+            let mut edges_to_create = Vec::new();
+            for edge_ref in self.graph.edges_directed(old_node_index, Outgoing) {
+                edges_to_create.push((edge_ref.weight().clone(), edge_ref.target(), edge_ref.id()));
+            }
+
+            // Make copies of these edges where the source is the new node index and the
+            // destination is one of the following...
+            // - If an entry exists in `old_to_new_node_indices` for the destination node index,
+            //   use the value of the entry (the destination was affected by the replacement,
+            //   and needs to use the new node index to reflect this).
+            // - There is no entry in `old_to_new_node_indices`; use the same destination node
+            //   index as the old edge (the destination was *NOT* affected by the replacement,
+            //   and does not have any new information to reflect).
+            for (edge_weight, destination_node_index, edge_idx) in edges_to_create {
+                // Need to directly add the edge, without going through `self.add_edge` to avoid
+                // infinite recursion, and because we're the place doing all the book keeping
+                // that we'd be interested in happening from `self.add_edge`.
+                let destination_node_index = self.get_latest_node_idx(destination_node_index)?;
+
+                self.graph.remove_edge(edge_idx);
+
+                self.graph
+                    .update_edge(new_node_index, destination_node_index, edge_weight);
+            }
+
+            self.update_merkle_tree_hash(new_node_index)?;
         }
 
         // Use the new version of the old root node as our root node.
