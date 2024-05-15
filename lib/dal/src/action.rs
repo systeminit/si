@@ -180,14 +180,16 @@ impl Action {
 
     pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
-        let mut node_weight = ctx
+        let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(idx)
             .await?
             .get_action_node_weight()?;
-        node_weight.set_state(state);
+        let mut new_node_weight =
+            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+        new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(node_weight))
+            .add_node(NodeWeight::Action(new_node_weight))
             .await?;
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
@@ -199,14 +201,16 @@ impl Action {
         pk: Option<FuncExecutionPk>,
     ) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
-        let mut node_weight = ctx
+        let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(idx)
             .await?
             .get_action_node_weight()?;
-        node_weight.set_func_execution_pk(pk);
+        let mut new_node_weight =
+            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+        new_node_weight.set_func_execution_pk(pk);
         ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(node_weight))
+            .add_node(NodeWeight::Action(new_node_weight))
             .await?;
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())

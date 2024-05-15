@@ -86,11 +86,11 @@ export type DeprecatedFullAction = {
 
 // ACTIONS V2 STUFF - TODO - ONCE ACTIONS V2 WORKS IT SHOULD REPLACE ACTIONS V1
 export enum ActionState {
-  Dispatched = "dispatched",
-  Failed = "failed",
-  OnHold = "on_hold",
-  Queued = "queued",
-  Running = "running",
+  Dispatched = "Dispatched",
+  Failed = "Failed",
+  OnHold = "OnHold",
+  Queued = "Queued",
+  Running = "Running",
 }
 
 export enum ActionKind {

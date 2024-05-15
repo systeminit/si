@@ -94,6 +94,7 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
         if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk.into()).await? {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                ctx.update_snapshot_to_visibility().await?;
                 let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
                     .await?
                     .ok_or(RebaseError::MissingChangeSet(

@@ -21,6 +21,13 @@ const CONFIG = {
     running: { iconName: "loader", tone: "action" },
     notexists: { iconName: "empty", tone: "empty" },
   },
+  "action-state": {
+    Dispatched: { iconName: "loader", tone: "action" },
+    Failed: { iconName: "alert-triangle", tone: "destructive" },
+    OnHold: { iconName: "loader", tone: "neutral" },
+    Queued: { iconName: "empty", tone: "empty" },
+    Running: { iconName: "loader", tone: "action" },
+  },
   "action-runner": {
     success: { iconName: "check2", tone: "success" },
     error: { iconName: "alert-triangle", tone: "destructive" },

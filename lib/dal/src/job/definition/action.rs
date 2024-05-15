@@ -90,8 +90,12 @@ impl JobConsumer for ActionJob {
             }
             Err(err) => {
                 error!("Unable to finish action {}: {err}", self.id);
-                process_failed_action(ctx, self.id, format!("Action failed: {err}"), Vec::new())
-                    .await;
+                if let Err(err) =
+                    process_failed_action(ctx, self.id, format!("Action failed: {err}"), Vec::new())
+                        .await
+                {
+                    error!("Failed to process action failure: {err}");
+                }
             }
         }
 
@@ -190,22 +194,6 @@ async fn action_task(
 
 #[instrument(name = "action_job.process_failed_action", skip_all, level = "info")]
 async fn process_failed_action(
-    ctx: &DalContext,
-    id: ActionId,
-    error_message: String,
-    logs: Vec<String>,
-) {
-    if let Err(e) = process_failed_action_inner(ctx, id, error_message, logs).await {
-        error!("{e}");
-    }
-}
-
-#[instrument(
-    name = "action_job.process_failed_action_inner",
-    skip_all,
-    level = "info"
-)]
-async fn process_failed_action_inner(
     ctx: &DalContext,
     id: ActionId,
     error_message: String,
