@@ -1380,7 +1380,7 @@ async fn get_prototype_for_context(
                         ctx,
                         element_prop_id,
                         prototype_id,
-                        EdgeWeightKind::Prototype(None),
+                        EdgeWeightKind::Prototype(key),
                     )
                     .await?;
 
