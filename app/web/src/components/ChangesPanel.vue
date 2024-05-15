@@ -43,6 +43,7 @@
           "
         >
           <ActionV2Card
+            v-if="action.state !== 'Running' && action.state !== 'Dispatched'"
             :action="action"
             @remove="actionsStore.CANCEL(action.id)"
           />

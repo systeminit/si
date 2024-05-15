@@ -136,6 +136,9 @@ impl ActionNodeWeight {
         ContentHash::from(&serde_json::json![{
             "id": self.id,
             "lineage_id": self.lineage_id,
+            "state": self.state,
+            "originating_changeset_id": self.originating_changeset_id,
+            "func_execution_pk": self.func_execution_pk,
         }])
     }
 

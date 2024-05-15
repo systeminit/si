@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
@@ -180,14 +182,16 @@ impl Action {
 
     pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
-        let mut node_weight = ctx
+        let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(idx)
             .await?
             .get_action_node_weight()?;
-        node_weight.set_state(state);
+        let mut new_node_weight =
+            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+        new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(node_weight))
+            .add_node(NodeWeight::Action(new_node_weight))
             .await?;
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
@@ -199,14 +203,16 @@ impl Action {
         pk: Option<FuncExecutionPk>,
     ) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
-        let mut node_weight = ctx
+        let node_weight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(id)
+            .get_node_weight(idx)
             .await?
             .get_action_node_weight()?;
-        node_weight.set_func_execution_pk(pk);
+        let mut new_node_weight =
+            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+        new_node_weight.set_func_execution_pk(pk);
         ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(node_weight))
+            .add_node(NodeWeight::Action(new_node_weight))
             .await?;
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
@@ -395,6 +401,40 @@ impl Action {
             Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
             None => None,
         })
+    }
+    /// Gets all actions this action is dependent on
+    pub async fn get_dependent_actions_by_id(
+        ctx: &DalContext,
+        action_id: ActionId,
+    ) -> ActionResult<Vec<ActionId>> {
+        let action_dependency_graph: ActionDependencyGraph =
+            ActionDependencyGraph::for_workspace(ctx).await?;
+        Ok(action_dependency_graph.direct_dependencies_of(action_id))
+    }
+    // Gets all actions that are dependent on this action (the entire subgraph)
+    #[instrument(level = "info", skip(ctx))]
+    pub async fn get_all_dependencies(&self, ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+        let action_dependency_graph: ActionDependencyGraph =
+            dbg!(ActionDependencyGraph::for_workspace(ctx).await?);
+        Ok(action_dependency_graph.get_all_dependencies(self.id()))
+    }
+    #[instrument(level = "info", skip(ctx))]
+    pub async fn get_hold_status_influenced_by(
+        &self,
+        ctx: &DalContext,
+    ) -> ActionResult<Vec<ActionId>> {
+        let mut reasons_for_hold = vec![];
+        let mut work_queue =
+            VecDeque::from(Self::get_dependent_actions_by_id(ctx, self.id()).await?);
+        while let Some(action_id) = work_queue.pop_front() {
+            let act = Self::get_by_id(ctx, action_id).await?;
+            match act.state() {
+                ActionState::Failed | ActionState::OnHold => reasons_for_hold.push(act.id()),
+                _ => (),
+            }
+            work_queue.extend(Self::get_dependent_actions_by_id(ctx, action_id).await?);
+        }
+        Ok(reasons_for_hold)
     }
 
     pub async fn run(

@@ -60,6 +60,17 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
         }
     }
 
+    pub fn direct_reverse_dependencies_of(&self, id: T) -> Vec<T> {
+        match self.id_to_index_map.get(&id) {
+            None => vec![],
+            Some(value_idx) => self
+                .graph
+                .edges_directed(*value_idx, Incoming)
+                .filter_map(|edge_ref| self.graph.node_weight(edge_ref.source()).copied())
+                .collect(),
+        }
+    }
+
     pub fn remove_id(&mut self, id: T) {
         if let Some(node_idx) = self.id_to_index_map.remove(&id) {
             self.graph.remove_node(node_idx);

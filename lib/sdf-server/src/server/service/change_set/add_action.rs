@@ -53,6 +53,7 @@ pub async fn add_action(
                 "change_set_id": ctx.change_set_id(),
             }),
         );
+        // todo add ws event here
     } else {
         let action =
             DeprecatedAction::upsert(&ctx, request.prototype_id, request.component_id).await?;
