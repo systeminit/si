@@ -12,13 +12,13 @@ use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
     process::{self, ShutdownError},
-    CycloneDecryptionKey, CycloneDecryptionKeyError, CycloneSensitiveStrings,
-    CycloneValueDecryptError, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
-    Message, OutputStream,
+    CycloneRequest, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message,
+    OutputStream,
 };
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
+use si_crypto::SensitiveStrings;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -28,20 +28,18 @@ use tokio::{
 use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyFramed};
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
-use crate::{request::DecryptRequest, WebSocketMessage};
+use crate::WebSocketMessage;
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
-    key: Arc<CycloneDecryptionKey>,
     command: String,
 ) -> Execution<Request, LangServerSuccess, Success> {
     Execution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
-        key,
         command,
         request_marker: PhantomData,
         lang_server_success_marker: PhantomData,
@@ -62,16 +60,12 @@ pub enum ExecutionError {
     ChildShutdown(#[from] ShutdownError),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),
-    #[error("failed to decrypt request")]
-    CycloneValueDecrypt(#[from] CycloneValueDecryptError),
     #[error("failed to decode string as utf8")]
     FromUtf8(#[from] FromUtf8Error),
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
-    #[error("key pair error: {0}")]
-    KeyPair(#[from] CycloneDecryptionKeyError),
     #[error("send timeout")]
     SendTimeout(#[source] tokio::time::error::Elapsed),
     #[error("unexpected websocket message type: {0:?}")]
@@ -92,7 +86,6 @@ type Result<T> = std::result::Result<T, ExecutionError>;
 pub struct Execution<Request, LangServerSuccess, Success> {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
-    key: Arc<CycloneDecryptionKey>,
     command: String,
     request_marker: PhantomData<Request>,
     lang_server_success_marker: PhantomData<LangServerSuccess>,
@@ -101,7 +94,7 @@ pub struct Execution<Request, LangServerSuccess, Success> {
 
 impl<Request, LangServerSuccess, Success> Execution<Request, LangServerSuccess, Success>
 where
-    Request: DecryptRequest + Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
+    Request: Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
     LangServerSuccess: DeserializeOwned,
     Success: Serialize,
 {
@@ -111,12 +104,9 @@ where
     ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
         // Send start is the initial communication before we read the request.
         Self::ws_send_start(ws).await?;
-        let mut sensitive_strings = CycloneSensitiveStrings::default();
         // Read the request message from the web socket
-        let mut request = Self::read_request(ws).await?;
-        // Decrypt the relevant contents of the request and track any resulting sensitive strings
-        // to be redacted
-        request.decrypt(&mut sensitive_strings, &self.key)?;
+        let cyclone_request = Self::read_request(ws).await?;
+        let (request, sensitive_strings) = cyclone_request.into_parts();
 
         // Spawn lang server as a child process with handles on all i/o descriptors
         let mut command = Command::new(&self.lang_server_path);
@@ -162,7 +152,7 @@ where
         })
     }
 
-    async fn read_request(ws: &mut WebSocket) -> Result<Request> {
+    async fn read_request(ws: &mut WebSocket) -> Result<CycloneRequest<Request>> {
         let request = match ws.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
                 serde_json::from_str(&json_str).map_err(ExecutionError::JSONDeserialize)?
@@ -215,18 +205,18 @@ pub struct ExecutionStarted<LangServerSuccess, Success> {
     child: Child,
     stdout: SiFramed<SiMessage<LangServerSuccess>>,
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-    sensitive_strings: Arc<CycloneSensitiveStrings>,
+    sensitive_strings: Arc<SensitiveStrings>,
     success_marker: PhantomData<Success>,
 }
 
 // TODO: implement shutdown oneshot
 async fn handle_stderr(
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-    sensitive_strings: Arc<CycloneSensitiveStrings>,
+    sensitive_strings: Arc<SensitiveStrings>,
 ) {
     async fn handle_stderr_fallible(
         mut stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-        sensitive_strings: Arc<CycloneSensitiveStrings>,
+        sensitive_strings: Arc<SensitiveStrings>,
     ) -> Result<()> {
         while let Some(line) = stderr.next().await {
             let line = line.map_err(ExecutionError::ChildRecvIO)?;
@@ -291,7 +281,7 @@ where
 
     fn filter_output(
         output: &mut LangServerOutput,
-        sensitive_strings: &CycloneSensitiveStrings,
+        sensitive_strings: &SensitiveStrings,
     ) -> Result<()> {
         if sensitive_strings.has_sensitive(&output.message) {
             output.message = sensitive_strings.redact(&output.message);
@@ -302,7 +292,7 @@ where
 
     fn filter_result(
         result: &mut LangServerResult<LangServerSuccess>,
-        sensitive_strings: &CycloneSensitiveStrings,
+        sensitive_strings: &SensitiveStrings,
     ) -> Result<()> {
         let mut value = serde_json::to_value(&result).map_err(ExecutionError::JSONSerialize)?;
 

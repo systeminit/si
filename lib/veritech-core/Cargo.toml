@@ -9,3 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+serde_json = { workspace = true }
+si-crypto = { path = "../../lib/si-crypto" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+si-std = { path = "../../lib/si-std" }

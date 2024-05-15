@@ -3,7 +3,9 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
+use si_crypto::{
+    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, VeritechCryptoConfig,
+};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
@@ -47,8 +49,8 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "CryptoConfig::default()")]
-    crypto: CryptoConfig,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "default_concurrency_limit()")]
     concurrency: usize,
@@ -87,7 +89,7 @@ impl Config {
 
     /// Gets a reference to the config's crypto config.
     #[must_use]
-    pub fn crypto(&self) -> &CryptoConfig {
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
         &self.crypto
     }
 
@@ -118,7 +120,7 @@ pub struct ConfigFile {
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
-    crypto: CryptoConfig,
+    crypto: VeritechCryptoConfig,
     #[serde(default = "default_concurrency_limit")]
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
@@ -199,7 +201,7 @@ pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
-    let cyclone_encryption_key_path = resources
+    let veritech_encryption_key_path = resources
         .get_ends_with("dev.encryption.key")
         .map_err(ConfigError::development)?
         .to_string_lossy()
@@ -216,13 +218,13 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .to_string();
 
     warn!(
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_key = postgres_key.as_str(),
         "detected development run",
     );
 
-    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
+    config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,
@@ -236,8 +238,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 }
 
 fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
-    let cyclone_encryption_key_path = Path::new(&dir)
-        .join("../../lib/cyclone-server/src/dev.encryption.key")
+    let veritech_encryption_key_path = Path::new(&dir)
+        .join("../../lib/veritech-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
     let symmetric_crypto_service_key = Path::new(&dir)
@@ -250,13 +252,13 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .to_string();
 
     warn!(
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_key = postgres_key.as_str(),
         "detected development run",
     );
 
-    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
+    config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,

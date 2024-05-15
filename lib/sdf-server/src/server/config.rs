@@ -1,5 +1,5 @@
 use dal::jwt_key::JwtConfig;
-use si_crypto::CryptoConfig;
+use si_crypto::VeritechCryptoConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
 use std::{
@@ -21,7 +21,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use dal::MigrationMode;
-pub use si_crypto::CycloneKeyPair;
+pub use si_crypto::VeritechKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
@@ -76,8 +76,8 @@ pub struct Config {
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
-    #[builder(default = "CryptoConfig::default()")]
-    crypto: CryptoConfig,
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
 
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
@@ -127,7 +127,7 @@ impl Config {
 
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
-    pub fn crypto(&self) -> &CryptoConfig {
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
         &self.crypto
     }
 
@@ -186,7 +186,7 @@ pub struct ConfigFile {
     #[serde(default)]
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
-    pub crypto: CryptoConfig,
+    pub crypto: VeritechCryptoConfig,
     #[serde(default = "default_pkgs_path")]
     pub pkgs_path: String,
     #[serde(default)]
@@ -325,7 +325,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
             .to_string_lossy()
             .to_string()
     };
-    let cyclone_encryption_key_path = resources
+    let veritech_encryption_key_path = resources
         .get_ends_with("dev.encryption.key")
         .map_err(ConfigError::development)?
         .to_string_lossy()
@@ -348,7 +348,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_cert = postgres_cert.as_str(),
         pkgs_path = pkgs_path.as_str(),
@@ -359,7 +359,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         key_file: Some(jwt_signing_public_key_path.try_into()?),
         key_base64: None,
     };
-    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
+    config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,
@@ -390,8 +390,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
             .to_string_lossy()
             .to_string()
     };
-    let cyclone_encryption_key_path = Path::new(&dir)
-        .join("../../lib/cyclone-server/src/dev.encryption.key")
+    let veritech_encryption_key_path = Path::new(&dir)
+        .join("../../lib/veritech-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
     let symmetric_crypto_service_key = Path::new(&dir)
@@ -409,7 +409,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_cert = postgres_cert.as_str(),
         pkgs_path = pkgs_path.as_str(),
@@ -420,7 +420,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         key_file: Some(jwt_signing_public_key_path.try_into()?),
         key_base64: None,
     };
-    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
+    config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
         active_key_base64: None,

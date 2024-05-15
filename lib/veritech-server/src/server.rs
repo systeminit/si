@@ -1,27 +1,31 @@
-use chrono::Utc;
+use std::{io, sync::Arc};
 
+use chrono::Utc;
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
+use si_crypto::{VeritechDecryptionKey, VeritechDecryptionKeyError};
 use si_data_nats::NatsClient;
-use si_pool_noodle::CycloneClient;
-use si_pool_noodle::Spec;
 use si_pool_noodle::{
-    instance::cyclone::LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest,
-    ActionRunResultSuccess, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
-    PoolNoodle, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+    ActionRunRequest, ActionRunResultSuccess, CycloneClient, CycloneRequest, FunctionResult,
+    FunctionResultFailure, FunctionResultFailureError, PoolNoodle, ProgressMessage,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveStrings, Spec, ValidationRequest,
+    ValidationResultSuccess,
 };
-use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
-
 use tokio::{
     signal::unix,
     sync::{broadcast, mpsc},
 };
+use veritech_core::VeritechValueDecryptError;
 
-use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, PublisherError};
+use crate::{
+    config::CycloneSpec, request::DecryptRequest, Config, FunctionSubscriber, Publisher,
+    PublisherError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -58,6 +62,10 @@ pub enum ServerError {
     Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error(transparent)]
     Validation(#[from] si_pool_noodle::ExecutionError<ValidationResultSuccess>),
+    #[error("decryption key error: {0}")]
+    VeritechDecryptionKey(#[from] VeritechDecryptionKeyError),
+    #[error("failed to decrypt request")]
+    VeritechValueDecrypt(#[from] VeritechValueDecryptError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, Box<CycloneSpec>),
 }
@@ -68,6 +76,7 @@ pub struct Server {
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_rx: oneshot::Receiver<()>,
@@ -136,10 +145,14 @@ impl Server {
                 let graceful_shutdown_rx =
                     prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx.clone())?;
 
+                let decryption_key =
+                    VeritechDecryptionKey::from_config(config.crypto().clone()).await?;
+
                 Ok(Server {
                     nats,
                     subject_prefix: config.subject_prefix().map(|s| s.to_string()),
                     cyclone_pool,
+                    decryption_key: Arc::new(decryption_key),
                     shutdown_broadcast_tx,
                     shutdown_tx,
                     shutdown_rx: graceful_shutdown_rx,
@@ -169,6 +182,7 @@ impl Server {
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
+                self.decryption_key.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_validation_requests_task(
@@ -176,6 +190,7 @@ impl Server {
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
+                self.decryption_key.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_action_run_requests_task(
@@ -183,6 +198,7 @@ impl Server {
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
+                self.decryption_key.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_reconciliation_requests_task(
@@ -190,6 +206,7 @@ impl Server {
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
+                self.decryption_key.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_schema_variant_definition_requests_task(
@@ -197,6 +214,7 @@ impl Server {
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
+                self.decryption_key.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
         );
@@ -236,6 +254,7 @@ async fn process_resolver_function_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_resolver_function_requests(
@@ -243,6 +262,7 @@ async fn process_resolver_function_requests_task(
         nats,
         subject_prefix,
         cyclone_pool,
+        decryption_key,
         shutdown_broadcast_rx,
     )
     .await
@@ -256,6 +276,7 @@ async fn process_resolver_function_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -277,6 +298,7 @@ async fn process_resolver_function_requests(
                             metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
+                            decryption_key.clone(),
                             request,
                         ));
                     }
@@ -307,6 +329,7 @@ async fn resolver_function_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ResolverFunctionRequest>,
 ) {
     let cyclone_request = request.payload;
@@ -325,6 +348,7 @@ async fn resolver_function_request_task(
         metadata,
         &publisher,
         cyclone_pool,
+        decryption_key,
         cyclone_request,
         &request.process_span,
     )
@@ -376,9 +400,9 @@ async fn resolver_function_request_task(
     level = "info",
     skip_all,
     fields(
-        job.id = &cyclone_request.execution_id,
+        job.id = &request.execution_id,
         job.instance = metadata.job_instance,
-        job.invoked_name = &cyclone_request.handler,
+        job.invoked_name = &request.handler,
         job.invoked_provider = metadata.job_invoked_provider,
         otel.kind = SpanKind::Server.as_str(),
         otel.status_code = Empty,
@@ -389,10 +413,18 @@ async fn resolver_function_request(
     metadata: Arc<ServerMetadata>,
     publisher: &Publisher<'_>,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    cyclone_request: ResolverFunctionRequest,
+    decryption_key: Arc<VeritechDecryptionKey>,
+    mut request: ResolverFunctionRequest,
     process_span: &Span,
 ) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
     let span = Span::current();
+
+    let mut sensitive_strings = SensitiveStrings::default();
+    // Decrypt the relevant contents of the request and track any resulting sensitive strings
+    // to be redacted
+    request.decrypt(&mut sensitive_strings, &decryption_key)?;
+
+    let cyclone_request = CycloneRequest::from_parts(request, sensitive_strings);
 
     let mut client = cyclone_pool
         .get()
@@ -443,6 +475,7 @@ async fn process_validation_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_validation_requests(
@@ -450,6 +483,7 @@ async fn process_validation_requests_task(
         nats,
         subject_prefix,
         cyclone_pool,
+        decryption_key,
         shutdown_broadcast_rx,
     )
     .await
@@ -463,6 +497,7 @@ async fn process_validation_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::validation(&nats, subject_prefix.as_deref()).await?;
@@ -483,6 +518,7 @@ async fn process_validation_requests(
                             metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
+                            decryption_key.clone(),
                             request,
                         ));
                     }
@@ -513,10 +549,19 @@ async fn validation_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ValidationRequest>,
 ) {
     let process_span = request.process_span.clone();
-    if let Err(err) = validation_request(metadata, nats, cyclone_pool, request, &process_span).await
+    if let Err(err) = validation_request(
+        metadata,
+        nats,
+        cyclone_pool,
+        decryption_key,
+        request,
+        &process_span,
+    )
+    .await
     {
         warn!(error = ?err, "validation execution failed");
     }
@@ -541,12 +586,20 @@ async fn validation_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ValidationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
 
-    let cyclone_request = request.payload;
+    let mut payload_request = request.payload;
+
+    let mut sensitive_strings = SensitiveStrings::default();
+    // Decrypt the relevant contents of the request and track any resulting sensitive strings
+    // to be redacted
+    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
+
+    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
 
     let reply_mailbox = request
         .reply
@@ -607,6 +660,7 @@ async fn process_schema_variant_definition_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_schema_variant_definition_requests(
@@ -614,6 +668,7 @@ async fn process_schema_variant_definition_requests_task(
         nats,
         subject_prefix,
         cyclone_pool,
+        decryption_key,
         shutdown_broadcast_rx,
     )
     .await
@@ -627,6 +682,7 @@ async fn process_schema_variant_definition_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -648,6 +704,7 @@ async fn process_schema_variant_definition_requests(
                             metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
+                            decryption_key.clone(),
                             request,
                         ));
                     }
@@ -678,12 +735,19 @@ async fn schema_variant_definition_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<SchemaVariantDefinitionRequest>,
 ) {
     let process_span = request.process_span.clone();
-    if let Err(err) =
-        schema_variant_definition_request(metadata, nats, cyclone_pool, request, &process_span)
-            .await
+    if let Err(err) = schema_variant_definition_request(
+        metadata,
+        nats,
+        cyclone_pool,
+        decryption_key,
+        request,
+        &process_span,
+    )
+    .await
     {
         warn!(error = ?err, "schema variant definition execution failed");
     }
@@ -708,12 +772,21 @@ async fn schema_variant_definition_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<SchemaVariantDefinitionRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
 
-    let cyclone_request = request.payload;
+    let mut payload_request = request.payload;
+
+    let mut sensitive_strings = SensitiveStrings::default();
+    // Decrypt the relevant contents of the request and track any resulting sensitive strings
+    // to be redacted
+    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
+
+    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
+
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
@@ -773,6 +846,7 @@ async fn process_action_run_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_action_run_requests(
@@ -780,6 +854,7 @@ async fn process_action_run_requests_task(
         nats,
         subject_prefix,
         cyclone_pool,
+        decryption_key,
         shutdown_broadcast_rx,
     )
     .await
@@ -793,6 +868,7 @@ async fn process_action_run_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::action_run(&nats, subject_prefix.as_deref()).await?;
@@ -813,6 +889,7 @@ async fn process_action_run_requests(
                             metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
+                            decryption_key.clone(),
                             request,
                         ));
                     }
@@ -843,10 +920,19 @@ async fn action_run_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ActionRunRequest>,
 ) {
     let process_span = request.process_span.clone();
-    if let Err(err) = action_run_request(metadata, nats, cyclone_pool, request, &process_span).await
+    if let Err(err) = action_run_request(
+        metadata,
+        nats,
+        cyclone_pool,
+        decryption_key,
+        request,
+        &process_span,
+    )
+    .await
     {
         warn!(error = ?err, "action run execution failed");
     }
@@ -871,12 +957,21 @@ async fn action_run_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ActionRunRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
 
-    let cyclone_request = request.payload;
+    let mut payload_request = request.payload;
+
+    let mut sensitive_strings = SensitiveStrings::default();
+    // Decrypt the relevant contents of the request and track any resulting sensitive strings
+    // to be redacted
+    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
+
+    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
+
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
@@ -936,6 +1031,7 @@ async fn process_reconciliation_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_reconciliation_requests(
@@ -943,6 +1039,7 @@ async fn process_reconciliation_requests_task(
         nats,
         subject_prefix,
         cyclone_pool,
+        decryption_key,
         shutdown_broadcast_rx,
     )
     .await
@@ -956,6 +1053,7 @@ async fn process_reconciliation_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::reconciliation(&nats, subject_prefix.as_deref()).await?;
@@ -976,6 +1074,7 @@ async fn process_reconciliation_requests(
                             metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
+                            decryption_key.clone(),
                             request,
                         ));
                     }
@@ -1006,11 +1105,19 @@ async fn reconciliation_request_task(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ReconciliationRequest>,
 ) {
     let process_span = request.process_span.clone();
-    if let Err(err) =
-        reconciliation_request(metadata, nats, cyclone_pool, request, &process_span).await
+    if let Err(err) = reconciliation_request(
+        metadata,
+        nats,
+        cyclone_pool,
+        decryption_key,
+        request,
+        &process_span,
+    )
+    .await
     {
         warn!(error = ?err, "reconciliation execution failed");
     }
@@ -1035,12 +1142,21 @@ async fn reconciliation_request(
     metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+    decryption_key: Arc<VeritechDecryptionKey>,
     request: Request<ReconciliationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
 
-    let cyclone_request = request.payload;
+    let mut payload_request = request.payload;
+
+    let mut sensitive_strings = SensitiveStrings::default();
+    // Decrypt the relevant contents of the request and track any resulting sensitive strings
+    // to be redacted
+    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
+
+    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
+
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)

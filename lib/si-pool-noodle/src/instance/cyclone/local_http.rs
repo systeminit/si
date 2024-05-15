@@ -11,10 +11,10 @@ use cyclone_client::{
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, ValidationRequest,
-    ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, CycloneRequest,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -142,7 +142,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
     async fn execute_resolver(
         &mut self,
-        request: ResolverFunctionRequest,
+        request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
         Execution<TcpStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
@@ -159,7 +159,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
     async fn execute_validation(
         &mut self,
-        request: ValidationRequest,
+        request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<TcpStream, ValidationRequest, ValidationResultSuccess>, ClientError>
     {
         self.ensure_healthy_client()
@@ -174,7 +174,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
     async fn execute_action_run(
         &mut self,
-        request: ActionRunRequest,
+        request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<TcpStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         self.ensure_healthy_client()
@@ -189,7 +189,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
     async fn execute_reconciliation(
         &mut self,
-        request: ReconciliationRequest,
+        request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
         Execution<TcpStream, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
@@ -206,7 +206,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
     async fn execute_schema_variant_definition(
         &mut self,
-        request: SchemaVariantDefinitionRequest,
+        request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
         Execution<TcpStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
@@ -258,10 +258,6 @@ pub struct LocalHttpInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
     cyclone_cmd_path: CanonicalCommand,
-
-    /// Canonical path to Cyclone's secret key file.
-    #[builder(setter(into))]
-    cyclone_decryption_key_path: String,
 
     /// Canonical path to the language server program.
     #[builder(try_setter, setter(into))]
@@ -359,8 +355,6 @@ impl LocalHttpInstanceSpec {
         let mut cmd = Command::new(&self.cyclone_cmd_path);
         cmd.arg("--bind-addr")
             .arg(socket.to_string())
-            .arg("--decryption-key")
-            .arg(&self.cyclone_decryption_key_path)
             .arg("--lang-server")
             .arg(&self.lang_server_cmd_path)
             .arg("--enable-watch");

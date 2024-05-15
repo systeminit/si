@@ -5,9 +5,11 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/nats-subscriber:nats-subscriber",
+        "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-pool-noodle:si-pool-noodle",
         "//lib/si-settings:si-settings",
+        "//lib/si-std:si-std",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-core:veritech-core",
@@ -22,4 +24,16 @@ rust_library(
         "//third-party/rust:ulid",
     ],
     srcs = glob(["src/**/*.rs"]),
+)
+
+export_file(
+    name = "dev.decryption.key",
+    src = "src/dev.decryption.key",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "dev.encryption.key",
+    src = "src/dev.encryption.key",
+    visibility = ["PUBLIC"],
 )

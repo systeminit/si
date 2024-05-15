@@ -22,6 +22,7 @@ nix = { workspace = true }
 rand = {workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
+si-std = { path = "../si-std" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

@@ -1,5 +1,6 @@
 mod config;
 mod publisher;
+mod request;
 mod server;
 mod subscriber;
 

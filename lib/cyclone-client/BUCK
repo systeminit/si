@@ -24,7 +24,6 @@ rust_library(
         "//lib/buck2-resources:buck2-resources",
         "//lib/cyclone-server:cyclone-server",
         "//third-party/rust:base64",
-        "//third-party/rust:sodiumoxide",
         "//third-party/rust:tempfile",
         "//third-party/rust:test-log",
         "//third-party/rust:tracing",

@@ -41,18 +41,13 @@ async fn main() -> Result<()> {
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
-
     let config = Config::try_from(args)?;
 
     let telemetry = Box::new(telemetry);
 
     task_tracker.close();
 
-    Server::from_config(config, telemetry, decryption_key)
-        .await?
-        .run()
-        .await?;
+    Server::from_config(config, telemetry).await?.run().await?;
 
     // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
     // cyclone's case, this is embedded in server library code which is incorrect. At this moment in

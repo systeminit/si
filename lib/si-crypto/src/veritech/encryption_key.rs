@@ -1,4 +1,4 @@
-use crate::CryptoConfig;
+use crate::VeritechCryptoConfig;
 use std::{io, path::Path};
 
 use base64::{engine::general_purpose, Engine};
@@ -8,10 +8,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
 
-/// An error that can be returned when working with a [`CycloneEncryptionKey`].
+/// An error that can be returned when working with a [`VeritechEncryptionKey`].
 #[remain::sorted]
 #[derive(Debug, Error)]
-pub enum CycloneEncryptionKeyError {
+pub enum VeritechEncryptionKeyError {
     /// When a base64 encoded key fails to be decoded.
     #[error("failed to decode base64 encoded key")]
     Base64Decode(#[source] base64::DecodeError),
@@ -26,15 +26,15 @@ pub enum CycloneEncryptionKeyError {
     LoadKeyIO(#[source] io::Error),
 }
 
-/// A key that encrypts segements of a Cyclone function request message.
+/// A key that encrypts segements of a Veritech function request message.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CycloneEncryptionKey {
+pub struct VeritechEncryptionKey {
     public_key: PublicKey,
     key_hash: Hash,
 }
 
-impl CycloneEncryptionKey {
-    /// Creates an instance of [`CycloneEncryptionKey`] based on the
+impl VeritechEncryptionKey {
+    /// Creates an instance of [`VeritechEncryptionKey`] based on the
     /// supplied configuration.
     ///
     /// # Errors
@@ -45,15 +45,17 @@ impl CycloneEncryptionKey {
     /// - A key file could not be successfuly parsed
     /// - A key string could not be successfully parsed
     /// - An invalid configuration was passed in
-    pub async fn from_config(config: CryptoConfig) -> Result<Self, CycloneEncryptionKeyError> {
+    pub async fn from_config(
+        config: VeritechCryptoConfig,
+    ) -> Result<Self, VeritechEncryptionKeyError> {
         match (config.encryption_key_file, config.encryption_key_base64) {
             (Some(path), None) => Self::load(path).await,
             (None, Some(b64_string)) => Self::decode(b64_string).await,
-            _ => Err(CycloneEncryptionKeyError::FromConfig),
+            _ => Err(VeritechEncryptionKeyError::FromConfig),
         }
     }
 
-    /// Loads a [`CycloneEncryptionKey`] from a file path.
+    /// Loads a [`VeritechEncryptionKey`] from a file path.
     ///
     /// # Errors
     ///
@@ -63,19 +65,19 @@ impl CycloneEncryptionKey {
     /// - A key file could not be successfuly parsed
     pub async fn load(
         encryption_key_path: impl AsRef<Path>,
-    ) -> Result<Self, CycloneEncryptionKeyError> {
+    ) -> Result<Self, VeritechEncryptionKeyError> {
         trace!(
             encryption_key_path = %encryption_key_path.as_ref().display(),
-            "loading cyclone encryption key from disk",
+            "loading veritech encryption key from disk",
         );
         let mut file = File::open(encryption_key_path)
             .await
-            .map_err(CycloneEncryptionKeyError::LoadKeyIO)?;
+            .map_err(VeritechEncryptionKeyError::LoadKeyIO)?;
         let mut buf: Vec<u8> = Vec::with_capacity(32);
         file.read_to_end(&mut buf)
             .await
-            .map_err(CycloneEncryptionKeyError::LoadKeyIO)?;
-        let public_key = PublicKey::from_slice(&buf).ok_or(CycloneEncryptionKeyError::KeyParse)?;
+            .map_err(VeritechEncryptionKeyError::LoadKeyIO)?;
+        let public_key = PublicKey::from_slice(&buf).ok_or(VeritechEncryptionKeyError::KeyParse)?;
 
         let key_hash = Hash::new(public_key.as_ref());
 
@@ -85,22 +87,22 @@ impl CycloneEncryptionKey {
         })
     }
 
-    /// Loads a [`CycloneEncryptionKey`] from a base64 encoded string.
+    /// Loads a [`VeritechEncryptionKey`] from a base64 encoded string.
     ///
     /// # Errors
     ///
     /// Return `Err` if:
     ///
     /// - A key string could not be successfully parsed
-    pub async fn decode(encryption_key_string: String) -> Result<Self, CycloneEncryptionKeyError> {
+    pub async fn decode(encryption_key_string: String) -> Result<Self, VeritechEncryptionKeyError> {
         trace!(
-            "loading cyclone encryption key from base64 string {}",
+            "loading veritech encryption key from base64 string {}",
             encryption_key_string
         );
         let buf = general_purpose::STANDARD
             .decode(encryption_key_string)
-            .map_err(CycloneEncryptionKeyError::Base64Decode)?;
-        let public_key = PublicKey::from_slice(&buf).ok_or(CycloneEncryptionKeyError::KeyParse)?;
+            .map_err(VeritechEncryptionKeyError::Base64Decode)?;
+        let public_key = PublicKey::from_slice(&buf).ok_or(VeritechEncryptionKeyError::KeyParse)?;
 
         let key_hash = Hash::new(public_key.as_ref());
 
@@ -122,7 +124,7 @@ impl CycloneEncryptionKey {
     }
 }
 
-impl From<PublicKey> for CycloneEncryptionKey {
+impl From<PublicKey> for VeritechEncryptionKey {
     fn from(value: PublicKey) -> Self {
         let key_hash = Hash::new(value.as_ref());
 

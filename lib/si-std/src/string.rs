@@ -2,15 +2,6 @@ use std::{borrow::Cow, fmt, ops::Deref, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-// mod bad {
-//     fn nothing() {
-//         if None == Some("ok") {
-//             println!("huh")
-//         }
-//     }
-//
-// }
-
 /// A display/debug redacting [`String`].
 ///
 /// The [`SensitiveString`] type is wrapper around the standard `String` type, except that it will
@@ -130,5 +121,28 @@ impl FromStr for SensitiveString {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize() {
+        let s = SensitiveString::from("secret");
+        // This will be a JSON string, meaning it includes quotes
+        let serialized = serde_json::to_string(&s).expect("failed to serialize");
+
+        assert_eq!(r#""secret""#, serialized);
+    }
+
+    #[test]
+    fn deserialize() {
+        // This will be a JSON string, meaning it includes quotes
+        let raw = r#""secret""#;
+        let s: SensitiveString = serde_json::from_str(raw).expect("failed to deserialize");
+
+        assert_eq!("secret", s.deref());
     }
 }

@@ -1,17 +1,15 @@
-use std::collections::HashSet;
-
 use serde_json::{json, Value};
-use si_crypto::{CycloneDecryptionKey, CycloneDecryptionKeyError, CycloneEncryptionKey};
-use si_std::SensitiveString;
+use si_crypto::{
+    SensitiveStrings, VeritechDecryptionKey, VeritechDecryptionKeyError, VeritechEncryptionKey,
+};
 use thiserror::Error;
 
 const MARKER_FIELD: &str = "cycloneEncryptedDataMarker";
 const KEY_HASH_FIELD: &str = "keyHash";
 const CRYPTED_FIELD: &str = "crypted";
-const REDACTED_TXT: &str = "[redacted]";
 
 #[derive(Debug, Error)]
-pub enum CycloneValueEncryptError {
+pub enum VeritechValueEncryptError {
     #[error("invalid json pointer: {0}")]
     InvalidJSONPointer(String),
     #[error("error serializing to json: {0}")]
@@ -19,13 +17,13 @@ pub enum CycloneValueEncryptError {
 }
 
 #[derive(Debug, Error)]
-pub enum CycloneValueDecryptError {
+pub enum VeritechValueDecryptError {
     #[error("object missing crypted field")]
     CryptedFieldMissing,
     #[error("object crypted field value was not a string")]
     CryptedFieldValueNotString,
     #[error("cyclone decryption error: {0}")]
-    CycloneDecryption(#[from] CycloneDecryptionKeyError),
+    VeritechDecryption(#[from] VeritechDecryptionKeyError),
     #[error("error deserializing from json: {0}")]
     Deserialize(#[from] serde_json::Error),
     #[error("invalid json pointer: {0}")]
@@ -46,47 +44,10 @@ pub enum CycloneValueDecryptError {
     ValueNotObject,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct CycloneSensitiveStrings(HashSet<SensitiveString>);
-
-impl CycloneSensitiveStrings {
-    pub fn insert(&mut self, value: impl Into<SensitiveString>) {
-        self.0.insert(value.into());
-    }
-
-    pub fn extend<I>(&mut self, iter: I)
-    where
-        I: IntoIterator<Item = SensitiveString>,
-    {
-        self.0.extend(iter)
-    }
-
-    pub fn has_sensitive(&self, s: &str) -> bool {
-        self.0
-            .iter()
-            .any(|sensitive_s| s.contains(sensitive_s.as_str()))
-    }
-
-    pub fn redact(&self, s: &str) -> String {
-        let mut redacted = s.to_string();
-
-        for redacted_str in self.0.iter() {
-            // Note: This brings a possibility of random substrings being matched out of context,
-            // exposing that we have a secret by censoring it But trying to infer word boundary
-            // might leak the plaintext credential which is arguably worse
-            if s.contains(redacted_str.as_str()) {
-                redacted = redacted.replace(redacted_str.as_str(), REDACTED_TXT);
-            }
-        }
-
-        redacted
-    }
-}
-
 pub fn encrypt_value_tree(
     value: &mut Value,
-    encryption_key: &CycloneEncryptionKey,
-) -> Result<(), CycloneValueEncryptError> {
+    encryption_key: &VeritechEncryptionKey,
+) -> Result<(), VeritechValueEncryptError> {
     let mut json_pointer_stack = vec!["".to_owned()];
 
     while let Some(pointer) = json_pointer_stack.pop() {
@@ -115,7 +76,7 @@ pub fn encrypt_value_tree(
                     // Nothing to do
                 }
             },
-            None => return Err(CycloneValueEncryptError::InvalidJSONPointer(pointer)),
+            None => return Err(VeritechValueEncryptError::InvalidJSONPointer(pointer)),
         }
     }
 
@@ -124,9 +85,9 @@ pub fn encrypt_value_tree(
 
 pub fn decrypt_value_tree(
     value: &mut Value,
-    sensitive_strings: &mut CycloneSensitiveStrings,
-    decryption_key: &CycloneDecryptionKey,
-) -> Result<(), CycloneValueDecryptError> {
+    sensitive_strings: &mut SensitiveStrings,
+    decryption_key: &VeritechDecryptionKey,
+) -> Result<(), VeritechValueDecryptError> {
     let mut json_pointer_stack = vec!["".to_owned()];
 
     while let Some(pointer) = json_pointer_stack.pop() {
@@ -158,7 +119,7 @@ pub fn decrypt_value_tree(
                     // Nothing to do
                 }
             },
-            None => return Err(CycloneValueDecryptError::InvalidJSONPointer(pointer)),
+            None => return Err(VeritechValueDecryptError::InvalidJSONPointer(pointer)),
         }
     }
 
@@ -180,7 +141,7 @@ fn is_value_encrypted(value: &Value) -> bool {
 
 fn encrypt_value(
     value: &Value,
-    encryption_key: &CycloneEncryptionKey,
+    encryption_key: &VeritechEncryptionKey,
 ) -> Result<Value, serde_json::Error> {
     let bytes = serde_json::to_vec(value)?;
     let crypted = encryption_key.encrypt_and_encode(bytes);
@@ -194,40 +155,40 @@ fn encrypt_value(
 
 fn decrypt_value(
     value: &Value,
-    decryption_key: &CycloneDecryptionKey,
-) -> Result<Value, CycloneValueDecryptError> {
+    decryption_key: &VeritechDecryptionKey,
+) -> Result<Value, VeritechValueDecryptError> {
     // Confirm value is an object
     let value = value
         .as_object()
-        .ok_or(CycloneValueDecryptError::ValueNotObject)?;
+        .ok_or(VeritechValueDecryptError::ValueNotObject)?;
 
     // Check marker field is set and is `true`
     if !value
         .get(MARKER_FIELD)
-        .ok_or(CycloneValueDecryptError::MarkerFieldMissing)?
+        .ok_or(VeritechValueDecryptError::MarkerFieldMissing)?
         .as_bool()
-        .ok_or(CycloneValueDecryptError::MarkerFieldValueNotBool)?
+        .ok_or(VeritechValueDecryptError::MarkerFieldValueNotBool)?
     {
-        return Err(CycloneValueDecryptError::MarkerFieldValueNotTrue);
+        return Err(VeritechValueDecryptError::MarkerFieldValueNotTrue);
     }
     // Confirm that key hash field value matches hash for provided decryption key
     if value
         .get(KEY_HASH_FIELD)
-        .ok_or(CycloneValueDecryptError::KeyHashFieldMissing)?
+        .ok_or(VeritechValueDecryptError::KeyHashFieldMissing)?
         .as_str()
-        .ok_or(CycloneValueDecryptError::KeyHashFieldValueNotString)?
+        .ok_or(VeritechValueDecryptError::KeyHashFieldValueNotString)?
         != decryption_key.encryption_key_hash_str()
     {
-        return Err(CycloneValueDecryptError::KeyHashNoMatch);
+        return Err(VeritechValueDecryptError::KeyHashNoMatch);
     }
 
     // Decrypt crypted field and deserialize decrypted contents as a JSON value
     let decrypted = {
         let crypted = value
             .get(CRYPTED_FIELD)
-            .ok_or(CycloneValueDecryptError::CryptedFieldMissing)?
+            .ok_or(VeritechValueDecryptError::CryptedFieldMissing)?
             .as_str()
-            .ok_or(CycloneValueDecryptError::CryptedFieldValueNotString)?;
+            .ok_or(VeritechValueDecryptError::CryptedFieldValueNotString)?;
         let bytes = decryption_key.decode_and_decrypt(crypted)?;
         serde_json::from_slice::<Value>(&bytes)?
     };
@@ -307,13 +268,13 @@ mod tests {
     }
 
     mod encrypt_value {
-        use si_crypto::CycloneKeyPair;
+        use si_crypto::VeritechKeyPair;
 
         use super::*;
 
         #[test]
         fn string_round_trip() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let message = json!("Telling the Bees");
             let encrypted_value =
@@ -326,7 +287,7 @@ mod tests {
 
         #[test]
         fn obj_round_trip() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let message = json!({
                 "artist": "Dream Theater",
@@ -349,27 +310,27 @@ mod tests {
     }
 
     mod decrypt_value {
-        use si_crypto::CycloneKeyPair;
+        use si_crypto::VeritechKeyPair;
 
         use super::*;
 
-        fn encrypted(encryption_key: &CycloneEncryptionKey) -> Value {
+        fn encrypted(encryption_key: &VeritechEncryptionKey) -> Value {
             encrypt_value(&json!("my-secret"), encryption_key).expect("failed to encrypt value")
         }
 
         #[test]
         fn value_not_object() {
-            let (_encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (_encryption_key, decryption_key) = VeritechKeyPair::create();
 
             assert!(matches!(
                 decrypt_value(&json!("uh oh"), &decryption_key),
-                Err(CycloneValueDecryptError::ValueNotObject),
+                Err(VeritechValueDecryptError::ValueNotObject),
             ));
         }
 
         #[test]
         fn marker_field_missing() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             encrypted
@@ -379,13 +340,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::MarkerFieldMissing),
+                Err(VeritechValueDecryptError::MarkerFieldMissing),
             ));
         }
 
         #[test]
         fn marker_field_value_not_bool() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -396,13 +357,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::MarkerFieldValueNotBool),
+                Err(VeritechValueDecryptError::MarkerFieldValueNotBool),
             ));
         }
 
         #[test]
         fn marker_field_value_not_true() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -413,13 +374,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::MarkerFieldValueNotTrue),
+                Err(VeritechValueDecryptError::MarkerFieldValueNotTrue),
             ));
         }
 
         #[test]
         fn key_hash_field_missing() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             encrypted
@@ -429,13 +390,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::KeyHashFieldMissing),
+                Err(VeritechValueDecryptError::KeyHashFieldMissing),
             ));
         }
 
         #[test]
         fn key_hash_field_value_not_str() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -446,14 +407,14 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::KeyHashFieldValueNotString),
+                Err(VeritechValueDecryptError::KeyHashFieldValueNotString),
             ));
         }
 
         #[test]
         fn key_hash_field_value_no_match() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
-            let (wrong_encryption_key, _) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
+            let (wrong_encryption_key, _) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -464,13 +425,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::KeyHashNoMatch),
+                Err(VeritechValueDecryptError::KeyHashNoMatch),
             ));
         }
 
         #[test]
         fn crypted_field_missing() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             encrypted
@@ -480,13 +441,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::CryptedFieldMissing),
+                Err(VeritechValueDecryptError::CryptedFieldMissing),
             ));
         }
 
         #[test]
         fn crypted_field_value_not_str() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -497,13 +458,13 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::CryptedFieldValueNotString),
+                Err(VeritechValueDecryptError::CryptedFieldValueNotString),
             ));
         }
 
         #[test]
         fn crypted_field_value_not_properly_encoded() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
 
             let mut encrypted = encrypted(&encryption_key);
             *encrypted
@@ -514,33 +475,36 @@ mod tests {
 
             assert!(matches!(
                 decrypt_value(&encrypted, &decryption_key),
-                Err(CycloneValueDecryptError::CycloneDecryption(_)),
+                Err(VeritechValueDecryptError::VeritechDecryption(_)),
             ));
         }
 
         #[test]
         fn wrong_decryption_key() {
-            let (encryption_key, _) = CycloneKeyPair::create();
-            let (_, wrong_decryption_key) = CycloneKeyPair::create();
+            let (encryption_key, _) = VeritechKeyPair::create();
+            let (_, wrong_decryption_key) = VeritechKeyPair::create();
 
             let encrypted = encrypted(&encryption_key);
 
             assert!(matches!(
                 dbg!(decrypt_value(&encrypted, &wrong_decryption_key)),
-                Err(CycloneValueDecryptError::KeyHashNoMatch),
+                Err(VeritechValueDecryptError::KeyHashNoMatch),
             ));
         }
     }
 
     mod encrypt_value_tree {
-        use si_crypto::CycloneKeyPair;
+        use std::collections::HashSet;
+
+        use si_crypto::VeritechKeyPair;
+        use si_std::SensitiveString;
 
         use super::*;
 
         #[test]
         fn object_with_string_field_values_round_trip() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
+            let mut sensitive_strings = SensitiveStrings::default();
 
             let mut secret = json!({
                 "username": "Mike Portnoy",
@@ -553,15 +517,17 @@ mod tests {
                 .expect("failed to decrypt tree");
 
             assert_eq!(expected_secret, secret);
-            assert_eq!(2, sensitive_strings.0.len());
-            assert!(sensitive_strings.0.contains(&"Mike Portnoy".into()));
-            assert!(sensitive_strings.0.contains(&"Drummer".into()));
+
+            let strings: HashSet<SensitiveString> = sensitive_strings.into();
+            assert_eq!(2, strings.len());
+            assert!(strings.contains(&"Mike Portnoy".into()));
+            assert!(strings.contains(&"Drummer".into()));
         }
 
         #[test]
         fn nested_object_round_trip() {
-            let (encryption_key, decryption_key) = CycloneKeyPair::create();
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
+            let (encryption_key, decryption_key) = VeritechKeyPair::create();
+            let mut sensitive_strings = SensitiveStrings::default();
 
             let mut secret = json!({
                 "strValue": "i-am-a-string",
@@ -601,74 +567,14 @@ mod tests {
                 .expect("failed to decrypt tree");
 
             assert_eq!(expected_secret, secret);
-            assert_eq!(5, sensitive_strings.0.len());
-            assert!(sensitive_strings.0.contains(&"milk".into()));
-            assert!(sensitive_strings.0.contains(&"cheese".into()));
-            assert!(sensitive_strings.0.contains(&"brains".into()));
-            assert!(sensitive_strings.0.contains(&"token-1-2-3".into()));
-            assert!(sensitive_strings.0.contains(&"i-am-a-string".into()));
-        }
-    }
 
-    mod sensitive_strings {
-        use super::*;
-
-        #[test]
-        fn has_sensitive_with_empty() {
-            let sensitive_strings = CycloneSensitiveStrings::default();
-
-            assert!(!sensitive_strings.has_sensitive("nope"));
-        }
-
-        #[test]
-        fn has_sensitive_single_match() {
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
-            sensitive_strings.insert("careful");
-
-            assert!(sensitive_strings.has_sensitive("I should be more careful in the future."));
-        }
-
-        #[test]
-        fn has_sensitive_multiple_matches() {
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
-            sensitive_strings.insert("careful");
-            sensitive_strings.insert("more");
-
-            assert!(sensitive_strings.has_sensitive("I should be more careful in the future."));
-        }
-
-        #[test]
-        fn redact_with_empty() {
-            let sensitive_strings = CycloneSensitiveStrings::default();
-
-            assert_eq!(
-                "nothing changed",
-                sensitive_strings.redact("nothing changed")
-            );
-        }
-
-        #[test]
-        fn redact_single_match() {
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
-            sensitive_strings.insert("careful");
-            sensitive_strings.insert("pony");
-
-            assert_eq!(
-                "I should be more [redacted] in the future.",
-                sensitive_strings.redact("I should be more careful in the future.")
-            );
-        }
-
-        #[test]
-        fn redact_multiple_matches() {
-            let mut sensitive_strings = CycloneSensitiveStrings::default();
-            sensitive_strings.insert("apple");
-            sensitive_strings.insert("pony");
-
-            assert_eq!(
-                "One [redacted] said to the other [redacted]: 'I have an [redacted].'",
-                sensitive_strings.redact("One pony said to the other pony: 'I have an apple.'")
-            );
+            let strings: HashSet<SensitiveString> = sensitive_strings.into();
+            assert_eq!(5, strings.len());
+            assert!(strings.contains(&"milk".into()));
+            assert!(strings.contains(&"cheese".into()));
+            assert!(strings.contains(&"brains".into()));
+            assert!(strings.contains(&"token-1-2-3".into()));
+            assert!(strings.contains(&"i-am-a-string".into()));
         }
     }
 }

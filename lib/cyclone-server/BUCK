@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/bytes-lines-codec:bytes-lines-codec",
         "//lib/cyclone-core:cyclone-core",
+        "//lib/si-crypto:si-crypto",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-http-rs:telemetry-http",
@@ -20,7 +21,6 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
-        "//third-party/rust:sodiumoxide",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-serde",
@@ -34,16 +34,4 @@ rust_library(
         ],
     }),
     srcs = glob(["src/**/*.rs"]),
-)
-
-export_file(
-    name = "dev.decryption.key",
-    src = "src/dev.decryption.key",
-    visibility = ["PUBLIC"],
-)
-
-export_file(
-    name = "dev.encryption.key",
-    src = "src/dev.encryption.key",
-    visibility = ["PUBLIC"],
 )

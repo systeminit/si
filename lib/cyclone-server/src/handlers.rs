@@ -26,12 +26,11 @@ use telemetry_http::ParentSpan;
 use super::extract::LimitRequestGuard;
 use crate::{
     execution::{self, Execution},
-    request::DecryptRequest,
     result::{
         LangServerActionRunResultSuccess, LangServerReconciliationResultSuccess,
         LangServerResolverFunctionResultSuccess, LangServerValidationResultSuccess,
     },
-    state::{DecryptionKey, LangServerPath, TelemetryLevel, WatchKeepalive},
+    state::{LangServerPath, TelemetryLevel, WatchKeepalive},
     watch,
 };
 
@@ -102,7 +101,6 @@ pub async fn ws_execute_ping(
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
@@ -117,7 +115,6 @@ pub async fn ws_execute_resolver(
             socket,
             lang_server_path,
             telemetry_level,
-            key.into(),
             limit_request_guard,
             "resolverfunction".to_owned(),
             request,
@@ -132,7 +129,6 @@ pub async fn ws_execute_resolver(
 pub async fn ws_execute_validation(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
@@ -147,7 +143,6 @@ pub async fn ws_execute_validation(
             socket,
             lang_server_path,
             telemetry_level,
-            key.into(),
             limit_request_guard,
             "validation".to_owned(),
             request,
@@ -162,7 +157,6 @@ pub async fn ws_execute_validation(
 pub async fn ws_execute_action_run(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
@@ -177,7 +171,6 @@ pub async fn ws_execute_action_run(
             socket,
             lang_server_path,
             telemetry_level,
-            key.into(),
             limit_request_guard,
             "actionRun".to_owned(),
             request,
@@ -192,7 +185,6 @@ pub async fn ws_execute_action_run(
 pub async fn ws_execute_reconciliation(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
@@ -207,7 +199,6 @@ pub async fn ws_execute_reconciliation(
             socket,
             lang_server_path,
             telemetry_level,
-            key.into(),
             limit_request_guard,
             "reconciliation".to_owned(),
             request,
@@ -222,7 +213,6 @@ pub async fn ws_execute_reconciliation(
 pub async fn ws_execute_schema_variant_definition(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
@@ -237,7 +227,6 @@ pub async fn ws_execute_schema_variant_definition(
             socket,
             lang_server_path,
             telemetry_level,
-            key.into(),
             limit_request_guard,
             "schemaVariantDefinition".to_owned(),
             request,
@@ -260,7 +249,6 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
-    key: Arc<cyclone_core::CycloneDecryptionKey>,
     _limit_request_guard: LimitRequestGuard,
     sub_command: String,
     _request_marker: PhantomData<Request>,
@@ -268,13 +256,13 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     success_marker: PhantomData<Success>,
     request_span: Span,
 ) where
-    Request: DecryptRequest + Serialize + DeserializeOwned + Unpin + fmt::Debug,
+    Request: Serialize + DeserializeOwned + Unpin + fmt::Debug,
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {
     let proto = {
         let execution: Execution<Request, LangServerSuccess, Success> =
-            execution::new(lang_server_path, lang_server_debugging, key, sub_command);
+            execution::new(lang_server_path, lang_server_debugging, sub_command);
         match execution.start(&mut socket).await {
             Ok(started) => started,
             Err(err) => {

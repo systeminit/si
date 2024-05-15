@@ -10,10 +10,11 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, LivenessStatus, LivenessStatusParseError,
-    ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, CycloneRequest, LivenessStatus,
+    LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, ValidationRequest,
+    ValidationResultSuccess,
 };
 use http::{
     request::Builder,
@@ -140,7 +141,7 @@ where
 
     async fn execute_resolver(
         &mut self,
-        request: ResolverFunctionRequest,
+        request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
         Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
@@ -148,12 +149,12 @@ where
 
     async fn execute_action_run(
         &mut self,
-        request: ActionRunRequest,
+        request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>;
 
     async fn execute_reconciliation(
         &mut self,
-        request: ReconciliationRequest,
+        request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
         Execution<Strm, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
@@ -161,12 +162,12 @@ where
 
     async fn execute_validation(
         &mut self,
-        request: ValidationRequest,
+        request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>;
 
     async fn execute_schema_variant_definition(
         &mut self,
-        request: SchemaVariantDefinitionRequest,
+        request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
         Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
@@ -285,7 +286,7 @@ where
 
     async fn execute_resolver(
         &mut self,
-        request: ResolverFunctionRequest,
+        request: CycloneRequest<ResolverFunctionRequest>,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(execution::execute(stream, request))
@@ -293,7 +294,7 @@ where
 
     async fn execute_action_run(
         &mut self,
-        request: ActionRunRequest,
+        request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         let stream = self.websocket_stream("/execute/command").await?;
@@ -302,7 +303,7 @@ where
 
     async fn execute_reconciliation(
         &mut self,
-        request: ReconciliationRequest,
+        request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
         Execution<Strm, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
@@ -313,7 +314,7 @@ where
 
     async fn execute_validation(
         &mut self,
-        request: ValidationRequest,
+        request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
     {
         Ok(execution::execute(
@@ -324,7 +325,7 @@ where
 
     async fn execute_schema_variant_definition(
         &mut self,
-        request: SchemaVariantDefinitionRequest,
+        request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
         Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
@@ -519,23 +520,17 @@ mod tests {
     use base64::{engine::general_purpose, Engine};
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
-        ComponentKind, ComponentView, CycloneDecryptionKey, FunctionResult, ProgressMessage,
-        ResolverFunctionComponent, ValidationRequest,
+        ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
+        ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
     use futures::StreamExt;
     use serde_json::json;
-    use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
     use test_log::test;
     use tracing::warn;
 
     use super::*;
-
-    fn gen_keys() -> (PublicKey, CycloneDecryptionKey) {
-        let (pkey, skey) = sodiumoxide::crypto::box_::gen_keypair();
-        (pkey, CycloneDecryptionKey::from(skey))
-    }
 
     fn rand_uds() -> TempPath {
         NamedTempFile::new()
@@ -581,11 +576,7 @@ mod tests {
         }
     }
 
-    async fn uds_server(
-        builder: &mut ConfigBuilder,
-        tmp_socket: &TempPath,
-        key: CycloneDecryptionKey,
-    ) -> Server {
+    async fn uds_server(builder: &mut ConfigBuilder, tmp_socket: &TempPath) -> Server {
         let config = builder
             .unix_domain_socket(tmp_socket)
             .try_lang_server_path(lang_server_path())
@@ -593,7 +584,7 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::from_config(config, Box::new(telemetry::NoopClient), key)
+        Server::from_config(config, Box::new(telemetry::NoopClient))
             .await
             .expect("failed to init server")
     }
@@ -601,9 +592,8 @@ mod tests {
     async fn uds_client_for_running_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
-        key: CycloneDecryptionKey,
     ) -> UdsClient {
-        let server = uds_server(builder, tmp_socket, key).await;
+        let server = uds_server(builder, tmp_socket).await;
         let path = server
             .local_socket()
             .as_domain_socket()
@@ -615,7 +605,7 @@ mod tests {
         Client::uds(path, config).expect("failed to create uds client")
     }
 
-    async fn http_server(builder: &mut ConfigBuilder, key: CycloneDecryptionKey) -> Server {
+    async fn http_server(builder: &mut ConfigBuilder) -> Server {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
@@ -624,16 +614,13 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::from_config(config, Box::new(telemetry::NoopClient), key)
+        Server::from_config(config, Box::new(telemetry::NoopClient))
             .await
             .expect("failed to init server")
     }
 
-    async fn http_client_for_running_server(
-        builder: &mut ConfigBuilder,
-        key: CycloneDecryptionKey,
-    ) -> HttpClient {
-        let server = http_server(builder, key).await;
+    async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
+        let server = http_server(builder).await;
         let socket = *server
             .local_socket()
             .as_socket_addr()
@@ -650,10 +637,9 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_watch() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
         let mut client =
-            http_client_for_running_server(builder.watch(Some(Duration::from_secs(2))), key).await;
+            http_client_for_running_server(builder.watch(Some(Duration::from_secs(2)))).await;
 
         // Start the protocol
         let mut progress = client
@@ -680,15 +666,11 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_watch() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client = uds_client_for_running_server(
-            builder.watch(Some(Duration::from_secs(2))),
-            &tmp_socket,
-            key,
-        )
-        .await;
+        let mut client =
+            uds_client_for_running_server(builder.watch(Some(Duration::from_secs(2))), &tmp_socket)
+                .await;
 
         // Start the protocol
         let mut progress = client
@@ -715,9 +697,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_liveness() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(&mut builder, key).await;
+        let mut client = http_client_for_running_server(&mut builder).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -727,10 +708,9 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_liveness() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket, key).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -740,9 +720,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_readiness() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(&mut builder, key).await;
+        let mut client = http_client_for_running_server(&mut builder).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 
@@ -752,10 +731,9 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_readiness() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket, key).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 
@@ -765,9 +743,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_ping() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_ping(true), key).await;
+        let mut client = http_client_for_running_server(builder.enable_ping(true)).await;
 
         client
             .execute_ping()
@@ -781,9 +758,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_ping_not_enabled() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_ping(false), key).await;
+        let mut client = http_client_for_running_server(builder.enable_ping(false)).await;
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
@@ -795,11 +771,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_ping() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_ping(true), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_ping(true), &tmp_socket).await;
 
         client
             .execute_ping()
@@ -813,11 +788,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_ping_not_enabled() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_ping(false), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_ping(false), &tmp_socket).await;
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
@@ -829,9 +803,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_resolver() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_resolver(true), key).await;
+        let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
 
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
@@ -866,7 +839,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_resolver(req)
+            .execute_resolver(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -929,11 +902,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_resolver() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_resolver(true), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_resolver(true), &tmp_socket).await;
 
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
@@ -968,7 +940,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_resolver(req)
+            .execute_resolver(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1040,7 +1012,7 @@ mod tests {
             before: vec![],
         };
         let mut progress = client
-            .execute_validation(req)
+            .execute_validation(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1071,9 +1043,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_validation() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let client = http_client_for_running_server(builder.enable_validation(true), key).await;
+        let client = http_client_for_running_server(builder.enable_validation(true)).await;
 
         execute_validation(client).await
     }
@@ -1081,11 +1052,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_validation() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let client =
-            uds_client_for_running_server(builder.enable_validation(true), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_validation(true), &tmp_socket).await;
 
         execute_validation(client).await
     }
@@ -1093,9 +1063,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_action_run() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_action_run(true), key).await;
+        let mut client = http_client_for_running_server(builder.enable_action_run(true)).await;
 
         let req = ActionRunRequest {
             execution_id: "1234".to_string(),
@@ -1113,7 +1082,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_action_run(req)
+            .execute_action_run(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1178,11 +1147,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_action_run() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_action_run(true), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_action_run(true), &tmp_socket).await;
 
         let req = ActionRunRequest {
             execution_id: "1234".to_string(),
@@ -1200,7 +1168,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_action_run(req)
+            .execute_action_run(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1266,10 +1234,8 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_reconciliation() {
-        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_reconciliation(true), key).await;
+        let mut client = http_client_for_running_server(builder.enable_reconciliation(true)).await;
 
         let req = ReconciliationRequest {
             execution_id: "1234".to_string(),
@@ -1287,7 +1253,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_reconciliation(req)
+            .execute_reconciliation(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1341,12 +1307,10 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_reconciliation() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_reconciliation(true), &tmp_socket, key)
-                .await;
+            uds_client_for_running_server(builder.enable_reconciliation(true), &tmp_socket).await;
 
         let req = ReconciliationRequest {
             execution_id: "1234".to_string(),
@@ -1364,7 +1328,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_reconciliation(req)
+            .execute_reconciliation(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1419,13 +1383,11 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_schema_variant_definition() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client = uds_client_for_running_server(
             builder.enable_schema_variant_definition(true),
             &tmp_socket,
-            key,
         )
         .await;
 
@@ -1443,7 +1405,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_schema_variant_definition(req)
+            .execute_schema_variant_definition(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1498,13 +1460,11 @@ mod tests {
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_schema_variant_definition() {
-        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client = uds_client_for_running_server(
             builder.enable_schema_variant_definition(true),
             &tmp_socket,
-            key,
         )
         .await;
 
@@ -1522,7 +1482,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_schema_variant_definition(req)
+            .execute_schema_variant_definition(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()

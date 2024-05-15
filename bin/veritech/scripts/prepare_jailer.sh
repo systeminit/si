@@ -28,7 +28,6 @@ JAILER_DIR="/srv/jailer/firecracker"
 JAILER_BINARY="/usr/bin/jailer"
 
 ROOTFS="rootfs.ext4"
-DKEYFS="decrypt_key.ext4"
 KERNEL="image-kernel.bin"
 
 RO_DRIVE="$DATA_DIR/$ROOTFS"
@@ -67,7 +66,6 @@ rm -rf "$JAIL/{dev,run}"
 
 touch $JAIL/logs
 touch $JAIL/metrics
-cp $DATA_DIR/$DKEYFS $JAIL
 
 function kernel_prep() {
   cp $KERNEL_IMG "$JAIL/$KERNEL"
@@ -173,12 +171,6 @@ cat << EOF > $JAIL/firecracker.conf
       "is_root_device": true,
       "is_read_only": false,
       "path_on_host": "./rootfs.ext4"
-    },
-    {
-      "drive_id": "2",
-      "is_root_device": false,
-      "is_read_only": true,
-      "path_on_host": "./decrypt_key.ext4"
     }
   ],
   "machine-config": {

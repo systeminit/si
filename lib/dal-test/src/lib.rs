@@ -41,6 +41,7 @@ use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
+    VeritechEncryptionKey,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -50,7 +51,6 @@ use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
-use veritech_client::CycloneEncryptionKey;
 
 pub mod expand_helpers;
 pub mod helpers;
@@ -144,7 +144,7 @@ pub struct Config {
     nats: NatsConfig,
     #[builder(default = "module_index_client::DEFAULT_URL.to_string()")]
     module_index_url: String,
-    cyclone_encryption_key_path: String,
+    veritech_encryption_key_path: String,
     jwt_signing_public_key_path: String,
     jwt_signing_private_key_path: String,
     postgres_key_path: String,
@@ -256,7 +256,7 @@ pub struct TestContext {
     /// A [`JobQueueProcessor`] impl
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<CycloneEncryptionKey>,
+    encryption_key: Arc<VeritechEncryptionKey>,
     /// A service that can encrypt values based on the loaded donkeys
     symmetric_crypto_service: SymmetricCryptoService,
     /// The pg_pool for the layer db
@@ -397,14 +397,14 @@ struct TestContextBuilder {
     /// The test context configuration used to build this instance.
     config: Config,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<CycloneEncryptionKey>,
+    encryption_key: Arc<VeritechEncryptionKey>,
 }
 
 impl TestContextBuilder {
     /// Creates a new builder.
     async fn create(config: Config) -> Result<Self> {
         let encryption_key = Arc::new(
-            CycloneEncryptionKey::load(&config.cyclone_encryption_key_path)
+            VeritechEncryptionKey::load(&config.veritech_encryption_key_path)
                 .await
                 .wrap_err("failed to load EncryptionKey")?,
         );
@@ -784,7 +784,7 @@ async fn migrate_local_builtins(
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
-    encryption_key: &CycloneEncryptionKey,
+    encryption_key: &VeritechEncryptionKey,
     pkgs_path: PathBuf,
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
@@ -913,7 +913,7 @@ fn detect_and_configure_testing(builder: &mut ConfigBuilder) -> Result<()> {
 fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result<()> {
     let resources = Buck2Resources::read()?;
 
-    let cyclone_encryption_key_path = resources
+    let veritech_encryption_key_path = resources
         .get_ends_with("dev.encryption.key")?
         .to_string_lossy()
         .to_string();
@@ -939,7 +939,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .to_string();
 
     warn!(
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
@@ -948,7 +948,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         "detected development run",
     );
 
-    builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
+    builder.veritech_encryption_key_path(veritech_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(
@@ -966,8 +966,8 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
 }
 
 fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuilder) -> Result<()> {
-    let cyclone_encryption_key_path = Path::new(&dir)
-        .join("../../lib/cyclone-server/src/dev.encryption.key")
+    let veritech_encryption_key_path = Path::new(&dir)
+        .join("../../lib/veritech-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
     let jwt_signing_public_key_path = Path::new(&dir)
@@ -992,7 +992,7 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         .to_string();
 
     warn!(
-        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
@@ -1001,7 +1001,7 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         "detected development run",
     );
 
-    builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
+    builder.veritech_encryption_key_path(veritech_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(

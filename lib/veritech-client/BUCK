@@ -10,7 +10,6 @@ rust_library(
         "//lib/cyclone-core:cyclone-core",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",
-        "//lib/si-crypto:si-crypto",
         "//lib/telemetry-rs:telemetry",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/veritech-core:veritech-core",
@@ -52,7 +51,7 @@ rust_test(
     },
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
-        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
     },
 )

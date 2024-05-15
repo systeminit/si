@@ -11,5 +11,8 @@ rust_library(
         "//third-party/rust:serde_with",
         "//third-party/rust:thiserror",
     ],
+    test_unit_deps = [
+        "//third-party/rust:serde_json",
+    ],
     srcs = glob(["src/**/*.rs"]),
 )

@@ -2,7 +2,6 @@ mod config;
 mod execution;
 mod extract;
 mod handlers;
-mod request;
 mod result;
 mod routes;
 mod server;

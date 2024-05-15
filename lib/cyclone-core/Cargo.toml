@@ -17,7 +17,6 @@ serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-hash = { path = "../../lib/si-hash" }
 si-std = { path = "../../lib/si-std" }
-sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

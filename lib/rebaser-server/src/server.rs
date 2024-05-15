@@ -11,7 +11,8 @@ use dal::{
 };
 use futures::StreamExt;
 use si_crypto::{
-    CryptoConfig, CycloneEncryptionKey, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
+    VeritechEncryptionKey,
 };
 use si_data_nats::{async_nats::jetstream, NatsClient, NatsConfig};
 use si_data_pg::{InstrumentedClient, PgPool, PgPoolConfig};
@@ -377,10 +378,10 @@ impl Server {
 
     #[instrument(name = "rebaser.init.load_encryption_key", level = "info", skip_all)]
     async fn load_encryption_key(
-        crypto_config: CryptoConfig,
-    ) -> ServerResult<Arc<CycloneEncryptionKey>> {
+        crypto_config: VeritechCryptoConfig,
+    ) -> ServerResult<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
-            CycloneEncryptionKey::from_config(crypto_config)
+            VeritechEncryptionKey::from_config(crypto_config)
                 .await
                 .map_err(Error::CycloneEncryptionKey)?,
         ))

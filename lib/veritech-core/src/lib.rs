@@ -11,6 +11,12 @@
     clippy::module_name_repetitions
 )]
 
+mod crypto;
+
+pub use crypto::{
+    decrypt_value_tree, encrypt_value_tree, VeritechValueDecryptError, VeritechValueEncryptError,
+};
+
 const NATS_ACTION_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.actionrun";
 const NATS_CONCILIATION_DEFAULT_SUBJECT: &str = "veritech.fn.reconciliation";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";

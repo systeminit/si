@@ -108,17 +108,17 @@ pub(crate) struct Args {
     #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
     pub(crate) migration_mode: Option<String>,
 
-    /// Cyclone encryption key file location [default: /run/sdf/cyclone_encryption.key]
+    /// Veritech encryption key file location [default: /run/sdf/veritech_encryption.key]
     #[arg(long)]
-    pub(crate) cyclone_encryption_key_path: Option<PathBuf>,
+    pub(crate) veritech_encryption_key_path: Option<PathBuf>,
 
-    /// Cyclone encryption key file contents
+    /// Veritech encryption key file contents
     #[arg(long)]
-    pub(crate) cyclone_encryption_key_base64: Option<SensitiveString>,
+    pub(crate) veritech_encryption_key_base64: Option<SensitiveString>,
 
-    /// Cyclone secret key as base64 string
+    /// Symmetric crypto active key as base64 string
     #[arg(long)]
-    pub(crate) cyclone_secret_key_base64: Option<SensitiveString>,
+    pub(crate) symmetric_crypto_active_key_base64: Option<SensitiveString>,
 
     /// jwt public signing key as a base64 string
     #[arg(long)]
@@ -132,35 +132,35 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) layer_db_seconds_to_idle: Option<u64>,
 
-    /// Generates cyclone secret key file (does not run server)
+    /// Generates Veritech secret key file (does not run server)
     ///
-    /// Will error if set when `generate_cyclone_public_key_path` is not set
+    /// Will error if set when `generate_veritech_public_key_path` is not set
     #[arg(
         long,
-        requires = "generate_cyclone_public_key_path",
+        requires = "generate_veritech_public_key_path",
         conflicts_with = "generate_symmetric_key_path"
     )]
-    pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
+    pub(crate) generate_veritech_secret_key_path: Option<PathBuf>,
 
-    /// Generates cyclone public key file (does not run server)
+    /// Generates Veritech public key file (does not run server)
     ///
-    /// Will error if set when `generate_cyclone_secret_key_path` is not set
+    /// Will error if set when `generate_veritech_secret_key_path` is not set
     #[arg(
         long,
-        requires = "generate_cyclone_secret_key_path",
+        requires = "generate_veritech_secret_key_path",
         conflicts_with = "generate_symmetric_key_path"
     )]
-    pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
+    pub(crate) generate_veritech_public_key_path: Option<PathBuf>,
 
     /// Generates symmetric key (does not run server)
     ///
-    /// Will error if set when cyclone key generation flags are set
+    /// Will error if set when Veritech key generation flags are set
     #[arg(
         long,
         group = "symmetric",
         conflicts_with_all = [
-            "generate_cyclone_secret_key_path",
-            "generate_cyclone_public_key_path",
+            "generate_veritech_secret_key_path",
+            "generate_veritech_public_key_path",
         ]
     )]
     pub(crate) generate_symmetric_key_path: Option<PathBuf>,
@@ -249,22 +249,22 @@ impl TryFrom<Args> for Config {
                     creds_file.display().to_string(),
                 );
             }
-            if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
+            if let Some(veritech_encryption_key_file) = args.veritech_encryption_key_path {
                 config_map.set(
                     "crypto.encryption_key_file",
-                    cyclone_encryption_key_file.display().to_string(),
+                    veritech_encryption_key_file.display().to_string(),
                 );
             }
-            if let Some(cyclone_encryption_key_base64) = args.cyclone_encryption_key_base64 {
+            if let Some(veritech_encryption_key_base64) = args.veritech_encryption_key_base64 {
                 config_map.set(
                     "crypto.encryption_key_base64",
-                    cyclone_encryption_key_base64.to_string(),
+                    veritech_encryption_key_base64.to_string(),
                 );
             }
-            if let Some(secret_string) = args.cyclone_secret_key_base64 {
+            if let Some(base64) = args.symmetric_crypto_active_key_base64 {
                 config_map.set(
                     "symmetric_crypto_service.active_key_base64",
-                    secret_string.to_string(),
+                    base64.to_string(),
                 );
             }
             if let Some(jwt) = args.jwt_public_signing_key_base64 {

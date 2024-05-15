@@ -40,7 +40,7 @@ function create_md_array {
 
 POOL_SIZE=${1:-500}
 NATS=${2:-tls://connect.ngs.global}
-CYCLONE_ENCRYPTION_KEY_SECRET=${3:-tools-encryption-key}
+VERITECH_ENCRYPTION_KEY_SECRET=${3:-tools-encryption-key}
 NATS_CREDS_SECRET=${4:-tools-prod-nats-creds}
 HONEYCOMB_API_SECRET=${5:-tools-honeycomb-api-key}
 
@@ -98,7 +98,7 @@ dd if=/dev/zero of="$KEY_VOLUME" bs=1M count=1
 mkfs.ext4 -v $KEY_VOLUME
 e2label $KEY_VOLUME dkey
 mount $KEY_VOLUME $KEY_MOUNT
-aws secretsmanager get-secret-value --region us-east-1 --secret-id $CYCLONE_ENCRYPTION_KEY_SECRET | jq -r '.SecretString' > $KEY_MOUNT/decryption.key
+aws secretsmanager get-secret-value --region us-east-1 --secret-id $VERITECH_ENCRYPTION_KEY_SECRET | jq -r '.SecretString' > $KEY_MOUNT/decryption.key
 chmod 777 $KEY_MOUNT/decryption.key
 umount $KEY_VOLUME
 

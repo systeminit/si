@@ -3,6 +3,7 @@ use std::{fmt, mem, path::PathBuf, sync::Arc};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
+use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::WorkspaceSnapshotAddress;
@@ -17,7 +18,7 @@ use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
 use ulid::Ulid;
-use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
+use veritech_client::Client as VeritechClient;
 
 use crate::feature_flags::FeatureFlagService;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
@@ -56,7 +57,7 @@ pub struct ServicesContext {
     /// A Veritech client, connected via a NATS connection.
     veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<CycloneEncryptionKey>,
+    encryption_key: Arc<VeritechEncryptionKey>,
     /// The path where available packages can be found
     pkgs_path: Option<PathBuf>,
     /// The URL of the module index
@@ -77,7 +78,7 @@ impl ServicesContext {
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
-        encryption_key: Arc<CycloneEncryptionKey>,
+        encryption_key: Arc<VeritechEncryptionKey>,
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
@@ -127,7 +128,7 @@ impl ServicesContext {
     }
 
     /// Gets a reference to the encryption key.
-    pub fn encryption_key(&self) -> Arc<CycloneEncryptionKey> {
+    pub fn encryption_key(&self) -> Arc<VeritechEncryptionKey> {
         self.encryption_key.clone()
     }
 
@@ -779,7 +780,7 @@ impl DalContext {
     }
 
     /// Gets a reference to the DAL context's encryption key.
-    pub fn encryption_key(&self) -> &CycloneEncryptionKey {
+    pub fn encryption_key(&self) -> &VeritechEncryptionKey {
         &self.services_context.encryption_key
     }
 

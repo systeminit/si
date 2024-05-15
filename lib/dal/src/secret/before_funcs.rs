@@ -1,5 +1,5 @@
 use thiserror::Error;
-use veritech_client::{encrypt_value_tree, BeforeFunction, CycloneValueEncryptError};
+use veritech_client::{encrypt_value_tree, BeforeFunction, VeritechValueEncryptError};
 
 use crate::attribute::value::AttributeValueError;
 use crate::prop::{PropError, PropPath};
@@ -18,8 +18,6 @@ pub enum BeforeFuncError {
     AttributeValue(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("cyclone value encrypt error: {0}")]
-    CycloneValueEncrypt(#[from] CycloneValueEncryptError),
     #[error("func error: {0}")]
     Func(String),
     #[error("error deserializing json")]
@@ -38,6 +36,8 @@ pub enum BeforeFuncError {
     Secret(#[from] SecretError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("cyclone value encrypt error: {0}")]
+    VeritechValueEncrypt(#[from] VeritechValueEncryptError),
 }
 
 type BeforeFuncResult<T> = Result<T, BeforeFuncError>;
@@ -97,7 +97,7 @@ pub async fn before_funcs_for_component(
         // Decrypt message from EncryptedSecret
         let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
 
-        // Re-encrypt raw Value for transmission to Cyclone via Veritech
+        // Re-encrypt raw Value for transmission to Veritech
         encrypt_value_tree(&mut arg, ctx.encryption_key())?;
 
         for func in funcs {

@@ -15,15 +15,14 @@ use veritech_core::{
 };
 
 pub use cyclone_core::{
-    encrypt_value_tree, ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind,
-    ComponentView, CycloneValueDecryptError, CycloneValueEncryptError, FunctionResult,
-    FunctionResultFailure, OutputStream, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
-    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveContainer, ValidationRequest,
-    ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
+    FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
+    ValidationRequest, ValidationResultSuccess,
 };
-pub use si_crypto::{CycloneEncryptionKey, CycloneEncryptionKeyError};
+pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

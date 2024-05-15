@@ -134,10 +134,6 @@ pub(crate) struct Args {
     /// Limits execution requests to the given value before shutting down
     #[arg(long, group = "request_limiting")]
     pub(crate) limit_requests: Option<u32>,
-
-    /// Cyclone decryption key file location [example: /run/cyclone/cyclone.key]
-    #[arg(long)]
-    pub(crate) decryption_key: PathBuf,
 }
 
 impl TryFrom<Args> for Config {

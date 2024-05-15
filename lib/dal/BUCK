@@ -113,8 +113,8 @@ rust_test(
     },
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
-        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
-        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
+        "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
         "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",

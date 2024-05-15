@@ -1,3 +1,5 @@
+use si_crypto::VeritechCryptoConfig;
+use si_std::CanonicalFileError;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -27,6 +29,8 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 pub enum ConfigError {
     #[error(transparent)]
     Builder(#[from] ConfigBuilderError),
+    #[error("canonical file error: {0}")]
+    CanonicalFile(#[from] CanonicalFileError),
     #[error("cyclone spec build error")]
     CycloneSpecBuild(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("no socket addrs where resolved")]
@@ -52,6 +56,9 @@ pub struct Config {
 
     cyclone_spec: CycloneSpec,
 
+    #[builder(default = "VeritechCryptoConfig::default()")]
+    crypto: VeritechCryptoConfig,
+
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 }
@@ -71,6 +78,7 @@ impl StandardConfig for Config {
 pub struct ConfigFile {
     pub nats: NatsConfig,
     pub cyclone: CycloneConfig,
+    pub crypto: VeritechCryptoConfig,
 }
 
 impl ConfigFile {
@@ -78,6 +86,7 @@ impl ConfigFile {
         Self {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_http(),
+            crypto: Default::default(),
         }
     }
 
@@ -85,6 +94,7 @@ impl ConfigFile {
         Self {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_uds(),
+            crypto: Default::default(),
         }
     }
 }
@@ -102,6 +112,7 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.nats(value.nats);
         config.cyclone_spec(value.cyclone.try_into()?);
+        config.crypto(value.crypto);
         config.build().map_err(Into::into)
     }
 }
@@ -121,6 +132,11 @@ impl Config {
     /// Gets a reference to the config's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
         self.nats.subject_prefix.as_deref()
+    }
+
+    /// Gets a reference to the config's cyclone public key path.
+    pub fn crypto(&self) -> &VeritechCryptoConfig {
+        &self.crypto
     }
 
     /// Gets the config's instance ID.
@@ -169,8 +185,6 @@ pub enum CycloneConfig {
     LocalHttp {
         #[serde(default = "default_cyclone_cmd_path")]
         cyclone_cmd_path: String,
-        #[serde(default = "default_cyclone_decryption_key_path")]
-        cyclone_decryption_key_path: String,
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
         #[serde(default)]
@@ -189,8 +203,6 @@ pub enum CycloneConfig {
     LocalUds {
         #[serde(default = "default_cyclone_cmd_path")]
         cyclone_cmd_path: String,
-        #[serde(default = "default_cyclone_decryption_key_path")]
-        cyclone_decryption_key_path: String,
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
         #[serde(default)]
@@ -218,7 +230,6 @@ impl CycloneConfig {
     pub fn default_local_http() -> Self {
         Self::LocalHttp {
             cyclone_cmd_path: default_cyclone_cmd_path(),
-            cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
             socket_strategy: Default::default(),
             watch_timeout: Default::default(),
@@ -232,7 +243,6 @@ impl CycloneConfig {
     pub fn default_local_uds() -> Self {
         Self::LocalUds {
             cyclone_cmd_path: default_cyclone_cmd_path(),
-            cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
             socket_strategy: Default::default(),
             runtime_strategy: default_runtime_strategy(),
@@ -265,32 +275,6 @@ impl CycloneConfig {
             CycloneConfig::LocalHttp {
                 cyclone_cmd_path, ..
             } => *cyclone_cmd_path = value,
-        };
-    }
-
-    pub fn cyclone_decryption_key_path(&self) -> &str {
-        match self {
-            CycloneConfig::LocalUds {
-                cyclone_decryption_key_path,
-                ..
-            } => cyclone_decryption_key_path,
-            CycloneConfig::LocalHttp {
-                cyclone_decryption_key_path,
-                ..
-            } => cyclone_decryption_key_path,
-        }
-    }
-
-    pub fn set_cyclone_decryption_key_path(&mut self, value: String) {
-        match self {
-            CycloneConfig::LocalUds {
-                cyclone_decryption_key_path,
-                ..
-            } => *cyclone_decryption_key_path = value,
-            CycloneConfig::LocalHttp {
-                cyclone_decryption_key_path,
-                ..
-            } => *cyclone_decryption_key_path = value,
         };
     }
 
@@ -362,7 +346,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
         match value {
             CycloneConfig::LocalUds {
                 cyclone_cmd_path,
-                cyclone_decryption_key_path,
                 lang_server_cmd_path,
                 socket_strategy,
                 runtime_strategy,
@@ -381,7 +364,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                     builder
                         .try_cyclone_cmd_path(cyclone_cmd_path)
                         .map_err(ConfigError::cyclone_spec_build)?;
-                    builder.cyclone_decryption_key_path(cyclone_decryption_key_path);
                     builder
                         .try_lang_server_cmd_path(lang_server_cmd_path)
                         .map_err(ConfigError::cyclone_spec_build)?;
@@ -410,7 +392,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
             }
             CycloneConfig::LocalHttp {
                 cyclone_cmd_path,
-                cyclone_decryption_key_path,
                 lang_server_cmd_path,
                 socket_strategy,
                 watch_timeout,
@@ -423,7 +404,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 builder
                     .try_cyclone_cmd_path(cyclone_cmd_path)
                     .map_err(ConfigError::cyclone_spec_build)?;
-                builder.cyclone_decryption_key_path(cyclone_decryption_key_path);
                 builder
                     .try_lang_server_cmd_path(lang_server_cmd_path)
                     .map_err(ConfigError::cyclone_spec_build)?;
@@ -452,10 +432,6 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
 
 fn default_cyclone_cmd_path() -> String {
     "/usr/local/bin/cyclone".to_string()
-}
-
-fn default_cyclone_decryption_key_path() -> String {
-    "/run/cyclone/decryption.key".to_string()
 }
 
 fn default_lang_server_cmd_path() -> String {
@@ -505,7 +481,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
-    let cyclone_decryption_key_path = resources
+    let decryption_key_path = resources
         .get_ends_with("dev.decryption.key")
         .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
@@ -518,15 +494,13 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     warn!(
         cyclone_cmd_path = cyclone_cmd_path.as_str(),
-        cyclone_decryption_key_path = cyclone_decryption_key_path.as_str(),
+        decryption_key_path = decryption_key_path.as_str(),
         lang_server_cmd_path = lang_server_cmd_path.as_str(),
         "detected development run",
     );
 
     config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    config
-        .cyclone
-        .set_cyclone_decryption_key_path(cyclone_decryption_key_path);
+    config.crypto.decryption_key_file = decryption_key_path.parse().ok();
     config
         .cyclone
         .set_lang_server_cmd_path(lang_server_cmd_path);
@@ -541,11 +515,11 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .expect("failed to canonicalize local dev build of <root>/target/debug/cyclone")
         .to_string_lossy()
         .to_string();
-    let cyclone_decryption_key_path = Path::new(&dir)
-        .join("../../lib/cyclone-server/src/dev.decryption.key")
+    let decryption_key_path = Path::new(&dir)
+        .join("../../lib/veritech-server/src/dev.decryption.key")
         .canonicalize()
         .expect(
-            "failed to canonicalize local key at <root>/lib/cyclone-server/src/dev.decryption.key",
+            "failed to canonicalize local key at <root>/lib/veritech-server/src/dev.decryption.key",
         )
         .to_string_lossy()
         .to_string();
@@ -558,15 +532,13 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     warn!(
         cyclone_cmd_path = cyclone_cmd_path.as_str(),
-        cyclone_decryption_key_path = cyclone_decryption_key_path.as_str(),
+        decryption_key_path = decryption_key_path.as_str(),
         lang_server_cmd_path = lang_server_cmd_path.as_str(),
         "detected development run",
     );
 
     config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    config
-        .cyclone
-        .set_cyclone_decryption_key_path(cyclone_decryption_key_path);
+    config.crypto.decryption_key_file = decryption_key_path.parse().ok();
     config
         .cyclone
         .set_lang_server_cmd_path(lang_server_cmd_path);

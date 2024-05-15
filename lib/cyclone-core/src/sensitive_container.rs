@@ -1,7 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::{fmt, ops::Deref, ops::DerefMut};
 
-pub type SensitiveString = SensitiveContainer<String>;
+use serde::{Deserialize, Serialize};
 
 /// A display/debug redacting `T`.
 ///

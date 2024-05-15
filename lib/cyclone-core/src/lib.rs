@@ -15,30 +15,23 @@ mod action_run;
 mod before;
 mod canonical_command;
 mod component_view;
-mod crypto;
 mod liveness;
 pub mod process;
 mod progress;
 mod readiness;
 mod reconciliation;
+mod request;
 mod resolver_function;
 mod schema_variant_definition;
 mod sensitive_container;
 mod validation;
 
-pub use si_crypto::{
-    CycloneDecryptionKey, CycloneDecryptionKeyError, CycloneEncryptionKey,
-    CycloneEncryptionKeyError,
-};
+pub use si_crypto::SensitiveStrings;
 
 pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
 pub use before::BeforeFunction;
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
 pub use component_view::{ComponentKind, ComponentView};
-pub use crypto::{
-    decrypt_value_tree, encrypt_value_tree, CycloneSensitiveStrings, CycloneValueDecryptError,
-    CycloneValueEncryptError,
-};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
@@ -46,6 +39,7 @@ pub use progress::{
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use reconciliation::{ReconciliationRequest, ReconciliationResultSuccess};
+pub use request::CycloneRequest;
 pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
     ResolverFunctionResultSuccess,
@@ -53,5 +47,5 @@ pub use resolver_function::{
 pub use schema_variant_definition::{
     SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
 };
-pub use sensitive_container::{SensitiveContainer, SensitiveString};
+pub use sensitive_container::SensitiveContainer;
 pub use validation::{ValidationRequest, ValidationResultSuccess};
