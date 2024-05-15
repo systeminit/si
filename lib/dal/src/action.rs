@@ -136,6 +136,37 @@ impl Action {
         result: ActionResult,
     );
 
+    pub async fn find_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ActionResult<Vec<ActionId>> {
+        let mut actions = vec![];
+        let snap = ctx.workspace_snapshot()?;
+        let action_category_id = snap
+            .get_category_node(None, CategoryNodeKind::Action)
+            .await?;
+
+        for action_idx in snap
+            .outgoing_targets_for_edge_weight_kind(
+                action_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
+            let action_id: ActionId = snap
+                .get_node_weight(action_idx)
+                .await?
+                .get_action_node_weight()?
+                .id()
+                .into();
+
+            if Self::component_id(ctx, action_id).await? == Some(component_id) {
+                actions.push(action_id);
+            }
+        }
+        Ok(actions)
+    }
+
     pub async fn find_equivalent(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
@@ -415,7 +446,7 @@ impl Action {
     #[instrument(level = "info", skip(ctx))]
     pub async fn get_all_dependencies(&self, ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_dependency_graph: ActionDependencyGraph =
-            dbg!(ActionDependencyGraph::for_workspace(ctx).await?);
+            ActionDependencyGraph::for_workspace(ctx).await?;
         Ok(action_dependency_graph.get_all_dependencies(self.id()))
     }
     #[instrument(level = "info", skip(ctx))]
