@@ -29,6 +29,17 @@
           >{{ animate_layout ? "Stop" : "Start" }} Animation</VButton
         >
       </div>
+      <!--
+      <VormInput
+        v-model="debugNodeId"
+        label="Debug Node"
+        type="text"
+        class="flex-1"
+      />
+      <div>
+        <VButton @click="debugNode">Debug Node</VButton>
+      </div>
+      -->
     </Inline>
     <h1 v-show="reqData?.isPending" align="center">Loading...</h1>
     <h1 v-show="reqData?.isError" align="center" class="text-destructive-500">
@@ -117,6 +128,15 @@ const getColor = (nodeKind: string, contentKind: string | null) => {
 
 const search_query = ref("");
 const animate_layout = ref(true);
+
+/*
+const debugNodeId = ref("");
+const debugNode = () => {
+  if (debugNodeId.value && debugNodeId.value.length > 0) {
+    vizStore.DEBUG_NODE(debugNodeId.value);
+  }
+};
+*/
 
 // vanilla JS used for the graph library interactions
 interface State {
@@ -242,7 +262,11 @@ onMounted(async () => {
     await loadData();
     if (!graph) return; // endpoint error case
 
-    const container = document.getElementById("vizDiv") as HTMLElement;
+    const container = document.getElementById("vizDiv");
+    if (!container) {
+      return;
+    }
+
     renderer = new Sigma(graph, container, {
       allowInvalidContainer: true,
       labelColor: { color: theme.value === "dark" ? "#fff" : "#000" },

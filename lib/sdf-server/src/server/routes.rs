@@ -25,6 +25,10 @@ pub fn routes(state: AppState) -> Router {
         )
         .nest("/api/action", crate::server::service::action::routes())
         .nest(
+            "/api/node_debug",
+            crate::server::service::node_debug::routes(),
+        )
+        .nest(
             "/api/attribute",
             crate::server::service::attribute::routes(),
         )

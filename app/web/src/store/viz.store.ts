@@ -94,11 +94,19 @@ export const useVizStore = addStoreHooks(
           });
     }
 
+    async function DEBUG_NODE(nodeId: string) {
+      return new ApiRequest({
+        url: "/node_debug",
+        params: { id: nodeId, ...visibility },
+      });
+    }
+
     return {
       edges: data.edges,
       nodes: data.nodes,
       LOAD_VARIANTS,
       LOAD_COMPONENTS,
+      DEBUG_NODE,
     };
   }),
 );

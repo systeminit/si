@@ -38,6 +38,7 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use petgraph::prelude::*;
+pub use petgraph::Direction;
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
