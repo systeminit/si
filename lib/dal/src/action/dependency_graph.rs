@@ -103,7 +103,6 @@ impl ActionDependencyGraph {
     }
 
     pub fn action_depends_on(&mut self, action_id: ActionId, depends_on_id: ActionId) {
-        dbg!("action_depends_on {} {}", action_id, depends_on_id);
         self.inner.id_depends_on(action_id, depends_on_id);
     }
 
@@ -141,7 +140,6 @@ impl ActionDependencyGraph {
         let current_dependencies = self.inner.direct_reverse_dependencies_of(action_id);
         let mut all_dependencies = HashSet::new();
         let mut work_queue = VecDeque::from(current_dependencies.clone());
-        dbg!(current_dependencies);
         while let Some(action) = work_queue.pop_front() {
             match all_dependencies.insert(action) {
                 true => {
