@@ -13,11 +13,6 @@ check_params_set(){
 EOF
    fi
 
-   if ! test -f /firecracker-data/decrypt_key.ext4; then
-     echo "No decryption key found at /firecracker-data/decrypt_key.ext4! This must be present in order to run functions. Exiting..." >&2
-     exit 1
-   fi
-
     echo "---------------------------------"
     echo "Values passed as inputs:"
     echo "VARIABLES_FILE=${VARIABLES_FILE:-/tmp/variables.txt}"
