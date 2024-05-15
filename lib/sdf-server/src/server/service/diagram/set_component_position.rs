@@ -1,4 +1,4 @@
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use dal::{
     component::frame::Frame,
     diagram::{SummaryDiagramComponent, SummaryDiagramInferredEdge},
@@ -28,18 +28,14 @@ pub struct SetComponentPositionRequest {
     pub new_parent: Option<ComponentId>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SetComponentPositionResponse {
-    pub component: Component,
-}
-
 pub async fn set_component_position(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetComponentPositionRequest>,
-) -> DiagramResult<Json<()>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> DiagramResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let mut components: Vec<Component> = vec![];
     for element in request.positions {
@@ -116,5 +112,10 @@ pub async fn set_component_position(
 
     ctx.commit().await?;
 
-    Ok(Json(()))
+    let mut response = axum::response::Response::builder();
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
+    }
+
+    Ok(response.body(axum::body::Empty::new())?)
 }
