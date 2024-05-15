@@ -566,6 +566,7 @@ impl ChangeSet {
 
         Ok(None)
     }
+
     #[instrument(level = "info", skip_all)]
     async fn list_actions_to_run(
         ctx: &DalContext,
@@ -741,6 +742,37 @@ impl ChangeSet {
             HistoryActor::SystemInit => None,
         };
         user_id
+    }
+
+    #[instrument(
+        name = "change_set.workspace_snapshot_in_use",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot_address = %workspace_snapshot_address,
+            si.workspace.pk = Empty,
+        ),
+    )]
+    pub async fn workspace_snapshot_address_in_use(
+        ctx: &DalContext,
+        workspace_snapshot_address: &WorkspaceSnapshotAddress,
+    ) -> ChangeSetResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT count(id) AS count FROM change_set_pointers WHERE workspace_snapshot_address = $1",
+                &[&workspace_snapshot_address],
+            )
+            .await?;
+
+        let count: i64 = row.get("count");
+        if count > 0 {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 

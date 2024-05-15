@@ -185,4 +185,10 @@ where
         self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
             .await
     }
+
+    pub async fn evict_from_cache_updates(&self, key: Arc<str>) -> LayerDbResult<()> {
+        self.memory_cache().remove(&key).await;
+        self.disk_cache().remove(key).await?;
+        Ok(())
+    }
 }

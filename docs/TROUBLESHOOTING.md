@@ -31,10 +31,10 @@ These external services are deployed via [`docker compose`](https://docs.docker.
 Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
 Potentially conflicting services include, but are not limited to, the following:
 
-* PostgreSQL DB
+* Jaeger
+* NATS and NATS Jetstream
 * OpenTelemetry
-* NATS
-* Watchtower
+* PostgreSQL
 
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being run.
 

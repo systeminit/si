@@ -168,6 +168,11 @@ where
                         .await?;
                 }
             }
+            crate::event::LayeredEventKind::SnapshotEvict => {
+                self.snapshot_cache
+                    .evict_from_cache_updates(event.key)
+                    .await?;
+            }
         }
         Ok(())
     }

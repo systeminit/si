@@ -26,6 +26,7 @@ pub fn default_pg_pool_config() -> PgPoolConfig {
 pub struct PgLayer {
     pool: Arc<PgPool>,
     pub table_name: String,
+    delete_query: String,
     get_value_query: String,
     get_value_by_prefix_query: String,
     get_value_many_query: String,
@@ -40,6 +41,7 @@ impl PgLayer {
         let table_name = table_name.into();
         Self {
             pool: Arc::new(pg_pool),
+            delete_query: format!("DELETE FROM {table_name} WHERE key = $1"),
             get_value_query: format!("SELECT value FROM {table_name} WHERE key = $1 LIMIT 1"),
             get_value_by_prefix_query: format!("SELECT key, value FROM {table_name} WHERE key like $1"),
             get_value_many_query: format!("SELECT key, value FROM {table_name} WHERE key = any($1)"),
@@ -188,6 +190,12 @@ impl PgLayer {
     ) -> LayerDbResult<()> {
         let client = self.pool.get().await?;
         client.query(query, params).await?;
+        Ok(())
+    }
+
+    pub async fn delete(&self, key: &str) -> LayerDbResult<()> {
+        let client = self.pool.get().await?;
+        client.query(&self.delete_query, &[&key]).await?;
         Ok(())
     }
 

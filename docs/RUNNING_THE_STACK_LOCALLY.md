@@ -8,7 +8,8 @@ Readers should first refer to the [README](../README.md) and [the development en
 While the [README](../README.md) covers using `buck2 run dev:up`, there are two other ways to run the full stack locally:
 
 - `buck2 run dev:up-standard`: run with `rustc` default build optimizations
-- `buck2 run dev:up-debug`: run with `rustc` debug build optimizations
+- `buck2 run dev:up-debug`: run with `rustc` debug build optimizations for all services except for the `rebaser`
+- `buck2 run dev:up-debug-all`: run with `rustc` debug build optimizations for all services
 
 By default, the stack will run with `rustc` release build optimizations, which is what users and testers of the System Initiative software will want to use.
 It runs the software in its intended state.

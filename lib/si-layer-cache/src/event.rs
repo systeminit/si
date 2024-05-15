@@ -95,6 +95,7 @@ pub enum LayeredEventKind {
     CasInsertion,
     EncryptedSecretInsertion,
     Raw,
+    SnapshotEvict,
     SnapshotWrite,
 }
 

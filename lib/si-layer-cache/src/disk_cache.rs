@@ -66,4 +66,9 @@ impl DiskCache {
             .await?;
         Ok(())
     }
+
+    pub async fn remove_from_disk(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
+        self.remove(event.payload.key.clone()).await?;
+        Ok(())
+    }
 }
