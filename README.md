@@ -13,12 +13,7 @@ To learn more, read our ["Second Wave DevOps" blog post](https://www.systeminit.
 
 ## Quickstart
 
-**We recommend running SI using the stable version of the engine.
-To do so, please checkout [`old-engine`](https://github.com/systeminit/si/tree/old-engine) and follow the instructions in its [README](https://github.com/systeminit/si/blob/old-engine/README.md).**
-
-> Disclaimer: contents of the [`docs`](./docs) directory may be out of date until the current architecture becomes stable.
-
-Otherwise, follow the [Local Development Setup](#local-development-setup) instructions below.
+Follow the [Local Development Setup](#local-development-setup) instructions below.
 We are working on and investigating more way(s) to try out System Initiative in the future.
 
 ## Local Development Setup
@@ -116,7 +111,7 @@ Every service should eventually have a green checkmark next to them, which ensur
 
 _Please note: database migrations may take some time to complete._
 
-If you would like to learn more on what's running, check out the [architecture](./docs/ARCHITECTURE.md) documentation.
+If you would like to learn more on what's running, check out the [services](./docs/SERVICES.md) documentation.
 If you would like to learn more about running the stack locally, check out the [development environment documentation](./docs/DEVELOPMENT_ENVIRONMENT.md) and the [documentation for running the stack locally](./docs/RUNNING_THE_STACK_LOCALLY.md).
 
 ### (6) Troubleshooting in Tilt
