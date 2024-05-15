@@ -6,6 +6,7 @@ pub mod component;
 pub mod diagram;
 pub mod func;
 pub mod graphviz;
+pub mod node_debug;
 pub mod qualification;
 pub mod secret;
 pub mod session;
