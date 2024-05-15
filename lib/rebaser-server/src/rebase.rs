@@ -2,8 +2,10 @@ use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
+use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityRebaseRequest;
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -13,6 +15,8 @@ use tokio::time::Instant;
 pub enum RebaseError {
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("layerdb error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("missing change set")]
     MissingChangeSet(ChangeSetId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
@@ -115,5 +119,43 @@ pub async fn perform_rebase(
     // Before replying to the requester, we must commit.
     ctx.commit_no_rebase().await?;
 
+    {
+        let ictx = ctx.clone();
+        tokio::spawn(async move {
+            if let Err(error) =
+                evict_unused_snapshots(&ictx, &to_rebase_workspace_snapshot_address).await
+            {
+                error!(?error, "Eviction error: {:?}", error);
+            }
+            if let Err(error) =
+                evict_unused_snapshots(&ictx, &to_rebase_workspace_snapshot.id().await).await
+            {
+                error!(?error, "Eviction error: {:?}", error);
+            }
+            if let Err(error) =
+                evict_unused_snapshots(&ictx, &onto_workspace_snapshot.id().await).await
+            {
+                error!(?error, "Eviction error: {:?}", error);
+            }
+        });
+    }
+
     Ok(message)
+}
+
+pub(crate) async fn evict_unused_snapshots(
+    ctx: &DalContext,
+    workspace_snapshot_address: &WorkspaceSnapshotAddress,
+) -> RebaseResult<()> {
+    if !ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await? {
+        ctx.layer_db()
+            .workspace_snapshot()
+            .evict(
+                workspace_snapshot_address,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+    }
+    Ok(())
 }

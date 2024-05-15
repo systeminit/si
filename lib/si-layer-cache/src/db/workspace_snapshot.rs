@@ -116,4 +116,36 @@ where
         span.record("si.layer_cache.memory_cache.hit", false);
         self.cache.get(key.to_string().into()).await
     }
+
+    #[instrument(
+        name = "workspace_snapshot.evict",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot.address = %key,
+        )
+    )]
+    pub async fn evict(
+        &self,
+        key: &WorkspaceSnapshotAddress,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<PersisterStatusReader> {
+        let cache_key = key.to_string();
+        self.cache.remove_from_memory(&cache_key).await;
+
+        let event = LayeredEvent::new(
+            LayeredEventKind::SnapshotEvict,
+            Arc::new(DBNAME.to_string()),
+            cache_key.into(),
+            Arc::new(Vec::new()),
+            Arc::new("workspace_snapshot".to_string()),
+            None,
+            tenancy,
+            actor,
+        );
+        let reader = self.persister_client.evict_event(event)?;
+
+        Ok(reader)
+    }
 }
