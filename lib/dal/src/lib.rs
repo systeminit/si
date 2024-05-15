@@ -43,6 +43,7 @@ pub mod key_pair;
 pub mod label_list;
 pub mod layer_db_types;
 pub mod module;
+pub mod note;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;

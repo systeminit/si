@@ -7,6 +7,7 @@ use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
 use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentError;
+use dal::note::NoteError;
 use dal::socket::input::InputSocketError;
 use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
@@ -28,6 +29,7 @@ pub mod set_component_position;
 
 pub mod delete_component;
 pub mod delete_connection;
+pub mod notes;
 pub mod paste_component;
 pub mod remove_delete_intent;
 
@@ -80,6 +82,8 @@ pub enum DiagramError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("not authorized")]
     NotAuthorized,
+    #[error("note error: {0}")]
+    Note(#[from] NoteError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("parse float error: {0}")]
@@ -144,6 +148,8 @@ pub fn routes() -> Router<AppState> {
             "/create_component",
             post(create_component::create_component),
         )
+        .route("/create_note", post(notes::create_note))
+        .route("/delete_note", post(notes::delete_note))
         .route(
             "/set_component_position",
             post(set_component_position::set_component_position),

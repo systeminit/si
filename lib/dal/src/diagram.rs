@@ -14,6 +14,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
 use crate::component::{ComponentError, IncomingConnection, InferredIncomingConnection};
 use crate::history_event::HistoryEventMetadata;
+use crate::note::{Note, NoteError, NoteId};
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::socket::input::InputSocketError;
@@ -55,6 +56,8 @@ pub enum DiagramError {
     InputSocket(#[from] InputSocketError),
     #[error("node not found")]
     NodeNotFound,
+    #[error("note error: {0}")]
+    Note(#[from] NoteError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error(transparent)]
@@ -126,6 +129,29 @@ pub struct SummaryDiagramComponent {
     pub deleted_info: serde_json::Value,
     pub to_delete: bool,
     pub can_be_upgraded: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramNote {
+    pub id: NoteId,
+    pub position: GridPoint,
+    pub note: String,
+}
+
+impl SummaryDiagramNote {
+    pub async fn assemble(note: &Note) -> DiagramResult<Self> {
+        let position = GridPoint {
+            x: note.x().parse::<f64>()?.round() as isize,
+            y: note.y().parse::<f64>()?.round() as isize,
+        };
+
+        Ok(SummaryDiagramNote {
+            id: note.id(),
+            position,
+            note: note.note(),
+        })
+    }
 }
 
 impl SummaryDiagramComponent {
@@ -359,6 +385,7 @@ pub struct Diagram {
     pub components: Vec<SummaryDiagramComponent>,
     pub edges: Vec<SummaryDiagramEdge>,
     pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
+    pub notes: Vec<SummaryDiagramNote>,
 }
 
 impl Diagram {
@@ -392,10 +419,17 @@ impl Diagram {
             component_views.push(SummaryDiagramComponent::assemble(ctx, component).await?);
         }
 
+        let mut diagram_notes: Vec<SummaryDiagramNote> = vec![];
+        let notes = Note::list(ctx).await?;
+        for note in notes {
+            diagram_notes.push(SummaryDiagramNote::assemble(&note).await?)
+        }
+
         Ok(Self {
             edges: diagram_edges,
             components: component_views,
             inferred_edges: diagram_inferred_edges,
+            notes: diagram_notes,
         })
     }
 }

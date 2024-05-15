@@ -15,6 +15,7 @@ pub enum CategoryNodeKind {
     DeprecatedActionBatch,
     Func,
     Module,
+    Note,
     Schema,
     Secret,
 }
