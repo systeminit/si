@@ -1838,8 +1838,12 @@ watch(
 
         const position =
           movedElementPositions[child.uniqueKey] ?? child.def.position;
-        let size = resizedElementSizes[child.uniqueKey] ?? child.def.size;
-        if (!size) {
+        let size;
+        // if i am not a component, i have a size definition, go find it
+        if (child.def.componentType !== ComponentType.Component)
+          size = resizedElementSizes[child.uniqueKey] ?? child.def.size;
+        // if i am a component (or something else broke) use the DOM size data
+        if (!size || child.def.componentType === ComponentType.Component) {
           size = { width: elShape.width(), height: elShape.height() };
         }
 
