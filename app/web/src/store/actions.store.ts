@@ -377,6 +377,12 @@ export const useActionsStore = () => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
+              eventType: "ActionsListUpdated",
+              callback: () => {
+                this.LOAD_ACTIONS();
+              },
+            },
+            {
               eventType: "ChangeSetWritten",
               callback: () => {
                 this.LOAD_V1_OR_V2();

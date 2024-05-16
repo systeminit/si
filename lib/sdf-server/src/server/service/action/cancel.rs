@@ -1,6 +1,6 @@
 use axum::Json;
 use dal::action::{Action, ActionState};
-use dal::{ActionId, Visibility};
+use dal::{ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
@@ -32,9 +32,11 @@ pub async fn cancel(
         }
 
         Action::remove_by_id(&ctx, action.id()).await?;
-        // todo add wsevent here
     }
-
+    WsEvent::action_list_updated(&ctx)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
     ctx.commit().await?;
 
     Ok(())

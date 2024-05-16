@@ -5,6 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use dal::WsEventError;
 use thiserror::Error;
 
 use dal::{
@@ -22,6 +23,7 @@ mod cancel;
 pub mod history;
 pub mod list_actions;
 mod put_on_hold;
+mod retry;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -58,10 +60,12 @@ pub enum ActionError {
     NoSchemaVariantForComponent(ComponentId),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("wsevent error: {0}")]
+    WsEventError(#[from] WsEventError),
 }
 
 pub type ActionResult<T> = std::result::Result<T, ActionError>;
@@ -84,4 +88,5 @@ pub fn routes() -> Router<AppState> {
         .route("/list", get(list_actions::list_actions))
         .route("/put_on_hold", post(put_on_hold::put_on_hold))
         .route("/cancel", post(cancel::cancel))
+        .route("/retry", post(retry::retry))
 }

@@ -167,6 +167,51 @@ impl Action {
         Ok(actions)
     }
 
+    #[instrument(level = "info", skip_all)]
+    pub async fn remove_all_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ActionResult<()> {
+        let actions_to_remove = Self::find_for_component_id(ctx, component_id).await?;
+        for action_id in actions_to_remove {
+            Self::remove_by_id(ctx, action_id).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn find_for_states_and_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        action_states: Vec<ActionState>,
+    ) -> ActionResult<Vec<ActionId>> {
+        let mut actions = vec![];
+        let actions_for_component = Self::find_for_component_id(ctx, component_id).await?;
+        for action_id in actions_for_component {
+            let action = Self::get_by_id(ctx, action_id).await?;
+            if action_states.contains(&action.state()) {
+                actions.push(action_id);
+            }
+        }
+        Ok(actions)
+    }
+
+    pub async fn find_for_kind_and_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        action_kind: ActionKind,
+    ) -> ActionResult<Vec<ActionId>> {
+        let actions_for_component = Self::find_for_component_id(ctx, component_id).await?;
+        let mut actions = vec![];
+        for action_id in actions_for_component {
+            let action_prototype_id = Self::prototype_id(ctx, action_id).await?;
+            let action_prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
+            if action_prototype.kind == action_kind {
+                actions.push(action_id);
+            }
+        }
+        Ok(actions)
+    }
+
     pub async fn find_equivalent(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
@@ -292,18 +337,16 @@ impl Action {
             .await?
             .get_action_node_weight()?
             .into();
-
+        WsEvent::action_list_updated(ctx)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         Ok(new_action)
     }
 
     pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
         ctx.workspace_snapshot()?
             .remove_node_by_id(ctx.change_set()?, action_id)
-            .await?;
-
-        WsEvent::action_removed(ctx, action_id)
-            .await?
-            .publish_on_commit(ctx)
             .await?;
         Ok(())
     }
@@ -326,6 +369,7 @@ impl Action {
 
     /// Sort the dependency graph of [`Actions`][Action] topologically, breaking ties by listing
     /// [`Actions`][Action] sorted by their ID (oldest first thanks to ULID sorting).
+    #[instrument(level = "info", skip_all)]
     pub async fn list_topologically(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         // TODO: Grab all "running" & "failed" Actions to list first?
         let mut result = Vec::new();
@@ -493,6 +537,10 @@ impl Action {
         } else {
             Action::set_state(ctx, id, ActionState::Failed).await?;
         }
+        WsEvent::action_list_updated(ctx)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         Ok(resource)
     }
@@ -549,5 +597,8 @@ impl WsEvent {
             }),
         )
         .await
+    }
+    pub async fn action_list_updated(ctx: &DalContext) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ActionsListUpdated(ctx.change_set_id())).await
     }
 }
