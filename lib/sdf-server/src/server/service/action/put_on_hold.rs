@@ -1,4 +1,4 @@
-use axum::extract::Query;
+use axum::Json;
 use dal::action::{Action, ActionState};
 use dal::{ActionId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use crate::service::action::ActionError;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PutOnHoldRequest {
-    ids: Vec<ActionId>,
+    pub ids: Vec<ActionId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -18,7 +18,7 @@ pub struct PutOnHoldRequest {
 pub async fn put_on_hold(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<PutOnHoldRequest>,
+    Json(request): Json<PutOnHoldRequest>,
 ) -> ActionResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
