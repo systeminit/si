@@ -5,13 +5,13 @@ use strum::Display;
 use thiserror::Error;
 
 use crate::{
-    func::backend::js_action::DeprecatedActionRunResult,
-    func::binding::return_value::FuncBindingReturnValueError,
-    func::binding::{FuncBinding, FuncBindingError},
-    func::execution::FuncExecutionPk,
+    func::{
+        backend::js_action::DeprecatedActionRunResult,
+        binding::{return_value::FuncBindingReturnValueError, FuncBinding, FuncBindingError},
+        execution::FuncExecutionPk,
+    },
     implement_add_edge_to,
-    secret::before_funcs_for_component,
-    secret::BeforeFuncError,
+    secret::{before_funcs_for_component, BeforeFuncError},
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, FuncId, HelperError,
@@ -156,6 +156,13 @@ impl ActionPrototype {
         discriminant: EdgeWeightKindDiscriminants::Use,
         result: ActionPrototypeResult,
     );
+    implement_add_edge_to!(
+        source_id: ActionPrototypeId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_after_action,
+        discriminant: EdgeWeightKindDiscriminants::ActionRunsAfter,
+        result: ActionPrototypeResult,
+    );
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<Self> {
         let prototype: Self = ctx
@@ -165,6 +172,37 @@ impl ActionPrototype {
             .get_action_prototype_node_weight()?
             .into();
         Ok(prototype)
+    }
+    pub async fn action_runs_after(
+        ctx: &DalContext,
+        first_action: ActionPrototypeId,
+        second_action: ActionPrototypeId,
+    ) -> ActionPrototypeResult<()> {
+        Ok(Self::add_edge_to_after_action(
+            ctx,
+            first_action,
+            second_action,
+            EdgeWeightKind::ActionRunsAfter,
+        )
+        .await?)
+    }
+    pub async fn get_next_actions(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<Vec<ActionPrototypeId>> {
+        let mut after_actions = vec![];
+        for source in ctx
+            .workspace_snapshot()?
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::ActionRunsAfter)
+            .await?
+        {
+            if let NodeWeight::ActionPrototype(node_weight) =
+                ctx.workspace_snapshot()?.get_node_weight(source).await?
+            {
+                after_actions.push(node_weight.id().into())
+            }
+        }
+        Ok(after_actions)
     }
 
     pub async fn func_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<FuncId> {

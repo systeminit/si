@@ -23,6 +23,11 @@ pub enum EdgeWeightKind {
     Action,
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
     ActionPrototype,
+    /// Used to indicate that an [`ActionPrototype`] should always run
+    /// after a successful action run
+    ///
+    /// For example, we currently always run a refresh action after a successful create
+    ActionRunsAfter,
     /// A function defined for a secret defining [`SchemaVariant`] to be executed before funcs on
     /// components that have a secret of that kind
     AuthenticationPrototype,

@@ -1128,6 +1128,8 @@ pub(crate) async fn import_schema_variant(
             for socket in variant_spec.sockets()? {
                 import_socket(ctx, socket, schema_variant.id(), thing_map).await?;
             }
+            let mut create_prototype_id = None;
+            let mut refresh_prototype_id = None;
 
             for action_func in &variant_spec.action_funcs()? {
                 let (deprecated_prototype, prototype) =
@@ -1145,6 +1147,10 @@ pub(crate) async fn import_schema_variant(
                 if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
                     thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));
                 }
+            }
+            if let (Some(create_id), Some(refresh_id)) = (create_prototype_id, refresh_prototype_id)
+            {
+                ActionPrototype::action_runs_after(ctx, create_id, refresh_id).await?;
             }
 
             for auth_func in &variant_spec.auth_funcs()? {

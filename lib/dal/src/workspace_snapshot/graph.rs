@@ -769,6 +769,7 @@ impl WorkspaceSnapshotGraph {
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::Action => "black",
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::ActionRunsAfter => "blue",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
@@ -1602,6 +1603,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKind::AuthenticationPrototype
                     | EdgeWeightKind::Action
                     | EdgeWeightKind::ActionPrototype
+                    | EdgeWeightKind::ActionRunsAfter
                     | EdgeWeightKind::Contain(None)
                     | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument
