@@ -178,13 +178,16 @@ impl ActionPrototype {
         first_action: ActionPrototypeId,
         second_action: ActionPrototypeId,
     ) -> ActionPrototypeResult<()> {
-        Ok(Self::add_edge_to_after_action(
+        let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
+        let edge_added = Self::add_edge_to_after_action(
             ctx,
             first_action,
             second_action,
             EdgeWeightKind::ActionRunsAfter,
         )
-        .await?)
+        .await?;
+        drop(cycle_check_guard);
+        Ok(())
     }
     pub async fn get_next_actions(
         ctx: &DalContext,
