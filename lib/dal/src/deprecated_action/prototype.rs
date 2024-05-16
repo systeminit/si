@@ -8,6 +8,7 @@ use std::sync::Arc;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
+use crate::action::prototype::ActionKind;
 use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::ContentAddress;
@@ -112,6 +113,29 @@ impl From<&DeprecatedActionKind> for ActionFuncSpecKind {
             DeprecatedActionKind::Other => ActionFuncSpecKind::Other,
             DeprecatedActionKind::Delete => ActionFuncSpecKind::Delete,
             DeprecatedActionKind::Update => ActionFuncSpecKind::Update,
+        }
+    }
+}
+impl From<DeprecatedActionKind> for ActionKind {
+    fn from(value: DeprecatedActionKind) -> Self {
+        match value {
+            DeprecatedActionKind::Create => ActionKind::Create,
+            DeprecatedActionKind::Delete => ActionKind::Destroy,
+            DeprecatedActionKind::Other => ActionKind::Manual,
+            DeprecatedActionKind::Refresh => ActionKind::Refresh,
+            DeprecatedActionKind::Update => ActionKind::Update,
+        }
+    }
+}
+
+impl From<ActionKind> for DeprecatedActionKind {
+    fn from(value: ActionKind) -> Self {
+        match value {
+            ActionKind::Create => DeprecatedActionKind::Create,
+            ActionKind::Destroy => DeprecatedActionKind::Delete,
+            ActionKind::Manual => DeprecatedActionKind::Other,
+            ActionKind::Refresh => DeprecatedActionKind::Refresh,
+            ActionKind::Update => DeprecatedActionKind::Update,
         }
     }
 }

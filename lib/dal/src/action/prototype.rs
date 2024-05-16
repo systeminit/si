@@ -5,13 +5,13 @@ use strum::Display;
 use thiserror::Error;
 
 use crate::{
-    func::backend::js_action::DeprecatedActionRunResult,
-    func::binding::return_value::FuncBindingReturnValueError,
-    func::binding::{FuncBinding, FuncBindingError},
-    func::execution::FuncExecutionPk,
+    func::{
+        backend::js_action::DeprecatedActionRunResult,
+        binding::{return_value::FuncBindingReturnValueError, FuncBinding, FuncBindingError},
+        execution::FuncExecutionPk,
+    },
     implement_add_edge_to,
-    secret::before_funcs_for_component,
-    secret::BeforeFuncError,
+    secret::{before_funcs_for_component, BeforeFuncError},
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, FuncId, HelperError,
@@ -81,6 +81,18 @@ impl From<ActionFuncSpecKind> for ActionKind {
             ActionFuncSpecKind::Other => ActionKind::Manual,
             ActionFuncSpecKind::Delete => ActionKind::Destroy,
             ActionFuncSpecKind::Update => ActionKind::Update,
+        }
+    }
+}
+
+impl From<ActionKind> for ActionFuncSpecKind {
+    fn from(value: ActionKind) -> Self {
+        match value {
+            ActionKind::Create => ActionFuncSpecKind::Create,
+            ActionKind::Destroy => ActionFuncSpecKind::Delete,
+            ActionKind::Manual => ActionFuncSpecKind::Other,
+            ActionKind::Refresh => ActionFuncSpecKind::Refresh,
+            ActionKind::Update => ActionFuncSpecKind::Update,
         }
     }
 }
@@ -312,5 +324,14 @@ impl ActionPrototype {
             }
         }
         Ok(triggered_actions)
+    }
+    pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<()> {
+        let change_set = ctx.change_set()?;
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, id)
+            .await?;
+
+        Ok(())
     }
 }
