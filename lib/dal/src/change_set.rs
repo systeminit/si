@@ -17,11 +17,12 @@ use crate::deprecated_action::DeprecatedActionBag;
 use crate::job::definition::{DeprecatedActionRunnerItem, DeprecatedActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    id, ActionId, ActionPrototypeId, ChangeSetStatus, Component, ComponentError, DalContext,
-    DeprecatedAction, DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionError,
-    DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor,
-    HistoryEvent, HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace,
-    WorkspacePk, WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent, WsEventError,
+    action::ActionError, id, ActionId, ActionPrototypeId, ChangeSetStatus, Component,
+    ComponentError, DalContext, DeprecatedAction, DeprecatedActionBatch,
+    DeprecatedActionBatchError, DeprecatedActionError, DeprecatedActionRunner,
+    DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor, HistoryEvent,
+    HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk,
+    WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 pub mod event;
@@ -81,6 +82,8 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("action batch error: {0}")]
     ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]

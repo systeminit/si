@@ -39,7 +39,7 @@ async fn open_change_sets(ctx: &mut DalContext) {
     );
 
     // Apply the change set and perform a blocking commit.
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
         .await
         .expect("could not apply change set");
 

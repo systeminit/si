@@ -6,7 +6,7 @@ use axum::response::IntoResponse;
 use dal::action::prototype::ActionKind;
 use dal::{
     action::prototype::ActionPrototype, action::Action, ActionPrototypeId, ChangeSet, Component,
-    ComponentError, ComponentId, DeprecatedAction, Visibility, Workspace,
+    ComponentId, DeprecatedAction, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct AddActionRequest {
     pub prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
+    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -29,13 +30,8 @@ pub async fn add_action(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let workspace_pk = ctx
-        .tenancy()
-        .workspace_pk()
-        .ok_or(ComponentError::WorkspacePkNone)?;
-    let workspace = Workspace::get_by_pk_or_error(&ctx, &workspace_pk).await?;
 
-    if workspace.uses_actions_v2() {
+    if request.v2 {
         let prototype = ActionPrototype::get_by_id(&ctx, request.prototype_id).await?;
 
         match prototype.kind {
@@ -60,7 +56,7 @@ pub async fn add_action(
             &posthog_client,
             &ctx,
             &original_uri,
-            "create_action",
+            "create_action_v2",
             serde_json::json!({
                 "how": "/change_set/add_action",
                 "action_id": action.id(),
@@ -80,7 +76,7 @@ pub async fn add_action(
             &posthog_client,
             &ctx,
             &original_uri,
-            "create_action",
+            "create_action_v1",
             serde_json::json!({
                 "how": "/change_set/add_action",
                 "action_id": action.id.clone(),

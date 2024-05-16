@@ -12,6 +12,7 @@ import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
 import ChangesMerged from "@/components/toasts/ChangesMerged.vue";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -26,6 +27,8 @@ export interface OpenChangeSetsView {
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
+
+  const featureFlagsStore = useFeatureFlagsStore();
 
   return addStoreHooks(
     defineStore(`w${workspacePk || "NONE"}/change-sets`, {
@@ -139,6 +142,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/apply_change_set",
             params: {
+              v2: featureFlagsStore.IS_ACTIONS_V2,
               visibility_change_set_pk: this.selectedChangeSet.id,
             },
             optimistic: () => {

@@ -136,7 +136,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .expect("could not perform parent is head"));
 
     // Apply to the base change set and commit.
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
         .await
         .expect("could not apply change set");
 

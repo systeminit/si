@@ -281,6 +281,7 @@ export const useActionsStore = () => {
               params: {
                 prototypeId: actionPrototypeId,
                 componentId,
+                v2: featureFlagsStore.IS_ACTIONS_V2,
                 visibility_change_set_pk: changeSetId,
               },
             });
@@ -302,6 +303,7 @@ export const useActionsStore = () => {
               keyRequestStatusBy: componentId,
               params: {
                 componentId,
+                v2: featureFlagsStore.IS_ACTIONS_V2,
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {

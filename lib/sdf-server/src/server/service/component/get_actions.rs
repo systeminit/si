@@ -2,8 +2,8 @@ use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, ActionPrototypeId,
-    Component, ComponentError, ComponentId, DalContext, DeprecatedActionKind,
-    DeprecatedActionPrototype, Func, Visibility, Workspace,
+    Component, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype, Func,
+    Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +69,7 @@ pub struct GetActionsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetActionsRequest {
     pub component_id: ComponentId,
+    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -87,14 +88,8 @@ pub async fn get_actions(
         .schema_variant(&ctx)
         .await?;
 
-    let workspace_pk = ctx
-        .tenancy()
-        .workspace_pk()
-        .ok_or(ComponentError::WorkspacePkNone)?;
-    let workspace = Workspace::get_by_pk_or_error(&ctx, &workspace_pk).await?;
-
     let mut action_views: Vec<ActionPrototypeView> = Vec::new();
-    if workspace.uses_actions_v2() {
+    if request.v2 {
         let action_prototypes = ActionPrototype::for_variant(&ctx, schema_variant.id()).await?;
         for action_prototype in action_prototypes {
             if action_prototype.kind == ActionKind::Refresh {

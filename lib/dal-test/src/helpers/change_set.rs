@@ -10,7 +10,9 @@
 
 use dal::context::Conflicts;
 use dal::{
-    ChangeSet, ChangeSetApplyError, ChangeSetError, ChangeSetId, DalContext, TransactionsError,
+    action::{Action, ActionError},
+    ChangeSet, ChangeSetApplyError, ChangeSetError, ChangeSetId, DalContext, DeprecatedAction,
+    DeprecatedActionError, TransactionsError,
 };
 use thiserror::Error;
 
@@ -20,6 +22,8 @@ use crate::helpers::generate_fake_name;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetTestHelpersError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("base change set not found for change set: {0}")]
     BaseChangeSetNotFound(ChangeSetId),
     #[error("change set error: {0}")]
@@ -32,6 +36,8 @@ pub enum ChangeSetTestHelpersError {
     ConflictsFoundAfterApply(Conflicts),
     #[error("found conflicts after commit: {0:?}")]
     ConflictsFoundAfterCommit(Conflicts),
+    #[error("deprecated action error: {0}")]
+    DeprecatedAction(#[from] DeprecatedActionError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -59,7 +65,28 @@ impl ChangeSetTestHelpers {
     /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
     /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
     /// snapshot is "HEAD" without an editing [`ChangeSet`].
-    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> ChangeSetTestHelpersResult<()> {
+    pub async fn apply_change_set_to_base(
+        ctx: &mut DalContext,
+        v2_actions: bool,
+    ) -> ChangeSetTestHelpersResult<()> {
+        if v2_actions {
+            // Removes v1 actions so they are not processed here
+            for (_, bag) in DeprecatedAction::build_graph(ctx).await? {
+                bag.action.delete(ctx).await?;
+            }
+        } else {
+            // Removes v2 actions so they are not processed by the rebaser
+            for action_id in Action::list_topologically(ctx).await? {
+                let action = Action::get_by_id(ctx, action_id).await?;
+                if action.is_eligible_to_dispatch() {
+                    Action::remove_by_id(ctx, action_id).await?;
+                }
+            }
+        }
+
+        ctx.blocking_commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
+
         let applied_change_set = match ChangeSet::apply_to_base_change_set(ctx, true).await {
             Err(ChangeSetApplyError::ConflictsOnApply(conflicts)) => Err(
                 ChangeSetTestHelpersError::ConflictsFoundAfterApply(conflicts),
