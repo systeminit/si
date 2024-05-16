@@ -3,6 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
+use dal::action::prototype::ActionKind;
 use dal::{
     action::prototype::ActionPrototype, action::Action, ActionPrototypeId, ChangeSet, Component,
     ComponentError, ComponentId, DeprecatedAction, Visibility, Workspace,
@@ -28,7 +29,6 @@ pub async fn add_action(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
     let workspace_pk = ctx
         .tenancy()
         .workspace_pk()
@@ -36,10 +36,26 @@ pub async fn add_action(
     let workspace = Workspace::get_by_pk_or_error(&ctx, &workspace_pk).await?;
 
     if workspace.uses_actions_v2() {
-        let action = Action::new(&ctx, request.prototype_id, Some(request.component_id)).await?;
         let prototype = ActionPrototype::get_by_id(&ctx, request.prototype_id).await?;
-        let component = Component::get_by_id(&ctx, request.component_id).await?;
 
+        match prototype.kind {
+            ActionKind::Create | ActionKind::Destroy | ActionKind::Update | ActionKind::Refresh => {
+                let maybe_duplicate_action = Action::find_for_kind_and_component_id(
+                    &ctx,
+                    request.component_id,
+                    prototype.kind,
+                )
+                .await?;
+                if !maybe_duplicate_action.is_empty() {
+                    return Err(super::ChangeSetError::ActionAlreadyEnqueued(prototype.id));
+                }
+            }
+
+            dal::action::prototype::ActionKind::Manual => {}
+        }
+
+        let component = Component::get_by_id(&ctx, request.component_id).await?;
+        let action = Action::new(&ctx, request.prototype_id, Some(request.component_id)).await?;
         track(
             &posthog_client,
             &ctx,

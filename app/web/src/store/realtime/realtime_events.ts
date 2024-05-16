@@ -251,6 +251,10 @@ export type WsEventPayloadMap = {
 
   StatusUpdate: StatusUpdate;
 
+  ActionsListUpdated: {
+    changeSetId: ChangeSetId;
+  };
+
   ActionAdded: {
     componentId: ComponentId;
     actionId: ActionId;

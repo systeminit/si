@@ -1,4 +1,4 @@
-use axum::Json;
+use axum::extract::Query;
 use dal::action::{Action, ActionState};
 use dal::{ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -9,16 +9,16 @@ use crate::service::action::ActionError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PutOnHoldRequest {
-    pub ids: Vec<ActionId>,
+pub struct RetryRequest {
+    ids: Vec<ActionId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
-// batched
-pub async fn cancel(
+
+pub async fn retry(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<PutOnHoldRequest>,
+    Query(request): Query<RetryRequest>,
 ) -> ActionResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
@@ -26,12 +26,11 @@ pub async fn cancel(
 
         match action.state() {
             ActionState::Running | ActionState::Dispatched => {
-                return Err(ActionError::InvalidActionCancellation(action_id))
+                return Err(ActionError::InvalidOnHoldTransition(action_id))
             }
-            ActionState::Failed | ActionState::OnHold | ActionState::Queued => {}
+            ActionState::Queued | ActionState::Failed | ActionState::OnHold => {}
         }
-
-        Action::remove_by_id(&ctx, action.id()).await?;
+        Action::set_state(&ctx, action.id(), ActionState::Queued).await?;
     }
     WsEvent::action_list_updated(&ctx)
         .await?

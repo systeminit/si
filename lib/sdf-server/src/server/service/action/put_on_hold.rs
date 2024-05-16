@@ -1,6 +1,6 @@
 use axum::Json;
 use dal::action::{Action, ActionState};
-use dal::{ActionId, Visibility};
+use dal::{ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
@@ -14,7 +14,7 @@ pub struct PutOnHoldRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
-// batched
+
 pub async fn put_on_hold(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -32,8 +32,11 @@ pub async fn put_on_hold(
         }
 
         Action::set_state(&ctx, action.id(), ActionState::OnHold).await?;
-        //todo add wsevent here
     }
+    WsEvent::action_list_updated(&ctx)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

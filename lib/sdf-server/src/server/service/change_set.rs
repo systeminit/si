@@ -5,10 +5,11 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    action::prototype::ActionPrototypeError, action::ActionError,
-    ChangeSetApplyError as DalChangeSetApplyError, ChangeSetError as DalChangeSetError,
-    ComponentError, DeprecatedActionError, DeprecatedActionPrototypeError, FuncError,
-    StandardModelError, TransactionsError, WorkspaceError, WorkspaceSnapshotError, WsEventError,
+    action::{prototype::ActionPrototypeError, ActionError},
+    ActionPrototypeId, ChangeSetApplyError as DalChangeSetApplyError,
+    ChangeSetError as DalChangeSetError, ComponentError, DeprecatedActionError,
+    DeprecatedActionPrototypeError, FuncError, StandardModelError, TransactionsError,
+    WorkspaceError, WorkspaceSnapshotError, WsEventError,
 };
 
 use telemetry::prelude::*;
@@ -33,6 +34,8 @@ pub mod remove_action;
 pub enum ChangeSetError {
     #[error("action error: {0}")]
     Action(#[from] ActionError),
+    #[error("action already enqueued: {0}")]
+    ActionAlreadyEnqueued(ActionPrototypeId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("change set not found")]

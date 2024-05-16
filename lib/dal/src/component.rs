@@ -17,8 +17,8 @@ use veritech_client::ResourceStatus;
 use si_events::{ulid::Ulid, ContentHash};
 
 use self::frame::{Frame, FrameError};
-use crate::action::prototype::ActionKind;
-use crate::action::Action;
+use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
+use crate::action::{Action, ActionError, ActionState};
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
@@ -74,9 +74,9 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 #[derive(Debug, Error)]
 pub enum ComponentError {
     #[error("action error: {0}")]
-    Action(String),
-    #[error("deprecated action prototype error: {0}")]
-    ActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
+    Action(Box<ActionError>),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -103,6 +103,8 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("deprecated action error: {0}")]
     DeprecatedAction(#[from] Box<DeprecatedActionError>),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
@@ -537,7 +539,7 @@ impl Component {
             {
                 Action::new(ctx, prototype_id, Some(component.id))
                     .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
             }
         } else {
             for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
@@ -547,7 +549,7 @@ impl Component {
                 if prototype.kind == DeprecatedActionKind::Create {
                     DeprecatedAction::upsert(ctx, prototype.id, component.id())
                         .await
-                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                        .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
                 }
             }
         }
@@ -1811,7 +1813,6 @@ impl Component {
 
         let component = Self::get_by_id(ctx, id).await?;
 
-        let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
         let _ = Frame::orphan_child(ctx, id)
             .await
             .map_err(|e| ComponentError::Frame(Box::new(e)));
@@ -1840,11 +1841,7 @@ impl Component {
             }
         }
 
-        ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, id)
-            .await?;
-
-        // Remove Creation actions from queue
+        // Remove all actions for this component from queue
         let workspace_pk = ctx
             .tenancy()
             .workspace_pk()
@@ -1853,18 +1850,18 @@ impl Component {
         let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
 
         if workspace.uses_actions_v2() {
-            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-                ctx,
-                schema_variant_id,
-                ActionKind::Create,
-            )
-            .await?
-            {
-                Action::remove_by_prototype_and_component(ctx, prototype_id, Some(component.id))
-                    .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
-            }
+            Action::remove_all_for_component_id(ctx, id)
+                .await
+                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            WsEvent::action_list_updated(ctx)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
         }
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, id)
+            .await?;
 
         WsEvent::component_deleted(ctx, id)
             .await?
@@ -1877,14 +1874,14 @@ impl Component {
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
         let actions = DeprecatedAction::build_graph(ctx)
             .await
-            .map_err(|err| ComponentError::Action(err.to_string()))?;
+            .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
         for bag in actions.values() {
             if bag.component_id == self.id {
                 bag.action
                     .clone()
                     .delete(ctx)
                     .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
             }
         }
 
@@ -1962,7 +1959,7 @@ impl Component {
                 ) {
                     Action::new(ctx, prototype_id, Some(component_id))
                         .await
-                        .map_err(|err| ComponentError::Action(err.to_string()))?;
+                        .map_err(|err| ComponentError::Action(Box::new(err)))?;
                 }
             } else {
                 for prototype in DeprecatedActionPrototype::for_variant(
@@ -1975,7 +1972,7 @@ impl Component {
                     if prototype.kind == DeprecatedActionKind::Delete {
                         DeprecatedAction::upsert(ctx, prototype.id, modified.id)
                             .await
-                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                            .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
                     }
                 }
             }
@@ -1996,19 +1993,19 @@ impl Component {
                         Some(component_id),
                     )
                     .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
                 }
             } else {
                 let actions = DeprecatedAction::build_graph(ctx)
                     .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
                 for bag in actions.values() {
                     if bag.component_id == component_id {
                         bag.action
                             .clone()
                             .delete(ctx)
                             .await
-                            .map_err(|err| ComponentError::Action(err.to_string()))?;
+                            .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
                     }
                 }
             }
@@ -2110,7 +2107,7 @@ impl Component {
             {
                 Action::new(ctx, prototype_id, Some(pasted_comp.id))
                     .await
-                    .map_err(|err| ComponentError::Action(err.to_string()))?;
+                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
             }
         } else {
             for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant.id())
@@ -3043,7 +3040,72 @@ impl Component {
 
         let mut queue_create = false;
         if workspace.uses_actions_v2() {
-            //TODO: Paul Add the work for actions V2 requeing!
+            let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id)
+                .await
+                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+            let available_for_new_component =
+                ActionPrototype::for_variant(ctx, new_schema_variant_id)
+                    .await
+                    .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+            for existing_queued in queued_for_old_component {
+                let action = Action::get_by_id(ctx, existing_queued)
+                    .await
+                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                let action_prototype_id = Action::prototype_id(ctx, existing_queued)
+                    .await
+                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                // what do we do about the various states?
+                // maybe you shouldn't upgrade a component if an action
+                // is dispatched or running for the current?
+                match action.state() {
+                    ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
+                        let action_prototype = ActionPrototype::get_by_id(ctx, action_prototype_id)
+                            .await
+                            .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                        let func_id = ActionPrototype::func_id(ctx, action_prototype_id)
+                            .await
+                            .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
+                        let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+                        if action_prototype.kind == ActionKind::Create {
+                            queue_create = true;
+                        }
+                        for available_action_prototype in available_for_new_component.clone() {
+                            let available_func_id =
+                                ActionPrototype::func_id(ctx, available_action_prototype.id())
+                                    .await
+                                    .map_err(|err| {
+                                        ComponentError::ActionPrototype(Box::new(err))
+                                    })?;
+                            let available_func =
+                                Func::get_by_id_or_error(ctx, available_func_id).await?;
+
+                            if available_func.name == queued_func.name
+                                && available_func.kind == queued_func.kind
+                            {
+                                Action::new(ctx, action_prototype_id, Some(new_component_id))
+                                    .await
+                                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                            }
+                        }
+                    }
+                    ActionState::Running | ActionState::Dispatched => continue,
+                }
+            }
+            if !queue_create {
+                let create_actions = Action::find_for_kind_and_component_id(
+                    ctx,
+                    new_component_id,
+                    ActionKind::Create,
+                )
+                .await
+                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                for action_id in create_actions {
+                    Action::remove_by_id(ctx, action_id)
+                        .await
+                        .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                }
+            }
         } else {
             let available_actions =
                 DeprecatedActionPrototype::for_variant(ctx, new_schema_variant_id)

@@ -73,6 +73,7 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
     ActionReturn(ActionReturn),
+    ActionsListUpdated(ChangeSetId),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),

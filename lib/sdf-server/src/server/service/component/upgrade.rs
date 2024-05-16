@@ -4,6 +4,7 @@ use crate::service::component::{ComponentError, ComponentResult};
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
+use dal::action::{Action, ActionState};
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, SchemaVariant, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -35,6 +36,17 @@ pub async fn upgrade(
     // This is just a check to see if someone has made a request incorrectly!
     if current_schema_variant.id() == default_schema_variant.id() {
         return Err(ComponentError::SchemaVariantUpgradeSkipped);
+    }
+
+    // block upgrades if there are running or dispatched actions for this component!
+    let current_blocking_actions = Action::find_for_states_and_component_id(
+        &ctx,
+        request.component_id,
+        [ActionState::Dispatched, ActionState::Running].to_vec(),
+    )
+    .await?;
+    if !current_blocking_actions.is_empty() {
+        return Err(ComponentError::UpgradeSkippedDueToActions);
     }
 
     let upgraded_component = current_component

@@ -44,9 +44,9 @@ mod upgrade;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
-    #[error("action: {0}")]
+    #[error("action error: {0}")]
     Action(#[from] ActionError),
-    #[error("action prototype: {0}")]
+    #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute debug view error: {0}")]
     AttributeDebugViewError(#[from] AttributeDebugViewError),
@@ -92,6 +92,8 @@ pub enum ComponentError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("component upgrade skipped due to running or dispatched actions")]
+    UpgradeSkippedDueToActions,
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
     #[error("workspace error: {0}")]
