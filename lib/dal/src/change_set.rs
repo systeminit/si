@@ -21,7 +21,7 @@ use crate::{
     DeprecatedAction, DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionError,
     DeprecatedActionRunner, DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor,
     HistoryEvent, HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace,
-    WorkspacePk, WsEvent, WsEventError,
+    WorkspacePk, WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 pub mod event;
@@ -68,6 +68,8 @@ pub enum ChangeSetError {
     Workspace(String),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -190,17 +192,23 @@ impl ChangeSet {
         ctx: &DalContext,
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
+        workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<Self> {
         let id: ChangeSetId = Ulid::new().into();
-        Self::new_with_id(ctx, id, name, base_change_set_id).await
-    }
 
-    pub async fn new_with_id(
-        ctx: &DalContext,
-        id: ChangeSetId,
-        name: impl AsRef<str>,
-        base_change_set_id: Option<ChangeSetId>,
-    ) -> ChangeSetResult<Self> {
+        let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
+            .await
+            .map_err(Box::new)?;
+        // The workspace snapshot needs to be marked as seen by this new
+        // changeset, so that edit sessions are able to know what is net new in
+        // the edit session vs what the changeset already contained. The "onto"
+        // changeset needs to have seen the "to_rebase" or we will treat them as
+        // completely disjoint changesets.
+        let workspace_snapshot_address = workspace_snapshot
+            .write(ctx, id.into_inner().into())
+            .await
+            .map_err(Box::new)?;
+
         let workspace_id = ctx.tenancy().workspace_pk();
         let name = name.as_ref();
         let row = ctx
@@ -208,8 +216,8 @@ impl ChangeSet {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
+                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id, workspace_snapshot_address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id, &workspace_snapshot_address],
             )
             .await?;
         let change_set = Self::try_from(row)?;
@@ -240,19 +248,18 @@ impl ChangeSet {
                 workspace.default_change_set_id(),
             ))?;
 
-        let mut change_set =
-            ChangeSet::new(ctx, name, Some(workspace.default_change_set_id())).await?;
-
-        change_set
-            .update_pointer(
-                ctx,
-                base_change_set.workspace_snapshot_address.ok_or(
-                    ChangeSetError::DefaultChangeSetNoWorkspaceSnapshotPointer(
-                        workspace.default_change_set_id(),
-                    ),
-                )?,
-            )
-            .await?;
+        let workspace_snapshot_address = base_change_set.workspace_snapshot_address.ok_or(
+            ChangeSetError::DefaultChangeSetNoWorkspaceSnapshotPointer(
+                workspace.default_change_set_id(),
+            ),
+        )?;
+        let change_set = ChangeSet::new(
+            ctx,
+            name,
+            Some(workspace.default_change_set_id()),
+            workspace_snapshot_address,
+        )
+        .await?;
 
         Ok(change_set)
     }

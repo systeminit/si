@@ -9,7 +9,7 @@ mod test {
 
     use crate::change_set::ChangeSet;
     use crate::workspace_snapshot::conflict::Conflict;
-    use crate::workspace_snapshot::content_address::ContentAddress;
+    use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
@@ -77,7 +77,9 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
-        initial_graph.dot();
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -117,7 +119,9 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -127,8 +131,8 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert_eq!(Vec::<Conflict>::new(), conflicts);
         assert_eq!(Vec::<Update>::new(), updates);
+        assert_eq!(Vec::<Conflict>::new(), conflicts);
     }
 
     #[test]
@@ -185,10 +189,13 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
-        let new_graph = base_graph.clone();
+        let mut new_graph = base_graph.clone();
 
         let new_onto_component_id = base_change_set
             .generate_ulid()
@@ -225,6 +232,9 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -284,6 +294,9 @@ mod test {
 
         base_graph.cleanup();
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -313,6 +326,9 @@ mod test {
 
         new_graph.cleanup();
         new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -403,6 +419,9 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -443,6 +462,9 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let new_onto_component_id = base_change_set
             .generate_ulid()
@@ -479,6 +501,9 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -596,6 +621,9 @@ mod test {
 
         base_graph.cleanup();
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("mark graph seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -611,6 +639,9 @@ mod test {
 
         new_graph.cleanup();
         new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("mark graph seen");
 
         base_graph
             .update_content(
@@ -622,6 +653,9 @@ mod test {
 
         base_graph.cleanup();
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("mark graph seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -734,6 +768,9 @@ mod test {
 
         base_graph.cleanup();
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("mark graph seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -752,6 +789,9 @@ mod test {
 
         base_graph.cleanup();
         base_graph.dot();
+        base_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("mark graph seen");
 
         new_graph
             .update_content(
@@ -763,6 +803,9 @@ mod test {
 
         new_graph.cleanup();
         new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -821,7 +864,6 @@ mod test {
         };
 
         active_graph.cleanup();
-        active_graph.dot();
 
         // Create two prop nodes children of base prop
         let ordered_prop_1_index = {
@@ -856,7 +898,6 @@ mod test {
         };
 
         active_graph.cleanup();
-        active_graph.dot();
 
         let attribute_prototype_id = {
             let node_id = active_change_set
@@ -888,7 +929,9 @@ mod test {
         };
 
         active_graph.cleanup();
-        active_graph.dot();
+        active_graph
+            .mark_graph_seen(active_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         // Get new graph
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -910,24 +953,25 @@ mod test {
             )
             .expect("Unable to add sv -> prop edge");
         active_graph.cleanup();
-        active_graph.dot();
+        let base_prop_node_index = active_graph
+            .get_node_index_by_id(base_prop_id)
+            .expect("Unable to get base prop NodeIndex");
 
         assert_eq!(
             vec![ordered_prop_1_index,],
-            new_graph
-                .ordered_children_for_node(
-                    new_graph
-                        .get_node_index_by_id(base_prop_id)
-                        .expect("Unable to get base prop NodeIndex")
-                )
+            active_graph
+                .ordered_children_for_node(base_prop_node_index)
                 .expect("Unable to find ordered children for node")
                 .expect("Node is not an ordered node")
         );
+        active_graph
+            .mark_graph_seen(active_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         // Assert that the new edge to the prototype gets created
         let (conflicts, updates) = base_graph
             .detect_conflicts_and_updates(
-                active_change_set.vector_clock_id(),
+                base_change_set.vector_clock_id(),
                 &new_graph,
                 new_change_set.vector_clock_id(),
             )
@@ -989,6 +1033,8 @@ mod test {
             )
             .expect("Unable to add root -> schema edge");
 
+        println!("Add edge from root to {} in onto", docker_image_schema_id);
+
         // Docker Image Schema Variant
         let docker_image_schema_variant_id = base_change_set
             .generate_ulid()
@@ -1014,6 +1060,11 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
+        println!(
+            "Add edge from {} to {} in onto",
+            docker_image_schema_id, docker_image_schema_variant_id
+        );
+
         // Nginx Docker Image Component
         let nginx_docker_image_component_id = base_change_set
             .generate_ulid()
@@ -1036,6 +1087,12 @@ mod test {
                 nginx_docker_image_component_index,
             )
             .expect("Unable to add root -> component edge");
+
+        println!(
+            "Add edge from root to {} in onto",
+            nginx_docker_image_component_id
+        );
+
         base_graph
             .add_edge(
                 base_graph
@@ -1048,6 +1105,11 @@ mod test {
                     .expect("Unable to get NodeIndex"),
             )
             .expect("Unable to add component -> schema variant edge");
+
+        println!(
+            "Add edge from {} to {} in onto",
+            nginx_docker_image_component_id, docker_image_schema_variant_id
+        );
 
         // Alpine Component
         let alpine_component_id = base_change_set
@@ -1071,6 +1133,9 @@ mod test {
                 alpine_component_index,
             )
             .expect("Unable to add root -> component edge");
+
+        println!("Add edge from root to {} in onto", alpine_component_id);
+
         base_graph
             .add_edge(
                 base_graph
@@ -1083,6 +1148,11 @@ mod test {
                     .expect("Unable to get NodeIndex"),
             )
             .expect("Unable to add component -> schema variant edge");
+
+        println!(
+            "Add edge from {} to {} in onto",
+            alpine_component_id, docker_image_schema_variant_id
+        );
 
         // Butane Schema
         let butane_schema_id = base_change_set
@@ -1106,6 +1176,8 @@ mod test {
                 butane_schema_index,
             )
             .expect("Unable to add root -> schema edge");
+
+        println!("Add edge from root to {} in onto", butane_schema_id);
 
         // Butane Schema Variant
         let butane_schema_variant_id = base_change_set
@@ -1132,6 +1204,11 @@ mod test {
             )
             .expect("Unable to add schema -> schema variant edge");
 
+        println!(
+            "Add edge from {} to {} in onto",
+            butane_schema_id, butane_schema_variant_id
+        );
+
         // Nginx Butane Component
         let nginx_butane_component_id = base_change_set
             .generate_ulid()
@@ -1154,6 +1231,12 @@ mod test {
                 nginx_butane_node_index,
             )
             .expect("Unable to add root -> component edge");
+
+        println!(
+            "Add edge from root to {} in onto",
+            nginx_butane_component_id
+        );
+
         base_graph
             .add_edge(
                 base_graph
@@ -1167,13 +1250,23 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
+        println!(
+            "Add edge from {} to {} in onto",
+            nginx_butane_component_id, butane_schema_variant_id
+        );
+
         base_graph.cleanup();
-        base_graph.dot();
+        //base_graph.dot();
+        base_graph
+            .mark_graph_seen(base_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         // Create a new change set to cause some problems!
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = base_graph.clone();
+
+        println!("fork onto into to_rebase");
 
         // Create a modify removed item conflict.
         base_graph
@@ -1186,6 +1279,12 @@ mod test {
                 EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to update the component");
+
+        println!(
+            "Remove edge from root to {} in onto",
+            nginx_butane_component_id
+        );
+
         new_graph
             .update_content(
                 new_change_set,
@@ -1193,6 +1292,11 @@ mod test {
                 ContentHash::from("second"),
             )
             .expect("Unable to update the component");
+
+        println!(
+            "Update content of {} in to_rebase (should produce ModifyRemovedItem conflict)",
+            nginx_butane_component_id
+        );
 
         // Create a node content conflict.
         base_graph
@@ -1202,6 +1306,12 @@ mod test {
                 ContentHash::from("oopsie"),
             )
             .expect("Unable to update the component");
+
+        println!(
+            "Update content of {} in onto",
+            docker_image_schema_variant_id
+        );
+
         new_graph
             .update_content(
                 new_change_set,
@@ -1209,6 +1319,11 @@ mod test {
                 ContentHash::from("poopsie"),
             )
             .expect("Unable to update the component");
+
+        println!(
+            "Update content of {} in to_rebase (should produce update content conflict)",
+            docker_image_schema_variant_id
+        );
 
         // Create a pure update.
         base_graph
@@ -1219,6 +1334,20 @@ mod test {
             )
             .expect("Unable to update the schema");
 
+        println!("Update content of {} in onto", docker_image_schema_id);
+
+        new_graph.cleanup();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+        base_graph.cleanup();
+        base_graph
+            .mark_graph_seen(base_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        // new_graph.tiny_dot_to_file(Some("to_rebase"));
+        // base_graph.tiny_dot_to_file(Some("onto"));
+
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
@@ -1227,8 +1356,8 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        base_graph.dot();
-        new_graph.dot();
+        // base_graph.dot();
+        // new_graph.dot();
 
         let expected_conflicts = vec![
             Conflict::ModifyRemovedItem(
@@ -1454,6 +1583,10 @@ mod test {
         initial_graph.cleanup();
         initial_graph.dot();
 
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
         let mut new_graph = initial_graph.clone();
@@ -1487,6 +1620,9 @@ mod test {
 
         new_graph.cleanup();
         new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -1689,10 +1825,13 @@ mod test {
             .expect("Unable to add container prop -> ordered prop 4 edge");
 
         initial_graph.dot();
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
-        let new_graph = initial_graph.clone();
+        let mut new_graph = initial_graph.clone();
 
         let ordered_prop_5_id = initial_change_set
             .generate_ulid()
@@ -1739,6 +1878,12 @@ mod test {
             .get_node_weight(destination_node_index_for_ordinal_edge)
             .expect("could not get node weight")
             .id();
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         new_graph.dot();
 
@@ -1983,6 +2128,9 @@ mod test {
             .expect("Unable to add container prop -> ordered prop 4 edge");
 
         initial_graph.dot();
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
 
         let new_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
@@ -2044,6 +2192,14 @@ mod test {
             .expect("could not get node weight")
             .id();
 
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        new_graph.cleanup();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
@@ -2208,6 +2364,8 @@ mod test {
             )
             .expect("Unable to add container prop -> ordered prop 1 edge");
 
+        println!("added ordered edge from {container_prop_id} to {ordered_prop_1_id} in onto");
+
         let ordered_prop_2_id = initial_change_set
             .generate_ulid()
             .expect("Unable to generate Ulid");
@@ -2234,6 +2392,8 @@ mod test {
                 ordered_prop_2_index,
             )
             .expect("Unable to add container prop -> ordered prop 2 edge");
+
+        println!("added ordered edge from {container_prop_id} to {ordered_prop_2_id} in onto");
 
         let ordered_prop_3_id = initial_change_set
             .generate_ulid()
@@ -2262,6 +2422,8 @@ mod test {
             )
             .expect("Unable to add container prop -> ordered prop 3 edge");
 
+        println!("added ordered edge from {container_prop_id} to {ordered_prop_3_id} in onto");
+
         let ordered_prop_4_id = initial_change_set
             .generate_ulid()
             .expect("Unable to generate Ulid");
@@ -2289,6 +2451,8 @@ mod test {
             )
             .expect("Unable to add container prop -> ordered prop 4 edge");
 
+        println!("added ordered edge from {container_prop_id} to {ordered_prop_4_id} in onto");
+
         initial_graph.cleanup();
         initial_graph
             .mark_graph_seen(initial_change_set.vector_clock_id())
@@ -2309,6 +2473,8 @@ mod test {
                 EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to remove container prop -> prop 2 edge");
+
+        println!("removed edge from {container_prop_id} to {ordered_prop_2_id} in to_rebase");
 
         let ordered_prop_5_id = initial_change_set
             .generate_ulid()
@@ -2338,6 +2504,7 @@ mod test {
                 ordered_prop_5_index,
             )
             .expect("Unable to add container prop -> ordered prop 5 edge");
+        println!("added ordered edge from {container_prop_id} to {ordered_prop_5_id} in onto");
         let (
             ordinal_edge_index,
             source_node_index_for_ordinal_edge,
@@ -2358,10 +2525,19 @@ mod test {
             .id();
 
         initial_graph.cleanup();
-        initial_graph.dot();
+        //initial_graph.dot();
+        initial_graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("unable mark graph seen");
 
         new_graph.cleanup();
-        new_graph.dot();
+        //new_graph.dot();
+        new_graph
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("unable to mark graph seen");
+
+        // initial_graph.tiny_dot_to_file(Some("onto"));
+        // new_graph.tiny_dot_to_file(Some("to_rebase"));
 
         let (conflicts, updates) = new_graph
             .detect_conflicts_and_updates(
@@ -2562,6 +2738,9 @@ mod test {
             .expect("could not mark graph seen");
         new_graph.cleanup();
 
+        // base_graph.tiny_dot_to_file(Some("to_rebase"));
+        // new_graph.tiny_dot_to_file(Some("onto"));
+
         let (conflicts, updates) = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
@@ -2570,7 +2749,6 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert!(conflicts.is_empty());
         assert_eq!(
             vec![Update::RemoveEdge {
                 source: a_idx,
@@ -2579,6 +2757,7 @@ mod test {
             }],
             updates
         );
+        assert!(conflicts.is_empty());
     }
 
     #[test]
@@ -2678,6 +2857,188 @@ mod test {
                 edge_kind: EdgeWeightKindDiscriminants::Use,
             }],
             conflicts
+        );
+    }
+
+    #[test]
+    fn detect_conflicts_and_updates_remove_edge_simple() {
+        let to_rebase_change_set = ChangeSet::new_local().expect("create cset");
+        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(&to_rebase_change_set)
+            .expect("unable to make to_rebase_graph");
+
+        let prototype_node_id = to_rebase_change_set.generate_ulid().expect("gen ulid");
+        let prototype_node = NodeWeight::new_content(
+            &to_rebase_change_set,
+            prototype_node_id,
+            ContentAddress::AttributePrototype(ContentHash::from("prototype")),
+        )
+        .expect("unable to create prototype node weight");
+
+        to_rebase_graph
+            .add_node(prototype_node)
+            .expect("unable to add node");
+        to_rebase_graph
+            .add_edge(
+                to_rebase_graph.root(),
+                EdgeWeight::new(&to_rebase_change_set, EdgeWeightKind::Prototype(None))
+                    .expect("make edge weight"),
+                to_rebase_graph
+                    .get_node_index_by_id(prototype_node_id)
+                    .expect("get_node_index_by_id"),
+            )
+            .expect("unable to add edge");
+
+        // "write" the graph
+        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("mark_graph_seen");
+
+        // "fork" a working changeset from the current one
+        let onto_change_set = ChangeSet::new_local().expect("new_local");
+        let mut onto_graph = to_rebase_graph.clone();
+
+        onto_graph
+            .remove_edge(
+                &onto_change_set,
+                onto_graph.root(),
+                to_rebase_graph
+                    .get_node_index_by_id(prototype_node_id)
+                    .expect("get_node_index_by_id"),
+                EdgeWeightKindDiscriminants::Prototype,
+            )
+            .expect("remove_edge");
+
+        onto_graph.cleanup();
+        onto_graph
+            .mark_graph_seen(onto_change_set.vector_clock_id())
+            .expect("mark_graph_seen");
+
+        let (conflicts, updates) = to_rebase_graph
+            .detect_conflicts_and_updates(
+                to_rebase_change_set.vector_clock_id(),
+                &onto_graph,
+                onto_change_set.vector_clock_id(),
+            )
+            .expect("detect_conflicts_and_updates");
+
+        assert!(conflicts.is_empty());
+        assert_eq!(1, updates.len());
+        assert!(matches!(
+            updates[0],
+            Update::RemoveEdge {
+                edge_kind: EdgeWeightKindDiscriminants::Prototype,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn detect_conflicts_and_updates_remove_modified_item_conflict() {
+        let to_rebase_change_set = ChangeSet::new_local().expect("create cset");
+        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(&to_rebase_change_set)
+            .expect("unable to make to_rebase_graph");
+
+        let prototype_node_id = to_rebase_change_set.generate_ulid().expect("gen ulid");
+        let prototype_node = NodeWeight::new_content(
+            &to_rebase_change_set,
+            prototype_node_id,
+            ContentAddress::AttributePrototype(ContentHash::from("prototype")),
+        )
+        .expect("unable to create prototype node weight");
+
+        to_rebase_graph
+            .add_node(prototype_node)
+            .expect("unable to add node");
+        to_rebase_graph
+            .add_edge(
+                to_rebase_graph.root(),
+                EdgeWeight::new(&to_rebase_change_set, EdgeWeightKind::Prototype(None))
+                    .expect("make edge weight"),
+                to_rebase_graph
+                    .get_node_index_by_id(prototype_node_id)
+                    .expect("get_node_index_by_id"),
+            )
+            .expect("unable to add edge");
+
+        // "write" the graph
+        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("mark_graph_seen");
+
+        // "fork" a working changeset from the current one
+        let onto_change_set = ChangeSet::new_local().expect("new_local");
+        let mut onto_graph = to_rebase_graph.clone();
+
+        // After the fork, remove the edge in to_rebase, but modify the edge in onto
+        to_rebase_graph
+            .remove_edge(
+                &onto_change_set,
+                onto_graph.root(),
+                to_rebase_graph
+                    .get_node_index_by_id(prototype_node_id)
+                    .expect("get_node_index_by_id"),
+                EdgeWeightKindDiscriminants::Prototype,
+            )
+            .expect("remove_edge");
+        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(to_rebase_change_set.vector_clock_id())
+            .expect("mark_graph_seen");
+
+        let onto_content_node_idx = onto_graph
+            .get_node_index_by_id(prototype_node_id)
+            .expect("get_node_index_by_id");
+
+        let mut content_node = onto_graph
+            .get_node_weight(onto_content_node_idx)
+            .expect("get_node_weight")
+            .get_content_node_weight_of_kind(ContentAddressDiscriminants::AttributePrototype)
+            .expect("get_content_node_weight_of_kind");
+
+        // Modifying this node in onto, after it has been removed in to_rebase,
+        // will produce a RemoveModifiedItem conflict
+        content_node
+            .new_content_hash(ContentHash::from("prototype_change"))
+            .expect("update_content_hash");
+        content_node
+            .increment_vector_clock(&onto_change_set)
+            .expect("increment_vector_clock");
+        onto_graph
+            .add_node(NodeWeight::Content(content_node))
+            .expect("add_node");
+        onto_graph
+            .replace_references(onto_content_node_idx)
+            .expect("replace_references");
+        onto_graph.cleanup();
+        onto_graph
+            .mark_graph_seen(onto_change_set.vector_clock_id())
+            .expect("mark_graph_seen");
+
+        let (conflicts, updates) = to_rebase_graph
+            .detect_conflicts_and_updates(
+                to_rebase_change_set.vector_clock_id(),
+                &onto_graph,
+                onto_change_set.vector_clock_id(),
+            )
+            .expect("detect_conflicts_and_updates");
+
+        // Since the node in question is removed in to_rebase, there will be no
+        // ReplaceSubgraph update
+        assert!(updates.is_empty());
+        assert_eq!(1, conflicts.len());
+
+        let container = to_rebase_graph.root_index;
+        let removed_item = onto_graph
+            .get_node_index_by_id(prototype_node_id)
+            .expect("get_node_index_by_id");
+        assert_eq!(
+            conflicts[0],
+            Conflict::RemoveModifiedItem {
+                container,
+                removed_item
+            }
         );
     }
 }

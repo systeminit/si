@@ -159,13 +159,18 @@ impl Workspace {
             return Ok(());
         }
 
+        let initial_change_set = ChangeSet::new_local()?;
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &initial_change_set).await?;
+
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
-        let mut change_set = ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
-        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
-        change_set
-            .update_pointer(ctx, workspace_snapshot.id().await)
-            .await?;
+        let mut change_set = ChangeSet::new(
+            ctx,
+            DEFAULT_CHANGE_SET_NAME,
+            None,
+            workspace_snapshot.id().await,
+        )
+        .await?;
         let change_set_id = change_set.id;
 
         let head_pk = WorkspaceId::NONE;
@@ -254,13 +259,15 @@ impl Workspace {
 
         // Create a new change set whose base is the default change set of the workspace.
         // Point to the snapshot that the builtin's default change set is pointing to.
-        let mut change_set =
-            ChangeSet::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
         let workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
-        change_set
-            .update_pointer(ctx, workspace_snapshot.id().await)
-            .await?;
+        let mut change_set = ChangeSet::new(
+            ctx,
+            "HEAD",
+            Some(builtin.default_change_set_id),
+            workspace_snapshot.id().await,
+        )
+        .await?;
         let change_set_id = change_set.id;
 
         let uses_actions_v2 = ctx
@@ -501,17 +508,20 @@ impl Workspace {
                         )?)
                     };
 
-                let mut new_change_set =
-                    ChangeSet::new(ctx, change_set_data.name.clone(), actual_base_changeset)
-                        .await?;
-
-                change_set_id_map.insert(change_set_data.id, new_change_set.id);
-
+                let local_change_set = ChangeSet::new_local()?;
                 let new_snap_address = imported_snapshot
-                    .write(ctx, new_change_set.vector_clock_id())
+                    .write(ctx, local_change_set.vector_clock_id())
                     .await?;
 
-                new_change_set.update_pointer(ctx, new_snap_address).await?;
+                let new_change_set = ChangeSet::new(
+                    ctx,
+                    change_set_data.name.clone(),
+                    actual_base_changeset,
+                    new_snap_address,
+                )
+                .await?;
+
+                change_set_id_map.insert(change_set_data.id, new_change_set.id);
 
                 // Set new default changeset for workspace
                 if is_new_default {

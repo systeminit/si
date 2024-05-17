@@ -20,18 +20,17 @@ pub async fn create_change_set_and_update_ctx(
         .await
         .expect("could not perform find change set")
         .expect("no change set found");
-    let mut change_set = ChangeSet::new(ctx, generate_fake_name(), Some(base_change_set_id))
-        .await
-        .expect("could not create change set");
-    change_set
-        .update_pointer(
-            ctx,
-            base_change_set
-                .workspace_snapshot_address
-                .expect("no workspace snapshot set on base change set"),
-        )
-        .await
-        .expect("could not update pointer");
+    let workspace_snapshot_address = base_change_set
+        .workspace_snapshot_address
+        .expect("no workspace snapshot set on base change set");
+    let change_set = ChangeSet::new(
+        ctx,
+        generate_fake_name(),
+        Some(base_change_set_id),
+        workspace_snapshot_address,
+    )
+    .await
+    .expect("could not create change set");
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await
         .expect("could not update visibility and snapshot");

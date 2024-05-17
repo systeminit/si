@@ -996,7 +996,8 @@ impl WorkspaceSnapshotGraph {
         debug!("only to rebase edges: {:?}", &only_to_rebase_edges);
         debug!("only onto edges: {:?}", &only_onto_edges);
 
-        let root_seen_as_of_onto = self
+        // This is the last time that to_rebase knows about onto having seen the snapshot
+        let to_rebase_last_saw_onto = self
             .get_node_weight(self.root_index)?
             .vector_clock_recently_seen()
             .entry_for(onto_vector_clock_id);
@@ -1013,45 +1014,64 @@ impl WorkspaceSnapshotGraph {
             let to_rebase_item_weight =
                 self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
 
-            if to_rebase_edge_weight
+            // This is an edge that is only to_rebase. So either:
+            // -- Onto has seen this edge:
+            //     -- So, if to_rebase has modified the target of the edge since onto last saw the target,
+            //      we should produce a ModifyRemovedItem conflict,
+            //     -- OR, if to_rebase has *not* modified the target, we should produce a RemoveEdge update.
+            // -- Onto has never seen this edge, becuase it was added *after* onto was forked from to_rebase:
+            //     -- So, either we should just silently let the edge stay in to_rebase, OR, we should produce
+            //          an exclusive edge conflict if silently adding this edge would lead to an incorrect
+            //          graph.
+
+            // This will always be Some(_)
+            if let Some(edge_first_seen_by_to_rebase) = to_rebase_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(to_rebase_vector_clock_id)
-                <= onto_last_saw_to_rebase
             {
-                // Onto has seen this edge before, but the edge doesn't exist in
-                // onto. If the container has been modified since we last saw
-                // it, then we have a conflict. Otherwise, we should remove the
-                // edge.
-                if to_rebase_item_weight
-                    .vector_clock_write()
-                    .entry_for(to_rebase_vector_clock_id)
-                    > onto_last_saw_to_rebase
-                {
-                    // Item has been modified in `onto` (`onto` item write vector clock > "seen as
-                    // of" for `onto` entry in `to_rebase` root): Conflict (ModifyRemovedItem)
-                    conflicts.push(Conflict::ModifyRemovedItem(
-                        only_to_rebase_edge_info.target_node_index,
-                    ))
-                } else {
-                    // Item not modified & removed by `onto`: No conflict; Update::RemoveEdge
-                    updates.push(Update::RemoveEdge {
-                        source: only_to_rebase_edge_info.source_node_index,
-                        destination: only_to_rebase_edge_info.target_node_index,
-                        edge_kind: only_to_rebase_edge_info.edge_kind,
-                    });
-                }
-            } else {
-                // Onto has never seen this edge, so it was added by another
-                // rebase. Conflict here if the node weight specifies this edge
-                // as exclusive to us.
-                let container_weight = self.get_node_weight(to_rebase_container_index)?;
-                let edge_kind = only_to_rebase_edge_info.edge_kind;
-                if container_weight.is_exclusive_outgoing_edge(edge_kind) {
-                    conflicts.push(Conflict::ExclusiveEdgeMismatch {
-                        source: only_to_rebase_edge_info.source_node_index,
-                        destination: only_to_rebase_edge_info.target_node_index,
-                        edge_kind,
-                    });
+                let maybe_seen_by_onto_at =
+                    if let Some(onto_last_saw_to_rebase) = onto_last_saw_to_rebase {
+                        if edge_first_seen_by_to_rebase <= onto_last_saw_to_rebase {
+                            Some(onto_last_saw_to_rebase)
+                        } else {
+                            None
+                        }
+                    } else {
+                        to_rebase_edge_weight
+                            .vector_clock_first_seen()
+                            .entry_for(onto_vector_clock_id)
+                    };
+
+                match maybe_seen_by_onto_at {
+                    Some(seen_by_onto_at) => {
+                        if to_rebase_item_weight
+                            .vector_clock_write()
+                            .has_entries_newer_than(seen_by_onto_at)
+                        {
+                            // Item has been modified in `to_rebase` since
+                            // `onto` last saw `to_rebase`
+                            conflicts.push(Conflict::ModifyRemovedItem(
+                                only_to_rebase_edge_info.target_node_index,
+                            ))
+                        } else {
+                            updates.push(Update::RemoveEdge {
+                                source: only_to_rebase_edge_info.source_node_index,
+                                destination: only_to_rebase_edge_info.target_node_index,
+                                edge_kind: only_to_rebase_edge_info.edge_kind,
+                            });
+                        }
+                    }
+                    None => {
+                        let container_weight = self.get_node_weight(to_rebase_container_index)?;
+                        let edge_kind = only_to_rebase_edge_info.edge_kind;
+                        if container_weight.is_exclusive_outgoing_edge(edge_kind) {
+                            conflicts.push(Conflict::ExclusiveEdgeMismatch {
+                                source: only_to_rebase_edge_info.source_node_index,
+                                destination: only_to_rebase_edge_info.target_node_index,
+                                edge_kind,
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -1063,39 +1083,51 @@ impl WorkspaceSnapshotGraph {
                 .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
             let onto_item_weight = onto.get_node_weight(only_onto_edge_info.target_node_index)?;
 
-            if let Some(onto_first_seen) = onto_edge_weight
+            // This is an edge that is only in onto, so, either:
+            //  -- to_rebase has never seen this edge, so we should produce a New Edge update
+            //  -- OR, to_rebase has seen this edge, so:
+            //      -- if onto has modified the target of the edge since the last time onto saw to
+            //      rebase, we should produce a RemoveModifiedItem conflict
+            //      -- OR, onto has not modified the edge, so the edge should stay removed (no
+            //      update necessary since it's already gone in to_rebase)
+
+            // this will always be Some(_)
+            if let Some(edge_weight_first_seen_by_onto) = onto_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(onto_vector_clock_id)
             {
-                // From "onto_first_seen", we know "when was the first time onto saw this edge?".
-                match root_seen_as_of_onto {
-                    Some(root_seen_as_of) if onto_first_seen <= root_seen_as_of => {}
-                    _ => {
-                        // Edge first seen by `onto` > "seen as of" on `to_rebase` graph for `onto`'s entry on
-                        // root node: Item is new.
-                        // Other case where item is new: the `to_rebase` has never seen anything from
-                        // the `onto` change set. All the items are new.
-                        updates.push(Update::NewEdge {
-                            source: to_rebase_container_index,
-                            destination: only_onto_edge_info.target_node_index,
-                            edge_weight: onto_edge_weight.clone(),
-                        });
+                let maybe_seen_by_to_rebase_at =
+                    if let Some(to_rebase_last_saw_onto) = to_rebase_last_saw_onto {
+                        if edge_weight_first_seen_by_onto <= to_rebase_last_saw_onto {
+                            Some(to_rebase_last_saw_onto)
+                        } else {
+                            None
+                        }
+                    } else {
+                        onto_edge_weight
+                            .vector_clock_first_seen()
+                            .entry_for(to_rebase_vector_clock_id)
+                    };
+
+                match maybe_seen_by_to_rebase_at {
+                    Some(seen_by_to_rebase_at) => {
+                        if onto_item_weight
+                            .vector_clock_write()
+                            .has_entries_newer_than(seen_by_to_rebase_at)
+                        {
+                            conflicts.push(Conflict::RemoveModifiedItem {
+                                container: to_rebase_container_index,
+                                removed_item: only_onto_edge_info.target_node_index,
+                            });
+                        }
                     }
-                }
-            } else if let Some(root_seen_as_of) = root_seen_as_of_onto {
-                if onto_item_weight
-                    .vector_clock_write()
-                    .has_entries_newer_than(root_seen_as_of)
-                {
-                    // Item write vector clock has entries > "seen as of" on `to_rebase` graph for
-                    // `onto`'s entry on root node: Conflict (RemoveModifiedItem)
-                    conflicts.push(Conflict::RemoveModifiedItem {
-                        container: to_rebase_container_index,
-                        removed_item: only_onto_edge_info.target_node_index,
-                    });
+                    None => updates.push(Update::NewEdge {
+                        source: to_rebase_container_index,
+                        destination: only_onto_edge_info.target_node_index,
+                        edge_weight: onto_edge_weight.clone(),
+                    }),
                 }
             }
-            // Item removed by `to_rebase`: No conflict & no update necessary.
         }
 
         // - Sets same: No conflicts/updates
