@@ -189,10 +189,6 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             },
             "resource": {
                 "last_synced": last_synced_value.unwrap_or(serde_json::Value::Null),
-                "logs": [
-                    "Setting dummySecretString to requestStorage",
-                     "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}",
-                ],
                 "payload": { "poop" :true },
                 "status": "ok",
             },

@@ -637,7 +637,6 @@ impl Component {
                     status: Some(ResourceStatus::Ok),
                     payload: None,
                     message: None,
-                    logs: Vec::new(),
                     last_synced: Some(Utc::now().to_rfc3339()),
                 },
             )
@@ -2980,7 +2979,6 @@ impl Component {
                     status: Some(ResourceStatus::Ok),
                     payload: None,
                     message: None,
-                    logs: Vec::new(),
                     last_synced: Some(Utc::now().to_rfc3339()),
                 },
             )

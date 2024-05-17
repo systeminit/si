@@ -62,7 +62,6 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
                     "key": "value",
                 })),
                 message: None,
-                logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
             },
         )
@@ -321,7 +320,6 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
                     "key": "value",
                 })),
                 message: None,
-                logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
             },
         )

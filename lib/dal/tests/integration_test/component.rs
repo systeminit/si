@@ -886,7 +886,6 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
                     "key": "value",
                 })),
                 message: None,
-                logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
             },
         )
@@ -1056,7 +1055,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
                     "key": "value",
                 })),
                 message: None,
-                logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
             },
         )
@@ -1103,7 +1101,6 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
                     "key": "value",
                 })),
                 message: None,
-                logs: Vec::new(),
                 last_synced: Some(Utc::now().to_rfc3339()),
             },
         )
@@ -1246,7 +1243,6 @@ async fn paste_component(ctx: &mut DalContext) {
             "resource_value": {},
             "resource": {
                 "last_synced": null,
-                "logs": [],
                 "status": "ok",
             },
             "si": {

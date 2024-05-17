@@ -91,8 +91,7 @@ impl JobConsumer for ActionJob {
             Err(err) => {
                 error!("Unable to finish action {}: {err}", self.id);
                 if let Err(err) =
-                    process_failed_action(ctx, self.id, format!("Action failed: {err}"), Vec::new())
-                        .await
+                    process_failed_action(ctx, self.id, format!("Action failed: {err}")).await
                 {
                     error!("Failed to process action failure: {err}");
                 }
@@ -151,17 +150,13 @@ async fn action_task(
     ctx.commit().await?;
     ctx.update_snapshot_to_visibility().await?;
 
-    let resource = Action::run(ctx, id).await?;
+    let (resource, logs) = Action::run(ctx, id).await?;
 
-    let logs: Vec<_> = match &resource {
-        Some(r) => r
-            .logs
-            .iter()
-            .flat_map(|l| l.split('\n'))
-            .map(|l| l.to_owned())
-            .collect(),
-        None => Vec::new(),
-    };
+    let logs: Vec<_> = logs
+        .iter()
+        .flat_map(|l| l.message.split('\n'))
+        .map(|l| l.to_owned())
+        .collect();
 
     WsEvent::action_return(ctx, id, prototype.kind, component_id, resource.clone())
         .await?
@@ -187,7 +182,6 @@ async fn process_failed_action(
     ctx: &DalContext,
     id: ActionId,
     error_message: String,
-    logs: Vec<String>,
 ) -> JobConsumerResult<()> {
     info!(%id, "processing action failed");
 
@@ -202,7 +196,6 @@ async fn process_failed_action(
         status: Some(ResourceStatus::Error),
         payload: component.resource(ctx).await?.payload,
         message: Some(error_message.clone()),
-        logs: logs.clone(),
         last_synced: None,
     };
 

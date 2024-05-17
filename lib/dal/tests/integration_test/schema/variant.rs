@@ -163,8 +163,6 @@ async fn all_prop_ids(ctx: &DalContext) {
         "root/qualification/qualificationItem/result",
         "root/resource",
         "root/resource/last_synced",
-        "root/resource/logs",
-        "root/resource/logs/log",
         "root/resource/message",
         "root/resource/payload",
         "root/resource/status",

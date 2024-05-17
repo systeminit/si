@@ -6,7 +6,7 @@ use si_events::ulid::Ulid;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::ResourceStatus;
+use veritech_client::{OutputStream, ResourceStatus};
 
 use crate::{
     action::dependency_graph::ActionDependencyGraph,
@@ -515,7 +515,7 @@ impl Action {
     pub async fn run(
         ctx: &DalContext,
         id: ActionId,
-    ) -> ActionResult<Option<DeprecatedActionRunResult>> {
+    ) -> ActionResult<(Option<DeprecatedActionRunResult>, Vec<OutputStream>)> {
         let component_id = Action::component_id(ctx, id)
             .await?
             .ok_or(ActionError::ComponentNotFoundForAction(id))?;
@@ -523,7 +523,7 @@ impl Action {
         let prototype_id = Action::prototype_id(ctx, id).await?;
         let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
-        let (func_execution_pk, resource) =
+        let (func_execution_pk, logs, resource) =
             ActionPrototype::run(ctx, prototype.id, component_id).await?;
         Action::set_func_execution_pk(ctx, id, Some(func_execution_pk)).await?;
 
@@ -542,7 +542,7 @@ impl Action {
             .publish_on_commit(ctx)
             .await?;
 
-        Ok(resource)
+        Ok((resource, logs))
     }
 
     pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {

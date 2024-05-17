@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
+use veritech_client::OutputStream;
 
 use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
@@ -322,7 +323,8 @@ impl DeprecatedActionPrototype {
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> DeprecatedActionPrototypeResult<Option<DeprecatedActionRunResult>> {
+    ) -> DeprecatedActionPrototypeResult<(Option<DeprecatedActionRunResult>, Vec<OutputStream>)>
+    {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.view(ctx).await?;
 
@@ -347,27 +349,29 @@ impl DeprecatedActionPrototype {
 
         logs.sort_by_key(|log| log.timestamp);
 
-        Ok(match return_value.value() {
-            Some(value) => {
-                let mut run_result: DeprecatedActionRunResult =
-                    serde_json::from_value(value.clone())?;
-                run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
+        Ok((
+            match return_value.value() {
+                Some(value) => {
+                    let run_result: DeprecatedActionRunResult =
+                        serde_json::from_value(value.clone())?;
 
-                component.set_resource(ctx, run_result.clone()).await?;
+                    component.set_resource(ctx, run_result.clone()).await?;
 
-                WsEvent::resource_refreshed(ctx, component.id())
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
+                    WsEvent::resource_refreshed(ctx, component.id())
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
 
-                if component.to_delete() && run_result.payload.is_none() {
-                    Component::remove(ctx, component.id()).await?;
+                    if component.to_delete() && run_result.payload.is_none() {
+                        Component::remove(ctx, component.id()).await?;
+                    }
+
+                    Some(run_result)
                 }
-
-                Some(run_result)
-            }
-            None => None,
-        })
+                None => None,
+            },
+            logs,
+        ))
     }
 
     pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> AttributePrototypeResult<()> {

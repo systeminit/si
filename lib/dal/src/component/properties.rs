@@ -27,8 +27,6 @@ pub struct ResourceProperties {
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    logs: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     last_synced: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     payload: Option<serde_json::Value>,
