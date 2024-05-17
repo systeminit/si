@@ -33,7 +33,6 @@ pub struct DeprecatedActionRunnerItem {
 struct DeprecatedActionsJobArgs {
     actions: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem>,
     batch_id: DeprecatedActionBatchId,
-    started: bool,
 }
 
 impl From<DeprecatedActionsJob> for DeprecatedActionsJobArgs {
@@ -41,7 +40,6 @@ impl From<DeprecatedActionsJob> for DeprecatedActionsJobArgs {
         Self {
             actions: value.actions,
             batch_id: value.batch_id,
-            started: value.started,
         }
     }
 }
@@ -49,7 +47,6 @@ impl From<DeprecatedActionsJob> for DeprecatedActionsJobArgs {
 #[derive(Clone, Debug, Serialize)]
 pub struct DeprecatedActionsJob {
     actions: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem>,
-    started: bool,
     batch_id: DeprecatedActionBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
@@ -62,21 +59,11 @@ impl DeprecatedActionsJob {
         actions: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem>,
         batch_id: DeprecatedActionBatchId,
     ) -> Box<Self> {
-        Self::new_raw(ctx, actions, batch_id, false)
-    }
-
-    fn new_raw(
-        ctx: &DalContext,
-        actions: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem>,
-        batch_id: DeprecatedActionBatchId,
-        started: bool,
-    ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
             actions,
-            started,
             batch_id,
             access_builder,
             visibility,
@@ -123,9 +110,11 @@ impl JobConsumer for DeprecatedActionsJob {
         let mut actions = self.actions.clone();
 
         // Mark the batch as started if it has not been yet.
-        if !self.started {
-            let mut batch = DeprecatedActionBatch::get_by_id(ctx, self.batch_id).await?;
+        let mut batch = DeprecatedActionBatch::get_by_id(ctx, self.batch_id).await?;
+        if batch.started_at.is_none() {
             batch.stamp_started(ctx).await?;
+            ctx.blocking_commit().await?;
+            ctx.update_snapshot_to_visibility().await?;
         }
 
         if actions.is_empty() {
@@ -248,7 +237,6 @@ impl TryFrom<JobInfo> for DeprecatedActionsJob {
         Ok(Self {
             actions: args.actions,
             batch_id: args.batch_id,
-            started: args.started,
             access_builder: job.access_builder,
             visibility: job.visibility,
             job: Some(job),

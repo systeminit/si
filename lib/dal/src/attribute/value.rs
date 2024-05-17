@@ -54,8 +54,6 @@ use tokio::sync::{RwLock, TryLockError};
 
 pub use dependent_value_graph::DependentValueGraph;
 
-use crate::action::prototype::ActionKind;
-use crate::action::Action;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
@@ -80,8 +78,7 @@ use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotErr
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, SchemaVariant, Secret, SecretError, TransactionsError,
-    Workspace,
+    OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -2025,43 +2022,36 @@ impl AttributeValue {
         }
 
         // Enqueue update actions if they exist
+
+        // FIXME(paulo): This is wrong, we should not enqueue updates here, since this branch is triggered from DVU
+        // Which would make the rebaser dispatch the update action if the DVU is running on head, without user intervention
+        /*
         {
-            let workspace_pk = ctx
-                .tenancy()
-                .workspace_pk()
-                .ok_or(ComponentError::WorkspacePkNone)
-                .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
-
-            let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk)
-                .await
-                .map_err(|err| AttributeValueError::Workspace(err.to_string()))?;
-
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             let schema_variant_id = Component::schema_variant_id(ctx, component_id)
                 .await
                 .map_err(|e| AttributeValueError::Component(Box::new(e)))?;
 
-            if workspace.uses_actions_v2() {
-                for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-                    ctx,
-                    schema_variant_id,
-                    ActionKind::Update,
-                )
-                .await
-                .map_err(|err| AttributeValueError::Action(err.to_string()))?
+            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+                ctx,
+                schema_variant_id,
+                ActionKind::Update,
+            )
+            .await
+            .map_err(|err| AttributeValueError::Action(err.to_string()))?
+            {
+                if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                    .await
+                    .map_err(|err| AttributeValueError::Action(err.to_string()))?
+                    .is_none()
                 {
-                    if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                    Action::new(ctx, prototype_id, Some(component_id))
                         .await
-                        .map_err(|err| AttributeValueError::Action(err.to_string()))?
-                        .is_none()
-                    {
-                        Action::new(ctx, prototype_id, Some(component_id))
-                            .await
-                            .map_err(|err| AttributeValueError::Action(err.to_string()))?;
-                    }
+                        .map_err(|err| AttributeValueError::Action(err.to_string()))?;
                 }
             }
         }
+        */
 
         Ok(())
     }

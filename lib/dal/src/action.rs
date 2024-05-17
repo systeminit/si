@@ -545,6 +545,11 @@ impl Action {
         Ok(resource)
     }
 
+    pub fn is_eligible_to_dispatch(&self) -> bool {
+        // Only Actions in the ActionState::Queued state are dispatchable.
+        self.state() == ActionState::Queued
+    }
+
     pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
         let mut result = Vec::new();
@@ -552,8 +557,7 @@ impl Action {
         for possible_action_id in action_dependency_graph.independent_actions() {
             let action = Action::get_by_id(ctx, possible_action_id).await?;
 
-            // Only Actions in the ActionState::Queued state are dispatchable.
-            if action.state() == ActionState::Queued {
+            if action.is_eligible_to_dispatch() {
                 result.push(possible_action_id);
             }
         }

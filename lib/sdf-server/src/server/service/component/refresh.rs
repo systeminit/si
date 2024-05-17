@@ -3,7 +3,7 @@ use axum::Json;
 
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
-    job::definition::RefreshJob, Component, ComponentError, ComponentId, Visibility, Workspace,
+    job::definition::RefreshJob, Component, ComponentId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ use crate::server::tracking::track;
 #[serde(rename_all = "camelCase")]
 pub struct RefreshRequest {
     pub component_id: ComponentId,
+    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -46,15 +47,9 @@ pub async fn refresh(
         }),
     );
 
-    let workspace_pk = ctx
-        .tenancy()
-        .workspace_pk()
-        .ok_or(ComponentError::WorkspacePkNone)?;
-    let workspace = Workspace::get_by_pk_or_error(&ctx, &workspace_pk).await?;
-
     // Parallelizes resource refreshing
     for component_id in component_ids {
-        if workspace.uses_actions_v2() {
+        if request.v2 {
             let variant = Component::schema_variant_for_component_id(&ctx, component_id).await?;
 
             let all_prototypes_for_variant: Vec<ActionPrototype> =
