@@ -1243,6 +1243,8 @@ impl WorkspaceSnapshotGraph {
                 self.graph
                     .update_edge(node_index, latest_target, edge.weight().clone());
             }
+
+            self.update_merkle_tree_hash(node_index)?;
         }
 
         Ok(())
