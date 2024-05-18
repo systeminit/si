@@ -120,6 +120,8 @@ pub enum PkgError {
     WorkspaceExportNotSupported(),
     #[error("Workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
+    #[error("workspace pk not found on context")]
+    WorkspacePkNone,
     #[error(transparent)]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
 }

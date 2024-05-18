@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use telemetry::prelude::*;
 
+use crate::action::prototype::ActionPrototype;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
@@ -118,14 +119,19 @@ async fn update_action_associations(
     kind: DeprecatedActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
-    // Clean up existing prototypes for all variants that use it. Since you could theoretically use
-    // the same func for different action kinds, we only clean up existing prototypes for the same
-    // func AND kind.
+    // Clean up existing prototypes for all variants that use it.
+
     for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
         for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await? {
             let prototype_func_id = prototype.func_id(ctx).await?;
-            if func.id == prototype_func_id && kind == prototype.kind {
+            if func.id == prototype_func_id {
                 DeprecatedActionPrototype::remove(ctx, prototype.id).await?;
+            }
+        }
+        for prototype in ActionPrototype::for_variant(ctx, schema_variant_id).await? {
+            let prototype_func_id = ActionPrototype::func_id(ctx, prototype.id()).await?;
+            if func.id == prototype_func_id {
+                ActionPrototype::remove(ctx, prototype.id()).await?;
             }
         }
     }
@@ -136,6 +142,16 @@ async fn update_action_associations(
             ctx,
             Some(func.name.to_owned()),
             kind,
+            schema_variant_id,
+            func.id,
+        )
+        .await?;
+
+        ActionPrototype::new(
+            ctx,
+            crate::action::prototype::ActionKind::from(kind),
+            func.name.to_owned(),
+            None,
             schema_variant_id,
             func.id,
         )

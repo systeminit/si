@@ -416,7 +416,7 @@ async fn create_action_no_options(ctx: &mut DalContext) {
 
 #[test]
 async fn create_action_with_schema_variant(ctx: &mut DalContext) {
-    let maybe_swifty_schema = Schema::find_by_name(ctx, "swifty")
+    let maybe_swifty_schema = Schema::find_by_name(ctx, "small even lego")
         .await
         .expect("unable to get schema");
     assert!(maybe_swifty_schema.is_some());
@@ -436,7 +436,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
         Some(func_name.clone()),
         Some(CreateFuncOptions::ActionOptions {
             schema_variant_id: sv_id,
-            action_kind: DeprecatedActionKind::Create,
+            action_kind: DeprecatedActionKind::Update,
         }),
     )
     .await
@@ -476,6 +476,40 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
+}
+
+#[test]
+async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
+    let maybe_swifty_schema = Schema::find_by_name(ctx, "small even lego")
+        .await
+        .expect("unable to get schema");
+    assert!(maybe_swifty_schema.is_some());
+
+    let swifty_schema = maybe_swifty_schema.unwrap();
+    let maybe_sv_id = swifty_schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get schema variant");
+    assert!(maybe_sv_id.is_some());
+    let sv_id = maybe_sv_id.unwrap();
+
+    let func_name = "Paul's Test Action Func".to_string();
+    let func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Action,
+        Some(func_name.clone()),
+        Some(CreateFuncOptions::ActionOptions {
+            schema_variant_id: sv_id,
+            action_kind: DeprecatedActionKind::Create,
+        }),
+    )
+    .await;
+
+    if let Err(FuncAuthoringError::ActionKindAlreadyExists(err_schema_variant_id)) = func {
+        assert_eq!(sv_id, err_schema_variant_id)
+    } else {
+        panic!("Test should fail if we don't get action kind already exists error")
+    }
 }
 
 #[test]

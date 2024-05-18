@@ -44,6 +44,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::OutputStream;
 
+use crate::action::prototype::ActionPrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
@@ -74,8 +75,10 @@ mod ts_types;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncAuthoringError {
+    #[error("action kind already exists for schema variant")]
+    ActionKindAlreadyExists(SchemaVariantId),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype already set by func (id: {0}) (name: {1})")]
@@ -88,6 +91,8 @@ pub enum FuncAuthoringError {
     BeforeFunc(#[from] BeforeFuncError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("deprecated action prototype error: {0}")]
+    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
