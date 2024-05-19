@@ -141,6 +141,7 @@ impl ContentNodeWeight {
             ContentAddress::InputSocket(_) => ContentAddress::InputSocket(content_hash),
             ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
             ContentAddress::Module(_) => ContentAddress::Module(content_hash),
+            ContentAddress::Note(_) => ContentAddress::Note(content_hash),
             ContentAddress::Prop(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Prop".to_string(),

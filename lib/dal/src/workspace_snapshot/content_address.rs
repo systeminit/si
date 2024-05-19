@@ -21,6 +21,7 @@ pub enum ContentAddress {
     InputSocket(ContentHash),
     JsonValue(ContentHash),
     Module(ContentHash),
+    Note(ContentHash),
     OutputSocket(ContentHash),
     Prop(ContentHash),
     Root,
@@ -48,6 +49,7 @@ impl ContentAddress {
             | ContentAddress::InputSocket(id)
             | ContentAddress::JsonValue(id)
             | ContentAddress::Module(id)
+            | ContentAddress::Note(id)
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)

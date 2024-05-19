@@ -34,6 +34,7 @@ pub enum ContentTypes {
     FuncArgument(FuncArgumentContent),
     InputSocket(InputSocketContent),
     Module(ModuleContent),
+    Note(NoteContent),
     Prop(PropContent),
     Schema(SchemaContent),
     SchemaVariant(SchemaVariantContent),
@@ -89,6 +90,7 @@ impl_into_content_types!(FuncArgument);
 impl_into_content_types!(InputSocket);
 impl_into_content_types!(OutputSocket);
 impl_into_content_types!(Module);
+impl_into_content_types!(Note);
 impl_into_content_types!(Prop);
 impl_into_content_types!(Schema);
 impl_into_content_types!(SchemaVariant);
@@ -277,6 +279,20 @@ pub struct ModuleContentV1 {
     pub description: String,
     pub created_by_email: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum NoteContent {
+    V1(NoteContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct NoteContentV1 {
+    pub timestamp: Timestamp,
+    pub note: String,
+    pub x: String,
+    pub y: String,
+    pub created_by_email: String,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

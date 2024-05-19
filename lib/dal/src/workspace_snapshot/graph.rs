@@ -820,6 +820,7 @@ impl WorkspaceSnapshotGraph {
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
                             ContentAddressDiscriminants::Module => "yellow",
+                            ContentAddressDiscriminants::Note => "black",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
@@ -857,6 +858,7 @@ impl WorkspaceSnapshotGraph {
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                         CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
+                        CategoryNodeKind::Note => ("Notes (Category)".to_string(), "black"),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
