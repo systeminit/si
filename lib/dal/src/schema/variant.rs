@@ -125,6 +125,8 @@ pub enum SchemaVariantError {
     Prop(#[from] PropError),
     #[error("found prop id {0} that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("cannot find prop at path {1} for SchemaVariant {0}")]
+    PropNotFoundAtPath(SchemaVariantId, String),
     #[error("schema variant {0} has no root node")]
     RootNodeMissing(SchemaVariantId),
     #[error("schema error: {0}")]
