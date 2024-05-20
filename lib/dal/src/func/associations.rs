@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -105,13 +107,14 @@ impl FuncAssociations {
                     None => DeprecatedActionKind::Create,
                 };
 
+                let ts_types = Self::compile_action_types(ctx, &schema_variant_ids).await?;
+
                 (
                     Some(Self::Action {
                         kind,
                         schema_variant_ids,
                     }),
-                    // TODO(nick): ensure the input type is correct.
-                    String::new(),
+                    ts_types,
                 )
             }
             FuncKind::Attribute => {
@@ -124,6 +127,8 @@ impl FuncAssociations {
                     prototypes
                         .push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
                 }
+
+                let ts_types = Self::compile_attribute_function_types(ctx, &prototypes).await?;
 
                 (
                     Some(Self::Attribute {
@@ -138,8 +143,7 @@ impl FuncAssociations {
                             })
                             .collect(),
                     }),
-                    // TODO(nick): ensure the input type is correct.
-                    "type Input = any".into(),
+                    ts_types,
                 )
             }
             FuncKind::Authentication => {
@@ -361,6 +365,85 @@ impl FuncAssociations {
             .iter()
             .filter_map(|arg| LeafInputLocation::maybe_from_arg_name(&arg.name))
             .collect())
+    }
+
+    async fn compile_attribute_function_types(
+        ctx: &DalContext,
+        prototypes: &[AttributePrototypeBag],
+    ) -> FuncAssociationsResult<String> {
+        let mut input_ts_types = "type Input = {\n".to_string();
+
+        let mut output_ts_types = vec![];
+        let mut argument_types = HashMap::new();
+        for prototype in prototypes {
+            for arg in prototype.clone().prototype_arguments {
+                if let Some(prop_id) = arg.prop_id {
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    let ts_type = prop.ts_type(ctx).await?;
+
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        argument_types.entry(arg.func_argument_id)
+                    {
+                        e.insert(vec![ts_type]);
+                    } else if let Some(ts_types_for_arg) =
+                        argument_types.get_mut(&arg.func_argument_id)
+                    {
+                        if !ts_types_for_arg.contains(&ts_type) {
+                            ts_types_for_arg.push(ts_type)
+                        }
+                    }
+                }
+                let output_type = if let Some(output_prop_id) = prototype.prop_id {
+                    Prop::get_by_id_or_error(ctx, output_prop_id)
+                        .await?
+                        .ts_type(ctx)
+                        .await?
+                } else {
+                    "any".to_string()
+                };
+
+                if !output_ts_types.contains(&output_type) {
+                    output_ts_types.push(output_type);
+                }
+            }
+        }
+        for (arg_id, ts_types) in argument_types.iter() {
+            let func_arg = FuncArgument::get_by_id_or_error(ctx, *arg_id).await?;
+            let arg_name = func_arg.name;
+            input_ts_types
+                .push_str(format!("{}?: {} | null;\n", arg_name, ts_types.join(" | ")).as_str());
+        }
+        input_ts_types.push_str("};");
+
+        let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
+
+        Ok(format!("{}\n{}", input_ts_types, output_ts))
+    }
+
+    async fn compile_action_types(
+        ctx: &DalContext,
+        schema_variant_ids: &[SchemaVariantId],
+    ) -> FuncAssociationsResult<String> {
+        let mut ts_types = vec![];
+        for variant_id in schema_variant_ids {
+            let path = "root";
+            let prop = match Prop::find_prop_by_path(ctx, *variant_id, &PropPath::new([path])).await
+            {
+                Ok(prop_id) => prop_id,
+                Err(_) => Err(SchemaVariantError::PropNotFoundAtPath(
+                    *variant_id,
+                    path.to_string(),
+                ))?,
+            };
+            ts_types.push(prop.ts_type(ctx).await?)
+        }
+        Ok(format!(
+            "type Input {{
+            kind: 'standard';
+            properties: {};
+        }}",
+            ts_types.join(" | "),
+        ))
     }
 
     async fn compile_leaf_function_input_types(

@@ -1,3 +1,4 @@
+use async_recursion::async_recursion;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,6 +36,8 @@ pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropError {
+    #[error("array missing child element: {0}")]
+    ArrayMissingChildElement(PropId),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -1024,63 +1027,62 @@ impl Prop {
         Ok(ordered_child_props)
     }
 
-    // TODO(nick): this is straight up broken and inverted. You need to encapsulate the child type
-    // in the parent type. The problem is that this was ported from a recursive function in the old
-    // engine and is now a work queue. The collection pattern is ironically inverted: now, we start
-    // at the highest level and descend (instead of immediately descending and popping the result
-    // back up).
+    #[instrument(level = "debug", skip_all)]
+    #[async_recursion]
     pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
-        let mut work_queue = VecDeque::new();
-        work_queue.push_back((self.id, self.kind));
+        let self_path = self.path(ctx).await?;
 
-        let mut ts_type = "".to_string();
-        while let Some((prop_id, prop_kind)) = work_queue.pop_front() {
-            ts_type = match prop_kind {
-                PropKind::Array => {
-                    let children = Self::direct_child_props_ordered(ctx, prop_id).await?;
-                    let array_element_type = children
-                        .first()
-                        .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))?;
-
-                    work_queue.push_back((array_element_type.id, array_element_type.kind));
-                    format!("{ts_type}[] | null | undefined")
-                }
-                PropKind::Json => {
-                    "object | array | string | number | boolean | null | undefined".into()
-                }
-                PropKind::Boolean => "boolean | null | undefined".into(),
-                PropKind::Integer => "number | null | undefined".into(),
-                PropKind::Object => {
-                    let mut object_interface = "{\n".to_string();
-                    for child in &Self::direct_child_props_ordered(ctx, prop_id).await? {
-                        // We serialize the object key as a JSON string because its
-                        // the easiest way to ensure we create a valid TS interface
-                        // even with keys that are not valid javascript identifiers.
-                        // (e.g., we escape quotes in the prop name this way)
-                        let name_value = serde_json::to_value(&child.name)?;
-                        let name_serialized = serde_json::to_string(&name_value)?;
-                        object_interface
-                            .push_str(format!("{name_serialized}: {ts_type};\n").as_str());
-                        work_queue.push_back((child.id, child.kind));
-                    }
-                    object_interface.push('}');
-
-                    object_interface
-                }
-                PropKind::Map => {
-                    let children = Self::direct_child_props_ordered(ctx, prop_id).await?;
-
-                    let map_element_type = children
-                        .first()
-                        .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))?;
-
-                    work_queue.push_back((map_element_type.id, map_element_type.kind));
-                    format!("Record<string, {ts_type}> | null | undefined")
-                }
-                PropKind::String => "string | null | undefined".into(),
-            }
+        if self_path == PropPath::new(["root", "resource", "payload"]) {
+            return Ok("any".to_string());
         }
 
-        Ok(ts_type)
+        if self_path == PropPath::new(["root", "resource", "status"]) {
+            return Ok("'ok' | 'warning' | 'error' | undefined | null".to_owned());
+        }
+
+        Ok(match self.kind {
+            PropKind::Boolean => "boolean".to_string(),
+            PropKind::Integer => "number".to_string(),
+            PropKind::String => "string".to_string(),
+            PropKind::Array => {
+                let child_props = Self::direct_child_props_ordered(ctx, self.id).await?;
+                let first_child_prop = child_props
+                    .first()
+                    .ok_or(PropError::ArrayMissingChildElement(self.id))?;
+
+                let child_prop_ts_type = first_child_prop.ts_type(ctx).await?;
+
+                format!("{}[]", child_prop_ts_type)
+            }
+            PropKind::Map => {
+                let child_props = Self::direct_child_props_ordered(ctx, self.id).await?;
+                let first_child_prop = child_props
+                    .first()
+                    .ok_or(PropError::ArrayMissingChildElement(self.id))?;
+
+                let child_prop_ts_type = first_child_prop.ts_type(ctx).await?;
+
+                format!("Record<string, {}>", child_prop_ts_type)
+            }
+            PropKind::Object => {
+                let mut object_type = "{\n".to_string();
+                for child in Self::direct_child_props_ordered(ctx, self.id).await? {
+                    let name_value = serde_json::to_value(&child.name)?;
+                    let name_serialized = serde_json::to_string(&name_value)?;
+                    object_type.push_str(
+                        format!(
+                            "{}: {} | null | undefined;\n",
+                            &name_serialized,
+                            child.ts_type(ctx).await?
+                        )
+                        .as_str(),
+                    );
+                }
+                object_type.push('}');
+
+                object_type
+            }
+            _ => "".to_string(),
+        })
     }
 }
