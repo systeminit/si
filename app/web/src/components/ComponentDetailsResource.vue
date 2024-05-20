@@ -42,17 +42,12 @@
           </div>
           <div class="pr-sm">
             <ActionRunnerDetails
-              v-if="
-                selectedComponentResource.logs &&
-                selectedComponentResource.logs.length > 0
-              "
               :health="selectedComponentResource.status"
               :message="
                 [selectedComponentResource.message ?? ''].filter(
                   (f) => f.length > 0,
                 )
               "
-              :details="selectedComponentResource.logs"
             />
           </div>
         </template>

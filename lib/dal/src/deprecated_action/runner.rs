@@ -11,6 +11,7 @@ use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::OutputStream;
 
 use crate::change_set::ChangeSetError;
 use crate::deprecated_action::batch::{
@@ -290,7 +291,7 @@ impl DeprecatedActionRunner {
     pub async fn run(
         &mut self,
         ctx: &DalContext,
-    ) -> DeprecatedActionRunnerResult<Option<DeprecatedActionRunResult>> {
+    ) -> DeprecatedActionRunnerResult<(Option<DeprecatedActionRunResult>, Vec<OutputStream>)> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
 
@@ -298,7 +299,7 @@ impl DeprecatedActionRunner {
             DeprecatedActionPrototype::get_by_id_or_error(ctx, self.action_prototype_id).await?;
 
         Ok(match action_prototype.run(ctx, self.component_id).await {
-            Ok(Some(run_result)) => {
+            Ok((Some(run_result), logs)) => {
                 let completion_status = match run_result.status {
                     Some(ResourceStatus::Ok) | Some(ResourceStatus::Warning) => {
                         ActionCompletionStatus::Success
@@ -315,9 +316,9 @@ impl DeprecatedActionRunner {
                 )
                 .await?;
 
-                Some(run_result)
+                (Some(run_result), logs)
             }
-            Ok(None) => {
+            Ok((None, logs)) => {
                 error!("ActionRunner did not return a value!");
                 self.stamp_finished(
                     ctx,
@@ -327,7 +328,7 @@ impl DeprecatedActionRunner {
                 )
                 .await?;
 
-                None
+                (None, logs)
             }
             Err(e) => {
                 error!("Unable to run action: {e}");
@@ -339,7 +340,7 @@ impl DeprecatedActionRunner {
                 )
                 .await?;
 
-                None
+                (None, Vec::new())
             }
         })
     }
@@ -454,7 +455,6 @@ impl DeprecatedActionRunner {
                     status: resource.status,
                     message: resource.message,
                     payload: resource.payload,
-                    logs: resource.logs,
                     last_synced: resource.last_synced,
                 })
             } else {

@@ -67,7 +67,6 @@ async fn set_resource(ctx: &mut DalContext) {
         status: None,
         payload: None,
         message: None,
-        logs: Vec::new(),
         last_synced: None,
     };
     runner
@@ -340,7 +339,6 @@ async fn stamp_finished(ctx: &mut DalContext) {
                 status: None,
                 payload: None,
                 message: None,
-                logs: Vec::new(),
                 last_synced: None
             })
         )
@@ -359,7 +357,6 @@ async fn stamp_finished(ctx: &mut DalContext) {
                 status: None,
                 payload: None,
                 message: None,
-                logs: Vec::new(),
                 last_synced: None,
             }),
         )
@@ -434,5 +431,5 @@ async fn run(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    assert!(runner.run(ctx).await.expect("unable to run").is_some());
+    assert!(runner.run(ctx).await.expect("unable to run").0.is_some());
 }

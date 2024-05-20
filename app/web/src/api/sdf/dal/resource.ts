@@ -17,7 +17,6 @@ export interface Resource {
   payload: unknown;
   status: ResourceHealth | null;
   message: string | null;
-  logs: string[];
   lastSynced?: string;
 }
 

@@ -1,7 +1,7 @@
 <template>
   <div class="flex-none w-6 h-6">
     <IconButton
-      tooltip="see logs"
+      tooltip="see more"
       icon="logs-pop"
       iconHover="logs-pop-square"
       noBorderOnHover
@@ -32,27 +32,6 @@
           <p v-if="message.length === 0">Health {{ health ?? "unknown" }}</p>
         </span>
       </template>
-
-      <div
-        class="text-lg font-bold border-warning-600 text-warning-600 dark:text-warning-500 pb-xs"
-      >
-        {{ details.length === 0 ? "No Logs" : "Logs:" }}
-      </div>
-
-      <!-- modal default content-->
-      <div
-        class="border border-warning-600 text-warning-600 dark:text-warning-500 rounded overflow-hidden"
-      >
-        <div class="flex flex-col gap-sm max-h-[80vh] overflow-y-auto p-xs">
-          <p
-            v-for="(log, index) in details"
-            :key="index"
-            class="text-sm break-all"
-          >
-            {{ log }}
-          </p>
-        </div>
-      </div>
     </Modal>
   </div>
 </template>
@@ -66,12 +45,7 @@ import IconButton from "./IconButton.vue";
 const props = defineProps<{
   health: ResourceHealth | null;
   message: string[];
-  details: string[];
 }>();
-
-const details = computed(() => {
-  return props.details.flatMap((d) => d.split("\\n"));
-});
 
 const icon = computed(() => {
   switch (props.health) {

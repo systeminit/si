@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
 use thiserror::Error;
+use veritech_client::OutputStream;
 
 use crate::{
     func::{
@@ -227,7 +228,11 @@ impl ActionPrototype {
         ctx: &DalContext,
         id: ActionPrototypeId,
         component_id: ComponentId,
-    ) -> ActionPrototypeResult<(FuncExecutionPk, Option<DeprecatedActionRunResult>)> {
+    ) -> ActionPrototypeResult<(
+        FuncExecutionPk,
+        Vec<OutputStream>,
+        Option<DeprecatedActionRunResult>,
+    )> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.view(ctx).await?;
 
@@ -256,10 +261,7 @@ impl ActionPrototype {
 
         let value = match return_value.value() {
             Some(value) => {
-                let mut run_result: DeprecatedActionRunResult =
-                    serde_json::from_value(value.clone())?;
-                run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
-
+                let run_result: DeprecatedActionRunResult = serde_json::from_value(value.clone())?;
                 component.set_resource(ctx, run_result.clone()).await?;
 
                 WsEvent::resource_refreshed(ctx, component.id())
@@ -275,7 +277,7 @@ impl ActionPrototype {
             }
             None => None,
         };
-        Ok((func_execution_pk, value))
+        Ok((func_execution_pk, logs, value))
     }
 
     pub async fn for_variant(

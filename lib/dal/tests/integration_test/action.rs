@@ -223,6 +223,7 @@ async fn run(ctx: &mut DalContext) {
     assert!(Action::run(ctx, action.id())
         .await
         .expect("unable to run")
+        .0
         .is_some());
 }
 

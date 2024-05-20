@@ -113,9 +113,6 @@ pub struct DeprecatedActionRunResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub message: Option<String>,
-    // Note: we might benefit from adding the metadata here, but it's unused and takes a lot of boilerplate in the root_prop definition
-    #[serde(default)]
-    pub logs: Vec<String>,
     #[serde(default)]
     pub last_synced: Option<String>,
 }
@@ -128,7 +125,6 @@ impl ExtractPayload for ActionRunResultSuccess {
             payload: self.payload,
             status: Some(self.status),
             message: self.message.or(self.error),
-            logs: Default::default(),
             last_synced: Some(Utc::now().to_rfc3339()),
         })
     }

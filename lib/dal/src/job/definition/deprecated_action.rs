@@ -273,20 +273,16 @@ async fn action_task(
 ) -> JobConsumerResult<(DeprecatedActionRunner, Vec<String>)> {
     // Run the action (via the action prototype).
     let mut action = DeprecatedActionRunner::get_by_id(ctx, action_item.id).await?;
-    let resource = action.run(ctx).await?;
+    let (resource, logs) = action.run(ctx).await?;
     let completion_status = action
         .completion_status
         .ok_or(DeprecatedActionRunnerError::EmptyCompletionStatus)?;
 
-    let logs: Vec<_> = match &resource {
-        Some(r) => r
-            .logs
-            .iter()
-            .flat_map(|l| l.split('\n'))
-            .map(|l| l.to_owned())
-            .collect(),
-        None => vec![],
-    };
+    let logs: Vec<_> = logs
+        .iter()
+        .flat_map(|l| l.message.split('\n'))
+        .map(|l| l.to_owned())
+        .collect();
 
     WsEvent::deprecated_action_return(
         ctx,
@@ -362,7 +358,7 @@ async fn process_failed_action_inner(
     let mut failed_actions = VecDeque::new();
     failed_actions.push_back((failed_action_id, error_message, logs));
 
-    while let Some((id, err, logs)) = failed_actions.pop_front() {
+    while let Some((id, err, _logs)) = failed_actions.pop_front() {
         info!(%id, "processing failed action");
         actions.remove(&id);
 
@@ -375,7 +371,6 @@ async fn process_failed_action_inner(
             status: Some(ResourceStatus::Error),
             payload: action.resource.clone().and_then(|r| r.payload),
             message: Some(err.clone()),
-            logs: logs.clone(),
             last_synced: None,
         };
 

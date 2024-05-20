@@ -36,7 +36,6 @@
         class="dark:text-action-300 text-action-500 flex-none cursor-pointer flex flex-row gap-xs"
       >
         <ActionRunnerDetails
-          v-if="runner.resource.logs"
           :health="runner.resource.status"
           :message="
             [
@@ -47,7 +46,6 @@
                   : 'Error'),
             ].filter((f) => f.length > 0)
           "
-          :details="runner.resource.logs"
         />
         <IconButton
           v-if="runner.resource?.payload"
@@ -74,7 +72,6 @@
             <div class="font-bold">
               {{ runner.resource.message ?? "Resource Code" }}
               <ActionRunnerDetails
-                v-if="runner.resource.logs && runner.resource.logs.length > 0"
                 :health="runner.resource.status"
                 :message="
                   [
@@ -82,7 +79,6 @@
                     runner.resource.message ?? '',
                   ].filter((f) => f.length > 0)
                 "
-                :details="runner.resource.logs"
               />
             </div>
           </template>

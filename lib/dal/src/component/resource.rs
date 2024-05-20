@@ -15,7 +15,6 @@ pub struct ResourceView {
     pub status: Option<ResourceStatus>,
     pub message: Option<String>,
     pub payload: Option<Value>,
-    pub logs: Vec<String>,
     pub last_synced: Option<String>,
 }
 
@@ -40,7 +39,6 @@ impl ResourceView {
             payload: Some(payload),
             message: result.message,
             status: result.status,
-            logs: result.logs,
             last_synced: result.last_synced,
         })
     }

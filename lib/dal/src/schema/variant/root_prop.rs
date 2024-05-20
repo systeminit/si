@@ -310,32 +310,6 @@ impl RootProp {
         )
         .await?;
 
-        // /root/resource/logs
-        let resource_logs_prop = Prop::new(
-            ctx,
-            "logs",
-            PropKind::Array,
-            true,
-            None,
-            None,
-            None,
-            resource_prop.id(),
-        )
-        .await?;
-
-        // /root/resource/logs/log
-        let _resource_logs_log_prop = Prop::new(
-            ctx,
-            "log",
-            PropKind::String,
-            true,
-            None,
-            None,
-            None,
-            resource_logs_prop.id(),
-        )
-        .await?;
-
         // /root/resource/payload
         let _resource_payload_prop = Prop::new(
             ctx,
