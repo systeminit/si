@@ -212,7 +212,9 @@ impl FuncAuthoringClient {
         let func = Func::get_by_id_or_error(ctx, id).await?;
 
         match func.kind {
-            FuncKind::Attribute => execute::execute_attribute_func(ctx, &func).await?,
+            FuncKind::Qualification | FuncKind::CodeGeneration | FuncKind::Attribute => {
+                execute::execute_attribute_func(ctx, &func).await?
+            }
             FuncKind::Action => {
                 // TODO(nick): fully restore or wait for actions v2. Essentially, we need to run
                 // every prototype using the func id for every component.
