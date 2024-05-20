@@ -101,7 +101,7 @@
             </div>
           </div>
           <SourceIconWithTooltip
-            v-if="!(widgetKind === 'secret')"
+            v-if="!(widgetKind === 'secret') && !props.isRootProp"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
@@ -382,7 +382,9 @@
             @blur="onBlur"
             @change="updateValue"
             @focus="onFocus"
-            @input="(e) => newValueBoolean = (e.target as HTMLInputElement)?.checked"
+            @input="
+              (e) => (newValueBoolean = (e.target as HTMLInputElement)?.checked)
+            "
           />
           <div class="attributes-panel-item__input-value">
             <Icon
@@ -608,6 +610,7 @@ const props = defineProps({
   startCollapsed: { type: Boolean },
   // number of prop keys to show while collapsed
   numPreviewProps: { type: Number, default: 3 },
+  isRootProp: { type: Boolean, default: false },
 });
 
 const headerMainLabelRef = ref();
