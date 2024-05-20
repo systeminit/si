@@ -44,10 +44,12 @@
       <AttributesPanelItem
         v-if="domainTree && domainTree.children.length"
         :attributeDef="domainTree"
+        isRootProp
       />
       <AttributesPanelItem
         v-if="secretsTree && secretsTree.children.length"
         :attributeDef="secretsTree"
+        isRootProp
       />
     </div>
 
