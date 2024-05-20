@@ -44,8 +44,19 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_TOOLS_PROD_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_TOOLS_PROD_SECRET_KEY }}
           aws-region: us-east-1
-      - name: Instance Refresh for chosen services
+      - name: Instance Refresh for chosen services & CDN Invalidation
         run: |
+          invalidate_distribution() {
+            DIST_ID=$1
+            # Create a CloudFront invalidation for all objects (/*)
+            invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
+            # Check the status of the invalidation until it's completed
+            while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+                echo "Invalidation is still in progress. Waiting..."
+                sleep 5
+            done
+            echo "Invalidation of web frontend is complete."
+          }
           SERVICE="${{ github.event.inputs.service }}"
           if [ "$SERVICE" = "all" ]; then
             echo "Deploying errything!"
@@ -54,8 +65,11 @@ jobs:
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-sdf
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-veritech
             aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
+            invalidate_distribution E1MTI3007PGD67
           elif [ "$SERVICE" = "web" ]; then
+            echo "Deploying $SERVICE!"
             aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
+            invalidate_distribution E1MTI3007PGD67
           else
             echo "Deploying $SERVICE!"
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
