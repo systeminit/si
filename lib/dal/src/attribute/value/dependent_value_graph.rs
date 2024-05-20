@@ -482,6 +482,10 @@ impl DependentValueGraph {
         self.inner.independent_ids()
     }
 
+    pub fn all_value_ids(&self) -> Vec<AttributeValueId> {
+        self.inner.all_ids()
+    }
+
     /// Indicates whether the value needs to be processed. This is useful for determining when to
     /// filter or de-duplicate values when executing from their prototype functions. If the value is
     /// marked as needing to be processed, it likely needs to execute from its prototype function.

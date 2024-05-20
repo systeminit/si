@@ -1428,4 +1428,31 @@ impl WorkspaceSnapshot {
 
         Ok(value_ids)
     }
+
+    /// List all the `value_ids` from the dependent value nodes in the category.
+    pub async fn list_dependent_value_value_ids(&self) -> WorkspaceSnapshotResult<Vec<Ulid>> {
+        let dv_category_id = match self
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .await?
+        {
+            Some(cat_id) => cat_id,
+            None => {
+                return Ok(vec![]);
+            }
+        };
+
+        let mut value_ids = vec![];
+        for dv_node_idx in self
+            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let dv_value_node_weight = self
+                .get_node_weight(dv_node_idx)
+                .await?
+                .get_dependent_value_root_node_weight()?;
+            value_ids.push(dv_value_node_weight.value_id());
+        }
+
+        Ok(value_ids)
+    }
 }

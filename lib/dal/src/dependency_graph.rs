@@ -105,4 +105,8 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
     pub fn id_to_index_map(&self) -> &HashMap<T, NodeIndex> {
         &self.id_to_index_map
     }
+
+    pub fn all_ids(&self) -> Vec<T> {
+        self.graph.node_weights().copied().collect()
+    }
 }
