@@ -204,6 +204,21 @@ where
             .await
     }
 
+    pub async fn insert_or_update(&self, key: Arc<str>, value: V) {
+        self.memory_cache.insert(key, value).await;
+    }
+
+    pub async fn insert_or_update_from_cache_updates(
+        &self,
+        key: Arc<str>,
+        memory_value: V,
+        serialize_value: Vec<u8>,
+    ) -> LayerDbResult<()> {
+        self.insert_or_update(key.clone(), memory_value).await;
+        self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
+            .await
+    }
+
     pub async fn evict_from_cache_updates(&self, key: Arc<str>) -> LayerDbResult<()> {
         self.memory_cache().remove(&key).await;
         self.disk_cache().remove(key).await?;

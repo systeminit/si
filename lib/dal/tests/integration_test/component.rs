@@ -1,8 +1,7 @@
-use chrono::Utc;
 use dal::attribute::value::DependentValueGraph;
+use dal::component::resource::ResourceData;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
-use dal::func::backend::js_action::DeprecatedActionRunResult;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId, InputSocket, OutputSocket};
@@ -221,7 +220,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 }
 
 #[test]
-async fn through_the_wormholes(ctx: &mut DalContext) {
+async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     let name = "across the universe";
     let component = create_component_for_schema_name(ctx, "starfield", name).await;
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -880,14 +879,12 @@ async fn deletion_updates_downstream_components(ctx: &mut DalContext) {
     oysters_component
         .set_resource(
             ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: Some(serde_json::json!({
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({
                     "key": "value",
                 })),
-                message: None,
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
+            ),
         )
         .await
         .expect("unable to ser resource");
@@ -1049,14 +1046,12 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     oysters_component
         .set_resource(
             ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: Some(serde_json::json!({
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({
                     "key": "value",
                 })),
-                message: None,
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
+            ),
         )
         .await
         .expect("unable to ser resource");
@@ -1095,14 +1090,12 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
     royel_component
         .set_resource(
             ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: Some(serde_json::json!({
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({
                     "key": "value",
                 })),
-                message: None,
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
+            ),
         )
         .await
         .expect("unable to ser resource");

@@ -5,6 +5,7 @@ use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
@@ -14,9 +15,8 @@ use crate::func::FuncKind;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::{
-    AttributePrototype, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype,
-    DeprecatedActionPrototypeError, Func, FuncId, Prop, SchemaVariant, SchemaVariantError,
-    SchemaVariantId,
+    AttributePrototype, ComponentId, DalContext, Func, FuncId, Prop, SchemaVariant,
+    SchemaVariantError, SchemaVariantId,
 };
 
 mod bags;
@@ -29,12 +29,12 @@ pub use bags::FuncArgumentBag;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncAssociationsError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("prop error: {0}")]
@@ -55,7 +55,7 @@ type FuncAssociationsResult<T> = Result<T, FuncAssociationsError>;
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Action {
-        kind: DeprecatedActionKind,
+        kind: ActionKind,
         schema_variant_ids: Vec<SchemaVariantId>,
     },
     #[serde(rename_all = "camelCase")]
@@ -90,21 +90,17 @@ impl FuncAssociations {
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
                 let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
-                let action_prototype_ids =
-                    DeprecatedActionPrototype::list_for_func_id(ctx, func.id).await?;
+                let action_prototype_ids = ActionPrototype::list_for_func_id(ctx, func.id).await?;
 
                 // TODO(nick): right now, we just grab the first one and it decides the action kind for all of them.
                 // This should be configurable on a "per prototype" basis in the future.
                 let kind = match action_prototype_ids.first() {
                     Some(action_prototype_id) => {
-                        let action_prototype = DeprecatedActionPrototype::get_by_id_or_error(
-                            ctx,
-                            *action_prototype_id,
-                        )
-                        .await?;
+                        let action_prototype =
+                            ActionPrototype::get_by_id(ctx, *action_prototype_id).await?;
                         action_prototype.kind
                     }
-                    None => DeprecatedActionKind::Create,
+                    None => ActionKind::Create,
                 };
 
                 let ts_types = Self::compile_action_types(ctx, &schema_variant_ids).await?;
@@ -268,7 +264,7 @@ impl FuncAssociations {
 
     pub fn get_action_internals(
         &self,
-    ) -> FuncAssociationsResult<(DeprecatedActionKind, Vec<SchemaVariantId>)> {
+    ) -> FuncAssociationsResult<(ActionKind, Vec<SchemaVariantId>)> {
         match self {
             FuncAssociations::Action {
                 kind,

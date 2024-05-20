@@ -20,7 +20,7 @@ pub enum ResourceStatus {
     Warning,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionRunResultSuccess {
     pub execution_id: String,

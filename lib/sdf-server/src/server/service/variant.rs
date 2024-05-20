@@ -2,7 +2,6 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{routing::get, Json, Router};
-use dal::func::binding::FuncBindingError;
 use dal::func::summary::FuncSummaryError;
 use dal::pkg::PkgError;
 use dal::schema::variant::authoring::VariantAuthoringError;
@@ -31,8 +30,6 @@ pub enum SchemaVariantError {
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
     #[error("func execution failure error: {0}")]

@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use strum::Display;
 use ulid::Ulid;
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Display)]
 pub enum Actor {
     System,
     User(UserPk),

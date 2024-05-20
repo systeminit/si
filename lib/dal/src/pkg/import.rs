@@ -24,8 +24,8 @@ use crate::{
     func::argument::FuncArgument,
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    DalContext, DeprecatedActionPrototype, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
+    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
 
@@ -35,7 +35,7 @@ use super::{PkgError, PkgResult};
 pub enum Thing {
     ActionPrototype(ActionPrototype),
     AuthPrototype(AuthenticationPrototype),
-    DeprecatedActionPrototype(DeprecatedActionPrototype),
+    // DeprecatedActionPrototype(DeprecatedActionPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
     // Edge(Edge),
@@ -728,23 +728,14 @@ async fn create_action_prototype(
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<(DeprecatedActionPrototype, ActionPrototype)> {
-    let deprecated_proto = DeprecatedActionPrototype::new(
-        ctx,
-        action_func_spec.name(),
-        action_func_spec.kind().into(),
-        schema_variant_id,
-        func_id,
-    )
-    .await?;
-
+) -> PkgResult<ActionPrototype> {
     let kind: crate::action::prototype::ActionKind = action_func_spec.kind().into();
     let name = action_func_spec
         .name()
         .map_or_else(|| kind.to_string(), |n| n.to_owned());
     let proto = ActionPrototype::new(ctx, kind, name, None, schema_variant_id, func_id).await?;
 
-    Ok((deprecated_proto, proto))
+    Ok(proto)
 }
 
 async fn import_action_func(
@@ -752,51 +743,46 @@ async fn import_action_func(
     action_func_spec: &SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
-) -> PkgResult<(Option<DeprecatedActionPrototype>, Option<ActionPrototype>)> {
-    let (deprecated_prototype, prototype) =
-        match thing_map.get(&action_func_spec.func_unique_id().to_owned()) {
-            Some(Thing::Func(func)) => {
-                let func_id = func.id;
+) -> PkgResult<Option<ActionPrototype>> {
+    let prototype = match thing_map.get(&action_func_spec.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            let func_id = func.id;
 
-                if let Some(unique_id) = action_func_spec.unique_id() {
-                    match thing_map.get(&unique_id.to_owned()) {
-                        Some(Thing::ActionPrototype(_prototype)) => {
-                            return Err(PkgError::WorkspaceExportNotSupported())
-                        }
-                        Some(Thing::DeprecatedActionPrototype(_prototype)) => {
-                            return Err(PkgError::WorkspaceExportNotSupported())
-                        }
-                        _ => {
-                            if action_func_spec.deleted() {
-                                (None, None)
-                            } else {
-                                let (deprecated_action_prototype, action_prototype) =
-                                    create_action_prototype(
-                                        ctx,
-                                        action_func_spec,
-                                        func_id,
-                                        schema_variant_id,
-                                    )
-                                    .await?;
-                                (Some(deprecated_action_prototype), Some(action_prototype))
-                            }
+            if let Some(unique_id) = action_func_spec.unique_id() {
+                match thing_map.get(&unique_id.to_owned()) {
+                    Some(Thing::ActionPrototype(_prototype)) => {
+                        return Err(PkgError::WorkspaceExportNotSupported())
+                    }
+                    _ => {
+                        if action_func_spec.deleted() {
+                            None
+                        } else {
+                            let action_prototype = create_action_prototype(
+                                ctx,
+                                action_func_spec,
+                                func_id,
+                                schema_variant_id,
+                            )
+                            .await?;
+                            Some(action_prototype)
                         }
                     }
-                } else {
-                    let (deprecated_action_prototype, action_prototype) =
-                        create_action_prototype(ctx, action_func_spec, func_id, schema_variant_id)
-                            .await?;
-                    (Some(deprecated_action_prototype), Some(action_prototype))
                 }
+            } else {
+                let action_prototype =
+                    create_action_prototype(ctx, action_func_spec, func_id, schema_variant_id)
+                        .await?;
+                Some(action_prototype)
             }
-            _ => {
-                return Err(PkgError::MissingFuncUniqueId(
-                    action_func_spec.func_unique_id().into(),
-                ));
-            }
-        };
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                action_func_spec.func_unique_id().into(),
+            ));
+        }
+    };
 
-    Ok((deprecated_prototype, prototype))
+    Ok(prototype)
 }
 
 async fn import_auth_func(
@@ -1130,17 +1116,8 @@ pub(crate) async fn import_schema_variant(
             }
 
             for action_func in &variant_spec.action_funcs()? {
-                let (deprecated_prototype, prototype) =
+                let prototype =
                     import_action_func(ctx, action_func, schema_variant.id(), thing_map).await?;
-
-                if let (Some(prototype), Some(unique_id)) =
-                    (deprecated_prototype, action_func.unique_id())
-                {
-                    thing_map.insert(
-                        unique_id.to_owned(),
-                        Thing::DeprecatedActionPrototype(prototype),
-                    );
-                }
 
                 if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
                     thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));

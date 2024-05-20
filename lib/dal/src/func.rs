@@ -21,8 +21,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
-    WsEvent, WsEventResult, WsPayload,
+    id, implement_add_edge_to, pk, ChangeSetId, DalContext, HelperError, Timestamp,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -30,9 +30,8 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 pub mod argument;
 pub mod authoring;
 pub mod backend;
-pub mod binding;
-pub mod execution;
 pub mod intrinsics;
+pub mod runner;
 pub mod summary;
 pub mod view;
 
@@ -118,6 +117,9 @@ pub fn is_intrinsic(name: &str) -> bool {
 }
 
 id!(FuncId);
+
+// NOTE: This is here only for backward compatibility
+pk!(FuncExecutionPk);
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).

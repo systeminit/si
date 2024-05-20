@@ -107,13 +107,22 @@ impl PgLayer {
         Ok(Some(result))
     }
 
-    pub async fn get_many_raw(
+    pub async fn query(
         &self,
         query: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> LayerDbResult<Option<Vec<PgRow>>> {
         let client = self.pool.get().await?;
         Ok(Some(client.query(query, params).await?))
+    }
+
+    pub async fn query_opt(
+        &self,
+        query: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> LayerDbResult<Option<PgRow>> {
+        let client = self.pool.get().await?;
+        Ok(client.query_opt(query, params).await?)
     }
 
     pub async fn get_many_by_prefix(

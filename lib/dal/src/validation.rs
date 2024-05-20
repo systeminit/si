@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_layer_cache::LayerDbError;
@@ -9,8 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::backend::validation::ValidationRunResult;
-use crate::func::binding::{FuncBinding, FuncBindingError};
-use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::layer_db_types::{ValidationContent, ValidationContentV1};
 use crate::prop::PropError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -21,7 +19,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
-    Component, ComponentId, Func, FuncError, HistoryEventError, Prop, Timestamp,
+    Component, ComponentId, FuncError, HistoryEventError, Prop, Timestamp,
 };
 use crate::{DalContext, TransactionsError};
 
@@ -39,8 +37,10 @@ pub enum ValidationError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
+    #[error("func run went away before a value could be sent down the channel")]
+    FuncRunGone,
+    #[error("func runner error: {0}")]
+    FuncRunner(#[from] Box<FuncRunnerError>),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop id")]
@@ -286,47 +286,55 @@ impl ValidationOutput {
             return Ok(None);
         };
 
-        let args = json!({
-            "value": value,
-            "validation_format": validation_format,
-        });
+        let result_channel =
+            FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
+                .await
+                .map_err(Box::new)?;
 
-        let output = match FuncBinding::create_and_execute(
-            ctx,
-            args,
-            Func::find_intrinsic(ctx, IntrinsicFunc::Validation).await?,
-            vec![],
-        )
-        .await
+        let mut validation_output = None;
+
+        let func_result_value = match result_channel
+            .await
+            .map_err(|_| ValidationError::FuncRunGone)?
         {
-            Ok((_, result)) => {
-                let message = if let Some(raw_value) = result.value() {
-                    let validation_result: ValidationRunResult =
-                        serde_json::from_value(raw_value.clone())?;
-
-                    validation_result.error
-                } else {
-                    None
-                };
-
-                let status = if message.is_none() {
-                    ValidationStatus::Success
-                } else {
-                    ValidationStatus::Failure
-                };
-
-                ValidationOutput { status, message }
+            Ok(func_run_result) => func_run_result,
+            Err(FuncRunnerError::ResultFailure { kind, message, .. }) => {
+                let _ = validation_output.insert(ValidationOutput {
+                    status: ValidationStatus::Error,
+                    message: Some(format!("{kind}: {message}")),
+                });
+                return Ok(validation_output);
             }
-            Err(err) => match err {
-                FuncBindingError::FuncBackendResultFailure { kind, message, .. } => {
-                    ValidationOutput {
-                        status: ValidationStatus::Error,
-                        message: Some(format!("{kind}: {message}")),
-                    }
-                }
-                _ => return Err(err.into()),
-            },
+            Err(e) => return Err(Box::new(e).into()),
         };
+
+        let message = match func_result_value.value() {
+            Some(raw_value) => {
+                let validation_result: ValidationRunResult =
+                    serde_json::from_value(raw_value.clone())?;
+
+                validation_result.error
+            }
+            None => None,
+        };
+
+        let status = if message.is_none() {
+            ValidationStatus::Success
+        } else {
+            ValidationStatus::Failure
+        };
+
+        let output = ValidationOutput { status, message };
+
+        ctx.layer_db()
+            .func_run()
+            .set_state_to_success(
+                func_result_value.func_run_id(),
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
         Ok(Some(output))
     }
 

@@ -276,7 +276,7 @@ async fn evictions_are_gossiped() {
         }
     }
     assert_ne!(
-        max_check_count, memory_check_count,
+        max_check_count, disk_check_count,
         "value did not arrive in the remote disk cache within 10ms"
     );
 

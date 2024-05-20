@@ -6,7 +6,6 @@ mod component;
 mod connection;
 mod cycle_check_guard;
 mod dependent_values_update;
-mod deprecated_action;
 mod frame;
 mod func;
 mod input_sources;

@@ -2,7 +2,7 @@ use std::error;
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
-use si_events::content_hash::ContentHashParseError;
+use si_events::{content_hash::ContentHashParseError, FuncRunId};
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
@@ -56,6 +56,8 @@ pub enum LayerDbError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("Layered Event Server send error: {0}")]
     LayeredEventSend(#[from] Box<tokio::sync::mpsc::error::SendError<LayeredEvent>>),
+    #[error("missing func_run when one was expected: {0}")]
+    MissingFuncRun(FuncRunId),
     #[error("missing internal buffer entry when expected; this is an internal bug")]
     MissingInternalBuffer,
     #[error("ack error: {0}")]
@@ -90,6 +92,8 @@ pub enum LayerDbError {
     PgPool(#[from] PgPoolError),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]
     TokioOneShotRecv(#[from] tokio::sync::oneshot::error::RecvError),
     #[error("unexpected activity variant; expected={0}, actual={1}")]

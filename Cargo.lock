@@ -5084,6 +5084,8 @@ dependencies = [
  "blake3",
  "bytes",
  "chrono",
+ "derive_builder",
+ "derive_more",
  "paste",
  "postgres-types",
  "remain",

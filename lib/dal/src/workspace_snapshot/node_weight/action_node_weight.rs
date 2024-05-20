@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, FuncRunId};
 
 use crate::{
     action::ActionState,
-    func::execution::FuncExecutionPk,
+    func::FuncExecutionPk,
     workspace_snapshot::{
         graph::LineageId,
         vector_clock::{VectorClock, VectorClockId},
@@ -19,6 +19,8 @@ pub struct ActionNodeWeight {
     id: Ulid,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
+    func_run_id: Option<FuncRunId>,
+    // DEPRECATEd
     func_execution_pk: Option<FuncExecutionPk>,
     lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
@@ -38,6 +40,7 @@ impl ActionNodeWeight {
         Ok(Self {
             id,
             state: ActionState::Queued,
+            func_run_id: None,
             func_execution_pk: None,
             originating_changeset_id: originating_change_set_id,
             lineage_id: change_set.generate_ulid()?,
@@ -72,10 +75,20 @@ impl ActionNodeWeight {
         self.originating_changeset_id
     }
 
+    pub fn set_func_run_id(&mut self, func_run_id: Option<FuncRunId>) {
+        self.func_run_id = func_run_id
+    }
+
+    pub fn func_run_id(&self) -> Option<FuncRunId> {
+        self.func_run_id
+    }
+
+    #[deprecated(note = "use set_function_run_id instead")]
     pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
         self.func_execution_pk = func_execution_pk
     }
 
+    #[deprecated(note = "use function_run_id instead")]
     pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
         self.func_execution_pk
     }

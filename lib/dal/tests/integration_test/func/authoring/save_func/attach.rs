@@ -1,8 +1,9 @@
+use dal::action::prototype::ActionKind;
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::summary::FuncSummary;
 use dal::func::view::FuncView;
 use dal::func::{FuncAssociations, FuncKind};
-use dal::{DalContext, DeprecatedActionKind, Func, Schema, SchemaVariant};
+use dal::{DalContext, Func, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
@@ -47,7 +48,7 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         func_view.description,
         func_view.code,
         Some(FuncAssociations::Action {
-            kind: DeprecatedActionKind::Create,
+            kind: ActionKind::Create,
             schema_variant_ids,
         }),
     )
@@ -82,7 +83,7 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         func_view.description,
         func_view.code,
         Some(FuncAssociations::Action {
-            kind: DeprecatedActionKind::Delete,
+            kind: ActionKind::Destroy,
             schema_variant_ids,
         }),
     )

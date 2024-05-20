@@ -1,24 +1,26 @@
 use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
+use si_events::FuncRunValue;
+use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
 use thiserror::Error;
-use veritech_client::OutputStream;
+use veritech_client::ActionRunResultSuccess;
 
 use crate::{
+    component::ComponentUpdatedPayload,
     diagram::{DiagramError, SummaryDiagramComponent},
     func::{
-        backend::js_action::DeprecatedActionRunResult,
-        binding::{return_value::FuncBindingReturnValueError, FuncBinding, FuncBindingError},
-        execution::FuncExecutionPk,
+        runner::{FuncRunner, FuncRunnerError},
+        FuncId,
     },
     implement_add_edge_to,
-    secret::{before_funcs_for_component, BeforeFuncError},
+    secret::BeforeFuncError,
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, FuncId, HelperError,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
-    WsEvent, WsEventError,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -34,14 +36,16 @@ pub enum ActionPrototypeError {
     Diagram(#[from] DiagramError),
     #[error("Edge Weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("func binding return value error: {0}")]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("func not found for prototype: {0}")]
     FuncNotFoundForPrototype(ActionPrototypeId),
+    #[error("func runner error: {0}")]
+    FuncRunner(#[from] FuncRunnerError),
+    #[error("func runner has failed to send a value and exited")]
+    FuncRunnerSend,
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("Layer DB Error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("schema variant error: {0}")]
@@ -75,6 +79,18 @@ pub enum ActionKind {
     /// Update the version of the modeled object in the "outside world" to match the state of the
     /// model.
     Update,
+}
+
+impl From<ActionKind> for si_events::ActionKind {
+    fn from(value: ActionKind) -> Self {
+        match value {
+            ActionKind::Create => si_events::ActionKind::Create,
+            ActionKind::Destroy => si_events::ActionKind::Destroy,
+            ActionKind::Manual => si_events::ActionKind::Manual,
+            ActionKind::Refresh => si_events::ActionKind::Refresh,
+            ActionKind::Update => si_events::ActionKind::Update,
+        }
+    }
 }
 
 impl From<ActionFuncSpecKind> for ActionKind {
@@ -203,6 +219,29 @@ impl ActionPrototype {
         Err(ActionPrototypeError::FuncNotFoundForPrototype(id))
     }
 
+    /// Lists all [`ActionPrototypes`](ActionPrototype) for a given
+    /// [`FuncId`](Func).
+    pub async fn list_for_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> ActionPrototypeResult<Vec<ActionPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut action_prototype_ids = Vec::new();
+        for node_index in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            if let NodeWeight::ActionPrototype(node_weight) =
+                workspace_snapshot.get_node_weight(node_index).await?
+            {
+                action_prototype_ids.push(node_weight.id().into());
+            }
+        }
+
+        Ok(action_prototype_ids)
+    }
+
     async fn schema_variant_id(
         ctx: &DalContext,
         id: ActionPrototypeId,
@@ -231,54 +270,55 @@ impl ActionPrototype {
         ctx: &DalContext,
         id: ActionPrototypeId,
         component_id: ComponentId,
-    ) -> ActionPrototypeResult<(
-        FuncExecutionPk,
-        Vec<OutputStream>,
-        Option<DeprecatedActionRunResult>,
-    )> {
+    ) -> ActionPrototypeResult<(FuncRunValue, Option<ActionRunResultSuccess>)> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.view(ctx).await?;
+        let func_id = Self::func_id(ctx, id).await?;
 
-        let before = before_funcs_for_component(ctx, component_id).await?;
-
-        let (_, return_value) = FuncBinding::create_and_execute(
+        let result_channel = FuncRunner::run_action(
             ctx,
+            id,
+            component_id,
+            func_id,
             serde_json::json!({ "properties" : component_view }),
-            Self::func_id(ctx, id).await?,
-            before,
         )
         .await?;
 
-        let func_execution_pk = return_value.func_execution_pk();
+        let func_run_value = result_channel
+            .await
+            .map_err(|_| ActionPrototypeError::FuncRunnerSend)??;
 
-        let mut logs = vec![];
-        for stream_part in return_value
-            .get_output_stream(ctx)
-            .await?
-            .unwrap_or_default()
-        {
-            logs.push(stream_part);
-        }
-
-        logs.sort_by_key(|log| log.timestamp);
-
-        let value = match return_value.value() {
+        let run_result = match func_run_value.value() {
             Some(value) => {
-                let run_result: DeprecatedActionRunResult = serde_json::from_value(value.clone())?;
-                component.set_resource(ctx, run_result.clone()).await?;
+                let run_result: ActionRunResultSuccess = serde_json::from_value(value.clone())?;
 
-                let payload: SummaryDiagramComponent =
-                    SummaryDiagramComponent::assemble(ctx, &component).await?;
-                WsEvent::resource_refreshed(ctx, payload)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
+                if run_result.payload.is_some() {
+                    component
+                        .set_resource(ctx, run_result.clone().into())
+                        .await?;
+
+                    let payload = SummaryDiagramComponent::assemble(ctx, &component).await?;
+                    WsEvent::resource_refreshed(ctx, payload)
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
+                }
 
                 Some(run_result)
             }
             None => None,
         };
-        Ok((func_execution_pk, logs, value))
+
+        ctx.layer_db()
+            .func_run()
+            .set_state_to_success(
+                func_run_value.func_run_id(),
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        Ok((func_run_value, run_result))
     }
 
     pub async fn for_variant(
@@ -336,5 +376,21 @@ impl ActionPrototype {
             .await?;
 
         Ok(())
+    }
+}
+
+impl WsEvent {
+    pub async fn resource_refreshed(
+        ctx: &DalContext,
+        payload: SummaryDiagramComponent,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ResourceRefreshed(ComponentUpdatedPayload {
+                component: payload,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
     }
 }

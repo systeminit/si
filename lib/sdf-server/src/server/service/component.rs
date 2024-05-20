@@ -9,8 +9,7 @@ use dal::property_editor::PropertyEditorError;
 use dal::validation::ValidationError;
 use dal::{
     action::prototype::ActionPrototypeError, action::ActionError,
-    ComponentError as DalComponentError, DeprecatedActionPrototypeError, FuncError,
-    StandardModelError, WorkspaceError,
+    ComponentError as DalComponentError, FuncError, StandardModelError, WorkspaceError,
 };
 use dal::{
     attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
@@ -58,8 +57,6 @@ pub enum ComponentError {
     ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("dal component error: {0}")]
     DalComponent(#[from] DalComponentError),
-    #[error("deprecated action prototype: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("diagram error: {0}")]
     DiagramError(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]

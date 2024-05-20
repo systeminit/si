@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_events::FuncKind as EventFuncKind;
 use strum::{AsRefStr, Display};
 use telemetry::prelude::warn;
 
@@ -17,6 +18,36 @@ pub enum FuncKind {
     Qualification,
     SchemaVariantDefinition,
     Unknown,
+}
+
+impl From<EventFuncKind> for FuncKind {
+    fn from(value: EventFuncKind) -> Self {
+        match value {
+            EventFuncKind::Action => FuncKind::Action,
+            EventFuncKind::Attribute => FuncKind::Attribute,
+            EventFuncKind::Authentication => FuncKind::Authentication,
+            EventFuncKind::CodeGeneration => FuncKind::CodeGeneration,
+            EventFuncKind::Intrinsic => FuncKind::Intrinsic,
+            EventFuncKind::Qualification => FuncKind::Qualification,
+            EventFuncKind::SchemaVariantDefinition => FuncKind::SchemaVariantDefinition,
+            EventFuncKind::Unknown => FuncKind::Unknown,
+        }
+    }
+}
+
+impl From<FuncKind> for si_events::FuncKind {
+    fn from(value: FuncKind) -> Self {
+        match value {
+            FuncKind::Action => si_events::FuncKind::Action,
+            FuncKind::Attribute => si_events::FuncKind::Attribute,
+            FuncKind::Authentication => si_events::FuncKind::Authentication,
+            FuncKind::CodeGeneration => si_events::FuncKind::CodeGeneration,
+            FuncKind::Intrinsic => si_events::FuncKind::Intrinsic,
+            FuncKind::Qualification => si_events::FuncKind::Qualification,
+            FuncKind::SchemaVariantDefinition => si_events::FuncKind::SchemaVariantDefinition,
+            FuncKind::Unknown => si_events::FuncKind::Unknown,
+        }
+    }
 }
 
 impl FuncKind {

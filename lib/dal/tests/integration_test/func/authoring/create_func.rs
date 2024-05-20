@@ -1,9 +1,10 @@
+use dal::action::prototype::ActionKind;
 use dal::func::authoring::{
     AttributeOutputLocation, CreateFuncOptions, FuncAuthoringClient, FuncAuthoringError,
 };
 use dal::func::FuncKind;
 use dal::prop::PropPath;
-use dal::{ChangeSet, DalContext, DeprecatedActionKind, Func, Prop, Schema, SchemaVariant};
+use dal::{ChangeSet, DalContext, Func, Prop, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
@@ -436,7 +437,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
         Some(func_name.clone()),
         Some(CreateFuncOptions::ActionOptions {
             schema_variant_id: sv_id,
-            action_kind: DeprecatedActionKind::Update,
+            action_kind: ActionKind::Update,
         }),
     )
     .await
@@ -500,7 +501,7 @@ async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
         Some(func_name.clone()),
         Some(CreateFuncOptions::ActionOptions {
             schema_variant_id: sv_id,
-            action_kind: DeprecatedActionKind::Create,
+            action_kind: ActionKind::Create,
         }),
     )
     .await;

@@ -2,8 +2,8 @@ use axum::extract::OriginalUri;
 use axum::Json;
 
 use dal::{
-    action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
-    job::definition::RefreshJob, Component, ComponentId, Visibility,
+    action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action, Component,
+    ComponentId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ use crate::server::tracking::track;
 #[serde(rename_all = "camelCase")]
 pub struct RefreshRequest {
     pub component_id: ComponentId,
+    // TODO(fnichol): I THINK THIS GETS DELETED NOW
     pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -49,23 +50,14 @@ pub async fn refresh(
 
     // Parallelizes resource refreshing
     for component_id in component_ids {
-        if request.v2 {
-            let variant = Component::schema_variant_for_component_id(&ctx, component_id).await?;
+        let variant = Component::schema_variant_for_component_id(&ctx, component_id).await?;
 
-            let all_prototypes_for_variant: Vec<ActionPrototype> =
-                ActionPrototype::for_variant(&ctx, variant.id()).await?;
-            for prototype in all_prototypes_for_variant {
-                if prototype.kind == ActionKind::Refresh {
-                    Action::new(&ctx, prototype.id(), Some(component_id)).await?;
-                }
+        let all_prototypes_for_variant: Vec<ActionPrototype> =
+            ActionPrototype::for_variant(&ctx, variant.id()).await?;
+        for prototype in all_prototypes_for_variant {
+            if prototype.kind == ActionKind::Refresh {
+                Action::new(&ctx, prototype.id(), Some(component_id)).await?;
             }
-        } else {
-            ctx.enqueue_refresh(RefreshJob::new(
-                ctx.access_builder(),
-                *ctx.visibility(),
-                vec![component_id],
-            ))
-            .await?;
         }
     }
 

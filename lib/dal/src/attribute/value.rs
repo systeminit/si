@@ -47,6 +47,7 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_events::ulid::Ulid;
+use si_events::{FuncRunId, FuncRunValue};
 use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -58,12 +59,10 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
 use crate::component::InputSocketMatch;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::binding::{FuncBinding, FuncBindingError};
-use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncError;
+use crate::func::runner::{FuncRunner, FuncRunnerError};
+use crate::func::FuncExecutionPk;
 use crate::prop::PropError;
-use crate::secret::before_funcs_for_component;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
@@ -77,8 +76,8 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
-    ComponentId, DalContext, Func, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
+    ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -140,10 +139,10 @@ pub enum AttributeValueError {
         message: String,
         backend: String,
     },
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("func execution error: {0}")]
-    FuncExecution(#[from] FuncExecutionError),
+    #[error("func runner error: {0}")]
+    FuncRunner(#[from] Box<FuncRunnerError>),
+    #[error("func runner result sender was dropped before sending")]
+    FuncRunnerSend,
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
@@ -212,6 +211,12 @@ pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
 
 pk!(AttributeValueId);
 
+impl From<AttributeValueId> for si_events::AttributeValueId {
+    fn from(value: AttributeValueId) -> Self {
+        value.into_inner().into()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeValue {
     pub id: AttributeValueId,
@@ -222,7 +227,9 @@ pub struct AttributeValue {
     /// The processed return value.
     /// Example: empty array.
     pub value: Option<ContentAddress>,
+    // DEPRECATED, should always be None
     pub func_execution_pk: Option<FuncExecutionPk>,
+    pub func_run_id: Option<FuncRunId>,
 }
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
@@ -303,20 +310,14 @@ impl From<InputSocketId> for ValueIsFor {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct PrototypeExecutionResult {
-    value: Option<Value>,
-    unprocessed_value: Option<Value>,
-    func_execution_pk: FuncExecutionPk,
-}
-
 impl From<AttributeValueNodeWeight> for AttributeValue {
     fn from(value: AttributeValueNodeWeight) -> Self {
         Self {
             id: value.id().into(),
             unprocessed_value: value.unprocessed_value(),
             value: value.value(),
-            func_execution_pk: value.func_execution_pk(),
+            func_execution_pk: None,
+            func_run_id: value.func_run_id(),
         }
     }
 }
@@ -538,7 +539,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
-    ) -> AttributeValueResult<PrototypeExecutionResult> {
+    ) -> AttributeValueResult<FuncRunValue> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
         // that is in the process of being mutated on another thread, since it
@@ -552,70 +553,114 @@ impl AttributeValue {
 
         // Prepare arguments for prototype function execution.
         let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
-        let (prototype_func_id, prepared_func_binding_args) =
+        let (prototype_func_id, prepared_args) =
             Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
                 .await?;
 
-        // We need the associated [`ComponentId`] for this function--this is how we resolve and
-        // prepare before functions
-        let associated_component_id = Self::component_id(ctx, attribute_value_id).await?;
-        let before = before_funcs_for_component(ctx, associated_component_id)
-            .await
-            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
+        //drop(read_guard);
+
+        let result_channel = FuncRunner::run_attribute_value(
+            ctx,
+            attribute_value_id,
+            prototype_func_id,
+            prepared_args.clone(),
+        )
+        .await
+        .map_err(Box::new)?;
 
         // We have gathered all our inputs and so no longer need a lock on the graph. Be sure not to
         // add graph walk operations below this drop.
         drop(read_guard);
 
-        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
-            ctx,
-            prepared_func_binding_args.clone(),
-            prototype_func_id,
-            before,
-        )
-        .instrument(debug_span!(
-            "Func execution",
-            "func.id" = %prototype_func_id,
-            ?prepared_func_binding_args,
-        ))
-        .await
-        {
-            Ok(function_return_value) => function_return_value,
-            Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }) => {
-                return Err(AttributeValueError::FuncBackendResultFailure {
-                    kind,
-                    message,
-                    backend,
-                });
-            }
-            Err(err) => Err(err)?,
-        };
+        let mut func_values = result_channel
+            .await
+            .map_err(|_| AttributeValueError::FuncRunnerSend)?
+            .map_err(Box::new)?;
 
-        let unprocessed_value = func_binding_return_value.unprocessed_value().cloned();
-        let processed_value = match value_is_for {
-            ValueIsFor::Prop(prop_id) => match &unprocessed_value {
+        // If the value is for a prop, we need to make sure container-type props are initialized
+        // properly when the unprocessed value is populated.
+        match value_is_for {
+            ValueIsFor::Prop(prop_id) => match func_values.unprocessed_value() {
                 Some(unprocessed_value) => {
                     let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                     match prop.kind {
-                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
-                        PropKind::Array => Some(serde_json::json!([])),
-                        _ => Some(unprocessed_value.to_owned()),
+                        PropKind::Object | PropKind::Map => {
+                            func_values.set_processed_value(Some(serde_json::json!({})))
+                        }
+                        PropKind::Array => {
+                            func_values.set_processed_value(Some(serde_json::json!([])))
+                        }
+                        _ => func_values.set_processed_value(Some(unprocessed_value.to_owned())),
                     }
                 }
-                None => None,
+                None => func_values.set_processed_value(None),
             },
-            _ => func_binding_return_value.value().cloned(),
+            _v => {
+                // TODO: Maybe we should do somethign herE? who khnows
+                //let func = Func::get_by_id(ctx, prototype_func_id)
+                //    .await?
+                //    .expect("oh shit!");
+                //dbg!(
+                //    &v,
+                //    &func.name,
+                //    &func.backend_kind,
+                //    &func.backend_response_type,
+                //    &func.kind,
+                //    &prepared_args,
+                //    &func_values
+                //);
+            }
         };
 
-        Ok(PrototypeExecutionResult {
-            value: processed_value,
-            unprocessed_value,
-            func_execution_pk: func_binding_return_value.func_execution_pk(),
-        })
+        let content_value: Option<si_events::CasValue> =
+            func_values.value().cloned().map(Into::into);
+        let content_unprocessed_value: Option<si_events::CasValue> =
+            func_values.unprocessed_value().cloned().map(Into::into);
+
+        let value_address = match content_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        let unprocessed_value_address = match content_unprocessed_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        ctx.layer_db()
+            .func_run()
+            .set_values_and_set_state_to_success(
+                func_values.func_run_id(),
+                unprocessed_value_address,
+                value_address,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        Ok(func_values)
     }
 
     #[instrument(level = "info" skip(ctx))]
@@ -837,14 +882,10 @@ impl AttributeValue {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn set_values_from_execution_result(
+    pub async fn set_values_from_func_run_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        PrototypeExecutionResult {
-            value,
-            unprocessed_value,
-            func_execution_pk,
-        }: PrototypeExecutionResult,
+        func_run_value: FuncRunValue,
     ) -> AttributeValueResult<()> {
         // We need to ensure the parent value tree for this value is set. But we don't want to
         // vivify the current attribute value since that would override the function which sets it
@@ -866,14 +907,9 @@ impl AttributeValue {
             .map(|prop| prop.kind.is_container())
             .unwrap_or(false);
 
-        Self::set_real_values(
-            ctx,
-            attribute_value_id,
-            value,
-            unprocessed_value.clone(),
-            func_execution_pk,
-        )
-        .await?;
+        let unprocessed_value = func_run_value.unprocessed_value().cloned();
+
+        Self::set_real_values(ctx, attribute_value_id, func_run_value).await?;
 
         if should_populate_nested {
             Self::populate_nested_values(ctx, attribute_value_id, unprocessed_value).await?;
@@ -881,6 +917,7 @@ impl AttributeValue {
 
         Ok(())
     }
+
     #[instrument(level="info" skip_all)]
     pub async fn update_from_prototype_function(
         ctx: &DalContext,
@@ -891,7 +928,7 @@ impl AttributeValue {
         let execution_result =
             AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
-        AttributeValue::set_values_from_execution_result(ctx, attribute_value_id, execution_result)
+        AttributeValue::set_values_from_func_run_value(ctx, attribute_value_id, execution_result)
             .await?;
 
         Ok(())
@@ -1892,7 +1929,7 @@ impl AttributeValue {
             prototype.id()
         };
 
-        let func_binding_args = match value.to_owned() {
+        let func_args = match value.to_owned() {
             Some(value) => {
                 let func_arg_id = *FuncArgument::list_ids_for_func(ctx, func_id)
                     .await?
@@ -1921,53 +1958,23 @@ impl AttributeValue {
             None => serde_json::Value::Null,
         };
 
-        let before = before_funcs_for_component(ctx, associated_component_id)
-            .await
-            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
-
-        let (_, func_binding_return_value) =
-            match FuncBinding::create_and_execute(ctx, func_binding_args.clone(), func_id, before)
-                .instrument(debug_span!(
-                    "Func execution",
-                    "func.id" = %func_id,
-                    ?func_binding_args,
-                ))
+        let result_channel =
+            FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args)
                 .await
-            {
-                Ok(function_return_value) => function_return_value,
-                Err(FuncBindingError::FuncBackendResultFailure {
-                    kind,
-                    message,
-                    backend,
-                }) => {
-                    return Err(AttributeValueError::FuncBackendResultFailure {
-                        kind,
-                        message,
-                        backend,
-                    });
-                }
-                Err(err) => Err(err)?,
-            };
+                .map_err(Box::new)?;
+        let func_values = result_channel
+            .await
+            .map_err(|_| AttributeValueError::FuncRunnerSend)?
+            .map_err(Box::new)?;
 
-        Self::set_real_values(
-            ctx,
-            attribute_value_id,
-            func_binding_return_value.value().cloned(),
-            func_binding_return_value.unprocessed_value().cloned(),
-            func_binding_return_value.func_execution_pk(),
-        )
-        .await?;
+        Self::set_real_values(ctx, attribute_value_id, func_values).await?;
         Ok(())
     }
 
-    // todo: add func binding id and func binding return value id here to store on the attribute
-    // value, this will also mean creating those rows for "intrinsic" execution in set_value
     async fn set_real_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
-        unprocessed_value: Option<serde_json::Value>,
-        func_execution_pk: FuncExecutionPk,
+        func_run_value: FuncRunValue,
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let (av_idx, av_node_weight) = {
@@ -1984,9 +1991,10 @@ impl AttributeValue {
             )
         };
 
-        let content_value: Option<si_events::CasValue> = value.clone().map(Into::into);
+        let content_value: Option<si_events::CasValue> =
+            func_run_value.value().cloned().map(Into::into);
         let content_unprocessed_value: Option<si_events::CasValue> =
-            unprocessed_value.map(Into::into);
+            func_run_value.unprocessed_value().cloned().map(Into::into);
 
         let value_address = match content_value {
             Some(value) => Some(
@@ -2020,13 +2028,24 @@ impl AttributeValue {
             None => None,
         };
 
+        ctx.layer_db()
+            .func_run()
+            .set_values_and_set_state_to_success(
+                func_run_value.func_run_id(),
+                unprocessed_value_address,
+                value_address,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
         let mut new_av_node_weight =
             av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
 
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight
             .set_unprocessed_value(unprocessed_value_address.map(ContentAddress::JsonValue));
-        new_av_node_weight.set_func_execution_pk(Some(func_execution_pk));
+        new_av_node_weight.set_func_run_id(Some(func_run_value.func_run_id()));
 
         workspace_snapshot
             .add_node(NodeWeight::AttributeValue(new_av_node_weight))
@@ -2168,16 +2187,6 @@ impl AttributeValue {
         ctx: &DalContext,
     ) -> AttributeValueResult<Option<serde_json::Value>> {
         Self::fetch_value_from_store(ctx, self.unprocessed_value).await
-    }
-
-    pub async fn func_execution(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<Option<FuncExecution>> {
-        Ok(match self.func_execution_pk {
-            Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
-            None => None,
-        })
     }
 
     pub async fn get_parent_av_id_for_ordered_child(

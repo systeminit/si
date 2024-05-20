@@ -2,8 +2,9 @@ use crate::schemas::schema_helpers::{
     build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
     create_identity_func,
 };
+use dal::action::prototype::ActionKind;
 use dal::pkg::import_pkg_from_pkg;
-use dal::{prop::PropPath, ComponentType, DeprecatedActionKind};
+use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
@@ -135,25 +136,25 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Create)
+                        .kind(ActionKind::Create)
                         .func_unique_id(&create_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Delete)
+                        .kind(ActionKind::Destroy)
                         .func_unique_id(&delete_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Refresh)
+                        .kind(ActionKind::Refresh)
                         .func_unique_id(&refresh_action_func.unique_id)
                         .build()?,
                 )
                 .action_func(
                     ActionFuncSpec::builder()
-                        .kind(&DeprecatedActionKind::Update)
+                        .kind(ActionKind::Update)
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )

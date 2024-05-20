@@ -12,7 +12,6 @@ use crate::attribute::prototype::{
     AttributePrototypeError,
 };
 use crate::attribute::value::AttributeValueError;
-use crate::func::execution::{FuncExecution, FuncExecutionError};
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
@@ -31,7 +30,6 @@ pub struct AttributeDebugView {
     pub parent_id: Option<AttributeValueId>,
     pub attribute_value_id: AttributeValueId,
     pub func_id: FuncId,
-    pub func_execution: Option<FuncExecution>,
     pub value_is_for: ValueIsFor,
     pub prop: Option<Prop>,
     pub prototype_id: Option<AttributePrototypeId>,
@@ -61,8 +59,6 @@ pub enum AttributeDebugViewError {
     ComponentError(#[from] ComponentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("func execution error: {0}")]
-    FuncExecution(#[from] FuncExecutionError),
     #[error("input socket error: {0}")]
     InputSocketError(#[from] InputSocketError),
     #[error("node weight error: {0}")]
@@ -109,7 +105,6 @@ impl AttributeDebugView {
             attribute_value_id,
             func_id: attribute_prototype_debug_view.func_id,
             key,
-            func_execution: attribute_prototype_debug_view.func_execution,
             prop: prop_opt,
             prototype_id: Some(prototype_id),
             prototype_is_component_specific: attribute_prototype_debug_view.is_component_specific,

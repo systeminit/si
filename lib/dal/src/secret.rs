@@ -49,7 +49,6 @@ use crate::attribute::prototype::argument::{
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::binding::FuncBindingError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::key_pair::KeyPairPk;
 use crate::layer_db_types::{SecretContent, SecretContentV1};
@@ -117,8 +116,6 @@ pub enum SecretError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument not found for func ({0}) and name ({1})")]
     FuncArgumentNotFound(FuncId, String),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("history event error: {0}")]

@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, FuncRunId};
 
 use crate::{
     change_set::ChangeSet,
-    func::execution::FuncExecutionPk,
+    func::FuncExecutionPk,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
@@ -29,8 +29,10 @@ pub struct AttributeValueNodeWeight {
     /// The processed return value.
     /// Example: empty array.
     value: Option<ContentAddress>,
-    /// The id of the func execution that produced the values for this value
+    // DEPRECATED - this was the old function execution system
     func_execution_pk: Option<FuncExecutionPk>,
+    // The Func Run ID that set this value
+    func_run_id: Option<FuncRunId>,
 }
 
 impl AttributeValueNodeWeight {
@@ -39,7 +41,7 @@ impl AttributeValueNodeWeight {
         id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        func_execution_pk: Option<FuncExecutionPk>,
+        func_run_id: Option<FuncRunId>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -48,10 +50,10 @@ impl AttributeValueNodeWeight {
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
-
             unprocessed_value,
             value,
-            func_execution_pk,
+            func_execution_pk: None,
+            func_run_id,
         })
     }
 
@@ -88,10 +90,20 @@ impl AttributeValueNodeWeight {
         self.value = value
     }
 
+    pub fn set_func_run_id(&mut self, func_run_id: Option<FuncRunId>) {
+        self.func_run_id = func_run_id
+    }
+
+    pub fn func_run_id(&self) -> Option<FuncRunId> {
+        self.func_run_id
+    }
+
+    #[deprecated(note = "please use func_run_id instead")]
     pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
         self.func_execution_pk = func_execution_pk
     }
 
+    #[deprecated(note = "please use func_run_id instead")]
     pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
         self.func_execution_pk
     }

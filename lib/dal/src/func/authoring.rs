@@ -40,9 +40,9 @@
 use base64::engine::general_purpose;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use si_events::FuncRunId;
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::OutputStream;
 
 use crate::action::prototype::{ActionKind, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
@@ -52,18 +52,18 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::{FuncArgumentError, FuncArgumentId};
 use crate::func::associations::{FuncAssociations, FuncAssociationsError};
-use crate::func::binding::FuncBindingError;
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::prop::PropError;
 use crate::secret::BeforeFuncError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototypeId, ComponentError, ComponentId, DalContext, DeprecatedActionKind,
-    DeprecatedActionPrototypeError, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, OutputSocketId, PropId, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WorkspaceSnapshotError, WsEventError,
+    AttributePrototypeId, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
+    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
+
+use super::runner::FuncRunnerError;
 
 mod create;
 mod execute;
@@ -91,8 +91,6 @@ pub enum FuncAuthoringError {
     BeforeFunc(#[from] BeforeFuncError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -101,14 +99,16 @@ pub enum FuncAuthoringError {
     FuncArgumentMustExist(AttributePrototypeArgumentId),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
     #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
     FuncCannotHaveAssociations(FuncId, FuncKind, FuncAssociations),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
     #[error("Function options are incompatible with variant")]
     FuncOptionsAndVariantMismatch,
+    #[error("func run value sender is gone without sending a value")]
+    FuncRunGone,
+    #[error("func run error: {0}")]
+    FuncRunner(#[from] FuncRunnerError),
     #[error("func view error: {0}")]
     FuncView(#[from] FuncViewError),
     #[error("invalid func associations ({0:?}) for func ({1}) of kind: {2}")]
@@ -315,7 +315,7 @@ pub enum CreateFuncOptions {
     #[serde(rename_all = "camelCase")]
     ActionOptions {
         schema_variant_id: SchemaVariantId,
-        action_kind: DeprecatedActionKind,
+        action_kind: ActionKind,
     },
     #[serde(rename_all = "camelCase")]
     AttributeOptions {
@@ -334,14 +334,6 @@ pub enum CreateFuncOptions {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TestExecuteFuncResult {
-    /// The ID of the [`Func`](crate::Func) that was "test" executed.
-    pub id: FuncId,
-    /// The serialized arguments provided as inputs to the [`Func`](crate::Func) for test execution.
-    pub args: serde_json::Value,
-    /// The serialized output of the test execution.
-    pub output: serde_json::Value,
-    /// The key for the test execution (e.g. a randomized string that the user keeps track of).
-    pub execution_key: String,
-    /// The logs corresponding to the output stream of the test execution.
-    pub logs: Vec<OutputStream>,
+    /// The Function Run ID for the test
+    pub func_run_id: FuncRunId,
 }

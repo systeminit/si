@@ -6,6 +6,7 @@ use std::{
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_events::FuncRunValue;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -15,9 +16,7 @@ use tokio::{
 use ulid::Ulid;
 
 use crate::{
-    attribute::value::{
-        dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
-    },
+    attribute::value::{dependent_value_graph::DependentValueGraph, AttributeValueError},
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -193,7 +192,7 @@ impl DependentValuesUpdate {
                             )
                             .await
                             {
-                                Ok(true) => match AttributeValue::set_values_from_execution_result(
+                                Ok(true) => match AttributeValue::set_values_from_func_run_value(
                                     ctx,
                                     finished_value_id,
                                     execution_values,
@@ -309,7 +308,7 @@ async fn values_from_prototype_function_execution(
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
-) -> (Ulid, DependentValueUpdateResult<PrototypeExecutionResult>) {
+) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
     if let Err(err) = send_update_message(
         &ctx,
         attribute_value_id,

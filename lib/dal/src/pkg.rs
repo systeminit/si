@@ -20,9 +20,9 @@ use crate::{
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    DalContext, DeprecatedActionPrototypeError, FuncBackendKind, FuncBackendResponseType,
-    OutputSocketId, SchemaError, SchemaVariantId, TransactionsError, UserPk, WorkspaceError,
-    WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    DalContext, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
+    SchemaVariantId, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
+    WsEventResult, WsPayload,
 };
 use crate::{AttributePrototypeId, FuncId, PropId, PropKind};
 
@@ -56,8 +56,6 @@ pub enum PkgError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]
@@ -316,37 +314,7 @@ impl WsEvent {
         )
         .await
     }
-    //
-    //     pub async fn workspace_imported(
-    //         ctx: &DalContext,
-    //         workspace_pk: Option<WorkspacePk>,
-    //         user_pk: Option<UserPk>,
-    //     ) -> WsEventResult<Self> {
-    //         WsEvent::new(
-    //             ctx,
-    //             WsPayload::WorkspaceImported(WorkspaceImportPayload {
-    //                 workspace_pk,
-    //                 user_pk,
-    //             }),
-    //         )
-    //         .await
-    //     }
-    //
-    //     pub async fn workspace_exported(
-    //         ctx: &DalContext,
-    //         workspace_pk: Option<WorkspacePk>,
-    //         user_pk: Option<UserPk>,
-    //     ) -> WsEventResult<Self> {
-    //         WsEvent::new(
-    //             ctx,
-    //             WsPayload::WorkspaceExported(WorkspaceExportPayload {
-    //                 workspace_pk,
-    //                 user_pk,
-    //             }),
-    //         )
-    //         .await
-    //     }
-    //
+
     pub async fn import_workspace_vote(
         ctx: &DalContext,
         workspace_pk: Option<WorkspacePk>,

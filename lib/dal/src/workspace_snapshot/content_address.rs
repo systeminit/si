@@ -13,6 +13,7 @@ pub enum ContentAddress {
     ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),
     Component(ContentHash),
+    // TODO(fnichol): remove the `Deprecated*` variants
     DeprecatedAction(ContentHash),
     DeprecatedActionBatch(ContentHash),
     DeprecatedActionRunner(ContentHash),

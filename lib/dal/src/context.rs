@@ -28,7 +28,7 @@ use crate::workspace_snapshot::{
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
-        definition::{ActionJob, DeprecatedActionsJob, RefreshJob},
+        definition::ActionJob,
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
@@ -705,20 +705,7 @@ impl DalContext {
         Ok(new)
     }
 
-    pub async fn enqueue_deprecated_actions(
-        &self,
-        job: Box<DeprecatedActionsJob>,
-    ) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
-
     pub async fn enqueue_action(&self, job: Box<ActionJob>) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
-
-    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
         self.txns().await?.job_queue.enqueue_job(job).await;
         Ok(())
     }

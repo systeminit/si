@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
+use si_events::{FuncRun, FuncRunLog};
 use strum::{AsRefStr, EnumString};
 use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -20,6 +21,8 @@ use crate::{
 enum CacheName {
     Cas,
     EncryptedSecret,
+    FuncRun,
+    FuncRunLog,
     WorkspaceSnapshots,
 }
 
@@ -31,6 +34,8 @@ where
 {
     cas_cache: LayerCache<Arc<CasValue>>,
     encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
+    func_run_cache: LayerCache<Arc<FuncRun>>,
+    func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
     event_channel: UnboundedReceiver<LayeredEvent>,
     shutdown_token: CancellationToken,
@@ -46,11 +51,14 @@ where
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         instance_id: Ulid,
         nats_client: &NatsClient,
         cas_cache: LayerCache<Arc<CasValue>>,
         encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
+        func_run_cache: LayerCache<Arc<FuncRun>>,
+        func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
@@ -64,6 +72,8 @@ where
         Ok(Self {
             cas_cache,
             encrypted_secret_cache,
+            func_run_cache,
+            func_run_log_cache,
             snapshot_cache,
             event_channel,
             shutdown_token,
@@ -90,6 +100,8 @@ where
             let cache_update_task = CacheUpdateTask::new(
                 self.cas_cache.clone(),
                 self.encrypted_secret_cache.clone(),
+                self.func_run_cache.clone(),
+                self.func_run_log_cache.clone(),
                 self.snapshot_cache.clone(),
             );
             self.tracker
@@ -106,6 +118,8 @@ where
 {
     cas_cache: LayerCache<Arc<Q>>,
     encrypted_secret_cache: LayerCache<Arc<R>>,
+    func_run_cache: LayerCache<Arc<FuncRun>>,
+    func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
     snapshot_cache: LayerCache<Arc<S>>,
 }
 
@@ -118,11 +132,15 @@ where
     fn new(
         cas_cache: LayerCache<Arc<Q>>,
         encrypted_secret_cache: LayerCache<Arc<R>>,
+        func_run_cache: LayerCache<Arc<FuncRun>>,
+        func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
         snapshot_cache: LayerCache<Arc<S>>,
     ) -> CacheUpdateTask<Q, R, S> {
         CacheUpdateTask {
             cas_cache,
             encrypted_secret_cache,
+            func_run_cache,
+            func_run_log_cache,
             snapshot_cache,
         }
     }
@@ -171,6 +189,26 @@ where
             crate::event::LayeredEventKind::SnapshotEvict => {
                 self.snapshot_cache
                     .evict_from_cache_updates(event.key)
+                    .await?;
+            }
+            crate::event::LayeredEventKind::FuncRunWrite => {
+                let memory_value = self
+                    .func_run_cache
+                    .deserialize_memory_value(&event.payload.value)?;
+                let serialized_value =
+                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                self.func_run_cache
+                    .insert_or_update_from_cache_updates(event.key, memory_value, serialized_value)
+                    .await?;
+            }
+            crate::event::LayeredEventKind::FuncRunLogWrite => {
+                let memory_value = self
+                    .func_run_log_cache
+                    .deserialize_memory_value(&event.payload.value)?;
+                let serialized_value =
+                    Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                self.func_run_log_cache
+                    .insert_or_update_from_cache_updates(event.key, memory_value, serialized_value)
                     .await?;
             }
         }

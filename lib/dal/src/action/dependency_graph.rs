@@ -3,7 +3,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 
 use crate::{
-    action::Action, dependency_graph::DependencyGraph, ActionId, Component, ComponentId, DalContext,
+    action::{Action, ActionId},
+    dependency_graph::DependencyGraph,
+    Component, ComponentId, DalContext,
 };
 
 use super::ActionResult;

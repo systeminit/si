@@ -2,7 +2,6 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set::ChangeSet;
 use dal::Visibility;
-use dal::{action::Action, DeprecatedAction};
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -12,6 +11,7 @@ use crate::server::tracking::track;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyChangeSetRequest {
+    // TODO(fnichol): I THINK THIS GETS DELETED NOW
     pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -32,25 +32,7 @@ pub async fn apply_change_set(
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    if request.v2 {
-        // Removes v1 actions so they are not processed here
-        for (_, bag) in DeprecatedAction::build_graph(&ctx).await? {
-            bag.action.delete(&ctx).await?;
-        }
-    } else {
-        // Removes v2 actions so they are not processed by the rebaser
-        for action_id in Action::list_topologically(&ctx).await? {
-            let action = Action::get_by_id(&ctx, action_id).await?;
-            if action.is_eligible_to_dispatch() {
-                Action::remove_by_id(&ctx, action_id).await?;
-            }
-        }
-    }
-
-    ctx.commit().await?;
-    ctx.update_snapshot_to_visibility().await?;
-
-    let change_set = ChangeSet::apply_to_base_change_set(&mut ctx, false).await?;
+    let change_set = ChangeSet::apply_to_base_change_set(&mut ctx).await?;
 
     track(
         &posthog_client,

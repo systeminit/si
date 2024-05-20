@@ -1,10 +1,9 @@
+use dal::action::prototype::{ActionKind, ActionPrototype};
+use dal::action::Action;
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
-use dal::{
-    AttributeValue, Component, DalContext, DeprecatedAction, DeprecatedActionKind, InputSocket,
-    OutputSocket, Prop, Secret,
-};
+use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{create_component_for_schema_name, encrypt_message};
 use dal_test::{test, WorkspaceSignup};
@@ -110,20 +109,22 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     );
 
     // Ensure we have our "create" action on the destination component.
-    let mut actions = DeprecatedAction::for_component(ctx, destination_component.id())
+    let mut actions = Action::find_for_component_id(ctx, destination_component.id())
         .await
         .expect("unable to list actions for component");
     assert_eq!(
         1,             // expected
         actions.len()  // actual
     );
-    let create_action = actions.pop().expect("no actions found");
-    let create_action_prototype = create_action
-        .prototype(ctx)
+    let create_action_id = actions.pop().expect("no actions found");
+    let create_action_prototype_id = Action::prototype_id(ctx, create_action_id)
         .await
-        .expect("could not get action prototype for action");
+        .expect("cannot get action prototye id");
+    let create_action_prototype = ActionPrototype::get_by_id(ctx, create_action_prototype_id)
+        .await
+        .expect("cannot get prototype");
     assert_eq!(
-        DeprecatedActionKind::Create, // expected
+        ActionKind::Create,           // expected
         create_action_prototype.kind, // actual
     );
 
@@ -134,9 +135,8 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .parent_is_head()
         .await
         .expect("could not perform parent is head"));
-
     // Apply to the base change set and commit.
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not apply change set");
 
@@ -165,6 +165,11 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
             .expect("could not get materialized view")
             .expect("empty materialized view") // actual
     );
+
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
+        .await
+        .expect("deadline for actions to run exceeded");
+
     let last_synced_av_id = destination_component
         .attribute_values_for_prop(ctx, &["root", "resource", "last_synced"])
         .await

@@ -11,7 +11,7 @@ use dal::{
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{ActionJob, DependentValuesUpdate, DeprecatedActionsJob, RefreshJob},
+        definition::{ActionJob, DependentValuesUpdate},
         producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
@@ -515,17 +515,8 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
         stringify!(ActionJob) => {
             Box::new(ActionJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
         }
-        stringify!(DeprecatedActionsJob) => {
-            Box::new(DeprecatedActionsJob::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>
-        }
-        stringify!(RefreshJob) => {
-            Box::new(RefreshJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
-        }
         stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
             as Box<dyn JobConsumer + Send + Sync>,
-        //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
-        //         as Box<dyn JobConsumer + Send + Sync>,
         kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
     };
 

@@ -13,8 +13,8 @@ use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::execution::FuncExecutionError, AttributeValue, AttributeValueId, Component, ComponentId,
-    DalContext, PropId, SchemaVariantId, SecretError, SecretId,
+    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, PropId, SchemaVariantId,
+    SecretError, SecretId,
 };
 use crate::{
     ComponentError, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
@@ -67,8 +67,6 @@ pub enum ComponentDebugViewError {
     ComponentError(#[from] ComponentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("func execution error: {0}")]
-    FuncExecution(#[from] FuncExecutionError),
     #[error("input socket error: {0}")]
     InputSocketError(#[from] InputSocketError),
     #[error("json pointer not found: {1:?} at {0}")]

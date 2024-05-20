@@ -7,9 +7,8 @@ use axum::{
 use dal::{
     action::{prototype::ActionPrototypeError, ActionError},
     ActionPrototypeId, ChangeSetApplyError as DalChangeSetApplyError,
-    ChangeSetError as DalChangeSetError, ComponentError, DeprecatedActionError,
-    DeprecatedActionPrototypeError, FuncError, StandardModelError, TransactionsError,
-    WorkspaceError, WorkspaceSnapshotError, WsEventError,
+    ChangeSetError as DalChangeSetError, ComponentError, FuncError, StandardModelError,
+    TransactionsError, WorkspaceError, WorkspaceSnapshotError, WsEventError,
 };
 
 use telemetry::prelude::*;
@@ -25,9 +24,7 @@ mod begin_abandon_approval_process;
 mod begin_approval_process;
 pub mod create_change_set;
 pub mod list_open_change_sets;
-pub mod list_queued_actions;
 mod merge_vote;
-pub mod remove_action;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -46,10 +43,6 @@ pub enum ChangeSetError {
     DalChangeSet(#[from] DalChangeSetError),
     #[error("dal change set apply error: {0}")]
     DalChangeSetApply(#[from] DalChangeSetApplyError),
-    #[error("deprecated action error: {0}")]
-    DeprecatedAction(#[from] DeprecatedActionError),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("invalid header name {0}")]
@@ -89,11 +82,6 @@ pub fn routes() -> Router<AppState> {
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
         )
-        .route(
-            "/list_queued_actions",
-            get(list_queued_actions::list_queued_actions),
-        )
-        .route("/remove_action", post(remove_action::remove_action))
         .route("/add_action", post(add_action::add_action))
         .route(
             "/create_change_set",

@@ -42,7 +42,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Apply the change set and perform a blocking commit and ensure the diff looks as expected on head.
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not apply change set");
     let diff = Component::get_diff(ctx, starfield_component.id())
@@ -91,7 +91,7 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
         .expect("could not commit");
 
     // Apply the change set and perform a blocking commit.
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not apply change set");
 
