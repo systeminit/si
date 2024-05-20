@@ -3,6 +3,7 @@ import * as _ from "lodash-es";
 import { Vector2d } from "konva/lib/types";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
+import { useToast } from "vue-toastification";
 
 import mitt from "mitt";
 import { watch } from "vue";
@@ -35,6 +36,7 @@ import {
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
+import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -47,6 +49,8 @@ import { useStatusStore } from "./status.store";
 
 export type ComponentNodeId = string;
 type SchemaId = string;
+
+const toast = useToast();
 
 export type FullComponent = RawComponent & {
   // array of parent IDs
@@ -968,7 +972,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async UPGRADE_COMPONENT(componentId: ComponentId) {
+          async UPGRADE_COMPONENT(
+            componentId: ComponentId,
+            componentName: string,
+          ) {
+            let toastID: number | string;
             return new ApiRequest({
               url: "component/upgrade_component",
               keyRequestStatusBy: componentId,
@@ -976,6 +984,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 componentId,
                 ...visibilityParams,
+              },
+              optimistic: () => {
+                toastID = toast({
+                  component: ComponentUpgrading,
+                  props: {
+                    componentName,
+                  },
+                });
+              },
+              onSuccess: () => {
+                toast.update(toastID, {
+                  content: {
+                    props: { success: true, componentName },
+                    component: ComponentUpgrading,
+                  },
+                  options: { timeout: 500 },
+                });
               },
             });
           },
