@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use veritech_client::{OutputStream, ResourceStatus};
 use crate::{
     action::dependency_graph::ActionDependencyGraph,
     action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+    attribute::value::{AttributeValueError, DependentValueGraph},
     func::backend::js_action::DeprecatedActionRunResult,
     func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
     id, implement_add_edge_to,
@@ -18,8 +19,8 @@ use crate::{
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
-    ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext, EdgeWeightError,
-    EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
+    AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
     WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
@@ -31,6 +32,8 @@ pub mod prototype;
 pub enum ActionError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
@@ -545,19 +548,57 @@ impl Action {
         Ok((resource, logs))
     }
 
+    /// An Action is dispatchable if all of the following are true:
+    ///   * The action is in the state [`ActionState::Queued`](ActionState)
+    ///   * The graph of values for `DependentValuesUpdate` does *NOT* include
+    ///     *ANY* [`AttributeValue`s](AttributeValue) for the same
+    ///     [`Component`](crate::Component) as the [`Action`].
+    ///
+    /// This method **DOES NOT** check the `DependentValuesUpdate` graph. That
+    /// is done as part of [`Self::eligible_to_dispatch()`]
     pub fn is_eligible_to_dispatch(&self) -> bool {
         // Only Actions in the ActionState::Queued state are dispatchable.
         self.state() == ActionState::Queued
     }
 
+    /// An Action is dispatchable if all of the following are true:
+    ///   * The action is in the state [`ActionState::Queued`](ActionState)
+    ///   * The graph of values for `DependentValuesUpdate` does *NOT* include
+    ///     *ANY* [`AttributeValue`s](AttributeValue) for the same
+    ///     [`Component`](crate::Component) as the [`Action`].
     pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
         let mut result = Vec::new();
+        let dependent_value_graph = DependentValueGraph::new(
+            ctx,
+            ctx.workspace_snapshot()?
+                .list_dependent_value_value_ids()
+                .await?,
+        )
+        .await?;
+
+        // Find the ComponentIds for all AttributeValues in the full dependency graph for the
+        // queued/running DependentValuesUpdate. We'll want to hold off on dispatching any Actions
+        // that would be operating on the same Component until after the DependentValuesUpdate has
+        // finished working with that Component.
+        let mut dvu_component_ids: HashSet<ComponentId> = HashSet::new();
+        for av_id in &dependent_value_graph.all_value_ids() {
+            dvu_component_ids.insert(AttributeValue::component_id(ctx, *av_id).await?);
+        }
 
         for possible_action_id in action_dependency_graph.independent_actions() {
             let action = Action::get_by_id(ctx, possible_action_id).await?;
 
             if action.is_eligible_to_dispatch() {
+                if let Some(action_component_id) = Action::component_id(ctx, action.id()).await? {
+                    if dvu_component_ids.contains(&action_component_id) {
+                        // This action is for a Component that currently involved in the queued
+                        // DependentValuesUpdate graph. We don't want to dispatch the Action until
+                        // the DependentValuesUpdate job has completely finished
+                        // processing/populating values that the Action might need to work with.
+                        continue;
+                    }
+                }
                 result.push(possible_action_id);
             }
         }
