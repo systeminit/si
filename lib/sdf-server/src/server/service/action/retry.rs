@@ -1,4 +1,4 @@
-use axum::extract::Query;
+use axum::Json;
 use dal::action::{Action, ActionState};
 use dal::{ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub struct RetryRequest {
 pub async fn retry(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<RetryRequest>,
+    Json(request): Json<RetryRequest>,
 ) -> ActionResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
