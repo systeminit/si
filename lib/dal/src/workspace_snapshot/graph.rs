@@ -38,8 +38,6 @@ pub type LineageId = Ulid;
 pub enum WorkspaceSnapshotGraphError {
     #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
-    #[error("could not find category node used by node with index {0:?}")]
-    CategoryNodeNotFound(NodeIndex),
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Unable to retrieve content for ContentHash")]
@@ -284,7 +282,7 @@ impl WorkspaceSnapshotGraph {
         &self,
         source: Option<Ulid>,
         kind: CategoryNodeKind,
-    ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
+    ) -> WorkspaceSnapshotGraphResult<Option<(Ulid, NodeIndex)>> {
         let source_index = match source {
             Some(provided_source) => self.get_node_index_by_id(provided_source)?,
             None => self.root_index,
@@ -298,14 +296,12 @@ impl WorkspaceSnapshotGraph {
 
             if let NodeWeight::Category(category_node_weight) = maybe_category_node_weight {
                 if category_node_weight.kind() == kind {
-                    return Ok((category_node_weight.id(), maybe_category_node_index));
+                    return Ok(Some((category_node_weight.id(), maybe_category_node_index)));
                 }
             }
         }
 
-        Err(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
-            source_index,
-        ))
+        Ok(None)
     }
 
     pub fn edges_directed(
@@ -523,6 +519,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         self.add_node(self.get_node_weight(node_index_to_copy)?.clone())
     }
+
     #[instrument(level = "info", skip_all)]
     pub fn detect_conflicts_and_updates(
         &self,
@@ -546,6 +543,8 @@ impl WorkspaceSnapshotGraph {
         {
             return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
         };
+
+        updates.extend(self.maybe_merge_category_nodes(onto)?);
 
         Ok((conflicts, updates))
     }
@@ -857,6 +856,9 @@ impl WorkspaceSnapshotGraph {
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                         CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
+                        CategoryNodeKind::DependentValueRoots => {
+                            ("Dependent Values (Category)".into(), "black")
+                        }
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
@@ -882,6 +884,10 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::Secret(secret_node_weight) => (
                         format!("Secret\n{}", secret_node_weight.encrypted_secret_key()),
                         "black",
+                    ),
+                    NodeWeight::DependentValueRoot(node_weight) => (
+                        format!("DependentValue\n{}", node_weight.value_id()),
+                        "purple",
                     ),
                 };
                 let color = color.to_string();
@@ -1132,6 +1138,28 @@ impl WorkspaceSnapshotGraph {
 
         // - Sets same: No conflicts/updates
         Ok((conflicts, updates))
+    }
+
+    fn maybe_merge_category_nodes(
+        &self,
+        onto: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<Vec<Update>> {
+        Ok(
+            match (
+                self.get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
+                onto.get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
+            ) {
+                (Some((to_rebase_category_id, _)), Some((onto_category_id, _)))
+                    if to_rebase_category_id != onto_category_id =>
+                {
+                    vec![Update::MergeCategoryNodes {
+                        to_rebase_category_id,
+                        onto_category_id,
+                    }]
+                }
+                _ => vec![],
+            },
+        )
     }
 
     #[inline(always)]
@@ -1704,8 +1732,38 @@ impl WorkspaceSnapshotGraph {
                     self.find_in_self_or_create_using_onto(*onto_subgraph_root, onto)?;
                     self.replace_references(updated_to_rebase)?;
                 }
+                Update::MergeCategoryNodes {
+                    to_rebase_category_id,
+                    onto_category_id,
+                } => {
+                    self.merge_category_nodes(*to_rebase_category_id, *onto_category_id)?;
+                }
             }
         }
+        Ok(())
+    }
+
+    fn merge_category_nodes(
+        &mut self,
+        to_rebase_category_id: Ulid,
+        onto_category_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // both categories should be on the graph at this point
+        let onto_cat_node_index = self.get_node_index_by_id(onto_category_id)?;
+        let new_targets_for_cat_node: Vec<(NodeIndex, EdgeWeight)> = self
+            .edges_directed(onto_cat_node_index, Outgoing)
+            .map(|edge_ref| (edge_ref.target(), edge_ref.weight().to_owned()))
+            .collect();
+
+        for (target_idx, edge_weight) in new_targets_for_cat_node {
+            let to_rebase_cat_node_idx = self.get_node_index_by_id(to_rebase_category_id)?;
+            self.add_edge(to_rebase_cat_node_idx, edge_weight, target_idx)?;
+        }
+
+        let onto_cat_node_index = self.get_node_index_by_id(onto_category_id)?;
+        self.remove_node(onto_cat_node_index);
+        self.remove_node_id(onto_category_id);
+
         Ok(())
     }
 

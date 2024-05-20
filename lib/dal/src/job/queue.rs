@@ -107,11 +107,7 @@ impl JobQueue {
             // in the job definitions module, but this works.
             return Some(match job_kind {
                 AttributeValueBasedJobIdentifier::DependentValuesUpdate => {
-                    DependentValuesUpdate::new(
-                        access_builder,
-                        Visibility::new(change_set_id),
-                        ids.into_iter().collect(),
-                    )
+                    DependentValuesUpdate::new(access_builder, Visibility::new(change_set_id))
                 }
                 AttributeValueBasedJobIdentifier::ComputeValidation => ComputeValidation::new(
                     access_builder,

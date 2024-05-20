@@ -1,47 +1,31 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
-use strum::{Display, EnumIter};
 
-use crate::change_set::ChangeSet;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
-use crate::EdgeWeightKindDiscriminants;
+use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockId};
+use crate::{ChangeSet, EdgeWeightKindDiscriminants};
 
-/// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
-/// assume the new categories already exists on the graph. In places where you need to access the
-/// category, check if it exists, and if it doesn't exist, create it (if it makes sense to do so in
-/// the given context). Note that a race to create the category will result in a broken graph(since
-/// having two of the same category would leave the graph in an inconsistent state), so you should
-/// implement the ability to merge your category nodes together.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display, EnumIter)]
-pub enum CategoryNodeKind {
-    Action,
-    Component,
-    DeprecatedActionBatch,
-    Func,
-    Module,
-    Schema,
-    Secret,
-    DependentValueRoots,
-}
+use super::NodeWeightResult;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct CategoryNodeWeight {
+pub struct DependentValueRootNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
-    kind: CategoryNodeKind,
-    // TODO This should not be a content hash, since it does not point to a value in cas
-    content_hash: ContentHash,
+    value_id: Ulid,
+    // how many times has this been re-enqueued before being processed. u16 is
+    // maybe small (65536 touches), although if that many snapshots are produced
+    // before a dependent value update processes this root, something has gone
+    // wrong.
+    touch_count: u16,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
-impl CategoryNodeWeight {
+impl DependentValueRootNodeWeight {
     pub fn content_hash(&self) -> ContentHash {
-        self.content_hash
+        ContentHash::new(&self.value_id.inner().to_bytes())
     }
 
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
@@ -52,8 +36,8 @@ impl CategoryNodeWeight {
         self.id
     }
 
-    pub fn kind(&self) -> CategoryNodeKind {
-        self.kind
+    pub fn value_id(&self) -> Ulid {
+        self.value_id
     }
 
     pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
@@ -86,11 +70,7 @@ impl CategoryNodeWeight {
         }
     }
 
-    pub fn merge_clocks(
-        &mut self,
-        change_set: &ChangeSet,
-        other: &CategoryNodeWeight,
-    ) -> NodeWeightResult<()> {
+    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) -> NodeWeightResult<()> {
         self.vector_clock_write
             .merge(change_set.vector_clock_id(), other.vector_clock_write())?;
         self.vector_clock_first_seen.merge(
@@ -105,27 +85,34 @@ impl CategoryNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new(change_set: &ChangeSet, kind: CategoryNodeKind) -> NodeWeightResult<Self> {
+    pub fn new(change_set: &ChangeSet, value_id: Ulid) -> NodeWeightResult<Self> {
         Ok(Self {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
-            kind,
+            value_id,
+            touch_count: 0,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
-            content_hash: ContentHash::from(&serde_json::json![kind]),
             merkle_tree_hash: Default::default(),
             vector_clock_recently_seen: Default::default(),
         })
+    }
+
+    pub fn touch(self, change_set: &ChangeSet) -> NodeWeightResult<Self> {
+        let mut new = self.new_with_incremented_vector_clock(change_set)?;
+        new.touch_count += 1;
+
+        Ok(new)
     }
 
     pub fn new_with_incremented_vector_clock(
         &self,
         change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
-        let mut new_category_node_weight = self.clone();
-        new_category_node_weight.increment_vector_clock(change_set)?;
+        let mut new_node_weight = self.clone();
+        new_node_weight.increment_vector_clock(change_set)?;
 
-        Ok(new_category_node_weight)
+        Ok(new_node_weight)
     }
 
     pub fn node_hash(&self) -> ContentHash {
@@ -162,12 +149,12 @@ impl CategoryNodeWeight {
     }
 }
 
-impl std::fmt::Debug for CategoryNodeWeight {
+impl std::fmt::Debug for DependentValueRootNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("CategoryNodeWeight")
+        f.debug_struct("DependentValueNodeWeight")
             .field("id", &self.id.to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_hash", &self.content_hash)
+            .field("value_id", &self.value_id.to_string())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(

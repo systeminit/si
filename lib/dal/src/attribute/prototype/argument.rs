@@ -616,7 +616,7 @@ impl AttributePrototypeArgument {
             .await?;
 
         // Enqueue a dependent values update with the destination attribute values
-        ctx.enqueue_dependent_values_update(avs_to_update).await?;
+        ctx.add_dependent_values_and_enqueue(avs_to_update).await?;
 
         Ok(())
     }

@@ -183,7 +183,7 @@ impl DeprecatedActionBatch {
 
         // Root --> ActionBatch Category --> Component (this)
         let category_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::DeprecatedActionBatch)
+            .get_category_node_or_err(None, CategoryNodeKind::DeprecatedActionBatch)
             .await?;
         Self::add_category_edge(ctx, category_id, id.into(), EdgeWeightKind::new_use()).await?;
 
@@ -217,7 +217,7 @@ impl DeprecatedActionBatch {
 
         let mut action_batches = vec![];
         let action_batch_category_node_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::DeprecatedActionBatch)
+            .get_category_node_or_err(None, CategoryNodeKind::DeprecatedActionBatch)
             .await?;
 
         let action_batch_node_indices = workspace_snapshot

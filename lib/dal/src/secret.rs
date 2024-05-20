@@ -263,7 +263,7 @@ impl Secret {
 
         // Root --> Secret Category --> Secret (this)
         let secret_category_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(None, CategoryNodeKind::Secret)
             .await?;
         Self::add_category_edge(
             ctx,
@@ -382,7 +382,8 @@ impl Secret {
             .await?
             .set_value_from_secret_id(ctx, secret_id)
             .await?;
-        ctx.enqueue_dependent_values_update(vec![secret_id]).await?;
+        ctx.add_dependent_values_and_enqueue(vec![secret_id])
+            .await?;
 
         Ok(())
     }
@@ -499,7 +500,7 @@ impl Secret {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let secret_category_node_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(None, CategoryNodeKind::Secret)
             .await?;
 
         let indices = workspace_snapshot
@@ -530,7 +531,7 @@ impl Secret {
 
         let mut secrets = vec![];
         let secret_category_node_id = workspace_snapshot
-            .get_category_node(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(None, CategoryNodeKind::Secret)
             .await?;
 
         let secret_node_indices = workspace_snapshot
@@ -607,7 +608,7 @@ impl Secret {
 
         // Since we are updating encrypted contents, we have a new key and need to enqueue ourselves
         // into dependent values update.
-        ctx.enqueue_dependent_values_update(vec![self.id]).await?;
+        ctx.add_dependent_values_and_enqueue(vec![self.id]).await?;
 
         self.modify(ctx, |s| {
             s.encrypted_secret_key = new_key;

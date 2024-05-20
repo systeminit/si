@@ -146,7 +146,7 @@ impl Frame {
                 .difference(&cached_impacted_values)
                 .copied(),
         );
-        ctx.enqueue_dependent_values_update(
+        ctx.add_dependent_values_and_enqueue(
             values_to_run
                 .into_iter()
                 .map(|values| values.input_socket_match.attribute_value_id)
@@ -181,7 +181,7 @@ impl Frame {
             .publish_on_commit(ctx)
             .await?;
 
-        ctx.enqueue_dependent_values_update(
+        ctx.add_dependent_values_and_enqueue(
             before_change_impacted_input_sockets
                 .into_iter()
                 .map(|values| values.input_socket_match.attribute_value_id)

@@ -28,7 +28,7 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
-    WsEvent, WsEventError,
+    WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 const MAX_RETRIES: u32 = 8;
@@ -46,6 +46,8 @@ pub enum DependentValueUpdateError {
     TokioTask(#[from] JoinError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -53,19 +55,16 @@ pub enum DependentValueUpdateError {
 pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
 
 #[derive(Debug, Deserialize, Serialize)]
-struct DependentValuesUpdateArgs {
-    nodes: Vec<Ulid>,
-}
+struct DependentValuesUpdateArgs;
 
 impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
-    fn from(value: DependentValuesUpdate) -> Self {
-        Self { nodes: value.nodes }
+    fn from(_value: DependentValuesUpdate) -> Self {
+        Self
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
-    nodes: Vec<Ulid>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
@@ -74,13 +73,8 @@ pub struct DependentValuesUpdate {
 }
 
 impl DependentValuesUpdate {
-    pub fn new(
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        nodes: Vec<Ulid>,
-    ) -> Box<Self> {
+    pub fn new(access_builder: AccessBuilder, visibility: Visibility) -> Box<Self> {
         Box::new(Self {
-            nodes,
             access_builder,
             visibility,
             job: None,
@@ -113,14 +107,7 @@ impl JobConsumerMetadata for DependentValuesUpdate {
 
 #[async_trait]
 impl JobConsumer for DependentValuesUpdate {
-    #[instrument(
-        name = "dependent_values_update.run",
-        skip_all,
-        level = "info",
-        fields(
-            nodes = ?self.nodes,
-        )
-    )]
+    #[instrument(name = "dependent_values_update.run", skip_all, level = "info")]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         Ok(self.inner_run(ctx).await?)
     }
@@ -133,7 +120,12 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
 
-        let mut dependency_graph = DependentValueGraph::new(ctx, self.nodes.clone()).await?;
+        let node_ids = ctx
+            .workspace_snapshot()?
+            .take_dependent_values(ctx.change_set()?)
+            .await?;
+
+        let mut dependency_graph = DependentValueGraph::new(ctx, node_ids).await?;
 
         debug!(
             "DependentValueGraph calculation took: {:?}",
@@ -363,9 +355,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
     type Error = JobConsumerError;
 
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        let args = DependentValuesUpdateArgs::deserialize(&job.arg)?;
         Ok(Self {
-            nodes: args.nodes,
             access_builder: job.access_builder,
             visibility: job.visibility,
             job: Some(job),
