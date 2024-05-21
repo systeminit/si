@@ -9,8 +9,6 @@ mod test {
     use std::collections::HashMap;
     use std::collections::HashSet;
 
-    use crate::change_set::ChangeSet;
-    use crate::workspace_snapshot::conflict::Conflict;
     use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -19,6 +17,8 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind::DependentValueRoots;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
+    use crate::workspace_snapshot::{conflict::Conflict, NodeInformation};
+    use crate::{change_set::ChangeSet, NodeWeightDiscriminants};
     use crate::{PropKind, WorkspaceSnapshotGraph};
 
     #[derive(Debug, PartialEq)]
@@ -258,8 +258,8 @@ mod test {
                 destination,
                 edge_weight,
             }] => {
-                assert_eq!(new_graph.root_index, *source);
-                assert_eq!(new_onto_component_index, *destination);
+                assert_eq!(new_graph.root_index, source.index);
+                assert_eq!(new_onto_component_index, destination.index);
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
             other => panic!("Unexpected updates: {:?}", other),
@@ -360,8 +360,8 @@ mod test {
                 destination,
                 edge_weight,
             }] => {
-                assert_eq!(base_graph.root_index, *source);
-                assert_eq!(new_component_index, *destination);
+                assert_eq!(base_graph.root_index, source.index);
+                assert_eq!(new_component_index, destination.index);
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
             other => panic!("Unexpected updates: {:?}", other),
@@ -527,8 +527,8 @@ mod test {
                 destination,
                 edge_weight,
             }] => {
-                assert_eq!(new_graph.root_index, *source);
-                assert_eq!(new_onto_component_index, *destination);
+                assert_eq!(new_graph.root_index, source.index);
+                assert_eq!(new_onto_component_index, destination.index);
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
             other => panic!("Unexpected updates: {:?}", other),
@@ -670,12 +670,20 @@ mod test {
 
         assert_eq!(
             vec![Conflict::NodeContent {
-                onto: base_graph
-                    .get_node_index_by_id(component_id)
-                    .expect("Unable to get component NodeIndex"),
-                to_rebase: new_graph
-                    .get_node_index_by_id(component_id)
-                    .expect("Unable to get component NodeIndex"),
+                onto: NodeInformation {
+                    id: component_id,
+                    index: base_graph
+                        .get_node_index_by_id(component_id)
+                        .expect("Unable to get component NodeIndex"),
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                },
+                to_rebase: NodeInformation {
+                    id: component_id,
+                    index: new_graph
+                        .get_node_index_by_id(component_id)
+                        .expect("Unable to get component NodeIndex"),
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                },
             }],
             conflicts
         );
@@ -819,11 +827,13 @@ mod test {
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(
-            vec![Conflict::ModifyRemovedItem(
-                new_graph
+            vec![Conflict::ModifyRemovedItem(NodeInformation {
+                id: component_id,
+                index: new_graph
                     .get_node_index_by_id(component_id)
-                    .expect("Unable to get NodeIndex")
-            )],
+                    .expect("Unable to get NodeIndex"),
+                node_weight_kind: NodeWeightDiscriminants::Content,
+            })],
             conflicts
         );
         assert_eq!(Vec::<Update>::new(), updates);
@@ -992,13 +1002,13 @@ mod test {
                     base_graph
                         .get_node_index_by_id(base_prop_id)
                         .expect("Unable to get prop NodeIndex"),
-                    *source
+                    source.index,
                 );
                 assert_eq!(
                     base_graph
                         .get_node_index_by_id(attribute_prototype_id)
                         .expect("Unable to get prop NodeIndex"),
-                    *destination
+                    destination.index,
                 );
                 assert_eq!(&EdgeWeightKind::Prototype(None), edge_weight.kind());
             }
@@ -1363,27 +1373,45 @@ mod test {
         // new_graph.dot();
 
         let expected_conflicts = vec![
-            Conflict::ModifyRemovedItem(
-                new_graph
+            Conflict::ModifyRemovedItem(NodeInformation {
+                index: new_graph
                     .get_node_index_by_id(nginx_butane_component_id)
                     .expect("Unable to get component NodeIndex"),
-            ),
+                id: nginx_butane_component_id,
+                node_weight_kind: NodeWeightDiscriminants::Content,
+            }),
             Conflict::NodeContent {
-                onto: base_graph
-                    .get_node_index_by_id(docker_image_schema_variant_id)
-                    .expect("Unable to get component NodeIndex"),
-                to_rebase: new_graph
-                    .get_node_index_by_id(docker_image_schema_variant_id)
-                    .expect("Unable to get component NodeIndex"),
+                onto: NodeInformation {
+                    index: base_graph
+                        .get_node_index_by_id(docker_image_schema_variant_id)
+                        .expect("Unable to get component NodeIndex"),
+                    id: docker_image_schema_variant_id,
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                },
+                to_rebase: NodeInformation {
+                    index: new_graph
+                        .get_node_index_by_id(docker_image_schema_variant_id)
+                        .expect("Unable to get component NodeIndex"),
+                    id: docker_image_schema_variant_id,
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                },
             },
         ];
         let expected_updates = vec![Update::ReplaceSubgraph {
-            onto: base_graph
-                .get_node_index_by_id(docker_image_schema_id)
-                .expect("Unable to get NodeIndex"),
-            to_rebase: new_graph
-                .get_node_index_by_id(docker_image_schema_id)
-                .expect("Unable to get NodeIndex"),
+            onto: NodeInformation {
+                index: base_graph
+                    .get_node_index_by_id(docker_image_schema_id)
+                    .expect("Unable to get NodeIndex"),
+                id: docker_image_schema_id,
+                node_weight_kind: NodeWeightDiscriminants::Content,
+            },
+            to_rebase: NodeInformation {
+                index: new_graph
+                    .get_node_index_by_id(docker_image_schema_id)
+                    .expect("Unable to get NodeIndex"),
+                id: docker_image_schema_id,
+                node_weight_kind: NodeWeightDiscriminants::Content,
+            },
         }];
 
         assert_eq!(
@@ -1898,43 +1926,75 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
+        let initial_ordering_node_index_for_container = initial_graph
+            .ordering_node_index_for_container(
+                initial_graph
+                    .get_node_index_by_id(container_prop_id)
+                    .expect("Unable to get container NodeIndex"),
+            )
+            .expect("Unable to get new ordering NodeIndex")
+            .expect("Ordering NodeIndex not found");
+        let initial_ordering_node_weight_for_container = initial_graph
+            .get_node_weight(initial_ordering_node_index_for_container)
+            .expect("Unable to get ordering node weight");
+        let new_ordering_node_index_for_container = new_graph
+            .ordering_node_index_for_container(
+                new_graph
+                    .get_node_index_by_id(container_prop_id)
+                    .expect("Unable to get container NodeIndex"),
+            )
+            .expect("Unable to get new ordering NodeIndex")
+            .expect("Ordering NodeIndex not found");
+        let new_ordering_node_weight_for_container = new_graph
+            .get_node_weight(new_ordering_node_index_for_container)
+            .expect("Unable to get ordering node weight");
         assert_eq!(Vec::<Conflict>::new(), conflicts);
         assert_eq!(
             vec![
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(container_prop_id)
-                        .expect("Unable to get NodeIndex"),
-                    destination: initial_graph
-                        .get_node_index_by_id(ordered_prop_5_id)
-                        .expect("Unable to get NodeIndex"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(container_prop_id)
+                            .expect("Unable to get NodeIndex"),
+                        id: container_prop_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(ordered_prop_5_id)
+                            .expect("Unable to get NodeIndex"),
+                        id: ordered_prop_5_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: new_edge_weight,
                 },
                 Update::ReplaceSubgraph {
-                    onto: initial_graph
-                        .ordering_node_index_for_container(
-                            initial_graph
-                                .get_node_index_by_id(container_prop_id)
-                                .expect("Unable to get container NodeIndex")
-                        )
-                        .expect("Unable to get new ordering NodeIndex")
-                        .expect("Ordering NodeIndex not found"),
-                    to_rebase: new_graph
-                        .ordering_node_index_for_container(
-                            new_graph
-                                .get_node_index_by_id(container_prop_id)
-                                .expect("Unable to get container NodeIndex")
-                        )
-                        .expect("Unable to get old ordering NodeIndex")
-                        .expect("Ordering NodeIndex not found"),
+                    onto: NodeInformation {
+                        index: initial_ordering_node_index_for_container,
+                        id: initial_ordering_node_weight_for_container.id(),
+                        node_weight_kind: NodeWeightDiscriminants::Ordering,
+                    },
+                    to_rebase: NodeInformation {
+                        index: new_ordering_node_index_for_container,
+                        id: new_ordering_node_weight_for_container.id(),
+                        node_weight_kind: NodeWeightDiscriminants::Ordering,
+                    },
                 },
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
-                    destination: initial_graph
-                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: source_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Ordering,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: destination_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: ordinal_edge_weight,
                 }
             ],
@@ -2213,45 +2273,79 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
+        let initial_container_ordering_node_index = initial_graph
+            .ordering_node_index_for_container(
+                initial_graph
+                    .get_node_index_by_id(container_prop_id)
+                    .expect("Unable to get container node index"),
+            )
+            .expect("Unable to get ordering node index")
+            .expect("No ordering node");
+        let new_container_ordering_node_index = new_graph
+            .ordering_node_index_for_container(
+                new_graph
+                    .get_node_index_by_id(container_prop_id)
+                    .expect("Unable to get container node index"),
+            )
+            .expect("Unable to get ordering node index")
+            .expect("No ordering node");
+
         assert_eq!(
             vec![Conflict::ChildOrder {
-                onto: initial_graph
-                    .ordering_node_index_for_container(
-                        initial_graph
-                            .get_node_index_by_id(container_prop_id)
-                            .expect("Unable to get container NodeIndex")
-                    )
-                    .expect("Unable to get ordering NodeIndex")
-                    .expect("Ordering NodeIndex not found"),
-                to_rebase: new_graph
-                    .ordering_node_index_for_container(
-                        new_graph
-                            .get_node_index_by_id(container_prop_id)
-                            .expect("Unable to get container NodeIndex")
-                    )
-                    .expect("Unable to get ordering NodeIndex")
-                    .expect("Ordering NodeIndex not found"),
+                onto: NodeInformation {
+                    index: initial_container_ordering_node_index,
+                    id: initial_graph
+                        .get_node_weight(initial_container_ordering_node_index)
+                        .expect("Unable to get ordering node")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Ordering,
+                },
+                to_rebase: NodeInformation {
+                    index: new_container_ordering_node_index,
+                    id: new_graph
+                        .get_node_weight(new_container_ordering_node_index)
+                        .expect("Unable to get new ordering node")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Ordering,
+                },
             }],
             conflicts
         );
+
         assert_eq!(
             vec![
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(container_prop_id)
-                        .expect("Unable to get new_graph container NodeIndex"),
-                    destination: initial_graph
-                        .get_node_index_by_id(ordered_prop_5_id)
-                        .expect("Unable to get ordered prop 5 NodeIndex"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(container_prop_id)
+                            .expect("Unable to get new prop index"),
+                        id: container_prop_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(ordered_prop_5_id)
+                            .expect("Unable to get ordered prop 5 index"),
+                        id: ordered_prop_5_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: new_edge_weight,
                 },
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
-                    destination: initial_graph
-                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: source_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Ordering,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: destination_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: ordinal_edge_weight,
                 }
             ],
@@ -2554,21 +2648,37 @@ mod test {
         assert_eq!(
             vec![
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(container_prop_id)
-                        .expect("Unable to get new_graph container NodeIndex"),
-                    destination: initial_graph
-                        .get_node_index_by_id(ordered_prop_5_id)
-                        .expect("Unable to get ordered prop 5 NodeIndex"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(container_prop_id)
+                            .expect("Unable to get new_graph container NodeIndex"),
+                        id: container_prop_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(ordered_prop_5_id)
+                            .expect("Unable to get ordered prop 5 NodeIndex"),
+                        id: ordered_prop_5_id,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: new_edge_weight,
                 },
                 Update::NewEdge {
-                    source: new_graph
-                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
-                    destination: initial_graph
-                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
-                        .expect("could not get node index by id"),
+                    source: NodeInformation {
+                        index: new_graph
+                            .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: source_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Ordering,
+                    },
+                    destination: NodeInformation {
+                        index: initial_graph
+                            .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                            .expect("could not get node index by id"),
+                        id: destination_node_id_for_ordinal_edge,
+                        node_weight_kind: NodeWeightDiscriminants::Content,
+                    },
                     edge_weight: ordinal_edge_weight,
                 }
             ],
@@ -2754,8 +2864,16 @@ mod test {
 
         assert_eq!(
             vec![Update::RemoveEdge {
-                source: a_idx,
-                destination: c_idx,
+                source: NodeInformation {
+                    index: a_idx,
+                    id: a_id,
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
+                destination: NodeInformation {
+                    index: c_idx,
+                    id: c_id,
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
             }],
             updates
@@ -2838,8 +2956,22 @@ mod test {
 
         assert_eq!(
             vec![Conflict::ExclusiveEdgeMismatch {
-                source: a_q_node_idx,
-                destination: a_node_idx,
+                source: NodeInformation {
+                    index: a_q_node_idx,
+                    id: graph_a
+                        .get_node_weight(a_q_node_idx)
+                        .expect("Unable to get a_q node weight")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
+                destination: NodeInformation {
+                    index: a_node_idx,
+                    id: graph_a
+                        .get_node_weight(a_node_idx)
+                        .expect("Unable to get a node weight")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
             }],
             conflicts
@@ -2855,8 +2987,22 @@ mod test {
 
         assert_eq!(
             vec![Conflict::ExclusiveEdgeMismatch {
-                source: b_q_node_idx,
-                destination: b_node_idx,
+                source: NodeInformation {
+                    index: b_q_node_idx,
+                    id: graph_b
+                        .get_node_weight(b_q_node_idx)
+                        .expect("Unable to get b_q node_weight")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
+                destination: NodeInformation {
+                    index: b_node_idx,
+                    id: graph_b
+                        .get_node_weight(b_node_idx)
+                        .expect("Unable to get b node_weight")
+                        .id(),
+                    node_weight_kind: NodeWeightDiscriminants::Prop,
+                },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
             }],
             conflicts
@@ -3032,10 +3178,25 @@ mod test {
         assert!(updates.is_empty());
         assert_eq!(1, conflicts.len());
 
-        let container = to_rebase_graph.root_index;
-        let removed_item = onto_graph
+        let container = NodeInformation {
+            index: to_rebase_graph.root_index,
+            id: to_rebase_graph
+                .get_node_weight(to_rebase_graph.root())
+                .expect("Unable to get root node")
+                .id(),
+            node_weight_kind: NodeWeightDiscriminants::Content,
+        };
+        let removed_index = onto_graph
             .get_node_index_by_id(prototype_node_id)
             .expect("get_node_index_by_id");
+        let removed_item = NodeInformation {
+            index: removed_index,
+            id: onto_graph
+                .get_node_weight(removed_index)
+                .expect("Unable to get removed item node weight")
+                .id(),
+            node_weight_kind: NodeWeightDiscriminants::Content,
+        };
         assert_eq!(
             conflicts[0],
             Conflict::RemoveModifiedItem {
