@@ -282,7 +282,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             ): ComponentId[] => {
               const c = this.rawComponentsById[componentId];
 
-              if (!c) throw new Error("what?");
+              if (!c) return [];
               const parentId = c.parentId;
 
               if (parentId) {
