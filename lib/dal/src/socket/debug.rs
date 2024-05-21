@@ -30,6 +30,7 @@ pub struct SocketDebugView {
     pub func_id: FuncId,
     pub func_execution: Option<FuncExecution>,
     pub prototype_id: Option<AttributePrototypeId>,
+    pub prototype_is_component_specific: bool,
     pub connection_annotations: Vec<String>,
     pub func_name: String,
     pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
@@ -93,6 +94,7 @@ impl SocketDebugView {
                 .collect();
         Ok(SocketDebugView {
             prototype_id,
+            prototype_is_component_specific: prototype_debug_view.is_component_specific,
             func_name: prototype_debug_view.func_name,
             func_args: prototype_debug_view.func_args,
             attribute_value_id,
@@ -139,6 +141,7 @@ impl SocketDebugView {
                 .collect();
         let view = SocketDebugView {
             prototype_id,
+            prototype_is_component_specific: prototype_debug_view.is_component_specific,
             func_name: prototype_debug_view.func_name,
             func_args: prototype_debug_view.func_args,
             attribute_value_id,

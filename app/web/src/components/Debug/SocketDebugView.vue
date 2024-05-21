@@ -9,6 +9,10 @@
       />
       <DebugViewItem title="Value" :data="data.value ?? 'NULL'" />
       <DebugViewItem title="Prototype Id" :data="data.prototypeId" />
+      <DebugViewItem
+        title="Prototype Is Component Specific"
+        :data="data.prototypeIsComponentSpecific"
+      />
       <DebugViewItem title="Socket Id" :data="data.socketId" />
       <DebugViewItem title="Connection Annotations">
         <template #data>
