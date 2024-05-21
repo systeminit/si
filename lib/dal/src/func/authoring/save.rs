@@ -130,6 +130,7 @@ async fn update_action_associations(
             let prototype_func_id = prototype.func_id(ctx).await?;
             if func.id == prototype_func_id {
                 if prototype.kind != kind && kind != DeprecatedActionKind::Other {
+                    dbg!("HERE");
                     let existing_kind = current_deprecated_prototypes
                         .clone()
                         .into_iter()
@@ -151,6 +152,7 @@ async fn update_action_associations(
                 if prototype.kind != ActionKind::from(kind)
                     && ActionKind::from(kind) != ActionKind::Manual
                 {
+                    dbg!("THERE");
                     let existing_kind = new_action_protypes_for_schema_variant
                         .clone()
                         .into_iter()
@@ -176,24 +178,51 @@ async fn update_action_associations(
 
     // Create or re-create the prototype for the schema variant ids passed in.
     for schema_variant_id in schema_variant_ids {
-        DeprecatedActionPrototype::new(
-            ctx,
-            Some(func.name.to_owned()),
-            kind,
-            schema_variant_id,
-            func.id,
-        )
-        .await?;
+        let current_deprecated_prototypes =
+            DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
-        ActionPrototype::new(
-            ctx,
-            crate::action::prototype::ActionKind::from(kind),
-            func.name.to_owned(),
-            None,
-            schema_variant_id,
-            func.id,
-        )
-        .await?;
+        let existing_kind = current_deprecated_prototypes
+            .clone()
+            .into_iter()
+            .find(|ap| ap.kind == kind);
+        if existing_kind.is_some() {
+            return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
+                kind,
+            )));
+        } else {
+            dbg!("CREATING PROTOTYPE FOR FUNC", func.name.to_owned());
+            DeprecatedActionPrototype::new(
+                ctx,
+                Some(func.name.to_owned()),
+                kind,
+                schema_variant_id,
+                func.id,
+            )
+            .await?;
+        }
+
+        let new_action_protypes_for_schema_variant =
+            ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+
+        let existing_kind = new_action_protypes_for_schema_variant
+            .clone()
+            .into_iter()
+            .find(|ap| ap.kind == ActionKind::from(kind));
+        if existing_kind.is_some() {
+            return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
+                kind,
+            )));
+        } else {
+            ActionPrototype::new(
+                ctx,
+                crate::action::prototype::ActionKind::from(kind),
+                func.name.to_owned(),
+                None,
+                schema_variant_id,
+                func.id,
+            )
+            .await?;
+        }
     }
 
     Ok(())
