@@ -4,7 +4,7 @@ pub use ulid::ULID_LEN;
 /// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Default, PartialOrd, Ord)]
+#[derive(Eq, PartialEq, Copy, Clone, Hash, Default, PartialOrd, Ord)]
 pub struct Ulid(CoreUlid);
 
 impl Ulid {
@@ -63,6 +63,12 @@ impl ::serde::Serialize for Ulid {
 impl std::fmt::Display for Ulid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Ulid({})", self.0.to_string())
+    }
+}
+
+impl std::fmt::Debug for Ulid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Ulid").field(&self.0.to_string()).finish()
     }
 }
 
