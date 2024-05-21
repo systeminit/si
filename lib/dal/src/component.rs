@@ -780,13 +780,10 @@ impl Component {
     ) -> ComponentResult<Vec<OutgoingConnection>> {
         let mut outgoing_edges = vec![];
 
-        for (from_output_socket_id, to_value_id) in self.output_socket_attribute_values(ctx).await?
-        {
-            let prototype_id =
-                AttributeValue::prototype_id(ctx, to_value_id.attribute_value_id).await?;
-            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+        for (from_output_socket_id, _) in self.output_socket_attribute_values(ctx).await? {
+            for apa_id in AttributePrototypeArgument::list_ids_for_output_socket_and_source(
                 ctx,
-                prototype_id,
+                from_output_socket_id,
                 self.id,
             )
             .await?
@@ -807,14 +804,21 @@ impl Component {
                     destination_component_id,
                 }) = apa.targets()
                 {
-                    if let Some(ValueSource::InputSocket(to_input_socket_id)) =
-                        apa.value_source(ctx).await?
+                    let prototype_id = apa.prototype_id(ctx).await?;
+                    let input_sources =
+                        AttributePrototype::input_sources(ctx, prototype_id).await?;
+                    if input_sources.len() > 1 {
+                        debug!("More than 1 source for an attribute prototype");
+                    }
+
+                    if let Some(AttributePrototypeSource::InputSocket(input_socket, _)) =
+                        input_sources.first()
                     {
                         outgoing_edges.push(OutgoingConnection {
                             attribute_prototype_argument_id: apa_id,
                             to_component_id: destination_component_id,
                             from_component_id: source_component_id,
-                            to_input_socket_id,
+                            to_input_socket_id: *input_socket,
                             from_output_socket_id,
                             created_info,
                             deleted_info: None,
