@@ -44,7 +44,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::OutputStream;
 
-use crate::action::prototype::ActionPrototypeError;
+use crate::action::prototype::{ActionKind, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
@@ -115,6 +115,8 @@ pub enum FuncAuthoringError {
     InvalidFuncAssociationsForFunc(FuncAssociations, FuncId, FuncKind),
     #[error("invalid func kind for creation: {0}")]
     InvalidFuncKindForCreation(FuncKind),
+    #[error("can't use func kind '{0}' as it already exists")]
+    KindAlreadyExists(ActionKind),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
