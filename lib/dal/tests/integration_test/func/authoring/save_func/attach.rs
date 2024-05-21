@@ -103,6 +103,62 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
 }
 
 #[test]
+async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
+    let schema = Schema::find_by_name(ctx, "fallout")
+        .await
+        .expect("unable to find by name")
+        .expect("no schema found");
+    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+        .await
+        .expect("unable to get default schema variant");
+    let func_id = Func::find_by_name(ctx, "test:createActionFallout")
+        .await
+        .expect("unable to find the func");
+    assert!(func_id.is_some());
+
+    let new_action_func_name = "anotherCreate";
+    FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Action,
+        Some(new_action_func_name.to_string()),
+        None,
+    )
+    .await
+    .expect("could not create func");
+
+    let func_id = Func::find_by_name(ctx, new_action_func_name)
+        .await
+        .expect("unable to find the func")
+        .expect("no func found");
+    let func = Func::get_by_id_or_error(ctx, func_id)
+        .await
+        .expect("unable to get func by id");
+    let func_view = FuncView::assemble(ctx, &func)
+        .await
+        .expect("unable to assemble a func view");
+    let (func_view_kind, mut schema_variant_ids) = func_view
+        .associations
+        .expect("empty associations")
+        .get_action_internals()
+        .expect("could not get internals");
+    schema_variant_ids.push(schema_variant_id);
+    assert!(FuncAuthoringClient::save_func(
+        ctx,
+        func_view.id,
+        func_view.display_name,
+        func_view.name,
+        func_view.description,
+        func_view.code,
+        Some(FuncAssociations::Action {
+            kind: func_view_kind,
+            schema_variant_ids,
+        }),
+    )
+    .await
+    .is_err());
+}
+
+#[test]
 async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
     let schema = Schema::find_by_name(ctx, "katy perry")
         .await
