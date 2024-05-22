@@ -274,10 +274,6 @@ impl ActionPrototype {
                     .publish_on_commit(ctx)
                     .await?;
 
-                if component.to_delete() && run_result.payload.is_none() {
-                    Component::remove(ctx, component.id()).await?;
-                }
-
                 Some(run_result)
             }
             None => None,

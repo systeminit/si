@@ -1866,11 +1866,31 @@ impl AttributeValue {
                 IntrinsicFunc::from(prop_node.kind())
             }
         };
-
+        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
         let func_id = Func::find_intrinsic(ctx, intrinsic_func).await?;
-        let prototype = AttributePrototype::new(ctx, func_id).await?;
+        // find existing component-specific prototype if it exists, if it does exist, prune the arguments (which will be re-added later)
+        // if it doesn't exist, create a new one and set it as the component specific prototype
+        let prototype_id = if let Some(existing_prototype) =
+            AttributeValue::component_prototype_id(ctx, attribute_value_id).await?
+        {
+            // prune existing arguments
+            let existing_arguments =
+                AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                    ctx,
+                    existing_prototype,
+                    associated_component_id,
+                )
+                .await?;
+            for existing_argument in existing_arguments {
+                AttributePrototypeArgument::remove_or_no_op(ctx, existing_argument).await?;
+            }
+            existing_prototype
+        } else {
+            let prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id()).await?;
+            Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id()).await?;
+            prototype.id()
+        };
 
         let func_binding_args = match value.to_owned() {
             Some(value) => {
@@ -1891,7 +1911,7 @@ impl AttributeValue {
                         .to_owned()
                 };
 
-                AttributePrototypeArgument::new(ctx, prototype.id(), func_arg_id)
+                AttributePrototypeArgument::new(ctx, prototype_id, func_arg_id)
                     .await?
                     .set_value_from_static_value(ctx, value.to_owned())
                     .await?;
@@ -1901,7 +1921,6 @@ impl AttributeValue {
             None => serde_json::Value::Null,
         };
 
-        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
         let before = before_funcs_for_component(ctx, associated_component_id)
             .await
             .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
