@@ -58,11 +58,29 @@ impl DvuDebouncer {
     }
 
     async fn run_dvu_if_values_pending(&self) -> DvuDebouncerResult<()> {
-        let mut ctx = self.ctx_builder.build_default().await?;
+        let mut builder = self.ctx_builder.clone();
+        // We shouldn't need to migrate any snapshots in the dvu debouncer. SDF
+        // should do that when it reads the snapshot. Once rewritten, the
+        // snapshot will already be migrated when we get here.
+        builder.set_no_auto_migrate_snapshots();
+        let mut ctx = builder.build_default().await?;
 
         ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_inner().into()));
         ctx.update_tenancy(Tenancy::new(self.workspace_id.into_inner().into()));
-        ctx.update_snapshot_to_visibility().await?;
+
+        if let Err(err) = ctx.update_snapshot_to_visibility().await {
+            match &err {
+                TransactionsError::WorkspaceSnapshot(boxed_err) => match boxed_err.as_ref() {
+                    WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(_) => {
+                        debug!("Snapshot not yet migrated. Not attempting dvu");
+                        return Ok(());
+                    }
+                    _ => Err(err)?,
+                },
+                _ => Err(err)?,
+            }
+        }
+
         if ctx
             .workspace_snapshot()?
             .has_dependent_value_roots()

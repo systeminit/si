@@ -93,6 +93,24 @@ where
         })
     }
 
+    #[instrument(
+        name = "layer_cache.get_bytes_from_durable_storage",
+        level = "debug",
+        skip_all,
+        fields(
+            si.layer_cache.key = key.as_ref(),
+        ),
+    )]
+    pub async fn get_bytes_from_durable_storage(
+        &self,
+        key: Arc<str>,
+    ) -> LayerDbResult<Option<Vec<u8>>> {
+        Ok(match self.disk_cache.get(key.clone()).await {
+            Ok(bytes) => Some(bytes),
+            Err(_) => self.pg.get(&key).await?,
+        })
+    }
+
     pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
     where
         K: Clone + Display + Eq + std::hash::Hash + std::str::FromStr,

@@ -7,7 +7,7 @@ use serde::{
 use std::{fmt, str::FromStr};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct WorkspaceSnapshotAddress(blake3::Hash);
 
 impl WorkspaceSnapshotAddress {
