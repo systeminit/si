@@ -38,6 +38,7 @@ use tokio::task::JoinError;
 
 use petgraph::prelude::*;
 pub use petgraph::Direction;
+use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use strum::IntoEnumIterator;
@@ -47,6 +48,7 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
+use crate::pk;
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -61,6 +63,14 @@ use crate::{
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+
+pk!(NodeId);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeInformation {
+    pub index: NodeIndex,
+    pub node_weight_kind: NodeWeightDiscriminants,
+    pub id: NodeId,
+}
 
 #[remain::sorted]
 #[derive(Error, Debug)]

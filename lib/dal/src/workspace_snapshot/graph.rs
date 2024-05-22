@@ -26,6 +26,7 @@ use crate::workspace_snapshot::{
     edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
+    NodeInformation,
 };
 
 mod tests;
@@ -630,12 +631,22 @@ impl WorkspaceSnapshotGraph {
                             .vector_clock_write()
                             .is_newer_than(to_rebase_node_weight.vector_clock_write())
                         {
+                            let onto_node_information = NodeInformation {
+                                index: onto_node_index,
+                                id: onto_node_weight.id().into(),
+                                node_weight_kind: onto_node_weight.clone().into(),
+                            };
+                            let to_rebase_node_information = NodeInformation {
+                                index: to_rebase_node_index,
+                                id: to_rebase_node_weight.id().into(),
+                                node_weight_kind: to_rebase_node_weight.clone().into(),
+                            };
                             // `onto` has changes, but has already seen all of the changes in
                             // `to_rebase`. There is no conflict, and we should update to use the
                             // `onto` node.
                             updates.push(Update::ReplaceSubgraph {
-                                onto: onto_node_index,
-                                to_rebase: to_rebase_node_index,
+                                onto: onto_node_information,
+                                to_rebase: to_rebase_node_information,
                             });
                         } else {
                             // There are changes on both sides that have not
@@ -678,15 +689,37 @@ impl WorkspaceSnapshotGraph {
                                     items
                                 };
                                 if common_onto_items != common_to_rebase_items {
+                                    let to_rebase_node_information = NodeInformation {
+                                        index: to_rebase_node_index,
+                                        id: to_rebase_node_weight.id().into(),
+                                        node_weight_kind: to_rebase_node_weight.into(),
+                                    };
+                                    let onto_node_information = NodeInformation {
+                                        index: onto_node_index,
+                                        id: onto_node_weight.id().into(),
+                                        node_weight_kind: onto_node_weight.into(),
+                                    };
+
                                     conflicts.push(Conflict::ChildOrder {
-                                        to_rebase: to_rebase_node_index,
-                                        onto: onto_node_index,
+                                        to_rebase: to_rebase_node_information,
+                                        onto: onto_node_information,
                                     });
                                 }
                             } else {
+                                let to_rebase_node_information = NodeInformation {
+                                    index: to_rebase_node_index,
+                                    id: to_rebase_node_weight.id().into(),
+                                    node_weight_kind: to_rebase_node_weight.into(),
+                                };
+                                let onto_node_information = NodeInformation {
+                                    index: onto_node_index,
+                                    id: onto_node_weight.id().into(),
+                                    node_weight_kind: onto_node_weight.into(),
+                                };
+
                                 conflicts.push(Conflict::NodeContent {
-                                    to_rebase: to_rebase_node_index,
-                                    onto: onto_node_index,
+                                    to_rebase: to_rebase_node_information,
+                                    onto: onto_node_information,
                                 });
                             }
                         }
@@ -1056,13 +1089,30 @@ impl WorkspaceSnapshotGraph {
                         {
                             // Item has been modified in `to_rebase` since
                             // `onto` last saw `to_rebase`
-                            conflicts.push(Conflict::ModifyRemovedItem(
-                                only_to_rebase_edge_info.target_node_index,
-                            ))
+                            let node_information = NodeInformation {
+                                index: only_to_rebase_edge_info.target_node_index,
+                                id: to_rebase_item_weight.id().into(),
+                                node_weight_kind: to_rebase_item_weight.into(),
+                            };
+                            conflicts.push(Conflict::ModifyRemovedItem(node_information))
                         } else {
+                            let source_node_weight =
+                                self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
+                            let target_node_weight =
+                                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
+                            let source_node_information = NodeInformation {
+                                index: only_to_rebase_edge_info.source_node_index,
+                                id: source_node_weight.id().into(),
+                                node_weight_kind: source_node_weight.into(),
+                            };
+                            let target_node_information = NodeInformation {
+                                index: only_to_rebase_edge_info.target_node_index,
+                                id: target_node_weight.id().into(),
+                                node_weight_kind: target_node_weight.into(),
+                            };
                             updates.push(Update::RemoveEdge {
-                                source: only_to_rebase_edge_info.source_node_index,
-                                destination: only_to_rebase_edge_info.target_node_index,
+                                source: source_node_information,
+                                destination: target_node_information,
                                 edge_kind: only_to_rebase_edge_info.edge_kind,
                             });
                         }
@@ -1071,9 +1121,24 @@ impl WorkspaceSnapshotGraph {
                         let container_weight = self.get_node_weight(to_rebase_container_index)?;
                         let edge_kind = only_to_rebase_edge_info.edge_kind;
                         if container_weight.is_exclusive_outgoing_edge(edge_kind) {
+                            let source_node_weight =
+                                self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
+                            let destination_node_weight =
+                                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
+                            let source_node_information = NodeInformation {
+                                index: only_to_rebase_edge_info.source_node_index,
+                                id: source_node_weight.id().into(),
+                                node_weight_kind: source_node_weight.into(),
+                            };
+                            let destination_node_information = NodeInformation {
+                                index: only_to_rebase_edge_info.target_node_index,
+                                id: destination_node_weight.id().into(),
+                                node_weight_kind: destination_node_weight.into(),
+                            };
+
                             conflicts.push(Conflict::ExclusiveEdgeMismatch {
-                                source: only_to_rebase_edge_info.source_node_index,
-                                destination: only_to_rebase_edge_info.target_node_index,
+                                source: source_node_information,
+                                destination: destination_node_information,
                                 edge_kind,
                             });
                         }
@@ -1121,17 +1186,48 @@ impl WorkspaceSnapshotGraph {
                             .vector_clock_write()
                             .has_entries_newer_than(seen_by_to_rebase_at)
                         {
+                            let container_node_weight =
+                                self.get_node_weight(to_rebase_container_index)?;
+                            let onto_node_weight =
+                                onto.get_node_weight(only_onto_edge_info.target_node_index)?;
+                            let container_node_information = NodeInformation {
+                                index: to_rebase_container_index,
+                                id: container_node_weight.id().into(),
+                                node_weight_kind: container_node_weight.into(),
+                            };
+                            let removed_item_node_information = NodeInformation {
+                                index: only_onto_edge_info.target_node_index,
+                                id: onto_node_weight.id().into(),
+                                node_weight_kind: onto_node_weight.into(),
+                            };
+
                             conflicts.push(Conflict::RemoveModifiedItem {
-                                container: to_rebase_container_index,
-                                removed_item: only_onto_edge_info.target_node_index,
+                                container: container_node_information,
+                                removed_item: removed_item_node_information,
                             });
                         }
                     }
-                    None => updates.push(Update::NewEdge {
-                        source: to_rebase_container_index,
-                        destination: only_onto_edge_info.target_node_index,
-                        edge_weight: onto_edge_weight.clone(),
-                    }),
+                    None => {
+                        let source_node_weight = self.get_node_weight(to_rebase_container_index)?;
+                        let destination_node_weight =
+                            onto.get_node_weight(only_onto_edge_info.target_node_index)?;
+                        let source_node_information = NodeInformation {
+                            index: to_rebase_container_index,
+                            id: source_node_weight.id().into(),
+                            node_weight_kind: source_node_weight.into(),
+                        };
+                        let destination_node_information = NodeInformation {
+                            index: only_onto_edge_info.target_node_index,
+                            id: destination_node_weight.id().into(),
+                            node_weight_kind: destination_node_weight.into(),
+                        };
+
+                        updates.push(Update::NewEdge {
+                            source: source_node_information,
+                            destination: destination_node_information,
+                            edge_weight: onto_edge_weight.clone(),
+                        })
+                    }
                 }
             }
         }
@@ -1705,8 +1801,9 @@ impl WorkspaceSnapshotGraph {
                     destination,
                     edge_weight,
                 } => {
-                    let updated_source = self.get_latest_node_idx(*source)?;
-                    let destination = self.find_in_self_or_create_using_onto(*destination, onto)?;
+                    let updated_source = self.get_latest_node_idx(source.index)?;
+                    let destination =
+                        self.find_in_self_or_create_using_onto(destination.index, onto)?;
 
                     self.add_edge(updated_source, edge_weight.clone(), destination)?;
                 }
@@ -1715,8 +1812,8 @@ impl WorkspaceSnapshotGraph {
                     destination,
                     edge_kind,
                 } => {
-                    let updated_source = self.get_latest_node_idx(*source)?;
-                    let destination = self.get_latest_node_idx(*destination)?;
+                    let updated_source = self.get_latest_node_idx(source.index)?;
+                    let destination = self.get_latest_node_idx(destination.index)?;
                     self.remove_edge(
                         to_rebase_change_set,
                         updated_source,
@@ -1728,8 +1825,9 @@ impl WorkspaceSnapshotGraph {
                     onto: onto_subgraph_root,
                     to_rebase: to_rebase_subgraph_root,
                 } => {
-                    let updated_to_rebase = self.get_latest_node_idx(*to_rebase_subgraph_root)?;
-                    self.find_in_self_or_create_using_onto(*onto_subgraph_root, onto)?;
+                    let updated_to_rebase =
+                        self.get_latest_node_idx(to_rebase_subgraph_root.index)?;
+                    self.find_in_self_or_create_using_onto(onto_subgraph_root.index, onto)?;
                     self.replace_references(updated_to_rebase)?;
                 }
                 Update::MergeCategoryNodes {
