@@ -1,5 +1,9 @@
 import * as _ from "lodash-es";
-import Axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import Axios, {
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { trackEvent } from "@/utils/tracking";
@@ -48,6 +52,14 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
   return response;
 }
 
+async function handleConflictsFound(error: AxiosError) {
+  if (error?.response?.status === 409) {
+    // eslint-disable-next-line no-console
+    console.error("conflicts found!");
+  }
+  return Promise.reject(error);
+}
+
 async function handleProxyTimeouts(response: AxiosResponse) {
   // some weird timeouts happening and triggering nginx 404 when running via the CLI
   // here we will try to detect them, track it, and give user some help
@@ -65,7 +77,10 @@ async function handleProxyTimeouts(response: AxiosResponse) {
 }
 
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts);
-sdfApiInstance.interceptors.response.use(handleForcedChangesetRedirection);
+sdfApiInstance.interceptors.response.use(
+  handleForcedChangesetRedirection,
+  handleConflictsFound,
+);
 
 export const authApiInstance = Axios.create({
   headers: {

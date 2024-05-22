@@ -248,15 +248,19 @@ impl DependentValuesUpdate {
         }
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
-
-        Ok(if ctx.commit().await?.is_some() {
-            warn!("Retrying DependentValueUpdate due to conflicts");
-            JobCompletionState::Retry {
-                limit: MAX_RETRIES,
-                backoff: RetryBackoff::Exponential,
-            }
-        } else {
-            JobCompletionState::Done
+        Ok(match ctx.commit().await {
+            Ok(_) => JobCompletionState::Done,
+            Err(err) => match err {
+                TransactionsError::ConflictsOccurred(_) => {
+                    // retry still on conflicts in DVU
+                    warn!("Retrying DependentValueUpdate due to conflicts");
+                    JobCompletionState::Retry {
+                        limit: MAX_RETRIES,
+                        backoff: RetryBackoff::Exponential,
+                    }
+                }
+                err => return Err(DependentValueUpdateError::Transactions(err)),
+            },
         })
     }
 }

@@ -392,13 +392,15 @@ const applyChangeSet = async () => {
   if (!route.name) return;
   applyModalRef.value?.close();
   await changeSetsStore.APPLY_CHANGE_SET(authStore.user?.email ?? "");
-  router.replace({
-    name: route.name,
-    params: {
-      ...route.params,
-      changeSetId: "head",
-    },
-  });
+  if (!applyChangeSetReqStatus.value.isError) {
+    router.replace({
+      name: route.name,
+      params: {
+        ...route.params,
+        changeSetId: "head",
+      },
+    });
+  }
 };
 
 const beginMergeApprovalReqStatus = changeSetsStore.getRequestStatus(

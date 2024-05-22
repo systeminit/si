@@ -129,6 +129,10 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
     let output_component = create_component_for_schema_name(ctx, "ValidatedOutput", "Output").await;
     let input_component = create_component_for_schema_name(ctx, "ValidatedInput", "Input").await;
 
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
     connect_components_with_socket_names(
         ctx,
         output_component.id(),

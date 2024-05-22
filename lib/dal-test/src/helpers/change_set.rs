@@ -54,13 +54,12 @@ type ChangeSetTestHelpersResult<T> = Result<T, ChangeSetTestHelpersError>;
 pub struct ChangeSetTestHelpers;
 
 impl ChangeSetTestHelpers {
-    /// First, this function performs a blocking commit and checks for conflicts (via
-    /// [`Self::commit_and_error_on_conflicts`]). Then, it updates the snapshot to the current
-    /// visibility.
+    /// First, this function performs a blocking commit which will return an error if
+    /// there are conflicts.  Then, it updates the snapshot to the current visibility.
     pub async fn commit_and_update_snapshot_to_visibility(
         ctx: &mut DalContext,
     ) -> ChangeSetTestHelpersResult<()> {
-        Self::commit_and_error_on_conflicts(ctx).await?;
+        ctx.blocking_commit().await?;
         ctx.update_snapshot_to_visibility().await?;
         Ok(())
     }
@@ -106,7 +105,7 @@ impl ChangeSetTestHelpers {
             Ok(change_set) => change_set,
         };
 
-        Self::commit_and_error_on_conflicts(ctx).await?;
+        ctx.commit().await?;
 
         ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
             applied_change_set.base_change_set_id.ok_or(
@@ -157,14 +156,5 @@ impl ChangeSetTestHelpers {
             .await?;
 
         Ok(new_change_set)
-    }
-
-    async fn commit_and_error_on_conflicts(ctx: &DalContext) -> ChangeSetTestHelpersResult<()> {
-        match ctx.blocking_commit().await? {
-            Some(conflicts) => Err(ChangeSetTestHelpersError::ConflictsFoundAfterCommit(
-                conflicts,
-            )),
-            None => Ok(()),
-        }
     }
 }

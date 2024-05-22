@@ -18,7 +18,6 @@ use si_std::CanonicalFileError;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
-
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
@@ -43,8 +42,7 @@ pub enum ModuleError {
     ChangeSet(#[from] ChangeSetError),
     #[error("Changeset not found: {0}")]
     ChangeSetNotFound(ChangeSetId),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
+
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
@@ -103,6 +101,8 @@ pub enum ModuleError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("Unable to parse URL: {0}")]
