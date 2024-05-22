@@ -22,7 +22,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::rebase::{perform_rebase, RebaseError};
+use crate::{
+    dvu_debouncer,
+    rebase::{perform_rebase, RebaseError},
+};
 
 use super::app_state::AppState;
 
@@ -91,26 +94,34 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
 
     // Dispatch eligible actions if the change set is the default for the workspace.
     // Actions are **ONLY** ever dispatched from the default change set for a workspace.
-    if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
-        if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk.into()).await? {
-            if workspace.default_change_set_id() == ctx.visibility().change_set_id {
-                ctx.update_snapshot_to_visibility().await?;
-                let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+    if let (RebaseStatusDiscriminants::Success, Some(workspace)) = (
+        rebase_status.clone().into(),
+        Workspace::get_by_pk(&ctx, &workspace_pk.into()).await?,
+    ) {
+        if let Err(err) = state
+            .dvu_debouncer
+            .send_to_debouncer(dvu_debouncer::DvuDebouncerMessage::RebaseSucceeded)
+        {
+            error!(error = ?err, "unable to enqueue DVU check after rebase because the receiving side is closed");
+        }
+
+        if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+            ctx.update_snapshot_to_visibility().await?;
+            let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+                .await?
+                .ok_or(RebaseError::MissingChangeSet(
+                    ctx.visibility().change_set_id,
+                ))?;
+            if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
+                // Write out the snapshot to get the new address/id.
+                let new_snapshot_id = ctx
+                    .write_snapshot()
                     .await?
-                    .ok_or(RebaseError::MissingChangeSet(
-                        ctx.visibility().change_set_id,
-                    ))?;
-                if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
-                    // Write out the snapshot to get the new address/id.
-                    let new_snapshot_id = ctx
-                        .write_snapshot()
-                        .await?
-                        .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
-                    // Manually update the pointer to the new address/id that reflects the new Action states.
-                    change_set.update_pointer(&ctx, new_snapshot_id).await?;
-                    // No need to send the request over to the rebaser as we are the rebaser.
-                    ctx.commit_no_rebase().await?;
-                }
+                    .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
+                // Manually update the pointer to the new address/id that reflects the new Action states.
+                change_set.update_pointer(&ctx, new_snapshot_id).await?;
+                // No need to send the request over to the rebaser as we are the rebaser.
+                ctx.commit_no_rebase().await?;
             }
         }
     }

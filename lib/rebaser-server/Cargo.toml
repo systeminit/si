@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+chrono = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
