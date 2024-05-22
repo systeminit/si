@@ -3,7 +3,8 @@ use thiserror::Error;
 
 use crate::func::FuncKind;
 use crate::{
-    DalContext, Func, FuncError, FuncId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    DalContext, Func, FuncError, FuncId, Schema, SchemaError, SchemaVariant, SchemaVariantError,
+    SchemaVariantId,
 };
 
 #[remain::sorted]
@@ -11,6 +12,8 @@ use crate::{
 pub enum FuncSummaryError {
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
 }
@@ -53,7 +56,23 @@ impl FuncSummary {
             Some(provided_schema_variant_id) => {
                 SchemaVariant::all_funcs(ctx, provided_schema_variant_id).await?
             }
-            None => Func::list(ctx).await?,
+            None => {
+                // As we are no longer passing a schema variant, we should only get the funcs
+                // for the default schema variants in our system. There is a chance that we have
+                // created multiple copies of the func by creating multiple copies of a schema variant
+                // We encapsulate a schema variant and it's funcs as a unit of work that we export and
+                // import
+                // In the future, if we allow editing all of the schema variants that a schema has
+                // then we will need to return the full list of funcs in our system
+                let mut funcs: Vec<Func> = vec![];
+                let schema_ids = Schema::list_ids(ctx).await?;
+                for schema_id in schema_ids {
+                    let default_schema_variant =
+                        SchemaVariant::get_default_for_schema(ctx, schema_id).await?;
+                    funcs.extend(SchemaVariant::all_funcs(ctx, default_schema_variant.id()).await?);
+                }
+                funcs
+            }
         };
 
         let customizable_kinds = [
