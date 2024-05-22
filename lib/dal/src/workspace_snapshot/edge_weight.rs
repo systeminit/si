@@ -18,7 +18,7 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[remain::sorted]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
-#[strum_discriminants(derive(Serialize, Deserialize))]
+#[strum_discriminants(derive(Hash, Serialize, Deserialize))]
 pub enum EdgeWeightKind {
     Action,
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource

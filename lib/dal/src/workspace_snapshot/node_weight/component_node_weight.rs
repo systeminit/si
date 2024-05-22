@@ -174,7 +174,6 @@ impl ComponentNodeWeight {
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[
             EdgeWeightKindDiscriminants::Use,
-            EdgeWeightKindDiscriminants::FrameContains,
             EdgeWeightKindDiscriminants::Root,
             EdgeWeightKindDiscriminants::SocketValue,
         ]

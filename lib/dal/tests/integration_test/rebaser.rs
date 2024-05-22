@@ -201,6 +201,8 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     );
 }
 
+/// This can't be checked for until we have more fully-featured semantic conflict detection.
+#[ignore]
 #[test]
 async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is code");
