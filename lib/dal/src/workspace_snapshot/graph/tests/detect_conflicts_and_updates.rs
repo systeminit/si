@@ -671,14 +671,14 @@ mod test {
         assert_eq!(
             vec![Conflict::NodeContent {
                 onto: NodeInformation {
-                    id: component_id,
+                    id: component_id.into(),
                     index: base_graph
                         .get_node_index_by_id(component_id)
                         .expect("Unable to get component NodeIndex"),
                     node_weight_kind: NodeWeightDiscriminants::Content,
                 },
                 to_rebase: NodeInformation {
-                    id: component_id,
+                    id: component_id.into(),
                     index: new_graph
                         .get_node_index_by_id(component_id)
                         .expect("Unable to get component NodeIndex"),
@@ -828,7 +828,7 @@ mod test {
 
         assert_eq!(
             vec![Conflict::ModifyRemovedItem(NodeInformation {
-                id: component_id,
+                id: component_id.into(),
                 index: new_graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
@@ -1377,7 +1377,7 @@ mod test {
                 index: new_graph
                     .get_node_index_by_id(nginx_butane_component_id)
                     .expect("Unable to get component NodeIndex"),
-                id: nginx_butane_component_id,
+                id: nginx_butane_component_id.into(),
                 node_weight_kind: NodeWeightDiscriminants::Content,
             }),
             Conflict::NodeContent {
@@ -1385,14 +1385,14 @@ mod test {
                     index: base_graph
                         .get_node_index_by_id(docker_image_schema_variant_id)
                         .expect("Unable to get component NodeIndex"),
-                    id: docker_image_schema_variant_id,
+                    id: docker_image_schema_variant_id.into(),
                     node_weight_kind: NodeWeightDiscriminants::Content,
                 },
                 to_rebase: NodeInformation {
                     index: new_graph
                         .get_node_index_by_id(docker_image_schema_variant_id)
                         .expect("Unable to get component NodeIndex"),
-                    id: docker_image_schema_variant_id,
+                    id: docker_image_schema_variant_id.into(),
                     node_weight_kind: NodeWeightDiscriminants::Content,
                 },
             },
@@ -1402,14 +1402,14 @@ mod test {
                 index: base_graph
                     .get_node_index_by_id(docker_image_schema_id)
                     .expect("Unable to get NodeIndex"),
-                id: docker_image_schema_id,
+                id: docker_image_schema_id.into(),
                 node_weight_kind: NodeWeightDiscriminants::Content,
             },
             to_rebase: NodeInformation {
                 index: new_graph
                     .get_node_index_by_id(docker_image_schema_id)
                     .expect("Unable to get NodeIndex"),
-                id: docker_image_schema_id,
+                id: docker_image_schema_id.into(),
                 node_weight_kind: NodeWeightDiscriminants::Content,
             },
         }];
@@ -1956,14 +1956,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
                             .expect("Unable to get NodeIndex"),
-                        id: container_prop_id,
+                        id: container_prop_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(ordered_prop_5_id)
                             .expect("Unable to get NodeIndex"),
-                        id: ordered_prop_5_id,
+                        id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: new_edge_weight,
@@ -1971,12 +1971,12 @@ mod test {
                 Update::ReplaceSubgraph {
                     onto: NodeInformation {
                         index: initial_ordering_node_index_for_container,
-                        id: initial_ordering_node_weight_for_container.id(),
+                        id: initial_ordering_node_weight_for_container.id().into(),
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                     to_rebase: NodeInformation {
                         index: new_ordering_node_index_for_container,
-                        id: new_ordering_node_weight_for_container.id(),
+                        id: new_ordering_node_weight_for_container.id().into(),
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                 },
@@ -1985,14 +1985,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: source_node_id_for_ordinal_edge,
+                        id: source_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(destination_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: destination_node_id_for_ordinal_edge,
+                        id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: ordinal_edge_weight,
@@ -2297,7 +2297,8 @@ mod test {
                     id: initial_graph
                         .get_node_weight(initial_container_ordering_node_index)
                         .expect("Unable to get ordering node")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Ordering,
                 },
                 to_rebase: NodeInformation {
@@ -2305,7 +2306,8 @@ mod test {
                     id: new_graph
                         .get_node_weight(new_container_ordering_node_index)
                         .expect("Unable to get new ordering node")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Ordering,
                 },
             }],
@@ -2319,14 +2321,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
                             .expect("Unable to get new prop index"),
-                        id: container_prop_id,
+                        id: container_prop_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(ordered_prop_5_id)
                             .expect("Unable to get ordered prop 5 index"),
-                        id: ordered_prop_5_id,
+                        id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: new_edge_weight,
@@ -2336,14 +2338,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: source_node_id_for_ordinal_edge,
+                        id: source_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(destination_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: destination_node_id_for_ordinal_edge,
+                        id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: ordinal_edge_weight,
@@ -2652,14 +2654,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
                             .expect("Unable to get new_graph container NodeIndex"),
-                        id: container_prop_id,
+                        id: container_prop_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(ordered_prop_5_id)
                             .expect("Unable to get ordered prop 5 NodeIndex"),
-                        id: ordered_prop_5_id,
+                        id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: new_edge_weight,
@@ -2669,14 +2671,14 @@ mod test {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: source_node_id_for_ordinal_edge,
+                        id: source_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                     destination: NodeInformation {
                         index: initial_graph
                             .get_node_index_by_id(destination_node_id_for_ordinal_edge)
                             .expect("could not get node index by id"),
-                        id: destination_node_id_for_ordinal_edge,
+                        id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
                     edge_weight: ordinal_edge_weight,
@@ -2866,12 +2868,12 @@ mod test {
             vec![Update::RemoveEdge {
                 source: NodeInformation {
                     index: a_idx,
-                    id: a_id,
+                    id: a_id.into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 destination: NodeInformation {
                     index: c_idx,
-                    id: c_id,
+                    id: c_id.into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
@@ -2961,7 +2963,8 @@ mod test {
                     id: graph_a
                         .get_node_weight(a_q_node_idx)
                         .expect("Unable to get a_q node weight")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 destination: NodeInformation {
@@ -2969,7 +2972,8 @@ mod test {
                     id: graph_a
                         .get_node_weight(a_node_idx)
                         .expect("Unable to get a node weight")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
@@ -2992,7 +2996,8 @@ mod test {
                     id: graph_b
                         .get_node_weight(b_q_node_idx)
                         .expect("Unable to get b_q node_weight")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 destination: NodeInformation {
@@ -3000,7 +3005,8 @@ mod test {
                     id: graph_b
                         .get_node_weight(b_node_idx)
                         .expect("Unable to get b node_weight")
-                        .id(),
+                        .id()
+                        .into(),
                     node_weight_kind: NodeWeightDiscriminants::Prop,
                 },
                 edge_kind: EdgeWeightKindDiscriminants::Use,
@@ -3183,7 +3189,8 @@ mod test {
             id: to_rebase_graph
                 .get_node_weight(to_rebase_graph.root())
                 .expect("Unable to get root node")
-                .id(),
+                .id()
+                .into(),
             node_weight_kind: NodeWeightDiscriminants::Content,
         };
         let removed_index = onto_graph
@@ -3194,7 +3201,8 @@ mod test {
             id: onto_graph
                 .get_node_weight(removed_index)
                 .expect("Unable to get removed item node weight")
-                .id(),
+                .id()
+                .into(),
             node_weight_kind: NodeWeightDiscriminants::Content,
         };
         assert_eq!(

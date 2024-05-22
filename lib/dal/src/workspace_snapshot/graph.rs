@@ -633,12 +633,12 @@ impl WorkspaceSnapshotGraph {
                         {
                             let onto_node_information = NodeInformation {
                                 index: onto_node_index,
-                                id: onto_node_weight.id(),
+                                id: onto_node_weight.id().into(),
                                 node_weight_kind: onto_node_weight.clone().into(),
                             };
                             let to_rebase_node_information = NodeInformation {
                                 index: to_rebase_node_index,
-                                id: to_rebase_node_weight.id(),
+                                id: to_rebase_node_weight.id().into(),
                                 node_weight_kind: to_rebase_node_weight.clone().into(),
                             };
                             // `onto` has changes, but has already seen all of the changes in
@@ -691,12 +691,12 @@ impl WorkspaceSnapshotGraph {
                                 if common_onto_items != common_to_rebase_items {
                                     let to_rebase_node_information = NodeInformation {
                                         index: to_rebase_node_index,
-                                        id: to_rebase_node_weight.id(),
+                                        id: to_rebase_node_weight.id().into(),
                                         node_weight_kind: to_rebase_node_weight.into(),
                                     };
                                     let onto_node_information = NodeInformation {
                                         index: onto_node_index,
-                                        id: onto_node_weight.id(),
+                                        id: onto_node_weight.id().into(),
                                         node_weight_kind: onto_node_weight.into(),
                                     };
 
@@ -708,12 +708,12 @@ impl WorkspaceSnapshotGraph {
                             } else {
                                 let to_rebase_node_information = NodeInformation {
                                     index: to_rebase_node_index,
-                                    id: to_rebase_node_weight.id(),
+                                    id: to_rebase_node_weight.id().into(),
                                     node_weight_kind: to_rebase_node_weight.into(),
                                 };
                                 let onto_node_information = NodeInformation {
                                     index: onto_node_index,
-                                    id: onto_node_weight.id(),
+                                    id: onto_node_weight.id().into(),
                                     node_weight_kind: onto_node_weight.into(),
                                 };
 
@@ -1091,7 +1091,7 @@ impl WorkspaceSnapshotGraph {
                             // `onto` last saw `to_rebase`
                             let node_information = NodeInformation {
                                 index: only_to_rebase_edge_info.target_node_index,
-                                id: to_rebase_item_weight.id(),
+                                id: to_rebase_item_weight.id().into(),
                                 node_weight_kind: to_rebase_item_weight.into(),
                             };
                             conflicts.push(Conflict::ModifyRemovedItem(node_information))
@@ -1102,12 +1102,12 @@ impl WorkspaceSnapshotGraph {
                                 self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
                             let source_node_information = NodeInformation {
                                 index: only_to_rebase_edge_info.source_node_index,
-                                id: source_node_weight.id(),
+                                id: source_node_weight.id().into(),
                                 node_weight_kind: source_node_weight.into(),
                             };
                             let target_node_information = NodeInformation {
                                 index: only_to_rebase_edge_info.target_node_index,
-                                id: target_node_weight.id(),
+                                id: target_node_weight.id().into(),
                                 node_weight_kind: target_node_weight.into(),
                             };
                             updates.push(Update::RemoveEdge {
@@ -1127,12 +1127,12 @@ impl WorkspaceSnapshotGraph {
                                 self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
                             let source_node_information = NodeInformation {
                                 index: only_to_rebase_edge_info.source_node_index,
-                                id: source_node_weight.id(),
+                                id: source_node_weight.id().into(),
                                 node_weight_kind: source_node_weight.into(),
                             };
                             let destination_node_information = NodeInformation {
                                 index: only_to_rebase_edge_info.target_node_index,
-                                id: destination_node_weight.id(),
+                                id: destination_node_weight.id().into(),
                                 node_weight_kind: destination_node_weight.into(),
                             };
 
@@ -1192,12 +1192,12 @@ impl WorkspaceSnapshotGraph {
                                 onto.get_node_weight(only_onto_edge_info.target_node_index)?;
                             let container_node_information = NodeInformation {
                                 index: to_rebase_container_index,
-                                id: container_node_weight.id(),
+                                id: container_node_weight.id().into(),
                                 node_weight_kind: container_node_weight.into(),
                             };
                             let removed_item_node_information = NodeInformation {
                                 index: only_onto_edge_info.target_node_index,
-                                id: onto_node_weight.id(),
+                                id: onto_node_weight.id().into(),
                                 node_weight_kind: onto_node_weight.into(),
                             };
 
@@ -1213,12 +1213,12 @@ impl WorkspaceSnapshotGraph {
                             onto.get_node_weight(only_onto_edge_info.target_node_index)?;
                         let source_node_information = NodeInformation {
                             index: to_rebase_container_index,
-                            id: source_node_weight.id(),
+                            id: source_node_weight.id().into(),
                             node_weight_kind: source_node_weight.into(),
                         };
                         let destination_node_information = NodeInformation {
                             index: only_onto_edge_info.target_node_index,
-                            id: destination_node_weight.id(),
+                            id: destination_node_weight.id().into(),
                             node_weight_kind: destination_node_weight.into(),
                         };
 

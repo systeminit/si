@@ -48,6 +48,7 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
+use crate::pk;
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -63,11 +64,12 @@ use crate::{
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
+pk!(NodeId);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NodeInformation {
     pub index: NodeIndex,
     pub node_weight_kind: NodeWeightDiscriminants,
-    pub id: Ulid,
+    pub id: NodeId,
 }
 
 #[remain::sorted]
