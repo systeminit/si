@@ -3092,8 +3092,8 @@ pub struct ComponentCreatedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
-    component: SummaryDiagramComponent,
-    change_set_id: ChangeSetId,
+    pub component: SummaryDiagramComponent,
+    pub change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

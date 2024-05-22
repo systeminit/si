@@ -12,6 +12,9 @@ use veritech_client::OutputStream;
 use crate::action::prototype::ActionKind;
 use crate::attribute::prototype::AttributePrototypeResult;
 use crate::change_set::ChangeSetError;
+use crate::component::ComponentUpdatedPayload;
+use crate::diagram::DiagramError;
+use crate::diagram::SummaryDiagramComponent;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -42,6 +45,8 @@ pub enum DeprecatedActionPrototypeError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -381,7 +386,9 @@ impl DeprecatedActionPrototype {
 
                     component.set_resource(ctx, run_result.clone()).await?;
 
-                    WsEvent::resource_refreshed(ctx, component.id())
+                    let payload: SummaryDiagramComponent =
+                        SummaryDiagramComponent::assemble(ctx, &component).await?;
+                    WsEvent::resource_refreshed(ctx, payload)
                         .await?
                         .publish_on_commit(ctx)
                         .await?;
@@ -409,20 +416,17 @@ impl DeprecatedActionPrototype {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceRefreshedPayload {
-    component_id: ComponentId,
-}
-
 impl WsEvent {
     pub async fn resource_refreshed(
         ctx: &DalContext,
-        component_id: ComponentId,
+        payload: SummaryDiagramComponent,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ResourceRefreshed(ResourceRefreshedPayload { component_id }),
+            WsPayload::ResourceRefreshed(ComponentUpdatedPayload {
+                component: payload,
+                change_set_id: ctx.change_set_id(),
+            }),
         )
         .await
     }

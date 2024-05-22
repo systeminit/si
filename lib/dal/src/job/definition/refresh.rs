@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    diagram::SummaryDiagramComponent,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -89,7 +90,10 @@ impl JobConsumer for RefreshJob {
                 if prototype.kind == DeprecatedActionKind::Refresh {
                     prototype.run(ctx, *component_id).await?;
 
-                    WsEvent::resource_refreshed(ctx, *component_id)
+                    let component = Component::get_by_id(ctx, *component_id).await?;
+                    let payload: SummaryDiagramComponent =
+                        SummaryDiagramComponent::assemble(ctx, &component).await?;
+                    WsEvent::resource_refreshed(ctx, payload)
                         .await?
                         .publish_on_commit(ctx)
                         .await?;
