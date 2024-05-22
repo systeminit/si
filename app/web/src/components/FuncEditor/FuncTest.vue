@@ -271,6 +271,7 @@ const dryRun = ref(true);
 const testInputCode = ref("");
 const testInputProperties = ref<Record<string, unknown> | null>();
 const testOutputCode = ref("");
+const testOutput = ref<unknown>(null);
 const readyToTest = ref(false);
 const runningTest = ref(false);
 
@@ -330,6 +331,10 @@ const testLogs = computed(() => {
         logs.status = (outputJSON.status as Status) ?? "unknown";
       }
     });
+    if (logs.status === "running" && testOutput.value) {
+      logs.status =
+        (testOutput.value as { result: Status }).result ?? "running";
+    }
   }
 
   return logs;
@@ -338,6 +343,7 @@ const testLogs = computed(() => {
 const resetTestData = () => {
   testInputCode.value = "";
   testOutputCode.value = "";
+  testOutput.value = null;
   rawTestLogs.value = [];
   readyToTest.value = false;
   runningTest.value = false;
@@ -490,9 +496,11 @@ const startTest = async () => {
   readyToTest.value = true;
 
   if (output.result.success) {
+    testOutput.value = output.result.data.output;
     testOutputCode.value = JSON.stringify(output.result.data.output, null, 2);
     rawTestLogs.value = output.result.data.logs;
   } else {
+    testOutput.value = null;
     testOutputCode.value = "ERROR: Test Failed To Run";
   }
 };
