@@ -10,6 +10,7 @@ use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
 use crate::{
@@ -50,6 +51,8 @@ pub enum JobConsumerError {
     DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("deprecated action prototype error: {0}")]
     DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
+    #[error("diagrame error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]

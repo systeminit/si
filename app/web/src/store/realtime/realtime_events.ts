@@ -145,11 +145,13 @@ export type WsEventPayloadMap = {
     idle: boolean;
   };
 
+  ResourceRefreshed: {
+    component: RawComponent;
+    changeSetId: string;
+  };
+
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
-  ResourceRefreshed: {
-    componentId: string;
-  };
   // UpdatedDependentValue: {
   //   componentId: string;
   // }

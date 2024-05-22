@@ -25,7 +25,6 @@ use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
     action::ActionReturn,
-    deprecated_action::prototype::ResourceRefreshedPayload,
     deprecated_action::{
         batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn, ActionId, ActionView,
         DeprecatedActionError,
@@ -107,7 +106,7 @@ pub enum WsPayload {
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
-    ResourceRefreshed(ResourceRefreshedPayload),
+    ResourceRefreshed(ComponentUpdatedPayload),
     // SchemaCreated(SchemaPk),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(SchemaVariantCreatedPayload),

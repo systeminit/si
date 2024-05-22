@@ -6,6 +6,7 @@ use thiserror::Error;
 use veritech_client::OutputStream;
 
 use crate::{
+    diagram::{DiagramError, SummaryDiagramComponent},
     func::{
         backend::js_action::DeprecatedActionRunResult,
         binding::{return_value::FuncBindingReturnValueError, FuncBinding, FuncBindingError},
@@ -29,6 +30,8 @@ pub enum ActionPrototypeError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("Edge Weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func binding error: {0}")]
@@ -264,7 +267,9 @@ impl ActionPrototype {
                 let run_result: DeprecatedActionRunResult = serde_json::from_value(value.clone())?;
                 component.set_resource(ctx, run_result.clone()).await?;
 
-                WsEvent::resource_refreshed(ctx, component.id())
+                let payload: SummaryDiagramComponent =
+                    SummaryDiagramComponent::assemble(ctx, &component).await?;
+                WsEvent::resource_refreshed(ctx, payload)
                     .await?
                     .publish_on_commit(ctx)
                     .await?;

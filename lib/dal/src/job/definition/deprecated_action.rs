@@ -7,6 +7,7 @@ use veritech_client::ResourceStatus;
 
 use crate::{
     deprecated_action::runner::DeprecatedActionRunnerError,
+    diagram::SummaryDiagramComponent,
     func::backend::js_action::DeprecatedActionRunResult,
     job::{
         consumer::{
@@ -308,7 +309,10 @@ async fn action_task(
             if prototype.kind == DeprecatedActionKind::Refresh {
                 prototype.run(ctx, action_item.component_id).await?;
 
-                WsEvent::resource_refreshed(ctx, action_item.component_id)
+                let component = Component::get_by_id(ctx, action_item.component_id).await?;
+                let payload: SummaryDiagramComponent =
+                    SummaryDiagramComponent::assemble(ctx, &component).await?;
+                WsEvent::resource_refreshed(ctx, payload)
                     .await?
                     .publish_on_commit(ctx)
                     .await?;

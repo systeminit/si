@@ -1485,11 +1485,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             {
               eventType: "ResourceRefreshed",
-              callback: (resourceRefreshedEvent) => {
-                if (resourceRefreshedEvent?.componentId) {
-                  this.refreshingStatus[resourceRefreshedEvent.componentId] =
-                    false;
-                }
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                this.rawComponentsById[data.component.id] = data.component;
+                this.refreshingStatus[data.component.id] = false;
+                if (this.selectedComponentId === data.component.id)
+                  this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
               },
             },
             /* { TODO PUT BACK
