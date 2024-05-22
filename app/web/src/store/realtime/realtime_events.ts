@@ -3,15 +3,10 @@
 
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { Resource } from "@/api/sdf/dal/resource";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
 import { ComponentPositions } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
-import {
-  DeprecatedActionStatus,
-  ActionId,
-  DeprecatedProposedAction,
-} from "../actions.store";
+import { ActionId } from "../actions.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
@@ -166,18 +161,6 @@ export type WsEventPayloadMap = {
   //   runnerState: WorkflowRunnerState;
   // };
 
-  DeprecatedActionRunnerReturn: {
-    id: string;
-    componentId: string;
-    batchId: string;
-    attributeValueId: string;
-    action: string;
-    resource: Resource | null;
-  };
-  DeprecatedActionBatchReturn: {
-    id: string;
-    status: DeprecatedActionStatus;
-  };
   ComponentCreated: {
     success: boolean;
     componentId: string;
@@ -265,8 +248,6 @@ export type WsEventPayloadMap = {
     actionId: ActionId;
     changeSetId: ChangeSetId;
   };
-  DeprecatedActionAdded: DeprecatedProposedAction;
-  DeprecatedActionRemoved: ActionId;
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;

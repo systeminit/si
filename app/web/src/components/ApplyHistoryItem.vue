@@ -93,7 +93,7 @@ import {
 import { computed } from "vue";
 import { DeprecatedActionBatch } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
-import ActionRunnerCard from "./ActionRunnerCard.vue";
+import ActionRunnerCard from "./Actions/ActionRunnerCard.vue";
 
 const props = defineProps<{
   actionBatch: DeprecatedActionBatch;

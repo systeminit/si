@@ -1,11 +1,11 @@
 import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { DeprecatedActionKind } from "@/store/actions.store";
+import { ActionKind } from "@/store/actions.store";
 
 export interface ActionAssociations {
   type: "action";
   schemaVariantIds: string[];
-  kind?: DeprecatedActionKind;
+  kind?: ActionKind;
 }
 
 export type LeafInputLocation =
@@ -123,7 +123,7 @@ export interface CreateFuncAttributeOptions {
 export interface CreateFuncActionOptions {
   type: "actionOptions";
   schemaVariantId: string;
-  actionKind: DeprecatedActionKind;
+  actionKind: ActionKind;
 }
 
 export interface CreateFuncQualificationOptions {

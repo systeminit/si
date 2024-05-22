@@ -335,3 +335,14 @@ defineExpose({
   close,
 });
 </script>
+
+<style lang="less">
+h5 {
+  margin-top: 0.75em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+h5:first-child {
+  margin-top: 0.25em;
+}
+</style>

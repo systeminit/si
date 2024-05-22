@@ -29,9 +29,7 @@
             <div
               class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
             >
-              Select the actions you want to run below. Actions will be enacted
-              after this change set has been applied. To do so, deselect this
-              component and click the "Apply Changes" button in the top right.
+              The changes below will run when you click "Apply Changes".
             </div>
             <ActionWidget
               v-for="action in selectedComponentActions"
@@ -86,7 +84,7 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import { useActionsStore } from "@/store/actions.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
-import ActionWidget from "@/components/ActionWidget.vue";
+import ActionWidget from "@/components/Actions/ActionWidget.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const props = defineProps({

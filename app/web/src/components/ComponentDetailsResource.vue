@@ -68,7 +68,7 @@ import { ErrorMessage, Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
-import ActionRunnerDetails from "./ActionRunnerDetails.vue";
+import ActionRunnerDetails from "./Actions/ActionRunnerDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 

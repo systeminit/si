@@ -36,8 +36,6 @@
     >
       <ReadOnlyBanner show-refresh-all-button />
     </div-->
-    <!-- TODO - this is the old progress bar that was at the top of the diagram, remove when we no longer need it! -->
-    <!-- <ActionProgressOverlay /> -->
 
     <ModelingDiagram
       ref="diagramRef"

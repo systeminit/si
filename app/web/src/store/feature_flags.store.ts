@@ -33,6 +33,7 @@ export function useFeatureFlagsStore() {
         });
         // You can override feature flags while working on a feature by setting them to true here
 
+        this.IS_ACTIONS_V2 = true; // TODO -  THIS SHOULD BE REMOVED ONCE ACTIONS V1 IS GONE
         // Make sure to remove the override before committing your code!
       },
     }),

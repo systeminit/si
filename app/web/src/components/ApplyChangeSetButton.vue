@@ -2,15 +2,36 @@
   <VButton
     v-if="!changeSetsStore.headSelected"
     ref="applyButtonRef"
-    icon="tools"
     size="md"
     tone="success"
     loadingText="Applying Changes"
     :requestStatus="applyChangeSetReqStatus"
     :disabled="statusStoreUpdating"
+    square
     @click.stop="openModalHandler"
   >
-    Apply Changes
+    <div class="px-xs dark:text-neutral-800 font-medium">Apply Changes</div>
+
+    <template #icon>
+      <Icon name="tools" class="dark:text-neutral-800" />
+    </template>
+
+    <template #iconRight>
+      <PillCounter
+        :count="displayCount"
+        :paddingX="displayCount > 10 ? '2xs' : 'xs'"
+        noColorStyles
+        :class="
+          clsx(
+            'text-xl font-bold',
+            themeClasses(
+              'bg-success-600 text-shade-0',
+              'bg-success-300 text-success-900',
+            ),
+          )
+        "
+      />
+    </template>
 
     <Modal
       ref="applyModalRef"
@@ -179,73 +200,26 @@
         </template>
         <template v-else-if="changeSet.status === ChangeSetStatus.Open">
           <template v-if="!hasActions">
-            <div class="text-center text-md mb-xs">
+            <div class="text-md mb-xs">
               Applying this change set may create, modify, or destroy real
               resources in the cloud.
             </div>
-            <div class="text-center text-sm mb-sm">
+            <div class="text-sm mb-sm">
               Are you sure you want to apply this change set?
             </div>
           </template>
           <template v-if="hasActions">
-            <div class="text-center text-md mb-xs">
+            <div class="text-md mb-xs">
               Applying this change set may create, modify, or destroy real
               resources in the cloud.
             </div>
-            <div class="text-center text-sm mb-sm">
+            <div class="text-sm mb-sm">
               Pick which actions will be applied to the real world:
             </div>
             <div
               class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
             >
-              <div
-                class="flex flex-row justify-between place-items-center py-sm bg-neutral-100 dark:bg-neutral-700"
-              >
-                <div class="grow-0 mx-[.66em]">
-                  <Icon
-                    name="bullet-list"
-                    class="attributes-panel-item__type-icon"
-                    size="sm"
-                  />
-                </div>
-                <div class="grow">
-                  {{ actionsStore.proposedActions.length }} Total Action(s)
-                </div>
-                <div class="grow-0 flex flex-row mr-xs">
-                  <div
-                    v-for="(cnt, kind) in actionsStore.countActionsByKind"
-                    :key="kind"
-                    class="flex flex-row mx-2xs p-2xs rounded dark:bg-neutral-900 bg-neutral-200"
-                  >
-                    <div class="mx-2xs">{{ cnt }}</div>
-                    <StatusIndicatorIcon
-                      type="action"
-                      :status="kind"
-                      tone="shade"
-                      size="sm"
-                    />
-                  </div>
-                </div>
-              </div>
-              <ul>
-                <li
-                  v-for="(action, index) in actionsStore.proposedActions"
-                  :key="action.id"
-                  :class="
-                    clsx(
-                      'list-none',
-                      index !== actionsStore.proposedActions.length - 1 &&
-                        'border-b border-neutral-300 dark:border-neutral-700',
-                    )
-                  "
-                >
-                  <ActionCard
-                    slim
-                    :action="action"
-                    @remove="actionsStore.REMOVE_ACTION(action.id)"
-                  />
-                </li>
-              </ul>
+              <ActionsList slim noInteraction />
             </div>
           </template>
           <div class="flex flex-row items-center w-full gap-sm">
@@ -328,11 +302,16 @@
 import { onMounted, computed, ref, watch, onBeforeUnmount } from "vue";
 import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
-import { VButton, Modal, Icon } from "@si/vue-lib/design-system";
+import {
+  VButton,
+  Modal,
+  Icon,
+  PillCounter,
+  themeClasses,
+} from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
 import clsx from "clsx";
 import { storeToRefs } from "pinia";
-import ActionCard from "@/components/ActionCard.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
@@ -341,7 +320,7 @@ import UserIcon from "@/components/layout/navbar/UserIcon.vue";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
 import UserCard from "@/components/layout/navbar/UserCard.vue";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import ActionsList from "@/components/Actions/ActionsList.vue";
 
 const applyModalRef = ref<InstanceType<typeof Modal> | null>(null);
 const presenceStore = usePresenceStore();
@@ -370,6 +349,8 @@ const allUsersVoted = ref<boolean>();
 const canCloseModal = ref<boolean>(
   requiresVoting.value || changeSet.value.status === ChangeSetStatus.Open,
 );
+
+const displayCount = computed(() => actionsStore.proposedActions.length);
 
 function openModalHandler() {
   changeSetAppliedRef.value?.close();

@@ -20,7 +20,13 @@
 
       <template v-else>
         <slot name="icon">
-          <Icon v-if="icon" class="vbutton__icon" :name="icon" />
+          <Icon
+            v-if="icon"
+            :class="
+              clsx('vbutton__icon', props.iconClass ? props.iconClass : '')
+            "
+            :name="icon"
+          />
         </slot>
         <span class="vbutton__text">
           <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
@@ -45,6 +51,7 @@
 import { ref, computed, onBeforeUnmount, watch, PropType } from "vue";
 import { RouterLink } from "vue-router";
 import * as _ from "lodash-es";
+import clsx from "clsx";
 
 import { ApiRequestStatus } from "../../pinia";
 
@@ -61,6 +68,7 @@ type ButtonTones = Tones;
 
 const props = defineProps({
   size: { type: String as PropType<ButtonSizes>, default: "md" },
+  iconClass: { type: String },
 
   variant: { type: String as PropType<ButtonVariants>, default: "solid" },
   tone: { type: String as PropType<ButtonTones>, default: "action" },
@@ -90,6 +98,7 @@ const props = defineProps({
 
   submit: { type: Boolean },
 
+  square: { type: Boolean },
   rounded: { type: Boolean },
 
   hoverGlow: Boolean,
@@ -219,6 +228,7 @@ const computedClasses = computed(() => ({
   "--hover-glow": !!props.hoverGlow,
   "--within-dark": containerTheme.theme.value === "dark",
   "--within-light": containerTheme.theme.value === "light",
+  ...(props.square ? { "rounded-none": true } : { rounded: true }),
 }));
 </script>
 
@@ -226,7 +236,6 @@ const computedClasses = computed(() => ({
 .vbutton {
   display: inline-block;
   vertical-align: middle;
-  border-radius: 3px;
   border-style: solid;
   border-width: 1px;
   border-color: rgba(0, 0, 0, 0);
