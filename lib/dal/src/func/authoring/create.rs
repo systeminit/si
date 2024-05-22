@@ -192,7 +192,7 @@ async fn create_attribute_func(
                         }
                     }
 
-                    AttributePrototype::update_func_by_id(ctx, ap, func_id).await?;
+                    AttributePrototype::update_func_by_id(ctx, ap, func.id).await?;
                 }
             }
             (
