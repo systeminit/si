@@ -7,11 +7,7 @@
     firstTabMarginLeft="none"
     marginTop="2xs"
   >
-    <TabGroupItem
-      v-if="!changeSetStore.headSelected"
-      label="Proposed"
-      slug="actions_proposed"
-    >
+    <TabGroupItem label="Proposed" slug="actions_proposed">
       <ChangesPanelProposed />
     </TabGroupItem>
 
@@ -23,9 +19,6 @@
 
 <script lang="ts" setup>
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import ApplyHistory from "./ApplyHistory.vue";
 import ChangesPanelProposed from "./ChangesPanelProposed.vue";
-
-const changeSetStore = useChangeSetsStore();
 </script>
