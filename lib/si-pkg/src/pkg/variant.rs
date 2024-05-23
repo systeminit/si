@@ -239,6 +239,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         node,
                         PkgNode::SchemaVariantChild(SchemaVariantChildNode::ResourceValue)
                     ),
+                    SchemaVariantSpecPropRoot::Resource => false,
                     SchemaVariantSpecPropRoot::Secrets => matches!(
                         node,
                         PkgNode::SchemaVariantChild(SchemaVariantChildNode::Secrets)
@@ -257,19 +258,19 @@ impl<'a> SiPkgSchemaVariant<'a> {
         if maybe_node_index.is_some() || prop_root == SchemaVariantSpecPropRoot::Secrets {
             Ok(maybe_node_index)
         } else {
-            Err(SiPkgError::SchemaVariantChildNotFound(
-                match prop_root {
-                    SchemaVariantSpecPropRoot::Domain => SchemaVariantChildNode::Domain,
-                    SchemaVariantSpecPropRoot::ResourceValue => {
-                        SchemaVariantChildNode::ResourceValue
-                    }
-                    SchemaVariantSpecPropRoot::Secrets => SchemaVariantChildNode::Secrets,
-                    SchemaVariantSpecPropRoot::SecretDefinition => {
-                        SchemaVariantChildNode::SecretDefinition
-                    }
+            let maybe_kind = match prop_root {
+                SchemaVariantSpecPropRoot::Domain => SchemaVariantChildNode::Domain.kind_str(),
+                SchemaVariantSpecPropRoot::ResourceValue => {
+                    SchemaVariantChildNode::ResourceValue.kind_str()
                 }
-                .kind_str(),
-            ))
+                SchemaVariantSpecPropRoot::Secrets => SchemaVariantChildNode::Secrets.kind_str(),
+                SchemaVariantSpecPropRoot::SecretDefinition => {
+                    SchemaVariantChildNode::SecretDefinition.kind_str()
+                }
+                _ => "resource",
+            };
+
+            Err(SiPkgError::SchemaVariantChildNotFound(maybe_kind))
         }
     }
 

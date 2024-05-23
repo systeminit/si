@@ -66,6 +66,7 @@ pub enum SchemaVariantSpecComponentType {
 )]
 pub enum SchemaVariantSpecPropRoot {
     Domain,
+    Resource,
     ResourceValue,
     SecretDefinition,
     Secrets,
@@ -76,6 +77,7 @@ impl SchemaVariantSpecPropRoot {
         match self {
             Self::Domain => &["root", "domain"],
             Self::ResourceValue => &["root", "resource_value"],
+            Self::Resource => &["root", "resource"],
             Self::SecretDefinition => &["root", "secret_definition"],
             Self::Secrets => &["root", "secrets"],
         }
@@ -84,6 +86,7 @@ impl SchemaVariantSpecPropRoot {
     pub fn maybe_from_str(leaf_name: &str) -> Option<SchemaVariantSpecPropRoot> {
         match leaf_name {
             "domain" => Some(SchemaVariantSpecPropRoot::Domain),
+            "resource" => Some(SchemaVariantSpecPropRoot::Resource),
             "resource_value" => Some(SchemaVariantSpecPropRoot::ResourceValue),
             "secret_definition" => Some(SchemaVariantSpecPropRoot::SecretDefinition),
             "secrets" => Some(SchemaVariantSpecPropRoot::Secrets),
@@ -191,6 +194,7 @@ impl SchemaVariantSpec {
             SchemaVariantSpecPropRoot::ResourceValue => Some(&self.resource_value),
             SchemaVariantSpecPropRoot::SecretDefinition => self.secret_definition.as_ref(),
             SchemaVariantSpecPropRoot::Secrets => Some(&self.secrets),
+            SchemaVariantSpecPropRoot::Resource => None,
         }
     }
 
@@ -239,7 +243,31 @@ impl SchemaVariantSpec {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
         schema_variant_builder.name(&self.name);
         schema_variant_builder.data = Some(self.data.clone());
-        schema_variant_builder.sockets = Some(self.sockets.clone());
+
+        let mut new_sockets: Vec<SocketSpec> = vec![];
+        for new_socket in self.sockets.clone() {
+            if let Some(matching_socket) = other_spec
+                .sockets
+                .iter()
+                .find(|s| s.name == new_socket.name && s.kind() == new_socket.kind())
+            {
+                let new_socket_spec_result = new_socket
+                    .merge_socket_spec(matching_socket)
+                    .build()
+                    .map_err(Box::new);
+                match new_socket_spec_result {
+                    Ok(new_spec) => new_sockets.push(new_spec),
+                    _ => {
+                        dbg!("Unable to add the socket to the spec builder");
+                        continue;
+                    }
+                }
+            } else {
+                new_sockets.push(new_socket.clone());
+            }
+        }
+
+        schema_variant_builder.sockets(new_sockets);
 
         let self_input_sockets = self.input_sockets();
         let self_output_sockets = self.output_sockets();
@@ -447,6 +475,7 @@ impl SchemaVariantSpecBuilder {
                 Some(SchemaVariantSpecPropRoot::ResourceValue) => {
                     self.resource_value = Some(child.to_owned());
                 }
+                Some(SchemaVariantSpecPropRoot::Resource) => {}
                 Some(SchemaVariantSpecPropRoot::SecretDefinition) => {
                     self.secret_definition = Some(Some(child.to_owned()));
                 }
@@ -467,28 +496,37 @@ impl SchemaVariantSpecBuilder {
         item: impl Into<PropSpec>,
     ) -> &mut Self {
         let converted: PropSpec = item.into();
-        match match root {
+
+        let maybe_root = match root {
             SchemaVariantSpecPropRoot::Domain => {
-                self.domain.get_or_insert_with(Self::default_domain)
+                Some(self.domain.get_or_insert_with(Self::default_domain))
             }
-            SchemaVariantSpecPropRoot::ResourceValue => self
-                .resource_value
-                .get_or_insert_with(Self::default_resource_value),
-            SchemaVariantSpecPropRoot::SecretDefinition => self
-                .secret_definition
-                .get_or_insert_with(Self::default_secret_definition)
-                .as_mut()
-                .expect("secret_definition was created with Some(...)"),
-            SchemaVariantSpecPropRoot::Secrets => {
-                self.secrets.get_or_insert_with(Self::default_secrets)
-            }
-        } {
-            PropSpec::Object { entries, .. } => entries.push(converted),
-            invalid => unreachable!(
-                "{:?} prop under root should be Object but was found to be: {:?}",
-                root, invalid
+            SchemaVariantSpecPropRoot::ResourceValue => Some(
+                self.resource_value
+                    .get_or_insert_with(Self::default_resource_value),
             ),
+            SchemaVariantSpecPropRoot::SecretDefinition => Some(
+                self.secret_definition
+                    .get_or_insert_with(Self::default_secret_definition)
+                    .as_mut()
+                    .expect("secret_definition was created with Some(...)"),
+            ),
+            SchemaVariantSpecPropRoot::Secrets => {
+                Some(self.secrets.get_or_insert_with(Self::default_secrets))
+            }
+            SchemaVariantSpecPropRoot::Resource => None,
         };
+
+        if let Some(converted_root) = maybe_root {
+            match converted_root {
+                PropSpec::Object { entries, .. } => entries.push(converted),
+                invalid => unreachable!(
+                    "{:?} prop under root should be Object but was found to be: {:?}",
+                    root, invalid
+                ),
+            }
+        }
+
         self
     }
 
