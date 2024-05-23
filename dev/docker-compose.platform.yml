@@ -116,3 +116,9 @@ services:
       - "55679:55679"
     depends_on:
       - jaeger
+
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
