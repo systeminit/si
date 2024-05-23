@@ -763,15 +763,18 @@ impl WorkspaceSnapshot {
             .copied()
             .unwrap_or(workspace_snapshot_addr);
 
-        let snapshot = match ctx
+        let (snapshot, workspace_snapshot_addr) = match ctx
             .layer_db()
             .workspace_snapshot()
             .read_wait_for_memory(&workspace_snapshot_addr)
             .await
         {
-            Ok(snapshot) => snapshot.ok_or(
-                WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(workspace_snapshot_addr),
-            )?,
+            Ok(snapshot) => (
+                snapshot.ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
+                    workspace_snapshot_addr,
+                ))?,
+                workspace_snapshot_addr,
+            ),
             Err(err) => match err {
                 LayerDbError::Postcard(_) => {
                     if ctx.no_auto_migrate_snapshots() {
@@ -833,7 +836,7 @@ impl WorkspaceSnapshot {
     async fn try_migrate_snapshot_graph(
         ctx: &DalContext,
         workspace_snapshot_addr: WorkspaceSnapshotAddress,
-    ) -> WorkspaceSnapshotResult<Arc<WorkspaceSnapshotGraph>> {
+    ) -> WorkspaceSnapshotResult<(Arc<WorkspaceSnapshotGraph>, WorkspaceSnapshotAddress)> {
         let snapshot_bytes = ctx
             .layer_db()
             .workspace_snapshot()
@@ -868,7 +871,7 @@ impl WorkspaceSnapshot {
 
         info!("migration of {} finished", workspace_snapshot_addr);
 
-        Ok(migrated_snapshot)
+        Ok((migrated_snapshot, migrated_address))
     }
 
     pub async fn find_for_change_set(
