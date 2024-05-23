@@ -9,19 +9,23 @@ use thiserror::Error;
 use veritech_client::{OutputStream, ResourceStatus};
 
 use crate::{
-    action::dependency_graph::ActionDependencyGraph,
-    action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+    action::{
+        dependency_graph::ActionDependencyGraph,
+        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+    },
     attribute::value::{AttributeValueError, DependentValueGraph},
-    func::backend::js_action::DeprecatedActionRunResult,
-    func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
+    func::{
+        backend::js_action::DeprecatedActionRunResult,
+        execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
+    },
     id, implement_add_edge_to,
     job::definition::ActionJob,
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
-    AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
-    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
+    DalContext, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError,
+    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -537,6 +541,13 @@ impl Action {
             ctx.workspace_snapshot()?
                 .remove_node_by_id(ctx.change_set()?, id)
                 .await?;
+            let component = Component::get_by_id(ctx, component_id).await?;
+
+            if component.to_delete()
+                && matches!(resource.as_ref().map(|r| r.payload.is_none()), Some(true))
+            {
+                Component::remove(ctx, component.id()).await?;
+            }
         } else {
             Action::set_state(ctx, id, ActionState::Failed).await?;
         }
