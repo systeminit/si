@@ -264,6 +264,7 @@ impl Server<(), ()> {
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
         services_context.layer_db().pg_migrate().await?;
         dal::migrate_all_with_progress(services_context).await?;
+
         migrate_builtins_from_module_index(services_context).await?;
         Ok(())
     }
@@ -352,6 +353,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 
     let mut dal_context = services_context.clone().into_builder(true);
     dal_context.set_no_dependent_values();
+    dal_context.set_no_auto_migrate_snapshots();
     let mut ctx = dal_context.build_default().await?;
 
     Workspace::setup_builtin(&mut ctx).await?;

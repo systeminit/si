@@ -1,6 +1,9 @@
 //! A per-changeset task to debounce dependent values updates
 
-use dal::{DalContextBuilder, Tenancy, TransactionsError, Visibility, WorkspaceSnapshotError};
+use dal::{
+    ChangeSet, ChangeSetError, ChangeSetStatus, DalContextBuilder, Tenancy, TransactionsError,
+    Visibility, WorkspaceSnapshotError,
+};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -15,6 +18,9 @@ const DVU_INTERVAL: Duration = Duration::from_secs(5);
 /// DvuDebouncer error type
 #[derive(Error, Debug)]
 pub enum DvuDebouncerError {
+    /// A Change set error
+    #[error("change set: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     /// A transactions error
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
@@ -68,16 +74,25 @@ impl DvuDebouncer {
         ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_inner().into()));
         ctx.update_tenancy(Tenancy::new(self.workspace_id.into_inner().into()));
 
+        if let Some(change_set) =
+            ChangeSet::find(&ctx, self.change_set_id.into_inner().into()).await?
+        {
+            if !matches!(
+                change_set.status,
+                ChangeSetStatus::Open
+                    | ChangeSetStatus::NeedsApproval
+                    | ChangeSetStatus::NeedsAbandonApproval
+            ) {
+                debug!("change set no longer open, not enqueuing dependent values updates");
+                return Ok(());
+            }
+        }
+
         if let Err(err) = ctx.update_snapshot_to_visibility().await {
-            match &err {
-                TransactionsError::WorkspaceSnapshot(boxed_err) => match boxed_err.as_ref() {
-                    WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(_) => {
-                        debug!("Snapshot not yet migrated. Not attempting dvu");
-                        return Ok(());
-                    }
-                    _ => Err(err)?,
-                },
-                _ => Err(err)?,
+            if err.is_unmigrated_snapshot_error() {
+                debug!("Snapshot not yet migrated. Not attempting dvu");
+            } else {
+                Err(err)?
             }
         }
 

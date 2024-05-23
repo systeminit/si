@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use ulid::Generator;
 
@@ -45,6 +46,8 @@ pub enum ChangeSetError {
     InvalidActor(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -393,6 +396,52 @@ impl ChangeSet {
             }
             None => Ok(None),
         }
+    }
+
+    pub async fn migrate_change_set_snapshot(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> ChangeSetResult<()> {
+        let mut change_set = ChangeSet::find(ctx, change_set_id)
+            .await?
+            .ok_or(TransactionsError::ChangeSetNotFound(change_set_id))?;
+
+        info!("migrating change set {} to updated graph", change_set_id);
+
+        let snapshot_addr = change_set
+            .workspace_snapshot_address
+            .ok_or(TransactionsError::ChangeSetNotFound(change_set_id))?;
+
+        let snapshot_bytes = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .read_bytes_from_durable_storage(&snapshot_addr)
+            .await?
+            .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
+                snapshot_addr,
+            ))
+            .map_err(Box::new)?;
+
+        let migrated_snapshot = WorkspaceSnapshot::try_migrate_snapshot_bytes(snapshot_bytes)
+            .await
+            .map_err(Box::new)?;
+
+        let (migrated_address, _) = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .write(
+                migrated_snapshot.clone(),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        change_set.update_pointer(ctx, migrated_address).await?;
+
+        info!("migration of change set {} finished", change_set_id);
+
+        Ok(())
     }
 
     pub async fn list_open(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
