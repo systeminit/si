@@ -13,6 +13,7 @@ mod input_sources;
 mod module;
 mod prop;
 mod property_editor;
+mod qualifications;
 mod rebaser;
 mod schema;
 mod secret;
