@@ -8,9 +8,6 @@
     <TabGroupItem slug="assets" label="ASSETS">
       <slot v-if="tabContentSlug === 'assets'" />
     </TabGroupItem>
-    <TabGroupItem slug="functions" label="FUNCTIONS">
-      <slot v-if="tabContentSlug === 'functions'" />
-    </TabGroupItem>
     <TabGroupItem
       v-if="featureFlagsStore.MODULES_TAB"
       slug="packages"
