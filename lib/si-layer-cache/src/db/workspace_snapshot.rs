@@ -44,11 +44,14 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
-        let postcard_value = serialize::to_vec(&value)?;
+        let value_clone = value.clone();
+        let postcard_value =
+            tokio::task::spawn_blocking(move || serialize::to_vec(&value)).await??;
+
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value.clone()).await;
+        self.cache.insert(cache_key.clone(), value_clone).await;
 
         let event = LayeredEvent::new(
             LayeredEventKind::SnapshotWrite,
@@ -147,5 +150,24 @@ where
         let reader = self.persister_client.evict_event(event)?;
 
         Ok(reader)
+    }
+
+    /// Used for when we want to get the exact bytes we're storing for this
+    /// snapshot, useful when converting an out of date snapshot into a new one
+    #[instrument(
+        name = "workspace_snapshot.read_bytes_from_durable_storage",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot.address = %key,
+        )
+    )]
+    pub async fn read_bytes_from_durable_storage(
+        &self,
+        key: &WorkspaceSnapshotAddress,
+    ) -> LayerDbResult<Option<Vec<u8>>> {
+        self.cache
+            .get_bytes_from_durable_storage(key.to_string().into())
+            .await
     }
 }

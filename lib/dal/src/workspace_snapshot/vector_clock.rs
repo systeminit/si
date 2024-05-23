@@ -34,6 +34,12 @@ impl VectorClock {
         Ok(VectorClock { entries })
     }
 
+    pub fn empty() -> Self {
+        Self {
+            entries: HashMap::new(),
+        }
+    }
+
     pub fn entry_for(&self, vector_clock_id: VectorClockId) -> Option<LamportClock> {
         self.entries.get(&vector_clock_id).copied()
     }

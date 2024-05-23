@@ -31,20 +31,24 @@ pub mod update;
 pub mod vector_clock;
 
 use futures::executor;
-use si_pkg::KeyOrIndex;
+use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use tokio::task::JoinError;
 
+use once_cell::sync::Lazy;
 use petgraph::prelude::*;
 pub use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_layer_cache::db::serialize;
+use si_layer_cache::LayerDbError;
+use si_pkg::KeyOrIndex;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
@@ -53,6 +57,7 @@ use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
+use crate::workspace_snapshot::graph::DeprecatedWorkspaceSnapshotGraph;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
@@ -107,6 +112,8 @@ pub enum WorkspaceSnapshotError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("unable to forward migrate snapshot: {0}")]
+    UnableToForwardMigrateSnapshot(String),
     #[error("Unexpected edge source {0} for target {1} and edge weight type {0:?}")]
     UnexpectedEdgeSource(Ulid, Ulid, EdgeWeightKindDiscriminants),
     #[error("Unexpected edge target {0} for source {1} and edge weight type {0:?}")]
@@ -119,6 +126,8 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotGraphMissing(WorkspaceSnapshotAddress),
     #[error("no workspace snapshot was fetched for this dal context")]
     WorkspaceSnapshotNotFetched,
+    #[error("workspace snapshot {0} is not yet migrated to the latest version")]
+    WorkspaceSnapshotNotMigrated(WorkspaceSnapshotAddress),
     #[error("Unable to write workspace snapshot")]
     WorkspaceSnapshotNotWritten,
 }
@@ -233,6 +242,13 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
     }
     .into()
 }
+
+// When we migrate snapshots to the updated version, this stores a mapping
+// between the original snapshot address and the new one, to prevent us from
+// re-migrating again in the same service
+static MIGRATED_SNAPSHOT_MAP: Lazy<
+    Mutex<HashMap<WorkspaceSnapshotAddress, WorkspaceSnapshotAddress>>,
+> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 impl WorkspaceSnapshot {
     #[instrument(
@@ -380,11 +396,22 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
-        let graph: WorkspaceSnapshotGraph = si_layer_cache::db::serialize::from_bytes(bytes)?;
+        let graph: Arc<WorkspaceSnapshotGraph> =
+            match si_layer_cache::db::serialize::from_bytes(bytes) {
+                Err(err) => match err {
+                    LayerDbError::Postcard(_) => {
+                        // We have to clone the bytes here to do this operation
+                        // on the blocking pool
+                        Self::try_migrate_snapshot_bytes(bytes.to_vec()).await?
+                    }
+                    err => Err(err)?,
+                },
+                Ok(snapshot) => Arc::new(snapshot),
+            };
 
         Ok(Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
-            read_only_graph: Arc::new(graph),
+            read_only_graph: graph,
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
         })
@@ -468,8 +495,9 @@ impl WorkspaceSnapshot {
         })
     }
 
-    // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
-    // indices are definitely correct.
+    /// Add an edge to the graph, bypassing any cycle checks and using node
+    /// indices directly.  Use with care, since node indices are only reliably
+    /// if the graph has not yet been modified.
     #[instrument(
         name = "workspace_snapshot.add_edge_unchecked",
         level = "debug",
@@ -540,8 +568,8 @@ impl WorkspaceSnapshot {
         .await??)
     }
 
-    // NOTE(nick): this should only be used by the rebaser.
-    // NOTE(fnichol): ...it isn't though, at least right now... p.s. hey Nick!
+    /// Gives the exact node index endpoints of an edge. Use with care, since
+    /// node indexes can't be relied on after modifications to the graph.
     #[instrument(
         name = "workspace_snapshot.edge_endpoints",
         level = "debug",
@@ -726,14 +754,37 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Self> {
         let start = tokio::time::Instant::now();
 
-        let snapshot = ctx
+        // Prevent re-reading unmigrated snapshots from the database if we have
+        // already migrated them
+        let workspace_snapshot_addr = MIGRATED_SNAPSHOT_MAP
+            .lock()
+            .await
+            .get(&workspace_snapshot_addr)
+            .copied()
+            .unwrap_or(workspace_snapshot_addr);
+
+        let snapshot = match ctx
             .layer_db()
             .workspace_snapshot()
             .read_wait_for_memory(&workspace_snapshot_addr)
-            .await?
-            .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
-                workspace_snapshot_addr,
-            ))?;
+            .await
+        {
+            Ok(snapshot) => snapshot.ok_or(
+                WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(workspace_snapshot_addr),
+            )?,
+            Err(err) => match err {
+                LayerDbError::Postcard(_) => {
+                    if ctx.no_auto_migrate_snapshots() {
+                        return Err(WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(
+                            workspace_snapshot_addr,
+                        ));
+                    }
+
+                    Self::try_migrate_snapshot_graph(ctx, workspace_snapshot_addr).await?
+                }
+                err => Err(err)?,
+            },
+        };
 
         debug!("snapshot fetch took: {:?}", start.elapsed());
 
@@ -743,6 +794,81 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
         })
+    }
+
+    async fn try_migrate_snapshot_bytes(
+        snapshot_bytes: Vec<u8>,
+    ) -> WorkspaceSnapshotResult<Arc<WorkspaceSnapshotGraph>> {
+        // This operation is potentially quite expensive so we throw it on the
+        // blocking pool to ensure we don't tie up the tokio reactor
+        let migrated_snapshot: Arc<WorkspaceSnapshotGraph> =
+            tokio::task::spawn_blocking(move || {
+                let deprecated_graph: DeprecatedWorkspaceSnapshotGraph =
+                    match serialize::from_bytes(&snapshot_bytes) {
+                        Ok(graph) => graph,
+                        Err(err) => {
+                            return Err(WorkspaceSnapshotError::UnableToForwardMigrateSnapshot(
+                                err.to_string(),
+                            ));
+                        }
+                    };
+
+                Ok(Arc::new(deprecated_graph.into()))
+            })
+            .await??;
+
+        Ok(migrated_snapshot)
+    }
+
+    /// Attempts to migrate a snapshot graph to the latest version. Should only
+    /// be used if a deserialization has failed. If we add another new version
+    /// of the workspace snapshot graph, this will have to be extended to
+    /// support that version as well (by checking if the deserialization has
+    /// failed again!). Once migrated, the snapshot is written immediately and a
+    /// mapping is stored between the two addresses so that we will not attempt
+    /// to migrate again. However, this fact (of the migration having happened)
+    /// is not spread across our services, so migration will occur once per
+    /// service, per out of date snapshot. We could solve this by creating a
+    /// layer db store for the migrated snapshot map
+    async fn try_migrate_snapshot_graph(
+        ctx: &DalContext,
+        workspace_snapshot_addr: WorkspaceSnapshotAddress,
+    ) -> WorkspaceSnapshotResult<Arc<WorkspaceSnapshotGraph>> {
+        let snapshot_bytes = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .read_bytes_from_durable_storage(&workspace_snapshot_addr)
+            .await?
+            .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(
+                workspace_snapshot_addr,
+            ))?;
+
+        info!(
+            "migrating workspace snapshot {} to updated graph",
+            workspace_snapshot_addr
+        );
+
+        let migrated_snapshot = Self::try_migrate_snapshot_bytes(snapshot_bytes).await?;
+
+        let (migrated_address, _) = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .write(
+                migrated_snapshot.clone(),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        MIGRATED_SNAPSHOT_MAP
+            .lock()
+            .await
+            .insert(workspace_snapshot_addr, migrated_address);
+
+        info!("migration of {} finished", workspace_snapshot_addr);
+
+        Ok(migrated_snapshot)
     }
 
     pub async fn find_for_change_set(

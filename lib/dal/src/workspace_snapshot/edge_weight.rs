@@ -91,10 +91,91 @@ impl EdgeWeightKind {
 pub struct EdgeWeight {
     kind: EdgeWeightKind,
     vector_clock_first_seen: VectorClock,
+    vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
 impl EdgeWeight {
+    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
+        self.vector_clock_recently_seen
+            .inc(change_set.vector_clock_id())?;
+        self.vector_clock_write.inc(change_set.vector_clock_id())?;
+
+        Ok(())
+    }
+
+    pub fn kind(&self) -> &EdgeWeightKind {
+        &self.kind
+    }
+
+    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
+        self.vector_clock_recently_seen
+            .inc_to(vector_clock_id, seen_at);
+
+        if self
+            .vector_clock_first_seen
+            .entry_for(vector_clock_id)
+            .is_none()
+        {
+            self.vector_clock_first_seen
+                .inc_to(vector_clock_id, seen_at);
+        }
+    }
+
+    pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
+        let empty_vector_clock = VectorClock::new(change_set.vector_clock_id())?;
+
+        Ok(Self {
+            kind,
+            vector_clock_first_seen: empty_vector_clock.clone(),
+            vector_clock_recently_seen: empty_vector_clock.clone(),
+            vector_clock_write: empty_vector_clock,
+        })
+    }
+
+    pub fn new_with_incremented_vector_clocks(
+        &self,
+        change_set: &ChangeSet,
+    ) -> EdgeWeightResult<Self> {
+        let mut new_weight = self.clone();
+        new_weight.increment_vector_clocks(change_set)?;
+
+        Ok(new_weight)
+    }
+
+    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+        &self.vector_clock_recently_seen
+    }
+
+    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
+
+    pub fn vector_clock_write(&self) -> &VectorClock {
+        &self.vector_clock_write
+    }
+}
+
+/// This, the original edge weight, was missing the "recently seen" vector clock
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct DeprecatedEdgeWeight {
+    kind: EdgeWeightKind,
+    vector_clock_first_seen: VectorClock,
+    vector_clock_write: VectorClock,
+}
+
+impl From<DeprecatedEdgeWeight> for EdgeWeight {
+    fn from(deprecated_edge_weight: DeprecatedEdgeWeight) -> Self {
+        Self {
+            kind: deprecated_edge_weight.kind,
+            vector_clock_first_seen: deprecated_edge_weight.vector_clock_first_seen,
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: deprecated_edge_weight.vector_clock_write,
+        }
+    }
+}
+
+impl DeprecatedEdgeWeight {
     pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
         self.vector_clock_write.inc(change_set.vector_clock_id())?;
 

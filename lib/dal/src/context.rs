@@ -104,6 +104,7 @@ impl ServicesContext {
             services_context: self,
             blocking,
             no_dependent_values: false,
+            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -304,6 +305,8 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
+    /// Whether we should attempt to automatically migrate snapshots to the latest version
+    no_auto_migrate_snapshots: bool,
 }
 
 impl DalContext {
@@ -314,6 +317,7 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
+            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -336,7 +340,7 @@ impl DalContext {
 
         let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
             .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
 
         self.set_change_set(change_set)?;
         self.set_workspace_snapshot(workspace_snapshot);
@@ -354,7 +358,7 @@ impl DalContext {
 
         let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
             .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
 
         self.change_set = Some(change_set);
         self.set_workspace_snapshot(workspace_snapshot);
@@ -369,7 +373,7 @@ impl DalContext {
             let vector_clock_id = self.change_set()?.vector_clock_id();
 
             Ok(Some(snapshot.write(self, vector_clock_id).await.map_err(
-                |err| TransactionsError::WorkspaceSnapshot(err.to_string()),
+                |err| TransactionsError::WorkspaceSnapshot(Box::new(err)),
             )?))
         } else {
             Ok(None)
@@ -437,6 +441,7 @@ impl DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             no_dependent_values: self.no_dependent_values,
+            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         }
     }
 
@@ -515,6 +520,10 @@ impl DalContext {
 
     pub fn no_dependent_values(&self) -> bool {
         self.no_dependent_values
+    }
+
+    pub fn no_auto_migrate_snapshots(&self) -> bool {
+        self.no_auto_migrate_snapshots
     }
 
     pub fn services_context(&self) -> ServicesContext {
@@ -939,6 +948,8 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
+    /// Whether we should avoid automatically migrating snapshots to the latest version
+    no_auto_migrate_snapshots: bool,
 }
 
 impl fmt::Debug for DalContextBuilder {
@@ -965,6 +976,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         })
     }
 
@@ -985,6 +997,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1015,6 +1028,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         };
 
         ctx.update_snapshot_to_visibility().await?;
@@ -1054,6 +1068,11 @@ impl DalContextBuilder {
 
     pub fn set_no_dependent_values(&mut self) {
         self.no_dependent_values = true;
+    }
+
+    /// Call this to prevent automatic migration of out of date snapshots
+    pub fn set_no_auto_migrate_snapshots(&mut self) {
+        self.no_auto_migrate_snapshots = true;
     }
 }
 
@@ -1099,7 +1118,7 @@ pub enum TransactionsError {
     #[error("workspace not found by pk: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(String),
+    WorkspaceSnapshot(Box<WorkspaceSnapshotError>),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.

@@ -27,6 +27,63 @@ mod test {
         updates: Vec<Update>,
     }
 
+    #[derive(Debug, Eq, PartialEq)]
+    enum UpdateWithEdgeWeightKind {
+        NewEdge {
+            source: NodeInformation,
+            destination: NodeInformation,
+            edge_weight_kind: EdgeWeightKind,
+        },
+        RemoveEdge {
+            source: NodeInformation,
+            destination: NodeInformation,
+            edge_kind: EdgeWeightKindDiscriminants,
+        },
+        ReplaceSubgraph {
+            onto: NodeInformation,
+            to_rebase: NodeInformation,
+        },
+        MergeCategoryNodes {
+            to_rebase_category_id: Ulid,
+            onto_category_id: Ulid,
+        },
+    }
+
+    impl From<Update> for UpdateWithEdgeWeightKind {
+        fn from(value: Update) -> Self {
+            match value {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } => Self::NewEdge {
+                    source,
+                    destination,
+                    edge_weight_kind: edge_weight.kind().clone(),
+                },
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind,
+                } => Self::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind,
+                },
+                Update::ReplaceSubgraph { onto, to_rebase } => {
+                    Self::ReplaceSubgraph { onto, to_rebase }
+                }
+                Update::MergeCategoryNodes {
+                    to_rebase_category_id,
+                    onto_category_id,
+                } => Self::MergeCategoryNodes {
+                    to_rebase_category_id,
+                    onto_category_id,
+                },
+            }
+        }
+    }
+
     #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_no_updates_in_base() {
         let initial_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
@@ -1951,7 +2008,7 @@ mod test {
         assert_eq!(Vec::<Conflict>::new(), conflicts);
         assert_eq!(
             vec![
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
@@ -1966,9 +2023,9 @@ mod test {
                         id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: new_edge_weight,
+                    edge_weight_kind: new_edge_weight.kind().clone(),
                 },
-                Update::ReplaceSubgraph {
+                UpdateWithEdgeWeightKind::ReplaceSubgraph {
                     onto: NodeInformation {
                         index: initial_ordering_node_index_for_container,
                         id: initial_ordering_node_weight_for_container.id().into(),
@@ -1980,7 +2037,7 @@ mod test {
                         node_weight_kind: NodeWeightDiscriminants::Ordering,
                     },
                 },
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
@@ -1995,10 +2052,13 @@ mod test {
                         id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: ordinal_edge_weight,
+                    edge_weight_kind: ordinal_edge_weight.kind().clone(),
                 }
             ],
             updates
+                .into_iter()
+                .map(Into::<UpdateWithEdgeWeightKind>::into)
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -2316,7 +2376,7 @@ mod test {
 
         assert_eq!(
             vec![
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
@@ -2331,9 +2391,9 @@ mod test {
                         id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: new_edge_weight,
+                    edge_weight_kind: new_edge_weight.kind().clone(),
                 },
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
@@ -2348,10 +2408,13 @@ mod test {
                         id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: ordinal_edge_weight,
+                    edge_weight_kind: ordinal_edge_weight.kind().to_owned(),
                 }
             ],
             updates
+                .into_iter()
+                .map(Into::<UpdateWithEdgeWeightKind>::into)
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -2649,7 +2712,7 @@ mod test {
         assert_eq!(Vec::<Conflict>::new(), conflicts);
         assert_eq!(
             vec![
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(container_prop_id)
@@ -2664,9 +2727,9 @@ mod test {
                         id: ordered_prop_5_id.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: new_edge_weight,
+                    edge_weight_kind: new_edge_weight.kind().clone(),
                 },
-                Update::NewEdge {
+                UpdateWithEdgeWeightKind::NewEdge {
                     source: NodeInformation {
                         index: new_graph
                             .get_node_index_by_id(source_node_id_for_ordinal_edge)
@@ -2681,10 +2744,13 @@ mod test {
                         id: destination_node_id_for_ordinal_edge.into(),
                         node_weight_kind: NodeWeightDiscriminants::Content,
                     },
-                    edge_weight: ordinal_edge_weight,
+                    edge_weight_kind: ordinal_edge_weight.kind().clone(),
                 }
             ],
             updates
+                .into_iter()
+                .map(Into::<UpdateWithEdgeWeightKind>::into)
+                .collect::<Vec<_>>(),
         );
     }
 

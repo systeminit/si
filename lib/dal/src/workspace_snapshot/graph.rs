@@ -29,6 +29,8 @@ use crate::workspace_snapshot::{
     NodeInformation,
 };
 
+use super::edge_weight::DeprecatedEdgeWeight;
+
 mod tests;
 
 pub type LineageId = Ulid;
@@ -87,6 +89,90 @@ pub struct WorkspaceSnapshotGraph {
     root_index: NodeIndex,
 }
 
+#[derive(Default, Deserialize, Serialize, Clone)]
+pub struct DeprecatedWorkspaceSnapshotGraph {
+    graph: StableDiGraph<NodeWeight, DeprecatedEdgeWeight>,
+    node_index_by_id: HashMap<Ulid, NodeIndex>,
+    node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
+    root_index: NodeIndex,
+}
+
+impl From<DeprecatedWorkspaceSnapshotGraph> for WorkspaceSnapshotGraph {
+    fn from(deprecated_graph: DeprecatedWorkspaceSnapshotGraph) -> Self {
+        let deprecated_graph_inner = &deprecated_graph.graph;
+        let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(
+            deprecated_graph_inner.node_count(),
+            deprecated_graph_inner.edge_count(),
+        );
+        let mut node_index_by_id: HashMap<Ulid, NodeIndex> = HashMap::new();
+        let mut node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>> = HashMap::new();
+        // This is just a place holder until we find the root when iterating the nodes
+        let mut root_index = deprecated_graph.root_index;
+
+        let mut old_graph_idx_to_id = HashMap::new();
+
+        for node_weight in deprecated_graph_inner.node_weights() {
+            let id = node_weight.id();
+            let lineage_id = node_weight.lineage_id();
+
+            if let Some(idx) = deprecated_graph.node_index_by_id.get(&id) {
+                old_graph_idx_to_id.insert(idx, id);
+            }
+
+            let idx = graph.add_node(node_weight.to_owned());
+
+            if let NodeWeight::Content(content_node_weight) = node_weight {
+                if let ContentAddress::Root = content_node_weight.content_address() {
+                    root_index = idx;
+                }
+            }
+
+            node_index_by_id.insert(id, idx);
+            node_indices_by_lineage_id
+                .entry(lineage_id)
+                .and_modify(|index_set| {
+                    index_set.insert(idx);
+                })
+                .or_insert(HashSet::from([idx]));
+        }
+
+        for edge_idx in deprecated_graph_inner.edge_indices() {
+            let edge_endpoints = deprecated_graph_inner.edge_endpoints(edge_idx);
+            let deprecated_edge_weight = deprecated_graph_inner.edge_weight(edge_idx);
+
+            if let (Some((source_idx, target_idx)), Some(deprecated_edge_weight)) =
+                (edge_endpoints, deprecated_edge_weight)
+            {
+                let source_id_in_new_graph = old_graph_idx_to_id.get(&source_idx).copied();
+                let target_id_in_new_graph = old_graph_idx_to_id.get(&target_idx).copied();
+                if let (Some(source_id), Some(target_id)) =
+                    (source_id_in_new_graph, target_id_in_new_graph)
+                {
+                    let source_idx_in_new_graph = node_index_by_id.get(&source_id).copied();
+                    let target_idx_in_new_graph = node_index_by_id.get(&target_id).copied();
+
+                    if let (Some(new_source_idx), Some(new_target_idx)) =
+                        (source_idx_in_new_graph, target_idx_in_new_graph)
+                    {
+                        graph.add_edge(
+                            new_source_idx,
+                            new_target_idx,
+                            deprecated_edge_weight.to_owned().into(),
+                        );
+                    }
+                }
+            }
+        }
+
+        Self {
+            graph,
+            node_index_by_id,
+            node_indices_by_lineage_id,
+            root_index,
+        }
+    }
+}
+
 impl std::fmt::Debug for WorkspaceSnapshotGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
@@ -99,7 +185,8 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
 
 impl WorkspaceSnapshotGraph {
     pub fn new(change_set: &ChangeSet) -> WorkspaceSnapshotGraphResult<Self> {
-        let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
+        let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
+            StableDiGraph::with_capacity(1024, 1024);
         let root_node = NodeWeight::new_content(
             change_set,
             change_set.generate_ulid()?,
@@ -1077,8 +1164,13 @@ impl WorkspaceSnapshotGraph {
                         }
                     } else {
                         to_rebase_edge_weight
-                            .vector_clock_first_seen()
+                            .vector_clock_recently_seen()
                             .entry_for(onto_vector_clock_id)
+                            .or_else(|| {
+                                to_rebase_edge_weight
+                                    .vector_clock_first_seen()
+                                    .entry_for(onto_vector_clock_id)
+                            })
                     };
 
                 match maybe_seen_by_onto_at {
@@ -1176,8 +1268,13 @@ impl WorkspaceSnapshotGraph {
                         }
                     } else {
                         onto_edge_weight
-                            .vector_clock_first_seen()
+                            .vector_clock_recently_seen()
                             .entry_for(to_rebase_vector_clock_id)
+                            .or_else(|| {
+                                onto_edge_weight
+                                    .vector_clock_first_seen()
+                                    .entry_for(to_rebase_vector_clock_id)
+                            })
                     };
 
                 match maybe_seen_by_to_rebase_at {
