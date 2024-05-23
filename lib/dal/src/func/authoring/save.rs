@@ -12,10 +12,10 @@ use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
-    ActionPrototypeId, AttributePrototype, AttributePrototypeId, AttributeValue, Component,
-    ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype, EdgeWeightKind, Func,
-    FuncBackendResponseType, FuncId, OutputSocket, Prop, SchemaVariant, SchemaVariantId,
-    WorkspaceSnapshotError,
+    func::IntrinsicFunc, ActionPrototypeId, AttributePrototype, AttributePrototypeId,
+    AttributeValue, Component, ComponentId, DalContext, DeprecatedActionKind,
+    DeprecatedActionPrototype, EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket,
+    Prop, SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
 };
 
 #[instrument(
@@ -411,7 +411,8 @@ async fn remove_or_reset_attribute_prototype(
             return Ok(());
         }
     }
-    AttributePrototype::remove(ctx, attribute_prototype_id).await?;
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id).await?;
     Ok(())
 }
 
