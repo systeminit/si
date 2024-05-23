@@ -9,6 +9,7 @@ cfg = config.parse()
 # Define groups of services
 groups = {
     "platform": [
+        "grafana",
         "jaeger",
         "nats",
         "otelcol",
@@ -92,11 +93,15 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "grafana"]
 for service in compose_services:
     if service == "jaeger":
         links = [
             link("http://localhost:16686", "ui"),
+        ]
+    elif service == "grafana":
+        links = [
+            link("http://localhost:3000", "ui"),
         ]
     else:
         links = []

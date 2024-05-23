@@ -93,6 +93,18 @@ services:
       - "5317:4317"
       - "16686:16686"
 
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - "GF_AUTH_ANONYMOUS_ENABLED=true"
+      - "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin"
+      - "GF_AUTH_DISABLE_LOGIN_FORM=true"
+
   otelcol:
     image: systeminit/otelcol:stable
     # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
