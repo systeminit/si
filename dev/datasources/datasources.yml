@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: Jaeger
+    type: jaeger
+    url: http://dev-jaeger-1:16686
+    basicAuth: false
+    access: proxy
+    readOnly: false
+    isDefault: true
