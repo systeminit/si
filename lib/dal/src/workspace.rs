@@ -149,13 +149,25 @@ impl Workspace {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
-            let change_set = ChangeSet::find(ctx, found_builtin.default_change_set_id)
-                .await?
-                .ok_or(WorkspaceError::ChangeSetNotFound(
-                    found_builtin.default_change_set_id,
-                ))?;
-            ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
-                .await?;
+            if let Err(err) = ctx
+                .update_visibility_and_snapshot_to_visibility(found_builtin.default_change_set_id)
+                .await
+            {
+                if err.is_unmigrated_snapshot_error() {
+                    ChangeSet::migrate_change_set_snapshot(
+                        ctx,
+                        found_builtin.default_change_set_id,
+                    )
+                    .await?;
+                    ctx.commit_no_rebase().await?;
+                    ctx.update_visibility_and_snapshot_to_visibility(
+                        found_builtin.default_change_set_id,
+                    )
+                    .await?;
+                } else {
+                    Err(err)?;
+                }
+            }
             return Ok(());
         }
 

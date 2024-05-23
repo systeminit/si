@@ -338,13 +338,37 @@ impl DalContext {
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
 
-        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
+        match WorkspaceSnapshot::find_for_change_set(self, change_set.id)
             .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))
+        {
+            Ok(workspace_snapshot) => {
+                self.set_change_set(change_set)?;
+                self.set_workspace_snapshot(workspace_snapshot);
+            }
+            Err(err) => {
+                if err.is_unmigrated_snapshot_error() && !self.no_auto_migrate_snapshots {
+                    ChangeSet::migrate_change_set_snapshot(self, self.change_set_id())
+                        .await
+                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
+                    self.commit_no_rebase().await?;
 
-        self.set_change_set(change_set)?;
-        self.set_workspace_snapshot(workspace_snapshot);
+                    let change_set = ChangeSet::find(self, self.change_set_id())
+                        .await
+                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+                        .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
+                    let workspace_snapshot =
+                        WorkspaceSnapshot::find_for_change_set(self, change_set.id)
+                            .await
+                            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
 
+                    self.set_change_set(change_set)?;
+                    self.set_workspace_snapshot(workspace_snapshot);
+                } else {
+                    return Err(err);
+                }
+            }
+        };
         Ok(())
     }
 
@@ -1119,6 +1143,18 @@ pub enum TransactionsError {
     WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(Box<WorkspaceSnapshotError>),
+}
+
+impl TransactionsError {
+    pub fn is_unmigrated_snapshot_error(&self) -> bool {
+        match self {
+            TransactionsError::WorkspaceSnapshot(boxed_err) => matches!(
+                boxed_err.as_ref(),
+                WorkspaceSnapshotError::WorkspaceSnapshotNotMigrated(_)
+            ),
+            _ => false,
+        }
+    }
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
