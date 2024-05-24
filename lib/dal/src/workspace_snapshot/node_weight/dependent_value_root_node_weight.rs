@@ -16,7 +16,7 @@ pub struct DependentValueRootNodeWeight {
     // maybe small (65536 touches), although if that many snapshots are produced
     // before a dependent value update processes this root, something has gone
     // wrong.
-    touch_count: u16,
+    pub touch_count: u16,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
@@ -25,7 +25,7 @@ pub struct DependentValueRootNodeWeight {
 
 impl DependentValueRootNodeWeight {
     pub fn content_hash(&self) -> ContentHash {
-        ContentHash::new(&self.value_id.inner().to_bytes())
+        self.node_hash()
     }
 
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
@@ -116,7 +116,10 @@ impl DependentValueRootNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
+        ContentHash::from(&serde_json::json![{
+            "value_id": self.value_id,
+            "touch_count": self.touch_count,
+        }])
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
