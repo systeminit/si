@@ -2,9 +2,7 @@ use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{
-    merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey, FuncRunId,
-};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
@@ -758,14 +756,12 @@ impl NodeWeight {
         attribute_value_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        func_run_id: Option<FuncRunId>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
             change_set,
             attribute_value_id,
             unprocessed_value,
             value,
-            func_run_id,
         )?))
     }
 

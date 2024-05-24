@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, FuncRunId};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     change_set::ChangeSet,
@@ -31,8 +31,6 @@ pub struct AttributeValueNodeWeight {
     value: Option<ContentAddress>,
     // DEPRECATED - this was the old function execution system
     func_execution_pk: Option<FuncExecutionPk>,
-    // The Func Run ID that set this value
-    func_run_id: Option<FuncRunId>,
 }
 
 impl AttributeValueNodeWeight {
@@ -41,7 +39,6 @@ impl AttributeValueNodeWeight {
         id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        func_run_id: Option<FuncRunId>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -53,7 +50,6 @@ impl AttributeValueNodeWeight {
             unprocessed_value,
             value,
             func_execution_pk: None,
-            func_run_id,
         })
     }
 
@@ -90,20 +86,12 @@ impl AttributeValueNodeWeight {
         self.value = value
     }
 
-    pub fn set_func_run_id(&mut self, func_run_id: Option<FuncRunId>) {
-        self.func_run_id = func_run_id
-    }
-
-    pub fn func_run_id(&self) -> Option<FuncRunId> {
-        self.func_run_id
-    }
-
-    #[deprecated(note = "please use func_run_id instead")]
+    #[deprecated(note = "we no longer use func execution pks")]
     pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
         self.func_execution_pk = func_execution_pk
     }
 
-    #[deprecated(note = "please use func_run_id instead")]
+    #[deprecated(note = "we no longer use func execution pks")]
     pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
         self.func_execution_pk
     }

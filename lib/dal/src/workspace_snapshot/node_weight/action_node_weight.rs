@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, FuncRunId};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     action::ActionState,
@@ -19,8 +19,7 @@ pub struct ActionNodeWeight {
     id: Ulid,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
-    func_run_id: Option<FuncRunId>,
-    // DEPRECATEd
+    // DEPRECATED
     func_execution_pk: Option<FuncExecutionPk>,
     lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
@@ -40,7 +39,6 @@ impl ActionNodeWeight {
         Ok(Self {
             id,
             state: ActionState::Queued,
-            func_run_id: None,
             func_execution_pk: None,
             originating_changeset_id: originating_change_set_id,
             lineage_id: change_set.generate_ulid()?,
@@ -73,14 +71,6 @@ impl ActionNodeWeight {
 
     pub fn originating_changeset_id(&self) -> ChangeSetId {
         self.originating_changeset_id
-    }
-
-    pub fn set_func_run_id(&mut self, func_run_id: Option<FuncRunId>) {
-        self.func_run_id = func_run_id
-    }
-
-    pub fn func_run_id(&self) -> Option<FuncRunId> {
-        self.func_run_id
     }
 
     #[deprecated(note = "use set_function_run_id instead")]
