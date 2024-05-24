@@ -120,10 +120,18 @@ export interface CreateFuncAttributeOptions {
   outputLocation: CreateFuncOutputLocation;
 }
 
+export enum FuncActionKind {
+  Create = "create",
+  Destroy = "destroy",
+  Refresh = "refresh",
+  Manual = "manual",
+  Update = "update",
+}
+
 export interface CreateFuncActionOptions {
   type: "actionOptions";
   schemaVariantId: string;
-  actionKind: ActionKind;
+  actionKind: FuncActionKind;
 }
 
 export interface CreateFuncQualificationOptions {

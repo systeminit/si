@@ -119,7 +119,13 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import { ActionKind } from "@/store/actions.store";
+import {
+  FuncActionKind,
+  AttributeAssociations,
+  CreateFuncOptions,
+  CreateFuncOutputLocation,
+  FuncAssociations,
+} from "@/store/func/types";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
@@ -128,12 +134,6 @@ import {
 } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
-import {
-  AttributeAssociations,
-  CreateFuncOptions,
-  CreateFuncOutputLocation,
-  FuncAssociations,
-} from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
@@ -301,7 +301,7 @@ const newFuncOptions = (
     schemaVariantId,
   };
 
-  let kind = ActionKind.Manual;
+  let kind = FuncActionKind.Manual;
   switch (funcKind) {
     case FuncKind.Authentication:
       return {
@@ -309,9 +309,9 @@ const newFuncOptions = (
         ...baseOptions,
       };
     case FuncKind.Action:
-      if (isCreate.value) kind = ActionKind.Create;
-      if (isDelete.value) kind = ActionKind.Destroy;
-      if (isRefresh.value) kind = ActionKind.Refresh;
+      if (isCreate.value) kind = FuncActionKind.Create;
+      if (isDelete.value) kind = FuncActionKind.Destroy;
+      if (isRefresh.value) kind = FuncActionKind.Refresh;
 
       return {
         type: "actionOptions",
