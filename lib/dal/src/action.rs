@@ -3,7 +3,7 @@ use std::collections::{HashSet, VecDeque};
 use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, FuncRunId};
+use si_events::ulid::Ulid;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -130,7 +130,6 @@ pub struct Action {
     id: ActionId,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
-    func_run_id: Option<FuncRunId>,
     // DEPRECATED
     func_execution_pk: Option<FuncExecutionPk>,
 }
@@ -141,7 +140,6 @@ impl From<ActionNodeWeight> for Action {
             id: value.id().into(),
             state: value.state(),
             originating_changeset_id: value.originating_changeset_id(),
-            func_run_id: value.func_run_id(),
             func_execution_pk: None,
         }
     }
@@ -150,10 +148,6 @@ impl From<ActionNodeWeight> for Action {
 impl Action {
     pub fn id(&self) -> ActionId {
         self.id
-    }
-
-    pub fn func_run_id(&self) -> Option<FuncRunId> {
-        self.func_run_id
     }
 
     pub fn state(&self) -> ActionState {
@@ -326,28 +320,7 @@ impl Action {
         Ok(())
     }
 
-    pub async fn set_func_run_id(
-        ctx: &DalContext,
-        id: ActionId,
-        func_run_id: Option<FuncRunId>,
-    ) -> ActionResult<()> {
-        let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
-        let node_weight = ctx
-            .workspace_snapshot()?
-            .get_node_weight(idx)
-            .await?
-            .get_action_node_weight()?;
-        let mut new_node_weight =
-            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
-        new_node_weight.set_func_run_id(func_run_id);
-        ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(new_node_weight))
-            .await?;
-        ctx.workspace_snapshot()?.replace_references(idx).await?;
-        Ok(())
-    }
-
-    #[deprecated(note = "use set_func_run_id instead")]
+    #[deprecated(note = "no longer tracking this")]
     pub async fn set_func_execution_pk(
         _ctx: &DalContext,
         _id: ActionId,
@@ -581,9 +554,8 @@ impl Action {
 
         let prototype_id = Action::prototype_id(ctx, id).await?;
 
-        let (func_run_value, resource) =
+        let (_func_run_value, resource) =
             ActionPrototype::run(ctx, prototype_id, component_id).await?;
-        Action::set_func_run_id(ctx, id, Some(func_run_value.func_run_id())).await?;
 
         if matches!(
             resource.as_ref().map(|r| r.status),

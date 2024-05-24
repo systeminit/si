@@ -47,7 +47,7 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_events::ulid::Ulid;
-use si_events::{FuncRunId, FuncRunValue};
+use si_events::FuncRunValue;
 use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -229,7 +229,6 @@ pub struct AttributeValue {
     pub value: Option<ContentAddress>,
     // DEPRECATED, should always be None
     pub func_execution_pk: Option<FuncExecutionPk>,
-    pub func_run_id: Option<FuncRunId>,
 }
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
@@ -317,7 +316,6 @@ impl From<AttributeValueNodeWeight> for AttributeValue {
             unprocessed_value: value.unprocessed_value(),
             value: value.value(),
             func_execution_pk: None,
-            func_run_id: value.func_run_id(),
         }
     }
 }
@@ -372,7 +370,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Self> {
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None)?;
+        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None)?;
         let is_for = is_for.into();
 
         let ordered = if let Some(prop_id) = is_for.prop_id() {
@@ -2045,7 +2043,6 @@ impl AttributeValue {
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight
             .set_unprocessed_value(unprocessed_value_address.map(ContentAddress::JsonValue));
-        new_av_node_weight.set_func_run_id(Some(func_run_value.func_run_id()));
 
         workspace_snapshot
             .add_node(NodeWeight::AttributeValue(new_av_node_weight))
