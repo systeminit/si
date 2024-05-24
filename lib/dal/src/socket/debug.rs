@@ -16,7 +16,6 @@ use crate::{
         value::AttributeValueError,
     },
     component::{InputSocketMatch, OutputSocketMatch},
-    func::execution::FuncExecution,
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
     ComponentError, DalContext, FuncId, InputSocket, OutputSocket,
 };
@@ -28,7 +27,6 @@ pub struct SocketDebugView {
     pub socket_id: Ulid,
     pub attribute_value_id: AttributeValueId,
     pub func_id: FuncId,
-    pub func_execution: Option<FuncExecution>,
     pub prototype_id: Option<AttributePrototypeId>,
     pub prototype_is_component_specific: bool,
     pub connection_annotations: Vec<String>,
@@ -100,7 +98,6 @@ impl SocketDebugView {
             attribute_value_id,
             socket_id: output_socket_match.output_socket_id.into(),
             func_id: prototype_debug_view.func_id,
-            func_execution: prototype_debug_view.func_execution,
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,
             path,
@@ -109,6 +106,7 @@ impl SocketDebugView {
             inferred_connections,
         })
     }
+
     #[instrument(level = "info", skip_all)]
     pub async fn new_for_input_socket(
         ctx: &DalContext,
@@ -147,7 +145,6 @@ impl SocketDebugView {
             attribute_value_id,
             socket_id: input_socket_match.input_socket_id.into(),
             func_id: prototype_debug_view.func_id,
-            func_execution: prototype_debug_view.func_execution,
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,
             path,

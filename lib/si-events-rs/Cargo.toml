@@ -13,6 +13,8 @@ si-hash = { path = "../../lib/si-hash" }
 
 bytes = { workspace = true }
 chrono = { workspace = true }
+derive_builder = { workspace = true }
+derive_more = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 ulid = { workspace = true }

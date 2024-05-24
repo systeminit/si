@@ -4,6 +4,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use chrono::Utc;
 use convert_case::{Case, Casing};
+use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
 use pkg::import::{clone_and_import_funcs, import_schema_variant};
@@ -13,8 +14,8 @@ use si_pkg::{
 };
 use telemetry::prelude::*;
 
-use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::{import_pkg_from_pkg, PkgError};
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
@@ -30,12 +31,16 @@ use crate::{
 pub enum VariantAuthoringError {
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
     #[error("func execution failure error: {0}")]
     FuncExecutionFailure(String),
+    #[error("func run error: {0}")]
+    FuncRun(#[from] FuncRunnerError),
+    #[error("func run value sender has terminated without sending")]
+    FuncRunGone,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("no new asset was created")]
     NoAssetCreated,
     #[error("pkg error: {0}")]
@@ -152,6 +157,7 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> VariantAuthoringResult<(SchemaVariant, Schema)> {
+        println!("clone variant");
         let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
 
@@ -295,9 +301,8 @@ impl VariantAuthoringClient {
         if let Some(asset_func_id) = sv.asset_func_id {
             let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
 
-            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
-            asset_func
-                .clone()
+            let mut asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+            asset_func = asset_func
                 .modify(ctx, |func| {
                     func.name.clone_from(&name);
                     func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
@@ -438,12 +443,12 @@ impl VariantAuthoringClient {
         description: Option<String>,
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
-        let new_asset_func = old_asset_func
+        let mut new_asset_func = old_asset_func
             .duplicate(ctx, generate_scaffold_func_name(name.clone()))
             .await?;
 
         let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
-        new_asset_func
+        new_asset_func = new_asset_func
             .clone()
             .modify(ctx, |func| {
                 func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
@@ -641,14 +646,17 @@ fn build_asset_func_spec(asset_func: &Func) -> VariantAuthoringResult<FuncSpec> 
         .data(func_spec_data_builder.build()?)
         .build()?)
 }
+
 async fn execute_asset_func(
     ctx: &DalContext,
     asset_func: &Func,
 ) -> VariantAuthoringResult<SchemaVariantJson> {
-    let (_, return_value) =
-        FuncBinding::create_and_execute(ctx, serde_json::Value::Null, asset_func.id, vec![])
-            .await?;
-    if let Some(error) = return_value
+    let result_channel = FuncRunner::run_asset_definition_func(ctx, asset_func).await?;
+    let func_run_value = result_channel
+        .await
+        .map_err(|_| VariantAuthoringError::FuncRunGone)??;
+
+    if let Some(error) = func_run_value
         .value()
         .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
         .as_object()
@@ -660,17 +668,28 @@ async fn execute_asset_func(
             error.to_owned(),
         ));
     }
-    let func_resp = return_value
+    let func_resp = func_run_value
         .value()
         .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
         .as_object()
         .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
         .get("definition")
         .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?;
+
+    ctx.layer_db()
+        .func_run()
+        .set_state_to_success(
+            func_run_value.func_run_id(),
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )
+        .await?;
+
     Ok(serde_json::from_value::<SchemaVariantJson>(
         func_resp.to_owned(),
     )?)
 }
+
 #[allow(clippy::result_large_err)]
 fn build_pkg_spec_for_variant(
     definition: SchemaVariantJson,

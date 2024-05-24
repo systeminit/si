@@ -14,7 +14,6 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, ValueIsFor};
 use crate::func::argument::FuncArgument;
 use crate::func::argument::FuncArgumentError;
-use crate::func::execution::{FuncExecution, FuncExecutionError};
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
@@ -42,8 +41,6 @@ pub enum AttributePrototypeDebugViewError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgumentError(#[from] FuncArgumentError),
-    #[error("func execution error: {0}")]
-    FuncExecution(#[from] FuncExecutionError),
     #[error("input socket error: {0}")]
     InputSocketError(#[from] InputSocketError),
     #[error("node weight error: {0}")]
@@ -66,7 +63,6 @@ pub enum AttributePrototypeDebugViewError {
 #[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeDebugView {
     pub func_id: FuncId,
-    pub func_execution: Option<FuncExecution>,
     pub id: AttributePrototypeId,
     pub func_name: String,
     pub func_args: HashMap<String, Vec<FuncArgDebugView>>,
@@ -329,13 +325,11 @@ impl AttributePrototypeDebugView {
         let attribute_values = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
 
-        let func_execution = FuncExecution::get_latest_execution_by_func_id(ctx, &func_id).await?;
         let func_name = Func::get_by_id_or_error(ctx, func_id).await?.name;
         let view = AttributePrototypeDebugView {
             func_args: func_binding_args,
             func_id,
             func_name,
-            func_execution,
             id: prototype_id,
             attribute_values,
             is_component_specific: has_component_prototype,

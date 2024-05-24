@@ -1,6 +1,6 @@
 use axum::Json;
 use dal::action::{Action, ActionState};
-use dal::{ActionId, Visibility, WsEvent};
+use dal::{action::ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;

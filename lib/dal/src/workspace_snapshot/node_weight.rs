@@ -3,14 +3,13 @@ use std::num::TryFromIntError;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{
-    merkle_tree_hash::MerkleTreeHash,
-    EncryptedSecretKey,
-    {ulid::Ulid, ContentHash},
+    merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey, FuncRunId,
 };
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::EdgeWeightKindDiscriminants;
 use crate::{
     action::prototype::ActionKind,
     change_set::{ChangeSet, ChangeSetError},
@@ -20,7 +19,6 @@ use crate::{
     },
     ChangeSetId, PropKind,
 };
-use crate::{func::execution::FuncExecutionPk, EdgeWeightKindDiscriminants};
 
 use crate::func::FuncKind;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
@@ -760,14 +758,14 @@ impl NodeWeight {
         attribute_value_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-        func_execution_pk: Option<FuncExecutionPk>,
+        func_run_id: Option<FuncRunId>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
             change_set,
             attribute_value_id,
             unprocessed_value,
             value,
-            func_execution_pk,
+            func_run_id,
         )?))
     }
 

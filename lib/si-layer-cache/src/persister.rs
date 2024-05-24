@@ -13,6 +13,8 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
+use crate::db::func_run::FuncRunDb;
+use crate::event::LayeredEventKind;
 use crate::{
     disk_cache::DiskCache,
     error::{LayerDbError, LayerDbResult},
@@ -415,13 +417,30 @@ impl PersistEventTask {
     #[instrument(level = "debug", skip_all)]
     pub async fn write_to_pg(&self, event: Arc<LayeredEvent>) -> LayerDbResult<()> {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
-        pg_layer
-            .insert(
-                &event.payload.key,
-                event.payload.sort_key.as_ref(),
-                &event.payload.value[..],
-            )
-            .await?;
+        match event.event_kind {
+            LayeredEventKind::CasInsertion
+            | LayeredEventKind::EncryptedSecretInsertion
+            | LayeredEventKind::Raw
+            | LayeredEventKind::SnapshotEvict
+            | LayeredEventKind::SnapshotWrite => {
+                pg_layer
+                    .insert(
+                        &event.payload.key,
+                        event.payload.sort_key.as_ref(),
+                        &event.payload.value[..],
+                    )
+                    .await?;
+            }
+            LayeredEventKind::FuncRunLogWrite => {
+                // Skip doing the write here - we don't need it. - we do it in the FunRunLog
+                // write method directly, to ensure we write to PG in order.
+                //
+                // FuncRunLogDb::insert_to_pg(&pg_layer, &event.payload).await?
+            }
+            LayeredEventKind::FuncRunWrite => {
+                FuncRunDb::insert_to_pg(&pg_layer, &event.payload).await?
+            }
+        }
         Ok(())
     }
 }

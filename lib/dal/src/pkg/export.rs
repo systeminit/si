@@ -26,9 +26,7 @@ use crate::{
     AttributePrototype, AttributeValue, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema,
     SchemaId, SchemaVariant, SchemaVariantId, Workspace,
 };
-use crate::{
-    AttributePrototypeId, ComponentType, DeprecatedActionPrototype, InputSocket, OutputSocket,
-};
+use crate::{AttributePrototypeId, ComponentType, InputSocket, OutputSocket};
 
 use super::{PkgError, PkgResult};
 
@@ -485,53 +483,24 @@ impl PkgExporter {
     ) -> PkgResult<Vec<ActionFuncSpec>> {
         let mut specs = vec![];
         // only export 1 of the Action Func Versions if there are both
-        let workspace_pk = ctx
-            .tenancy()
-            .workspace_pk()
-            .ok_or(PkgError::WorkspacePkNone)?;
+        let action_prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
-        let workspace = Workspace::get_by_pk_or_error(ctx, &workspace_pk).await?;
+        for action_proto in action_prototypes {
+            let key = ActionPrototype::func_id(ctx, action_proto.id()).await?;
 
-        if workspace.uses_actions_v2() {
-            let action_prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+            let func_spec = self
+                .func_map
+                .get(&key)
+                .ok_or(PkgError::MissingExportedFunc(key))?;
 
-            for action_proto in action_prototypes {
-                let key = ActionPrototype::func_id(ctx, action_proto.id()).await?;
+            let mut builder = ActionFuncSpec::builder();
 
-                let func_spec = self
-                    .func_map
-                    .get(&key)
-                    .ok_or(PkgError::MissingExportedFunc(key))?;
-
-                let mut builder = ActionFuncSpec::builder();
-
-                specs.push(
-                    builder
-                        .kind(action_proto.kind)
-                        .func_unique_id(&func_spec.unique_id)
-                        .build()?,
-                )
-            }
-        } else {
-            let action_prototypes =
-                DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-
-            for action_proto in action_prototypes {
-                let key = &action_proto.func_id(ctx).await?;
-                let func_spec = self
-                    .func_map
-                    .get(key)
-                    .ok_or(PkgError::MissingExportedFunc(*key))?;
-
-                let mut builder = ActionFuncSpec::builder();
-
-                specs.push(
-                    builder
-                        .kind(&action_proto.kind)
-                        .func_unique_id(&func_spec.unique_id)
-                        .build()?,
-                )
-            }
+            specs.push(
+                builder
+                    .kind(action_proto.kind)
+                    .func_unique_id(&func_spec.unique_id)
+                    .build()?,
+            )
         }
 
         Ok(specs)

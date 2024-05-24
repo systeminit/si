@@ -1,12 +1,13 @@
 use std::collections::{HashSet, VecDeque};
 
 use petgraph::prelude::*;
+use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
-use strum::EnumDiscriminants;
+use si_events::{ulid::Ulid, FuncRunId};
+use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::{OutputStream, ResourceStatus};
+use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
     action::{
@@ -14,10 +15,8 @@ use crate::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
     },
     attribute::value::{AttributeValueError, DependentValueGraph},
-    func::{
-        backend::js_action::DeprecatedActionRunResult,
-        execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
-    },
+    component::resource::ResourceData,
+    func::FuncExecutionPk,
     id, implement_add_edge_to,
     job::definition::ActionJob,
     workspace_snapshot::node_weight::{
@@ -46,8 +45,6 @@ pub enum ActionError {
     ComponentNotFoundForAction(ActionId),
     #[error("Edge Weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("func execution error: {0}")]
-    FuncExecution(#[from] FuncExecutionError),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("Node Weight error: {0}")]
@@ -65,7 +62,20 @@ pub enum ActionError {
 pub type ActionResult<T> = Result<T, ActionError>;
 
 id!(ActionId);
+
+impl From<ActionId> for si_events::ActionId {
+    fn from(value: ActionId) -> Self {
+        value.into_inner().into()
+    }
+}
+
 id!(ActionPrototypeId);
+
+impl From<ActionPrototypeId> for si_events::ActionPrototypeId {
+    fn from(value: ActionPrototypeId) -> Self {
+        value.into_inner().into()
+    }
+}
 
 #[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
@@ -86,11 +96,42 @@ pub enum ActionState {
     Running,
 }
 
+/// The completion status of a [`ActionRunner`]
+///
+/// NOTE: This type is only here for backwards comppatibility
+/// TODO(fnichol): delete this when it's time
+#[remain::sorted]
+#[derive(
+    Deserialize,
+    Serialize,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    ToSql,
+    FromSql,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum ActionCompletionStatus {
+    Error,
+    Failure,
+    Success,
+    Unstarted,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Action {
     id: ActionId,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
+    func_run_id: Option<FuncRunId>,
+    // DEPRECATED
     func_execution_pk: Option<FuncExecutionPk>,
 }
 
@@ -100,7 +141,8 @@ impl From<ActionNodeWeight> for Action {
             id: value.id().into(),
             state: value.state(),
             originating_changeset_id: value.originating_changeset_id(),
-            func_execution_pk: value.func_execution_pk(),
+            func_run_id: value.func_run_id(),
+            func_execution_pk: None,
         }
     }
 }
@@ -108,6 +150,10 @@ impl From<ActionNodeWeight> for Action {
 impl Action {
     pub fn id(&self) -> ActionId {
         self.id
+    }
+
+    pub fn func_run_id(&self) -> Option<FuncRunId> {
+        self.func_run_id
     }
 
     pub fn state(&self) -> ActionState {
@@ -280,10 +326,10 @@ impl Action {
         Ok(())
     }
 
-    pub async fn set_func_execution_pk(
+    pub async fn set_func_run_id(
         ctx: &DalContext,
         id: ActionId,
-        pk: Option<FuncExecutionPk>,
+        func_run_id: Option<FuncRunId>,
     ) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let node_weight = ctx
@@ -293,13 +339,23 @@ impl Action {
             .get_action_node_weight()?;
         let mut new_node_weight =
             node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
-        new_node_weight.set_func_execution_pk(pk);
+        new_node_weight.set_func_run_id(func_run_id);
         ctx.workspace_snapshot()?
             .add_node(NodeWeight::Action(new_node_weight))
             .await?;
         ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
     }
+
+    #[deprecated(note = "use set_func_run_id instead")]
+    pub async fn set_func_execution_pk(
+        _ctx: &DalContext,
+        _id: ActionId,
+        _pk: Option<FuncExecutionPk>,
+    ) -> ActionResult<()> {
+        unimplemented!("You should never be setting func_execution_pk; bug!");
+    }
+
     #[instrument(level = "info", skip(ctx))]
     pub async fn new(
         ctx: &DalContext,
@@ -478,12 +534,6 @@ impl Action {
         Ok(result)
     }
 
-    pub async fn func_execution(&self, ctx: &DalContext) -> ActionResult<Option<FuncExecution>> {
-        Ok(match self.func_execution_pk {
-            Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
-            None => None,
-        })
-    }
     /// Gets all actions this action is dependent on
     pub async fn get_dependent_actions_by_id(
         ctx: &DalContext,
@@ -493,6 +543,7 @@ impl Action {
             ActionDependencyGraph::for_workspace(ctx).await?;
         Ok(action_dependency_graph.direct_dependencies_of(action_id))
     }
+
     // Gets all actions that are dependent on this action (the entire subgraph)
     #[instrument(level = "info", skip(ctx))]
     pub async fn get_all_dependencies(&self, ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
@@ -500,6 +551,7 @@ impl Action {
             ActionDependencyGraph::for_workspace(ctx).await?;
         Ok(action_dependency_graph.get_all_dependencies(self.id()))
     }
+
     #[instrument(level = "info", skip(ctx))]
     pub async fn get_hold_status_influenced_by(
         &self,
@@ -522,20 +574,19 @@ impl Action {
     pub async fn run(
         ctx: &DalContext,
         id: ActionId,
-    ) -> ActionResult<(Option<DeprecatedActionRunResult>, Vec<OutputStream>)> {
+    ) -> ActionResult<Option<ActionRunResultSuccess>> {
         let component_id = Action::component_id(ctx, id)
             .await?
             .ok_or(ActionError::ComponentNotFoundForAction(id))?;
 
         let prototype_id = Action::prototype_id(ctx, id).await?;
-        let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
-        let (func_execution_pk, logs, resource) =
-            ActionPrototype::run(ctx, prototype.id, component_id).await?;
-        Action::set_func_execution_pk(ctx, id, Some(func_execution_pk)).await?;
+        let (func_run_value, resource) =
+            ActionPrototype::run(ctx, prototype_id, component_id).await?;
+        Action::set_func_run_id(ctx, id, Some(func_run_value.func_run_id())).await?;
 
         if matches!(
-            resource.as_ref().and_then(|r| r.status),
+            resource.as_ref().map(|r| r.status),
             Some(ResourceStatus::Ok)
         ) {
             ctx.workspace_snapshot()?
@@ -556,7 +607,7 @@ impl Action {
             .publish_on_commit(ctx)
             .await?;
 
-        Ok((resource, logs))
+        Ok(resource)
     }
 
     /// An Action is dispatchable if all of the following are true:
@@ -632,7 +683,7 @@ pub struct ActionReturn {
     id: ActionId,
     component_id: ComponentId,
     kind: ActionKind,
-    resource: Option<DeprecatedActionRunResult>,
+    resource: Option<ResourceData>,
 }
 
 impl WsEvent {
@@ -641,7 +692,7 @@ impl WsEvent {
         id: ActionId,
         kind: ActionKind,
         component_id: ComponentId,
-        resource: Option<DeprecatedActionRunResult>,
+        resource: Option<ResourceData>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,

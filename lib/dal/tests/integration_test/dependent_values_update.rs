@@ -1,5 +1,4 @@
-use chrono::Utc;
-use dal::func::backend::js_action::DeprecatedActionRunResult;
+use dal::component::resource::ResourceData;
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
@@ -56,14 +55,12 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
     oysters_component
         .set_resource(
             ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: Some(serde_json::json!({
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({
                     "key": "value",
                 })),
-                message: None,
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
+            ),
         )
         .await
         .expect("unable to ser resource");
@@ -314,14 +311,12 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     royel_component
         .set_resource(
             ctx,
-            DeprecatedActionRunResult {
-                status: Some(ResourceStatus::Ok),
-                payload: Some(serde_json::json!({
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({
                     "key": "value",
                 })),
-                message: None,
-                last_synced: Some(Utc::now().to_rfc3339()),
-            },
+            ),
         )
         .await
         .expect("unable to ser resource");

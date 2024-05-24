@@ -12,6 +12,7 @@ use crate::component::{
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
     ConnectionDeletedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
+use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::FuncWsEventPayload;
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
@@ -24,26 +25,14 @@ use crate::schema::variant::{
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
-    action::ActionReturn,
-    deprecated_action::{
-        batch::DeprecatedActionBatchReturn, runner::ActionRunnerReturn, ActionId, ActionView,
-        DeprecatedActionError,
-    },
-    func::binding::LogLinePayload,
-    pkg::ModuleImportedPayload,
-    user::CursorPayload,
-    ChangeSetId, DalContext, DeprecatedActionPrototypeError, FuncError, PropId, StandardModelError,
-    TransactionsError, WorkspacePk,
+    action::ActionReturn, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetId, DalContext,
+    FuncError, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
 use crate::{SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WsEventError {
-    #[error("deprecated action error: {0}")]
-    DeprecatedAction(#[from] Box<DeprecatedActionError>),
-    #[error("deprecated action error: {0}")]
-    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("func error: {0}")]
     Func(#[from] Box<FuncError>),
     #[error("nats txn error: {0}")]
@@ -94,20 +83,15 @@ pub enum WsPayload {
     ConnectionCreated(ConnectionCreatedPayload),
     ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
-    DeprecatedActionAdded(ActionView),
-    DeprecatedActionBatchReturn(DeprecatedActionBatchReturn),
-    DeprecatedActionRemoved(ActionId),
-    DeprecatedActionRunnerReturn(ActionRunnerReturn),
     FuncDeleted(FuncWsEventPayload),
+    FuncRunLogUpdated(FuncRunLogUpdatedPayload),
     FuncSaved(FuncWsEventPayload),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
     InferredEdgeRemove(InferredEdgeRemovePayload),
     InferredEdgeUpsert(InferredEdgeUpsertPayload),
-    LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     ResourceRefreshed(ComponentUpdatedPayload),
-    // SchemaCreated(SchemaPk),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(SchemaVariantCreatedPayload),
     SchemaVariantSaved(SchemaVariantSavedPayload),
@@ -116,10 +100,8 @@ pub enum WsPayload {
     SecretUpdated(SecretUpdatedPayload),
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
-    // WorkspaceExported(WorkspaceExportPayload),
     WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
     WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
-    // WorkspaceImported(WorkspaceImportPayload),
 }
 
 #[remain::sorted]

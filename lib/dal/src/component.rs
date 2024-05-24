@@ -1,7 +1,6 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use chrono::Utc;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
@@ -17,6 +16,7 @@ use veritech_client::ResourceStatus;
 use si_events::{ulid::Ulid, ContentHash};
 
 use self::frame::{Frame, FrameError};
+use self::resource::ResourceData;
 use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
 use crate::action::{Action, ActionError, ActionState};
 use crate::actor_view::ActorView;
@@ -48,13 +48,11 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::SocketArity;
 
 use crate::{
-    func::backend::js_action::DeprecatedActionRunResult, implement_add_edge_to, pk, ActionId,
-    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext,
-    DeprecatedAction, DeprecatedActionError, DeprecatedActionKind, DeprecatedActionPrototype,
-    DeprecatedActionPrototypeError, Func, FuncError, FuncId, HelperError, InputSocket,
-    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, UserPk, WorkspaceError,
-    WorkspacePk, WsEvent, WsEventError, WsEventResult, WsPayload,
+    implement_add_edge_to, pk, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
+    DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    StandardModelError, Timestamp, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod code;
@@ -101,10 +99,6 @@ pub enum ComponentError {
     ComponentMissingTypeValue(ComponentId),
     #[error("component {0} has no materialized view for the root/si/type prop")]
     ComponentMissingTypeValueMaterializedView(ComponentId),
-    #[error("deprecated action error: {0}")]
-    DeprecatedAction(#[from] Box<DeprecatedActionError>),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
@@ -192,6 +186,12 @@ pub enum ComponentError {
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pk!(ComponentId);
+
+impl From<ComponentId> for si_events::ComponentId {
+    fn from(value: ComponentId) -> Self {
+        value.into_inner().into()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct IncomingConnection {
@@ -339,13 +339,6 @@ impl Component {
         destination_id: ComponentId,
         add_fn: add_edge_to_frame,
         discriminant: EdgeWeightKindDiscriminants::FrameContains,
-        result: ComponentResult,
-    );
-    implement_add_edge_to!(
-        source_id: ComponentId,
-        destination_id: ActionId,
-        add_fn: add_edge_to_deprecated_action,
-        discriminant: EdgeWeightKindDiscriminants::Action,
         result: ComponentResult,
     );
     implement_add_edge_to!(
@@ -534,17 +527,6 @@ impl Component {
                 .map_err(|err| ComponentError::Action(Box::new(err)))?;
         }
 
-        for prototype in DeprecatedActionPrototype::for_variant(ctx, schema_variant_id)
-            .await
-            .map_err(Box::new)?
-        {
-            if prototype.kind == DeprecatedActionKind::Create {
-                DeprecatedAction::upsert(ctx, prototype.id, component.id())
-                    .await
-                    .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-            }
-        }
-
         WsEvent::component_created(ctx, component.id())
             .await?
             .publish_on_commit(ctx)
@@ -622,16 +604,8 @@ impl Component {
         }
 
         if reset_resource {
-            self.set_resource(
-                ctx,
-                DeprecatedActionRunResult {
-                    status: Some(ResourceStatus::Ok),
-                    payload: None,
-                    message: None,
-                    last_synced: Some(Utc::now().to_rfc3339()),
-                },
-            )
-            .await?;
+            self.set_resource(ctx, ResourceData::new(ResourceStatus::Ok, None))
+                .await?;
         }
         if reset_name {
             self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
@@ -1147,7 +1121,7 @@ impl Component {
     pub async fn set_resource(
         &self,
         ctx: &DalContext,
-        resource: DeprecatedActionRunResult,
+        resource: ResourceData,
     ) -> ComponentResult<()> {
         let av_for_resource = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
@@ -1161,7 +1135,20 @@ impl Component {
         Ok(())
     }
 
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<DeprecatedActionRunResult> {
+    pub async fn clear_resource(&self, ctx: &DalContext) -> ComponentResult<()> {
+        let av_for_resource = self
+            .attribute_values_for_prop(ctx, &["root", "resource"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+
+        AttributeValue::update(ctx, av_for_resource, Some(serde_json::json!({}))).await?;
+
+        Ok(())
+    }
+
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Option<ResourceData>> {
         let value_id = self
             .attribute_values_for_prop(ctx, &["root", "resource"])
             .await?
@@ -1171,10 +1158,21 @@ impl Component {
 
         let av = AttributeValue::get_by_id(ctx, value_id).await?;
 
-        Ok(match av.view(ctx).await? {
-            Some(serde_value) => serde_json::from_value(serde_value)?,
-            None => DeprecatedActionRunResult::default(),
-        })
+        match av.view(ctx).await? {
+            Some(serde_value) => {
+                if serde_value.is_object()
+                    && serde_value
+                        .as_object()
+                        .expect("we just checked if its an object")
+                        .is_empty()
+                {
+                    Ok(None)
+                } else {
+                    Ok(Some(serde_json::from_value(serde_value)?))
+                }
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
@@ -1857,20 +1855,7 @@ impl Component {
     }
 
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
-        let actions = DeprecatedAction::build_graph(ctx)
-            .await
-            .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-        for bag in actions.values() {
-            if bag.component_id == self.id {
-                bag.action
-                    .clone()
-                    .delete(ctx)
-                    .await
-                    .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-            }
-        }
-
-        if self.resource(ctx).await?.payload.is_none() {
+        if self.resource(ctx).await?.is_none() {
             Self::remove(ctx, self.id).await?;
             Ok(None)
         } else {
@@ -1936,20 +1921,6 @@ impl Component {
                     .await
                     .map_err(|err| ComponentError::Action(Box::new(err)))?;
             }
-
-            for prototype in DeprecatedActionPrototype::for_variant(
-                ctx,
-                Self::schema_variant_id(ctx, modified.id).await?,
-            )
-            .await
-            .map_err(Box::new)?
-            {
-                if prototype.kind == DeprecatedActionKind::Delete {
-                    DeprecatedAction::upsert(ctx, prototype.id, modified.id)
-                        .await
-                        .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-                }
-            }
         } else {
             // Remove delete actions for component
             Action::remove_all_for_component_id(ctx, component_id)
@@ -1959,19 +1930,6 @@ impl Component {
                 .await?
                 .publish_on_commit(ctx)
                 .await?;
-
-            let actions = DeprecatedAction::build_graph(ctx)
-                .await
-                .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-            for bag in actions.values() {
-                if bag.component_id == component_id {
-                    bag.action
-                        .clone()
-                        .delete(ctx)
-                        .await
-                        .map_err(|err| ComponentError::DeprecatedAction(Box::new(err)))?;
-                }
-            }
         }
 
         Ok(modified)
@@ -2935,17 +2893,7 @@ impl Component {
         .await?;
 
         // Let's remove the original resource so that we don't queue a delete action
-        original_component
-            .set_resource(
-                ctx,
-                DeprecatedActionRunResult {
-                    status: Some(ResourceStatus::Ok),
-                    payload: None,
-                    message: None,
-                    last_synced: Some(Utc::now().to_rfc3339()),
-                },
-            )
-            .await?;
+        original_component.clear_resource(ctx).await?;
         original_component.delete(ctx).await?;
 
         Ok(new_component)
@@ -3017,63 +2965,6 @@ impl Component {
                 Action::remove_by_id(ctx, action_id)
                     .await
                     .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            }
-        }
-
-        let available_actions = DeprecatedActionPrototype::for_variant(ctx, new_schema_variant_id)
-            .await
-            .map_err(Box::new)?;
-
-        let queued_actions_for_old_comp = DeprecatedAction::for_component(ctx, old_component_id)
-            .await
-            .map_err(Box::new)?;
-
-        for queued_action in queued_actions_for_old_comp {
-            let action_prototype = DeprecatedAction::get_by_id(ctx, queued_action.id)
-                .await
-                .map_err(Box::new)?
-                .prototype(ctx)
-                .await
-                .map_err(Box::new)?;
-
-            let func_id = action_prototype.func_id(ctx).await.map_err(Box::new)?;
-            let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
-
-            if action_prototype.kind == DeprecatedActionKind::Create {
-                queue_create = true;
-            }
-
-            for available_action in available_actions.clone() {
-                let available_func_id = available_action.func_id(ctx).await.map_err(Box::new)?;
-                let available_func = Func::get_by_id_or_error(ctx, available_func_id).await?;
-
-                if available_func.name == queued_func.name
-                    && available_func.kind == queued_func.kind
-                {
-                    DeprecatedAction::upsert(ctx, available_action.id, new_component_id)
-                        .await
-                        .map_err(Box::new)?;
-                }
-            }
-        }
-
-        if !queue_create {
-            let queued_actions_for_new_comp =
-                DeprecatedAction::for_component(ctx, new_component_id)
-                    .await
-                    .map_err(Box::new)?;
-
-            for queued_action in queued_actions_for_new_comp {
-                let action = DeprecatedAction::get_by_id(ctx, queued_action.id)
-                    .await
-                    .map_err(Box::new)?;
-
-                let action_prototype = action.prototype(ctx).await.map_err(Box::new)?;
-
-                if action_prototype.kind == DeprecatedActionKind::Create {
-                    action.delete(ctx).await.map_err(Box::new)?;
-                    break;
-                }
             }
         }
 

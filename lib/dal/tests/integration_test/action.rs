@@ -1,7 +1,6 @@
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
-    action::ActionState, func::binding::FuncBinding, func::execution::FuncExecution,
-    func::intrinsics::IntrinsicFunc, AttributeValue, Component, DalContext, Func,
+    action::ActionState, AttributeValue, Component, DalContext,
 };
 use dal_test::helpers::create_component_for_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
@@ -141,67 +140,6 @@ async fn set_state(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn set_func_execution(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
-    let prototypes = ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant");
-    assert!(!prototypes.is_empty());
-    for prototype in prototypes {
-        if prototype.kind == ActionKind::Create {
-            let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-                .await
-                .expect("unable to find identity func");
-            let identity_func = Func::get_by_id(ctx, identity_func_id)
-                .await
-                .expect("unable to get func by id")
-                .expect("no func found for identity");
-            let identity_func_binding = FuncBinding::new(
-                ctx,
-                serde_json::Value::Null,
-                identity_func.id,
-                identity_func.backend_kind,
-            )
-            .await
-            .expect("unable to create func_binding");
-            let func_execution = FuncExecution::new(ctx, &identity_func, &identity_func_binding)
-                .await
-                .expect("unable to create func execution");
-
-            let action = Action::new(ctx, prototype.id, Some(component.id()))
-                .await
-                .expect("unable to upsert action");
-            assert_eq!(
-                action
-                    .func_execution(ctx)
-                    .await
-                    .expect("unable to find func execution"),
-                None
-            );
-
-            Action::set_func_execution_pk(ctx, action.id(), Some(func_execution.pk()))
-                .await
-                .expect("unable to set func execution pk");
-
-            let action = Action::get_by_id(ctx, action.id())
-                .await
-                .expect("unable to get action by id");
-            assert_eq!(
-                action
-                    .func_execution(ctx)
-                    .await
-                    .expect("unable to find func execution"),
-                Some(func_execution)
-            );
-            break;
-        }
-    }
-}
-
-#[test]
 async fn run(ctx: &mut DalContext) {
     let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -223,7 +161,6 @@ async fn run(ctx: &mut DalContext) {
     assert!(Action::run(ctx, action.id())
         .await
         .expect("unable to run")
-        .0
         .is_some());
 }
 
@@ -287,7 +224,7 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
         .expect("commit and update snapshot to visibility");
 
     // Apply changeset so it runs the creation action
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, true)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("apply changeset to base");
 

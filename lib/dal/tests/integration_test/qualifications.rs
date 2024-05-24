@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use dal::qualification::{
     QualificationOutputStreamView, QualificationResult, QualificationSubCheck,
     QualificationSubCheckStatus, QualificationView,
@@ -20,6 +22,7 @@ async fn list_qualifications(ctx: &mut DalContext) {
     let expected_prop_validations_qualification_view = QualificationView {
         title: "Prop Validations".to_string(),
         output: vec![],
+        finalized: true,
         description: None,
         link: None,
         result: Some(QualificationResult {
@@ -44,6 +47,7 @@ async fn list_qualifications(ctx: &mut DalContext) {
                 level: "info".to_string(),
             }
         ],
+        finalized: true,
         description: None,
         link: None,
         result: Some(QualificationResult {
@@ -72,9 +76,28 @@ async fn list_qualifications(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let qualifications = Component::list_qualifications(ctx, component.id())
-        .await
-        .expect("could not list qualifications");
+
+    let total_count = 100;
+    let mut count = 0;
+
+    let mut qualifications;
+    loop {
+        if count > total_count {
+            panic!("func run log entries have not all been finalized after waiting for a period");
+        }
+
+        qualifications = Component::list_qualifications(ctx, component.id())
+            .await
+            .expect("could not list qualifications");
+
+        if qualifications.iter().all(|qual| qual.finalized) {
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        count += 1;
+    }
 
     // NOTE(nick): at the time of writing this test, we receive the qualifications sorted, so we
     // neither need to perform an additional sort nor use something like a hash set.

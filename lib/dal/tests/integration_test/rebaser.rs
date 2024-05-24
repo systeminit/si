@@ -228,7 +228,7 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("commit");
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
@@ -261,7 +261,7 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
         .expect("able to list args");
     assert_eq!(1, args.len());
 
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx, false)
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
@@ -287,7 +287,7 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
         .expect("able to list args");
     assert_eq!(1, args.len());
 
-    let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx, false).await;
+    let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx).await;
     assert!(matches!(
         result,
         Err(ChangeSetTestHelpersError::ConflictsFoundAfterApply(_))

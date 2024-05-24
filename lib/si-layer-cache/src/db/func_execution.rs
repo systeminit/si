@@ -146,7 +146,7 @@ impl FuncExecutionDb {
         Ok(self
             .cache
             .pg()
-            .get_many_raw(&self.get_many_func_execution_by_id_query, &[&func_keys])
+            .query(&self.get_many_func_execution_by_id_query, &[&func_keys])
             .await?
             .map(|rows| {
                 rows.iter()
@@ -163,7 +163,7 @@ impl FuncExecutionDb {
         Ok(self
             .cache
             .pg()
-            .get_many_raw(
+            .query(
                 &format!(
                     "{}{}",
                     &self.get_many_func_execution_by_where_query, where_clause

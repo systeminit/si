@@ -2,8 +2,7 @@ use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, ActionPrototypeId,
-    Component, ComponentId, DalContext, DeprecatedActionKind, DeprecatedActionPrototype, Func,
-    Visibility,
+    Component, ComponentId, DalContext, Func, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,29 +33,6 @@ impl ActionPrototypeView {
             display_name,
         })
     }
-
-    pub async fn new_from_deprecated(
-        ctx: &DalContext,
-        prototype: DeprecatedActionPrototype,
-    ) -> ComponentResult<ActionPrototypeView> {
-        let func = Func::get_by_id_or_error(ctx, prototype.func_id(ctx).await?).await?;
-        let display_name = func.display_name.map(|dname| dname.to_string());
-        Ok(Self {
-            id: prototype.id,
-            name: prototype.name.as_deref().map_or_else(
-                || match prototype.kind {
-                    DeprecatedActionKind::Create => "create".to_owned(),
-                    DeprecatedActionKind::Delete => "delete".to_owned(),
-                    DeprecatedActionKind::Update | DeprecatedActionKind::Other => {
-                        "other".to_owned()
-                    }
-                    DeprecatedActionKind::Refresh => "refresh".to_owned(),
-                },
-                ToOwned::to_owned,
-            ),
-            display_name,
-        })
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -69,6 +45,7 @@ pub struct GetActionsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetActionsRequest {
     pub component_id: ComponentId,
+    // TODO(fnichol): I THINK THIS GETS DELETED NOW
     pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -89,27 +66,14 @@ pub async fn get_actions(
         .await?;
 
     let mut action_views: Vec<ActionPrototypeView> = Vec::new();
-    if request.v2 {
-        let action_prototypes = ActionPrototype::for_variant(&ctx, schema_variant.id()).await?;
-        for action_prototype in action_prototypes {
-            if action_prototype.kind == ActionKind::Refresh {
-                continue;
-            }
-
-            let view = ActionPrototypeView::new(&ctx, action_prototype).await?;
-            action_views.push(view);
+    let action_prototypes = ActionPrototype::for_variant(&ctx, schema_variant.id()).await?;
+    for action_prototype in action_prototypes {
+        if action_prototype.kind == ActionKind::Refresh {
+            continue;
         }
-    } else {
-        let action_prototypes =
-            DeprecatedActionPrototype::for_variant(&ctx, schema_variant.id()).await?;
-        for action_prototype in action_prototypes {
-            if action_prototype.kind == DeprecatedActionKind::Refresh {
-                continue;
-            }
 
-            let view = ActionPrototypeView::new_from_deprecated(&ctx, action_prototype).await?;
-            action_views.push(view);
-        }
+        let view = ActionPrototypeView::new(&ctx, action_prototype).await?;
+        action_views.push(view);
     }
 
     track(

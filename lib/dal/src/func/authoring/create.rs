@@ -2,15 +2,15 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use telemetry::prelude::*;
 
-use crate::action::prototype::{ActionKind, ActionPrototype};
+use crate::action::prototype::ActionPrototype;
 use crate::func::authoring::{
     AttributeOutputLocation, CreateFuncOptions, FuncAuthoringError, FuncAuthoringResult,
 };
 use crate::func::FuncKind;
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    generate_name, AttributePrototype, DalContext, DeprecatedActionPrototype, Func,
-    FuncBackendKind, FuncBackendResponseType, SchemaVariant, SchemaVariantId,
+    generate_name, AttributePrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    SchemaVariant, SchemaVariantId,
 };
 
 static DEFAULT_CODE_HANDLER: &str = "main";
@@ -65,18 +65,9 @@ async fn create_action_func(
         action_kind,
     }) = options
     {
-        let existing_deprecated_actions =
-            DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-        for deprecated_action in existing_deprecated_actions {
-            if deprecated_action.kind == action_kind {
-                return Err(FuncAuthoringError::ActionKindAlreadyExists(
-                    schema_variant_id,
-                ));
-            }
-        }
         let exising_actions = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
         for action in exising_actions {
-            if action.kind == ActionKind::from(action_kind) {
+            if action.kind == action_kind {
                 return Err(FuncAuthoringError::ActionKindAlreadyExists(
                     schema_variant_id,
                 ));
@@ -98,13 +89,10 @@ async fn create_action_func(
         action_kind,
     }) = options
     {
-        // let's just create both for now. That way any authoring we do doesn't have to be migrated
-        DeprecatedActionPrototype::new(ctx, name.clone(), action_kind, schema_variant_id, func.id)
-            .await?;
         // default to func name if the name is missing for whatever reason...
         ActionPrototype::new(
             ctx,
-            ActionKind::from(action_kind),
+            action_kind,
             name.clone().unwrap_or(func.name.clone()),
             None,
             schema_variant_id,

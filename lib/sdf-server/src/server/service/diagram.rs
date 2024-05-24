@@ -11,10 +11,7 @@ use dal::socket::input::InputSocketError;
 use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
-use dal::{
-    ChangeSetError, DeprecatedActionError, DeprecatedActionPrototypeError, SchemaVariantId,
-    StandardModelError, TransactionsError,
-};
+use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
 use std::num::ParseFloatError;
 use thiserror::Error;
 
@@ -34,10 +31,6 @@ pub mod remove_delete_intent;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
-    #[error("action: {0}")]
-    Action(#[from] DeprecatedActionError),
-    #[error("action: {0}")]
-    ActionPrototype(#[from] DeprecatedActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]

@@ -146,8 +146,11 @@ async fn upgrade_component(ctx: &mut DalContext) {
     let upgraded_component = upgraded_graph
         .components
         .first()
-        .expect("unable to get the ugraded component on the graph");
-    assert!(!upgraded_component.can_be_upgraded);
+        .expect("unable to get the upgraded component on the graph");
+    assert_eq!(
+        upgraded_component.can_be_upgraded, false,
+        "the old asset should not be on the graph anymore, and the current one should be upgraded"
+    );
 
     let upgraded_component_schema_variant = my_upgraded_comp
         .schema_variant(ctx)

@@ -3,12 +3,11 @@ use std::convert::TryFrom;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use veritech_client::ResourceStatus;
+use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
-    action::prototype::ActionPrototype,
-    action::{Action, ActionError, ActionState},
-    func::backend::js_action::DeprecatedActionRunResult,
+    action::{prototype::ActionPrototype, Action, ActionError, ActionId, ActionState},
+    component::resource::ResourceData,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -16,7 +15,7 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionId, Component, DalContext, Visibility, WsEvent,
+    AccessBuilder, Component, DalContext, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -85,8 +84,8 @@ impl JobConsumer for ActionJob {
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         match action_task(ctx, self.id, Span::current()).await {
-            Ok((resource, logs)) => {
-                debug!(?self.id, ?resource, ?logs, "action job completed");
+            Ok(_) => {
+                debug!(?self.id, "action job completed");
             }
             Err(err) => {
                 error!("Unable to finish action {}: {err}", self.id);
@@ -134,7 +133,7 @@ async fn action_task(
     ctx: &mut DalContext,
     id: ActionId,
     parent_span: Span,
-) -> JobConsumerResult<(Option<DeprecatedActionRunResult>, Vec<String>)> {
+) -> JobConsumerResult<Option<ActionRunResultSuccess>> {
     let span = Span::current();
     let component_id = Action::component_id(ctx, id)
         .await?
@@ -150,23 +149,20 @@ async fn action_task(
     ctx.commit().await?;
     ctx.update_snapshot_to_visibility().await?;
 
-    let (resource, logs) = Action::run(ctx, id).await?;
+    let status = Action::run(ctx, id).await?;
 
-    let logs: Vec<_> = logs
-        .iter()
-        .flat_map(|l| l.message.split('\n'))
-        .map(|l| l.to_owned())
-        .collect();
+    WsEvent::action_return(
+        ctx,
+        id,
+        prototype.kind,
+        component_id,
+        status.clone().map(|s| s.into()),
+    )
+    .await?
+    .publish_on_commit(ctx)
+    .await?;
 
-    WsEvent::action_return(ctx, id, prototype.kind, component_id, resource.clone())
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-
-    if matches!(
-        resource.as_ref().and_then(|r| r.status),
-        Some(ResourceStatus::Ok)
-    ) {
+    if matches!(status.as_ref().map(|r| r.status), Some(ResourceStatus::Ok)) {
         let triggered_prototypes =
             ActionPrototype::get_prototypes_to_trigger(ctx, prototype_id).await?;
         for dependency_prototype_id in triggered_prototypes {
@@ -174,14 +170,14 @@ async fn action_task(
         }
     }
 
-    Ok((resource, logs))
+    Ok(status)
 }
 
 #[instrument(name = "action_job.process_failed_action", skip_all, level = "info")]
 async fn process_failed_action(
     ctx: &DalContext,
     id: ActionId,
-    error_message: String,
+    _error_message: String,
 ) -> JobConsumerResult<()> {
     info!(%id, "processing action failed");
 
@@ -191,19 +187,20 @@ async fn process_failed_action(
     let component = Component::get_by_id(ctx, component_id).await?;
 
     let prototype_id = Action::prototype_id(ctx, id).await?;
-
-    let resource = DeprecatedActionRunResult {
-        status: Some(ResourceStatus::Error),
-        payload: component.resource(ctx).await?.payload,
-        message: Some(error_message.clone()),
-        last_synced: None,
+    let maybe_resource_data = component.resource(ctx).await?;
+    let resource_data = match maybe_resource_data {
+        Some(mut resource_data) => {
+            resource_data.set_status(ResourceStatus::Error);
+            resource_data
+        }
+        None => ResourceData::new(ResourceStatus::Error, None),
     };
 
-    component.set_resource(ctx, resource.clone()).await?;
+    component.set_resource(ctx, resource_data.clone()).await?;
     Action::set_state(ctx, id, ActionState::Failed).await?;
 
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-    WsEvent::action_return(ctx, id, prototype.kind, component_id, Some(resource))
+    WsEvent::action_return(ctx, id, prototype.kind, component_id, Some(resource_data))
         .await?
         .publish_on_commit(ctx)
         .await?;

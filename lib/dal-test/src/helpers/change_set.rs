@@ -8,11 +8,14 @@
     clippy::unwrap_used
 )]
 
+use std::time::Duration;
+
+use dal::action::dependency_graph::ActionDependencyGraph;
+use dal::action::{Action, ActionState};
 use dal::context::Conflicts;
 use dal::{
-    action::{Action, ActionError},
-    ChangeSet, ChangeSetApplyError, ChangeSetError, ChangeSetId, DalContext, DeprecatedAction,
-    DeprecatedActionError, TransactionsError,
+    action::ActionError, ChangeSet, ChangeSetApplyError, ChangeSetError, ChangeSetId, DalContext,
+    TransactionsError,
 };
 use thiserror::Error;
 
@@ -24,6 +27,8 @@ use crate::helpers::generate_fake_name;
 pub enum ChangeSetTestHelpersError {
     #[error("action error: {0}")]
     Action(#[from] ActionError),
+    #[error("timeout waiting for actions to clear from test workspace")]
+    ActionTimeout,
     #[error("base change set not found for change set: {0}")]
     BaseChangeSetNotFound(ChangeSetId),
     #[error("change set error: {0}")]
@@ -36,8 +41,6 @@ pub enum ChangeSetTestHelpersError {
     ConflictsFoundAfterApply(Conflicts),
     #[error("found conflicts after commit: {0:?}")]
     ConflictsFoundAfterCommit(Conflicts),
-    #[error("deprecated action error: {0}")]
-    DeprecatedAction(#[from] DeprecatedActionError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -62,32 +65,40 @@ impl ChangeSetTestHelpers {
         Ok(())
     }
 
+    /// Wait for all actions queued on the workspace snapshot to either succeed (and therefore not
+    /// be on the graph), fail, or be put on hold. Will wait for at least 10 seconds, checking every
+    /// 100ms.
+    pub async fn wait_for_actions_to_run(ctx: &mut DalContext) -> ChangeSetTestHelpersResult<()> {
+        let total_count = 100;
+        let mut count = 0;
+
+        while count < total_count {
+            ctx.update_snapshot_to_visibility().await?;
+            let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+            let mut still_active = false;
+            for action_id in action_graph.independent_actions() {
+                let a = Action::get_by_id(ctx, action_id).await?;
+                match a.state() {
+                    ActionState::Dispatched | ActionState::Queued | ActionState::Running => {
+                        still_active = true;
+                    }
+                    ActionState::Failed | ActionState::OnHold => {}
+                }
+            }
+            if !still_active {
+                return Ok(());
+            }
+            count += 1;
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        Err(ChangeSetTestHelpersError::ActionTimeout)
+    }
+
     /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
     /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
     /// snapshot is "HEAD" without an editing [`ChangeSet`].
-    pub async fn apply_change_set_to_base(
-        ctx: &mut DalContext,
-        v2_actions: bool,
-    ) -> ChangeSetTestHelpersResult<()> {
-        if v2_actions {
-            // Removes v1 actions so they are not processed here
-            for (_, bag) in DeprecatedAction::build_graph(ctx).await? {
-                bag.action.delete(ctx).await?;
-            }
-        } else {
-            // Removes v2 actions so they are not processed by the rebaser
-            for action_id in Action::list_topologically(ctx).await? {
-                let action = Action::get_by_id(ctx, action_id).await?;
-                if action.is_eligible_to_dispatch() {
-                    Action::remove_by_id(ctx, action_id).await?;
-                }
-            }
-        }
-
-        ctx.blocking_commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-
-        let applied_change_set = match ChangeSet::apply_to_base_change_set(ctx, true).await {
+    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> ChangeSetTestHelpersResult<()> {
+        let applied_change_set = match ChangeSet::apply_to_base_change_set(ctx).await {
             Err(ChangeSetApplyError::ConflictsOnApply(conflicts)) => Err(
                 ChangeSetTestHelpersError::ConflictsFoundAfterApply(conflicts),
             )?,

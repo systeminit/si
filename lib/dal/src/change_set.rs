@@ -1,6 +1,5 @@
 //! The sequel to [`ChangeSets`](crate::ChangeSet). Coming to an SI instance near you!
 
-use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
@@ -14,16 +13,12 @@ use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
 use crate::context::{Conflicts, RebaseRequest};
-use crate::deprecated_action::DeprecatedActionBag;
-use crate::job::definition::{DeprecatedActionRunnerItem, DeprecatedActionsJob};
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    action::ActionError, id, ActionId, ActionPrototypeId, ChangeSetStatus, Component,
-    ComponentError, DalContext, DeprecatedAction, DeprecatedActionBatch,
-    DeprecatedActionBatchError, DeprecatedActionError, DeprecatedActionRunner,
-    DeprecatedActionRunnerError, DeprecatedActionRunnerId, HistoryActor, HistoryEvent,
-    HistoryEventError, TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk,
-    WorkspaceSnapshot, WorkspaceSnapshotError, WsEvent, WsEventError,
+    action::{ActionError, ActionId},
+    id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
+    TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
+    WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 pub mod event;
@@ -87,12 +82,8 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 pub enum ChangeSetApplyError {
     #[error("action error: {0}")]
     Action(#[from] ActionError),
-    #[error("action batch error: {0}")]
-    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype not found for id: {0}")]
     ActionPrototypeNotFound(ActionId),
-    #[error("action runner error: {0}")]
-    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found by id: {0}")]
@@ -101,8 +92,6 @@ pub enum ChangeSetApplyError {
     Component(#[from] ComponentError),
     #[error("could not apply to head because of merge conflicts")]
     ConflictsOnApply(Conflicts),
-    #[error("deprecated action error: {0}")]
-    DeprecatedAction(#[from] DeprecatedActionError),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -472,13 +461,7 @@ impl ChangeSet {
     /// are enqueued as needed and only done so if the base [`ChangeSet`] is "HEAD" (i.e.
     /// the default [`ChangeSet`] of the [`Workspace`]).
     #[instrument(level = "info", skip_all)]
-    pub async fn apply_to_base_change_set(
-        ctx: &mut DalContext,
-        allow_system_init_history_actor: bool,
-    ) -> ChangeSetApplyResult<ChangeSet> {
-        // Gather actions to run, which should only be populated if we are applying to head.
-        let (actions_to_run, prototype_by_action_id) = Self::list_actions_to_run(ctx).await?;
-
+    pub async fn apply_to_base_change_set(ctx: &mut DalContext) -> ChangeSetApplyResult<ChangeSet> {
         // Apply to the base change with the current change set (non-editing) and commit.
         let mut change_set_to_be_applied = Self::find(ctx, ctx.change_set_id())
             .await?
@@ -500,91 +483,6 @@ impl ChangeSet {
         }
 
         let change_set_that_was_applied = change_set_to_be_applied;
-
-        if !actions_to_run.is_empty() {
-            // Open an editing change set on head. We need it in order to update the resource trees
-            // for components on head.
-            let base_change_set_id = change_set_that_was_applied.base_change_set_id.ok_or(
-                ChangeSetApplyError::NoBaseChangeSet(change_set_that_was_applied.id),
-            )?;
-            ctx.update_visibility_and_snapshot_to_visibility(base_change_set_id)
-                .await?;
-
-            let author = match ctx.history_actor() {
-                HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
-                    .await?
-                    .ok_or(ChangeSetApplyError::InvalidUser(*user_pk))?
-                    .email()
-                    .to_string(),
-                HistoryActor::SystemInit => {
-                    if allow_system_init_history_actor {
-                        // TODO(nick): we need to ensure sdf cannot possibly hit this code path in
-                        // the future.
-                        ctx.history_actor().distinct_id()
-                    } else {
-                        return Err(ChangeSetApplyError::InvalidUserSystemInit);
-                    }
-                }
-            };
-
-            // TODO: restore actors of change-set concept
-            let actors_delimited_string = String::new();
-            let batch = DeprecatedActionBatch::new(ctx, author, &actors_delimited_string).await?;
-            let mut runners: HashMap<DeprecatedActionRunnerId, DeprecatedActionRunnerItem> =
-                HashMap::new();
-            let mut runners_by_action: HashMap<ActionId, DeprecatedActionRunnerId> = HashMap::new();
-
-            let mut values: Vec<DeprecatedActionBag> = actions_to_run.values().cloned().collect();
-            values.sort_by_key(|a| a.action.id);
-
-            let mut values: VecDeque<DeprecatedActionBag> = values.into_iter().collect();
-
-            // Runners have to be created in the order we want to display them in the actions history panel
-            // So we do extra work here to ensure the order is the execution order
-            while let Some(bag) = values.pop_front() {
-                let prototype_id = *prototype_by_action_id
-                    .get(&bag.action.id)
-                    .ok_or(ChangeSetApplyError::ActionPrototypeNotFound(bag.action.id))?;
-
-                // Determine the parent runners for the given set of parents. If none are found, we
-                // need to process the bag in a future iteration.
-                let parents = match Self::determine_runners_for_parent_actions(
-                    bag.parents.as_slice(),
-                    &runners_by_action,
-                ) {
-                    Some(parents) => parents,
-                    None => {
-                        values.push_back(bag);
-                        continue;
-                    }
-                };
-
-                let component = Component::get_by_id(ctx, bag.component_id).await?;
-                let runner = DeprecatedActionRunner::new(
-                    ctx,
-                    batch.id,
-                    bag.component_id,
-                    component.name(ctx).await?,
-                    prototype_id,
-                )
-                .await?;
-                runners_by_action.insert(bag.action.id, runner.id);
-
-                runners.insert(
-                    runner.id,
-                    DeprecatedActionRunnerItem {
-                        id: runner.id,
-                        component_id: bag.component_id,
-                        action_prototype_id: prototype_id,
-                        parents,
-                    },
-                );
-            }
-
-            // With all the runners gathered, we can enqueue a new batch.
-            ctx.enqueue_deprecated_actions(DeprecatedActionsJob::new(ctx, runners, batch.id))
-                .await?;
-        }
 
         Ok(change_set_that_was_applied)
     }
@@ -623,62 +521,6 @@ impl ChangeSet {
             .await?;
 
         Ok(None)
-    }
-
-    #[instrument(level = "info", skip_all)]
-    async fn list_actions_to_run(
-        ctx: &DalContext,
-    ) -> ChangeSetApplyResult<(
-        HashMap<ActionId, DeprecatedActionBag>,
-        HashMap<ActionId, ActionPrototypeId>,
-    )> {
-        let mut actions_graph = HashMap::new();
-        let mut prototype_by_action_id = HashMap::new();
-
-        // Before applying the change set, gather and write actions and corresponding prototypes if
-        // we are applying to head.
-        let applying_to_head = ctx.parent_is_head().await?;
-        if applying_to_head {
-            actions_graph = DeprecatedAction::build_graph(ctx).await?;
-            let mut at_least_one_deleted = false;
-
-            for bag in actions_graph.values() {
-                let prototype = bag.action.prototype(ctx).await?;
-                prototype_by_action_id.insert(bag.action.id, prototype.id);
-
-                // TODO(nick): assuming we want to continue to dynamically track actions on the
-                // graph, we should likely only remove the actions after they've successfully ran
-                // on head.
-                bag.action.clone().delete(ctx).await?;
-                at_least_one_deleted = true;
-            }
-
-            // TODO(nick): this code should be removed once we only remove actions that have
-            // succeeded.
-            if at_least_one_deleted {
-                if let Some(conflicts) = ctx.blocking_commit().await? {
-                    error!("Conflicts when listing actions:{:?}", conflicts);
-                    return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
-                }
-            }
-        }
-
-        Ok((actions_graph, prototype_by_action_id))
-    }
-
-    fn determine_runners_for_parent_actions(
-        parent_ids: &[ActionId],
-        runners_by_action: &HashMap<ActionId, DeprecatedActionRunnerId>,
-    ) -> Option<Vec<DeprecatedActionRunnerId>> {
-        let mut parents = Vec::new();
-        for parent_id in parent_ids {
-            if let Some(parent_id) = runners_by_action.get(parent_id) {
-                parents.push(*parent_id);
-            } else {
-                return None;
-            }
-        }
-        Some(parents)
     }
 
     /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.

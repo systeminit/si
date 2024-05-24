@@ -2,7 +2,7 @@ use axum::extract::Query;
 use axum::Json;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
-use dal::{ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
+use dal::{action::ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;

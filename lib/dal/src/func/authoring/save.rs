@@ -8,13 +8,13 @@ use crate::attribute::prototype::argument::{
 use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
 use crate::func::associations::{FuncArgumentBag, FuncAssociations};
 use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
-    func::IntrinsicFunc, ActionPrototypeId, AttributePrototype, AttributePrototypeId,
-    AttributeValue, Component, ComponentId, DalContext, DeprecatedActionKind,
-    DeprecatedActionPrototype, EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket,
+    ActionPrototypeId, AttributePrototype, AttributePrototypeId, AttributeValue, Component,
+    ComponentId, DalContext, EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket,
     Prop, SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
 };
 
@@ -117,59 +117,29 @@ pub(crate) async fn update_associations(
 async fn update_action_associations(
     ctx: &DalContext,
     func: &Func,
-    kind: DeprecatedActionKind,
+    kind: ActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
-    let mut deprecated_prototypes_to_remove: Vec<ActionPrototypeId> = vec![];
     let mut prototyes_to_remove: Vec<ActionPrototypeId> = vec![];
 
     for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
-        let current_deprecated_prototypes =
-            DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-        for prototype in current_deprecated_prototypes.clone() {
-            let prototype_func_id = prototype.func_id(ctx).await?;
-            if func.id == prototype_func_id {
-                if prototype.kind != kind && kind != DeprecatedActionKind::Other {
-                    dbg!("HERE");
-                    let existing_kind = current_deprecated_prototypes
-                        .clone()
-                        .into_iter()
-                        .find(|ap| ap.kind == kind);
-                    if existing_kind.is_some() {
-                        return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
-                            kind,
-                        )));
-                    }
-                }
-                deprecated_prototypes_to_remove.push(prototype.id);
-            }
-        }
         let new_action_protypes_for_schema_variant =
             ActionPrototype::for_variant(ctx, schema_variant_id).await?;
         for prototype in new_action_protypes_for_schema_variant.clone() {
             let prototype_func_id = ActionPrototype::func_id(ctx, prototype.id()).await?;
             if func.id == prototype_func_id {
-                if prototype.kind != ActionKind::from(kind)
-                    && ActionKind::from(kind) != ActionKind::Manual
-                {
-                    dbg!("THERE");
+                if prototype.kind != kind && kind != ActionKind::Manual {
                     let existing_kind = new_action_protypes_for_schema_variant
                         .clone()
                         .into_iter()
-                        .find(|ap| ap.kind == ActionKind::from(kind));
+                        .find(|ap| ap.kind == kind);
                     if existing_kind.is_some() {
-                        return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
-                            kind,
-                        )));
+                        return Err(FuncAuthoringError::KindAlreadyExists(kind));
                     }
                 }
                 prototyes_to_remove.push(prototype.id());
             }
         }
-    }
-
-    for removal_id in deprecated_prototypes_to_remove {
-        DeprecatedActionPrototype::remove(ctx, removal_id).await?;
     }
 
     for removal_id in prototyes_to_remove {
@@ -178,44 +148,19 @@ async fn update_action_associations(
 
     // Create or re-create the prototype for the schema variant ids passed in.
     for schema_variant_id in schema_variant_ids {
-        let current_deprecated_prototypes =
-            DeprecatedActionPrototype::for_variant(ctx, schema_variant_id).await?;
-
-        let existing_kind = current_deprecated_prototypes
-            .clone()
-            .into_iter()
-            .find(|ap| ap.kind == kind);
-        if existing_kind.is_some() {
-            return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
-                kind,
-            )));
-        } else {
-            dbg!("CREATING PROTOTYPE FOR FUNC", func.name.to_owned());
-            DeprecatedActionPrototype::new(
-                ctx,
-                Some(func.name.to_owned()),
-                kind,
-                schema_variant_id,
-                func.id,
-            )
-            .await?;
-        }
-
         let new_action_protypes_for_schema_variant =
             ActionPrototype::for_variant(ctx, schema_variant_id).await?;
 
         let existing_kind = new_action_protypes_for_schema_variant
             .clone()
             .into_iter()
-            .find(|ap| ap.kind == ActionKind::from(kind));
+            .find(|ap| ap.kind == kind);
         if existing_kind.is_some() {
-            return Err(FuncAuthoringError::KindAlreadyExists(ActionKind::from(
-                kind,
-            )));
+            return Err(FuncAuthoringError::KindAlreadyExists(kind));
         } else {
             ActionPrototype::new(
                 ctx,
-                crate::action::prototype::ActionKind::from(kind),
+                kind,
                 func.name.to_owned(),
                 None,
                 schema_variant_id,

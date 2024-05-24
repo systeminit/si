@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
 
+use crate::action::prototype::ActionKind;
 use crate::validation::ValidationStatus;
 use crate::{
-    func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
-    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionPrototypeId,
-    ComponentId, ComponentType, DeprecatedActionKind, FuncBackendKind, FuncBackendResponseType,
+    action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
+    property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
+    ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
     FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
 };
 
@@ -157,7 +158,7 @@ pub enum DeprecatedActionPrototypeContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct DeprecatedActionPrototypeContentV1 {
-    pub kind: DeprecatedActionKind,
+    pub kind: ActionKind,
     pub name: Option<String>,
     pub timestamp: Timestamp,
 }
@@ -176,7 +177,7 @@ pub struct DeprecatedActionRunnerContentV1 {
     pub schema_name: String,
     pub func_name: String,
     pub action_prototype_id: ActionPrototypeId,
-    pub action_kind: DeprecatedActionKind,
+    pub action_kind: ActionKind,
     pub resource: Option<String>,
 
     pub started_at: Option<DateTime<Utc>>,

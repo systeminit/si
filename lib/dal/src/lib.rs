@@ -30,7 +30,6 @@ pub mod code_view;
 pub mod component;
 pub mod context;
 pub mod dependency_graph;
-pub mod deprecated_action;
 pub mod diagram;
 pub mod feature_flags;
 pub mod func;
@@ -83,17 +82,6 @@ pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, DalLayerDb, RequestContext,
     ServicesContext, Transactions, TransactionsError,
 };
-pub use deprecated_action::batch::{
-    DeprecatedActionBatch, DeprecatedActionBatchError, DeprecatedActionBatchId,
-};
-pub use deprecated_action::prototype::{
-    DeprecatedActionKind, DeprecatedActionPrototype, DeprecatedActionPrototypeError,
-};
-pub use deprecated_action::runner::{
-    ActionCompletionStatus, DeprecatedActionRunner, DeprecatedActionRunnerError,
-    DeprecatedActionRunnerId,
-};
-pub use deprecated_action::{ActionId, DeprecatedAction, DeprecatedActionError};
 pub use func::{
     backend::{FuncBackendKind, FuncBackendResponseType},
     Func, FuncError, FuncId,

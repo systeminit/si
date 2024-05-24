@@ -65,7 +65,7 @@ async fn activities() {
     let activity = ldb_slash
         .activity()
         .test()
-        .integration_test("drop me the bomb", metadata, None)
+        .integration_test("drop me the bomb", metadata.clone(), None)
         .await
         .expect("cannot publish activity");
 
@@ -109,7 +109,6 @@ async fn activities_subscribe_partial() {
     )
     .await
     .expect("cannot create layerdb");
-    ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     // Subscribe to only rebase finished activities
     let mut activities = ldb_axl

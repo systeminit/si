@@ -6,13 +6,15 @@ use std::{future::IntoFuture, io, path::Path, sync::Arc};
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::PgPool;
-use si_events::FuncExecution;
+use si_events::{FuncRun, FuncRunLog};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::db::encrypted_secret::EncryptedSecretDb;
+use crate::db::func_run::FuncRunDb;
+use crate::db::func_run_log::FuncRunLogDb;
 use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
@@ -21,15 +23,13 @@ use crate::{
     persister::{PersisterClient, PersisterTask},
 };
 
-use self::{
-    cache_updates::CacheUpdatesTask, cas::CasDb, func_execution::FuncExecutionDb,
-    workspace_snapshot::WorkspaceSnapshotDb,
-};
+use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
 
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
-pub mod func_execution;
+pub mod func_run;
+pub mod func_run_log;
 pub mod serialize;
 pub mod workspace_snapshot;
 
@@ -42,7 +42,8 @@ where
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
-    func_execution: FuncExecutionDb,
+    func_run: FuncRunDb,
+    func_run_log: FuncRunLogDb,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     pg_pool: PgPool,
     nats_client: NatsClient,
@@ -107,8 +108,15 @@ where
             memory_cache_config.clone(),
         )?;
 
-        let func_execution_cache: LayerCache<Arc<FuncExecution>> = LayerCache::new(
-            func_execution::CACHE_NAME,
+        let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
+            func_run::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
+
+        let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
+            func_run_log::CACHE_NAME,
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
@@ -126,6 +134,8 @@ where
             &nats_client,
             cas_cache.clone(),
             encrypted_secret_cache.clone(),
+            func_run_cache.clone(),
+            func_run_log_cache.clone(),
             snapshot_cache.clone(),
             token.clone(),
         )
@@ -146,7 +156,8 @@ where
         let cas = CasDb::new(cas_cache, persister_client.clone());
         let encrypted_secret =
             EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
-        let func_execution = FuncExecutionDb::new(func_execution_cache);
+        let func_run = FuncRunDb::new(func_run_cache, persister_client.clone());
+        let func_run_log = FuncRunLogDb::new(func_run_log_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
@@ -156,7 +167,8 @@ where
             activity,
             cas,
             encrypted_secret,
-            func_execution,
+            func_run,
+            func_run_log,
             workspace_snapshot,
             pg_pool,
             persister_client,
@@ -187,8 +199,12 @@ where
         &self.encrypted_secret
     }
 
-    pub fn func_execution(&self) -> &FuncExecutionDb {
-        &self.func_execution
+    pub fn func_run(&self) -> &FuncRunDb {
+        &self.func_run
+    }
+
+    pub fn func_run_log(&self) -> &FuncRunLogDb {
+        &self.func_run_log
     }
 
     pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {

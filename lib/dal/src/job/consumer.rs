@@ -10,7 +10,6 @@ use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
 use crate::{
@@ -19,9 +18,7 @@ use crate::{
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
     ActionPrototypeId, ComponentError, ComponentId, DalContext, DalContextBuilder,
-    DeprecatedActionBatchError, DeprecatedActionBatchId, DeprecatedActionPrototypeError,
-    DeprecatedActionRunnerError, StandardModelError, TransactionsError, Visibility,
-    WorkspaceSnapshotError, WsEventError,
+    StandardModelError, TransactionsError, Visibility, WorkspaceSnapshotError, WsEventError,
 };
 
 #[remain::sorted]
@@ -29,14 +26,10 @@ use crate::{
 pub enum JobConsumerError {
     #[error("action error: {0}")]
     Action(#[from] ActionError),
-    #[error("action batch error: {0}")]
-    ActionBatch(#[from] DeprecatedActionBatchError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
-    #[error("action runner error: {0}")]
-    ActionRunner(#[from] DeprecatedActionRunnerError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
@@ -49,18 +42,12 @@ pub enum JobConsumerError {
     ComponentIsDestroyed(ComponentId),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] DependentValueUpdateError),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] DeprecatedActionPrototypeError),
-    #[error("diagrame error: {0}")]
-    Diagram(#[from] DiagramError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]
     Io(#[from] ::std::io::Error),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
-    #[error("missing fix execution batch for id: {0}")]
-    MissingActionBatch(DeprecatedActionBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]

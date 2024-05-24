@@ -38,9 +38,9 @@ use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
-    ComponentType, DalContext, DeprecatedActionPrototype, DeprecatedActionPrototypeError, Func,
-    FuncId, HelperError, InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema,
-    SchemaError, SchemaId, Timestamp, TransactionsError, WsEvent, WsEventResult, WsPayload,
+    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -54,7 +54,7 @@ mod value_from;
 
 pub mod authoring;
 
-use crate::action::prototype::ActionKind;
+use crate::action::prototype::{ActionKind, ActionPrototype};
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -85,8 +85,6 @@ pub enum SchemaVariantError {
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
-    #[error("deprecated action prototype error: {0}")]
-    DeprecatedActionPrototype(#[from] Box<DeprecatedActionPrototypeError>),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -794,22 +792,8 @@ impl SchemaVariant {
 
     implement_add_edge_to!(
         source_id: SchemaVariantId,
-        destination_id: ActionPrototypeId,
-        add_fn: add_edge_to_deprecated_action_prototype,
-        discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
-        result: SchemaVariantResult,
-    );
-    implement_add_edge_to!(
-        source_id: SchemaVariantId,
         destination_id: PropId,
         add_fn: add_edge_to_prop,
-        discriminant: EdgeWeightKindDiscriminants::Use,
-        result: SchemaVariantResult,
-    );
-    implement_add_edge_to!(
-        source_id: SchemaVariantId,
-        destination_id: FuncId,
-        add_fn: add_edge_to_deprecated_action_func,
         discriminant: EdgeWeightKindDiscriminants::Use,
         result: SchemaVariantResult,
     );
@@ -841,22 +825,6 @@ impl SchemaVariant {
         discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
         result: SchemaVariantResult,
     );
-
-    pub async fn new_deprecated_action_prototype(
-        ctx: &DalContext,
-        func_id: FuncId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<()> {
-        Self::add_edge_to_deprecated_action_func(
-            ctx,
-            schema_variant_id,
-            func_id,
-            EdgeWeightKind::new_use(),
-        )
-        .await?;
-
-        Ok(())
-    }
 
     pub async fn find_action_prototypes_by_kind(
         ctx: &DalContext,
@@ -1492,13 +1460,13 @@ impl SchemaVariant {
             let node_weight = workspace_snapshot
                 .get_node_weight(action_prototype_node)
                 .await?;
-            if let Some(ContentAddressDiscriminants::ActionPrototype) =
-                node_weight.content_address_discriminants()
-            {
+
+            if let NodeWeight::ActionPrototype(action_prototype_node_weight) = node_weight {
                 let func_id =
-                    DeprecatedActionPrototype::func_id_by_id(ctx, node_weight.id().into())
+                    ActionPrototype::func_id(ctx, action_prototype_node_weight.id().into())
                         .await
-                        .map_err(Box::new)?;
+                        .map_err(|err| SchemaVariantError::ActionPrototype(err.to_string()))?;
+
                 all_func_ids.insert(func_id);
             }
         }
@@ -1701,10 +1669,7 @@ impl SchemaVariant {
             .await?
         {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-
-            if let Some(ContentAddressDiscriminants::ActionPrototype) =
-                node_weight.content_address_discriminants()
-            {
+            if let NodeWeight::ActionPrototype(node_weight) = node_weight {
                 action_prototype_raw_ids.push(node_weight.id());
             }
         }

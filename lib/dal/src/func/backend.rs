@@ -95,6 +95,58 @@ pub enum FuncBackendKind {
     Validation,
 }
 
+impl From<FuncBackendKind> for si_events::FuncBackendKind {
+    fn from(value: FuncBackendKind) -> Self {
+        match value {
+            FuncBackendKind::Array => si_events::FuncBackendKind::Array,
+            FuncBackendKind::Boolean => si_events::FuncBackendKind::Boolean,
+            FuncBackendKind::Diff => si_events::FuncBackendKind::Diff,
+            FuncBackendKind::Identity => si_events::FuncBackendKind::Identity,
+            FuncBackendKind::Integer => si_events::FuncBackendKind::Integer,
+            FuncBackendKind::JsAction => si_events::FuncBackendKind::JsAction,
+            FuncBackendKind::JsAttribute => si_events::FuncBackendKind::JsAttribute,
+            FuncBackendKind::JsAuthentication => si_events::FuncBackendKind::JsAuthentication,
+            FuncBackendKind::Json => si_events::FuncBackendKind::Json,
+            FuncBackendKind::JsReconciliation => si_events::FuncBackendKind::JsReconciliation,
+            FuncBackendKind::JsSchemaVariantDefinition => {
+                si_events::FuncBackendKind::JsSchemaVariantDefinition
+            }
+            FuncBackendKind::JsValidation => si_events::FuncBackendKind::JsValidation,
+            FuncBackendKind::Map => si_events::FuncBackendKind::Map,
+            FuncBackendKind::Object => si_events::FuncBackendKind::Object,
+            FuncBackendKind::String => si_events::FuncBackendKind::String,
+            FuncBackendKind::Unset => si_events::FuncBackendKind::Unset,
+            FuncBackendKind::Validation => si_events::FuncBackendKind::Validation,
+        }
+    }
+}
+
+impl From<si_events::FuncBackendKind> for FuncBackendKind {
+    fn from(value: si_events::FuncBackendKind) -> Self {
+        match value {
+            si_events::FuncBackendKind::Array => FuncBackendKind::Array,
+            si_events::FuncBackendKind::Boolean => FuncBackendKind::Boolean,
+            si_events::FuncBackendKind::Diff => FuncBackendKind::Diff,
+            si_events::FuncBackendKind::Identity => FuncBackendKind::Identity,
+            si_events::FuncBackendKind::Integer => FuncBackendKind::Integer,
+            si_events::FuncBackendKind::JsAction => FuncBackendKind::JsAction,
+            si_events::FuncBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
+            si_events::FuncBackendKind::JsAuthentication => FuncBackendKind::JsAuthentication,
+            si_events::FuncBackendKind::Json => FuncBackendKind::Json,
+            si_events::FuncBackendKind::JsReconciliation => FuncBackendKind::JsReconciliation,
+            si_events::FuncBackendKind::JsSchemaVariantDefinition => {
+                FuncBackendKind::JsSchemaVariantDefinition
+            }
+            si_events::FuncBackendKind::JsValidation => FuncBackendKind::JsValidation,
+            si_events::FuncBackendKind::Map => FuncBackendKind::Map,
+            si_events::FuncBackendKind::Object => FuncBackendKind::Object,
+            si_events::FuncBackendKind::String => FuncBackendKind::String,
+            si_events::FuncBackendKind::Unset => FuncBackendKind::Unset,
+            si_events::FuncBackendKind::Validation => FuncBackendKind::Validation,
+        }
+    }
+}
+
 #[remain::sorted]
 #[derive(
     Deserialize,
@@ -127,6 +179,68 @@ pub enum FuncBackendResponseType {
     Unset,
     Validation,
     Void,
+}
+
+impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
+    fn from(value: FuncBackendResponseType) -> Self {
+        match value {
+            FuncBackendResponseType::Action => si_events::FuncBackendResponseType::Action,
+            FuncBackendResponseType::Array => si_events::FuncBackendResponseType::Array,
+            FuncBackendResponseType::Boolean => si_events::FuncBackendResponseType::Boolean,
+            FuncBackendResponseType::CodeGeneration => {
+                si_events::FuncBackendResponseType::CodeGeneration
+            }
+            FuncBackendResponseType::Identity => si_events::FuncBackendResponseType::Identity,
+            FuncBackendResponseType::Integer => si_events::FuncBackendResponseType::Integer,
+            FuncBackendResponseType::Json => si_events::FuncBackendResponseType::Json,
+            FuncBackendResponseType::Map => si_events::FuncBackendResponseType::Map,
+            FuncBackendResponseType::Object => si_events::FuncBackendResponseType::Object,
+            FuncBackendResponseType::Qualification => {
+                si_events::FuncBackendResponseType::Qualification
+            }
+            FuncBackendResponseType::Reconciliation => {
+                si_events::FuncBackendResponseType::Reconciliation
+            }
+            FuncBackendResponseType::SchemaVariantDefinition => {
+                si_events::FuncBackendResponseType::SchemaVariantDefinition
+            }
+            FuncBackendResponseType::String => si_events::FuncBackendResponseType::String,
+            FuncBackendResponseType::Unset => si_events::FuncBackendResponseType::Unset,
+            FuncBackendResponseType::Validation => si_events::FuncBackendResponseType::Validation,
+            FuncBackendResponseType::Void => si_events::FuncBackendResponseType::Void,
+        }
+    }
+}
+
+impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
+    fn from(value: si_events::FuncBackendResponseType) -> Self {
+        match value {
+            si_events::FuncBackendResponseType::Action => FuncBackendResponseType::Action,
+            si_events::FuncBackendResponseType::Array => FuncBackendResponseType::Array,
+            si_events::FuncBackendResponseType::Boolean => FuncBackendResponseType::Boolean,
+            si_events::FuncBackendResponseType::CodeGeneration => {
+                FuncBackendResponseType::CodeGeneration
+            }
+            si_events::FuncBackendResponseType::Identity => FuncBackendResponseType::Identity,
+            si_events::FuncBackendResponseType::Integer => FuncBackendResponseType::Integer,
+            si_events::FuncBackendResponseType::Json => FuncBackendResponseType::Json,
+            si_events::FuncBackendResponseType::Map => FuncBackendResponseType::Map,
+            si_events::FuncBackendResponseType::Object => FuncBackendResponseType::Object,
+            si_events::FuncBackendResponseType::Qualification => {
+                FuncBackendResponseType::Qualification
+            }
+            si_events::FuncBackendResponseType::Reconciliation => {
+                FuncBackendResponseType::Reconciliation
+            }
+            si_events::FuncBackendResponseType::SchemaVariantDefinition => {
+                FuncBackendResponseType::SchemaVariantDefinition
+            }
+            si_events::FuncBackendResponseType::String => FuncBackendResponseType::String,
+            si_events::FuncBackendResponseType::Unset => FuncBackendResponseType::Unset,
+            si_events::FuncBackendResponseType::Validation => FuncBackendResponseType::Validation,
+            si_events::FuncBackendResponseType::Void => FuncBackendResponseType::Void,
+        }
+    }
 }
 
 impl From<ResolverFunctionResponseType> for FuncBackendResponseType {

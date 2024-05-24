@@ -103,29 +103,10 @@ impl FuncDispatch for FuncBackendJsAction {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct DeprecatedActionRunResult {
-    #[serde(default)]
-    pub status: Option<ResourceStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub payload: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub message: Option<String>,
-    #[serde(default)]
-    pub last_synced: Option<String>,
-}
-
 impl ExtractPayload for ActionRunResultSuccess {
-    type Payload = DeprecatedActionRunResult;
+    type Payload = ActionRunResultSuccess;
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
-        Ok(DeprecatedActionRunResult {
-            payload: self.payload,
-            status: Some(self.status),
-            message: self.message.or(self.error),
-            last_synced: Some(Utc::now().to_rfc3339()),
-        })
+        Ok(self)
     }
 }

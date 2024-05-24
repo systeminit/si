@@ -290,6 +290,7 @@ async fn validation_qualification(ctx: &mut DalContext) {
                 "line": "working_eyes: \"value\" is required",
                 "level": "log",
             }],
+            "finalized": true,
             "description": null,
             "link": null,
             "result": {
@@ -334,6 +335,7 @@ async fn validation_qualification(ctx: &mut DalContext) {
         json!({
             "title": "Prop Validations",
             "output": [],
+            "finalized": true,
             "description": null,
             "link": null,
             "result": {

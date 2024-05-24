@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_layer_cache::LayerDbError;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -10,11 +11,10 @@ use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
 use crate::{
-    func::binding::return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
     Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
 };
-use crate::{AttributeValue, AttributeValueId, Func};
+use crate::{AttributeValue, AttributeValueId};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct QualificationSummaryForComponent {
@@ -117,8 +117,8 @@ pub enum QualificationError {
     AttributeValue(#[from] AttributeValueError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("function binding return value error: {0}")]
-    FuncBindingReturnValueError(#[from] FuncBindingReturnValueError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("no value returned in qualification function result")]
     NoValue,
     #[error("prop error: {0}")]
@@ -157,6 +157,7 @@ pub struct QualificationView {
     pub link: Option<String>,
     pub result: Option<QualificationResult>,
     pub qualification_name: String,
+    pub finalized: bool,
 }
 
 impl PartialOrd for QualificationView {
@@ -177,64 +178,75 @@ impl QualificationView {
         attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, QualificationError> {
         let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-        let qualification_name = match attribute_value.key(ctx).await? {
-            Some(key) => key,
-            None => return Ok(None),
-        };
+        let maybe_qual_run = ctx
+            .layer_db()
+            .func_run()
+            .get_last_qualification_for_attribute_value_id(attribute_value_id.into())
+            .await?;
+        match maybe_qual_run {
+            Some(qual_run) => {
+                let qualification_entry: QualificationEntry =
+                    match attribute_value.view(ctx).await? {
+                        Some(value) => serde_json::from_value(value)?,
+                        None => return Ok(None),
+                    };
 
-        let func_execution = match attribute_value.func_execution(ctx).await? {
-            Some(func_execution) => func_execution,
-            None => return Ok(None),
-        };
+                let sub_check = QualificationSubCheck {
+                    description: match qualification_entry.message {
+                        Some(message) => message,
+                        None => String::from("no description provided"),
+                    },
+                    status: qualification_entry
+                        .result
+                        .unwrap_or(QualificationSubCheckStatus::Unknown),
+                };
+                let result = Some(QualificationResult {
+                    status: qualification_entry
+                        .result
+                        .unwrap_or(QualificationSubCheckStatus::Unknown),
+                    title: Some(qual_run.function_name().to_string()),
+                    link: qual_run.function_link().map(str::to_string),
+                    sub_checks: vec![sub_check],
+                });
 
-        let qualification_entry: QualificationEntry = match attribute_value.view(ctx).await? {
-            Some(value) => serde_json::from_value(value)?,
-            None => return Ok(None),
-        };
+                let (output, finalized) = match ctx
+                    .layer_db()
+                    .func_run_log()
+                    .get_for_func_run_id(qual_run.id())
+                    .await?
+                {
+                    Some(func_run_logs) => {
+                        let output = func_run_logs
+                            .logs()
+                            .iter()
+                            .map(|l| QualificationOutputStreamView {
+                                stream: l.stream.clone(),
+                                line: l.message.clone(),
+                                level: l.level.clone(),
+                            })
+                            .collect();
+                        let finalized = func_run_logs.is_finalized();
 
-        let func = Func::get_by_id_or_error(ctx, *func_execution.func_id()).await?;
+                        (output, finalized)
+                    }
+                    None => (Vec::new(), false),
+                };
 
-        let func_metadata = func.metadata_view();
-
-        let output_streams = func_execution.into_output_stream();
-        let output = match output_streams {
-            Some(streams) => streams
-                .into_iter()
-                .map(|output_stream| QualificationOutputStreamView {
-                    stream: output_stream.stream,
-                    line: output_stream.message,
-                    level: output_stream.level,
-                })
-                .collect::<Vec<QualificationOutputStreamView>>(),
-            None => Vec::with_capacity(0),
-        };
-
-        let sub_check = QualificationSubCheck {
-            description: match qualification_entry.message {
-                Some(message) => message,
-                None => String::from("no description provided"),
-            },
-            status: qualification_entry
-                .result
-                .unwrap_or(QualificationSubCheckStatus::Unknown),
-        };
-        let result = Some(QualificationResult {
-            status: qualification_entry
-                .result
-                .unwrap_or(QualificationSubCheckStatus::Unknown),
-            title: Some(func_metadata.display_name.clone()),
-            link: None,
-            sub_checks: vec![sub_check],
-        });
-
-        Ok(Some(QualificationView {
-            title: func_metadata.display_name,
-            description: func_metadata.description.map(Into::into),
-            link: func_metadata.link.map(Into::into),
-            output,
-            result,
-            qualification_name: qualification_name.to_string(),
-        }))
+                Ok(Some(QualificationView {
+                    title: qual_run
+                        .function_display_name()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| qual_run.function_name().to_string()),
+                    description: qual_run.function_description().map(str::to_string),
+                    link: qual_run.function_link().map(str::to_string),
+                    output,
+                    finalized,
+                    result,
+                    qualification_name: qual_run.function_name().to_string(),
+                }))
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn new_for_validations(
@@ -292,6 +304,7 @@ impl QualificationView {
             description: None,
             link: None,
             output,
+            finalized: true,
             result,
             qualification_name: "validations".to_owned(),
         }))
