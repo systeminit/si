@@ -31,6 +31,7 @@ pub mod update;
 pub mod vector_clock;
 
 use futures::executor;
+use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -45,7 +46,7 @@ use si_pkg::KeyOrIndex;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
@@ -161,6 +162,9 @@ pub struct WorkspaceSnapshot {
 
     /// Whether we should perform cycle checks on add edge operations
     cycle_check: Arc<AtomicBool>,
+
+    /// A hashset to prevent adding duplicate roots to the workspace in a single edit session
+    dvu_roots: Arc<Mutex<HashSet<Ulid>>>,
 }
 
 /// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
@@ -266,13 +270,14 @@ impl WorkspaceSnapshot {
             )?;
         }
 
-        // We do not care about any field other than "working_copy" because "write" will populate
-        // them using the assigned working copy.
+        // We do not care about any field other than "working_copy" because
+        // "write" will populate them using the assigned working copy.
         let initial = Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
             read_only_graph: Arc::new(graph),
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
         };
 
         initial.write(ctx, change_set.vector_clock_id()).await?;
@@ -405,6 +410,7 @@ impl WorkspaceSnapshot {
             read_only_graph: graph,
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
         })
     }
 
@@ -771,6 +777,7 @@ impl WorkspaceSnapshot {
             read_only_graph: snapshot,
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
         })
     }
 
@@ -1386,36 +1393,31 @@ impl WorkspaceSnapshot {
         value_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let value_id = value_id.into();
-        let (dv_category_id, existing_value_root_id) = self
+
+        // ensure we don't grow the graph unnecessarily by adding the same value
+        // in a single edit session
+        {
+            let mut dvu_roots = self.dvu_roots.lock().await;
+            if dvu_roots.contains(&value_id) {
+                return Ok(());
+            }
+            dvu_roots.insert(value_id);
+        }
+
+        let (dv_category_id, _) = self
             .find_existing_dependent_value_root(change_set, value_id)
             .await?;
 
-        match existing_value_root_id {
-            Some(value_root_id) => {
-                let existing_value_index = self.get_node_index_by_id(value_root_id).await?;
-                let value_root_node_weight = self
-                    .get_node_weight_by_id(value_root_id)
-                    .await?
-                    .get_dependent_value_root_node_weight()?
-                    .touch(change_set)?;
-                self.add_node(NodeWeight::DependentValueRoot(value_root_node_weight))
-                    .await?;
-                self.replace_references(existing_value_index).await?;
-            }
-            None => {
-                let new_dependent_value_node =
-                    NodeWeight::new_dependent_value_root(change_set, value_id)?;
-                let new_dv_node_id = new_dependent_value_node.id();
-                self.add_node(new_dependent_value_node).await?;
+        let new_dependent_value_node = NodeWeight::new_dependent_value_root(change_set, value_id)?;
+        let new_dv_node_id = new_dependent_value_node.id();
+        self.add_node(new_dependent_value_node).await?;
 
-                self.add_edge(
-                    dv_category_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
-                    new_dv_node_id,
-                )
-                .await?;
-            }
-        }
+        self.add_edge(
+            dv_category_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+            new_dv_node_id,
+        )
+        .await?;
 
         Ok(())
     }
