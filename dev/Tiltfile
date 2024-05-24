@@ -7,17 +7,16 @@ config.define_bool("debug-no-rebaser-rustc-build-mode")
 cfg = config.parse()
 
 # Define groups of services
+
 groups = {
     "platform": [
-        "grafana",
-        "jaeger",
         "nats",
         "otelcol",
         "db",
-        "db-test",
         "postgres",
+        "db-test",
         "postgres-test",
-        "localstack",
+        "jaeger",
     ],
     "backend": [
         "pinga",
@@ -28,6 +27,15 @@ groups = {
     ],
     "frontend": [
         "web",
+    ],
+    "testing": [
+        "localstack",
+
+    ],
+    "telemetry": [
+        "promtail",
+        "grafana",
+        "loki",
     ],
 }
 
@@ -92,9 +100,15 @@ def _buck2_dep_inputs(target):
 # - https://docs.tilt.dev/api.html#api.allow_k8s_contexts
 allow_k8s_contexts(k8s_context())
 
+def find_group(name, groups):
+    for group, names in groups.items():
+        if name in names:
+            return group
+    return "all"
+
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "grafana", "localstack"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "loki",  "grafana", "localstack", "promtail"]
 for service in compose_services:
     if service == "jaeger":
         links = [
@@ -104,24 +118,30 @@ for service in compose_services:
         links = [
             link("http://localhost:3000", "ui"),
         ]
+    elif service == "localstack":
+        links = [
+            link("http://localhost:4566", "localstack-api"),
+        ]
     else:
         links = []
-    dc_resource(service, links = links, labels = ["platform"])
+
+    dc_resource(service, links = links, labels = [find_group(service, groups)])
+
 
 # Locally build and run `rebaser-server`
 rebaser_target = "//bin/rebaser:rebaser"
 
 cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(rebaser_target)
     serve_cmd = "buck2 run {}".format(rebaser_target)
 elif debug_no_rebaser_rustc_build_mode:
     cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/release {}".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
 elif rustc_build_mode == 'debug':
     cmd = "buck2 build @//mode/debug {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/debug {}".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
 
 local_resource(
     "rebaser",
@@ -171,7 +191,7 @@ local_resource(
 pinga_target = "//bin/pinga:pinga"
 
 cmd = "buck2 build @//mode/release {}".format(pinga_target)
-serve_cmd = "buck2 run @//mode/release {}".format(pinga_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/pinga".format(pinga_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(pinga_target)
     serve_cmd = "buck2 run {}".format(pinga_target)
@@ -199,7 +219,8 @@ local_resource(
 veritech_target = "//bin/veritech:veritech"
 
 cmd = "buck2 build @//mode/release {}".format(veritech_target)
-serve_cmd = "buck2 run @//mode/release {}".format(veritech_target)
+# Add something like this to then push it + consume the logs from prom tail
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/veritech".format(veritech_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(veritech_target)
     serve_cmd = "buck2 run {}".format(veritech_target)
@@ -229,13 +250,13 @@ local_resource(
 sdf_target = "//bin/sdf:sdf"
 
 cmd = "buck2 build @//mode/release {}".format(sdf_target)
-serve_cmd = "buck2 run @//mode/release {}".format(sdf_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/sdf".format(sdf_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(sdf_target)
-    serve_cmd = "buck2 run {}".format(sdf_target)
+    serve_cmd = "buck2 run {} | tee /tmp/si-logs/sdf".format(sdf_target)
 elif rustc_build_mode == 'debug':
     cmd = "buck2 build @//mode/debug {}".format(sdf_target)
-    serve_cmd = "buck2 run @//mode/debug {}".format(sdf_target)
+    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/sdf".format(sdf_target)
 
 local_resource(
     "sdf",

@@ -1,6 +1,20 @@
 ---
+# configures the system to use the loki docker driver
+# see https://grafana.com/docs/loki/latest/send-data/docker-driver/
+x-loki-logged-service: &loki-logged-service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "1"
+        max-file: "2"
+        max-size: "10m"
+
 services:
   db:
+    # uncomment below to get these logs in grafana
+    #<<: *loki-logged-service
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -16,7 +30,27 @@ services:
       timeout: 10s
       retries: 5
 
+  promtail:
+    #<<: *loki-logged-service
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - /tmp/si-logs:/logs
+      - ./promtail-config/config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml    
+
+  loki:
+    #<<: *loki-logged-service
+    image: grafana/loki
+    container_name: loki
+    volumes:
+      - ./loki-config/config.yml:/etc/loki/config.yml
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/config.yml
+
   db-test:
+    #<<: *loki-logged-service
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -38,6 +72,7 @@ services:
       retries: 5
 
   postgres:
+    #<<: *loki-logged-service
     image: systeminit/pgbouncer:stable
     environment:
       - "DB_USER=si"
@@ -56,6 +91,7 @@ services:
       - db
 
   postgres-test:
+    #<<: *loki-logged-service
     image: systeminit/pgbouncer:stable
     environment:
       - "DB_USER=si_test"
@@ -74,6 +110,7 @@ services:
       - db-test
 
   nats:
+    #<<: *loki-logged-service
     image: systeminit/nats:stable
     command:
       - "--config"
@@ -88,12 +125,14 @@ services:
       - postgres
 
   jaeger:
+    #<<: *loki-logged-service
     image: systeminit/jaeger:stable
     ports:
       - "5317:4317"
       - "16686:16686"
 
   grafana:
+    #<<: *loki-logged-service
     image: grafana/grafana-enterprise
     container_name: grafana
     ports:
@@ -106,6 +145,7 @@ services:
       - "GF_AUTH_DISABLE_LOGIN_FORM=true"
 
   otelcol:
+    #<<: *loki-logged-service
     image: systeminit/otelcol:stable
     # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
     #environment:
@@ -118,7 +158,7 @@ services:
       - jaeger
 
   localstack:
+    #<<: *loki-logged-service
     image: localstack/localstack
     ports:
       - "4566:4566"
-      - "4510-4559:4510-4559"
