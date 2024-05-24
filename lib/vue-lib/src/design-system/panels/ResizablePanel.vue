@@ -4,7 +4,9 @@
     :class="
       clsx(
         'si-panel',
-        'z-20 dark:text-white pointer-events-auto relative',
+        `si-panel-${side}`,
+        side === 'right' ? 'z-[15]' : 'z-20',
+        'dark:text-white pointer-events-auto relative',
         isTopOrBottom
           ? 'border-shade-100 bg-white dark:bg-neutral-900'
           : 'dark:border-neutral-600 border-neutral-300 bg-white dark:bg-neutral-800',
@@ -40,7 +42,9 @@
       :class="
         clsx(
           'si-panel__inner absolute w-full h-full flex flex-col',
+          `si-panel__inner-${side}`,
           (collapsed || panelOpeningFromCollapse) && 'opacity-0',
+          themeClasses('bg-shade-0', 'bg-neutral-800'),
         )
       "
     >
@@ -101,6 +105,7 @@ import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import PanelResizingHandle from "./PanelResizingHandle.vue";
+import { themeClasses } from "../utils/theme_tools";
 
 // This variable determines how long after uncollapsing the main panel the panel's content should show
 // We hide the panel content while it is collapsing or uncollapsing to avoid the content inside from displaying in jenky ways
