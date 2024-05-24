@@ -24,7 +24,7 @@ export function dateString(
 ) {
   const dateClassesSpan = dateClasses ? `<span class="${dateClasses}">` : "";
   const dateClassesCloseSpan = dateClasses ? "</span>" : "";
-  const timeClassesSpan = dateClasses ? `<span class="${timeClasses}">` : ""; 
+  const timeClassesSpan = dateClasses ? `<span class="${timeClasses}">` : "";
   const timeClassesCloseSpan = timeClasses ? "</span>" : "";
   let d: Date;
   if (_.isString(date)) {

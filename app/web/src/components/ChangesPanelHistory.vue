@@ -73,7 +73,7 @@ import {
   TabGroup,
   TabGroupCloseButton,
 } from "@si/vue-lib/design-system";
-import { Teleport, computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { ActionView, useActionsStore, ActionId } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import {

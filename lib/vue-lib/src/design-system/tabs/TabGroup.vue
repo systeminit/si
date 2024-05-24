@@ -173,7 +173,6 @@ import {
 } from "vue";
 import posthog from "posthog-js";
 import { TeleportTarget } from "vue-safe-teleport";
-import { sl } from "date-fns/locale";
 import { Icon, DropdownMenu, DropdownMenuItem } from "..";
 import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";

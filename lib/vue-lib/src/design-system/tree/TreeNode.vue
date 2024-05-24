@@ -6,7 +6,11 @@
         'tree-node',
         internalScrolling && 'overflow-hidden flex flex-col',
         internalScrolling && isOpen ? 'flex-1' : 'flex-none',
-        styleAsGutter && enableGroupToggle && ['ml-sm border-l', themeClasses('border-neutral-100', 'border-neutral-700')],
+        styleAsGutter &&
+          enableGroupToggle && [
+            'ml-sm border-l',
+            themeClasses('border-neutral-100', 'border-neutral-700'),
+          ],
       )
     "
   >
@@ -14,7 +18,8 @@
       :class="
         clsx(
           'relative cursor-pointer group flex-none',
-          !noIndentationOrLeftBorder && !styleAsGutter &&
+          !noIndentationOrLeftBorder &&
+            !styleAsGutter &&
             {
               none: '',
               '2xs': 'border-l-[1px]',
@@ -30,7 +35,8 @@
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
           showSelection && isSelected
             ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
-            : (!styleAsGutter && 'dark:hover:text-action-300 hover:text-action-500'),
+            : !styleAsGutter &&
+                'dark:hover:text-action-300 hover:text-action-500',
           classes,
           (enableDefaultHoverClasses || styleAsGutter) &&
             'bg-neutral-100 dark:bg-neutral-700 group/tree',
@@ -46,7 +52,7 @@
         v-if="styleAsGutter && enableGroupToggle"
         :name="isOpen ? 'chevron--down' : 'chevron--right'"
         class="absolute left-[-21px] translate-y-1/2 hover:text-action-300 group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300"
-        />
+      />
       <div
         :class="
           clsx(
@@ -91,7 +97,14 @@
           "
         />
 
-        <div :class="clsx(!styleAsGutter && 'flex flex-col select-none overflow-hidden py-2xs w-full')">
+        <div
+          :class="
+            clsx(
+              !styleAsGutter &&
+                'flex flex-col select-none overflow-hidden py-2xs w-full',
+            )
+          "
+        >
           <slot v-if="useDifferentLabelWhenOpen && isOpen" name="openLabel">
             {{ openLabel }}
           </slot>
@@ -120,7 +133,8 @@
       v-if="enableGroupToggle && isOpen"
       :class="
         clsx(
-          !noIndentationOrLeftBorder && !styleAsGutter &&
+          !noIndentationOrLeftBorder &&
+            !styleAsGutter &&
             {
               none: '',
               '2xs': 'pl-2xs',

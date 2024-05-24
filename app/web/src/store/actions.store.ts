@@ -259,16 +259,14 @@ export const useActionsStore = () => {
                   _.map(actions, (actionPrototype) => {
                     if (actionPrototype.name === "refresh") return;
 
-                    const actionInstance: ActionProposedView | undefined = _.find(
-                      this.actions,
-                      (pa: ActionProposedView) => {
+                    const actionInstance: ActionProposedView | undefined =
+                      _.find(this.actions, (pa: ActionProposedView) => {
                         if (!pa) return false;
                         return (
                           pa.componentId === componentId &&
                           pa.prototypeId === actionPrototype.id
                         );
-                      },
-                    );
+                      });
 
                     return {
                       actionPrototypeId: actionPrototype.id,
