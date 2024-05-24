@@ -61,7 +61,7 @@ import {
 const props = defineProps({
   defaultOpen: { type: Boolean },
   firstOpen: { type: Boolean },
-  context: { type: String, default: "workspace-lab-functions" },
+  context: { type: String, required: true },
   funcsByKind: {
     type: Object as PropType<Dictionary<FuncSummary[]>>,
     default: () => ({}),
