@@ -67,6 +67,7 @@ export type WsEventPayloadMap = {
   ChangeSetApplied: string;
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
+  Conflict: string;
 
   SetComponentPosition: {
     changeSetId: ChangeSetId;
