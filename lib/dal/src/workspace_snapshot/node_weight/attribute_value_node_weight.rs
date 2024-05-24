@@ -186,7 +186,7 @@ impl AttributeValueNodeWeight {
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[
-            EdgeWeightKindDiscriminants::Contain,
+            // EdgeWeightKindDiscriminants::Contain,
             EdgeWeightKindDiscriminants::Prototype,
             EdgeWeightKindDiscriminants::Prop,
             EdgeWeightKindDiscriminants::Socket,

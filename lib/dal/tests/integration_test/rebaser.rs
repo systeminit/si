@@ -1,8 +1,14 @@
 use base64::{engine::general_purpose, Engine};
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
+use dal::prop::PropPath;
 use dal::workspace_snapshot::conflict::Conflict;
-use dal::{ChangeSet, DalContext, Func, FuncBackendKind, FuncBackendResponseType};
-use dal_test::helpers::{ChangeSetTestHelpers, ChangeSetTestHelpersError};
+use dal::{
+    AttributeValue, ChangeSet, Component, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, Prop,
+};
+use dal_test::helpers::{
+    create_component_for_schema_name, ChangeSetTestHelpers, ChangeSetTestHelpersError,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -351,4 +357,128 @@ async fn delete_func_node(ctx: &mut DalContext) {
 
     let result = Func::get_by_id_or_error(ctx, func.id).await;
     assert!(result.is_err());
+}
+
+#[test]
+async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
+    let shared_component_id =
+        create_component_for_schema_name(ctx, "Docker Image", "Shared component")
+            .await
+            .id();
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx, true)
+        .await
+        .expect("Unable to merge to base change set");
+
+    let change_set_a =
+        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set A")
+            .await
+            .expect("Unable to create change set A");
+    let change_set_b =
+        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set B")
+            .await
+            .expect("Unable to create change set B");
+
+    // Modify the shared component in change set A.
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_a.id)
+        .await
+        .expect("Unable to switch to change set A");
+    let cs_a_name_av_id = {
+        let component = Component::get_by_id(ctx, shared_component_id)
+            .await
+            .expect("Unable to get shared component in change set A");
+        component
+            .attribute_values_for_prop(ctx, &["root", "si", "name"])
+            .await
+            .expect("Unable to get attribute values for si.name")
+            .first()
+            .copied()
+            .expect("si.name attribute value not found")
+    };
+    AttributeValue::update(
+        ctx,
+        cs_a_name_av_id,
+        Some(serde_json::json!("Modified in change set A")),
+    )
+    .await
+    .expect("Unable to update shared component name in change set A");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to commit_and_update_snapshot_to_visibility for change set A");
+
+    // Create a new component in change set B.
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
+        .await
+        .expect("Unable to switch to change set B");
+    let _change_set_b_component_id =
+        create_component_for_schema_name(ctx, "Docker Image", "Change Set B Component")
+            .await
+            .id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to commit_and_update_snapshot_to_visibility for change set B");
+
+    // Merge change set A to head.
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_a.id)
+        .await
+        .expect("Unable to switch to change set A");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx, true)
+        .await
+        .expect("Unable to merge change set A");
+
+    // Make sure the shared component looks as we'd expect.
+    let expected_qualification_item_count = 1;
+    let shared_component = Component::get_by_id(ctx, shared_component_id)
+        .await
+        .expect("Unable to get shared component in change set A");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "si", "name"])
+        .await
+        .expect("Unable to get attribute values for si.name");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "image"])
+        .await
+        .expect("Unable to get attribute values for domain.image");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.image");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
+        .await
+        .expect("Unable to get attribute values for qualification.qualificationItem");
+    assert_eq!(
+        av_ids.len(),
+        expected_qualification_item_count,
+        "Found more than one AV for qualification.qualificationItem"
+    );
+
+    // Merge change set B to head.
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
+        .await
+        .expect("Unable to switch to change set B");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx, true)
+        .await
+        .expect("Unable to merge change set B");
+
+    // Make sure merging change set B didn't affect anything it didn't touch.
+    let shared_component = Component::get_by_id(ctx, shared_component_id)
+        .await
+        .expect("Unable to get shared component in change set A");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "si", "name"])
+        .await
+        .expect("Unable to get attribute values for si.name");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "image"])
+        .await
+        .expect("Unable to get attribute values for domain.image");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.image");
+    let av_ids = shared_component
+        .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
+        .await
+        .expect("Unable to get attribute values for qualification.qualificationItem");
+    assert_eq!(
+        av_ids.len(),
+        expected_qualification_item_count,
+        "Found more than one AV for qualification.qualificationItem"
+    );
 }
