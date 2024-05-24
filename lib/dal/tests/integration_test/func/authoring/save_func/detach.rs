@@ -1,7 +1,7 @@
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::summary::FuncSummary;
 use dal::func::view::FuncView;
-use dal::func::FuncAssociations;
+use dal::func::AttributePrototypeBag;
 use dal::{DalContext, Func, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
@@ -33,29 +33,20 @@ async fn detach_attribute_func(ctx: &mut DalContext) {
     let func_view = FuncView::assemble(ctx, &func)
         .await
         .expect("unable to assemble a func view");
-    let (prototypes, arguments) = func_view
+    let prototypes = func_view
         .associations
         .expect("empty associations")
         .get_attribute_internals()
         .expect("could not get internals");
-    let prototypes = prototypes
+    let prototype: AttributePrototypeBag = prototypes
         .into_iter()
-        .filter(|p| p.schema_variant_id != Some(schema_variant_id))
-        .collect();
-    FuncAuthoringClient::save_func(
-        ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        func_view.code,
-        Some(FuncAssociations::Attribute {
-            prototypes,
-            arguments,
-        }),
-    )
-    .await
-    .expect("unable to save the func");
+        .find(|p| p.schema_variant_id == Some(schema_variant_id))
+        .expect("has a prototype for this schema variant");
+
+    FuncAuthoringClient::remove_attribute_prototype(ctx, prototype.id)
+        .await
+        .expect("could not remove attribute prototype");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

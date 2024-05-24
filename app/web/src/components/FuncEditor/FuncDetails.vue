@@ -209,8 +209,7 @@
                 editingFunc.associations &&
                 editingFunc.associations.type === 'attribute'
               "
-              v-model="editingFunc.associations"
-              @change="updateFunc"
+              :funcId="editingFunc.id"
             />
           </TreeNode>
 
@@ -240,7 +239,7 @@
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="editingFunc.kind === FuncKind.Attribute && !schemaVariantId"
+        v-if="editingFunc.kind === FuncKind.Attribute"
         label="Bindings"
         slug="bindings"
       >
@@ -251,7 +250,6 @@
           "
           ref="detachRef"
           v-model="editingFunc.associations"
-          :schemaVariantId="schemaVariantId"
           @change="updateFunc"
         />
       </TabGroupItem>
@@ -271,7 +269,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, provide, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
   ErrorMessage,
@@ -285,7 +283,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncArgument, FuncKind } from "@/api/sdf/dal/func";
+import { FuncKind } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
@@ -327,17 +325,6 @@ const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
 );
 const updateFuncReqStatus = funcStore.getRequestStatus("UPDATE_FUNC", funcId);
 const { selectedFuncId, selectedFuncSummary } = storeToRefs(funcStore);
-
-const funcArgumentsIdMap = computed(() =>
-  editingFunc?.value?.associations?.type === "attribute"
-    ? editingFunc?.value?.associations.arguments.reduce((idMap, arg) => {
-        idMap[arg.id] = arg;
-        return idMap;
-      }, {} as { [key: string]: FuncArgument })
-    : {},
-);
-
-provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
 const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
 const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));

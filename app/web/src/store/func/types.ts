@@ -1,5 +1,4 @@
 import { PropKind } from "@/api/sdf/dal/prop";
-import { FuncArgument } from "@/api/sdf/dal/func";
 import { ActionKind } from "@/store/actions.store";
 
 export interface ActionAssociations {
@@ -53,7 +52,6 @@ export interface AttributePrototypeBag {
 export interface AttributeAssociations {
   type: "attribute";
   prototypes: AttributePrototypeBag[];
-  arguments: FuncArgument[];
 }
 
 export type FuncAssociations =

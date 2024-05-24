@@ -1,7 +1,6 @@
 use dal::action::prototype::ActionKind;
 use dal::attribute::prototype::argument::AttributePrototypeArgument;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::FuncArgumentBag;
 use dal::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncAssociations};
 use dal::prop::PropPath;
 use dal::schema::variant::leaves::LeafInputLocation;
@@ -124,15 +123,19 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
                     input_socket_id: Some(input_socket_id),
                 }],
             }],
-            arguments: vec![FuncArgumentBag {
-                id: func_argument_id,
-                name: "entries".to_string(),
-                kind: FuncArgumentKind::Array,
-                element_kind: Some(FuncArgumentKind::Object),
-            }],
         }, // expected
         associations.expect("no associations found") // actual
     );
+
+    let mut func_arguments = FuncArgument::list_for_func(ctx, func_id)
+        .await
+        .expect("could not list func arguments");
+    let func_argument = func_arguments.pop().expect("empty func arguments");
+    assert!(func_arguments.is_empty());
+    assert_eq!(func_argument_id, func_argument.id);
+    assert_eq!("entries", func_argument.name.as_str());
+    assert_eq!(FuncArgumentKind::Array, func_argument.kind);
+    assert_eq!(Some(FuncArgumentKind::Object), func_argument.element_kind);
 }
 
 #[test]
@@ -233,15 +236,18 @@ async fn for_attribute_with_prop_input(ctx: &mut DalContext) {
                     input_socket_id: None,
                 }],
             }],
-            arguments: vec![FuncArgumentBag {
-                id: func_argument_id,
-                name: "hesperus".to_string(),
-                kind: FuncArgumentKind::String,
-                element_kind: None,
-            }],
         }, // expected
         associations.expect("no associations found") // actual
     );
+    let mut func_arguments = FuncArgument::list_for_func(ctx, func_id)
+        .await
+        .expect("could not list func arguments");
+    let func_argument = func_arguments.pop().expect("empty func arguments");
+    assert!(func_arguments.is_empty());
+    assert_eq!(func_argument_id, func_argument.id);
+    assert_eq!("hesperus", func_argument.name.as_str());
+    assert_eq!(FuncArgumentKind::String, func_argument.kind);
+    assert_eq!(None, func_argument.element_kind);
 }
 
 #[test]

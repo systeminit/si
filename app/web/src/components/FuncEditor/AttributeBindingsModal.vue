@@ -43,11 +43,7 @@
       <ul>
         <li v-for="binding in editableBindings" :key="binding.funcArgumentId">
           <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-            {{
-              funcArgumentsIdMap
-                ? funcArgumentsIdMap[binding.funcArgumentId]?.name ?? "none"
-                : "none"
-            }}
+            {{ funcArgumentName(binding.funcArgumentId) ?? "none" }}
           </h1>
           <SelectMenu v-model="binding.binding" :options="inputSourceOptions" />
         </li>
@@ -57,13 +53,16 @@
 </template>
 
 <script lang="ts" setup>
-import { inject, watch, computed, ref, Ref } from "vue";
+import { watch, computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Modal, useModal } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributePrototypeBag, OutputLocation } from "@/store/func/types";
-import { FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore, OutputLocationOption } from "@/store/func/funcs.store";
+import {
+  useFuncStore,
+  OutputLocationOption,
+  FuncArgumentId,
+} from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 function nilId(): string {
@@ -121,8 +120,13 @@ const editableBindings = ref<EditingBinding[]>([]);
 
 const prototypeId = ref<string | undefined>();
 
-const funcArgumentsIdMap =
-  inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
+const funcArgumentsById = computed(() => funcStore.funcArgumentsById);
+
+const funcArgumentName = (
+  funcArgumentId: FuncArgumentId,
+): string | undefined => {
+  return funcArgumentsById.value[funcArgumentId]?.name;
+};
 
 const editedPrototype = computed(() => ({
   id: prototypeId.value ?? nilId(),
@@ -140,7 +144,12 @@ const editedPrototype = computed(() => ({
     ({ id, funcArgumentId, binding }) => ({
       id: id ?? nilId(),
       funcArgumentId: funcArgumentId ?? nilId(),
-      inputSocketId: binding.value as string,
+      inputSocketId: binding.label.includes("Input Socket")
+        ? (binding.value as string)
+        : undefined,
+      propId: binding.label.includes("Attribute")
+        ? (binding.value as string)
+        : undefined,
     }),
   ),
 }));
@@ -262,12 +271,13 @@ const open = (prototype: AttributePrototypeBag) => {
 
   editableBindings.value =
     prototype?.prototypeArguments.map(
-      ({ id, funcArgumentId, inputSocketId }) => ({
+      ({ id, funcArgumentId, inputSocketId, propId }) => ({
         id: id ?? undefined,
         funcArgumentId,
         binding:
-          inputSourceOptions.value.find((opt) => opt.value === inputSocketId) ??
-          noneSource,
+          inputSourceOptions.value.find(
+            (opt) => opt.value === inputSocketId || opt.value === propId,
+          ) ?? noneSource,
       }),
     ) ?? [];
 

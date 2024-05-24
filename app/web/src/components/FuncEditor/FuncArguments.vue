@@ -12,21 +12,29 @@
         placeholder="New argument name..."
         :disabled="disabled"
       />
-      <SelectMenu
+      <VormInput
         v-model="newArg.kind"
-        class="flex-auto"
+        noLabel
+        type="dropdown"
         :options="kindOptions"
-        :disabled="disabled"
+        @change="
+          updateArgument(
+            newArg.id,
+            newArg.name,
+            newArg.kind,
+            newArg.elementKind,
+          )
+        "
       />
       <VButton
         label="Add"
         tone="success"
         :disabled="disabled"
-        @click="addArgument"
+        @click="createArgument"
       />
     </Inline>
     <ul>
-      <Inline v-for="arg in editingArgs" :key="arg.id" alignY="center">
+      <Inline v-for="arg in funcArguments" :key="arg.id" alignY="center">
         <VormInput
           :id="`arg-name-${arg.id}`"
           v-model="arg.name"
@@ -34,19 +42,20 @@
           noLabel
           placeholder="Argument name"
           :disabled="disabled"
-          @blur="saveArguments"
+          @blur="updateArgument(arg.id, arg.name, arg.kind, arg.elementKind)"
         />
-        <SelectMenu
+        <VormInput
           v-model="arg.kind"
+          noLabel
+          type="dropdown"
           :options="kindOptions"
-          :disabled="disabled"
-          @change="saveArguments"
+          @change="updateArgument(arg.id, arg.name, arg.kind, arg.elementKind)"
         />
         <VButton
           label="Delete"
           tone="destructive"
           :disabled="disabled"
-          @click="deleteArgument(arg.name)"
+          @click="deleteArgument(arg.id)"
         />
       </Inline>
     </ul>
@@ -54,12 +63,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { Inline, VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
-import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { AttributeAssociations } from "@/store/func/types";
-import { nilId } from "@/utils/nilId";
+import { Option } from "@/components/SelectMenu.vue";
+import { useFuncStore } from "@/store/func/funcs.store";
+
+const props = defineProps<{
+  funcId: string;
+  disabled?: boolean;
+}>();
+
+const funcsStore = useFuncStore();
 
 const generateKindOptions = () => {
   const options: Option[] = [];
@@ -69,89 +84,56 @@ const generateKindOptions = () => {
   return options;
 };
 
-const kindToOption = (kind?: FuncArgumentKind): Option =>
-  kind
-    ? { label: kind as string, value: kind as string }
-    : { label: "None", value: 0 };
-
 const kindOptions = generateKindOptions();
 // we haven't implemented element kinds yet
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
-const props = defineProps<{
-  modelValue: AttributeAssociations;
-  disabled?: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: "update:modelValue", v: AttributeAssociations): void;
-  (e: "change", v: AttributeAssociations): void;
-}>();
-
-const defaultNewArg = {
-  id: nilId(),
+const newArg = ref<FuncArgument>({
+  id: "",
   name: "",
-  kind: kindToOption(FuncArgumentKind.String),
-  elementKind: kindToOption(),
-};
+  kind: FuncArgumentKind.String,
+});
 
-const newArg = ref<EditingFuncArgument>(defaultNewArg);
-
-interface EditingFuncArgument {
-  id: string;
-  name: string;
-  kind: Option;
-  elementKind?: Option;
-}
-
-const argsToEditingArgs = (args: FuncArgument[]) =>
-  args.map(({ id, name, kind, elementKind }) => ({
-    id,
-    name,
-    kind: kindToOption(kind),
-    elementKind: kindToOption(elementKind),
-  }));
-
-const editingArgsToArgs = (editingArgs: EditingFuncArgument[]) =>
-  editingArgs.map(({ id, name, kind, elementKind }) => ({
-    id,
-    name,
-    kind: kind.value as FuncArgumentKind,
-    elementKind: elementKind?.value
-      ? (elementKind.value as FuncArgumentKind)
-      : undefined,
-  }));
-
-const associations = ref(props.modelValue);
-const editingArgs = ref<EditingFuncArgument[]>(
-  argsToEditingArgs(props.modelValue.arguments),
-);
-
-watch(
-  () => props.modelValue,
-  (mv) => {
-    associations.value = mv;
-    editingArgs.value = argsToEditingArgs(associations.value.arguments);
-  },
-  { immediate: true },
-);
-
-const addArgument = async () => {
-  editingArgs.value.push({ ...newArg.value });
+const resetNewArg = () => {
   newArg.value.name = "";
-  newArg.value.kind = kindToOption(FuncArgumentKind.String);
-
-  saveArguments();
+  newArg.value.kind = FuncArgumentKind.String;
 };
 
-const saveArguments = () => {
-  associations.value.arguments = editingArgsToArgs(editingArgs.value);
-  emit("change", associations.value);
-  emit("update:modelValue", associations.value);
+const createArgument = async () => {
+  await funcsStore.CREATE_FUNC_ARGUMENT(
+    props.funcId,
+    newArg.value.name,
+    newArg.value.kind,
+    newArg.value.elementKind,
+  );
+
+  resetNewArg();
 };
 
-const deleteArgument = async (name: string) => {
-  editingArgs.value = editingArgs.value.filter((a) => a.name !== name);
-  saveArguments();
+const updateArgument = async (
+  funcArgumentId: string,
+  name: string,
+  kind: FuncArgumentKind,
+  elementKind?: FuncArgumentKind,
+) => {
+  await funcsStore.UPDATE_FUNC_ARGUMENT(
+    props.funcId,
+    funcArgumentId,
+    name,
+    kind,
+    elementKind,
+  );
 };
+
+const funcArguments = computed(
+  () => funcsStore.funcArgumentsByFuncId[props.funcId],
+);
+
+const deleteArgument = async (funcArgumentId: string) => {
+  await funcsStore.DELETE_FUNC_ARGUMENT(props.funcId, funcArgumentId);
+};
+
+onMounted(() => {
+  funcsStore.FETCH_FUNC_ARGUMENT_LIST(props.funcId);
+});
 </script>

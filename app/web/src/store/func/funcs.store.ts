@@ -5,7 +5,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { FuncArgument, FuncArgumentKind, FuncKind } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
@@ -18,6 +18,7 @@ import { useComponentsStore } from "../components.store";
 
 import {
   AttributePrototypeBag,
+  AttributePrototypeArgumentBag,
   CreateFuncOptions,
   FuncAssociations,
   InputSocketView,
@@ -25,9 +26,11 @@ import {
   OutputLocation,
   OutputSocketView,
 } from "./types";
+
 import { useRouterStore } from "../router.store";
 
 export type FuncId = string;
+export type FuncArgumentId = string;
 
 export type FuncSummary = {
   id: string;
@@ -103,6 +106,8 @@ export const useFuncStore = () => {
     defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
         funcsById: {} as Record<FuncId, FuncSummary>,
+        funcArgumentsById: {} as Record<FuncArgumentId, FuncArgument>,
+        funcArgumentsByFuncId: {} as Record<FuncId, FuncArgument[]>,
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
         // map from schema variant ids to the input sources
         inputSourceSockets: {} as InputSocketViews,
@@ -125,11 +130,16 @@ export const useFuncStore = () => {
         selectedFuncDetails(): FuncWithDetails | undefined {
           return this.funcDetailsById[this.urlSelectedFuncId || ""];
         },
+        funcArguments(): FuncArgument[] | undefined {
+          return this.selectedFuncId
+            ? this.funcArgumentsByFuncId[this.selectedFuncId]
+            : undefined;
+        },
 
         nameForSchemaVariantId: (_state) => (schemaVariantId: string) =>
           componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
 
-        funcById: (state) => (funcId: string) => state.funcDetailsById[funcId],
+        funcById: (state) => (funcId: FuncId) => state.funcDetailsById[funcId],
 
         funcList: (state) => _.values(state.funcsById),
 
@@ -209,6 +219,12 @@ export const useFuncStore = () => {
           const prop = this.propForId(propId);
           if (prop) {
             return `Attribute: ${prop.path}`;
+          }
+        },
+        inputSocketIdToSourceName(inputSocketId: string) {
+          const socket = this.inputSocketForId(inputSocketId);
+          if (socket) {
+            return `Input Socket: ${socket.name}`;
           }
         },
 
@@ -356,6 +372,155 @@ export const useFuncStore = () => {
               };
             },
             keyRequestStatusBy: func.id,
+          });
+        },
+        async CREATE_ATTRIBUTE_PROTOTYPE(
+          funcId: FuncId,
+          schemaVariantId: string,
+          prototypeArguments: AttributePrototypeArgumentBag[],
+          componentId?: string,
+          propId?: string,
+          outputSocketId?: string,
+        ) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/create_attribute_prototype",
+            params: {
+              funcId,
+              schemaVariantId,
+              componentId,
+              propId,
+              outputSocketId,
+              prototypeArguments,
+              ...visibility,
+            },
+          });
+        },
+        async UPDATE_ATTRIBUTE_PROTOTYPE(
+          funcId: FuncId,
+          attributePrototypeId: string,
+          prototypeArguments: AttributePrototypeArgumentBag[],
+          propId?: string,
+          outputSocketId?: string,
+        ) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/update_attribute_prototype",
+            params: {
+              funcId,
+              attributePrototypeId,
+              propId,
+              outputSocketId,
+              prototypeArguments,
+              ...visibility,
+            },
+          });
+        },
+        async REMOVE_ATTRIBUTE_PROTOTYPE(attributePrototypeId: string) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/remove_attribute_prototype",
+            params: {
+              attributePrototypeId,
+              ...visibility,
+            },
+          });
+        },
+        async CREATE_FUNC_ARGUMENT(
+          funcId: FuncId,
+          name: string,
+          kind: FuncArgumentKind,
+          elementKind?: FuncArgumentKind,
+        ) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/create_func_argument",
+            params: {
+              funcId,
+              name,
+              kind,
+              elementKind,
+              ...visibility,
+            },
+          });
+        },
+        async UPDATE_FUNC_ARGUMENT(
+          funcId: FuncId,
+          funcArgumentId: FuncArgumentId,
+          name: string,
+          kind: FuncArgumentKind,
+          elementKind?: FuncArgumentKind,
+        ) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/update_func_argument",
+            params: {
+              funcId,
+              funcArgumentId,
+              name,
+              kind,
+              elementKind,
+              ...visibility,
+            },
+          });
+        },
+        async DELETE_FUNC_ARGUMENT(
+          funcId: FuncId,
+          funcArgumentId: FuncArgumentId,
+        ) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "func/delete_func_argument",
+            params: {
+              funcId,
+              funcArgumentId,
+              ...visibility,
+            },
+          });
+        },
+        async FETCH_FUNC_ARGUMENT_LIST(funcId: FuncId) {
+          return new ApiRequest<{ funcArguments: FuncArgument[] }>({
+            url: "func/list_func_arguments",
+            params: {
+              funcId,
+              ...visibility,
+            },
+            onSuccess: (response) => {
+              this.funcArgumentsByFuncId[funcId] = response.funcArguments;
+              for (const argument of response.funcArguments) {
+                this.funcArgumentsById[argument.id] = argument;
+              }
+            },
           });
         },
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
@@ -605,6 +770,15 @@ export const useFuncStore = () => {
             },
           },
           {
+            eventType: "FuncArgumentsSaved",
+            callback: (data) => {
+              if (data.changeSetId !== selectedChangeSetId) return;
+              if (data.funcId !== this.selectedFuncId) return;
+              this.FETCH_FUNC_ARGUMENT_LIST(data.funcId);
+              this.FETCH_FUNC_DETAILS(data.funcId);
+            },
+          },
+          {
             eventType: "FuncSaved",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
@@ -618,11 +792,14 @@ export const useFuncStore = () => {
 
               if (this.selectedFuncId) {
                 // only fetch if we don't have this one already in our state,
+                // or if the func kind is attribute
                 // otherwise we can overwrite functions with their previous value
                 // before the save queue is drained.
                 if (
-                  typeof this.funcDetailsById[this.selectedFuncId] ===
-                    "undefined" &&
+                  (typeof this.funcDetailsById[this.selectedFuncId] ===
+                    "undefined" ||
+                    this.funcDetailsById[this.selectedFuncId]?.kind ===
+                      FuncKind.Attribute) &&
                   data.funcId === this.selectedFuncId
                 ) {
                   this.FETCH_FUNC_DETAILS(this.selectedFuncId);

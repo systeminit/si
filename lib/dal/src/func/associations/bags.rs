@@ -12,21 +12,12 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::attribute::prototype::AttributePrototypeEventualParent;
-use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
+use crate::func::argument::FuncArgumentId;
 use crate::func::associations::{FuncAssociationsError, FuncAssociationsResult};
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, InputSocketId,
     OutputSocketId, PropId, SchemaVariantId,
 };
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FuncArgumentBag {
-    pub id: FuncArgumentId,
-    pub name: String,
-    pub kind: FuncArgumentKind,
-    pub element_kind: Option<FuncArgumentKind>,
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]

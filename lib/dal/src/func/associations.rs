@@ -6,6 +6,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
+use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
@@ -21,10 +22,8 @@ use crate::{
 
 mod bags;
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
 pub use bags::AttributePrototypeArgumentBag;
 pub use bags::AttributePrototypeBag;
-pub use bags::FuncArgumentBag;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -61,7 +60,6 @@ pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Attribute {
         prototypes: Vec<AttributePrototypeBag>,
-        arguments: Vec<FuncArgumentBag>,
     },
     #[serde(rename_all = "camelCase")]
     Authentication {
@@ -114,8 +112,6 @@ impl FuncAssociations {
                 )
             }
             FuncKind::Attribute => {
-                let arguments = FuncArgument::list_for_func(ctx, func.id).await?;
-
                 let mut prototypes = Vec::new();
                 for attribute_prototype_id in
                     AttributePrototype::list_ids_for_func_id(ctx, func.id).await?
@@ -126,21 +122,7 @@ impl FuncAssociations {
 
                 let ts_types = Self::compile_attribute_function_types(ctx, &prototypes).await?;
 
-                (
-                    Some(Self::Attribute {
-                        prototypes,
-                        arguments: arguments
-                            .iter()
-                            .map(|arg| FuncArgumentBag {
-                                id: arg.id,
-                                name: arg.name.to_owned(),
-                                kind: arg.kind,
-                                element_kind: arg.element_kind.to_owned(),
-                            })
-                            .collect(),
-                    }),
-                    ts_types,
-                )
+                (Some(Self::Attribute { prototypes }), ts_types)
             }
             FuncKind::Authentication => {
                 let schema_variant_ids = SchemaVariant::list_for_auth_func(ctx, func.id).await?;
@@ -277,14 +259,9 @@ impl FuncAssociations {
         }
     }
 
-    pub fn get_attribute_internals(
-        &self,
-    ) -> FuncAssociationsResult<(Vec<AttributePrototypeBag>, Vec<FuncArgumentBag>)> {
+    pub fn get_attribute_internals(&self) -> FuncAssociationsResult<Vec<AttributePrototypeBag>> {
         match self {
-            FuncAssociations::Attribute {
-                prototypes,
-                arguments,
-            } => Ok((prototypes.to_owned(), arguments.to_owned())),
+            FuncAssociations::Attribute { prototypes } => Ok(prototypes.to_owned()),
             associations => Err(FuncAssociationsError::UnexpectedFuncAssociationsVariant(
                 associations.into(),
                 FuncAssociationsDiscriminants::Attribute,

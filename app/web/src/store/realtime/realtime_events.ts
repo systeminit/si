@@ -286,4 +286,8 @@ export type WsEventPayloadMap = {
     funcId: FuncId;
     changeSetId: ChangeSetId;
   };
+  FuncArgumentsSaved: {
+    funcId: FuncId;
+    changeSetId: ChangeSetId;
+  };
 };

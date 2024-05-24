@@ -5,8 +5,8 @@ use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
-use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId};
-use crate::func::associations::{FuncArgumentBag, FuncAssociations};
+use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::associations::FuncAssociations;
 use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind};
@@ -40,17 +40,21 @@ pub(crate) async fn update_associations(
                 ))
             }
         },
-        FuncKind::Attribute => match associations {
-            FuncAssociations::Attribute {
-                prototypes,
-                arguments,
-            } => update_attribute_associations(ctx, func, prototypes, arguments).await,
-            invalid => {
-                return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
-                    invalid, func.id, func.kind,
-                ))
-            }
-        },
+        FuncKind::Attribute => Ok(()),
+        // don't update attribute associations this way
+        // attribute associations are updated through calling
+        // create/remove/update attribute binding directly
+
+        // FuncKind::Attribute => match associations {
+        //     FuncAssociations::Attribute { prototypes } => {
+        //         update_attribute_associations(ctx, func, prototypes).await
+        //     }
+        //     invalid => {
+        //         return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
+        //             invalid, func.id, func.kind,
+        //         ))
+        //     }
+        // },
         FuncKind::Authentication => match associations {
             FuncAssociations::Authentication { schema_variant_ids } => {
                 update_authentication_associations(ctx, func, schema_variant_ids).await
@@ -182,14 +186,7 @@ async fn update_attribute_associations(
     ctx: &DalContext,
     func: &Func,
     prototypes: Vec<AttributePrototypeBag>,
-    arguments: Vec<FuncArgumentBag>,
 ) -> FuncAuthoringResult<()> {
-    // First, modify the arguments because they dictate what we can do within the
-    // attribute subsystem.
-    save_attr_func_arguments(ctx, func, arguments).await?;
-
-    // Now that we know what func arguments exist and have been modified, we can work
-    // within the attribute subsystem.
     let backend_response_type =
         save_attr_func_prototypes(ctx, func, prototypes, true, None).await?;
 
@@ -343,7 +340,7 @@ async fn save_attr_func_prototypes(
 // By default, remove the attribute prototype. If the user wishes to reset the prototype, they can,
 // but only if the prototype is for an attribute value (i.e. if it is a component-specific
 // prototype). If the prototype cannot be reset, it will be removed.
-async fn remove_or_reset_attribute_prototype(
+pub(crate) async fn remove_or_reset_attribute_prototype(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
     attempt_to_reset_prototype: bool,
@@ -361,44 +358,7 @@ async fn remove_or_reset_attribute_prototype(
     Ok(())
 }
 
-async fn save_attr_func_arguments(
-    ctx: &DalContext,
-    func: &Func,
-    arguments: Vec<FuncArgumentBag>,
-) -> FuncAuthoringResult<()> {
-    let mut id_set = HashSet::new();
-    for arg in &arguments {
-        // TODO(nick): don't use the nil id in the future.
-        let func_argument_id = if FuncArgumentId::NONE == arg.id {
-            let func_argument =
-                FuncArgument::new(ctx, arg.name.as_str(), arg.kind, arg.element_kind, func.id)
-                    .await?;
-            func_argument.id
-        } else {
-            FuncArgument::modify_by_id(ctx, arg.id, |existing_arg| {
-                arg.name.clone_into(&mut existing_arg.name);
-                existing_arg.kind = arg.kind;
-                existing_arg.element_kind = arg.element_kind;
-
-                Ok(())
-            })
-            .await?;
-            arg.id
-        };
-
-        id_set.insert(func_argument_id);
-    }
-
-    for func_arg in FuncArgument::list_for_func(ctx, func.id).await? {
-        if !id_set.contains(&func_arg.id) {
-            FuncArgument::remove(ctx, func_arg.id).await?;
-        }
-    }
-
-    Ok(())
-}
-
-async fn save_attr_func_proto_arguments(
+pub(crate) async fn save_attr_func_proto_arguments(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
     arguments: Vec<AttributePrototypeArgumentBag>,
@@ -406,12 +366,6 @@ async fn save_attr_func_proto_arguments(
     let mut id_set = HashSet::new();
 
     for arg in &arguments {
-        // Ensure that the user is not also requesting a new func argument inside the attribute
-        // prototype argument request. They should use the func argument bag to do that.
-        if arg.func_argument_id == FuncArgumentId::NONE {
-            return Err(FuncAuthoringError::FuncArgumentMustExist(arg.id));
-        }
-
         // Ensure the func argument exists before continuing. By continuing, we will not add the
         // attribute prototype to the id set and will be deleted.
         if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
@@ -466,7 +420,7 @@ async fn save_attr_func_proto_arguments(
     Ok(())
 }
 
-async fn create_new_attribute_prototype(
+pub(crate) async fn create_new_attribute_prototype(
     ctx: &DalContext,
     prototype_bag: &AttributePrototypeBag,
     func_id: FuncId,
