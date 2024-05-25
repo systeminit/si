@@ -53,6 +53,8 @@ pub enum ActionError {
     PrototypeNotFoundForAction(ActionId),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("Unable to determine kind for action: {0}")]
+    UnableToGetKind(ActionId),
     #[error("Workspace Snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]

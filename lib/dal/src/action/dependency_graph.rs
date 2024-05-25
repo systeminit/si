@@ -8,7 +8,10 @@ use crate::{
     Component, ComponentId, DalContext,
 };
 
-use super::ActionResult;
+use super::{
+    prototype::{ActionKind, ActionPrototype},
+    ActionError, ActionResult,
+};
 
 #[derive(Debug, Clone)]
 pub struct ActionDependencyGraph {
@@ -37,8 +40,11 @@ impl ActionDependencyGraph {
         //         * For each source ComponentId (B):
         //           * All Actions for Component A depend on All actions for Component B
         let mut component_dependencies: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+        let mut component_reverse_dependencies: HashMap<ComponentId, HashSet<ComponentId>> =
+            HashMap::new();
         let mut actions_by_component_id: HashMap<ComponentId, HashSet<ActionId>> = HashMap::new();
         let mut action_dependency_graph = Self::new();
+        let mut action_kinds: HashMap<ActionId, ActionKind> = HashMap::new();
 
         // Need to get all actions that are still in the "queue", including those that have failed,
         // or are currently running.
@@ -51,6 +57,9 @@ impl ActionDependencyGraph {
                     .or_default()
                     .insert(action_id);
             }
+            let action_prototype_id = Action::prototype_id(ctx, action_id).await?;
+            let action_prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
+            action_kinds.insert(action_id, action_prototype.kind);
         }
 
         // TODO: Account for explicitly defiend dependencies between actions. These should be edges
@@ -77,28 +86,80 @@ impl ActionDependencyGraph {
                     .or_default()
                     .insert(inferred_connection.from_component_id);
             }
+
+            // Destroy Actions follow the flow of data backwards, so we need the reverse dependency
+            // graph between the components.
+            for outgoing_connection in component.outgoing_connections(ctx).await? {
+                component_reverse_dependencies
+                    .entry(component_id)
+                    .or_default()
+                    .insert(outgoing_connection.to_component_id);
+            }
+            for inferred_outgoing_connection in component.inferred_outgoing_connections(ctx).await?
+            {
+                if inferred_outgoing_connection.from_component_id != component_id {
+                    continue;
+                }
+
+                component_reverse_dependencies
+                    .entry(component_id)
+                    .or_default()
+                    .insert(inferred_outgoing_connection.to_component_id);
+            }
         }
 
         // Each Component's Actions need to be marked as depending on the Actions that the
         // Component itself has been determined to be depending on.
         for (component_id, dependencies) in component_dependencies {
-            actions_by_component_id
-                .get(&component_id)
-                .into_iter()
-                .for_each(|component_action_ids| {
-                    for component_action_id in component_action_ids {
-                        for dependency_compoonent_id in &dependencies {
-                            for dependency_action_id in actions_by_component_id
-                                .get(dependency_compoonent_id)
-                                .cloned()
-                                .unwrap_or_default()
-                            {
-                                action_dependency_graph
-                                    .action_depends_on(*component_action_id, dependency_action_id);
-                            }
+            if let Some(component_action_ids) = actions_by_component_id.get(&component_id) {
+                for component_action_id in component_action_ids {
+                    let action_kind = action_kinds
+                        .get(component_action_id)
+                        .copied()
+                        .ok_or(ActionError::UnableToGetKind(*component_action_id))?;
+                    if action_kind == ActionKind::Destroy {
+                        continue;
+                    }
+
+                    for dependency_component_id in &dependencies {
+                        for dependency_action_id in actions_by_component_id
+                            .get(dependency_component_id)
+                            .cloned()
+                            .unwrap_or_default()
+                        {
+                            action_dependency_graph
+                                .action_depends_on(*component_action_id, dependency_action_id);
                         }
                     }
-                });
+                }
+            }
+        }
+
+        // We get to do it all over again, but this time using the reverse dependency graph for the
+        // Destroy Actions.
+        for (component_id, reverse_dependencies) in component_reverse_dependencies {
+            if let Some(component_action_ids) = actions_by_component_id.get(&component_id) {
+                for component_action_id in component_action_ids {
+                    let action_kind = action_kinds
+                        .get(component_action_id)
+                        .copied()
+                        .ok_or(ActionError::UnableToGetKind(*component_action_id))?;
+                    if action_kind != ActionKind::Destroy {
+                        continue;
+                    }
+
+                    for dependency_compoonent_id in &reverse_dependencies {
+                        for dependency_action_id in actions_by_component_id
+                            .get(dependency_compoonent_id)
+                            .cloned()
+                            .unwrap_or_default()
+                        {
+                            action_dependency_graph
+                                .action_depends_on(*component_action_id, dependency_action_id);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(action_dependency_graph)
