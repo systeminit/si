@@ -3,7 +3,8 @@ use std::collections::{HashSet, VecDeque};
 use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
+use si_events::{ulid::Ulid, ActionResultState};
+use si_layer_cache::LayerDbError;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -47,6 +48,8 @@ pub enum ActionError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("Layer DB error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("prototype not found for action: {0}")]
@@ -556,7 +559,7 @@ impl Action {
 
         let prototype_id = Action::prototype_id(ctx, id).await?;
 
-        let (_func_run_value, resource) =
+        let (func_run_value, resource) =
             ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
         if matches!(
@@ -566,6 +569,17 @@ impl Action {
             ctx.workspace_snapshot()?
                 .remove_node_by_id(ctx.change_set()?, id)
                 .await?;
+
+            ctx.layer_db()
+                .func_run()
+                .set_action_result_state(
+                    func_run_value.func_run_id(),
+                    ActionResultState::Success,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
             let component = Component::get_by_id(ctx, component_id).await?;
 
             if component.to_delete()
@@ -575,6 +589,15 @@ impl Action {
             }
         } else {
             Action::set_state(ctx, id, ActionState::Failed).await?;
+            ctx.layer_db()
+                .func_run()
+                .set_action_result_state(
+                    func_run_value.func_run_id(),
+                    ActionResultState::Failure,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
         }
         WsEvent::action_list_updated(ctx)
             .await?

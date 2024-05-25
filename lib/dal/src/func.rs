@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
+use si_events::CasValue;
 use si_events::{ulid::Ulid, ContentHash};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
@@ -201,9 +202,25 @@ impl Func {
         let timestamp = Timestamp::now();
         let _finalized_once = false;
 
-        let code_base64 = code_base64.map(Into::into);
-
-        let code_blake3 = ContentHash::new(code_base64.as_deref().unwrap_or("").as_bytes());
+        let code_base64: Option<String> = code_base64.map(Into::into);
+        let code_blake3 = if let Some(code) = code_base64.as_ref() {
+            let code_json_value: serde_json::Value = code.clone().into();
+            let code_cas_value: CasValue = code_json_value.into();
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            hash
+        } else {
+            // Why are we doing this? Because the struct gods demand it. I have feelings.
+            ContentHash::new("".as_bytes())
+        };
 
         let content = FuncContentV1 {
             timestamp,

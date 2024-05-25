@@ -8,7 +8,7 @@ use si_events::{
     FuncRunBuilder, FuncRunId, Tenancy, UserPk, WorkspacePk,
 };
 use si_layer_cache::db::serialize;
-use si_layer_cache::{persister::PersistStatus, LayerDb};
+use si_layer_cache::LayerDb;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
@@ -42,16 +42,10 @@ async fn write_to_db() {
     let key_str: Arc<str> = func_run.id().to_string().into();
     let value: Arc<FuncRun> = Arc::new(func_run);
 
-    let status = ldb
-        .func_run()
+    ldb.func_run()
         .write(value.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run().cache.memory_cache().get(&key_str).await;
@@ -121,16 +115,10 @@ async fn update() {
     let key_str: Arc<str> = func_run.id().to_string().into();
     let value: Arc<FuncRun> = Arc::new(func_run);
 
-    let status = ldb
-        .func_run()
+    ldb.func_run()
         .write(value.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run().cache.memory_cache().get(&key_str).await;
@@ -167,16 +155,10 @@ async fn update() {
     update_func_run_inner.set_state_to_success();
     let update_func_run = Arc::new(update_func_run_inner);
 
-    let status = ldb
-        .func_run()
+    ldb.func_run()
         .write(update_func_run.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run().cache.memory_cache().get(&key_str).await;
@@ -299,16 +281,10 @@ async fn write_and_read_many_for_workspace_id() {
     let expected: HashSet<FuncRunId> = HashSet::from_iter(values.iter().map(|v| v.id()));
 
     for value in values {
-        let status = ldb
-            .func_run()
+        ldb.func_run()
             .write(value.clone(), None, tenancy, actor)
             .await
             .expect("failed to write to layerdb");
-
-        match status.get_status().await.expect("failed to get status") {
-            PersistStatus::Finished => {}
-            PersistStatus::Error(e) => panic!("Write failed; {e}"),
-        }
     }
 
     let read_many_in_workspace_values = ldb

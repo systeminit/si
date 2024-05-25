@@ -4667,6 +4667,7 @@ dependencies = [
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
+ "si-events",
  "si-layer-cache",
  "si-pkg",
  "si-posthog",

@@ -11,6 +11,7 @@ use dal::input_sources::InputSourcesError;
 use dal::schema::variant::SchemaVariantError;
 use dal::{workspace_snapshot::WorkspaceSnapshotError, FuncId, TransactionsError};
 use dal::{ChangeSetError, WsEventError};
+use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
 use crate::server::{impl_default_error_into_response, state::AppState};
@@ -18,6 +19,7 @@ use crate::server::{impl_default_error_into_response, state::AppState};
 pub mod create_func;
 pub mod delete_func;
 pub mod get_func;
+pub mod get_func_run;
 pub mod list_funcs;
 pub mod list_input_sources;
 pub mod save_and_exec;
@@ -49,6 +51,8 @@ pub enum FuncError {
     Hyper(#[from] hyper::http::Error),
     #[error("input sources error: {0}")]
     InputSources(#[from] InputSourcesError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
@@ -68,6 +72,7 @@ pub fn routes() -> Router<AppState> {
         .route("/create_func", post(create_func::create_func))
         .route("/delete_func", post(delete_func::delete_func))
         .route("/get_func", get(get_func::get_func))
+        .route("/get_func_run", get(get_func_run::get_func_run))
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route(
             "/list_input_sources",

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
+use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -48,6 +49,8 @@ pub enum JobConsumerError {
     Io(#[from] ::std::io::Error),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]

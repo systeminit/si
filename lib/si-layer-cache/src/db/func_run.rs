@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use si_events::{
-    Actor, AttributeValueId, ContentHash, FuncRun, FuncRunId, Tenancy, WebEvent, WorkspacePk,
+    ActionId, ActionResultState, Actor, AttributeValueId, ContentHash, FuncRun, FuncRunId, Tenancy,
+    WebEvent, WorkspacePk,
 };
 
 use crate::event::LayeredEventPayload;
@@ -12,7 +13,7 @@ use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+    persister::PersisterClient,
 };
 
 use super::serialize;
@@ -27,6 +28,8 @@ pub struct FuncRunDb {
     persister_client: PersisterClient,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
+    list_action_history: String,
+    get_last_action_by_action_id: String,
 }
 
 impl FuncRunDb {
@@ -39,15 +42,56 @@ impl FuncRunDb {
             ),
             get_last_qualification_for_attribute_value_id: format!(
                 "SELECT value FROM {DBNAME}
-                   WHERE attribute_value_id = $1
+                   WHERE attribute_value_id = $2 AND workspace_id = $1
                    ORDER BY updated_at DESC
                    LIMIT 1",
+            ),
+            list_action_history: format!(
+                "SELECT value FROM {DBNAME}
+                   WHERE function_kind = 'Action' AND workspace_id = $1
+                   ORDER BY updated_at DESC",
+            ),
+            get_last_action_by_action_id: format!(
+                "
+                SELECT value FROM {DBNAME}
+                  WHERE function_kind = 'Action' AND workspace_id = $1 AND action_id = $2
+                  ORDER BY updated_at DESC
+                  LIMIT 1",
             ),
         }
     }
 
+    pub async fn get_by_id(&self, func_run_id: FuncRunId) -> LayerDbResult<Option<Arc<FuncRun>>> {
+        self.cache.get(func_run_id.to_string().into()).await
+    }
+
+    pub async fn list_action_history(
+        &self,
+        workspace_id: WorkspacePk,
+    ) -> LayerDbResult<Option<Vec<FuncRun>>> {
+        let maybe_rows = self
+            .cache
+            .pg()
+            .query(&self.list_action_history, &[&workspace_id])
+            .await?;
+        let result = match maybe_rows {
+            Some(rows) => {
+                let mut result_rows = Vec::with_capacity(rows.len());
+                for row in rows.into_iter() {
+                    let postcard_bytes: Vec<u8> = row.get("value");
+                    let func_run: FuncRun = serialize::from_bytes(&postcard_bytes[..])?;
+                    result_rows.push(func_run);
+                }
+                Some(result_rows)
+            }
+            None => None,
+        };
+        Ok(result)
+    }
+
     pub async fn get_last_qualification_for_attribute_value_id(
         &self,
+        workspace_id: WorkspacePk,
         attribute_value_id: AttributeValueId,
     ) -> LayerDbResult<Option<FuncRun>> {
         let max_count = 100;
@@ -58,7 +102,7 @@ impl FuncRunDb {
                 .pg()
                 .query_opt(
                     &self.get_last_qualification_for_attribute_value_id,
-                    &[&attribute_value_id],
+                    &[&workspace_id, &attribute_value_id],
                 )
                 .await?;
             let result = match maybe_row {
@@ -85,7 +129,7 @@ impl FuncRunDb {
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
+    ) -> LayerDbResult<()> {
         let postcard_value = serialize::to_vec(&value)?;
         let cache_key: Arc<str> = value.id().to_string().into();
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
@@ -105,8 +149,9 @@ impl FuncRunDb {
             actor,
         );
         let reader = self.persister_client.write_event(event)?;
+        let _ = reader.get_status().await;
 
-        Ok(reader)
+        Ok(())
     }
 
     pub async fn set_values_and_set_state_to_success(
@@ -116,18 +161,17 @@ impl FuncRunDb {
         value_cas: Option<ContentHash>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
+    ) -> LayerDbResult<()> {
         let func_run_old = self.try_read(func_run_id).await?;
         let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
         func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
         func_run_new.set_result_value_cas_address(value_cas);
         func_run_new.set_state_to_success();
 
-        let reader = self
-            .write(Arc::new(func_run_new), None, tenancy, actor)
+        self.write(Arc::new(func_run_new), None, tenancy, actor)
             .await?;
 
-        Ok(reader)
+        Ok(())
     }
 
     pub async fn set_state_to_success(
@@ -135,16 +179,53 @@ impl FuncRunDb {
         func_run_id: FuncRunId,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
+    ) -> LayerDbResult<()> {
         let func_run_old = self.try_read(func_run_id).await?;
         let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
         func_run_new.set_state_to_success();
 
-        let reader = self
-            .write(Arc::new(func_run_new), None, tenancy, actor)
+        self.write(Arc::new(func_run_new), None, tenancy, actor)
             .await?;
 
-        Ok(reader)
+        Ok(())
+    }
+
+    pub async fn set_action_result_state(
+        &self,
+        func_run_id: FuncRunId,
+        action_result_state: ActionResultState,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<()> {
+        let func_run_old = self.try_read(func_run_id).await?;
+        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
+        func_run_new.set_action_result_state(Some(action_result_state));
+
+        self.write(Arc::new(func_run_new), None, tenancy, actor)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_action_result_state_for_action_id(
+        &self,
+        action_id: ActionId,
+        action_result_state: ActionResultState,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<()> {
+        let maybe_row = self
+            .cache
+            .pg()
+            .query_opt(&self.get_last_action_by_action_id, &[&tenancy.workspace_pk])
+            .await?
+            .ok_or_else(|| LayerDbError::ActionIdNotFound(action_id))?;
+        let mut func_run: FuncRun = serialize::from_bytes(maybe_row.get("value"))?;
+        func_run.set_action_result_state(Some(action_result_state));
+
+        self.write(Arc::new(func_run), None, tenancy, actor).await?;
+
+        Ok(())
     }
 
     pub async fn read(&self, key: FuncRunId) -> LayerDbResult<Option<Arc<FuncRun>>> {

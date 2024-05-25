@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunValue;
@@ -288,6 +290,54 @@ impl ActionPrototype {
             .await
             .map_err(|_| ActionPrototypeError::FuncRunnerSend)??;
 
+        let content_value: Option<si_events::CasValue> =
+            func_run_value.value().cloned().map(Into::into);
+        let content_unprocessed_value: Option<si_events::CasValue> =
+            func_run_value.unprocessed_value().cloned().map(Into::into);
+
+        let value_address = match content_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        let unprocessed_value_address = match content_unprocessed_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        ctx.layer_db()
+            .func_run()
+            .set_values_and_set_state_to_success(
+                func_run_value.func_run_id(),
+                unprocessed_value_address,
+                value_address,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
         let run_result = match func_run_value.value() {
             Some(value) => {
                 let run_result: ActionRunResultSuccess = serde_json::from_value(value.clone())?;
@@ -308,15 +358,6 @@ impl ActionPrototype {
             }
             None => None,
         };
-
-        ctx.layer_db()
-            .func_run()
-            .set_state_to_success(
-                func_run_value.func_run_id(),
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
 
         Ok((func_run_value, run_result))
     }

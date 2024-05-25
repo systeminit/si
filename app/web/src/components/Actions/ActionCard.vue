@@ -73,7 +73,8 @@
               props.noInteraction
                 ? 'text-neutral-500 dark:text-neutral-400'
                 : 'truncate cursor-pointer ',
-              component?.displayName && !props.noInteraction
+              (component?.displayName || actionHistory?.componentName) &&
+                !props.noInteraction
                 ? 'dark:text-action-300 text-action-500'
                 : 'text-neutral-500 dark:text-neutral-400',
               isHover && !props.noInteraction && 'underline',
@@ -83,14 +84,21 @@
           @mouseenter="onHoverStart"
           @mouseleave="onHoverEnd"
         >
-          {{ component?.displayName ?? "unknown" }}
+          <template v-if="component">
+            {{ component?.schemaName }}
+            {{ component?.displayName ?? "unknown" }}
+          </template>
+          <template v-else-if="actionHistory">
+            {{ actionHistory.schemaName }}
+            {{ actionHistory.componentName }}
+          </template>
         </span>
       </div>
       <div
-        v-if="action.actor"
+        v-if="props.action.actor"
         class="text-neutral-500 dark:text-neutral-400 truncate"
       >
-        <span class="font-bold">By:</span> {{ action.actor }}
+        <span class="font-bold">By:</span> {{ props.action.actor }}
       </div>
     </div>
     <ConfirmHoldModal
@@ -136,8 +144,9 @@
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
-            {{ a.component?.displayName ?? "unknown" }}</span
-          >
+            {{ a.component?.schemaName }}
+            {{ a.component?.displayName ?? "unknown" }}
+          </span>
         </li>
       </ol>
       <p v-else class="ml-xs">None</p>
@@ -151,8 +160,9 @@
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
-            {{ a.component?.displayName ?? "unknown" }}</span
-          >
+            {{ a.component?.schemaName }}
+            {{ a.component?.displayName ?? "unknown" }}
+          </span>
         </li>
       </ol>
       <p v-else class="ml-xs">None</p>
@@ -164,10 +174,11 @@
       forceAlignRight
     >
       <DropdownMenuItem
-        label="Resource Result"
+        label="Arguments"
         :onSelect="
           () => {
-            emit('history', action.id, 'resourceResult');
+            actionHistory &&
+              emit('history', actionHistory.funcRunId, 'arguments');
           }
         "
       />
@@ -175,7 +186,17 @@
         label="Code Executed"
         :onSelect="
           () => {
-            emit('history', action.id, 'codeExecuted');
+            actionHistory &&
+              emit('history', actionHistory.funcRunId, 'codeExecuted');
+          }
+        "
+      />
+      <DropdownMenuItem
+        label="Resource Result"
+        :onSelect="
+          () => {
+            actionHistory &&
+              emit('history', actionHistory.funcRunId, 'resourceResult');
           }
         "
       />
@@ -183,15 +204,7 @@
         label="Logs"
         :onSelect="
           () => {
-            emit('history', action.id, 'logs');
-          }
-        "
-      />
-      <DropdownMenuItem
-        label="Arguments"
-        :onSelect="
-          () => {
-            emit('history', action.id, 'arguments');
+            actionHistory && emit('history', actionHistory.funcRunId, 'logs');
           }
         "
       />
@@ -357,11 +370,15 @@ const resultIconClass = computed(() => {
 
 const resultIcon = computed(() => {
   if (actionHistory.value) {
-    return {
+    const p = {
+      // outlined icons represent status about the simulation
+      // filled icons represent status about resources in the real world
+      // so we used filled in icons here
       Success: "check-hex",
-      Failure: "x-hex-outline",
-      Unknown: "question-hex-outline",
+      Failure: "x-hex",
+      Unknown: "question-hex-outline", // TODO, get a non-outlined icon here
     }[actionHistory.value.result] as IconNames;
+    return p;
   } else return "none" as IconNames;
 });
 
@@ -396,6 +413,8 @@ const actionKindToAbbreviation = (actionKind: ActionKind) => {
 };
 
 const component = computed(() => {
+  // if i am looking at history, the component might no longer be around
+  if (actionHistory.value) return undefined;
   if (!props.action.componentId) return undefined;
   return componentsStore.componentsById[props.action.componentId];
 });

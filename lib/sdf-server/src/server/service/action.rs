@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
 };
 use dal::WsEventError;
+use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
 use dal::{
@@ -17,6 +18,7 @@ use dal::{ComponentError, ComponentId, StandardModelError, TransactionsError, Us
 use crate::server::state::AppState;
 
 mod cancel;
+mod history;
 pub mod list_actions;
 mod put_on_hold;
 mod retry;
@@ -26,6 +28,8 @@ mod retry;
 pub enum ActionError {
     #[error(transparent)]
     Action(#[from] dal::action::ActionError),
+    #[error("action history is missing a field - this is a bug!: {0}")]
+    ActionHistoryFieldMissing(String),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
@@ -42,6 +46,8 @@ pub enum ActionError {
     InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("no schema found for component {0}")]
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]
@@ -76,4 +82,5 @@ pub fn routes() -> Router<AppState> {
         .route("/put_on_hold", post(put_on_hold::put_on_hold))
         .route("/cancel", post(cancel::cancel))
         .route("/retry", post(retry::retry))
+        .route("/history", get(history::history))
 }

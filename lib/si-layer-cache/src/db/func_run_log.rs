@@ -6,7 +6,7 @@ use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+    persister::PersisterClient,
 };
 
 use super::serialize;
@@ -37,7 +37,7 @@ impl FuncRunLogDb {
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
+    ) -> LayerDbResult<()> {
         let postcard_value = serialize::to_vec(&value)?;
         let cache_key: Arc<str> = value.id().to_string().into();
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
@@ -60,12 +60,11 @@ impl FuncRunLogDb {
             actor,
         );
         let reader = self.persister_client.write_event(event)?;
+        let _ = reader.get_status().await?;
 
-        Ok(reader)
+        Ok(())
     }
 
-    // NOTE(nick): this is just to test that things are working. This might be close to the real
-    // version though.
     pub async fn get_for_func_run_id(
         &self,
         func_run_id: FuncRunId,

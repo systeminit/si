@@ -88,24 +88,36 @@ export interface ActionProposedView extends ActionView {
   holdStatusInfluencedBy: ActionId[];
 }
 
-export enum ActionHistoryResult {
+export enum ActionResultState {
   Success = "Success",
   Failure = "Failure",
   Unknown = "Unknown",
 }
 
 export interface ActionHistoryView extends ActionView {
-  result: ActionHistoryResult;
+  funcRunId: FuncRunId;
+  result: ActionResultState;
+  originatingChangeSetName: string;
+  updatedAt: string;
   resourceResult?: string;
   codeExecuted?: string;
   logs?: string;
   arguments?: string;
+  componentName: string;
+  schemaName: string;
+}
+
+export interface ChangeSetDetail {
+  changeSetId: ChangeSetId;
+  changeSetName: string;
+  timestamp?: Date;
 }
 
 // STUFF FOR BOTH ACTIONS V1 AND V2
 
 export type ActionPrototypeId = string;
 export type ActionId = string;
+export type FuncRunId = string;
 
 // END STUFF
 
@@ -126,6 +138,7 @@ export const useActionsStore = () => {
           // used in the right rail when looking at a specific asset
           rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
           actions: [] as ActionProposedView[],
+          actionHistory: [] as ActionHistoryView[],
         }),
         getters: {
           actionBatches() {
@@ -157,76 +170,7 @@ export const useActionsStore = () => {
             );
           },
           historyActions(): ActionHistoryView[] {
-            // TODO(Wendy) - MOCK ACTIONS HISTORY DATA HERE, TO BE REPLACED WITH REAL ACTIONS HISTORY DATA
-            return [
-              {
-                id: "testid1",
-                actor: "user@systeminit.com",
-                prototypeId: "testactionprotoid1",
-                componentId: null,
-                name: "testactionhistory1",
-                kind: ActionKind.Create,
-                result: ActionHistoryResult.Success,
-                originatingChangeSetId: "testchangesetid1",
-                resourceResult:
-                  "here is a resourceResult!\nthis is just a mock\nso this data is fake",
-                codeExecuted:
-                  "here is a codeExecuted!\nthis is just a mock\nso this data is fake",
-                logs: "here is a logs!\nthis is just a mock\nso this data is fake",
-                arguments:
-                  "here is a arguments!\nthis is just a mock\nso this data is fake",
-              },
-              {
-                id: "testid2",
-                actor: "wendy@systeminit.com",
-                prototypeId: "testactionprotoid2",
-                componentId: null,
-                name: "testactionhistory1",
-                kind: ActionKind.Update,
-                result: ActionHistoryResult.Failure,
-                originatingChangeSetId: "testchangesetid1",
-              },
-              {
-                id: "testid3",
-                actor: "whoever@systeminit.com",
-                prototypeId: "testactionprotoid3",
-                componentId: null,
-                name: "testactionhistory1",
-                kind: ActionKind.Manual,
-                result: ActionHistoryResult.Unknown,
-                originatingChangeSetId: "testchangesetid1",
-              },
-              {
-                id: "testid4",
-                actor: "user@systeminit.com",
-                prototypeId: "testactionprotoid1",
-                componentId: null,
-                name: "testactionhistory4",
-                kind: ActionKind.Destroy,
-                result: ActionHistoryResult.Success,
-                originatingChangeSetId: "testchangesetid2",
-              },
-              {
-                id: "testid5",
-                actor: "wendy@systeminit.com",
-                prototypeId: "testactionprotoid2",
-                componentId: null,
-                name: "testactionhistory5",
-                kind: ActionKind.Refresh,
-                result: ActionHistoryResult.Failure,
-                originatingChangeSetId: "testchangesetid2",
-              },
-              {
-                id: "testid6",
-                actor: "whoever@systeminit.com",
-                prototypeId: "testactionprotoid3",
-                componentId: null,
-                name: "testactionhistory6",
-                kind: ActionKind.Create,
-                result: ActionHistoryResult.Unknown,
-                originatingChangeSetId: "testchangesetid3",
-              },
-            ];
+            return this.actionHistory;
           },
           historyActionsById(): Map<ActionId, ActionHistoryView> {
             const m = new Map();
@@ -235,20 +179,38 @@ export const useActionsStore = () => {
             }
             return m;
           },
-          historyActionsByChangeSetId(): Record<
-            ChangeSetId,
+          historyActionsByFuncRunId(): Map<FuncRunId, ActionHistoryView> {
+            const m = new Map();
+            for (const a of this.historyActions) {
+              m.set(a.funcRunId, a);
+            }
+            return m;
+          },
+          historyActionsByChangeSetId(): Map<
+            ChangeSetDetail,
             Array<ActionHistoryView>
           > {
-            // TODO(Wendy) - Right now ActionHistoryViews are organized by originatingChangeSetId, we need to organize them slightly differently to account for actions run later after Change Set merge
-            const r: Record<ChangeSetId, Array<ActionHistoryView>> = {};
-            this.historyActions.forEach((action: ActionHistoryView) => {
-              if (r[action.originatingChangeSetId]) {
-                r[action.originatingChangeSetId]?.push(action);
-              } else {
-                r[action.originatingChangeSetId] = [];
-                r[action.originatingChangeSetId]?.push(action);
+            // TODO: right now we group all the actions by changeset, which means any changeset with the newest action will be on top
+            // DESIRED: display actions, in order, and if the action is from a different changeset than the previous action display the header
+            const r = new DefaultMap<ChangeSetDetail, Array<ActionHistoryView>>(
+              () => [],
+            );
+            const _details: Record<ChangeSetId, ChangeSetDetail> = {};
+            for (const action of this.actionHistory) {
+              let d = _details[action.originatingChangeSetId];
+              if (!d) {
+                d = {
+                  changeSetId: action.originatingChangeSetId,
+                  changeSetName: action.originatingChangeSetName,
+                } as ChangeSetDetail;
+                _details[action.originatingChangeSetId] = d;
               }
-            });
+              const u = new Date(action.updatedAt);
+              if (!d.timestamp || d.timestamp < u) d.timestamp = u;
+              const arr = r.get(d);
+              arr.push(action);
+              r.set(d, arr);
+            }
             return r;
           },
           actionsByComponentId(): Record<ComponentId, ComponentAndAction[]> {
@@ -320,6 +282,7 @@ export const useActionsStore = () => {
               },
             });
           },
+          // This is proposed/queued actions
           async LOAD_ACTIONS() {
             return new ApiRequest<Array<ActionProposedView>>({
               url: "/action/list",
@@ -329,6 +292,18 @@ export const useActionsStore = () => {
               },
               onSuccess: (response) => {
                 this.actions = response;
+              },
+            });
+          },
+          async LOAD_ACTION_HISTORY() {
+            return new ApiRequest<Array<ActionHistoryView>>({
+              url: "/action/history",
+              headers: { accept: "application/json" },
+              params: {
+                visibility_change_set_pk: changeSetId,
+              },
+              onSuccess: (response) => {
+                this.actionHistory = response;
               },
             });
           },
@@ -394,6 +369,7 @@ export const useActionsStore = () => {
           if (!changeSetId) return;
 
           this.LOAD_ACTIONS();
+          this.LOAD_ACTION_HISTORY();
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
@@ -401,6 +377,7 @@ export const useActionsStore = () => {
               eventType: "ActionsListUpdated",
               callback: () => {
                 this.LOAD_ACTIONS();
+                this.LOAD_ACTION_HISTORY();
               },
             },
             {

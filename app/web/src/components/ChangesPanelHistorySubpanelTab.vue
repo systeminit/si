@@ -22,10 +22,10 @@ import { TabGroupItem } from "@si/vue-lib/design-system";
 import CodeViewer from "./CodeViewer.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
 
-defineProps({
-  label: { type: String, required: true },
-  emptyStateSecondaryTextNeedsAnA: { type: Boolean },
-  data: { type: String },
-  slug: { type: String },
-});
+defineProps<{
+  label: string;
+  emptyStateSecondaryTextNeedsAnA?: boolean;
+  data: string | undefined;
+  slug: string;
+}>();
 </script>

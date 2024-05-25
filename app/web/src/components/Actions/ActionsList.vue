@@ -85,9 +85,7 @@
     >
       <ActionCard
         :slim="props.slim"
-        :selected="
-          props.selectedActionIds && props.selectedActionIds.includes(action.id)
-        "
+        :selected="isSelected(action)"
         :action="action"
         :noInteraction="props.noInteraction"
         @click="props.clickAction && props.clickAction(action)"
@@ -107,7 +105,13 @@ import {
   themeClasses,
 } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
-import { useActionsStore, ActionView, ActionId } from "@/store/actions.store";
+import {
+  useActionsStore,
+  ActionView,
+  ActionHistoryView,
+  FuncRunId,
+  ActionProposedView,
+} from "@/store/actions.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import ActionCard from "./ActionCard.vue";
@@ -117,21 +121,46 @@ export type ActionsListKind = "proposed" | "history";
 
 const actionsStore = useActionsStore();
 
-type clickFn = (action: ActionView) => void;
+type clickFn = (action: ActionHistoryView | ActionProposedView) => void;
 
 const props = defineProps({
   actions: { type: Array<ActionView> },
   kind: { type: String as PropType<ActionsListKind> },
   noInteraction: { type: Boolean },
   selectedActionIds: { type: Array<string> },
+  selectedFuncRunIds: { type: Array<string> },
   slim: { type: Boolean },
-  clickAction: { type: Function as PropType<clickFn>, default: undefined },
+  clickAction: {
+    type: Function as PropType<clickFn>,
+    default: undefined,
+  },
   changeSet: { type: Object as PropType<ChangeSet> },
 });
 
+const selectedIds = computed<string[]>(() => {
+  if (props.kind === "proposed") {
+    return props.selectedActionIds || [];
+  }
+  return props.selectedFuncRunIds || [];
+});
+
+const isSelected = (action: ActionView) => {
+  let id: string;
+  if (props.kind === "history") {
+    const a = action as ActionHistoryView;
+    id = a.funcRunId;
+  } else {
+    id = action.id;
+  }
+  return selectedIds.value.includes(id);
+};
+
 const displayActions = computed(() => {
   // Use the actions prop if it is present
-  if (props.actions) return props.actions;
+  if (props.actions && props.kind === "proposed")
+    return props.actions as ActionProposedView[];
+  if (props.actions && props.kind === "history")
+    return props.actions as ActionHistoryView[];
 
   // Otherwise grab actions based on the kind prop
   if (props.kind === "proposed") {
@@ -150,10 +179,10 @@ function countActionsByKind(actions: ActionView[]): Record<string, number> {
 }
 
 const emit = defineEmits<{
-  (e: "history", id: ActionId, tabSlug: string): void;
+  (e: "history", id: FuncRunId, tabSlug: string): void;
 }>();
 
-function openHistory(id: ActionId, slug: string) {
+function openHistory(id: FuncRunId, slug: string) {
   emit("history", id, slug);
 }
 </script>
