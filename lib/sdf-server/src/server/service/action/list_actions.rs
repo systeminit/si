@@ -18,7 +18,7 @@ pub struct ActionView {
     pub description: Option<String>,
     pub kind: ActionKind,
     pub state: ActionState,
-    pub originating_changeset_id: ChangeSetId,
+    pub originating_change_set_id: ChangeSetId,
     // Actions that will wait until I've successfully completed before running
     pub my_dependencies: Vec<ActionId>,
     // Things that need to finish before I can start
@@ -61,7 +61,7 @@ pub async fn list_actions(
             description: prototype.description().clone(),
             kind: prototype.kind,
             state: action.state(),
-            originating_changeset_id: action.originating_changeset_id(),
+            originating_change_set_id: action.originating_changeset_id(),
             my_dependencies: action.get_all_dependencies(&ctx).await?,
             dependent_on: Action::get_dependent_actions_by_id(&ctx, action_id).await?,
             hold_status_influenced_by: action.get_hold_status_influenced_by(&ctx).await?,
