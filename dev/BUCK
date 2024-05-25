@@ -54,7 +54,8 @@ tilt_up(
 tilt_up(
     name = "platform",
     args = [
-        "platform"
+        "platform",
+        "testing"
     ],
 )
 
