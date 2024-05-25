@@ -124,16 +124,13 @@ def _invoke_tilt(ctx: AnalysisContext, subcmd: str) -> list[[DefaultInfo, RunInf
         ctx.attrs.tiltfile,
     )
 
-    RunInfo(["rm", "-rf", "/tmp/si-logs"])
-    RunInfo(["mkdir", "-p", "/tmp/si-logs"])
-
     run_cmd_args = cmd_args([
         "tilt",
         subcmd,
         "--file",
         tiltfile,
     ])
-
+    
     run_cmd_args.add(ctx.attrs.tilt_args)
     run_cmd_args.add("--")
     run_cmd_args.add(ctx.attrs.args)
