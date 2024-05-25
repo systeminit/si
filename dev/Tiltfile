@@ -132,16 +132,16 @@ for service in compose_services:
 rebaser_target = "//bin/rebaser:rebaser"
 
 cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/rebaser".format(rebaser_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(rebaser_target)
     serve_cmd = "buck2 run {}".format(rebaser_target)
 elif debug_no_rebaser_rustc_build_mode:
     cmd = "buck2 build @//mode/release {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/release {} | tee /tmp/rebaser".format(rebaser_target)
 elif rustc_build_mode == 'debug':
     cmd = "buck2 build @//mode/debug {}".format(rebaser_target)
-    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/rebaser".format(rebaser_target)
+    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/rebaser".format(rebaser_target)
 
 local_resource(
     "rebaser",
@@ -191,7 +191,7 @@ local_resource(
 pinga_target = "//bin/pinga:pinga"
 
 cmd = "buck2 build @//mode/release {}".format(pinga_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/pinga".format(pinga_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/pinga".format(pinga_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(pinga_target)
     serve_cmd = "buck2 run {}".format(pinga_target)
@@ -220,7 +220,7 @@ veritech_target = "//bin/veritech:veritech"
 
 cmd = "buck2 build @//mode/release {}".format(veritech_target)
 # Add something like this to then push it + consume the logs from prom tail
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/veritech".format(veritech_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/veritech".format(veritech_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(veritech_target)
     serve_cmd = "buck2 run {}".format(veritech_target)
@@ -250,13 +250,13 @@ local_resource(
 sdf_target = "//bin/sdf:sdf"
 
 cmd = "buck2 build @//mode/release {}".format(sdf_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/sdf".format(sdf_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/sdf".format(sdf_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(sdf_target)
-    serve_cmd = "buck2 run {} | tee /tmp/si-logs/sdf".format(sdf_target)
+    serve_cmd = "buck2 run {} | tee /tmp/sdf".format(sdf_target)
 elif rustc_build_mode == 'debug':
     cmd = "buck2 build @//mode/debug {}".format(sdf_target)
-    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/sdf".format(sdf_target)
+    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/sdf".format(sdf_target)
 
 local_resource(
     "sdf",
