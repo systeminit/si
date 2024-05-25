@@ -19,19 +19,26 @@ import { useTabGroupContext } from "./TabGroup.vue";
 import type { Slot } from "vue";
 
 export type TabGroupItemDefinition = {
-  props: { slug: string; label: string; uncloseable: boolean };
+  props: {
+    slug: string;
+    label: string;
+    uncloseable: boolean;
+    closeButton: boolean;
+  };
   slots: {
     default?: Slot;
     label?: Slot;
     top?: Slot;
     bottom?: Slot;
   };
+  closeButton: { type: boolean };
 };
 
 const props = defineProps({
   label: { type: String },
   uncloseable: { type: Boolean, default: false },
   slug: { type: String, default: () => `tab-group-${idCounter++}` },
+  closeButton: { type: Boolean },
 });
 
 const emit = defineEmits<{ (e: "select"): void }>();

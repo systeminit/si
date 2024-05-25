@@ -1,5 +1,6 @@
+<!-- eslint-disable vue/no-v-html -->
 <template>
-  <span class="timestamp">{{ dateStr }}</span>
+  <span class="timestamp" v-html="dateStr"></span>
 </template>
 
 <script lang="ts" setup>
@@ -18,6 +19,10 @@ const props = defineProps({
     type: String as PropType<TimestampSize>,
     default: "normal",
   },
+
+  // Classes to apply to the date or time text, TODO(Wendy) - not supported for size mini or relative
+  dateClasses: { type: String },
+  timeClasses: { type: String },
 });
 
 const dateStr = computed(() => {
@@ -26,6 +31,8 @@ const dateStr = computed(() => {
     props.size,
     props.relative,
     props.showTimeIfToday,
+    props.dateClasses,
+    props.timeClasses,
   );
 });
 </script>

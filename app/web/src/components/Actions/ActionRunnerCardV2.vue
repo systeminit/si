@@ -43,7 +43,7 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { computed, ref } from "vue";
 import { TreeNode, useTheme } from "@si/vue-lib/design-system";
-import { ActionView } from "@/store/actions.store";
+import { ActionProposedView } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
@@ -54,7 +54,7 @@ const componentsStore = useComponentsStore();
 const { theme } = useTheme();
 
 const props = defineProps<{
-  action: ActionView;
+  action: ActionProposedView;
 }>();
 
 const componentNameRef = ref();

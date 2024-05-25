@@ -31,7 +31,10 @@
         variant="fullsize"
       >
         <TabGroupItem label="CHANGES" slug="changes">
-          <ChangesPanel />
+          <ChangesPanelProposed />
+        </TabGroupItem>
+        <TabGroupItem label="HISTORY" slug="history">
+          <ChangesPanelHistory />
         </TabGroupItem>
         <TabGroupItem label="SECRETS" slug="secrets">
           <SecretsPanel />
@@ -53,8 +56,10 @@ import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
-import ChangesPanel from "./ChangesPanel.vue";
 import SecretsPanel from "./SecretsPanel.vue";
+import ChangesPanelProposed from "./ChangesPanelProposed.vue";
+import ChangesPanelHistory from "./ChangesPanelHistory.vue";
 
 const changeSetStore = useChangeSetsStore();
 </script>
+./ChangesPanelHistory.vue

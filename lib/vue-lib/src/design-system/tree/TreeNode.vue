@@ -6,6 +6,11 @@
         'tree-node',
         internalScrolling && 'overflow-hidden flex flex-col',
         internalScrolling && isOpen ? 'flex-1' : 'flex-none',
+        styleAsGutter &&
+          enableGroupToggle && [
+            'ml-sm border-l',
+            themeClasses('border-neutral-100', 'border-neutral-700'),
+          ],
       )
     "
   >
@@ -14,6 +19,7 @@
         clsx(
           'relative cursor-pointer group flex-none',
           !noIndentationOrLeftBorder &&
+            !styleAsGutter &&
             {
               none: '',
               '2xs': 'border-l-[1px]',
@@ -29,9 +35,10 @@
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
           showSelection && isSelected
             ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
-            : 'dark:hover:text-action-300 hover:text-action-500',
+            : !styleAsGutter &&
+                'dark:hover:text-action-300 hover:text-action-500',
           classes,
-          enableDefaultHoverClasses &&
+          (enableDefaultHoverClasses || styleAsGutter) &&
             'bg-neutral-100 dark:bg-neutral-700 group/tree',
         )
       "
@@ -41,10 +48,15 @@
       }"
       @click="tryOpen(clickLabelToToggle)"
     >
+      <Icon
+        v-if="styleAsGutter && enableGroupToggle"
+        :name="isOpen ? 'chevron--down' : 'chevron--right'"
+        class="absolute left-[-21px] translate-y-1/2 hover:text-action-300 group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300"
+      />
       <div
         :class="
           clsx(
-            'flex flex-row items-center px-xs w-full gap-1',
+            !styleAsGutter && 'flex flex-row items-center px-xs w-full gap-1',
             labelClasses,
             enableDefaultHoverClasses &&
               'font-bold select-none hover:text-action-500 dark:hover:text-action-300',
@@ -52,7 +64,7 @@
         "
       >
         <Icon
-          v-if="enableGroupToggle && alwaysShowArrow"
+          v-if="enableGroupToggle && alwaysShowArrow && !styleAsGutter"
           :name="isOpen ? 'chevron--down' : 'chevron--right'"
           size="lg"
           @click.stop="tryOpen()"
@@ -85,7 +97,14 @@
           "
         />
 
-        <div class="flex flex-col select-none overflow-hidden py-2xs w-full">
+        <div
+          :class="
+            clsx(
+              !styleAsGutter &&
+                'flex flex-col select-none overflow-hidden py-2xs w-full',
+            )
+          "
+        >
           <slot v-if="useDifferentLabelWhenOpen && isOpen" name="openLabel">
             {{ openLabel }}
           </slot>
@@ -93,7 +112,7 @@
         </div>
         <!-- group open/close controls -->
         <div
-          v-if="enableGroupToggle && !alwaysShowArrow"
+          v-if="enableGroupToggle && !alwaysShowArrow && !styleAsGutter"
           class="absolute left-[0px] cursor-pointer"
           @click.stop="tryOpen()"
         >
@@ -115,6 +134,7 @@
       :class="
         clsx(
           !noIndentationOrLeftBorder &&
+            !styleAsGutter &&
             {
               none: '',
               '2xs': 'pl-2xs',
@@ -191,6 +211,9 @@ const props = defineProps({
 
   // some default hover styling that can also apply group hover styling to the label, icons, or children of this TreeNode
   enableDefaultHoverClasses: { type: Boolean },
+
+  // an alternative style for TabGroup that is not intended to nest and does not use many of the adjustment props
+  styleAsGutter: { type: Boolean },
 
   // direct class injection into various spots in this component - try to use sparingly!
   classes: { type: String },

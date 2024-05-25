@@ -3,6 +3,12 @@ import { format, formatDistanceToNow, parseISO } from "date-fns";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
 
+// Size Formats Without Relative
+// mini - M/D/YYYY
+// normal - Month DD, YYYY
+// today - TODAY or M/D/YYYY at TimeWithoutSeconds
+// long - M/D/YYYY at TimeWithSeconds
+// extended - Weekday Month DayWithSuffix, YYYY at TimeWithSeconds
 export type TimestampSize = "mini" | "normal" | "long" | "extended";
 
 TimeAgo.addLocale(en);
@@ -13,7 +19,13 @@ export function dateString(
   size: TimestampSize,
   relative = false,
   showTimeIfToday = false,
+  dateClasses = "",
+  timeClasses = "",
 ) {
+  const dateClassesSpan = dateClasses ? `<span class="${dateClasses}">` : "";
+  const dateClassesCloseSpan = dateClasses ? "</span>" : "";
+  const timeClassesSpan = dateClasses ? `<span class="${timeClasses}">` : "";
+  const timeClassesCloseSpan = timeClasses ? "</span>" : "";
   let d: Date;
   if (_.isString(date)) {
     d = parseISO(date);
@@ -27,9 +39,12 @@ export function dateString(
     d.toDateString() === new Date().toDateString()
   ) {
     if (size === "long" || size === "extended") {
-      return `Today at ${format(d, "h:mm:ss a")}`;
+      return `${dateClassesSpan}Today${dateClassesCloseSpan} ${timeClassesSpan}at ${format(
+        d,
+        "h:mm:ss a",
+      )}${timeClassesCloseSpan}`;
     }
-    return format(d, "h:mm:ss a");
+    return `${timeClassesSpan}${format(d, "h:mm:ss a")}${timeClassesCloseSpan}`;
   }
 
   if (size === "mini") {
@@ -41,15 +56,27 @@ export function dateString(
     if (relative) {
       return `${formatDistanceToNow(d)} ago`;
     }
-    return `${format(d, "eeee MMMM do, y")} at ${format(d, "h:mm:ss a")}`;
+    return `${dateClassesSpan}${format(
+      d,
+      "eeee MMMM do, y",
+    )}${dateClassesCloseSpan} ${timeClassesSpan}at ${format(
+      d,
+      "h:mm:ss a",
+    )}${timeClassesCloseSpan}`;
   } else if (size === "long") {
     if (relative) {
       return `${formatDistanceToNow(d)} ago`;
     }
-    return `${format(d, "M/d/y")} at ${format(d, "h:mm:ss a")}`;
+    return `${dateClassesSpan}${format(
+      d,
+      "M/d/y",
+    )}${dateClassesCloseSpan} ${timeClassesSpan}at ${format(
+      d,
+      "h:mm:ss a",
+    )}${timeClassesCloseSpan}`;
   }
   if (relative) {
     return timeAgo.format(d);
   }
-  return format(d, "MMMM d, y");
+  return `${dateClassesSpan}${format(d, "MMMM d, y")}${dateClassesCloseSpan}`;
 }

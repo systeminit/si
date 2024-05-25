@@ -53,12 +53,15 @@
             :class="
               clsx(
                 'focus:outline-none whitespace-nowrap',
-                'h-8 px-xs text-xs inline-flex items-center',
-                growTabs && 'flex-grow justify-center',
+                'h-8 text-xs inline-flex items-center',
+                tab.props.closeButton ? 'flex-none' : 'px-xs',
+                growTabs &&
+                  !tab.props.closeButton &&
+                  'flex-grow justify-center',
                 variantStyles(tab.props.slug),
               )
             "
-            @click.prevent="selectTab(tab.props.slug)"
+            @click="clickedTab($event, tab.props.slug)"
             @auxclick.prevent.stop="closeTab(tab)"
           >
             <template v-if="tab.slots.label">
@@ -227,7 +230,7 @@ const variantStyles = (slug: string) => {
     case "fullsize":
       return [
         "font-bold",
-        slug === selectedTabSlug.value
+        slug === selectedTabSlug.value && slug !== "closeButton"
           ? themeClasses(
               "bg-shade-0 text-action-500",
               "bg-neutral-800 text-action-300",
@@ -236,6 +239,7 @@ const variantStyles = (slug: string) => {
               "bg-neutral-200 text-neutral-600 hover:text-action-500",
               "bg-neutral-700 text-neutral-300 hover:text-action-300",
             ),
+        slug === "closeButton" && themeClasses("bg-shade-0", "bg-neutral-800"),
       ];
     default: // CLASSIC
       return [
@@ -252,6 +256,7 @@ const variantStyles = (slug: string) => {
 
 const emit = defineEmits<{
   (e: "closeTab", slug: string): void;
+  (e: "closeButtonTabClicked"): void;
   (e: "update:selectedTab", slug: string | undefined): void;
 }>();
 
@@ -326,6 +331,15 @@ function tabExists(slug?: string) {
   return !!(slug && tabs[slug]);
 }
 
+function clickedTab(event: MouseEvent, slug?: string | null) {
+  if (slug === "closeButton") {
+    emit("closeButtonTabClicked");
+  } else {
+    event.preventDefault();
+    selectTab(slug);
+  }
+}
+
 const pendingTabSlug = ref<string | undefined>();
 const lastSelectedTabIndex = ref(0);
 function selectTab(slug?: string | null) {
@@ -340,6 +354,13 @@ function selectTab(slug?: string | null) {
 
   // select the tab
   if (slug && tabs[slug]) {
+    // cannot select a TabGroupItem that is a closeButton
+    if (tabs[slug]?.props.closeButton) {
+      selectedTabSlug.value = undefined;
+      autoSelectTab();
+      return;
+    }
+
     selectedTabSlug.value = slug;
     pendingTabSlug.value = undefined;
   } else {
@@ -414,13 +435,18 @@ function autoSelectTab(isInitialSelection = false) {
   } else if (
     isInitialSelection &&
     props.startSelectedTabSlug &&
-    tabs[props.startSelectedTabSlug]
+    tabs[props.startSelectedTabSlug] &&
+    props.startSelectedTabSlug !== "closeButton"
   ) {
     // select the starting tab if it exists
     // TODO: probably only want to do this in some cases (like initial load)
     selectTab(props.startSelectedTabSlug);
     return;
-  } else if (isInitialSelection && rememberLastTabStorageKey.value) {
+  } else if (
+    isInitialSelection &&
+    rememberLastTabStorageKey.value &&
+    window.localStorage.getItem(rememberLastTabStorageKey.value) !== "closeTab"
+  ) {
     const slug = window.localStorage.getItem(rememberLastTabStorageKey.value);
     if (slug && tabs[slug]) {
       selectTab(slug);
@@ -430,7 +456,17 @@ function autoSelectTab(isInitialSelection = false) {
   // fallback to just autoselecting the tab next the last one selected
   let newIndex = (lastSelectedTabIndex.value || 0) - 1;
   if (newIndex < 0) newIndex = 0;
-  selectTab(orderedTabSlugs.value[newIndex]);
+  const slug = orderedTabSlugs.value[newIndex];
+  if (slug === "closeButton") {
+    if (orderedTabSlugs.value.length > 1) {
+      selectTab(orderedTabSlugs.value[newIndex + 1]);
+    } else {
+      // Can't select anything, the only tab slug is for a closeButton
+      return;
+    }
+  } else {
+    selectTab(slug);
+  }
 }
 
 function fixOverflowDropdown() {

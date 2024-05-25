@@ -28,11 +28,13 @@
         </div>
       </Stack>
 
-      <div
-        v-if="component.canBeUpgraded"
-        class="ml-auto cursor-pointer rounded hover:scale-125"
-      >
-        <StatusIndicatorIcon type="upgradable" @click="upgradeComponent" />
+      <!-- ICONS AFTER THIS POINT ARE RIGHT ALIGNED DUE TO THE ml-auto STYLE ON THIS DIV -->
+      <div class="ml-auto cursor-pointer rounded hover:scale-125">
+        <StatusIndicatorIcon
+          v-if="component.canBeUpgraded"
+          type="upgradable"
+          @click="upgradeComponent"
+        />
       </div>
 
       <!-- change status icon -->

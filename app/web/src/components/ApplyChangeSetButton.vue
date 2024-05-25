@@ -213,13 +213,14 @@
               Applying this change set may create, modify, or destroy real
               resources in the cloud.
             </div>
+            <!-- TODO(Wendy) - this panel no longer allows you to select which actions to apply -->
             <div class="text-sm mb-sm">
-              Pick which actions will be applied to the real world:
+              These actions will be applied to the real world:
             </div>
             <div
               class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
             >
-              <ActionsList slim noInteraction />
+              <ActionsList slim kind="proposed" noInteraction />
             </div>
           </template>
           <div class="flex flex-row items-center w-full gap-sm">
