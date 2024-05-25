@@ -80,7 +80,7 @@ pub enum NodeWeightError {
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
 #[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
-#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
+#[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize))]
 pub enum NodeWeight {
     Action(ActionNodeWeight),
     ActionPrototype(ActionPrototypeNodeWeight),

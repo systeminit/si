@@ -69,7 +69,7 @@ use crate::{
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 pk!(NodeId);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
     pub index: NodeIndex,
     pub node_weight_kind: NodeWeightDiscriminants,

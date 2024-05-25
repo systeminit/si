@@ -634,8 +634,106 @@ impl WorkspaceSnapshotGraph {
 
         updates.extend(self.maybe_merge_category_nodes(onto)?);
 
+        // Now that we have the full set of updates to be performed, we can check to see if we'd be
+        // breaking any "exclusive edge" constraints. We need to wait until after we've detected
+        // all of the updates to be performed as adding a second "exclusive" edge is only a
+        // violation of the constraint if we are not also removing the first one. We need to ensure
+        // that the net result is that there is only one of that edge kind.
+        conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
+
         Ok((conflicts, updates))
     }
+
+    fn detect_exclusive_edge_conflicts_in_updates(
+        &self,
+        updates: &Vec<Update>,
+    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
+        let mut conflicts = Vec::new();
+
+        #[derive(Debug, Default, Clone)]
+        struct NodeEdgeWeightUpdates {
+            additions: Vec<(NodeInformation, NodeInformation)>,
+            removals: Vec<(NodeInformation, NodeInformation)>,
+        }
+
+        let mut edge_updates: HashMap<
+            NodeIndex,
+            HashMap<EdgeWeightKindDiscriminants, NodeEdgeWeightUpdates>,
+        > = HashMap::new();
+
+        for update in updates {
+            match update {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } => {
+                    let source_entry = edge_updates.entry(source.index).or_default();
+                    let edge_weight_entry = source_entry
+                        .entry(edge_weight.kind().clone().into())
+                        .or_default();
+                    edge_weight_entry.additions.push((*source, *destination));
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind,
+                } => {
+                    let source_entry = edge_updates.entry(source.index).or_default();
+                    let edge_weight_entry = source_entry.entry(*edge_kind).or_default();
+                    edge_weight_entry.removals.push((*source, *destination));
+                }
+                _ => { /* Other updates are unused for exclusive edge conflict detection */ }
+            }
+        }
+
+        for (source_node_index, source_node_updates) in &edge_updates {
+            for (edge_weight_kind, edge_kind_updates) in source_node_updates {
+                if edge_kind_updates.additions.is_empty() {
+                    // There haven't been any new edges added for this EdgeWeightKind, so we can't
+                    // have created any Conflict::ExclusiveEdge
+                    continue;
+                }
+
+                if !self
+                    .get_node_weight(*source_node_index)?
+                    .is_exclusive_outgoing_edge(*edge_weight_kind)
+                {
+                    // Nothing to check. This edge weight kind isn't considered exclusive.
+                    continue;
+                }
+
+                // We can only have (removals.len() + (1 - existing edge count)) additions
+                // _at most_, or we'll be creating a Conflict::ExclusiveEdge because there will be
+                // multiple of the same edge kind outgoing from the same node.
+                let existing_outgoing_edges_of_kind = self
+                    .graph
+                    .edges_directed(*source_node_index, Outgoing)
+                    .filter(|edge| *edge_weight_kind == edge.weight().kind().into())
+                    .count();
+                if edge_kind_updates.additions.len()
+                    > (edge_kind_updates.removals.len() + (1 - existing_outgoing_edges_of_kind))
+                {
+                    // The net count of outgoing edges of this kind is >1. Consider *ALL* of the
+                    // additions to be in conflict.
+                    for (
+                        edge_addition_source_node_information,
+                        edge_addition_destination_node_information,
+                    ) in &edge_kind_updates.additions
+                    {
+                        conflicts.push(Conflict::ExclusiveEdgeMismatch {
+                            source: *edge_addition_source_node_information,
+                            destination: *edge_addition_destination_node_information,
+                            edge_kind: *edge_weight_kind,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(conflicts)
+    }
+
     fn detect_conflicts_and_updates_process_dfs_event(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -1173,67 +1271,39 @@ impl WorkspaceSnapshotGraph {
                             })
                     };
 
-                match maybe_seen_by_onto_at {
-                    Some(seen_by_onto_at) => {
-                        if to_rebase_item_weight
-                            .vector_clock_write()
-                            .has_entries_newer_than(seen_by_onto_at)
-                        {
-                            // Item has been modified in `to_rebase` since
-                            // `onto` last saw `to_rebase`
-                            let node_information = NodeInformation {
-                                index: only_to_rebase_edge_info.target_node_index,
-                                id: to_rebase_item_weight.id().into(),
-                                node_weight_kind: to_rebase_item_weight.into(),
-                            };
-                            conflicts.push(Conflict::ModifyRemovedItem(node_information))
-                        } else {
-                            let source_node_weight =
-                                self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
-                            let target_node_weight =
-                                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
-                            let source_node_information = NodeInformation {
-                                index: only_to_rebase_edge_info.source_node_index,
-                                id: source_node_weight.id().into(),
-                                node_weight_kind: source_node_weight.into(),
-                            };
-                            let target_node_information = NodeInformation {
-                                index: only_to_rebase_edge_info.target_node_index,
-                                id: target_node_weight.id().into(),
-                                node_weight_kind: target_node_weight.into(),
-                            };
-                            updates.push(Update::RemoveEdge {
-                                source: source_node_information,
-                                destination: target_node_information,
-                                edge_kind: only_to_rebase_edge_info.edge_kind,
-                            });
-                        }
-                    }
-                    None => {
-                        let container_weight = self.get_node_weight(to_rebase_container_index)?;
-                        let edge_kind = only_to_rebase_edge_info.edge_kind;
-                        if container_weight.is_exclusive_outgoing_edge(edge_kind) {
-                            let source_node_weight =
-                                self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
-                            let destination_node_weight =
-                                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
-                            let source_node_information = NodeInformation {
-                                index: only_to_rebase_edge_info.source_node_index,
-                                id: source_node_weight.id().into(),
-                                node_weight_kind: source_node_weight.into(),
-                            };
-                            let destination_node_information = NodeInformation {
-                                index: only_to_rebase_edge_info.target_node_index,
-                                id: destination_node_weight.id().into(),
-                                node_weight_kind: destination_node_weight.into(),
-                            };
-
-                            conflicts.push(Conflict::ExclusiveEdgeMismatch {
-                                source: source_node_information,
-                                destination: destination_node_information,
-                                edge_kind,
-                            });
-                        }
+                if let Some(seen_by_onto_at) = maybe_seen_by_onto_at {
+                    if to_rebase_item_weight
+                        .vector_clock_write()
+                        .has_entries_newer_than(seen_by_onto_at)
+                    {
+                        // Item has been modified in `to_rebase` since
+                        // `onto` last saw `to_rebase`
+                        let node_information = NodeInformation {
+                            index: only_to_rebase_edge_info.target_node_index,
+                            id: to_rebase_item_weight.id().into(),
+                            node_weight_kind: to_rebase_item_weight.into(),
+                        };
+                        conflicts.push(Conflict::ModifyRemovedItem(node_information))
+                    } else {
+                        let source_node_weight =
+                            self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
+                        let target_node_weight =
+                            self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
+                        let source_node_information = NodeInformation {
+                            index: only_to_rebase_edge_info.source_node_index,
+                            id: source_node_weight.id().into(),
+                            node_weight_kind: source_node_weight.into(),
+                        };
+                        let target_node_information = NodeInformation {
+                            index: only_to_rebase_edge_info.target_node_index,
+                            id: target_node_weight.id().into(),
+                            node_weight_kind: target_node_weight.into(),
+                        };
+                        updates.push(Update::RemoveEdge {
+                            source: source_node_information,
+                            destination: target_node_information,
+                            edge_kind: only_to_rebase_edge_info.edge_kind,
+                        });
                     }
                 }
             }

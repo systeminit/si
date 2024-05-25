@@ -1,11 +1,12 @@
 use si_events::ulid::Ulid;
 
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 use super::edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::NodeInformation;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {
     NewEdge {
         source: NodeInformation,
