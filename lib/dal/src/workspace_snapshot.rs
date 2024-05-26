@@ -809,22 +809,49 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         change_set_id: ChangeSetId,
     ) -> WorkspaceSnapshotResult<Self> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                "SELECT workspace_snapshot_address FROM change_set_pointers WHERE id = $1",
-                &[&change_set_id],
-            )
-            .await?
-            .ok_or(
-                WorkspaceSnapshotError::ChangeSetMissingWorkspaceSnapshotAddress(change_set_id),
-            )?;
+        // There's a race between finding which address to retrieve and actually retrieving it
+        // where it's possible for the content at the address to be garbage collected, and no
+        // longer be retrievable. We'll re-fetch which snapshot address to use, and will retry,
+        // hoping we don't get unlucky every time.
+        let mut retries: u8 = 5;
 
-        let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
+        while retries > 0 {
+            retries -= 1;
 
-        Self::find(ctx, address).await
+            let row = ctx
+                .txns()
+                .await?
+                .pg()
+                .query_opt(
+                    "SELECT workspace_snapshot_address FROM change_set_pointers WHERE id = $1",
+                    &[&change_set_id],
+                )
+                .await?
+                .ok_or(
+                    WorkspaceSnapshotError::ChangeSetMissingWorkspaceSnapshotAddress(change_set_id),
+                )?;
+
+            let address: WorkspaceSnapshotAddress = row.try_get("workspace_snapshot_address")?;
+
+            match Self::find(ctx, address).await {
+                Ok(snapshot) => return Ok(snapshot),
+                Err(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_)) => {
+                    warn!(
+                        "Unable to retrieve snapshot {:?} for change set {:?}. Retries remaining: {}",
+                        address, change_set_id, retries
+                    );
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        error!(
+            "Retries exceeded trying to fetch workspace snapshot for change set {:?}",
+            change_set_id
+        );
+        Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
     }
 
     #[instrument(
