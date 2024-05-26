@@ -5,7 +5,7 @@ use si_events::{
     Actor, ChangeSetId, FuncRunId, FuncRunLog, OutputLine, Tenancy, UserPk, WorkspacePk,
 };
 use si_layer_cache::db::serialize;
-use si_layer_cache::{persister::PersistStatus, LayerDb};
+use si_layer_cache::LayerDb;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
@@ -38,16 +38,10 @@ async fn write_to_db() {
     let key_str: Arc<str> = func_run_log.id().to_string().into();
     let value: Arc<FuncRunLog> = Arc::new(func_run_log);
 
-    let status = ldb
-        .func_run_log()
+    ldb.func_run_log()
         .write(value.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
@@ -119,16 +113,10 @@ async fn update() {
     let key_str: Arc<str> = func_run_log.id().to_string().into();
     let value: Arc<FuncRunLog> = Arc::new(func_run_log);
 
-    let status = ldb
-        .func_run_log()
+    ldb.func_run_log()
         .write(value.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
@@ -176,16 +164,10 @@ async fn update() {
     });
     let update_func_run_log = Arc::new(update_func_run_log_inner);
 
-    let status = ldb
-        .func_run_log()
+    ldb.func_run_log()
         .write(update_func_run_log.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     // Are we in memory?
     let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
@@ -303,16 +285,10 @@ async fn write_and_get_for_func_run_id() {
     let func_run_log = FuncRunLog::new(func_run_id, tenancy);
     let value: Arc<FuncRunLog> = Arc::new(func_run_log);
 
-    let status = ldb
-        .func_run_log()
+    ldb.func_run_log()
         .write(value.clone(), None, tenancy, actor)
         .await
         .expect("failed to write to layerdb");
-
-    match status.get_status().await.expect("failed to get status") {
-        PersistStatus::Finished => {}
-        PersistStatus::Error(e) => panic!("Write failed; {e}"),
-    }
 
     let read_value = ldb
         .func_run_log()

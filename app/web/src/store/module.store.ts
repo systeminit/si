@@ -410,7 +410,15 @@ export const useModuleStore = () => {
           },
         },
         onActivated() {
-          this.LOAD_LOCAL_MODULES();
+          // This store is activated very early, and we might not have a change
+          // set yet. This guards against an errant 500 in that case.
+          const visibilityParams = getVisibilityParams();
+          if (
+            visibilityParams.workspaceId &&
+            visibilityParams.visibility_change_set_pk
+          ) {
+            this.LOAD_LOCAL_MODULES();
+          }
           this.LIST_BUILTINS();
 
           const realtimeStore = useRealtimeStore();

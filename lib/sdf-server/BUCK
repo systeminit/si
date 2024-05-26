@@ -12,6 +12,7 @@ rust_library(
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
+        "//lib/si-events-rs:si-events",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
         "//lib/si-posthog-rs:si-posthog",

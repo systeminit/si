@@ -2,7 +2,7 @@ use std::error;
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
-use si_events::{content_hash::ContentHashParseError, FuncRunId};
+use si_events::{content_hash::ContentHashParseError, ActionId, FuncRunId};
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
@@ -16,6 +16,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum LayerDbError {
+    #[error("attempted to find a bunch by action id, but there wasn't one")]
+    ActionIdNotFound(ActionId),
     #[error("Activity is not an activity rebase, and should be to be on the work queue")]
     ActivityRebase,
     #[error("Rebase work queue event failed to send error: {0}")]

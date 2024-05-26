@@ -122,6 +122,13 @@ pub enum ActionKind {
     Update,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Serialize, Deserialize)]
+pub enum ActionResultState {
+    Success,
+    Failure,
+    Unknown,
+}
+
 #[derive(Debug, Clone, Builder, Serialize, Deserialize)]
 pub struct FuncRun {
     #[builder(default = "FuncRunId::new()")]
@@ -146,6 +153,10 @@ pub struct FuncRun {
     action_display_name: Option<String>,
     #[builder(default)]
     action_originating_change_set_id: Option<ChangeSetId>,
+    #[builder(default)]
+    action_originating_change_set_name: Option<String>,
+    #[builder(default)]
+    action_result_state: Option<ActionResultState>,
     backend_kind: FuncBackendKind,
     backend_response_type: FuncBackendResponseType,
     function_name: String,
@@ -169,6 +180,11 @@ pub struct FuncRun {
 impl FuncRun {
     pub fn builder() -> FuncRunBuilder {
         FuncRunBuilder::default()
+    }
+
+    pub fn set_action_result_state(&mut self, value: Option<ActionResultState>) {
+        self.action_result_state = value;
+        self.updated_at = Utc::now();
     }
 
     pub fn set_result_value_cas_address(&mut self, value: Option<ContentHash>) {
@@ -229,6 +245,10 @@ impl FuncRun {
         self.component_id
     }
 
+    pub fn component_name(&self) -> Option<&str> {
+        self.component_name.as_deref()
+    }
+
     pub fn attribute_value_id(&self) -> Option<AttributeValueId> {
         self.attribute_value_id
     }
@@ -237,12 +257,32 @@ impl FuncRun {
         self.action_id
     }
 
+    pub fn action_display_name(&self) -> Option<&str> {
+        self.action_display_name.as_deref()
+    }
+
+    pub fn schema_name(&self) -> Option<&str> {
+        self.schema_name.as_deref()
+    }
+
+    pub fn action_kind(&self) -> Option<ActionKind> {
+        self.action_kind
+    }
+
+    pub fn action_result_state(&self) -> Option<ActionResultState> {
+        self.action_result_state
+    }
+
     pub fn action_prototype_id(&self) -> Option<ActionPrototypeId> {
         self.action_prototype_id
     }
 
     pub fn action_originating_change_set_id(&self) -> Option<ChangeSetId> {
         self.action_originating_change_set_id
+    }
+
+    pub fn action_originating_change_set_name(&self) -> Option<&str> {
+        self.action_originating_change_set_name.as_deref()
     }
 
     pub fn backend_kind(&self) -> FuncBackendKind {

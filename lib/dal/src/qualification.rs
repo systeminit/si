@@ -181,7 +181,10 @@ impl QualificationView {
         let maybe_qual_run = ctx
             .layer_db()
             .func_run()
-            .get_last_qualification_for_attribute_value_id(attribute_value_id.into())
+            .get_last_qualification_for_attribute_value_id(
+                ctx.events_tenancy().workspace_pk,
+                attribute_value_id.into(),
+            )
             .await?;
         match maybe_qual_run {
             Some(qual_run) => {

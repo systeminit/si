@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_events::ActionResultState;
 use telemetry::prelude::*;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
@@ -198,6 +199,15 @@ async fn process_failed_action(
 
     component.set_resource(ctx, resource_data.clone()).await?;
     Action::set_state(ctx, id, ActionState::Failed).await?;
+    ctx.layer_db()
+        .func_run()
+        .set_action_result_state_for_action_id(
+            id.into(),
+            ActionResultState::Failure,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )
+        .await?;
 
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
     WsEvent::action_return(ctx, id, prototype.kind, component_id, Some(resource_data))

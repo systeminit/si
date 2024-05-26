@@ -3,8 +3,8 @@ use std::sync::Arc;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use si_events::{
-    CasValue, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId,
-    FuncRunValue,
+    ActionResultState, CasValue, ContentHash, FuncRun, FuncRunBuilder, FuncRunBuilderError,
+    FuncRunId, FuncRunLog, FuncRunLogId, FuncRunValue,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -20,9 +20,9 @@ use crate::{
     attribute::value::AttributeValueError,
     func::backend::FuncBackendError,
     secret::{before_funcs_for_component, BeforeFuncError},
-    ActionPrototypeId, AttributeValue, AttributeValueId, Component, ComponentError, ComponentId,
-    DalContext, Func, FuncBackendKind, FuncError, FuncId, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
+    ComponentError, ComponentId, DalContext, Func, FuncBackendKind, FuncError, FuncId, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 use super::backend::{
@@ -54,6 +54,8 @@ pub enum FuncRunnerError {
     AttributeValue(#[from] AttributeValueError),
     #[error("before funcs error: {0}")]
     BeforeFunc(#[from] BeforeFuncError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("direct authentication func execution is unsupported (must go through \"before funcs\"), found: {0}")]
@@ -131,8 +133,7 @@ impl FuncRunner {
 
         let func_run = Arc::new(func_run_inner);
 
-        let _ = ctx
-            .layer_db()
+        ctx.layer_db()
             .func_run()
             .write(
                 func_run.clone(),
@@ -167,6 +168,25 @@ impl FuncRunner {
             )
             .await?;
 
+        let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+            let code_json_value: serde_json::Value = code.clone().into();
+            let code_cas_value: CasValue = code_json_value.into();
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            hash
+        } else {
+            // Why are we doing this? Because the struct gods demand it. I have feelings.
+            ContentHash::new("".as_bytes())
+        };
+
         let func_run_create_time = Utc::now();
         let func_run_inner = FuncRunBuilder::default()
             .actor(ctx.events_actor())
@@ -179,7 +199,7 @@ impl FuncRunner {
             .function_description(func.description.clone())
             .function_link(func.link.clone())
             .function_args_cas_address(function_args_cas_address)
-            .function_code_cas_address(func.code_blake3)
+            .function_code_cas_address(code_cas_hash)
             .attribute_value_id(None)
             .component_id(None)
             .created_at(func_run_create_time)
@@ -188,8 +208,7 @@ impl FuncRunner {
 
         let func_run = Arc::new(func_run_inner);
 
-        let _ = ctx
-            .layer_db()
+        ctx.layer_db()
             .func_run()
             .write(
                 func_run.clone(),
@@ -235,6 +254,25 @@ impl FuncRunner {
             )
             .await?;
 
+        let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+            let code_json_value: serde_json::Value = code.clone().into();
+            let code_cas_value: CasValue = code_json_value.into();
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            hash
+        } else {
+            // Why are we doing this? Because the struct gods demand it. I have feelings.
+            ContentHash::new("".as_bytes())
+        };
+
         let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
 
         let func_run_create_time = Utc::now();
@@ -249,7 +287,7 @@ impl FuncRunner {
             .function_description(func.description.clone())
             .function_link(func.link.clone())
             .function_args_cas_address(function_args_cas_address)
-            .function_code_cas_address(func.code_blake3)
+            .function_code_cas_address(code_cas_hash)
             .attribute_value_id(Some(attribute_value_id.into()))
             .component_id(Some(component_id.into()))
             .created_at(func_run_create_time)
@@ -258,8 +296,7 @@ impl FuncRunner {
 
         let func_run = Arc::new(func_run_inner);
 
-        let _ = ctx
-            .layer_db()
+        ctx.layer_db()
             .func_run()
             .write(
                 func_run.clone(),
@@ -294,6 +331,25 @@ impl FuncRunner {
             )
             .await?;
 
+        let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+            let code_json_value: serde_json::Value = code.clone().into();
+            let code_cas_value: CasValue = code_json_value.into();
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            hash
+        } else {
+            // Why are we doing this? Because the struct gods demand it. I have feelings.
+            ContentHash::new("".as_bytes())
+        };
+
         let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
         let before = before_funcs_for_component(ctx, component_id).await?;
 
@@ -309,7 +365,7 @@ impl FuncRunner {
             .function_description(func.description.clone())
             .function_link(func.link.clone())
             .function_args_cas_address(function_args_cas_address)
-            .function_code_cas_address(func.code_blake3)
+            .function_code_cas_address(code_cas_hash)
             .attribute_value_id(Some(attribute_value_id.into()))
             .component_id(Some(component_id.into()))
             .created_at(func_run_create_time)
@@ -318,8 +374,7 @@ impl FuncRunner {
 
         let func_run = Arc::new(func_run_inner);
 
-        let _ = ctx
-            .layer_db()
+        ctx.layer_db()
             .func_run()
             .write(
                 func_run.clone(),
@@ -348,12 +403,26 @@ impl FuncRunner {
         let maybe_action_id = Action::find_equivalent(ctx, action_prototype_id, Some(component_id))
             .await
             .map_err(Box::new)?;
-        let action_originating_change_set_id = match maybe_action_id {
+        let maybe_action_originating_change_set_id = match maybe_action_id {
             Some(action_id) => {
                 let action = Action::get_by_id(ctx, action_id).await.map_err(Box::new)?;
                 Some(action.originating_changeset_id())
             }
             None => None,
+        };
+        let maybe_action_originating_change_set_name = if let Some(
+            action_originating_change_set_id,
+        ) = maybe_action_originating_change_set_id
+        {
+            if let Some(original_change_set) =
+                ChangeSet::find(ctx, action_originating_change_set_id).await?
+            {
+                Some(original_change_set.name)
+            } else {
+                None
+            }
+        } else {
+            None
         };
 
         let function_args: CasValue = args.clone().into();
@@ -368,12 +437,30 @@ impl FuncRunner {
             )
             .await?;
 
+        let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+            let code_json_value: serde_json::Value = code.clone().into();
+            let code_cas_value: CasValue = code_json_value.into();
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            hash
+        } else {
+            // Why are we doing this? Because the struct gods demand it. I have feelings.
+            ContentHash::new("".as_bytes())
+        };
+
         let before = before_funcs_for_component(ctx, component_id).await?;
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_name = component.name(ctx).await?;
         let schema_name = component.schema(ctx).await?.name;
 
-        // TODO: Thread through all the action context
         let func_run_create_time = Utc::now();
         let func_run_inner = FuncRunBuilder::default()
             .actor(ctx.events_actor())
@@ -386,12 +473,16 @@ impl FuncRunner {
             .function_description(func.description.clone())
             .function_link(func.link.clone())
             .function_args_cas_address(function_args_cas_address)
-            .function_code_cas_address(func.code_blake3)
+            .function_code_cas_address(code_cas_hash)
             .action_id(maybe_action_id.map(|a| a.into()))
             .action_prototype_id(Some(action_prototype_id.into()))
             .action_kind(Some(prototype.kind.into()))
             .action_display_name(Some(prototype.name().clone()))
-            .action_originating_change_set_id(action_originating_change_set_id.map(|a| a.into()))
+            .action_originating_change_set_id(
+                maybe_action_originating_change_set_id.map(|a| a.into()),
+            )
+            .action_originating_change_set_name(maybe_action_originating_change_set_name)
+            .action_result_state(Some(ActionResultState::Unknown))
             .attribute_value_id(None)
             .component_id(Some(component_id.into()))
             .component_name(Some(component_name))
@@ -402,8 +493,7 @@ impl FuncRunner {
 
         let func_run = Arc::new(func_run_inner);
 
-        let _ = ctx
-            .layer_db()
+        ctx.layer_db()
             .func_run()
             .write(
                 func_run.clone(),
@@ -523,8 +613,7 @@ impl FuncRunner {
                 let mut running_state_func_run_inner = Arc::unwrap_or_clone(func_run.clone());
                 running_state_func_run_inner.set_state_to_running();
                 let running_state_func_run = Arc::new(running_state_func_run_inner);
-                let _ = ctx
-                    .layer_db()
+                ctx.layer_db()
                     .func_run()
                     .write(
                         running_state_func_run.clone(),
@@ -648,8 +737,7 @@ impl FuncRunner {
                             Arc::unwrap_or_clone(running_state_func_run.clone());
                         next_state_inner.set_state_to_post_processing();
                         let next_state = Arc::new(next_state_inner);
-                        let _ = ctx
-                            .layer_db()
+                        ctx.layer_db()
                             .func_run()
                             .write(
                                 next_state.clone(),
@@ -673,8 +761,7 @@ impl FuncRunner {
                             Arc::unwrap_or_clone(running_state_func_run.clone());
                         next_state_inner.set_state_to_failure();
                         let next_state = Arc::new(next_state_inner);
-                        let _ = ctx
-                            .layer_db()
+                        ctx.layer_db()
                             .func_run()
                             .write(
                                 next_state.clone(),
@@ -695,8 +782,7 @@ impl FuncRunner {
                             Arc::unwrap_or_clone(running_state_func_run.clone());
                         next_state_inner.set_state_to_failure();
                         let next_state = Arc::new(next_state_inner);
-                        let _ = ctx
-                            .layer_db()
+                        ctx.layer_db()
                             .func_run()
                             .write(
                                 next_state.clone(),

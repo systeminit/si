@@ -21,9 +21,9 @@ pub use crate::{
     encrypted_secret::EncryptedSecretKey,
     func_execution::*,
     func_run::{
-        ActionId, ActionKind, ActionPrototypeId, AttributeValueId, ComponentId, FuncBackendKind,
-        FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId,
-        FuncRunState, FuncRunValue,
+        ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributeValueId, ComponentId,
+        FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder,
+        FuncRunBuilderError, FuncRunId, FuncRunState, FuncRunValue,
     },
     func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
     tenancy::ChangeSetId,
