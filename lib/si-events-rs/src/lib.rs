@@ -78,6 +78,10 @@ macro_rules! id {
                 self.0.array_to_str(buf)
             }
 
+            pub fn array_to_str_buf() -> [u8; ::ulid::ULID_LEN] {
+                [0; ::ulid::ULID_LEN]
+            }
+
             /// Converts type into inner [`Ulid`](::ulid::Ulid).
             pub fn into_inner(self) -> ::ulid::Ulid {
                 self.0

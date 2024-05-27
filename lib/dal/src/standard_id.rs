@@ -38,6 +38,11 @@ macro_rules! id {
             pub fn into_inner(self) -> ::ulid::Ulid {
                 self.0
             }
+
+            /// Creates a Crockford Base32 encoded string that represents this Ulid.
+            pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ::ulid::ULID_LEN]) -> &'buf mut str {
+                self.0.array_to_str(buf)
+            }
         }
 
         impl From<$name> for ::si_events::ulid::Ulid {
