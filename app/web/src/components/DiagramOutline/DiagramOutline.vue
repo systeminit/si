@@ -107,6 +107,7 @@ import {
   onMounted,
   provide,
   ref,
+  watch,
 } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -287,6 +288,17 @@ const filterArrays = [
   failedQualificationComponents,
   upgradableComponents,
 ];
+
+watch(
+  () => componentsStore.selectedComponentId,
+  () => {
+    if (!componentsStore.selectedComponentId) return;
+    const el = document.getElementById(
+      `diagram-outline-node-${componentsStore.selectedComponentId}`,
+    );
+    el?.scrollIntoView({ behavior: "smooth" });
+  },
+);
 
 function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
   const component = componentsStore.componentsById[id];
