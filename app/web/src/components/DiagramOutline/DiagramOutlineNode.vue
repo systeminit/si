@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="component"
+    :id="htmlid"
     ref="nodeRef"
     class="diagram-outline-node"
     :data-component-id="componentId"
@@ -172,6 +173,7 @@ const rootCtx = useDiagramOutlineContext();
 const { filterModeActive } = rootCtx;
 
 const nodeRef = ref<HTMLElement>();
+const htmlid = `diagram-outline-node-${props.componentId}`;
 
 const isOpen = ref(true);
 
