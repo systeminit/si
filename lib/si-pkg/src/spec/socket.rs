@@ -102,32 +102,4 @@ impl SocketSpec {
     pub fn kind(&self) -> Option<SocketSpecKind> {
         self.data.as_ref().map(|data| data.kind)
     }
-
-    pub fn merge_socket_spec(&self, old_socket: &SocketSpec) -> SocketSpecBuilder {
-        let mut builder = SocketSpec::builder();
-        builder.name(self.clone().name);
-
-        if let Some(new_data) = self.clone().data {
-            let mut spec_data = new_data.clone();
-            if new_data.func_unique_id.is_none() {
-                if let Some(old_data) = old_socket.clone().data {
-                    if old_data.func_unique_id.is_some() {
-                        spec_data.func_unique_id = old_data.func_unique_id;
-                    }
-                }
-            }
-
-            builder.data(spec_data);
-        }
-
-        if self.clone().inputs.is_empty() && !old_socket.inputs.is_empty() {
-            builder.inputs(old_socket.clone().inputs);
-        }
-
-        if old_socket.unique_id.is_some() && self.clone().unique_id.is_none() {
-            builder.unique_id(old_socket.clone().unique_id);
-        }
-
-        builder
-    }
 }

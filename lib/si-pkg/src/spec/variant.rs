@@ -6,7 +6,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 use url::Url;
 
 use crate::{
-    spec::authentication_func::AuthenticationFuncSpec, MergeSkip, PropSpecKind, SocketSpecKind,
+    spec::authentication_func::AuthenticationFuncSpec, InputMismatchTruth, MergeSkip, PropSpecKind,
+    SocketSpecKind,
 };
 
 use super::{
@@ -230,6 +231,98 @@ impl SchemaVariantSpec {
         root.build().expect("failure to build is a logic error")
     }
 
+    // This should be used after props are merged from other, so that the root
+    // prop on self has all the currently existing props
+    fn merge_sockets_from(
+        &self,
+        self_root: &PropSpec,
+        other_spec: &Self,
+        input_sockets: &[String],
+        output_sockets: &[String],
+        identity_func_spec_id: &str,
+    ) -> (Vec<SocketSpec>, Vec<MergeSkip>) {
+        let mut merged_sockets = vec![];
+        let mut merge_skips = vec![];
+
+        let self_prop_map = self_root.build_prop_spec_index_map();
+
+        for socket in &self.sockets {
+            // Does this socket exist in other?
+            if let Some(other_socket) = other_spec
+                .sockets
+                .iter()
+                .find(|sock| sock.name == socket.name)
+            {
+                let this_socket_maybe_func_unique_id = socket
+                    .data
+                    .as_ref()
+                    .and_then(|data| data.func_unique_id.to_owned());
+
+                let other_maybe_func_unique_id = other_socket
+                    .data
+                    .as_ref()
+                    .and_then(|data| data.func_unique_id.to_owned());
+
+                match (this_socket_maybe_func_unique_id, other_maybe_func_unique_id) {
+                    (None, None) | (Some(_), None) => {
+                        merged_sockets.push(socket.to_owned());
+                    }
+                    (None, Some(other_socket_func_unique_id)) => {
+                        // If the other is identity, and we have no function,
+                        // then the "value from" has been removed in our spec
+                        if other_socket_func_unique_id != identity_func_spec_id {
+                            let new_merge_skips = PropSpec::get_input_mismatches(
+                                &socket.name,
+                                InputMismatchTruth::PropSpecMap(&self_prop_map),
+                                other_socket.inputs.as_slice(),
+                                &other_socket_func_unique_id,
+                                input_sockets,
+                                output_sockets,
+                            );
+
+                            if !new_merge_skips.is_empty() {
+                                merge_skips.extend(new_merge_skips.into_iter());
+                                merged_sockets.push(socket.to_owned());
+                            } else {
+                                merged_sockets.push(other_socket.to_owned());
+                            }
+                        } else {
+                            merged_sockets.push(socket.to_owned());
+                        }
+                    }
+                    (Some(this_socket_func_unique_id), Some(other_socket_func_unique_id)) => {
+                        if this_socket_func_unique_id == other_socket_func_unique_id
+                            && this_socket_func_unique_id == identity_func_spec_id
+                        {
+                            merged_sockets.push(socket.to_owned());
+                        } else if other_socket_func_unique_id != identity_func_spec_id {
+                            let new_merge_skips = PropSpec::get_input_mismatches(
+                                &socket.name,
+                                InputMismatchTruth::PropSpecMap(&self_prop_map),
+                                other_socket.inputs.as_slice(),
+                                &other_socket_func_unique_id,
+                                input_sockets,
+                                output_sockets,
+                            );
+
+                            if !new_merge_skips.is_empty() {
+                                merge_skips.extend(new_merge_skips.into_iter());
+                                merged_sockets.push(socket.to_owned());
+                            } else {
+                                merged_sockets.push(other_socket.to_owned());
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Completely new socket, just add it to the list
+                merged_sockets.push(socket.to_owned())
+            }
+        }
+
+        (merged_sockets, merge_skips)
+    }
+
     /// Makes a best effort to merge the prototypes of `other_spec` into `self`,
     /// producing a new `SchemaVariantSpec`. The prop tree for `self` is taken as
     /// the source of truth. Props present in `other_spec` but not present in
@@ -239,36 +332,16 @@ impl SchemaVariantSpec {
     /// attribute functions for that prop are copied over to self. Then, all
     /// other functions are copied over, if they have matching props (or
     /// sockets) in self.
-    pub fn merge_prototypes_from(&self, other_spec: &Self) -> (Self, Vec<MergeSkip>) {
+    pub fn merge_prototypes_from(
+        &self,
+        other_spec: &Self,
+        identity_func_spec_id: &str,
+    ) -> (Self, Vec<MergeSkip>) {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
         schema_variant_builder.name(&self.name);
         schema_variant_builder.data = Some(self.data.clone());
 
-        let mut new_sockets: Vec<SocketSpec> = vec![];
-        for new_socket in self.sockets.clone() {
-            if let Some(matching_socket) = other_spec
-                .sockets
-                .iter()
-                .find(|s| s.name == new_socket.name && s.kind() == new_socket.kind())
-            {
-                let new_socket_spec_result = new_socket
-                    .merge_socket_spec(matching_socket)
-                    .build()
-                    .map_err(Box::new);
-                match new_socket_spec_result {
-                    Ok(new_spec) => new_sockets.push(new_spec),
-                    _ => {
-                        dbg!("Unable to add the socket to the spec builder");
-                        continue;
-                    }
-                }
-            } else {
-                new_sockets.push(new_socket.clone());
-            }
-        }
-
-        schema_variant_builder.sockets(new_sockets);
-
+        // These are the sockets as defined by the new asset (just their names)
         let self_input_sockets = self.input_sockets();
         let self_output_sockets = self.output_sockets();
 
@@ -285,7 +358,17 @@ impl SchemaVariantSpec {
         let (new_root, mut merge_skips) =
             self_root_prop.merge_with(&other_root_prop, &self_input_sockets, &self_output_sockets);
 
+        // The prop spec is now merged, so we can use it for socket merges
+        let (new_sockets, socket_merge_skips) = self.merge_sockets_from(
+            &new_root,
+            other_spec,
+            &self_input_sockets,
+            &self_output_sockets,
+            identity_func_spec_id,
+        );
+
         schema_variant_builder.replace_roots(new_root);
+        schema_variant_builder.sockets(new_sockets);
 
         let missing_props: HashSet<String> = merge_skips
             .iter()
@@ -294,6 +377,8 @@ impl SchemaVariantSpec {
                 _ => None,
             })
             .collect();
+
+        merge_skips.extend(socket_merge_skips);
 
         for si_prop_func in &other_spec.si_prop_funcs {
             let path = PropSpec::make_path(&si_prop_func.kind.prop_path(), None);
@@ -692,7 +777,7 @@ mod tests {
             .build()
             .expect("build sv");
 
-        let (merged_sv, skips) = sv_2.merge_prototypes_from(&sv_1);
+        let (merged_sv, skips) = sv_2.merge_prototypes_from(&sv_1, "identity");
 
         assert_eq!(
             &[
