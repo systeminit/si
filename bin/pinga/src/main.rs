@@ -40,7 +40,7 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["pinga", "pinga_server"])
-            .interesting_modules(vec!["si_data_nats", "si_data_pg"])
+            .interesting_modules(vec!["dal", "si_data_nats", "si_data_pg", "si_layer_cache"])
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?

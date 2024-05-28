@@ -3,7 +3,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{id, Actor, ChangeSetId, ContentHash, Tenancy};
+use crate::{id, Actor, ChangeSetId, ContentHash, Tenancy, WorkspacePk};
 
 id!(FuncRunId);
 id!(ComponentId);
@@ -106,7 +106,7 @@ pub enum FuncBackendResponseType {
 }
 
 #[remain::sorted]
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
+#[derive(AsRefStr, Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
 pub enum ActionKind {
     /// Create the "outside world" version of the modeled object.
     Create,
@@ -239,6 +239,14 @@ impl FuncRun {
 
     pub fn tenancy(&self) -> &Tenancy {
         &self.tenancy
+    }
+
+    pub fn workspace_pk(&self) -> WorkspacePk {
+        self.tenancy.workspace_pk
+    }
+
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.tenancy.change_set_id
     }
 
     pub fn component_id(&self) -> Option<ComponentId> {
