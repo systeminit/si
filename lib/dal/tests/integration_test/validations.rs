@@ -141,7 +141,9 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         "number",
     )
     .await;
-
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     let prop_path = &["root", "domain", "a_number"];
     let av_id = output_component
         .attribute_values_for_prop(ctx, prop_path)
