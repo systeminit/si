@@ -43,7 +43,7 @@
             <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
               {{ arg.name }}
             </h1>
-            <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
+            <h2 class="pb-2 text-sm">{{ arg.path }}</h2>
           </li>
         </ul>
         <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
@@ -78,14 +78,13 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref, Ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import {
   AttributeAssociations,
   AttributePrototypeBag,
   FuncAssociations,
 } from "@/store/func/types";
-import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
@@ -100,52 +99,65 @@ const props = defineProps<{
 
 const bindingsModalRef = ref<InstanceType<typeof AttributeBindingsModal>>();
 
-const emit = defineEmits<{
-  (e: "update:modelValue", v: AttributeAssociations): void;
-  (e: "change", v: AttributeAssociations): void;
-}>();
-
-const associations = ref(props.modelValue);
-
-watch(
-  () => props.modelValue,
-  (mv) => {
-    associations.value = mv;
-  },
-  { immediate: true },
+const associations = computed(
+  () =>
+    funcStore.funcDetailsById[funcId.value as string]
+      ?.associations as AttributeAssociations,
 );
+
+const funcArguments = computed(() => funcStore.funcArguments);
+const funcId = computed(() => funcStore.selectedFuncId);
 
 const makeEmptyPrototype = (): AttributePrototypeBag => ({
   id: nilId(),
   componentId: nilId(),
   propId: nilId(),
-  prototypeArguments: associations.value.arguments.map(({ id }) => ({
-    funcArgumentId: id,
-  })),
+  prototypeArguments: funcArguments.value
+    ? funcArguments.value.map(({ id }) => ({
+        funcArgumentId: id,
+      }))
+    : [],
 });
 
-const removeBinding = (prototypeId: string) => {
-  associations.value.prototypes = associations.value.prototypes.filter(
-    (proto) => proto.id !== prototypeId,
-  );
-  emit("update:modelValue", associations.value);
-  emit("change", associations.value);
+// todo: Don't remove existing configured args when pulling in the new ones
+const rehydratePrototype = (
+  existing: AttributePrototypeBag,
+): AttributePrototypeBag => ({
+  id: existing.id,
+  componentId: existing.componentId,
+  propId: existing.propId,
+  prototypeArguments: funcArguments.value
+    ? funcArguments.value.map(({ id }) => ({
+        funcArgumentId: id,
+      }))
+    : [],
+});
+
+const removeBinding = async (prototypeId: string) => {
+  await funcStore.REMOVE_ATTRIBUTE_PROTOTYPE(prototypeId);
 };
 
-const addOrUpdateBinding = (
-  associations: AttributeAssociations,
-  prototype: AttributePrototypeBag,
-) => {
+const addOrUpdateBinding = async (prototype: AttributePrototypeBag) => {
   if (prototype.id !== nilId()) {
-    const currentPrototypeIdx = associations.prototypes.findIndex(
-      (proto) => proto.id === prototype.id,
+    // update prototype
+    await funcStore.UPDATE_ATTRIBUTE_PROTOTYPE(
+      funcId.value as string,
+      prototype.id as string,
+      prototype.prototypeArguments,
+      prototype.propId,
+      prototype.outputSocketId,
     );
-    associations.prototypes[currentPrototypeIdx] = prototype;
   } else {
-    associations.prototypes.push(prototype);
+    // create new prototype
+    await funcStore.CREATE_ATTRIBUTE_PROTOTYPE(
+      funcId.value as string,
+      prototype.schemaVariantId as string,
+      prototype.prototypeArguments,
+      prototype.componentId,
+      prototype.propId,
+      prototype.outputSocketId,
+    );
   }
-
-  return associations;
 };
 
 const closeModal = () => {
@@ -154,9 +166,7 @@ const closeModal = () => {
 
 const saveModal = (prototype?: AttributePrototypeBag) => {
   if (prototype) {
-    associations.value = addOrUpdateBinding(associations.value, prototype);
-    emit("update:modelValue", associations.value);
-    emit("change", associations.value);
+    addOrUpdateBinding(prototype);
   }
   closeModal();
 };
@@ -167,12 +177,10 @@ const openModal = (prototypeId?: string) => {
     : makeEmptyPrototype();
 
   if (prototype) {
-    bindingsModalRef.value?.open(prototype);
+    const proto = rehydratePrototype(prototype);
+    bindingsModalRef.value?.open(proto);
   }
 };
-
-const funcArgumentsIdMap =
-  inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
 
 const prototypeViews = computed(() =>
   associations.value.prototypes
@@ -199,10 +207,11 @@ const prototypeViews = computed(() =>
         funcStore.outputLocationForAttributePrototype(proto);
 
       const args = proto.prototypeArguments.map((arg) => ({
-        name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
-        prop: arg.propId
-          ? funcStore.propIdToSourceName(arg.propId) ?? "none"
-          : "none",
+        name: funcStore.funcArgumentsById[arg.funcArgumentId]?.name ?? "none",
+        path:
+          funcStore.propIdToSourceName(arg.propId ?? nilId()) ??
+          funcStore.inputSocketIdToSourceName(arg.inputSocketId ?? nilId()) ??
+          "none",
       }));
 
       return {
@@ -217,14 +226,14 @@ const prototypeViews = computed(() =>
 
 const detachFunc = (): FuncAssociations | undefined => {
   if (props.schemaVariantId) {
-    return {
-      ...associations.value,
-      prototypes: associations.value.prototypes.filter(
-        (proto) =>
-          funcStore.schemaVariantIdForAttributePrototype(proto) !==
-          props.schemaVariantId,
-      ),
-    };
+    const prototype = associations.value.prototypes.find(
+      (proto) =>
+        funcStore.schemaVariantIdForAttributePrototype(proto) ===
+        props.schemaVariantId,
+    );
+    // todo: remove the binding when the user hits the detach button
+    removeBinding(prototype?.id as string);
+    return;
   }
 };
 

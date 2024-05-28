@@ -41,7 +41,6 @@ mod kind;
 
 pub use associations::AttributePrototypeArgumentBag;
 pub use associations::AttributePrototypeBag;
-pub use associations::FuncArgumentBag;
 pub use associations::FuncAssociations;
 pub use kind::FuncKind;
 
@@ -484,10 +483,7 @@ impl Func {
                     schema_variant_ids,
                     kind: _,
                 } => !schema_variant_ids.is_empty(),
-                FuncAssociations::Attribute {
-                    prototypes,
-                    arguments,
-                } => !prototypes.is_empty() || !arguments.is_empty(),
+                FuncAssociations::Attribute { prototypes } => !prototypes.is_empty(),
                 FuncAssociations::CodeGeneration {
                     schema_variant_ids,
                     component_ids,
@@ -604,6 +600,17 @@ pub struct FuncWsEventPayload {
 }
 
 impl WsEvent {
+    pub async fn func_arguments_saved(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncArgumentsSaved(FuncWsEventPayload {
+                func_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
     pub async fn func_deleted(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,

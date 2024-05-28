@@ -46,11 +46,11 @@ use thiserror::Error;
 
 use crate::action::prototype::{ActionKind, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
-use crate::func::argument::{FuncArgumentError, FuncArgumentId};
+use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
@@ -58,12 +58,13 @@ use crate::prop::PropError;
 use crate::secret::BeforeFuncError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototypeId, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
+    AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId,
+    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
 
 use super::runner::FuncRunnerError;
+use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
 
 mod create;
 mod execute;
@@ -95,8 +96,6 @@ pub enum FuncAuthoringError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
-    #[error("func argument must exist before using it in an attribute prototype argument: {0}")]
-    FuncArgumentMustExist(AttributePrototypeArgumentId),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
     #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
@@ -135,6 +134,8 @@ pub enum FuncAuthoringError {
     Transactions(#[from] TransactionsError),
     #[error("unexpected func kind ({0}) creating attribute func")]
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
+    #[error("unexpected func kind ({0}) for func ({1}) when creating func argument (expected an attribute func kind)")]
+    UnexpectedFuncKindCreatingFuncArgument(FuncId, FuncKind),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -225,6 +226,146 @@ impl FuncAuthoringClient {
             }
             kind => return Err(FuncAuthoringError::NotRunnable(id, kind)),
         };
+
+        Ok(())
+    }
+
+    /// Creates a [`FuncArgument`].
+    #[instrument(name = "func.authoring.create_func_argument", level = "info", skip_all)]
+    pub async fn create_func_argument(
+        ctx: &DalContext,
+        id: FuncId,
+        name: impl Into<String>,
+        kind: FuncArgumentKind,
+        element_kind: Option<FuncArgumentKind>,
+    ) -> FuncAuthoringResult<()> {
+        let func = Func::get_by_id_or_error(ctx, id).await?;
+        if func.kind != FuncKind::Attribute {
+            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
+                func.id, func.kind,
+            ));
+        }
+
+        let func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
+
+        for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, id).await? {
+            AttributePrototypeArgument::new(ctx, attribute_prototype_id, func_argument.id).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Creates an [`AttributePrototype`]. Used when attaching an existing attribute
+    /// function to a schema variant and/or component
+    #[instrument(
+        name = "func.authoring.create_attribute_prototype",
+        level = "info",
+        skip_all
+    )]
+    pub async fn create_attribute_prototype(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+        component_id: Option<ComponentId>,
+        prop_id: Option<PropId>,
+        output_socket_id: Option<OutputSocketId>,
+        prototype_arguments: Vec<AttributePrototypeArgumentBag>,
+    ) -> FuncAuthoringResult<AttributePrototypeId> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        if func.kind != FuncKind::Attribute {
+            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
+                func.id, func.kind,
+            ));
+        }
+        let prototype_bag = AttributePrototypeBag {
+            id: AttributePrototypeId::NONE,
+            component_id,
+            schema_variant_id: Some(schema_variant_id),
+            prop_id,
+            output_socket_id,
+            prototype_arguments,
+        };
+        let attribute_prototype_id =
+            save::create_new_attribute_prototype(ctx, &prototype_bag, func_id, None).await?;
+        save::save_attr_func_proto_arguments(
+            ctx,
+            attribute_prototype_id,
+            prototype_bag.prototype_arguments.clone(),
+        )
+        .await?;
+        Ok(attribute_prototype_id)
+    }
+    /// Updates an [`AttributePrototype`].
+    #[instrument(
+        name = "func.authoring.update_attribute_prototype",
+        level = "info",
+        skip_all
+    )]
+    pub async fn update_attribute_prototype(
+        ctx: &DalContext,
+        func_id: FuncId,
+        attribute_prototype_id: AttributePrototypeId,
+        prop_id: Option<PropId>,
+        output_socket_id: Option<OutputSocketId>,
+        prototype_arguments: Vec<AttributePrototypeArgumentBag>,
+    ) -> FuncAuthoringResult<AttributePrototypeId> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        if func.kind != FuncKind::Attribute {
+            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
+                func.id, func.kind,
+            ));
+        }
+        let prototype_bag = AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?;
+        // just remove/reset the existing prototype and create a new one with new\updated arguments
+        save::remove_or_reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
+
+        let new_prototype_bag = AttributePrototypeBag {
+            id: attribute_prototype_id,
+            component_id: prototype_bag.component_id,
+            schema_variant_id: prototype_bag.schema_variant_id,
+            prop_id,
+            output_socket_id,
+            prototype_arguments,
+        };
+        let attribute_prototype_id =
+            save::create_new_attribute_prototype(ctx, &new_prototype_bag, func_id, None).await?;
+        save::save_attr_func_proto_arguments(
+            ctx,
+            attribute_prototype_id,
+            new_prototype_bag.prototype_arguments.clone(),
+        )
+        .await?;
+        Ok(attribute_prototype_id)
+    }
+    /// Removes an [`AttributePrototype`].
+    #[instrument(
+        name = "func.authoring.remove_attribute_prototype",
+        level = "info",
+        skip_all
+    )]
+    pub async fn remove_attribute_prototype(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> FuncAuthoringResult<()> {
+        // just remove/reset the existing prototype
+        save::remove_or_reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
+
+        Ok(())
+    }
+
+    /// Deletes a [`FuncArgument`].
+    #[instrument(name = "func.authoring.delete_func_argument", level = "info", skip_all)]
+    pub async fn delete_func_argument(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+    ) -> FuncAuthoringResult<()> {
+        for attribute_prototype_argument_id in
+            FuncArgument::list_attribute_prototype_argument_ids(ctx, id).await?
+        {
+            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id).await?;
+        }
+
+        FuncArgument::remove(ctx, id).await?;
 
         Ok(())
     }

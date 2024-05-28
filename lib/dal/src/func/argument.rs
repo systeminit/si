@@ -20,7 +20,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
+    id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,
 };
 
@@ -134,9 +134,7 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
     }
 }
 
-// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
-// that the argument is a new one.
-pk!(FuncArgumentId);
+id!(FuncArgumentId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncArgument {

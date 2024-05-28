@@ -1,6 +1,6 @@
 <template>
   <Modal ref="modalRef" :title="title" :size="attachExisting ? '4xl' : 'md'">
-    <div class="flex flex-row h-96">
+    <div class="flex flex-row">
       <div
         :class="
           clsx(
@@ -69,6 +69,30 @@
           v-if="createFuncReqStatus.isError"
           :requestStatus="createFuncReqStatus"
         />
+        <template v-if="attachExisting && funcKind === FuncKind.Attribute">
+          <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Expected Function Arguments:
+          </h1>
+          <h2 class="text-sm">
+            Below is the source of the data for each function argument listed.
+          </h2>
+          <ul>
+            <li
+              v-for="binding in editableBindings"
+              :key="binding.funcArgumentId"
+            >
+              <h1
+                class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50"
+              >
+                {{ funcArgumentName(binding.funcArgumentId) ?? "none" }}
+              </h1>
+              <SelectMenu
+                v-model="binding.binding"
+                :options="inputSourceOptions"
+              />
+            </li>
+          </ul>
+        </template>
         <div class="mt-auto">
           <VButton
             class="w-full"
@@ -126,10 +150,10 @@ import {
   CustomizableFuncKind,
   FuncKind,
 } from "@/api/sdf/dal/func";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import { FuncId, useFuncStore, FuncArgumentId } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
-  AttributeAssociations,
   CreateFuncOptions,
   CreateFuncOutputLocation,
   FuncAssociations,
@@ -183,18 +207,37 @@ const loadFuncDetailsReq = computed(() =>
     : undefined,
 );
 
-watch(selectedExistingFuncId, async (funcId) => {
-  if (funcId) {
-    if (!funcStore.funcDetailsById[funcId]) {
-      const result = await funcStore.FETCH_FUNC_DETAILS(funcId);
-      if (result.result.success) {
-        selectedFuncCode.value = result.result.data.code;
+watch(
+  selectedExistingFuncId,
+  async (funcId) => {
+    if (funcId) {
+      if (
+        !funcStore.funcDetailsById[funcId] ||
+        !funcStore.funcArgumentsByFuncId[funcId]
+      ) {
+        const result = await funcStore.FETCH_FUNC_DETAILS(funcId);
+        if (result.result.success) {
+          selectedFuncCode.value = result.result.data.code;
+          if (result.result.data.associations?.type === "attribute") {
+            await funcStore.FETCH_FUNC_ARGUMENT_LIST(funcId);
+          }
+        }
+      } else {
+        selectedFuncCode.value = funcStore.funcDetailsById[funcId]?.code ?? "";
       }
-    } else {
-      selectedFuncCode.value = funcStore.funcDetailsById[funcId]?.code ?? "";
+
+      editableBindings.value = [];
+      if (func.value?.associations?.type === "attribute") {
+        editableBindings.value =
+          funcStore.funcArgumentsByFuncId[func.value.id]?.map((a) => ({
+            funcArgumentId: a.id,
+            binding: noneSource,
+          })) ?? [];
+      }
     }
-  }
-});
+  },
+  { immediate: true },
+);
 
 const existingFuncOptions = computed(() =>
   Object.values(funcStore.funcsById)
@@ -261,8 +304,11 @@ const attachEnabled = computed(() => {
     !!attributeOutputLocationParsed.value;
   const existingSelected =
     !attachExisting.value || !!selectedExistingFuncId.value;
-
-  return nameIsSet && hasOutput && existingSelected;
+  const argsConfigured =
+    !attachExisting.value ||
+    funcKind.value !== FuncKind.Attribute ||
+    editableBindings.value.every((b) => b.binding.value !== nilId());
+  return nameIsSet && hasOutput && existingSelected && argsConfigured;
 });
 
 const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
@@ -345,24 +391,31 @@ const newFuncOptions = (
   }
 };
 
-const attachToAttributeFunction = (
+const attachToAttributeFunction = async (
   outputLocation: CreateFuncOutputLocation,
-  associations: AttributeAssociations,
-): AttributeAssociations => ({
-  ...associations,
-  prototypes: associations.prototypes.concat([
-    {
-      id: nilId(),
-      propId: "propId" in outputLocation ? outputLocation.propId : undefined,
-      outputSocketId:
-        "outputSocketId" in outputLocation
-          ? outputLocation.outputSocketId
-          : undefined,
-      prototypeArguments: [],
-      componentId: undefined,
-    },
-  ]),
-});
+) => {
+  if (!selectedExistingFuncId.value || !schemaVariantId.value) return;
+  const prototypes = editableBindings.value.map((b) => ({
+    id: nilId(),
+    funcArgumentId: b.funcArgumentId,
+    inputSocketId: b.binding.label.includes("Input Socket")
+      ? (b.binding.value as string)
+      : undefined,
+    propId: b.binding.label.includes("Attribute")
+      ? (b.binding.value as string)
+      : undefined,
+  }));
+  await funcStore.CREATE_ATTRIBUTE_PROTOTYPE(
+    selectedExistingFuncId.value,
+    schemaVariantId.value,
+    prototypes,
+    nilId(),
+    "propId" in outputLocation ? outputLocation.propId : undefined,
+    "outputSocketId" in outputLocation
+      ? outputLocation.outputSocketId
+      : undefined,
+  );
+};
 
 const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
   await assetStore.LOAD_ASSET(assetId);
@@ -376,6 +429,39 @@ const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
     },
   });
 };
+
+const func = computed(
+  () => funcStore.funcDetailsById[selectedExistingFuncId.value ?? -1],
+);
+
+interface EditingBinding {
+  funcArgumentId: string;
+  binding: Option;
+}
+
+const editableBindings = ref<EditingBinding[]>([]);
+const inputSourceOptions = computed<Option[]>(() => {
+  const selectedVariantId = schemaVariantId.value ?? -1;
+  const socketOptions =
+    funcStore.inputSourceSockets[selectedVariantId]?.map((socket) => ({
+      label: `Input Socket: ${socket.name}`,
+      value: socket.inputSocketId,
+    })) ?? [];
+
+  const propOptions =
+    funcStore.inputSourceProps[selectedVariantId]?.map((prop) => ({
+      label: `Attribute: ${prop.path}`,
+      value: prop.propId,
+    })) ?? [];
+
+  return socketOptions.concat(propOptions);
+});
+const funcArgumentName = (
+  funcArgumentId: FuncArgumentId,
+): string | undefined => {
+  return funcStore.funcArgumentsById[funcArgumentId]?.name;
+};
+const noneSource = { label: "select source", value: nilId() };
 
 const attachExistingFunc = async () => {
   if (schemaVariantId.value && selectedExistingFuncId.value) {
@@ -397,10 +483,9 @@ const attachExistingFunc = async () => {
           break;
         case "attribute":
           if (attributeOutputLocationParsed.value) {
-            updatedAssociations = attachToAttributeFunction(
-              attributeOutputLocationParsed.value,
-              associations,
-            );
+            attachToAttributeFunction(attributeOutputLocationParsed.value);
+            if (props.assetId)
+              await reloadAssetAndRoute(props.assetId, func.id);
           }
           break;
         default:

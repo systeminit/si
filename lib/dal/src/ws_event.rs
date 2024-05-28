@@ -83,6 +83,7 @@ pub enum WsPayload {
     ConnectionCreated(ConnectionCreatedPayload),
     ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
+    FuncArgumentsSaved(FuncWsEventPayload),
     FuncDeleted(FuncWsEventPayload),
     FuncRunLogUpdated(FuncRunLogUpdatedPayload),
     FuncSaved(FuncWsEventPayload),
