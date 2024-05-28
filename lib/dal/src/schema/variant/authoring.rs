@@ -45,6 +45,8 @@ pub enum VariantAuthoringError {
     NoAssetCreated,
     #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
+    #[error("constructed package has no identity function")]
+    PkgMissingIdentityFunc,
     #[error("constructed package has no schema node")]
     PkgMissingSchema,
     #[error("constructed package has no schema variant node")]
@@ -614,7 +616,14 @@ async fn build_variant_spec_based_on_existing_variant(
     let (existing_variant_spec, variant_funcs) =
         PkgExporter::export_variant_standalone(ctx, &existing_variant).await?;
 
-    let (merged_variant, skips) = variant_spec.merge_prototypes_from(&existing_variant_spec);
+    let identity_name = IntrinsicFunc::Identity.name();
+    let identity_func = variant_funcs
+        .iter()
+        .find(|f| f.name == identity_name)
+        .ok_or(VariantAuthoringError::PkgMissingIdentityFunc)?;
+
+    let (merged_variant, skips) =
+        variant_spec.merge_prototypes_from(&existing_variant_spec, &identity_func.unique_id);
 
     Ok((merged_variant, skips, variant_funcs))
 }
