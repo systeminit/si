@@ -302,7 +302,11 @@ export const useActionsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
-                if (this.actions.length > 0 && response.length === 0)
+                if (
+                  this.actions.length > 0 &&
+                  response.length === 0 &&
+                  changeSetsStore.headSelected
+                )
                   jsConfetti.addConfetti(_.sample(confettis));
 
                 this.actions = response;
