@@ -495,21 +495,27 @@ async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
     let sv_id = maybe_sv_id.unwrap();
 
     let func_name = "Paul's Test Action Func".to_string();
+    let action_kind = ActionKind::Create;
     let func = FuncAuthoringClient::create_func(
         ctx,
         FuncKind::Action,
         Some(func_name.clone()),
         Some(CreateFuncOptions::ActionOptions {
             schema_variant_id: sv_id,
-            action_kind: ActionKind::Create,
+            action_kind,
         }),
     )
     .await;
 
-    if let Err(FuncAuthoringError::ActionKindAlreadyExists(err_schema_variant_id)) = func {
-        assert_eq!(sv_id, err_schema_variant_id)
+    if let Err(FuncAuthoringError::ActionKindAlreadyExists(
+        err_action_kind,
+        err_schema_variant_id,
+    )) = func
+    {
+        assert_eq!(action_kind, err_action_kind);
+        assert_eq!(sv_id, err_schema_variant_id);
     } else {
-        panic!("Test should fail if we don't get action kind already exists error")
+        panic!("Test should fail if we don't get action kind already exists error");
     }
 }
 

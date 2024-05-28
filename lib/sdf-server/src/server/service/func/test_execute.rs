@@ -1,26 +1,30 @@
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::func::authoring::{FuncAuthoringClient, TestExecuteFuncResult};
+use dal::func::authoring::FuncAuthoringClient;
 use dal::{ComponentId, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
+use si_events::FuncRunId;
 
 use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TestExecuteFuncRequest {
     pub id: FuncId,
     pub args: serde_json::Value,
-    pub execution_key: String,
     pub code: String,
     pub component_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
-pub type TestExecuteFuncResponse = TestExecuteFuncResult;
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestExecuteFuncResponse {
+    func_run_id: FuncRunId,
+}
 
 pub async fn test_execute(
     HandlerContext(builder): HandlerContext,
@@ -31,12 +35,11 @@ pub async fn test_execute(
 ) -> FuncResult<Json<TestExecuteFuncResponse>> {
     let ctx = builder.build(request_ctx.build(req.visibility)).await?;
 
-    let response = FuncAuthoringClient::test_execute_func(
+    let func_run_id = FuncAuthoringClient::test_execute_func(
         &ctx,
         req.id,
         req.args,
-        req.execution_key,
-        req.code,
+        Some(req.code),
         req.component_id,
     )
     .await?;
@@ -53,5 +56,7 @@ pub async fn test_execute(
         }),
     );
 
-    Ok(Json(response))
+    ctx.commit().await?;
+
+    Ok(Json(TestExecuteFuncResponse { func_run_id }))
 }

@@ -10,8 +10,13 @@ use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
-use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
+use veritech_client::{
+    encrypt_value_tree, BeforeFunction, OutputStream, ResolverFunctionComponent,
+    VeritechValueEncryptError,
+};
 
+use crate::prop::{PropError, PropPath};
+use crate::schema::variant::root_prop::RootPropChild;
 use crate::{
     action::{
         prototype::{ActionPrototype, ActionPrototypeError},
@@ -19,9 +24,9 @@ use crate::{
     },
     attribute::value::AttributeValueError,
     func::backend::FuncBackendError,
-    secret::{before_funcs_for_component, BeforeFuncError},
     ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
-    ComponentError, ComponentId, DalContext, Func, FuncBackendKind, FuncError, FuncId, WsEvent,
+    ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, FuncError,
+    FuncId, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
 
@@ -52,8 +57,10 @@ pub enum FuncRunnerError {
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("before funcs error: {0}")]
-    BeforeFunc(#[from] BeforeFuncError),
+    #[error("before func missing expected code: {0}")]
+    BeforeFuncMissingCode(FuncId),
+    #[error("before func missing expected handler: {0}")]
+    BeforeFuncMissingHandler(FuncId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -74,14 +81,24 @@ pub enum FuncRunnerError {
     InvalidResolverFunctionType(#[from] InvalidResolverFunctionTypeError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("no widget options for secret prop id: {0}")]
+    NoWidgetOptionsForSecretProp(PropId),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("function run result failure: kind={kind}, message={message}, backend={backend}")]
     ResultFailure {
         kind: String,
         message: String,
         backend: String,
     },
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("veritech value encrypt error: {0}")]
+    VeritechValueEncrypt(#[from] VeritechValueEncryptError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -158,7 +175,7 @@ impl FuncRunner {
                     ctx.events_actor(),
                 )
                 .await?;
-            let before = before_funcs_for_component(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id).await?;
 
             let component_id = component_id.into();
 
@@ -661,7 +678,7 @@ impl FuncRunner {
             };
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-            let before = before_funcs_for_component(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id).await?;
 
             let component_id = component_id.into();
             let attribute_value_id = attribute_value_id.into();
@@ -868,7 +885,7 @@ impl FuncRunner {
                 ContentHash::new("".as_bytes())
             };
 
-            let before = before_funcs_for_component(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id).await?;
             let component = Component::get_by_id(ctx, component_id).await?;
             let component_name = component.name(ctx).await?;
             let schema_name = component.schema(ctx).await?.name;
@@ -1006,6 +1023,140 @@ impl FuncRunner {
         tokio::spawn(execution_task.run());
 
         result_rx
+    }
+
+    /// This _private_ method collects all [`BeforeFunctions`](BeforeFunction) for a given
+    /// [`ComponentId`](Component).
+    #[instrument(name = "func_runner.before_funcs", level = "debug", skip_all)]
+    async fn before_funcs(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> FuncRunnerResult<Vec<BeforeFunction>> {
+        let secret_props = {
+            let schema_variant = Component::schema_variant_id(ctx, component_id).await?;
+            let secrets_prop =
+                SchemaVariant::find_root_child_prop_id(ctx, schema_variant, RootPropChild::Secrets)
+                    .await?;
+            Prop::direct_child_prop_ids(ctx, secrets_prop).await?
+        };
+
+        let secret_definition_path = PropPath::new(["root", "secret_definition"]);
+        let secret_path = PropPath::new(["root", "secrets"]);
+
+        let mut funcs_and_secrets = vec![];
+        for secret_prop_id in secret_props {
+            let auth_funcs = Self::auth_funcs_for_secret_prop_id(
+                ctx,
+                secret_prop_id,
+                &secret_definition_path,
+                &secret_path,
+            )
+            .await?;
+
+            let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
+            let mut maybe_value = None;
+            for av_id in av_ids {
+                if AttributeValue::component_id(ctx, av_id).await? != component_id {
+                    continue;
+                }
+
+                let av = AttributeValue::get_by_id(ctx, av_id).await?;
+
+                maybe_value = av.value(ctx).await?;
+                break;
+            }
+
+            if let Some(value) = maybe_value {
+                let key = Secret::key_from_value_in_attribute_value(value)?;
+                funcs_and_secrets.push((key, auth_funcs))
+            }
+        }
+
+        let mut results = vec![];
+
+        for (key, funcs) in funcs_and_secrets {
+            let encrypted_secret = EncryptedSecret::get_by_key(ctx, key)
+                .await?
+                .ok_or(SecretError::EncryptedSecretNotFound(key))?;
+
+            // Decrypt message from EncryptedSecret
+            let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
+
+            // Re-encrypt raw Value for transmission to Veritech
+            encrypt_value_tree(&mut arg, ctx.encryption_key())?;
+
+            for func in funcs {
+                results.push(BeforeFunction {
+                    handler: func
+                        .handler
+                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingHandler(func.id))?,
+                    code_base64: func
+                        .code_base64
+                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingCode(func.id))?,
+                    arg: arg.clone(),
+                })
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// This _private_ method gathers the authentication functions for a given [`PropId`](Prop)
+    /// underneath "/root/secrets".
+    #[instrument(
+        name = "func_runner.before_funcs.auth_funcs_for_secret_prop_id",
+        level = "debug",
+        skip_all
+    )]
+    async fn auth_funcs_for_secret_prop_id(
+        ctx: &DalContext,
+        secret_prop_id: PropId,
+        secret_definition_path: &PropPath,
+        secret_path: &PropPath,
+    ) -> FuncRunnerResult<Vec<Func>> {
+        let secret_prop = Prop::get_by_id_or_error(ctx, secret_prop_id).await?;
+
+        let secret_definition_name = secret_prop
+            .widget_options
+            .ok_or(FuncRunnerError::NoWidgetOptionsForSecretProp(
+                secret_prop_id,
+            ))?
+            .pop()
+            .ok_or(FuncRunnerError::NoWidgetOptionsForSecretProp(
+                secret_prop_id,
+            ))?
+            .value;
+
+        let mut auth_funcs = vec![];
+        for secret_defining_sv_id in SchemaVariant::list_ids(ctx).await? {
+            if Prop::find_prop_id_by_path_opt(ctx, secret_defining_sv_id, secret_definition_path)
+                .await?
+                .is_none()
+            {
+                continue;
+            }
+
+            let secrets_prop =
+                Prop::find_prop_by_path(ctx, secret_defining_sv_id, secret_path).await?;
+
+            let secret_child_prop_id =
+                Prop::direct_single_child_prop_id(ctx, secrets_prop.id).await?;
+            let secret_child_prop = Prop::get_by_id_or_error(ctx, secret_child_prop_id).await?;
+
+            if secret_child_prop.name != secret_definition_name {
+                continue;
+            }
+
+            for auth_func_id in
+                SchemaVariant::list_auth_func_ids_for_id(ctx, secret_defining_sv_id).await?
+            {
+                auth_funcs.push(Func::get_by_id_or_error(ctx, auth_func_id).await?)
+            }
+
+            break;
+        }
+
+        Ok(auth_funcs)
     }
 }
 

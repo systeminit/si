@@ -59,7 +59,13 @@ impl ChangeSetTestHelpers {
     pub async fn commit_and_update_snapshot_to_visibility(
         ctx: &mut DalContext,
     ) -> ChangeSetTestHelpersResult<()> {
-        ctx.blocking_commit().await?;
+        // TODO(nick,brit): we need to expand Brit's 409 conflict work to work with blocking commits
+        // too rather than evaluating an optional set of conflicts.
+        if let Some(conflicts) = ctx.blocking_commit().await? {
+            return Err(ChangeSetTestHelpersError::ConflictsFoundAfterCommit(
+                conflicts,
+            ));
+        }
         ctx.update_snapshot_to_visibility().await?;
         Ok(())
     }

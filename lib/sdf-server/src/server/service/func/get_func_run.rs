@@ -166,11 +166,7 @@ pub async fn get_func_run(
 ) -> FuncResult<Json<GetFuncRunResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let maybe_func_run = ctx
-        .layer_db()
-        .func_run()
-        .get_by_id(request.func_run_id)
-        .await?;
+    let maybe_func_run = ctx.layer_db().func_run().read(request.func_run_id).await?;
 
     match maybe_func_run {
         Some(func_run) => {

@@ -28,6 +28,7 @@ import {
 } from "./types";
 
 import { useRouterStore } from "../router.store";
+import { FuncRunId } from "../func_runs.store";
 
 export type FuncId = string;
 export type FuncArgumentId = string;
@@ -544,9 +545,8 @@ export const useFuncStore = () => {
         async TEST_EXECUTE(executeRequest: {
           id: FuncId;
           args: unknown;
-          executionKey: string;
-          componentId: string;
           code: string;
+          componentId: string;
         }) {
           const func = this.funcById(executeRequest.id);
           if (func) {
@@ -557,16 +557,7 @@ export const useFuncStore = () => {
           }
 
           return new ApiRequest<{
-            id: FuncId;
-            args: unknown;
-            output: unknown;
-            executionKey: string;
-            logs: {
-              stream: string;
-              level: string;
-              message: string;
-              timestamp: string;
-            }[];
+            funcRunId: FuncRunId;
           }>({
             method: "post",
             url: "func/test_execute",
@@ -792,14 +783,11 @@ export const useFuncStore = () => {
 
               if (this.selectedFuncId) {
                 // only fetch if we don't have this one already in our state,
-                // or if the func kind is attribute
                 // otherwise we can overwrite functions with their previous value
                 // before the save queue is drained.
                 if (
-                  (typeof this.funcDetailsById[this.selectedFuncId] ===
-                    "undefined" ||
-                    this.funcDetailsById[this.selectedFuncId]?.kind ===
-                      FuncKind.Attribute) &&
+                  typeof this.funcDetailsById[this.selectedFuncId] ===
+                    "undefined" &&
                   data.funcId === this.selectedFuncId
                 ) {
                   this.FETCH_FUNC_DETAILS(this.selectedFuncId);

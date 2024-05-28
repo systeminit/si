@@ -69,6 +69,7 @@ async fn create_action_func(
         for action in exising_actions {
             if action.kind == action_kind {
                 return Err(FuncAuthoringError::ActionKindAlreadyExists(
+                    action_kind,
                     schema_variant_id,
                 ));
             }

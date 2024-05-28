@@ -432,7 +432,8 @@ const expandTestPanel = (selectedTabSlug: string | undefined) => {
 const enableTestPanel = computed((): boolean => {
   return (
     props.allowTestPanel &&
-    (funcStore.selectedFuncDetails?.associations?.type === "attribute" ||
+    (funcStore.selectedFuncDetails?.associations?.type === "action" ||
+      funcStore.selectedFuncDetails?.associations?.type === "attribute" ||
       funcStore.selectedFuncDetails?.associations?.type === "codeGeneration" ||
       funcStore.selectedFuncDetails?.associations?.type === "qualification")
   );
