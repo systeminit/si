@@ -1866,6 +1866,7 @@ impl Component {
     pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
         let component_id = self.id;
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        let original_to_delete = self.to_delete;
 
         let modified = self
             .modify(ctx, |component| {
@@ -1907,8 +1908,9 @@ impl Component {
         ctx.add_dependent_values_and_enqueue(downstream_av_ids)
             .await?;
 
-        // Deal with deletion actions
-        if to_delete {
+        // Deal with deletion actions, but only if we're transitioning from not being to_delete
+        // into being to_delete.
+        if to_delete && !original_to_delete {
             // Enqueue delete actions for component
             for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
                 ctx,
@@ -1921,7 +1923,7 @@ impl Component {
                     .await
                     .map_err(|err| ComponentError::Action(Box::new(err)))?;
             }
-        } else {
+        } else if !to_delete {
             // Remove delete actions for component
             Action::remove_all_for_component_id(ctx, component_id)
                 .await

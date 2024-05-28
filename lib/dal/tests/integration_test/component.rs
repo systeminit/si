@@ -1,10 +1,13 @@
+use dal::action::prototype::{ActionKind, ActionPrototype};
+use dal::action::Action;
 use dal::attribute::value::DependentValueGraph;
 use dal::component::resource::ResourceData;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
+use dal::func::intrinsics::IntrinsicFunc;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, AttributeValueId, InputSocket, OutputSocket};
+use dal::{AttributeValue, AttributeValueId, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{connect_components_with_socket_names, create_component_for_schema_name};
@@ -1260,4 +1263,112 @@ async fn delete(ctx: &mut DalContext) {
         .await
         .expect("unable to delete component")
         .is_none());
+}
+
+#[test]
+async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy").await;
+    let resource_data = ResourceData::new(
+        ResourceStatus::Ok,
+        Some(serde_json::json![{"resource": "something"}]),
+    );
+    component
+        .set_resource(ctx, resource_data)
+        .await
+        .expect("Unable to set resource");
+    let schema_variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("Unable to get schema variant id");
+
+    ActionPrototype::new(
+        ctx,
+        ActionKind::Destroy,
+        "Destroy action".to_string(),
+        None,
+        schema_variant_id,
+        Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+            .await
+            .expect("Unable to find identity func"),
+    )
+    .await
+    .expect("Unable to create destroy action");
+
+    assert!(Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions")
+        .is_empty());
+
+    component
+        .delete(ctx)
+        .await
+        .expect("Unable to mark for deletion");
+
+    let action_ids = Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions");
+    assert_eq!(1, action_ids.len());
+}
+
+#[test]
+async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy").await;
+    let resource_data = ResourceData::new(
+        ResourceStatus::Ok,
+        Some(serde_json::json![{"resource": "something"}]),
+    );
+    component
+        .set_resource(ctx, resource_data)
+        .await
+        .expect("Unable to set resource");
+    let schema_variant_id = Component::schema_variant_id(ctx, component.id())
+        .await
+        .expect("Unable to get schema variant id");
+
+    ActionPrototype::new(
+        ctx,
+        ActionKind::Destroy,
+        "Destroy action".to_string(),
+        None,
+        schema_variant_id,
+        Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+            .await
+            .expect("Unable to find identity func"),
+    )
+    .await
+    .expect("Unable to create destroy action");
+
+    assert!(Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions")
+        .is_empty());
+
+    let component = component
+        .set_to_delete(ctx, true)
+        .await
+        .expect("Unable to set to_delete");
+
+    let action_ids = Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions");
+    assert_eq!(1, action_ids.len());
+    for action_id in action_ids {
+        Action::remove_by_id(ctx, action_id)
+            .await
+            .expect("Unable to remove action");
+    }
+
+    assert!(Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions")
+        .is_empty());
+
+    component
+        .delete(ctx)
+        .await
+        .expect("Unable to mark for deletion");
+
+    assert!(Action::all_ids(ctx)
+        .await
+        .expect("Unable to list enqueued actions")
+        .is_empty());
 }
