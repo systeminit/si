@@ -310,7 +310,6 @@ import {
   PillCounter,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import JSConfetti from "js-confetti";
 import clsx from "clsx";
 import { storeToRefs } from "pinia";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -364,20 +363,7 @@ function resetState() {
   successfullyVoted.value = false;
 }
 
-let jsConfetti: JSConfetti;
-const confettis = [
-  { emojis: ["🎉"] },
-  { emojis: ["🍿"] },
-  { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
-  { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
-  { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
-  { emojis: ["🏳️‍🌈", "🏳️‍⚧️", "⚡️", "🌈", "✨", "🔥", "🇧🇷"] },
-];
 onMounted(() => {
-  jsConfetti = new JSConfetti({
-    canvas:
-      (document.getElementById("confetti") as HTMLCanvasElement) || undefined,
-  });
   window.addEventListener("keydown", onKeyDown);
 });
 
@@ -413,8 +399,6 @@ const applyChangeSet = async () => {
       changeSetId: "head",
     },
   });
-  // TODO this will fire after actions have run
-  await jsConfetti.addConfetti(_.sample(confettis));
 };
 
 const beginMergeApprovalReqStatus = changeSetsStore.getRequestStatus(
