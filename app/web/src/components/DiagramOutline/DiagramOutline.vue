@@ -296,7 +296,7 @@ watch(
     const el = document.getElementById(
       `diagram-outline-node-${componentsStore.selectedComponentId}`,
     );
-    el?.scrollIntoView({ behavior: "smooth" });
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 );
 
