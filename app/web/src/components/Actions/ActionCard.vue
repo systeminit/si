@@ -462,7 +462,7 @@ function onHoverEnd() {
     background-color: transparent;
   }
   50% {
-    background-color: #ef4444; //bg-destructive-400
+    background-color: #dc2626; //bg-destructive-600
   }
   to {
     background-color: transparent;
