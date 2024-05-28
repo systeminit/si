@@ -119,18 +119,13 @@ const makeEmptyPrototype = (): AttributePrototypeBag => ({
     : [],
 });
 
-// todo: Don't remove existing configured args when pulling in the new ones
 const rehydratePrototype = (
   existing: AttributePrototypeBag,
 ): AttributePrototypeBag => ({
   id: existing.id,
   componentId: existing.componentId,
   propId: existing.propId,
-  prototypeArguments: funcArguments.value
-    ? funcArguments.value.map(({ id }) => ({
-        funcArgumentId: id,
-      }))
-    : [],
+  prototypeArguments: existing.prototypeArguments,
 });
 
 const removeBinding = async (prototypeId: string) => {
