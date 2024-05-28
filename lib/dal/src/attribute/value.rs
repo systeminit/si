@@ -1874,6 +1874,7 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
         value: Option<Value>,
     ) -> AttributeValueResult<()> {
+        let mut normalized_value = value.to_owned();
         let prop_id = match AttributeValue::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => prop_id,
             _ => {
@@ -1893,12 +1894,21 @@ impl AttributeValue {
                 .await?
                 .get_prop_node_weight()?;
 
-            // None for the value means there is no value, so we use unset, but if it's a
-            // literal serde_json::Value::Null it means the value is set, but to null
-            if value.is_none() {
-                IntrinsicFunc::Unset
+            if let Some(inner_value) = &value {
+                // Unfortunately, there isn't a good way to consistently track "there is no value", and "the
+                // value is null" when dealing with JavaScript/JSON, so for now, we need to treat
+                // "null" the same as "there is no value".
+                if inner_value.is_null() {
+                    normalized_value = None;
+
+                    IntrinsicFunc::Unset
+                } else {
+                    IntrinsicFunc::from(prop_node.kind())
+                }
             } else {
-                IntrinsicFunc::from(prop_node.kind())
+                // None for the value means there is no value, so we use unset, but if it's a
+                // literal serde_json::Value::Null it means the value is set, but to null
+                IntrinsicFunc::Unset
             }
         };
         let func_id = Func::find_intrinsic(ctx, intrinsic_func).await?;
@@ -1906,7 +1916,7 @@ impl AttributeValue {
 
         Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id()).await?;
 
-        let func_args = match value.to_owned() {
+        let func_args = match normalized_value {
             Some(value) => {
                 let func_arg_id = *FuncArgument::list_ids_for_func(ctx, func_id)
                     .await?
