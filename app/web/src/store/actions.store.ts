@@ -186,30 +186,30 @@ export const useActionsStore = () => {
             }
             return m;
           },
-          historyActionsByChangeSetId(): Map<
+          historyActionsGrouped(): Map<
             ChangeSetDetail,
             Array<ActionHistoryView>
           > {
-            // TODO: right now we group all the actions by changeset, which means any changeset with the newest action will be on top
-            // DESIRED: display actions, in order, and if the action is from a different changeset than the previous action display the header
+            // display actions, in order, and if the action is from a different changeset than the previous action display the header
             const r = new DefaultMap<ChangeSetDetail, Array<ActionHistoryView>>(
               () => [],
             );
-            const _details: Record<ChangeSetId, ChangeSetDetail> = {};
+            let last: ChangeSetDetail | undefined;
             for (const action of this.actionHistory) {
-              let d = _details[action.originatingChangeSetId];
-              if (!d) {
-                d = {
+              // this creates the desired header behavior above
+              if (action.originatingChangeSetId !== last?.changeSetId) {
+                last = {
                   changeSetId: action.originatingChangeSetId,
                   changeSetName: action.originatingChangeSetName,
                 } as ChangeSetDetail;
-                _details[action.originatingChangeSetId] = d;
               }
+              // always check for the newest timestamp
               const u = new Date(action.updatedAt);
-              if (!d.timestamp || d.timestamp < u) d.timestamp = u;
-              const arr = r.get(d);
+              if (!last.timestamp || last.timestamp < u) last.timestamp = u;
+
+              const arr = r.get(last);
               arr.push(action);
-              r.set(d, arr);
+              r.set(last, arr);
             }
             return r;
           },

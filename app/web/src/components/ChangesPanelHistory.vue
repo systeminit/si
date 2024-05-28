@@ -6,7 +6,7 @@
   >
     <!-- TODO(Wendy)- SEARCH BAR SHOULD GO HERE -->
     <ActionsList
-      v-for="[detail, actions] in actionsStore.historyActionsByChangeSetId"
+      v-for="[detail, actions] in actionsStore.historyActionsGrouped"
       :key="detail.changeSetId"
       :changeSet="getChangeSet(detail)"
       :actions="actions"
