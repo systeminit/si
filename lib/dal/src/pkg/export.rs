@@ -466,10 +466,10 @@ impl PkgExporter {
                     inputs.drain(..).for_each(|input| {
                         socket_spec_builder.input(input);
                     });
-                    socket_spec_builder.data(data_builder.build()?);
                 }
             }
 
+            socket_spec_builder.data(data_builder.build()?);
             specs.push(socket_spec_builder.build()?);
         }
 
