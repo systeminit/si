@@ -454,7 +454,7 @@ function zoomAtPoint(delta: number, zoomPos: Vector2d, isPinchToZoom = false) {
     y: gridOrigin.value.y - (pointerYAtNewZoom - gridPointerPos.value.y),
   };
 
-  zoomLevel.value = newZoomLevel;
+  setZoomLevel(newZoomLevel);
 }
 
 // not sure why but TS couldnt quite find the ResizeObserverCallback type...
