@@ -14,8 +14,6 @@ pub mod get_prototype_arguments;
 pub enum AttributeError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("context transaction error: {0}")]
-    ContextTransaction(#[from] TransactionsError),
     #[error("multiple attribute values ({0:?}) found for output socket ({1})")]
     MultipleAttributeValuesForOutputSocket(Vec<AttributeValueId>, OutputSocketId),
     #[error("multiple attribute values ({0:?}) found for prop ({1})")]
@@ -32,6 +30,8 @@ pub enum AttributeError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("transaction error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type AttributeResult<T> = Result<T, AttributeError>;

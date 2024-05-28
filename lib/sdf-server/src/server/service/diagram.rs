@@ -103,6 +103,9 @@ impl IntoResponse for DiagramError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             DiagramError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            DiagramError::ContextTransaction(TransactionsError::ConflictsOccurred(_)) => {
+                (StatusCode::CONFLICT, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

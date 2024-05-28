@@ -421,8 +421,14 @@ impl DalContext {
     pub async fn do_rebase_request(
         &self,
         rebase_request: RebaseRequest,
-    ) -> Result<Option<Conflicts>, TransactionsError> {
-        rebase(&self.tenancy, &self.layer_db(), rebase_request).await
+    ) -> Result<(), TransactionsError> {
+        if let Some(conflicts) = rebase(&self.tenancy, &self.layer_db(), rebase_request).await? {
+            let conflict_count = &conflicts.conflicts_found.len();
+            let err = TransactionsError::ConflictsOccurred(conflicts);
+            error!(error= ?err, si.conflicts.count={conflict_count}, "conflicts found on commit");
+            return Err(err);
+        }
+        Ok(())
     }
 
     async fn commit_internal(
@@ -470,7 +476,7 @@ impl DalContext {
     }
 
     /// Consumes all inner transactions and committing all changes made within them.
-    pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
+    pub async fn commit(&self) -> Result<(), TransactionsError> {
         let rebase_request = match self.write_snapshot().await? {
             Some(workspace_snapshot_address) => {
                 Some(self.get_rebase_request(workspace_snapshot_address)?)
@@ -478,11 +484,17 @@ impl DalContext {
             None => None,
         };
 
-        Ok(if self.blocking {
+        if let Some(conflicts) = if self.blocking {
             self.blocking_commit_internal(rebase_request).await?
         } else {
             self.commit_internal(rebase_request).await?
-        })
+        } {
+            let conflict_count = &conflicts.conflicts_found.len();
+            let err = TransactionsError::ConflictsOccurred(conflicts);
+            error!(error= ?err, conflict.count={conflict_count}, "conflicts found on commit");
+            return Err(err);
+        }
+        Ok(())
     }
 
     pub async fn commit_no_rebase(&self) -> Result<(), TransactionsError> {
@@ -1098,6 +1110,8 @@ pub enum TransactionsError {
     ChangeSetNotFound(ChangeSetId),
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
+    #[error("one or more conflicts have occurred: {0:?}")]
+    ConflictsOccurred(Conflicts),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
@@ -1347,7 +1361,6 @@ impl Transactions {
         fields(
             si.change_set.id = Empty,
             si.workspace.pk = Empty,
-            si.dvu.values = Empty,
         )
     )]
     pub async fn commit_into_conns(
@@ -1381,7 +1394,6 @@ impl Transactions {
         } else {
             None
         };
-
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         self.job_processor.process_queue(self.job_queue).await?;
@@ -1413,6 +1425,9 @@ impl Transactions {
         } else {
             None
         };
+        if conflicts.is_some() {
+            error!("conflicts found");
+        }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 

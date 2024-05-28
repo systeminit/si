@@ -1,10 +1,5 @@
 use axum::routing::post;
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-    Json, Router,
-};
+use axum::{response::Response, routing::get, Json, Router};
 use dal::WsEventError;
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
@@ -15,7 +10,7 @@ use dal::{
 };
 use dal::{ComponentError, ComponentId, StandardModelError, TransactionsError, UserError, UserPk};
 
-use crate::server::state::AppState;
+use crate::server::{impl_default_error_into_response, state::AppState};
 
 mod cancel;
 mod history;
@@ -64,17 +59,7 @@ pub enum ActionError {
 
 pub type ActionResult<T> = std::result::Result<T, ActionError>;
 
-impl IntoResponse for ActionError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-
-        (status, body).into_response()
-    }
-}
+impl_default_error_into_response!(ActionError);
 
 pub fn routes() -> Router<AppState> {
     Router::new()

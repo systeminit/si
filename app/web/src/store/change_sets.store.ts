@@ -153,7 +153,7 @@ export function useChangeSetsStore() {
                 },
               });
             },
-            _delay: 1000,
+            _delay: 2000,
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.id] = response.changeSet;
               toast({
@@ -162,6 +162,9 @@ export function useChangeSetsStore() {
                   name: response.changeSet.name,
                 },
               });
+            },
+            onFail: () => {
+              // todo: show something!
             },
           });
         },

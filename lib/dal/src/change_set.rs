@@ -468,12 +468,9 @@ impl ChangeSet {
             .ok_or(ChangeSetApplyError::ChangeSetNotFound(ctx.change_set_id()))?;
         ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(ctx.change_set_id())
             .await?;
-        if let Some(conflicts) = change_set_to_be_applied
+        change_set_to_be_applied
             .apply_to_base_change_set_inner(ctx)
-            .await?
-        {
-            return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
-        }
+            .await?;
 
         // do we need this commit?
         if let Some(conflicts) = ctx.blocking_commit().await? {
@@ -493,10 +490,7 @@ impl ChangeSet {
     ///
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
-    async fn apply_to_base_change_set_inner(
-        &mut self,
-        ctx: &DalContext,
-    ) -> ChangeSetResult<Option<Conflicts>> {
+    async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
@@ -508,10 +502,7 @@ impl ChangeSet {
             onto_vector_clock_id: self.vector_clock_id(),
             to_rebase_change_set_id,
         };
-
-        if let Some(conflicts) = ctx.do_rebase_request(rebase_request).await? {
-            return Ok(Some(conflicts));
-        }
+        ctx.do_rebase_request(rebase_request).await?;
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;
@@ -520,7 +511,7 @@ impl ChangeSet {
             .publish_on_commit(ctx)
             .await?;
 
-        Ok(None)
+        Ok(())
     }
 
     /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.

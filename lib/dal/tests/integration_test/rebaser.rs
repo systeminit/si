@@ -3,7 +3,7 @@ use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::workspace_snapshot::conflict::Conflict;
 use dal::{
     AttributeValue, ChangeSet, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType,
+    FuncBackendResponseType, TransactionsError,
 };
 use dal_test::helpers::{
     create_component_for_schema_name, ChangeSetTestHelpers, ChangeSetTestHelpersError,
@@ -297,10 +297,13 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
     let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx).await;
     assert!(matches!(
         result,
-        Err(ChangeSetTestHelpersError::ConflictsFoundAfterApply(_))
+        Err(ChangeSetTestHelpersError::ChangeSetApply(_))
     ));
 
-    if let Err(ChangeSetTestHelpersError::ConflictsFoundAfterApply(conflicts)) = result {
+    if let Err(ChangeSetTestHelpersError::Transactions(TransactionsError::ConflictsOccurred(
+        conflicts,
+    ))) = result
+    {
         assert_eq!(1, conflicts.conflicts_found.len());
         let conflict = conflicts
             .conflicts_found

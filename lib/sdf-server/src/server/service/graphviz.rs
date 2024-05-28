@@ -30,14 +30,14 @@ pub enum GraphVizError {
     AttributeValueError(#[from] AttributeValueError),
     #[error(transparent)]
     Component(#[from] ComponentError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
     #[error("graph did not have a root node, although this is an unreachable state")]
     NoRootNode,
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("workspace snapshot error")]

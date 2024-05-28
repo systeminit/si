@@ -106,6 +106,9 @@ impl IntoResponse for ComponentError {
         let (status, error_message) = match self {
             ComponentError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentError::InvalidVisibility => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
+                (StatusCode::CONFLICT, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

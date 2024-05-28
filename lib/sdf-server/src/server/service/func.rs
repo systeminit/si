@@ -40,8 +40,6 @@ pub enum FuncError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("context transaction error: {0}")]
-    ContextTransaction(#[from] TransactionsError),
     #[error("dal func error: {0}")]
     Func(#[from] dal::func::FuncError),
     #[error("func argument error: {0}")]
@@ -66,6 +64,8 @@ pub enum FuncError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("transaction error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("could not publish websocket event: {0}")]

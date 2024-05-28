@@ -29,7 +29,10 @@ macro_rules! impl_default_error_into_response {
     ) => {
         impl axum::response::IntoResponse for $error_type {
             fn into_response(self) -> Response {
-                let (status, error_message) = (axum::http::StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+                let (status, error_message) = match self {
+                   $error_type::Transactions(TransactionsError::ConflictsOccurred(_)) => (axum::http::StatusCode::CONFLICT, self.to_string()),
+                  _ => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+                };
 
                 let body = Json(
                     serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
