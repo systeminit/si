@@ -64,7 +64,6 @@ export type WsEventPayloadMap = {
     userName: string;
   };
   ChangeSetCreated: string;
-  ChangeSetApplied: string;
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
   Conflict: string;
@@ -87,6 +86,11 @@ export type WsEventPayloadMap = {
     ];
   };
 
+  ChangeSetApplied: {
+    changeSetId: ChangeSetId;
+    toRebaseChangeSetId: ChangeSetId;
+    userPk: UserId;
+  };
   ChangeSetBeginApprovalProcess: {
     changeSetId: ChangeSetId;
     userPk: UserId;

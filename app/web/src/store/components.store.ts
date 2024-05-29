@@ -1432,116 +1432,119 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // realtime subs
           const realtimeStore = useRealtimeStore();
 
-          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ComponentCreated",
-              debounce: true,
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
+          realtimeStore.subscribe(
+            `${this.$id}-changeset`,
+            `changeset/${changeSetId}`,
+            [
+              {
+                eventType: "ComponentCreated",
+                debounce: true,
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.FETCH_DIAGRAM_DATA();
+                },
               },
-            },
-            {
-              eventType: "ConnectionCreated",
-              debounce: true,
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
+              {
+                eventType: "ConnectionCreated",
+                debounce: true,
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.FETCH_DIAGRAM_DATA();
+                },
               },
-            },
-            {
-              eventType: "ConnectionDeleted",
-              debounce: true,
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.FETCH_DIAGRAM_DATA();
+              {
+                eventType: "ConnectionDeleted",
+                debounce: true,
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.FETCH_DIAGRAM_DATA();
+                },
               },
-            },
-            {
-              eventType: "ComponentDeleted",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                delete this.rawComponentsById[data.componentId];
+              {
+                eventType: "ComponentDeleted",
+                callback: (data) => {
+                  if (data.changeSetId !== changeSetId) return;
+                  delete this.rawComponentsById[data.componentId];
 
-                // remove invalid component IDs from the selection
-                const validComponentIds = _.intersection(
-                  this.selectedComponentIds,
-                  _.keys(this.rawComponentsById),
-                );
-                this.setSelectedComponentId(validComponentIds);
+                  // remove invalid component IDs from the selection
+                  const validComponentIds = _.intersection(
+                    this.selectedComponentIds,
+                    _.keys(this.rawComponentsById),
+                  );
+                  this.setSelectedComponentId(validComponentIds);
+                },
               },
-            },
-            {
-              eventType: "ComponentUpdated",
-              debounce: true,
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.rawComponentsById[data.component.id] = data.component;
-                if (this.selectedComponentId === data.component.id)
-                  this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+              {
+                eventType: "ComponentUpdated",
+                debounce: true,
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.rawComponentsById[data.component.id] = data.component;
+                  if (this.selectedComponentId === data.component.id)
+                    this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+                },
               },
-            },
-            {
-              eventType: "InferredEdgeUpsert",
-              debounce: true,
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                const edges =
-                  data.edges && data.edges.length > 0
-                    ? data.edges.map(edgeFromRawEdge(true))
-                    : [];
-                for (const edge of edges) {
-                  this.edgesById[edge.id] = edge;
-                }
+              {
+                eventType: "InferredEdgeUpsert",
+                debounce: true,
+                callback: (data) => {
+                  if (data.changeSetId !== changeSetId) return;
+                  const edges =
+                    data.edges && data.edges.length > 0
+                      ? data.edges.map(edgeFromRawEdge(true))
+                      : [];
+                  for (const edge of edges) {
+                    this.edgesById[edge.id] = edge;
+                  }
+                },
               },
-            },
-            {
-              eventType: "InferredEdgeRemove",
-              debounce: true,
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                const edges =
-                  data.edges && data.edges.length > 0
-                    ? data.edges.map(edgeFromRawEdge(true))
-                    : [];
-                for (const edge of edges) {
-                  delete this.edgesById[edge.id];
-                }
+              {
+                eventType: "InferredEdgeRemove",
+                debounce: true,
+                callback: (data) => {
+                  if (data.changeSetId !== changeSetId) return;
+                  const edges =
+                    data.edges && data.edges.length > 0
+                      ? data.edges.map(edgeFromRawEdge(true))
+                      : [];
+                  for (const edge of edges) {
+                    delete this.edgesById[edge.id];
+                  }
+                },
               },
-            },
-            {
-              eventType: "ComponentUpgraded",
-              debounce: true,
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.rawComponentsById[data.component.id] = data.component;
-                this.setSelectedComponentId(data.component.id);
-                delete this.rawComponentsById[data.originalComponentId];
+              {
+                eventType: "ComponentUpgraded",
+                debounce: true,
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.rawComponentsById[data.component.id] = data.component;
+                  this.setSelectedComponentId(data.component.id);
+                  delete this.rawComponentsById[data.originalComponentId];
+                },
               },
-            },
-            {
-              eventType: "ResourceRefreshed",
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                this.rawComponentsById[data.component.id] = data.component;
-                this.refreshingStatus[data.component.id] = false;
-                if (this.selectedComponentId === data.component.id)
-                  this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+              {
+                eventType: "ResourceRefreshed",
+                callback: (data) => {
+                  // If the component that updated wasn't in this change set,
+                  // don't update
+                  if (data.changeSetId !== changeSetId) return;
+                  this.rawComponentsById[data.component.id] = data.component;
+                  this.refreshingStatus[data.component.id] = false;
+                  if (this.selectedComponentId === data.component.id)
+                    this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+                },
               },
-            },
-            /* { TODO PUT BACK
+              /* { TODO PUT BACK
               eventType: "DeprecatedActionRunnerReturn",
               callback: (update) => {
                 const component = this.componentsById[update.componentId];
@@ -1549,7 +1552,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 component.hasResource = !!update.resource?.payload;
               },
             }, */
-          ]);
+            ],
+          );
+
+          realtimeStore.subscribe(
+            `${this.$id}-workspace`,
+            `workspace/${workspaceId}`,
+            [
+              {
+                eventType: "ChangeSetApplied",
+                debounce: true,
+                callback: (data) => {
+                  // If the applied change set has rebased into this change set,
+                  // then refetch (i.e. there might be updates!)
+                  if (data.toRebaseChangeSetId === changeSetId) {
+                    this.FETCH_DIAGRAM_DATA();
+                  }
+                },
+              },
+            ],
+          );
 
           return () => {
             // clear selection without triggering url stuff
@@ -1557,7 +1579,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedEdgeId = null;
 
             stopWatchingUrl();
-            realtimeStore.unsubscribe(this.$id);
+            realtimeStore.unsubscribe(`${this.$id}-changeset`);
+            realtimeStore.unsubscribe(`${this.$id}-workspace`);
           };
         },
       },

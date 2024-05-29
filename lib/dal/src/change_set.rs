@@ -506,7 +506,7 @@ impl ChangeSet {
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;
-        WsEvent::change_set_applied(ctx, self.id, user)
+        WsEvent::change_set_applied(ctx, self.id, to_rebase_change_set_id, user)
             .await?
             .publish_on_commit(ctx)
             .await?;

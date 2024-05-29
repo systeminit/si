@@ -35,12 +35,14 @@ impl WsEvent {
     pub async fn change_set_applied(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
+        to_rebase_change_set_id: ChangeSetId,
         user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ChangeSetApplied(ChangeSetActorPayload {
+            WsPayload::ChangeSetApplied(ChangeSetAppliedPayload {
                 change_set_id,
+                to_rebase_change_set_id,
                 user_pk,
             }),
         )
@@ -153,6 +155,14 @@ impl WsEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetActorPayload {
     change_set_id: ChangeSetId,
+    user_pk: Option<UserPk>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetAppliedPayload {
+    change_set_id: ChangeSetId,
+    to_rebase_change_set_id: ChangeSetId,
     user_pk: Option<UserPk>,
 }
 
