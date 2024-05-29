@@ -15,8 +15,6 @@ use crate::server::tracking::track;
 #[serde(rename_all = "camelCase")]
 pub struct RefreshRequest {
     pub component_id: ComponentId,
-    // TODO(fnichol): I THINK THIS GETS DELETED NOW
-    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

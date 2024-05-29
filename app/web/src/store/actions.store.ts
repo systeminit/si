@@ -9,7 +9,6 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type DeprecatedActionStatus =
   | "success"
@@ -138,8 +137,6 @@ export const useActionsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-
-  const featureFlagsStore = useFeatureFlagsStore();
 
   return addStoreHooks(
     defineStore(
@@ -274,7 +271,6 @@ export const useActionsStore = () => {
               params: {
                 prototypeId: actionPrototypeId,
                 componentId,
-                v2: featureFlagsStore.IS_ACTIONS_V2,
                 visibility_change_set_pk: changeSetId,
               },
             });
@@ -285,7 +281,6 @@ export const useActionsStore = () => {
               keyRequestStatusBy: componentId,
               params: {
                 componentId,
-                v2: featureFlagsStore.IS_ACTIONS_V2,
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
