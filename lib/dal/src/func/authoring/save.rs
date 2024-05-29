@@ -13,9 +13,9 @@ use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
-    ActionPrototypeId, AttributePrototype, AttributePrototypeId, AttributeValue, Component,
-    ComponentId, DalContext, EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket,
-    Prop, SchemaVariant, SchemaVariantId, WorkspaceSnapshotError,
+    AttributePrototype, AttributePrototypeId, AttributeValue, Component, ComponentId, DalContext,
+    EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket, Prop, SchemaVariant,
+    SchemaVariantId, WorkspaceSnapshotError,
 };
 
 #[instrument(
@@ -40,21 +40,10 @@ pub(crate) async fn update_associations(
                 ))
             }
         },
-        FuncKind::Attribute => Ok(()),
         // don't update attribute associations this way
         // attribute associations are updated through calling
         // create/remove/update attribute binding directly
-
-        // FuncKind::Attribute => match associations {
-        //     FuncAssociations::Attribute { prototypes } => {
-        //         update_attribute_associations(ctx, func, prototypes).await
-        //     }
-        //     invalid => {
-        //         return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
-        //             invalid, func.id, func.kind,
-        //         ))
-        //     }
-        // },
+        FuncKind::Attribute => Ok(()),
         FuncKind::Authentication => match associations {
             FuncAssociations::Authentication { schema_variant_ids } => {
                 update_authentication_associations(ctx, func, schema_variant_ids).await
@@ -124,59 +113,74 @@ async fn update_action_associations(
     kind: ActionKind,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncAuthoringResult<()> {
-    let mut prototyes_to_remove: Vec<ActionPrototypeId> = vec![];
+    let id_set: HashSet<SchemaVariantId> = HashSet::from_iter(schema_variant_ids.iter().copied());
 
-    for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
-        let new_action_protypes_for_schema_variant =
+    // Add the new action to schema variants who do not already have a prototype or re-create the
+    // prototype if the kind has been mutated.
+    for schema_variant_id in schema_variant_ids {
+        let existing_action_prototypes =
             ActionPrototype::for_variant(ctx, schema_variant_id).await?;
-        for prototype in new_action_protypes_for_schema_variant.clone() {
-            let prototype_func_id = ActionPrototype::func_id(ctx, prototype.id()).await?;
+
+        // Assume that the prototype needs to be created. Bail the moment that we know one already
+        // exists the moment that we know that the kind has been mutated, which means we will need
+        // to re-create the prototype with the new kind.
+        let mut needs_creation = true;
+        let mut outdated_action_prototype_id = None;
+        for (existing_action_prototype_id, exiting_action_prototype_kind) in
+            existing_action_prototypes.iter().map(|p| (p.id, p.kind))
+        {
+            let prototype_func_id =
+                ActionPrototype::func_id(ctx, existing_action_prototype_id).await?;
+
+            // Match found! We need to now decide if we need to re-create the prototype. If the user
+            // is keeping the prototype kind the same, then we don't need to create a new prototype.
+            // If the user wishes to mutate the kind, then we need to delete the existing prototype
+            // and create a new one.
             if func.id == prototype_func_id {
-                if prototype.kind != kind && kind != ActionKind::Manual {
-                    let existing_kind = new_action_protypes_for_schema_variant
-                        .clone()
-                        .into_iter()
-                        .find(|ap| ap.kind == kind);
-                    if existing_kind.is_some() {
-                        return Err(FuncAuthoringError::ActionKindAlreadyExists(
-                            kind,
-                            schema_variant_id,
-                        ));
-                    }
+                if kind == exiting_action_prototype_kind {
+                    needs_creation = false;
+                } else {
+                    outdated_action_prototype_id = Some(existing_action_prototype_id);
                 }
-                prototyes_to_remove.push(prototype.id());
+                break;
             }
         }
-    }
 
-    for removal_id in prototyes_to_remove {
-        ActionPrototype::remove(ctx, removal_id).await?;
-    }
+        // Any time that we need to create a new prototype, we need to first check that it will not
+        // collide with an existing prototype using the same, non-manual kind that we provided.
+        if needs_creation {
+            if kind != ActionKind::Manual
+                && existing_action_prototypes.iter().any(|p| p.kind == kind)
+            {
+                return Err(FuncAuthoringError::ActionKindAlreadyExists(
+                    kind,
+                    schema_variant_id,
+                ));
+            }
 
-    // Create or re-create the prototype for the schema variant ids passed in.
-    for schema_variant_id in schema_variant_ids {
-        let new_action_protypes_for_schema_variant =
-            ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+            // Remove the prototype that needs to be re-created, if necessary.
+            if let Some(outdated_action_prototype_id) = outdated_action_prototype_id {
+                ActionPrototype::remove(ctx, outdated_action_prototype_id).await?;
+            }
 
-        let existing_kind = new_action_protypes_for_schema_variant
-            .clone()
-            .into_iter()
-            .find(|ap| ap.kind == kind);
-        if existing_kind.is_some() {
-            return Err(FuncAuthoringError::ActionKindAlreadyExists(
-                kind,
-                schema_variant_id,
-            ));
-        } else {
             ActionPrototype::new(
                 ctx,
                 kind,
                 func.name.to_owned(),
-                None,
+                func.description.to_owned(),
                 schema_variant_id,
                 func.id,
             )
             .await?;
+        }
+    }
+
+    // Remove action prototypes using our func from schema variants that weren't seen.
+    for action_prototype_id in ActionPrototype::list_for_func_id(ctx, func.id).await? {
+        let schema_variant_id =
+            ActionPrototype::schema_variant_id(ctx, action_prototype_id).await?;
+        if !id_set.contains(&schema_variant_id) {
+            ActionPrototype::remove(ctx, action_prototype_id).await?;
         }
     }
 
