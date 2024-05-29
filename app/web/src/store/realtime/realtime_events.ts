@@ -4,7 +4,7 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
-import { ComponentPositions } from "../components.store";
+import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { ActionId } from "../actions.store";
 import { StatusUpdate } from "../status.store";
@@ -46,7 +46,7 @@ export interface ComponentPositionRequest {
   data: {
     userPk: UserId;
     changeSetId: string | null;
-    positions: ComponentPositions[];
+    positions: ComponentGeometry[];
   };
 }
 

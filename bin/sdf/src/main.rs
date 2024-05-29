@@ -92,10 +92,6 @@ async fn async_main() -> Result<()> {
     }
 
     let config = Config::try_from(args)?;
-    dbg!(config.boot_feature_flags());
-    // TODO Create Feature Flags Service in Service Context
-    // TODO Push Boot feature flags into it
-    // TODO Read FFs  back from actions endpoints
 
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =

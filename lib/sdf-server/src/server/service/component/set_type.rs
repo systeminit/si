@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 
+use dal::component::ComponentGeometry;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,8 @@ use crate::server::tracking::track;
 #[serde(rename_all = "camelCase")]
 pub struct SetTypeRequest {
     pub component_id: ComponentId,
-    pub value: Option<serde_json::Value>,
+    pub component_type: ComponentType,
+    pub overridden_geometry: Option<ComponentGeometry>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -23,22 +25,33 @@ pub async fn set_type(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<SetTypeRequest>,
+    Json(SetTypeRequest {
+        component_id,
+        component_type,
+        overridden_geometry,
+        visibility,
+    }): Json<SetTypeRequest>,
 ) -> ComponentResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let component = Component::get_by_id(&ctx, request.component_id).await?;
+    let mut component = Component::get_by_id(&ctx, component_id).await?;
 
-    // If no type was found, default to a standard "component".
-    let component_type: ComponentType = match request.value {
-        Some(value) => serde_json::from_value(value)?,
-        None => ComponentType::Component,
-    };
     component.set_type(&ctx, component_type).await?;
+    if let Some(geometry) = overridden_geometry {
+        component
+            .set_geometry(
+                &ctx,
+                geometry.x,
+                geometry.y,
+                geometry.width,
+                geometry.height,
+            )
+            .await?;
+    }
 
-    let component = Component::get_by_id(&ctx, request.component_id).await?;
+    let component = Component::get_by_id(&ctx, component_id).await?;
     let payload: SummaryDiagramComponent =
         SummaryDiagramComponent::assemble(&ctx, &component).await?;
     WsEvent::component_updated(&ctx, payload)
@@ -53,7 +66,7 @@ pub async fn set_type(
         &original_uri,
         "set_component_type",
         serde_json::json!({
-            "how": "/component/set_component_type",
+            "how": "/component/set_type",
             "component_id": component.id(),
             "component_schema_name": component_schema.name(),
             "new_component_type": component_type,
