@@ -241,7 +241,7 @@ impl ActionPrototype {
         Ok(action_prototype_ids)
     }
 
-    async fn schema_variant_id(
+    pub async fn schema_variant_id(
         ctx: &DalContext,
         id: ActionPrototypeId,
     ) -> ActionPrototypeResult<SchemaVariantId> {
