@@ -335,7 +335,7 @@ impl SchemaVariantSpec {
     pub fn merge_prototypes_from(
         &self,
         other_spec: &Self,
-        identity_func_spec_id: &str,
+        identity_func_unique_id: &str,
     ) -> (Self, Vec<MergeSkip>) {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
         schema_variant_builder.name(&self.name);
@@ -355,8 +355,12 @@ impl SchemaVariantSpec {
         let self_root_prop = self.make_fake_root_prop();
         let other_root_prop = other_spec.make_fake_root_prop();
 
-        let (new_root, mut merge_skips) =
-            self_root_prop.merge_with(&other_root_prop, &self_input_sockets, &self_output_sockets);
+        let (new_root, mut merge_skips) = self_root_prop.merge_with(
+            &other_root_prop,
+            &self_input_sockets,
+            &self_output_sockets,
+            identity_func_unique_id,
+        );
 
         // The prop spec is now merged, so we can use it for socket merges
         let (new_sockets, socket_merge_skips) = self.merge_sockets_from(
@@ -364,7 +368,7 @@ impl SchemaVariantSpec {
             other_spec,
             &self_input_sockets,
             &self_output_sockets,
-            identity_func_spec_id,
+            identity_func_unique_id,
         );
 
         schema_variant_builder.replace_roots(new_root);
