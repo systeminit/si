@@ -67,7 +67,7 @@ impl ChangeSetTestHelpers {
         let mut count = 0;
         while count < total_count {
             ctx.update_snapshot_to_visibility().await?;
-            let mut still_active = ctx
+            let still_active = ctx
                 .workspace_snapshot()?
                 .has_dependent_value_roots()
                 .await?;
