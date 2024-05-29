@@ -31,7 +31,7 @@
           <option :value="ComponentType.ConfigurationFrameUp">
             Configuration Frame (Up)
           </option>
-          <option :value="ComponentType.ConfigurationFrameUp">
+          <option :value="ComponentType.ConfigurationFrameDown">
             Configuration Frame (Down)
           </option>
         </select>
