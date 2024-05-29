@@ -41,7 +41,6 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { useChangeSetsStore } from "./change_sets.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
   QualificationStatus,
@@ -218,7 +217,6 @@ const edgeFromRawEdge =
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
-  const featureFlagsStore = useFeatureFlagsStore();
 
   const changeSetsStore = useChangeSetsStore();
 
@@ -1400,7 +1398,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "component/refresh",
               params: {
                 componentId,
-                v2: featureFlagsStore.IS_ACTIONS_V2,
                 workspaceId: visibilityParams.workspaceId,
                 visibility_change_set_pk: changeSetsStore.headChangeSetId,
               },
