@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     future::IntoFuture,
     sync::Arc,
+    time::Duration,
 };
 
 use dal::feature_flags::FeatureFlagService;
@@ -52,6 +53,7 @@ pub struct Server {
     ctx_builder: DalContextBuilder,
     change_set_tasks: HashMap<ChangeSetId, RunningTask>,
     shutdown_token: CancellationToken,
+    dvu_interval: Duration,
 }
 
 impl Server {
@@ -94,6 +96,7 @@ impl Server {
             config.instance_id().to_string(),
             services_context,
             shutdown_token,
+            config.dvu_interval(),
         )
     }
 
@@ -103,6 +106,7 @@ impl Server {
         instance_id: impl Into<String>,
         services_context: ServicesContext,
         shutdown_token: CancellationToken,
+        dvu_interval: Duration,
     ) -> ServerResult<Self> {
         dal::init()?;
 
@@ -117,6 +121,7 @@ impl Server {
             ctx_builder,
             change_set_tasks: HashMap::default(),
             shutdown_token,
+            dvu_interval,
         })
     }
 
@@ -282,6 +287,7 @@ impl Server {
             incoming,
             self.ctx_builder.clone(),
             token.clone(),
+            self.dvu_interval,
         );
         let handle = tokio::spawn(task.run());
         let running_task = RunningTask { handle, token };

@@ -6,6 +6,7 @@ use std::{
     future::{Future, IntoFuture},
     io,
     sync::Arc,
+    time::Duration,
 };
 
 use dal::DalContextBuilder;
@@ -54,12 +55,14 @@ impl ChangeSetRequestsTask {
         incoming: jetstream::consumer::pull::Stream,
         ctx_builder: DalContextBuilder,
         shutdown_token: CancellationToken,
+        dvu_interval: Duration,
     ) -> Self {
         let dvu_debouncer = DvuDebouncer::new(
             workspace_id,
             change_set_id,
             shutdown_token.clone(),
             ctx_builder.clone(),
+            dvu_interval,
         );
         let state = AppState::new(workspace_id, change_set_id, ctx_builder, dvu_debouncer);
 

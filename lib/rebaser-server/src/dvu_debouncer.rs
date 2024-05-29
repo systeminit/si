@@ -13,8 +13,6 @@ use tokio::{
 };
 use tokio_util::sync::CancellationToken;
 
-const DVU_INTERVAL: Duration = Duration::from_secs(5);
-
 /// DvuDebouncer error type
 #[derive(Error, Debug)]
 pub enum DvuDebouncerError {
@@ -39,6 +37,7 @@ pub struct DvuDebouncer {
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
     ctx_builder: DalContextBuilder,
+    dvu_interval: Duration,
 }
 
 impl DvuDebouncer {
@@ -48,12 +47,14 @@ impl DvuDebouncer {
         change_set_id: ChangeSetId,
         cancellation_token: CancellationToken,
         ctx_builder: DalContextBuilder,
+        dvu_interval: Duration,
     ) -> Self {
         let debouncer = Self {
             cancellation_token,
             workspace_id,
             change_set_id,
             ctx_builder,
+            dvu_interval,
         };
 
         let debouncer_clone = debouncer.clone();
@@ -114,9 +115,12 @@ impl DvuDebouncer {
 }
 
 async fn ticker(debouncer: DvuDebouncer) {
-    info!("booting dvu task for {}", &debouncer.change_set_id,);
+    info!(
+        "booting dvu task for {} with a {:?} interval",
+        &debouncer.change_set_id, debouncer.dvu_interval
+    );
 
-    let mut ticker = interval(DVU_INTERVAL);
+    let mut ticker = interval(debouncer.dvu_interval);
 
     loop {
         select! {

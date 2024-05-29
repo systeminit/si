@@ -599,6 +599,8 @@ pub fn rebaser_server(
         config.instance_id(),
         services_context,
         shutdown_token,
+        // a huge interval, to prevent dvu debouncer from running dvus in tests
+        std::time::Duration::from_secs(10000),
     )
     .wrap_err("failed to create Rebaser server")?;
 
