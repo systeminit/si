@@ -261,6 +261,15 @@ impl From<Component> for ComponentContentV1 {
     }
 }
 
+// Used to transfer the size and position of a component
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ComponentGeometry {
+    pub x: String,
+    pub y: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
+}
+
 #[derive(Copy, Clone)]
 pub struct ControllingFuncData {
     pub func_id: FuncId,

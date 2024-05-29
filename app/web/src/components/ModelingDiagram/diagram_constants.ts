@@ -14,6 +14,7 @@ export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 
 // Default Width for Node
 export const NODE_WIDTH = 200;
+export const MIN_NODE_DIMENSION = NODE_WIDTH + 20 * 2;
 
 // spacing between sockets
 export const SOCKET_GAP = 22;
@@ -28,7 +29,10 @@ export const GROUP_TITLE_FONT_SIZE = 14;
 export const GROUP_INTERNAL_PADDING = 20;
 export const GROUP_RESIZE_HANDLE_SIZE = 20;
 export const GROUP_HEADER_ICON_SIZE = 35;
+// We need an extra bottom padding to account for the status icons
 export const GROUP_BOTTOM_INTERNAL_PADDING = 35;
+export const GROUP_DEFAULT_WIDTH = 35;
+export const GROUP_DEFAULT_HEIGHT = 35;
 
 // corner radius used on nodes (maybe other things later?)
 export const CORNER_RADIUS = 3;

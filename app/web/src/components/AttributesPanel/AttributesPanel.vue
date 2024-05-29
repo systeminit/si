@@ -1,21 +1,21 @@
 <template>
   <div
     ref="rootRef"
-    class="attributes-panel"
     :class="{
       '--show-section-toggles': showSectionToggles,
     }"
-    @pointermove="onMouseMove"
+    class="attributes-panel"
     @mouseleave="onMouseLeave"
+    @pointermove="onMouseMove"
   >
     <!-- custom inputs for SI props (name, color, etc) -->
     <div class="attributes-panel__si-settings">
       <div
         :id="`color-picker-${componentId}`"
         ref="colorPickerMountRef"
+        :style="{ backgroundColor: siValues.color }"
         :title="siValues.color"
         class="attributes-panel__color-swatch"
-        :style="{ backgroundColor: siValues.color }"
         @click="openColorPicker"
       />
       <input
@@ -27,9 +27,11 @@
       />
       <div class="attributes-panel__type-dropdown">
         <select v-model="siValues.type" @change="updateComponentType()">
-          <option value="component">Component</option>
-          <option value="configurationFrameUp">Configuration Frame (Up)</option>
-          <option value="configurationFrameDown">
+          <option :value="ComponentType.Component">Component</option>
+          <option :value="ComponentType.ConfigurationFrameUp">
+            Configuration Frame (Up)
+          </option>
+          <option :value="ComponentType.ConfigurationFrameUp">
             Configuration Frame (Down)
           </option>
         </select>
@@ -88,7 +90,7 @@ export function useAttributesPanelContext() {
 </script>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
-<script setup lang="ts">
+<script lang="ts" setup>
 import Picker from "vanilla-picker";
 import * as _ from "lodash-es";
 import {
@@ -113,6 +115,7 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import AttributesPanelItem from "./AttributesPanelItem.vue";
 
 const props = defineProps({
@@ -149,7 +152,8 @@ const siValuesFromStore = computed(() => ({
   name: (siProps.value?.name?.value?.value as string) || component.displayName,
   color: (siProps.value?.color?.value?.value as string) || component.color,
   type:
-    (siProps.value?.type?.value?.value as string) || component?.componentType,
+    (siProps.value?.type?.value?.value as ComponentType) ||
+    component?.componentType,
 }));
 const siValues = reactive(_.cloneDeep(siValuesFromStore.value));
 
@@ -189,14 +193,15 @@ function updateSiProp(key: keyof typeof siValues) {
   }
 }
 
-// color picker
-const colorPickerMountRef = ref<HTMLElement>();
 function updateComponentType() {
   attributesStore.SET_COMPONENT_TYPE({
     componentId: component.id,
-    value: siValues.type,
+    componentType: siValues.type,
   });
 }
+
+// color picker
+const colorPickerMountRef = ref<HTMLElement>();
 
 let picker: Picker | undefined;
 function openColorPicker() {
@@ -330,7 +335,6 @@ provide(AttributesPanelContextInjectionKey, {
       border-color: var(--input-focus-border-color);
 
       z-index: 2;
-      border-color: var(--input-focus-border-color);
     }
   }
 }

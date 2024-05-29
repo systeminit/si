@@ -391,8 +391,10 @@ const applyChangeSetReqStatus =
 const applyChangeSet = async () => {
   if (!route.name) return;
   applyModalRef.value?.close();
-  await changeSetsStore.APPLY_CHANGE_SET(authStore.user?.email ?? "");
-  if (!applyChangeSetReqStatus.value.isError) {
+  const resp = await changeSetsStore.APPLY_CHANGE_SET(
+    authStore.user?.email ?? "",
+  );
+  if (resp.result.success) {
     router.replace({
       name: route.name,
       params: {

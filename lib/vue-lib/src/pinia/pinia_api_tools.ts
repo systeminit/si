@@ -348,7 +348,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
         // call explicit failure handler if one is defined (usually rare)
         if (typeof onFail === "function") {
-          const convertedData = onFail(err.response?.data);
+          const convertedData = onFail(err);
 
           if (convertedData) {
             err.response = {
@@ -393,9 +393,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // NOTE - have to be careful here to deal with non-async actions properly
       return async function wrappedActionFn(...args: any[]) {
         const actionResult: any = await originalActionFn(...args);
+        let triggerResult;
         if (actionResult instanceof ApiRequest) {
           const request = actionResult;
-          const triggerResult = await triggerApiRequest(
+          triggerResult = await triggerApiRequest(
             actionName,
             request.requestSpec,
           );

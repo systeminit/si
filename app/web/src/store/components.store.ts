@@ -9,6 +9,9 @@ import mitt from "mitt";
 import { watch } from "vue";
 import {
   DiagramEdgeDef,
+  DiagramElementUniqueKey,
+  DiagramGroupData,
+  DiagramNodeData,
   DiagramNodeDef,
   DiagramStatusIcon,
   ElementHoverMeta,
@@ -20,19 +23,19 @@ import {
   DiagramSchemaVariant,
 } from "@/api/sdf/dal/diagram";
 import {
+  ChangeSetId,
   ChangeStatus,
   ComponentStats,
-  ChangeSetId,
 } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import {
   ComponentDiff,
-  RawComponent,
   ComponentId,
   Edge,
   EdgeId,
-  SocketId,
+  RawComponent,
   RawEdge,
+  SocketId,
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -117,6 +120,7 @@ export interface AttributeDebugView {
   kind: string;
   view?: string;
 }
+
 export interface FuncArgDebugView {
   value: object | string | number | boolean | null;
   name: string;
@@ -126,6 +130,7 @@ export interface FuncArgDebugView {
   path: string | null;
   isUsed: boolean;
 }
+
 export interface SocketDebugView extends AttributeDebugView {
   socketId: string;
   connectionAnnotations: string[];
@@ -141,23 +146,29 @@ export interface ComponentDebugView {
   parentId?: string | null;
 }
 
-export interface ComponentPositions {
+export interface ComponentGeometry {
   componentId: string;
   position: Vector2d;
   size?: Size2D;
 }
 
-export interface ComponentConnection {
-  childId: ComponentId;
-  parentId: ComponentId;
-}
+export type SingleSetComponentGeometryData = {
+  geometry: ComponentGeometry;
+  detach?: boolean;
+  newParent?: ComponentId;
+};
 
-type APIComponentPositions = {
-  componentId: string;
+export type APIComponentGeometry = {
   x: string;
   y: string;
   width?: string;
   height?: string;
+};
+
+export type APISingleComponentPosition = {
+  geometry: APIComponentGeometry;
+  detach: boolean;
+  newParent?: ComponentId;
 };
 
 type EventBusEvents = {
@@ -266,8 +277,42 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
+
+          // Local cache of positions and sizes
+          movedElementPositions: {} as Record<
+            DiagramElementUniqueKey,
+            Vector2d
+          >,
+          resizedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
         }),
         getters: {
+          cachedGeometriesByComponentId(): Record<
+            ComponentId,
+            Vector2d & Partial<Size2D>
+          > {
+            const dictionary: Record<ComponentId, Vector2d & Partial<Size2D>> =
+              {};
+
+            _.forEach(this.componentsById, (c) => {
+              let uniqueKey;
+              if (c.componentType === ComponentType.Component) {
+                uniqueKey = DiagramNodeData.generateUniqueKey(c.id);
+              } else {
+                uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
+              }
+
+              const position = this.movedElementPositions[uniqueKey];
+              if (!position) return;
+              const size = this.resizedElementSizes[uniqueKey];
+
+              dictionary[c.id] = {
+                ...position,
+                ...size,
+              };
+            });
+
+            return dictionary;
+          },
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
           selectedComponentId: (state) => {
@@ -611,6 +656,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
+                this.resizedElementSizes = {};
+                this.movedElementPositions = {};
+
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 const edges =
                   response.edges && response.edges.length > 0
@@ -680,49 +728,56 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async SET_COMPONENT_DIAGRAM_POSITION(
-            positions: ComponentPositions[],
-            detach?: boolean,
-            newParent?: ComponentId,
+          async SET_COMPONENT_GEOMETRY(
+            componentUpdates: SingleSetComponentGeometryData[],
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const string_positions = positions.map((p) => {
-              const pos = {
-                componentId: p.componentId,
-              } as APIComponentPositions;
-              pos.x = p.position.x.toString();
-              pos.y = p.position.y.toString();
-              if (p.size?.width) pos.width = p.size?.width.toString();
-              if (p.size?.height) pos.height = p.size?.height.toString();
-              return pos;
+            const dataByComponentId: Record<
+              ComponentId,
+              APISingleComponentPosition
+            > = {};
+
+            componentUpdates.forEach((p) => {
+              dataByComponentId[p.geometry.componentId] = {
+                detach: !!p.detach,
+                newParent: p.newParent,
+                geometry: {
+                  x: p.geometry.position.x.toString(),
+                  y: p.geometry.position.y.toString(),
+                  width: p.geometry.size?.width.toString(),
+                  height: p.geometry.size?.height.toString(),
+                },
+              };
             });
 
-            detach = !!detach; // avoiding an option on the backend (undefined -> false)
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
               url: "diagram/set_component_position",
               params: {
-                positions: string_positions,
-                detach,
-                newParent,
+                dataByComponentId,
                 diagramKind: "configuration",
                 ...visibilityParams,
               },
               optimistic: () => {
-                if (detach) {
-                  const prevParents: Record<
-                    ComponentId,
-                    ComponentId | undefined
-                  > = {};
-                  for (const { componentId } of positions) {
-                    const component = this.rawComponentsById[componentId];
+                const prevParents: Record<
+                  ComponentId,
+                  ComponentId | undefined
+                > = {};
+                for (const {
+                  geometry,
+                  detach,
+                  newParent,
+                } of componentUpdates) {
+                  const componentId = geometry.componentId;
+                  const component = this.rawComponentsById[componentId];
+
+                  if (detach) {
                     if (!component) return;
-                    const prevParentId = component?.parentId;
-                    prevParents[component.id] = prevParentId;
+                    prevParents[component.id] = component?.parentId;
                     component.parentId = undefined;
 
                     // remove inferred edges between children and parents
@@ -742,31 +797,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     }
                   }
 
-                  return () => {
-                    for (const componentId of Object.keys(prevParents)) {
-                      const component = this.rawComponentsById[componentId];
-                      if (component)
-                        component.parentId = prevParents[componentId];
-                    }
-                  };
-                }
-                if (newParent) {
-                  // NOTE: `onDragElementsMove` only looks at parentId
-                  // so we don't have to manipulate `ancestorIds` here
-                  type Parent = [RawComponent, string | undefined];
-                  const prevParents: Parent[] = [];
-                  positions.forEach(({ componentId }) => {
+                  if (newParent) {
                     const component = this.rawComponentsById[componentId];
-                    if (!component) return;
-                    prevParents.push([component, component?.parentId]);
+                    if (!component) continue;
+
+                    prevParents[component.id] = component.parentId;
+
                     component.parentId = newParent;
-                  });
-                  return () => {
-                    for (const [component, parentId] of prevParents) {
-                      component.parentId = parentId;
-                    }
-                  };
+                  }
                 }
+
+                // NOTE: `onDragElementsMove` only looks at parentId
+                // so we don't have to manipulate `ancestorIds` here
+                return () => {
+                  for (const componentId in prevParents) {
+                    const component = this.rawComponentsById[componentId];
+                    if (component)
+                      component.parentId = prevParents[componentId];
+                  }
+                };
               },
             });
           },

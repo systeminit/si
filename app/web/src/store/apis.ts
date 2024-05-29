@@ -6,6 +6,7 @@ import Axios, {
 } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useStatusStore } from "@/store/status.store";
 import { trackEvent } from "@/utils/tracking";
 
 // api base url - can use a proxy or set a full url
@@ -52,14 +53,6 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
   return response;
 }
 
-async function handleConflictsFound(error: AxiosError) {
-  if (error?.response?.status === 409) {
-    // eslint-disable-next-line no-console
-    console.error("conflicts found!");
-  }
-  return Promise.reject(error);
-}
-
 async function handleProxyTimeouts(response: AxiosResponse) {
   // some weird timeouts happening and triggering nginx 404 when running via the CLI
   // here we will try to detect them, track it, and give user some help
@@ -74,6 +67,14 @@ async function handleProxyTimeouts(response: AxiosResponse) {
     }, 500);
   }
   return response;
+}
+
+async function handleConflictsFound(error: AxiosError) {
+  if (error?.response?.status === 409) {
+    const statusStore = useStatusStore();
+    statusStore.addConflictFromHttp(JSON.stringify(error?.response?.data));
+  }
+  return Promise.reject(error);
 }
 
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts);

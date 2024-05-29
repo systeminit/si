@@ -201,6 +201,8 @@ export type DiagramNodeDef = {
   typeIcon?: string | null;
   /** type of node - define if this is a simple component or a type of frame */
   componentType: ComponentType;
+  /** type of node - define if this is a simple component or a type of frame */
+  isGroup: boolean;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */

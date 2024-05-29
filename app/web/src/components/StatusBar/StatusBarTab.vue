@@ -1,5 +1,9 @@
 <template>
-  <div :class="tabClasses" class="flex p-xs">
+  <div
+    :class="tabClasses"
+    class="flex p-xs"
+    @click="(e) => props.click && props.click()"
+  >
     <div class="flex items-center">
       <slot name="icon" />
     </div>
@@ -15,7 +19,8 @@
 <script lang="ts" setup>
 import { computed, toRef } from "vue";
 
-const props = defineProps<{ selected: boolean }>();
+type clickFn = () => void;
+const props = defineProps<{ selected: boolean; click?: clickFn }>();
 const selected = toRef(props, "selected");
 
 const tabClasses = computed(() => {

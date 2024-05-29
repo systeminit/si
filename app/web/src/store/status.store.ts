@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { md5 } from "js-md5";
 import * as _ from "lodash-es";
 import { addStoreHooks } from "@si/vue-lib/pinia";
 import { POSITION, useToast } from "vue-toastification";
@@ -9,6 +10,7 @@ import { ComponentId, SocketId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import UpdatingModel from "../components/toasts/UpdatingModel.vue";
+import ConflictToast from "../components/toasts/Conflict.vue";
 
 import { useComponentsStore } from "./components.store";
 
@@ -86,9 +88,12 @@ export interface RebaseStatus {
   count: number;
 }
 
+export type Conflict = string;
+
 export interface StatusStoreState {
   rawStatusesByValueId: Record<AttributeValueId, AttributeValueStatus>;
   rebaseStatus: RebaseStatus;
+  rawConflicts: Conflict[];
 }
 
 export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
@@ -113,8 +118,17 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         state: (): StatusStoreState => ({
           rawStatusesByValueId: {},
           rebaseStatus: { count: 0 },
+          rawConflicts: [],
         }),
         getters: {
+          conflicts: (state): Conflict[] => {
+            const conflicts: Record<string, Conflict> = {};
+            state.rawConflicts.forEach((c) => {
+              const hash = md5(c);
+              conflicts[hash] = c;
+            });
+            return Object.values(conflicts);
+          },
           getSocketStatus:
             (state) => (componentId: ComponentId, socketId: SocketId) => {
               const valueId = _.findKey(
@@ -256,6 +270,22 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             return `Updating ${latestUpdate.componentLabel}`;
           },
         },
+        actions: {
+          addConflictFromHttp(conflict: Conflict): void {
+            this.rawConflicts.push(conflict);
+            toast(
+              {
+                component: ConflictToast,
+                props: {
+                  conflict,
+                },
+              },
+              {
+                timeout: false,
+              },
+            );
+          },
+        },
         onActivated() {
           if (!changeSetId) return;
 
@@ -265,6 +295,12 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           let cleanupTimeout: Timeout;
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+            {
+              eventType: "Conflict",
+              callback: (data: Conflict) => {
+                this.rawConflicts.push(data);
+              },
+            },
             {
               eventType: "StatusUpdate",
               callback: (update, _metadata) => {

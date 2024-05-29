@@ -69,6 +69,20 @@ app.use(FloatingVue, {
   });
 } */
 
+/**
+ * If we have a CONFLICT toast, block merge/up-to-date toasts
+ * from overwriting it
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const filterToasts = (toasts: any[]) => {
+  for (const t of toasts) {
+    if (t.content.component.__name === "Conflict") {
+      return [t];
+    }
+  }
+  return toasts;
+};
+
 const options: PluginOptions = {
   newestOnTop: true,
   containerClassName: "diagram-toast-container",
@@ -79,6 +93,7 @@ const options: PluginOptions = {
   draggable: false,
   hideProgressBar: true,
   timeout: 1500,
+  filterToasts,
   // container: asyncGetContainer // right now we cannot make the container a div within nested components that get destroyed on route transitions
   // if we could use that div, we get get TOP_RIGHT position cleanly...
 };
