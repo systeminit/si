@@ -13,6 +13,7 @@ use std::time::Duration;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
 use dal::context::Conflicts;
+use dal::WorkspaceSnapshotError;
 use dal::{
     action::ActionError, ChangeSet, ChangeSetApplyError, ChangeSetError, ChangeSetId, DalContext,
     TransactionsError,
@@ -43,6 +44,8 @@ pub enum ChangeSetTestHelpersError {
     ConflictsFoundAfterCommit(Conflicts),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 type ChangeSetTestHelpersResult<T> = Result<T, ChangeSetTestHelpersError>;
@@ -59,9 +62,23 @@ impl ChangeSetTestHelpers {
     pub async fn commit_and_update_snapshot_to_visibility(
         ctx: &mut DalContext,
     ) -> ChangeSetTestHelpersResult<()> {
-        ctx.blocking_commit().await?;
-        ctx.update_snapshot_to_visibility().await?;
-        Ok(())
+        ctx.commit().await?;
+        let total_count = 200;
+        let mut count = 0;
+        while count < total_count {
+            ctx.update_snapshot_to_visibility().await?;
+            let mut still_active = ctx
+                .workspace_snapshot()?
+                .has_dependent_value_roots()
+                .await?;
+            if !still_active {
+                return Ok(());
+            }
+
+            count += 1;
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        Err(ChangeSetTestHelpersError::ActionTimeout)
     }
 
     /// Wait for all actions queued on the workspace snapshot to either succeed (and therefore not

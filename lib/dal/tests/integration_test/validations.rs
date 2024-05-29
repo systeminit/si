@@ -127,6 +127,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 #[test]
 async fn validation_on_dependent_value(ctx: &mut DalContext) {
     let output_component = create_component_for_schema_name(ctx, "ValidatedOutput", "Output").await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
     let input_component = create_component_for_schema_name(ctx, "ValidatedInput", "Input").await;
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -155,7 +158,8 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(json!(1)))
         .await
         .expect("override attribute value");
-
+    let conflicts = ctx.blocking_commit().await.expect("could commit");
+    assert!(conflicts.is_none());
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -187,7 +191,8 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
     AttributeValue::update(ctx, av_id, Some(json!(3)))
         .await
         .expect("override attribute value");
-
+    let conflicts = ctx.blocking_commit().await.expect("could commit");
+    assert!(conflicts.is_none());
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
