@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="action"
+    class="cursor-pointer"
     :class="
       clsx(
         'flex gap-xs p-2xs border-x border-b',
@@ -9,7 +10,7 @@
     "
     @click="clickHandler"
   >
-    <Toggle :selected="isActive" :click="clickHandler" />
+    <Toggle :selected="isActive" :click="() => {}" />
     <StatusIndicatorIcon type="action" :status="action?.name" tone="inherit" />
     <div class="font-bold">{{ action?.displayName }}</div>
 
