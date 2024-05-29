@@ -65,6 +65,9 @@ pub struct Config {
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
+
+    #[builder(default = "5000")]
+    dvu_interval_millis: u64,
 }
 
 impl StandardConfig for Config {
@@ -114,6 +117,11 @@ impl Config {
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
+    }
+
+    /// Gets the duration of the dvu interval
+    pub fn dvu_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.dvu_interval_millis)
     }
 }
 
