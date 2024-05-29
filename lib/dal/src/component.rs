@@ -11,7 +11,6 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-use veritech_client::ResourceStatus;
 
 use si_events::{ulid::Ulid, ContentHash};
 
@@ -548,7 +547,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         copied_component_id: ComponentId,
-        reset_resource: bool,
+        clear_resource: bool,
         reset_name: bool,
     ) -> ComponentResult<()> {
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
@@ -612,9 +611,8 @@ impl Component {
             }
         }
 
-        if reset_resource {
-            self.set_resource(ctx, ResourceData::new(ResourceStatus::Ok, None))
-                .await?;
+        if clear_resource {
+            self.clear_resource(ctx).await?;
         }
         if reset_name {
             self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
