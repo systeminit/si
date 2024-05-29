@@ -4,10 +4,12 @@ import Axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import { useToast } from "vue-toastification";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { trackEvent } from "@/utils/tracking";
+import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -77,7 +79,22 @@ async function handleConflictsFound(error: AxiosError) {
   return Promise.reject(error);
 }
 
-sdfApiInstance.interceptors.response.use(handleProxyTimeouts);
+async function handle500(error: AxiosError) {
+  const toast = useToast();
+  if (error?.response?.status === 500) {
+    toast(
+      {
+        component: FiveHundredError,
+      },
+      {
+        timeout: false,
+      },
+    );
+  }
+  return Promise.reject(error);
+}
+
+sdfApiInstance.interceptors.response.use(handleProxyTimeouts, handle500);
 sdfApiInstance.interceptors.response.use(
   handleForcedChangesetRedirection,
   handleConflictsFound,
