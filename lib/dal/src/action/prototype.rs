@@ -10,6 +10,7 @@ use thiserror::Error;
 use veritech_client::ActionRunResultSuccess;
 
 use crate::{
+    action::ResourceStatus,
     component::ComponentUpdatedPayload,
     diagram::{DiagramError, SummaryDiagramComponent},
     func::{
@@ -347,6 +348,13 @@ impl ActionPrototype {
                         .set_resource(ctx, run_result.clone().into())
                         .await?;
 
+                    let payload = SummaryDiagramComponent::assemble(ctx, &component).await?;
+                    WsEvent::resource_refreshed(ctx, payload)
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
+                } else if run_result.status == ResourceStatus::Ok {
+                    component.clear_resource(ctx).await?;
                     let payload = SummaryDiagramComponent::assemble(ctx, &component).await?;
                     WsEvent::resource_refreshed(ctx, payload)
                         .await?
