@@ -11,8 +11,6 @@ use crate::server::tracking::track;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyChangeSetRequest {
-    // TODO(fnichol): I THINK THIS GETS DELETED NOW
-    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

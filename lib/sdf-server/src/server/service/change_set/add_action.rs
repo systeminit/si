@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 pub struct AddActionRequest {
     pub prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
-    // TODO(fnichol): I THINK THIS GETS DELETED NOW
-    pub v2: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
