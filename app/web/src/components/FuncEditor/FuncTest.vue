@@ -224,9 +224,8 @@ import { computed, ref } from "vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useComponentsStore } from "@/store/components.store";
-import { useRealtimeStore } from "@/store/realtime/realtime.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { FuncKind } from "@/api/sdf/dal/func";
+import { useFuncRunsStore } from "@/store/func_runs.store";
 import FuncTestSelector from "./FuncTestSelector.vue";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon, { Status } from "../StatusIndicatorIcon.vue";
@@ -236,8 +235,7 @@ export type TestStatus = "running" | "success" | "failure";
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const realtimeStore = useRealtimeStore();
-const changeSetStore = useChangeSetsStore();
+const funcRunsStore = useFuncRunsStore();
 
 const additionalOutputInfoModalRef = ref();
 const funcTestSelectorRef = ref<InstanceType<typeof FuncTestSelector>>();
@@ -462,21 +460,6 @@ const startTest = async () => {
   prepareTest();
   readyToTest.value = false;
 
-  const executionKey = new Date().toString() + _.random();
-
-  const selectedChangeSetId = changeSetStore.selectedChangeSet?.id;
-
-  realtimeStore.subscribe(executionKey, `changeset/${selectedChangeSetId}`, [
-    {
-      eventType: "LogLine",
-      callback: (logLine) => {
-        if (logLine.executionKey === executionKey) {
-          rawTestLogs.value.push(logLine.stream);
-        }
-      },
-    },
-  ]);
-
   // Run the test!
   runningTest.value = true;
   rawTestLogs.value = [];
@@ -484,21 +467,31 @@ const startTest = async () => {
 
   const args = testInputProperties.value;
 
-  const output = await funcStore.TEST_EXECUTE({
+  const response = await funcStore.TEST_EXECUTE({
     id: funcStore.selectedFuncDetails.id,
     args,
     code: funcStore.selectedFuncDetails.code,
-    executionKey,
     componentId: funcTestSelectorRef.value?.selectedComponentId,
   });
 
-  realtimeStore.unsubscribe(executionKey);
   readyToTest.value = true;
 
-  if (output.result.success) {
-    testOutput.value = output.result.data.output;
-    testOutputCode.value = JSON.stringify(output.result.data.output, null, 2);
-    rawTestLogs.value = output.result.data.logs;
+  if (response.result.success) {
+    const funcRunId = response.result.data.funcRunId;
+    await funcRunsStore.GET_FUNC_RUN(funcRunId);
+    const funcRun = funcRunsStore.funcRuns[funcRunId];
+
+    if (funcRun) {
+      testOutput.value = funcRun.resultValue;
+      testOutputCode.value = JSON.stringify(funcRun.resultValue, null, 2);
+      if (funcRun.logs) {
+        rawTestLogs.value = funcRun.logs.logs;
+      }
+    } else {
+      testOutput.value = null;
+      testOutputCode.value =
+        "ERROR: Test Execution Request Succeeded, But Func Run Not Found";
+    }
   } else {
     testOutput.value = null;
     testOutputCode.value = "ERROR: Test Failed To Run";

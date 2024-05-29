@@ -71,15 +71,12 @@ use crate::{
 use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 
 mod algorithm;
-mod before_funcs;
 mod definition_view;
 mod event;
 mod view;
 
 pub use algorithm::SecretAlgorithm;
 pub use algorithm::SecretVersion;
-pub use before_funcs::before_funcs_for_component;
-pub use before_funcs::BeforeFuncError;
 pub use definition_view::SecretDefinitionView;
 pub use definition_view::SecretDefinitionViewError;
 pub use event::SecretCreatedPayload;

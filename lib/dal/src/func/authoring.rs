@@ -41,6 +41,8 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
+use si_layer_cache::LayerDbError;
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -55,7 +57,6 @@ use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::prop::PropError;
-use crate::secret::BeforeFuncError;
 use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
@@ -63,21 +64,20 @@ use crate::{
     SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
 
-use super::runner::FuncRunnerError;
+use super::runner::{FuncRunner, FuncRunnerError};
 use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
 
 mod create;
 mod execute;
 mod save;
-mod test_execute;
 mod ts_types;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncAuthoringError {
-    #[error("action kind already exists for schema variant")]
-    ActionKindAlreadyExists(SchemaVariantId),
+    #[error("action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant")]
+    ActionKindAlreadyExists(ActionKind, SchemaVariantId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
@@ -88,8 +88,6 @@ pub enum FuncAuthoringError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("before func error: {0}")]
-    BeforeFunc(#[from] BeforeFuncError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("func error: {0}")]
@@ -108,14 +106,16 @@ pub enum FuncAuthoringError {
     FuncRunGone,
     #[error("func run error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
+    #[error("func runner has failed to send a value and exited")]
+    FuncRunnerSend,
     #[error("func view error: {0}")]
     FuncView(#[from] FuncViewError),
     #[error("invalid func associations ({0:?}) for func ({1}) of kind: {2}")]
     InvalidFuncAssociationsForFunc(FuncAssociations, FuncId, FuncKind),
     #[error("invalid func kind for creation: {0}")]
     InvalidFuncKindForCreation(FuncKind),
-    #[error("can't use func kind '{0}' as it already exists")]
-    KindAlreadyExists(ActionKind),
+    #[error("layerdb error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
@@ -167,46 +167,85 @@ impl FuncAuthoringClient {
         })
     }
 
-    /// Performs a "test" [`Func`] execution and returns the [result](TestExecuteFuncResult).
+    /// Performs a "test" [`Func`] execution and returns the [`FuncRunId`](si_events::FuncRun).
     #[instrument(name = "func.authoring.test_execute_func", level = "info", skip(ctx))]
     pub async fn test_execute_func(
         ctx: &DalContext,
         id: FuncId,
         args: serde_json::Value,
-        execution_key: String,
-        code: String,
+        maybe_updated_code: Option<String>,
         component_id: ComponentId,
-    ) -> FuncAuthoringResult<TestExecuteFuncResult> {
-        // Cache the old code.
-        let func = Func::get_by_id_or_error(ctx, id).await?;
-        let cached_code = func.code_base64.to_owned();
+    ) -> FuncAuthoringResult<FuncRunId> {
+        let mut func = Func::get_by_id_or_error(ctx, id).await?;
 
-        // Use our new code and re-fetch.
-        Func::modify_by_id(ctx, id, |func| {
-            func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
-            Ok(())
-        })
-        .await?;
-        let func_with_temp_code = Func::get_by_id_or_error(ctx, id).await?;
+        // If updated code is provided, and it differs from the existing code, modify the function.
+        if let Some(updated_code) = maybe_updated_code {
+            let encoded_updated_code = Some(general_purpose::STANDARD_NO_PAD.encode(updated_code));
+            if encoded_updated_code != func.code_base64 {
+                func = Func::modify_by_id(ctx, id, |func| {
+                    func.code_base64 = encoded_updated_code;
+                    Ok(())
+                })
+                .await?;
+            }
+        }
 
-        // Perform the test execution.
-        let test_execute_func_result = test_execute::perform_test_execution(
-            ctx,
-            func_with_temp_code,
-            args,
-            execution_key,
-            component_id,
-        )
-        .await?;
+        let (func_run_id, result_channel) =
+            FuncRunner::run_test(ctx, func, args, component_id).await?;
 
-        // Restore the old code. We need to do this in case users want to perform a commit.
-        Func::modify_by_id(ctx, id, |func| {
-            func.code_base64 = cached_code;
-            Ok(())
-        })
-        .await?;
+        let func_run_value = result_channel
+            .await
+            .map_err(|_| FuncAuthoringError::FuncRunnerSend)??;
 
-        Ok(test_execute_func_result)
+        let content_value: Option<si_events::CasValue> =
+            func_run_value.value().cloned().map(Into::into);
+        let content_unprocessed_value: Option<si_events::CasValue> =
+            func_run_value.unprocessed_value().cloned().map(Into::into);
+
+        let value_address = match content_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        let unprocessed_value_address = match content_unprocessed_value {
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
+            None => None,
+        };
+
+        ctx.layer_db()
+            .func_run()
+            .set_values_and_set_state_to_success(
+                func_run_value.func_run_id(),
+                unprocessed_value_address,
+                value_address,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        Ok(func_run_id)
     }
 
     /// Executes a [`Func`].
@@ -469,12 +508,4 @@ pub enum CreateFuncOptions {
     CodeGenerationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     QualificationOptions { schema_variant_id: SchemaVariantId },
-}
-
-/// The result of a [`test execution`](FuncAuthoringClient::dummy_execute).
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct TestExecuteFuncResult {
-    /// The Function Run ID for the test
-    pub func_run_id: FuncRunId,
 }

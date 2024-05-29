@@ -17,7 +17,6 @@ use crate::{
         FuncId,
     },
     implement_add_edge_to,
-    secret::BeforeFuncError,
     workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, SchemaVariant,
@@ -28,8 +27,6 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionPrototypeError {
-    #[error("before func error: {0}")]
-    BeforeFunc(#[from] BeforeFuncError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]

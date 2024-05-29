@@ -61,10 +61,6 @@ impl FuncRunDb {
         }
     }
 
-    pub async fn get_by_id(&self, func_run_id: FuncRunId) -> LayerDbResult<Option<Arc<FuncRun>>> {
-        self.cache.get(func_run_id.to_string().into()).await
-    }
-
     pub async fn list_action_history(
         &self,
         workspace_id: WorkspacePk,

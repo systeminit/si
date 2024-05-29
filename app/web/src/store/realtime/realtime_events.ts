@@ -127,17 +127,6 @@ export type WsEventPayloadMap = {
     componentId: string;
   };
 
-  LogLine: {
-    stream: {
-      stream: string;
-      level: string;
-      message: string;
-      timestamp: string;
-    };
-    funcId: FuncId;
-    executionKey: string;
-  };
-
   Online: {
     userPk: string;
     name: string;

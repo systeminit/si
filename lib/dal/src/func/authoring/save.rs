@@ -138,7 +138,10 @@ async fn update_action_associations(
                         .into_iter()
                         .find(|ap| ap.kind == kind);
                     if existing_kind.is_some() {
-                        return Err(FuncAuthoringError::KindAlreadyExists(kind));
+                        return Err(FuncAuthoringError::ActionKindAlreadyExists(
+                            kind,
+                            schema_variant_id,
+                        ));
                     }
                 }
                 prototyes_to_remove.push(prototype.id());
@@ -160,7 +163,10 @@ async fn update_action_associations(
             .into_iter()
             .find(|ap| ap.kind == kind);
         if existing_kind.is_some() {
-            return Err(FuncAuthoringError::KindAlreadyExists(kind));
+            return Err(FuncAuthoringError::ActionKindAlreadyExists(
+                kind,
+                schema_variant_id,
+            ));
         } else {
             ActionPrototype::new(
                 ctx,
