@@ -8,6 +8,7 @@ mod test {
     use crate::func::FuncKind;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+    use crate::workspace_snapshot::graph::ConflictsAndUpdates;
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
@@ -125,7 +126,10 @@ mod test {
         .expect("could not add edge");
 
         // Before cleanup, detect conflicts and updates.
-        let (before_cleanup_conflicts, before_cleanup_updates) = to_rebase
+        let ConflictsAndUpdates {
+            conflicts: before_cleanup_conflicts,
+            updates: before_cleanup_updates,
+        } = to_rebase
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
                 &onto,
@@ -142,7 +146,7 @@ mod test {
         );
 
         // Detect conflicts and updates. Ensure cleanup did not affect the results.
-        let (conflicts, updates) = to_rebase
+        let ConflictsAndUpdates { conflicts, updates } = to_rebase
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
                 &onto,

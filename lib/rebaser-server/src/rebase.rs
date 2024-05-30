@@ -64,7 +64,7 @@ pub async fn perform_rebase(
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
-    let (conflicts, updates) = to_rebase_workspace_snapshot
+    let conflicts_and_updates = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
             &onto_workspace_snapshot,
@@ -73,25 +73,25 @@ pub async fn perform_rebase(
         .await?;
     info!(
         "count: conflicts ({}) and updates ({}), {:?}",
-        conflicts.len(),
-        updates.len(),
+        conflicts_and_updates.conflicts.len(),
+        conflicts_and_updates.updates.len(),
         start.elapsed()
     );
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
-    let message: RebaseStatus = if conflicts.is_empty() {
+    let message: RebaseStatus = if conflicts_and_updates.conflicts.is_empty() {
         // TODO(nick): store the offset with the change set.
         to_rebase_workspace_snapshot
             .perform_updates(
                 &to_rebase_change_set,
                 &onto_workspace_snapshot,
-                updates.as_slice(),
+                conflicts_and_updates.updates.as_slice(),
             )
             .await?;
         info!("updates complete: {:?}", start.elapsed());
 
-        if !updates.is_empty() {
+        if !conflicts_and_updates.updates.is_empty() {
             // Once all updates have been performed, we can write out, mark everything as recently seen
             // and update the pointer.
             to_rebase_workspace_snapshot
@@ -105,12 +105,13 @@ pub async fn perform_rebase(
         }
 
         RebaseStatus::Success {
-            updates_performed: serde_json::to_value(updates)?.to_string(),
+            updates_performed: serde_json::to_value(conflicts_and_updates.updates)?.to_string(),
         }
     } else {
         RebaseStatus::ConflictsFound {
-            conflicts_found: serde_json::to_value(conflicts)?.to_string(),
-            updates_found_and_skipped: serde_json::to_value(updates)?.to_string(),
+            conflicts_found: serde_json::to_value(conflicts_and_updates.conflicts)?.to_string(),
+            updates_found_and_skipped: serde_json::to_value(conflicts_and_updates.updates)?
+                .to_string(),
         }
     };
 
