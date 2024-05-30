@@ -1,4 +1,8 @@
+use dal::action::prototype::{ActionKind, ActionPrototype};
+use dal::action::Action;
 use dal::diagram::Diagram;
+use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient};
+use dal::func::FuncAssociations;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Prop};
@@ -39,6 +43,40 @@ async fn upgrade_component(ctx: &mut DalContext) {
     assert!(default_schema_variant.is_some());
     assert_eq!(default_schema_variant, Some(variant_zero.id()));
 
+    // Build Create Action Func
+    let create_action_code = "async function main() {
+        return { payload: { \"poop\": true }, status: \"ok\" };
+    }";
+    let create_action_opts = CreateFuncOptions::ActionOptions {
+        schema_variant_id: variant_zero.id(),
+        action_kind: ActionKind::Create,
+    };
+
+    let created_func = FuncAuthoringClient::create_func(
+        ctx,
+        dal::func::FuncKind::Action,
+        Some("create Paul's test asset".to_owned()),
+        Some(create_action_opts),
+    )
+    .await
+    .expect("could create action func");
+    let create_func_associations = FuncAssociations::Action {
+        kind: ActionKind::Create,
+        schema_variant_ids: vec![variant_zero.id()],
+    };
+
+    FuncAuthoringClient::save_func(
+        ctx,
+        created_func.id,
+        Some("Test Create Action".to_owned()),
+        "create Paul's test asset".to_owned(),
+        None,
+        Some(create_action_code.to_owned()),
+        Some(create_func_associations),
+    )
+    .await
+    .expect("could save func");
+
     // Now let's update the variant
     let first_code_update = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string();
     let updated_variant_id = VariantAuthoringClient::update_variant(
@@ -69,6 +107,23 @@ async fn upgrade_component(ctx: &mut DalContext) {
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());
+
+    // see that there's one action enqueued
+    let mut actions = Action::find_for_component_id(ctx, initial_component.id())
+        .await
+        .expect("got the actions");
+    assert!(actions.len() == 1);
+
+    // and the one action is a create
+    let create_action_id = actions.pop().expect("has an action");
+
+    let create_prototype_id = Action::prototype_id(ctx, create_action_id)
+        .await
+        .expect("found action prototype");
+    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id)
+        .await
+        .expect("got prototype");
+    assert_eq!(create_prototype.kind, ActionKind::Create);
 
     // Let's ensure that our prop is visible in the component
     Prop::find_prop_id_by_path(
@@ -139,6 +194,22 @@ async fn upgrade_component(ctx: &mut DalContext) {
         .upgrade_to_new_variant(ctx, variant_one)
         .await
         .expect("unable to upgrade the component");
+    // see that there's still only one action enqueued
+    let mut actions = Action::find_for_component_id(ctx, my_upgraded_comp.id())
+        .await
+        .expect("got the actions");
+    assert!(actions.len() == 1);
+
+    // and the one action is a create
+    let create_action_id = actions.pop().expect("has an action");
+
+    let create_prototype_id = Action::prototype_id(ctx, create_action_id)
+        .await
+        .expect("found action prototype");
+    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id)
+        .await
+        .expect("got prototype");
+    assert_eq!(create_prototype.kind, ActionKind::Create);
 
     let upgraded_graph = Diagram::assemble(ctx)
         .await

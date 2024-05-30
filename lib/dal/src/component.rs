@@ -2916,7 +2916,11 @@ impl Component {
         new_component_id: ComponentId,
         new_schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<()> {
-        let mut queue_create = false;
+        // Remove any actions created for the new component as a side effect of the upgrade
+        // Then loop through the existing queued actions for the old component and re-add them piecemeal.
+        Action::remove_all_for_component_id(ctx, new_component_id)
+            .await
+            .map_err(|err| ComponentError::Action(Box::new(err)))?;
 
         let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id)
             .await
@@ -2936,17 +2940,11 @@ impl Component {
             // is dispatched or running for the current?
             match action.state() {
                 ActionState::Failed | ActionState::OnHold | ActionState::Queued => {
-                    let action_prototype = ActionPrototype::get_by_id(ctx, action_prototype_id)
-                        .await
-                        .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
                     let func_id = ActionPrototype::func_id(ctx, action_prototype_id)
                         .await
                         .map_err(|err| ComponentError::ActionPrototype(Box::new(err)))?;
                     let queued_func = Func::get_by_id_or_error(ctx, func_id).await?;
 
-                    if action_prototype.kind == ActionKind::Create {
-                        queue_create = true;
-                    }
                     for available_action_prototype in available_for_new_component.clone() {
                         let available_func_id =
                             ActionPrototype::func_id(ctx, available_action_prototype.id())
@@ -2958,27 +2956,19 @@ impl Component {
                         if available_func.name == queued_func.name
                             && available_func.kind == queued_func.kind
                         {
-                            Action::new(ctx, action_prototype_id, Some(new_component_id))
-                                .await
-                                .map_err(|err| ComponentError::Action(Box::new(err)))?;
+                            Action::new(
+                                ctx,
+                                available_action_prototype.id(),
+                                Some(new_component_id),
+                            )
+                            .await
+                            .map_err(|err| ComponentError::Action(Box::new(err)))?;
                         }
                     }
                 }
                 ActionState::Running | ActionState::Dispatched => continue,
             }
         }
-        if !queue_create {
-            let create_actions =
-                Action::find_for_kind_and_component_id(ctx, new_component_id, ActionKind::Create)
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            for action_id in create_actions {
-                Action::remove_by_id(ctx, action_id)
-                    .await
-                    .map_err(|err| ComponentError::Action(Box::new(err)))?;
-            }
-        }
-
         Ok(())
     }
 }
