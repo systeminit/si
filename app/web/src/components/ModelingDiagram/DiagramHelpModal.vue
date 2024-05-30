@@ -5,6 +5,7 @@
       <li>Plus / minus - adjust zoom level</li>
       <li>CMD + scrollwheel - zoom in/out</li>
       <li>Option/Alt + click - ignore clicked element, force drag to select</li>
+      <li>Option/Alt + Shift - close/open both side panels</li>
       <li>Trackpad pinch - adjust zoom</li>
       <li>Arrow keys - Nudge selection, hold shift to nudge further</li>
       <li>Spacebar - hold to activate drag-to-scroll</li>
