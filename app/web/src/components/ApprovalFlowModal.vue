@@ -249,7 +249,7 @@
                     : doVotingActionReqStatus
                 "
                 :disabled="statusStoreUpdating"
-                @click="requiresVoting ? beginVoting() : completeVoting"
+                @click="requiresVoting ? beginVoting() : completeVoting()"
               />
               <VButton
                 v-else
@@ -269,7 +269,7 @@
                     ? 'Beginning Approval Flow'
                     : 'Abandoning Change Set'
                 "
-                @click="requiresVoting ? beginVoting() : completeVoting"
+                @click="requiresVoting ? beginVoting() : completeVoting()"
               />
             </template>
           </div>
