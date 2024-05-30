@@ -70,7 +70,7 @@ pub async fn update_variant(
         }),
     );
 
-    WsEvent::schema_variant_update_finished(&ctx, updated_sv_id)
+    WsEvent::schema_variant_update_finished(&ctx, request.default_schema_variant_id, updated_sv_id)
         .await?
         .publish_on_commit(&ctx)
         .await?;

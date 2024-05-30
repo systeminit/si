@@ -102,6 +102,7 @@ const componentNameTooltip = computed(() => {
 });
 
 const upgradeComponent = async () => {
+  componentsStore.setSelectedComponentId(null);
   await componentsStore.UPGRADE_COMPONENT(
     props.componentId,
     component.value?.displayName || "",
