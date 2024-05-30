@@ -20,28 +20,11 @@
     </template>
   </component>
 
-  <div
-    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
+  <ModelingDiagram
+    ref="diagramRef"
+    @right-click-element="onRightClickElement"
     @mouseout="presenceStore.clearCursor"
-  >
-    <!--div
-      v-if="!statusStore.globalStatus.isUpdating && isViewMode"
-      :class="
-        clsx(
-          'absolute z-20 left-0 right-0 mx-4 mt-3 p-xs',
-          'bg-white dark:bg-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-600',
-          'shadow-md rounded-md font-bold text-center',
-        )
-      "
-    >
-      <ReadOnlyBanner show-refresh-all-button />
-    </div-->
-
-    <ModelingDiagram
-      ref="diagramRef"
-      @right-click-element="onRightClickElement"
-    />
-  </div>
+  />
 
   <!-- Right panel (selection details) -->
   <component
