@@ -48,13 +48,8 @@ import { computed, nextTick, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { getToneColorHex } from "@si/vue-lib/design-system";
-import {
-  CORNER_RADIUS,
-  GROUP_HEADER_BOTTOM_MARGIN,
-} from "@/components/ModelingDiagram/diagram_constants";
+import { CORNER_RADIUS } from "@/components/ModelingDiagram/diagram_constants";
 import { DiagramGroupData, Size2D } from "./diagram_types";
-import DiagramIcon from "./DiagramIcon.vue";
 
 const props = defineProps({
   group: {
@@ -96,18 +91,18 @@ function recalcHeaderHeight() {
     titleTextRef.value?.getNode()?.getSelfRect().height || 20;
 }
 
-const nodeHeaderHeight = computed(() => headerTextHeight.value);
+// const nodeHeaderHeight = computed(() => headerTextHeight.value);
 const nodeBodyHeight = computed(() => size.value.height);
-const nodeHeight = computed(
-  () =>
-    nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
-);
+// const nodeHeight = computed(
+//   () =>
+//     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
+// );
 
 const position = computed(() => props.tempPosition || props.group.def.position);
-const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
-const deletedIconSize = computed(() =>
-  Math.min(nodeHeight.value, nodeWidth.value, 300),
-);
+// const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
+// const deletedIconSize = computed(() =>
+//   Math.min(nodeHeight.value, nodeWidth.value, 300),
+// );
 
 const overlay = ref();
 watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
