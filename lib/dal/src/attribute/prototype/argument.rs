@@ -221,6 +221,7 @@ impl AttributePrototypeArgument {
 
         Ok(argument)
     }
+
     #[instrument(level = "info", skip(ctx))]
     pub async fn new_inter_component(
         ctx: &DalContext,

@@ -200,10 +200,7 @@ const selectedExistingFuncId = ref<FuncId | undefined>();
 const selectedFuncCode = ref<string>("");
 const loadFuncDetailsReq = computed(() =>
   selectedExistingFuncId.value
-    ? funcStore.getRequestStatus(
-        "FETCH_FUNC_DETAILS",
-        selectedExistingFuncId.value,
-      )
+    ? funcStore.getRequestStatus("FETCH_FUNC", selectedExistingFuncId.value)
     : undefined,
 );
 
@@ -215,7 +212,7 @@ watch(
         !funcStore.funcDetailsById[funcId] ||
         !funcStore.funcArgumentsByFuncId[funcId]
       ) {
-        const result = await funcStore.FETCH_FUNC_DETAILS(funcId);
+        const result = await funcStore.FETCH_FUNC(funcId);
         if (result.result.success) {
           selectedFuncCode.value = result.result.data.code;
           if (result.result.data.associations?.type === "attribute") {
@@ -369,7 +366,6 @@ const newFuncOptions = (
         return {
           type: "attributeOptions",
           outputLocation: attributeOutputLocationParsed.value,
-          ...baseOptions,
         };
       }
       throw new Error(

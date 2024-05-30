@@ -11,7 +11,6 @@ use thiserror::Error;
 
 use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
-use crate::func::associations::FuncAssociationsError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::workspace_snapshot::edge_weight::{
@@ -42,6 +41,7 @@ mod kind;
 pub use associations::AttributePrototypeArgumentBag;
 pub use associations::AttributePrototypeBag;
 pub use associations::FuncAssociations;
+pub use associations::FuncAssociationsError;
 pub use kind::FuncKind;
 
 #[remain::sorted]

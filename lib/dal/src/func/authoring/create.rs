@@ -3,6 +3,7 @@ use base64::Engine;
 use telemetry::prelude::*;
 
 use crate::action::prototype::ActionPrototype;
+use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::func::authoring::{
     AttributeOutputLocation, CreateFuncOptions, FuncAuthoringError, FuncAuthoringResult,
 };
@@ -154,13 +155,8 @@ async fn create_attribute_func(
 
     if let Some(options) = options {
         match (kind, options) {
-            (
-                FuncKind::Attribute,
-                CreateFuncOptions::AttributeOptions {
-                    output_location, ..
-                },
-            ) => {
-                if let Some(ap) = match output_location {
+            (FuncKind::Attribute, CreateFuncOptions::AttributeOptions { output_location }) => {
+                if let Some(attribute_prototype_id) = match output_location {
                     AttributeOutputLocation::OutputSocket { output_socket_id } => {
                         AttributePrototype::find_for_output_socket(ctx, output_socket_id).await?
                     }
@@ -168,20 +164,27 @@ async fn create_attribute_func(
                         AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
                     }
                 } {
-                    // TODO - Paul / Nick - we need to ensure this code is working as expected
-                    // right now, we don't allow overiding identity
-                    // See create_attribute_with_socket and create_attribute_with_prop tests for
-                    // examples of where this breaks
-                    let func_id = AttributePrototype::func_id(ctx, ap).await?;
-                    if let Some(func) = Func::get_by_id(ctx, func_id).await? {
-                        if Func::is_dynamic_for_name_string(func.name.as_str()) {
-                            return Err(FuncAuthoringError::AttributePrototypeAlreadySetByFunc(
-                                func_id, func.name,
-                            ));
-                        }
+                    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, func.id)
+                        .await?;
+
+                    // Drain all existing attribute prototype arguments.
+                    let attribute_prototype_argument_ids =
+                        AttributePrototypeArgument::list_ids_for_prototype(
+                            ctx,
+                            attribute_prototype_id,
+                        )
+                        .await?;
+                    for attribute_prototype_argument_id in attribute_prototype_argument_ids {
+                        AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id)
+                            .await?;
                     }
 
-                    AttributePrototype::update_func_by_id(ctx, ap, func.id).await?;
+                    // Enqueue all existing users of the prototype for dependent values update.
+                    let affected_attribute_value_ids =
+                        AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id)
+                            .await?;
+                    ctx.add_dependent_values_and_enqueue(affected_attribute_value_ids)
+                        .await?;
                 }
             }
             (

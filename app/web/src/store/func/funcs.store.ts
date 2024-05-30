@@ -319,7 +319,7 @@ export const useFuncStore = () => {
             },
           });
         },
-        async FETCH_FUNC_DETAILS(funcId: FuncId) {
+        async FETCH_FUNC(funcId: FuncId) {
           return new ApiRequest<FuncWithDetails>({
             url: "func/get_func",
             params: {
@@ -329,6 +329,23 @@ export const useFuncStore = () => {
             keyRequestStatusBy: funcId,
             onSuccess: (response) => {
               this.funcDetailsById[response.id] = response;
+            },
+          });
+        },
+        async FETCH_FUNC_ASSOCIATIONS(funcId: FuncId) {
+          return new ApiRequest<{ associations?: FuncAssociations }>({
+            url: "func/get_func_associations",
+            params: {
+              id: funcId,
+              ...visibility,
+            },
+            keyRequestStatusBy: funcId,
+            onSuccess: (response) => {
+              const func = this.funcDetailsById[funcId];
+              if (func) {
+                func.associations = response.associations;
+                this.funcDetailsById[funcId] = func;
+              }
             },
           });
         },
@@ -718,7 +735,7 @@ export const useFuncStore = () => {
             if (
               typeof this.funcDetailsById[this.selectedFuncId] === "undefined"
             ) {
-              this.FETCH_FUNC_DETAILS(this.selectedFuncId);
+              this.FETCH_FUNC(this.selectedFuncId);
             }
 
             // add the func to the list of open ones
@@ -766,7 +783,7 @@ export const useFuncStore = () => {
               if (data.changeSetId !== selectedChangeSetId) return;
               if (data.funcId !== this.selectedFuncId) return;
               this.FETCH_FUNC_ARGUMENT_LIST(data.funcId);
-              this.FETCH_FUNC_DETAILS(data.funcId);
+              this.FETCH_FUNC(data.funcId);
             },
           },
           {
@@ -782,27 +799,22 @@ export const useFuncStore = () => {
               }
 
               if (this.selectedFuncId) {
-                // only fetch if we don't have this one already in our state,
-                // otherwise we can overwrite functions with their previous value
-                // before the save queue is drained.
-                if (
-                  typeof this.funcDetailsById[this.selectedFuncId] ===
-                    "undefined" &&
-                  data.funcId === this.selectedFuncId
-                ) {
-                  this.FETCH_FUNC_DETAILS(this.selectedFuncId);
+                // Only fetch if we don't have the selected func in our state or if we are on HEAD.
+                // If we are on HEAD, the func is immutable, so we are safe to fetch. However, if
+                // we are not on HEAD, then the func is mutable. Therefore, we can only fetch
+                // relevant metadata in order to avoid overwriting functions with their previous
+                // value before the save queue is drained.
+                if (data.funcId === this.selectedFuncId) {
+                  if (
+                    typeof this.funcDetailsById[this.selectedFuncId] ===
+                      "undefined" ||
+                    changeSetStore.headSelected
+                  ) {
+                    this.FETCH_FUNC(this.selectedFuncId);
+                  } else {
+                    this.FETCH_FUNC_ASSOCIATIONS(this.selectedFuncId);
+                  }
                 }
-
-                // // NOTE(nick): since we removed the response body from routes involving saving
-                // // funcs, we may need to re-introduce logic related to reloading the typescript
-                // // compiler as well as some other tasks. If this comment becomes old and the
-                // // associated code remains commented out, we can likely delete this.
-                //
-                // // NOTE(nick): force a reload if the types have changed in order to reload the
-                // // typescript compiler.
-                // if (func.types !== response.types) {
-                //   this.FETCH_FUNC_DETAILS(func.id);
-                // }
               }
             },
           },

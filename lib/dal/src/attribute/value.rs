@@ -555,8 +555,6 @@ impl AttributeValue {
             Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
                 .await?;
 
-        //drop(read_guard);
-
         let result_channel = FuncRunner::run_attribute_value(
             ctx,
             attribute_value_id,
@@ -577,8 +575,8 @@ impl AttributeValue {
 
         // If the value is for a prop, we need to make sure container-type props are initialized
         // properly when the unprocessed value is populated.
-        match value_is_for {
-            ValueIsFor::Prop(prop_id) => match func_values.unprocessed_value() {
+        if let ValueIsFor::Prop(prop_id) = value_is_for {
+            match func_values.unprocessed_value() {
                 Some(unprocessed_value) => {
                     let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                     match prop.kind {
@@ -592,21 +590,6 @@ impl AttributeValue {
                     }
                 }
                 None => func_values.set_processed_value(None),
-            },
-            _v => {
-                // TODO: Maybe we should do somethign herE? who khnows
-                //let func = Func::get_by_id(ctx, prototype_func_id)
-                //    .await?
-                //    .expect("oh shit!");
-                //dbg!(
-                //    &v,
-                //    &func.name,
-                //    &func.backend_kind,
-                //    &func.backend_response_type,
-                //    &func.kind,
-                //    &prepared_args,
-                //    &func_values
-                //);
             }
         };
 

@@ -82,8 +82,6 @@ pub enum FuncAuthoringError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
-    #[error("attribute prototype already set by func (id: {0}) (name: {1})")]
-    AttributePrototypeAlreadySetByFunc(FuncId, String),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -334,6 +332,7 @@ impl FuncAuthoringClient {
         .await?;
         Ok(attribute_prototype_id)
     }
+
     /// Updates an [`AttributePrototype`].
     #[instrument(
         name = "func.authoring.update_attribute_prototype",
@@ -355,8 +354,8 @@ impl FuncAuthoringClient {
             ));
         }
         let prototype_bag = AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?;
-        // just remove/reset the existing prototype and create a new one with new\updated arguments
-        save::remove_or_reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
+
+        save::reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
 
         let new_prototype_bag = AttributePrototypeBag {
             id: attribute_prototype_id,
@@ -376,6 +375,7 @@ impl FuncAuthoringClient {
         .await?;
         Ok(attribute_prototype_id)
     }
+
     /// Removes an [`AttributePrototype`].
     #[instrument(
         name = "func.authoring.remove_attribute_prototype",
@@ -386,9 +386,7 @@ impl FuncAuthoringClient {
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
     ) -> FuncAuthoringResult<()> {
-        // just remove/reset the existing prototype
-        save::remove_or_reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
-
+        save::reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
         Ok(())
     }
 
@@ -499,7 +497,6 @@ pub enum CreateFuncOptions {
     },
     #[serde(rename_all = "camelCase")]
     AttributeOptions {
-        schema_variant_id: SchemaVariantId,
         output_location: AttributeOutputLocation,
     },
     #[serde(rename_all = "camelCase")]

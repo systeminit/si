@@ -320,7 +320,7 @@ const detachRef = ref<DetachType>();
 const funcId = computed(() => props.funcId);
 
 const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
-  "FETCH_FUNC_DETAILS",
+  "FETCH_FUNC",
   funcId,
 );
 const updateFuncReqStatus = funcStore.getRequestStatus("UPDATE_FUNC", funcId);
