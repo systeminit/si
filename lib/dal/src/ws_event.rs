@@ -6,7 +6,9 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set::event::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
+use crate::change_set::event::{
+    ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
+};
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
@@ -66,7 +68,7 @@ pub enum WsPayload {
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
     ChangeSetAbandonVote(ChangeSetMergeVotePayload),
-    ChangeSetApplied(ChangeSetActorPayload),
+    ChangeSetApplied(ChangeSetAppliedPayload),
     ChangeSetBeginAbandonProcess(ChangeSetActorPayload),
     ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
     ChangeSetCancelAbandonProcess(ChangeSetActorPayload),
