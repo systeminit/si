@@ -755,6 +755,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
 function onMouseUp(e: MouseEvent) {
   // we dont care about right click
   if (e.button === 2) return;
+  const target = e.target as HTMLElement;
   mouseIsDown.value = false;
   if (dragToPanActive.value) endDragToPan();
   else if (dragElementsActive.value) endDragElements();
@@ -767,7 +768,9 @@ function onMouseUp(e: MouseEvent) {
     triggerInsertElement();
   else if (pasteElementsActive.value && pointerIsWithinGrid.value)
     triggerPasteElements();
-  else handleMouseUpSelection();
+  else if (target.nodeName === "CANVAS")
+    // we're seeing mouse up firing when clicking on side rails
+    handleMouseUpSelection();
 }
 
 function onMouseMove(e: MouseEvent) {
