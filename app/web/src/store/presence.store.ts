@@ -9,9 +9,9 @@ import { UserId, useAuthStore } from "@/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 
 const MOUSE_REFRESH_RATE = 5;
-const ONLINE_PING_RATE = 5000; // 5 seconds
-const ONLINE_EXPIRATION = ONLINE_PING_RATE + 1000;
-const IDLE_EXPIRATION = 120000; // 2 minutes
+export const ONLINE_PING_RATE = 5000; // 5 seconds
+export const ONLINE_EXPIRATION = ONLINE_PING_RATE + 1000; // 6 seconds
+export const IDLE_EXPIRATION = 120000; // 2 minutes
 
 // TODO(Wendy) - come up with user colors list, maybe talk to Mark
 const COLORS = ["ffff00", "00ffff", "ff00ff", "00ff00", "0000ff", "ff0000"];
@@ -65,7 +65,7 @@ export const usePresenceStore = () => {
         users(): OnlineUser[] {
           return _.values(this.usersById);
         },
-        usersInChangeset(): OnlineUser[] {
+        usersInChangeSet(): OnlineUser[] {
           return _.filter(
             this.users,
             (u) => u.changeSetId === changeSetsStore.selectedChangeSetId,
