@@ -195,6 +195,16 @@ export const useRealtimeStore = defineStore("realtime", () => {
     if (eventMetadata.change_set_id) {
       topics.push(`changeset/${eventMetadata.change_set_id}`);
     }
+    if (eventKind === "ChangeSetApplied") {
+      // applying a changeset, we also want to notify people sitting on changesets
+      // toRebaseChangeSetId is HEAD / where merges are going into
+      try {
+        topics.push(`changeset/${eventData.toRebaseChangeSetId}`);
+      } catch (err) {
+        // do nothing
+      }
+    }
+
     _.each(subscriptions, (sub) => {
       if (sub?.eventType === eventKind && topics.includes(sub.topic)) {
         sub.callback(eventData, eventMetadata);
