@@ -441,7 +441,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ComponentUpdated",
-              debounce: true,
               callback: (updated) => {
                 if (updated.changeSetId !== changeSetId) return;
                 if (updated.component.id !== this.selectedComponentId) return;
@@ -452,7 +451,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ChangeSetWritten",
-              debounce: true,
               callback: (writtenChangeSetId) => {
                 if (writtenChangeSetId !== changeSetId) return;
                 this.reloadPropertyEditorData();
@@ -460,7 +458,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             },
             {
               eventType: "ChangeSetApplied",
-              debounce: true,
               callback: (data) => {
                 // If the applied change set has rebased into this change set,
                 // then refetch (i.e. there might be updates!)

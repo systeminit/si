@@ -1438,7 +1438,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             [
               {
                 eventType: "ComponentCreated",
-                debounce: true,
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
@@ -1448,7 +1447,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "ConnectionCreated",
-                debounce: true,
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
@@ -1458,7 +1456,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "ConnectionDeleted",
-                debounce: true,
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
@@ -1482,7 +1479,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "ComponentUpdated",
-                debounce: true,
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
@@ -1494,7 +1490,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "InferredEdgeUpsert",
-                debounce: true,
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
                   const edges =
@@ -1508,7 +1503,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "InferredEdgeRemove",
-                debounce: true,
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
                   const edges =
@@ -1522,7 +1516,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "ComponentUpgraded",
-                debounce: true,
                 callback: (data) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
@@ -1561,7 +1554,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             [
               {
                 eventType: "ChangeSetApplied",
-                debounce: true,
                 callback: (data) => {
                   // If the applied change set has rebased into this change set,
                   // then refetch (i.e. there might be updates!)
