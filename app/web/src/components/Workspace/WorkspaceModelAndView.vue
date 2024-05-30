@@ -77,7 +77,7 @@ import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
 import DeleteSelectionModal from "../ModelingView/DeleteSelectionModal.vue";
 import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
 
-const changeSetStore = useChangeSetsStore();
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
@@ -86,7 +86,7 @@ const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const actionsAreRunning = computed(
   () =>
     actionsStore.actionsAreInProgress ||
-    changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
+    changeSetsStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
 
 const leftResizablePanelRef = ref();
