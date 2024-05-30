@@ -548,7 +548,20 @@
         </template>
         <template v-else>
           Editing the prop "{{ propName }}" directly will override the value
-          that is set by a dynamic function.
+          that is set by a dynamic function:
+          <div class="flex flex-row items-end justify-center">
+            <Icon
+              :name="clipIcon"
+              class="cursor-pointer"
+              size="xs"
+              @click="copyToClipboard"
+            />
+            <pre
+              class="text-center mt-xs cursor-pointer"
+              @click="copyToClipboard"
+              >{{ currentValue }}</pre
+            >
+          </div>
         </template>
       </div>
       <div class="flex gap-sm">
@@ -721,6 +734,16 @@ const headerZIndex = computed(() => 300 - props.level);
 const newMapChildKey = ref("");
 
 const currentValue = computed(() => props.attributeDef.value?.value);
+
+const clipIcon = ref<IconNames>("clipboard-copy");
+const copyToClipboard = () => {
+  navigator.clipboard.writeText(currentValue.value as string);
+  clipIcon.value = "check2" as IconNames;
+  setTimeout(() => {
+    clipIcon.value = "clipboard-copy" as IconNames;
+  }, 2000);
+};
+
 const newValueBoolean = ref<boolean>();
 const newValueString = ref<string>("");
 // The input may set the value to an empty string instead of null or undefined when the input is deleted
