@@ -101,7 +101,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  PropType,
+  ref,
+} from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import PanelResizingHandle from "./PanelResizingHandle.vue";
@@ -198,7 +205,7 @@ const subpanelSplitLocalStorageKey = computed(
   () => `${props.rememberSizeKey}-split`,
 );
 
-const resizing = ref(false);
+const resizing = ref(true);
 const beginResizeValue = ref(0);
 const onResizeStart = () => {
   beginResizeValue.value = currentSize.value;
@@ -251,11 +258,15 @@ const displaySubpanelSplitPercent = computed(() => {
   else return subpanelSplitPercent.value;
 });
 
-onMounted(() => {
+onMounted(async () => {
   const storedSplit = window.localStorage.getItem(
     subpanelSplitLocalStorageKey.value,
   );
   if (storedSplit) subpanelSplitPercent.value = parseFloat(storedSplit);
+  // We have resizing be true for just the first tick to avoid the panels animating into place when the DOM reloads
+  await nextTick(() => {
+    resizing.value = false;
+  });
 });
 
 const subpanel1Ref = ref();

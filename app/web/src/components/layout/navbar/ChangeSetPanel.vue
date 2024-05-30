@@ -84,7 +84,7 @@
     <ApprovalFlowModal
       ref="approvalFlowModalRef"
       votingKind="abandon"
-      @completeVoting="abandonChangeSet"
+      @completeVoting="changeSetsStore.ABANDON_CHANGE_SET"
     />
   </div>
 </template>
@@ -212,25 +212,5 @@ const createChangeSetReqStatus =
 function openCreateModal() {
   createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
   createModalRef.value?.open();
-}
-
-async function abandonChangeSet() {
-  await changeSetsStore.ABANDON_CHANGE_SET();
-
-  if (route.name) {
-    router.push({
-      name: route.name,
-      params: {
-        ...route.params,
-        changeSetId: "head",
-      },
-    });
-  }
-
-  await changeSetsStore.FETCH_CHANGE_SETS();
-
-  // TODO(Wendy) - a temporary fix until we figure out and fix the bug where components from the abandoned changeset do not disappear from the diagram
-  // eslint-disable-next-line no-restricted-globals
-  // location.reload();
 }
 </script>
