@@ -341,9 +341,9 @@
 
     <!-- added/modified indicator -->
     <DiagramIcon
-      v-if="isAdded || isModified"
-      :icon="isAdded ? 'plus-square' : 'tilde-square'"
-      :color="isAdded ? getToneColorHex('success') : getToneColorHex('warning')"
+      v-if="isAdded || isModified || isDeleted"
+      :icon="topRightIcon"
+      :color="topRightIconColor"
       shadeBg
       :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
@@ -446,6 +446,17 @@ const isDeleted = computed(
 );
 const isModified = computed(() => props.group.def.changeStatus === "modified");
 const isAdded = computed(() => props.group.def.changeStatus === "added");
+
+const topRightIcon = computed(() => {
+  if (isDeleted.value) return "minus-square";
+  else if (isAdded.value) return "plus-square";
+  else return "tilde-square";
+});
+const topRightIconColor = computed(() => {
+  if (isDeleted.value) return getToneColorHex("destructive");
+  else if (isAdded.value) return getToneColorHex("success");
+  else return getToneColorHex("warning");
+});
 
 const componentsStore = useComponentsStore();
 

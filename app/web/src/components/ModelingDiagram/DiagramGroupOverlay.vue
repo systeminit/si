@@ -31,14 +31,15 @@
       />
     </v-group>
 
-    <DiagramIcon
+    <!-- deleted icon overlay (large centered) -->
+    <!-- <DiagramIcon
       v-if="isDeleted"
       icon="minus-square"
       :color="getToneColorHex('destructive')"
       :size="deletedIconSize"
       :x="0"
       :y="nodeHeight / 2"
-    />
+    /> -->
   </v-group>
 </template>
 

@@ -157,13 +157,11 @@
         origin="center"
       />
 
-      <!-- added/modified indicator -->
+      <!-- added/modified/deleted indicator -->
       <DiagramIcon
-        v-if="isAdded || isModified"
-        :icon="isAdded ? 'plus-square' : 'tilde-square'"
-        :color="
-          isAdded ? getToneColorHex('success') : getToneColorHex('warning')
-        "
+        v-if="isAdded || isModified || isDeleted"
+        :icon="topRightIcon"
+        :color="topRightIconColor"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 12"
         :y="nodeHeaderHeight / 2"
@@ -247,9 +245,8 @@
       </v-group>
     </v-group>
 
-    <!-- change status indicators -->
     <!-- deleted icon overlay (large centered) -->
-    <DiagramIcon
+    <!-- <DiagramIcon
       v-if="isDeleted"
       icon="minus-square"
       shadeBg
@@ -257,7 +254,7 @@
       :size="DELETED_X_SIZE"
       :x="0"
       :y="nodeHeight / 2"
-    />
+    /> -->
   </v-group>
 </template>
 
@@ -332,7 +329,18 @@ const isDeleted = computed(
 const isModified = computed(() => props.node.def.changeStatus === "modified");
 const isAdded = computed(() => props.node.def.changeStatus === "added");
 
-const DELETED_X_SIZE = 80;
+const topRightIcon = computed(() => {
+  if (isDeleted.value) return "minus-square";
+  else if (isAdded.value) return "plus-square";
+  else return "tilde-square";
+});
+const topRightIconColor = computed(() => {
+  if (isDeleted.value) return getToneColorHex("destructive");
+  else if (isAdded.value) return getToneColorHex("success");
+  else return getToneColorHex("warning");
+});
+
+// const DELETED_X_SIZE = 80;
 
 // template refs
 const titleTextRef = ref();
