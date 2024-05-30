@@ -95,6 +95,7 @@ mod test {
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
+    use crate::workspace_snapshot::graph::ConflictsAndUpdates;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
     use crate::WorkspaceSnapshotGraph;
@@ -1293,7 +1294,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("Unable to mark new graph as seen");
 
-        let (conflicts, updates) = graph
+        let ConflictsAndUpdates { conflicts, updates } = graph
             .detect_conflicts_and_updates(
                 initial_change_set.vector_clock_id(),
                 &graph_with_deleted_edge,

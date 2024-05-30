@@ -16,15 +16,11 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind::DependentValueRoots;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
-    use crate::workspace_snapshot::{conflict::Conflict, NodeInformation};
+    use crate::workspace_snapshot::{
+        conflict::Conflict, graph::ConflictsAndUpdates, NodeInformation,
+    };
     use crate::{change_set::ChangeSet, NodeWeightDiscriminants};
     use crate::{PropKind, WorkspaceSnapshotGraph};
-
-    #[derive(Debug, PartialEq)]
-    struct ConflictsAndUpdates {
-        conflicts: Vec<Conflict>,
-        updates: Vec<Update>,
-    }
 
     #[derive(Debug, Eq, PartialEq)]
     enum UpdateWithEdgeWeightKind {
@@ -182,7 +178,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("unable to mark seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &initial_graph,
@@ -190,8 +186,13 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert_eq!(Vec::<Update>::new(), updates);
-        assert_eq!(Vec::<Conflict>::new(), conflicts);
+        assert_eq!(
+            ConflictsAndUpdates {
+                conflicts: Vec::new(),
+                updates: Vec::new()
+            },
+            conflicts_and_updates
+        );
     }
 
     #[test]
@@ -295,7 +296,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("unable to mark seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -303,12 +304,12 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert_eq!(Vec::<Conflict>::new(), conflicts);
+        assert!(conflicts_and_updates.conflicts.is_empty());
 
         let new_onto_component_index = base_graph
             .get_node_index_by_id(new_onto_component_id)
             .expect("Unable to get NodeIndex");
-        match updates.as_slice() {
+        match conflicts_and_updates.updates.as_slice() {
             [Update::NewEdge {
                 source,
                 destination,
@@ -389,7 +390,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("unable to mark seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -397,10 +398,10 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert!(updates.is_empty());
-        assert!(conflicts.is_empty());
+        assert!(conflicts_and_updates.updates.is_empty());
+        assert!(conflicts_and_updates.conflicts.is_empty());
 
-        let (conflicts, updates) = base_graph
+        let conflicts_and_updates = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
                 &new_graph,
@@ -408,9 +409,9 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert!(conflicts.is_empty());
+        assert!(conflicts_and_updates.conflicts.is_empty());
 
-        match updates.as_slice() {
+        match conflicts_and_updates.updates.as_slice() {
             [Update::NewEdge {
                 source,
                 destination,
@@ -564,7 +565,7 @@ mod test {
             .mark_graph_seen(initial_change_set.vector_clock_id())
             .expect("unable to mark graph seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -572,12 +573,12 @@ mod test {
             )
             .expect("Unable to detect conflicts and updates");
 
-        assert_eq!(Vec::<Conflict>::new(), conflicts);
+        assert!(conflicts_and_updates.conflicts.is_empty());
 
         let new_onto_component_index = base_graph
             .get_node_index_by_id(new_onto_component_id)
             .expect("Unable to get NodeIndex");
-        match updates.as_slice() {
+        match conflicts_and_updates.updates.as_slice() {
             [Update::NewEdge {
                 source,
                 destination,
@@ -716,7 +717,7 @@ mod test {
             .mark_graph_seen(initial_change_set.vector_clock_id())
             .expect("mark graph seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -741,9 +742,9 @@ mod test {
                     node_weight_kind: NodeWeightDiscriminants::Content,
                 },
             }],
-            conflicts
+            conflicts_and_updates.conflicts
         );
-        assert_eq!(Vec::<Update>::new(), updates);
+        assert!(conflicts_and_updates.updates.is_empty());
     }
 
     #[test]
@@ -874,7 +875,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("unable to mark graph seen");
 
-        let (conflicts, updates) = new_graph
+        let conflicts_and_updates = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -890,9 +891,9 @@ mod test {
                     .expect("Unable to get NodeIndex"),
                 node_weight_kind: NodeWeightDiscriminants::Content,
             })],
-            conflicts
+            conflicts_and_updates.conflicts
         );
-        assert_eq!(Vec::<Update>::new(), updates);
+        assert!(conflicts_and_updates.updates.is_empty());
     }
 
     #[test]
@@ -1038,7 +1039,7 @@ mod test {
             .expect("unable to mark graph seen");
 
         // Assert that the new edge to the prototype gets created
-        let (conflicts, updates) = base_graph
+        let ConflictsAndUpdates { conflicts, updates } = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
                 &new_graph,
@@ -1417,7 +1418,7 @@ mod test {
         // new_graph.tiny_dot_to_file(Some("to_rebase"));
         // base_graph.tiny_dot_to_file(Some("onto"));
 
-        let (conflicts, updates) = new_graph
+        let ConflictsAndUpdates { conflicts, updates } = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &base_graph,
@@ -1711,7 +1712,7 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("unable to mark graph seen");
 
-        let (conflicts, updates) = new_graph
+        let ConflictsAndUpdates { conflicts, updates } = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &initial_graph,
@@ -1974,7 +1975,7 @@ mod test {
 
         new_graph.dot();
 
-        let (conflicts, updates) = new_graph
+        let ConflictsAndUpdates { conflicts, updates } = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &initial_graph,
@@ -2324,7 +2325,7 @@ mod test {
             .expect("unable to mark graph seen");
         new_graph.dot();
 
-        let (conflicts, updates) = new_graph
+        let ConflictsAndUpdates { conflicts, updates } = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &initial_graph,
@@ -2700,7 +2701,7 @@ mod test {
         // initial_graph.tiny_dot_to_file(Some("onto"));
         // new_graph.tiny_dot_to_file(Some("to_rebase"));
 
-        let (conflicts, updates) = new_graph
+        let ConflictsAndUpdates { conflicts, updates } = new_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &initial_graph,
@@ -2921,7 +2922,7 @@ mod test {
         // base_graph.tiny_dot_to_file(Some("to_rebase"));
         // new_graph.tiny_dot_to_file(Some("onto"));
 
-        let (conflicts, updates) = base_graph
+        let ConflictsAndUpdates { conflicts, updates } = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
                 &new_graph,
@@ -3015,7 +3016,10 @@ mod test {
             .mark_graph_seen(new_change_set.vector_clock_id())
             .expect("Unable to mark new changes graph as seen");
 
-        let (conflicts, _) = base_graph
+        let ConflictsAndUpdates {
+            conflicts,
+            updates: _,
+        } = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
                 &new_changes_graph,
@@ -3063,7 +3067,10 @@ mod test {
             .mark_graph_seen(conflicting_change_set.vector_clock_id())
             .expect("Unable to mark conflicting graph as seen");
 
-        let (conflicts, _) = new_changes_graph
+        let ConflictsAndUpdates {
+            conflicts,
+            updates: _,
+        } = new_changes_graph
             .detect_conflicts_and_updates(
                 new_change_set.vector_clock_id(),
                 &conflicting_graph,
@@ -3092,7 +3099,10 @@ mod test {
             conflicts,
         );
 
-        let (conflicts, _) = base_graph
+        let ConflictsAndUpdates {
+            conflicts,
+            updates: _,
+        } = base_graph
             .detect_conflicts_and_updates(
                 base_change_set.vector_clock_id(),
                 &conflicting_graph,
@@ -3198,7 +3208,7 @@ mod test {
             .mark_graph_seen(onto_change_set.vector_clock_id())
             .expect("mark_graph_seen");
 
-        let (conflicts, updates) = to_rebase_graph
+        let ConflictsAndUpdates { conflicts, updates } = to_rebase_graph
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
                 &onto_graph,
@@ -3300,7 +3310,7 @@ mod test {
             .mark_graph_seen(onto_change_set.vector_clock_id())
             .expect("mark_graph_seen");
 
-        let (conflicts, updates) = to_rebase_graph
+        let ConflictsAndUpdates { conflicts, updates } = to_rebase_graph
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
                 &onto_graph,
@@ -3438,7 +3448,7 @@ mod test {
             .mark_graph_seen(onto_change_set.vector_clock_id())
             .expect("unable to mark graph seen");
 
-        let (conflicts, updates) = to_rebase_graph
+        let ConflictsAndUpdates { conflicts, updates } = to_rebase_graph
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
                 &onto_graph,

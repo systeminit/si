@@ -52,7 +52,6 @@ use tokio::task::JoinError;
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::pk;
-use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -66,6 +65,7 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
+use self::graph::ConflictsAndUpdates;
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 pk!(NodeId);
@@ -551,7 +551,7 @@ impl WorkspaceSnapshot {
         to_rebase_vector_clock_id: VectorClockId,
         onto_workspace_snapshot: &WorkspaceSnapshot,
         onto_vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<(Vec<Conflict>, Vec<Update>)> {
+    ) -> WorkspaceSnapshotResult<ConflictsAndUpdates> {
         let self_clone = self.clone();
         let onto_clone = onto_workspace_snapshot.clone();
 

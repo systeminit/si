@@ -97,6 +97,12 @@ pub struct DeprecatedWorkspaceSnapshotGraph {
     root_index: NodeIndex,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ConflictsAndUpdates {
+    pub conflicts: Vec<Conflict>,
+    pub updates: Vec<Update>,
+}
+
 impl From<DeprecatedWorkspaceSnapshotGraph> for WorkspaceSnapshotGraph {
     fn from(deprecated_graph: DeprecatedWorkspaceSnapshotGraph) -> Self {
         let deprecated_graph_inner = &deprecated_graph.graph;
@@ -614,7 +620,7 @@ impl WorkspaceSnapshotGraph {
         to_rebase_vector_clock_id: VectorClockId,
         onto: &WorkspaceSnapshotGraph,
         onto_vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
+    ) -> WorkspaceSnapshotGraphResult<ConflictsAndUpdates> {
         let mut conflicts: Vec<Conflict> = Vec::new();
         let mut updates: Vec<Update> = Vec::new();
         if let Err(traversal_error) =
@@ -641,7 +647,7 @@ impl WorkspaceSnapshotGraph {
         // that the net result is that there is only one of that edge kind.
         conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
 
-        Ok((conflicts, updates))
+        Ok(ConflictsAndUpdates { conflicts, updates })
     }
 
     fn detect_exclusive_edge_conflicts_in_updates(
