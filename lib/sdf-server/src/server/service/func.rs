@@ -6,6 +6,7 @@ use axum::{
 use dal::func::authoring::FuncAuthoringError;
 use dal::func::summary::FuncSummaryError;
 use dal::func::view::FuncViewError;
+use dal::func::FuncAssociationsError;
 use dal::input_sources::InputSourcesError;
 use dal::schema::variant::SchemaVariantError;
 use dal::{attribute::prototype::AttributePrototypeError, func::argument::FuncArgumentError};
@@ -22,6 +23,7 @@ pub mod create_func_argument;
 pub mod delete_func;
 pub mod delete_func_argument;
 pub mod get_func;
+pub mod get_func_associations;
 pub mod get_func_run;
 pub mod list_func_arguments;
 pub mod list_funcs;
@@ -44,6 +46,8 @@ pub enum FuncError {
     Func(#[from] dal::func::FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("func associations error: {0}")]
+    FuncAssociations(#[from] FuncAssociationsError),
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
     #[error("func {0} cannot be converted to frontend variant")]
@@ -93,6 +97,10 @@ pub fn routes() -> Router<AppState> {
             post(delete_func_argument::delete_func_argument),
         )
         .route("/get_func", get(get_func::get_func))
+        .route(
+            "/get_func_associations",
+            get(get_func_associations::get_func_associations),
+        )
         .route("/get_func_run", get(get_func_run::get_func_run))
         .route(
             "/list_func_arguments",

@@ -121,7 +121,7 @@ const closeTab = (slug: string) => {
 };
 
 const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
-  "FETCH_FUNC_DETAILS",
+  "FETCH_FUNC",
   assetStore.urlSelectedFuncId,
 );
 

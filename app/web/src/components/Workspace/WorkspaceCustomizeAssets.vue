@@ -138,7 +138,7 @@ watch(
       }
 
       if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
-        await funcStore.FETCH_FUNC_DETAILS(assetStore.urlSelectedFuncId);
+        await funcStore.FETCH_FUNC(assetStore.urlSelectedFuncId);
       }
 
       if (assetStore.selectedAssetId && assetStore.selectedFuncId) {

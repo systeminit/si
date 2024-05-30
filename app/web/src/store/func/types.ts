@@ -114,7 +114,6 @@ export interface CreateFuncAuthenticationOptions {
 
 export interface CreateFuncAttributeOptions {
   type: "attributeOptions";
-  schemaVariantId: string;
   outputLocation: CreateFuncOutputLocation;
 }
 

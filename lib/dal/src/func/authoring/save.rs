@@ -40,6 +40,9 @@ pub(crate) async fn update_associations(
                 ))
             }
         },
+        // NOTE(nick): I'm re-reading the below comment and thinking we need to just destroy
+        // associations for attribute funcs. If they are not useful, demolish them.
+        // ------------------------------------------------------------------------------
         // don't update attribute associations this way
         // attribute associations are updated through calling
         // create/remove/update attribute binding directly
@@ -300,7 +303,7 @@ async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
     prototype_bags: Vec<AttributePrototypeBag>,
-    attempt_to_reset_prototype: bool,
+    attempt_to_use_default_prototype: bool,
     key: Option<String>,
 ) -> FuncAuthoringResult<FuncBackendResponseType> {
     let mut id_set = HashSet::new();
@@ -327,13 +330,13 @@ async fn save_attr_func_prototypes(
         .await?;
     }
 
-    // Remove or reset all prototypes not included in the views that use the func.
+    // Reset all prototypes that are unused.
     for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func.id).await? {
         if !id_set.contains(&attribute_prototype_id) {
-            remove_or_reset_attribute_prototype(
+            reset_attribute_prototype(
                 ctx,
                 attribute_prototype_id,
-                attempt_to_reset_prototype,
+                attempt_to_use_default_prototype,
             )
             .await?;
         }
@@ -347,15 +350,14 @@ async fn save_attr_func_prototypes(
     Ok(computed_backend_response_type)
 }
 
-// By default, remove the attribute prototype. If the user wishes to reset the prototype, they can,
-// but only if the prototype is for an attribute value (i.e. if it is a component-specific
-// prototype). If the prototype cannot be reset, it will be removed.
-pub(crate) async fn remove_or_reset_attribute_prototype(
+// NOTE(nick,john): this is doing way too much bullshit. We probably need to break out its usages
+// and users.
+pub(crate) async fn reset_attribute_prototype(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
-    attempt_to_reset_prototype: bool,
+    attempt_to_use_default_prototype: bool,
 ) -> FuncAuthoringResult<()> {
-    if attempt_to_reset_prototype {
+    if attempt_to_use_default_prototype {
         if let Some(attribute_value_id) =
             AttributePrototype::attribute_value_id(ctx, attribute_prototype_id).await?
         {
@@ -363,6 +365,10 @@ pub(crate) async fn remove_or_reset_attribute_prototype(
             return Ok(());
         }
     }
+
+    // NOTE(nick): I am genuinely confused at what this function is trying to do while keeping all
+    // its callers happy, but if it works how I think it does, this should probably be "unset"
+    // instead of "identity". Why didn't I change it? It's working... probably.
     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
     AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id).await?;
     Ok(())

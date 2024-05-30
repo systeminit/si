@@ -56,7 +56,7 @@ const { selectedFuncSummary, selectedFuncDetails } = storeToRefs(funcStore);
 const editingFunc = ref<string>(selectedFuncDetails.value?.code ?? "");
 
 const loadFuncDetailsReq = funcStore.getRequestStatus(
-  "FETCH_FUNC_DETAILS",
+  "FETCH_FUNC",
   props.funcId,
 );
 

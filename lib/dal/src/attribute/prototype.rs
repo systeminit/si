@@ -85,10 +85,10 @@ pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 /// Indicates the _one and only one_ eventual parent of a corresponding [`AttributePrototype`].
 ///
 /// - If an [`AttributePrototype`] is used by an [`AttributeValue`], its eventual parent is a
-///   [`SchemaVariant`].
+///   [`Component`](crate::Component).
 /// - If an [`AttributePrototype`] is used by a [`Prop`](crate::Prop), an
 ///   [`InputSocket`](crate::InputSocket), or an [`OutputSocket`](crate::OutputSocket), its eventual
-///   parent is a [`Component`](crate::Component).
+///   parent is a [`SchemaVariant`].
 #[remain::sorted]
 #[derive(Debug, Clone, Copy, EnumDiscriminants)]
 pub enum AttributePrototypeEventualParent {
@@ -244,6 +244,7 @@ impl AttributePrototype {
 
         Ok(None)
     }
+
     pub async fn find_for_input_socket(
         ctx: &DalContext,
         input_socket_id: InputSocketId,
