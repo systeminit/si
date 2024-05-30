@@ -184,7 +184,8 @@ pub struct SchemaVariantClonedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantUpdatedPayload {
-    schema_variant_id: SchemaVariantId,
+    old_schema_variant_id: SchemaVariantId,
+    new_schema_variant_id: SchemaVariantId,
     change_set_id: ChangeSetId,
 }
 
@@ -240,12 +241,14 @@ impl WsEvent {
 
     pub async fn schema_variant_update_finished(
         ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
+        old_schema_variant_id: SchemaVariantId,
+        new_schema_variant_id: SchemaVariantId,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload {
-                schema_variant_id,
+                old_schema_variant_id,
+                new_schema_variant_id,
                 change_set_id: ctx.change_set_id(),
             }),
         )

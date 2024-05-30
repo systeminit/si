@@ -725,7 +725,7 @@ fn build_pkg_spec_for_variant(
 }
 
 fn generate_scaffold_func_name(name: String) -> String {
-    let version = Utc::now().format("%Y%m%d%H%M").to_string();
+    let version = Utc::now().format("%Y%m%d%H%M%S%f").to_string();
     let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
     generated_name
 }

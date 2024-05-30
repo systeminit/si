@@ -425,6 +425,11 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantUpdateFinished",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
+              for (const asset of Object.values(this.assetsById)) {
+                if (asset.defaultSchemaVariantId === data.oldSchemaVariantId) {
+                  asset.defaultSchemaVariantId = data.newSchemaVariantId;
+                }
+              }
               this.LOAD_ASSET_LIST();
             },
           },
