@@ -11,7 +11,6 @@ import {
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
-import ChangesMerged from "@/components/toasts/ChangesMerged.vue";
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -123,6 +122,9 @@ export function useChangeSetsStore() {
         },
         async ABANDON_CHANGE_SET() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
+          else if (this.headSelected) {
+            throw new Error("You cannot abandon HEAD!");
+          }
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
             url: "change_set/abandon_change_set",
@@ -153,12 +155,6 @@ export function useChangeSetsStore() {
             _delay: 2000,
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.id] = response.changeSet;
-              toast({
-                component: ChangesMerged,
-                props: {
-                  name: response.changeSet.name,
-                },
-              });
             },
             onFail: () => {
               // todo: show something!
