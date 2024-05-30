@@ -2,122 +2,142 @@ Modeling diagram component * NOTE - uses a resize observer to react to size
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
-  <div
-    id="konva-container"
-    ref="containerRef"
-    :style="{ cursor }"
-    class="absolute inset-0 overflow-hidden modeling-diagram"
-  >
-    <div
-      v-if="fetchDiagramReqStatus.isFirstLoad"
-      class="w-full h-full flex items-center bg-[rgba(0,0,0,.1)]"
-    >
-      <LoadingMessage message="Loading change set" />
-    </div>
-    <DiagramEmptyState v-else-if="componentsStore.diagramIsEmpty" />
-    <div
-      v-if="showDebugBar"
-      class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
-    >
-      <div>fonts loaded? {{ customFontsLoaded }}</div>
-      <div>origin = {{ gridOrigin.x }}, {{ gridOrigin.y }}</div>
-      <div>
-        pointer (raw) =
-        {{ containerPointerPos?.x }}, {{ containerPointerPos?.y }}
+  <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+    <!-- This section contains the DiagramGridBackground and other elements which should render underneath all of the components/frames/cursors -->
+    <div class="absolute inset-0 overflow-hidden">
+      <v-stage
+        v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
+        :config="{
+          width: containerWidth,
+          height: containerHeight,
+          scale: { x: zoomLevel, y: zoomLevel },
+          offset: { x: gridMinX, y: gridMinY },
+          devicePixelRatio: 1,
+        }"
+      >
+        <DiagramGridBackground
+          :gridMaxX="gridMaxX"
+          :gridMaxY="gridMaxY"
+          :gridMinX="gridMinX"
+          :gridMinY="gridMinY"
+          :zoomLevel="zoomLevel"
+        />
+      </v-stage>
+      <div
+        v-if="fetchDiagramReqStatus.isFirstLoad"
+        class="w-full h-full flex items-center bg-[rgba(0,0,0,.1)]"
+      >
+        <LoadingMessage message="Loading change set" />
       </div>
-      <div>
-        pointer (grid) =
-        {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
-      </div>
+      <DiagramEmptyState v-else-if="componentsStore.diagramIsEmpty" />
     </div>
-    <DiagramControls @open:help="helpModalRef.open()" />
-    <v-stage
-      v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
-      ref="stageRef"
-      :config="{
-        width: containerWidth,
-        height: containerHeight,
-        scale: { x: zoomLevel, y: zoomLevel },
-        offset: { x: gridMinX, y: gridMinY },
-        devicePixelRatio: 1,
-      }"
-      @mousedown="onMouseDown"
-      @click.right="onRightClick"
+    <!-- This section contains the main v-stage with all of the components/frames/cursors, as well as the DiagramControls -->
+    <div
+      id="konva-container"
+      ref="containerRef"
+      :style="{ cursor }"
+      class="absolute inset-0 overflow-hidden modeling-diagram"
     >
-      <DiagramGridBackground
-        :gridMaxX="gridMaxX"
-        :gridMaxY="gridMaxY"
-        :gridMinX="gridMinX"
-        :gridMinY="gridMinY"
-        :zoomLevel="zoomLevel"
-      />
-      <v-layer>
-        <DiagramGroup
-          v-for="group in groups"
-          :key="group.uniqueKey"
-          :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
-          :group="group"
-          :isHovered="elementIsHovered(group)"
-          :isSelected="elementIsSelected(group)"
-          :tempPosition="movedElementPositions[group.uniqueKey]"
-          :tempSize="resizedElementSizes[group.uniqueKey]"
-          @resize="onNodeLayoutOrLocationChange(group)"
-        />
-        <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
-          <DiagramEdge
-            v-for="edge in edges"
-            :key="edge.uniqueKey"
-            :edge="edge"
-            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :isHovered="elementIsHovered(edge)"
-            :isSelected="elementIsSelected(edge)"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
-          />
-        </template>
-        <DiagramNode
-          v-for="node in nodes"
-          :key="node.uniqueKey"
-          :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
-          :isHovered="elementIsHovered(node)"
-          :isSelected="elementIsSelected(node)"
-          :node="node"
-          :tempPosition="movedElementPositions[node.uniqueKey]"
-          @resize="onNodeLayoutOrLocationChange(node)"
-        />
-        <DiagramCursor
-          v-for="mouseCursor in presenceStore.diagramCursors"
-          :key="mouseCursor.userId"
-          :cursor="mouseCursor"
-        />
-        <template v-if="edgeDisplayMode === 'EDGES_OVER'">
-          <DiagramEdge
-            v-for="edge in edges"
-            :key="edge.uniqueKey"
-            :edge="edge"
-            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :isHovered="elementIsHovered(edge)"
-            :isSelected="elementIsSelected(edge)"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
-          />
-        </template>
-        <DiagramGroupOverlay
-          v-for="group in groups"
-          :key="group.uniqueKey"
-          :group="group"
-          :tempPosition="movedElementPositions[group.uniqueKey]"
-          :tempSize="resizedElementSizes[group.uniqueKey]"
-          @resize="onNodeLayoutOrLocationChange(group)"
-        />
+      <!-- DEBUG BAR-->
+      <div
+        v-if="showDebugBar"
+        class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
+      >
+        <div>fonts loaded? {{ customFontsLoaded }}</div>
+        <div>origin = {{ gridOrigin.x }}, {{ gridOrigin.y }}</div>
+        <div>
+          pointer (raw) =
+          {{ containerPointerPos?.x }}, {{ containerPointerPos?.y }}
+        </div>
+        <div>
+          pointer (grid) =
+          {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
+        </div>
+      </div>
 
-        <!-- placeholders for new inserted elements still processing -->
-        <template
-          v-for="(
-            pendingInsert, pendingInsertId
-          ) in componentsStore.pendingInsertedComponents"
-          :key="pendingInsertId"
-        >
-          <v-rect
-            :config="{
+      <DiagramControls @open:help="helpModalRef.open()" />
+
+      <!-- MAIN V-STAGE -->
+      <v-stage
+        v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
+        ref="stageRef"
+        :config="{
+          width: containerWidth,
+          height: containerHeight,
+          scale: { x: zoomLevel, y: zoomLevel },
+          offset: { x: gridMinX, y: gridMinY },
+          devicePixelRatio: 1,
+        }"
+        @mousedown="onMouseDown"
+        @click.right="onRightClick"
+      >
+        <v-layer>
+          <DiagramGroup
+            v-for="group in groups"
+            :key="group.uniqueKey"
+            :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+            :group="group"
+            :isHovered="elementIsHovered(group)"
+            :isSelected="elementIsSelected(group)"
+            :tempPosition="movedElementPositions[group.uniqueKey]"
+            :tempSize="resizedElementSizes[group.uniqueKey]"
+            @resize="onNodeLayoutOrLocationChange(group)"
+          />
+          <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
+            <DiagramEdge
+              v-for="edge in edges"
+              :key="edge.uniqueKey"
+              :edge="edge"
+              :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+              :isHovered="elementIsHovered(edge)"
+              :isSelected="elementIsSelected(edge)"
+              :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            />
+          </template>
+          <DiagramNode
+            v-for="node in nodes"
+            :key="node.uniqueKey"
+            :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+            :isHovered="elementIsHovered(node)"
+            :isSelected="elementIsSelected(node)"
+            :node="node"
+            :tempPosition="movedElementPositions[node.uniqueKey]"
+            @resize="onNodeLayoutOrLocationChange(node)"
+          />
+          <DiagramCursor
+            v-for="mouseCursor in presenceStore.diagramCursors"
+            :key="mouseCursor.userId"
+            :cursor="mouseCursor"
+          />
+          <template v-if="edgeDisplayMode === 'EDGES_OVER'">
+            <DiagramEdge
+              v-for="edge in edges"
+              :key="edge.uniqueKey"
+              :edge="edge"
+              :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+              :isHovered="elementIsHovered(edge)"
+              :isSelected="elementIsSelected(edge)"
+              :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            />
+          </template>
+          <DiagramGroupOverlay
+            v-for="group in groups"
+            :key="group.uniqueKey"
+            :group="group"
+            :tempPosition="movedElementPositions[group.uniqueKey]"
+            :tempSize="resizedElementSizes[group.uniqueKey]"
+            @resize="onNodeLayoutOrLocationChange(group)"
+          />
+
+          <!-- placeholders for new inserted elements still processing -->
+          <template
+            v-for="(
+              pendingInsert, pendingInsertId
+            ) in componentsStore.pendingInsertedComponents"
+            :key="pendingInsertId"
+          >
+            <v-rect
+              :config="{
             width: 160,
             height: 80,
             cornerRadius: CORNER_RADIUS,
@@ -127,42 +147,45 @@ overflow hidden */
             strokeWidth: 1,
             stroke: SELECTION_COLOR,
           }"
-          />
-          <DiagramIcon
-            :color="getToneColorHex('info')"
-            :size="60"
-            :x="pendingInsert.position!.x"
-            :y="pendingInsert.position!.y"
-            icon="loader"
-          />
-        </template>
+            />
+            <DiagramIcon
+              :color="getToneColorHex('info')"
+              :size="60"
+              :x="pendingInsert.position!.x"
+              :y="pendingInsert.position!.y"
+              icon="loader"
+            />
+          </template>
 
-        <!-- drag to select selection box -->
-        <v-rect
-          v-if="dragSelectActive && dragSelectStartPos && dragSelectEndPos"
-          :config="{
-            x: dragSelectStartPos.x,
-            y: dragSelectStartPos.y,
-            width: dragSelectEndPos.x - dragSelectStartPos.x,
-            height: dragSelectEndPos.y - dragSelectStartPos.y,
-            fill: SELECTION_BOX_INNER_COLOR,
-            strokeWidth: 1,
-            stroke: SELECTION_COLOR,
-            listening: false,
-          }"
-        />
+          <!-- drag to select selection box -->
+          <v-rect
+            v-if="dragSelectActive && dragSelectStartPos && dragSelectEndPos"
+            :config="{
+              x: dragSelectStartPos.x,
+              y: dragSelectStartPos.y,
+              width: dragSelectEndPos.x - dragSelectStartPos.x,
+              height: dragSelectEndPos.y - dragSelectStartPos.y,
+              fill: SELECTION_BOX_INNER_COLOR,
+              strokeWidth: 1,
+              stroke: SELECTION_COLOR,
+              listening: false,
+            }"
+          />
 
-        <!-- new edge being drawn -->
-        <DiagramNewEdge
-          v-if="drawEdgeActive"
-          :fromPoint="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
-          :toPoint="
-            getSocketLocationInfo(drawEdgeToSocketKey)?.center || gridPointerPos
-          "
-        />
-      </v-layer>
-    </v-stage>
-    <DiagramHelpModal ref="helpModalRef" />
+          <!-- new edge being drawn -->
+          <DiagramNewEdge
+            v-if="drawEdgeActive"
+            :fromPoint="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
+            :toPoint="
+              getSocketLocationInfo(drawEdgeToSocketKey)?.center ||
+              gridPointerPos
+            "
+          />
+        </v-layer>
+      </v-stage>
+
+      <DiagramHelpModal ref="helpModalRef" />
+    </div>
   </div>
 </template>
 
