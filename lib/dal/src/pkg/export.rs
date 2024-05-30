@@ -1076,7 +1076,7 @@ pub async fn get_component_type(
         .pop()
     {
         let av = AttributeValue::get_by_id(ctx, av_id).await?;
-        if let Some(type_value) = av.value(ctx).await? {
+        if let Some(type_value) = av.view(ctx).await? {
             let component_type: ComponentType = serde_json::from_value(type_value)?;
             return Ok(component_type.into());
         }
