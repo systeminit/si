@@ -586,6 +586,398 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("1"));
 }
+
+#[test]
+async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
+    // here's the scenario:
+    // Create two greatgrandparent frames of the same schema variant, each with a grandparent frame inside, with different values to propagate
+    // Put a parent frame, with two different child components and ensure values propagate
+    // (one child takes from parent + great grandparent, and the other child takes from just the grandparent)
+    // move the parent to the other grandparent (which is inside the other great grandparent) (with a different value set)
+    // ensure the children is updated with all the new values
+    // This test is to ensure that when we move frames with children between frames, the frames AND the children update accordingly
+
+    // create first greatgrandparent
+    let first_greatgrandparent_frame =
+        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1").await;
+
+    let _ = first_greatgrandparent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    // create grandparent frame
+    let first_grand_parent_frame =
+        create_component_for_schema_name(ctx, "medium odd lego", "grandparent").await;
+    let _ = first_grand_parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    // create parent frame
+    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent").await;
+    let _ = parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    // create child components
+    let first_child_component =
+        create_component_for_schema_name(ctx, "medium odd lego", "child 1").await;
+    let _ = first_child_component
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    let second_child_component =
+        create_component_for_schema_name(ctx, "medium even lego", "child 2").await;
+    let _ = second_child_component
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+
+    // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
+    Frame::upsert_parent(ctx, first_child_component.id(), parent_frame.id())
+        .await
+        .expect("can upsert parent");
+    Frame::upsert_parent(ctx, parent_frame.id(), first_grand_parent_frame.id())
+        .await
+        .expect("can upsert parent");
+    Frame::upsert_parent(ctx, second_child_component.id(), parent_frame.id())
+        .await
+        .expect("can upsert parent");
+    Frame::upsert_parent(
+        ctx,
+        first_grand_parent_frame.id(),
+        first_greatgrandparent_frame.id(),
+    )
+    .await
+    .expect("can upsert parent");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // set values for Grandparent and Parent Frames
+
+    // this value should pass to the grandparent
+    update_attribute_value_for_component(
+        ctx,
+        first_greatgrandparent_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["3"],
+    )
+    .await;
+    // this value should only pass to the grandparent, the first_child has a closer match with its parent
+    update_attribute_value_for_component(
+        ctx,
+        first_greatgrandparent_frame.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["2"],
+    )
+    .await;
+    // this value should pass to the first_child
+    update_attribute_value_for_component(
+        ctx,
+        parent_frame.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await;
+    // this value should pass to the second_child
+    update_attribute_value_for_component(
+        ctx,
+        first_grand_parent_frame.id(),
+        &["root", "domain", "two"],
+        serde_json::json!["2"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the first_component is updated with 3
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("3"));
+    // the first_componenent is updated with 1
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("1"));
+    // the second_component is updated with 2
+    let input_value = get_component_input_socket_value(ctx, second_child_component.id(), "two")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("2"));
+    // the parent is updated with 2
+    let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("2"));
+
+    // now create the other great grandparent and grandparent frame and move the parent into it
+    let second_greatgrandparent_frame =
+        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2").await;
+
+    let _ = second_greatgrandparent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    let second_grand_parent_frame =
+        create_component_for_schema_name(ctx, "small odd lego", "grandparent").await;
+    let _ = second_grand_parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await;
+    Frame::upsert_parent(
+        ctx,
+        second_grand_parent_frame.id(),
+        second_greatgrandparent_frame.id(),
+    )
+    .await
+    .expect("can upsert parent");
+
+    Frame::upsert_parent(ctx, parent_frame.id(), second_grand_parent_frame.id())
+        .await
+        .expect("can upsert parent");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the value coming from the first great grandparent should be unset
+    assert!(
+        get_component_input_socket_value(ctx, first_child_component.id(), "three")
+            .await
+            .is_none()
+    );
+    // the value coming from the first grandparent should be unset
+    assert!(
+        get_component_input_socket_value(ctx, second_child_component.id(), "two")
+            .await
+            .is_none()
+    );
+    assert!(
+        get_component_input_socket_value(ctx, parent_frame.id(), "two")
+            .await
+            .is_none()
+    );
+
+    // this value should pass as the parent frame doesn't have an output socket for "3"
+    update_attribute_value_for_component(
+        ctx,
+        second_greatgrandparent_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["4"],
+    )
+    .await;
+    // this value should pass as the parent frame doesn't have an output socket for "3"
+    update_attribute_value_for_component(
+        ctx,
+        second_grand_parent_frame.id(),
+        &["root", "domain", "two"],
+        serde_json::json!["5"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the first_componenent still has 1
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("1"));
+    // the component is updated with 4
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
+        .await
+        .expect("is some");
+
+    assert_eq!(input_value, serde_json::json!("4"));
+    // the second component is updated with 5
+    let input_value = get_component_input_socket_value(ctx, second_child_component.id(), "two")
+        .await
+        .expect("is some");
+
+    assert_eq!(input_value, serde_json::json!("5"));
+    // the parent is updated with 5
+    let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
+        .await
+        .expect("is some");
+
+    assert_eq!(input_value, serde_json::json!("5"));
+}
+#[test]
+async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
+    // this is the inverse of the down_frame_moving_deeply_nested_frames test (using up frames vs. down frames)
+
+    // create first greatgrandparent
+    let first_greatgrandparent_frame =
+        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1").await;
+
+    let _ = first_greatgrandparent_frame
+        .set_type(ctx, ComponentType::Component)
+        .await;
+    // create grandparent frame
+    let first_grand_parent_frame =
+        create_component_for_schema_name(ctx, "medium odd lego", "grandparent").await;
+    let _ = first_grand_parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await;
+    // create parent frame
+    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent").await;
+    let _ = parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await;
+    // create child components
+    let first_child_component =
+        create_component_for_schema_name(ctx, "medium odd lego", "child 1").await;
+    let _ = first_child_component
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await;
+
+    // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
+    Frame::upsert_parent(ctx, parent_frame.id(), first_child_component.id())
+        .await
+        .expect("can upsert parent");
+    Frame::upsert_parent(ctx, first_grand_parent_frame.id(), parent_frame.id())
+        .await
+        .expect("can upsert parent");
+
+    Frame::upsert_parent(
+        ctx,
+        first_greatgrandparent_frame.id(),
+        first_grand_parent_frame.id(),
+    )
+    .await
+    .expect("can upsert parent");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // set values for Grandparent and Parent Frames
+
+    // this value should pass to the grandparent
+    update_attribute_value_for_component(
+        ctx,
+        first_greatgrandparent_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["3"],
+    )
+    .await;
+    // this value should only pass to the grandparent, the first_child has a closer match with its parent
+    update_attribute_value_for_component(
+        ctx,
+        first_greatgrandparent_frame.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["2"],
+    )
+    .await;
+    // this value should pass to the first_child
+    update_attribute_value_for_component(
+        ctx,
+        parent_frame.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await;
+    // this value should pass to the second_child
+    update_attribute_value_for_component(
+        ctx,
+        first_grand_parent_frame.id(),
+        &["root", "domain", "two"],
+        serde_json::json!["2"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the first_component is updated with 3
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("3"));
+    // the first_componenent is updated with 1
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("1"));
+
+    // the parent is updated with 2
+    let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("2"));
+
+    // now create the other great grandparent and grandparent frame and move the parent into it
+    let second_greatgrandparent_frame =
+        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2").await;
+
+    let _ = second_greatgrandparent_frame
+        .set_type(ctx, ComponentType::Component)
+        .await;
+    let second_grand_parent_frame =
+        create_component_for_schema_name(ctx, "small odd lego", "grandparent").await;
+    let _ = second_grand_parent_frame
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await;
+    Frame::upsert_parent(
+        ctx,
+        second_greatgrandparent_frame.id(),
+        second_grand_parent_frame.id(),
+    )
+    .await
+    .expect("can upsert parent");
+    // detach the first grand parent from the parent
+    Frame::orphan_child(ctx, first_grand_parent_frame.id())
+        .await
+        .expect("can detach frame");
+
+    Frame::upsert_parent(ctx, second_grand_parent_frame.id(), parent_frame.id())
+        .await
+        .expect("can upsert parent");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the value coming from the first great grandparent should be unset
+    assert!(
+        get_component_input_socket_value(ctx, first_child_component.id(), "three")
+            .await
+            .is_none()
+    );
+
+    assert!(
+        get_component_input_socket_value(ctx, parent_frame.id(), "two")
+            .await
+            .is_none()
+    );
+
+    // this value should pass as the parent frame doesn't have an output socket for "3"
+    update_attribute_value_for_component(
+        ctx,
+        second_greatgrandparent_frame.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["4"],
+    )
+    .await;
+    // this value should pass as the parent frame doesn't have an output socket for "3"
+    update_attribute_value_for_component(
+        ctx,
+        second_grand_parent_frame.id(),
+        &["root", "domain", "two"],
+        serde_json::json!["5"],
+    )
+    .await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // the first_componenent still has 1
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
+        .await
+        .expect("is some");
+    assert_eq!(input_value, serde_json::json!("1"));
+    // the component is updated with 4
+    let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
+        .await
+        .expect("is some");
+
+    assert_eq!(input_value, serde_json::json!("4"));
+    // the second component is updated with 5
+
+    // the parent is updated with 5
+    let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
+        .await
+        .expect("is some");
+
+    assert_eq!(input_value, serde_json::json!("5"));
+}
+
 #[test]
 async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // create parent frame
