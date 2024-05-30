@@ -598,6 +598,15 @@ impl ChangeSet {
             .await?
             .publish_on_commit(ctx)
             .await?;
+        WsEvent::change_set_merge_vote(
+            ctx,
+            ctx.visibility().change_set_id,
+            user_id,
+            "Approve".to_string(),
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
         Ok(())
     }
 

@@ -12,6 +12,7 @@ import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
 import ChangesMerged from "@/components/toasts/ChangesMerged.vue";
+import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -226,7 +227,6 @@ export function useChangeSetsStore() {
             },
           });
         },
-        // TODO: async CANCEL_CHANGE_SET() {},
 
         getAutoSelectedChangeSetId() {
           const lastChangeSetId = sessionStorage.getItem(
@@ -288,6 +288,19 @@ export function useChangeSetsStore() {
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
                   await this.setActiveChangeset(this.headChangeSetId);
+                  toast(
+                    {
+                      component: MovedToHead,
+                      props: {
+                        icon: "trash",
+                        changeSetName: this.selectedChangeSet?.name,
+                        action: "abandoned",
+                      },
+                    },
+                    {
+                      timeout: false,
+                    },
+                  );
                 }
               }
               await this.FETCH_CHANGE_SETS();
@@ -346,6 +359,19 @@ export function useChangeSetsStore() {
                       changeSetId: "head",
                     },
                   });
+                  toast(
+                    {
+                      component: MovedToHead,
+                      props: {
+                        icon: "tools",
+                        changeSetName: this.selectedChangeSet?.name,
+                        action: "merged",
+                      },
+                    },
+                    {
+                      timeout: false,
+                    },
+                  );
                 }
               }
             },

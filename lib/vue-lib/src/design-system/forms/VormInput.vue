@@ -796,6 +796,7 @@ defineExpose({
   input&,
   select&,
   textarea& {
+    line-height: 1rem;
     font-size: 14px;
 
     // if font-size is at least 16 on mobile, ios will not automatically zoom in
