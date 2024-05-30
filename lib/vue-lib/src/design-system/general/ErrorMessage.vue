@@ -3,7 +3,8 @@
     v-if="computedMessage || $slots.default"
     :class="
       clsx(
-        'border p-xs text-sm rounded-sm flex flex-row items-center',
+        'border text-sm rounded-sm flex flex-row items-center',
+        !noPadding && 'p-xs',
         tone === 'destructive' && 'border-destructive-500 text-destructive-400',
         tone === 'warning' && 'border-warning-500 text-warning-400',
       )
@@ -27,6 +28,7 @@ const props = defineProps({
   message: { type: String },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
   tone: { type: String as PropType<Tones>, default: "destructive" },
+  noPadding: { type: Boolean },
 });
 
 const computedMessage = computed(() => {
