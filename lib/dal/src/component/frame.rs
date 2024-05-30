@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -194,18 +194,81 @@ impl Frame {
     /// For a given component, get all of the input sockets
     /// that have an inferred connection and for every output socket, get all
     /// downstream input sockets that have an inferred connection to it
+    /// if this component is a down frame, need to grab all descendants and also see who was/is impacted.
+    /// if this component is an up frame, need to grab all ascendants and also see who was/is imapcted.
     async fn get_impacted_connections(
         ctx: &DalContext,
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
-        let input_map =
+        let mut work_queue = VecDeque::new();
+        let mut input_map: HashMap<InputSocketMatch, Vec<OutputSocketMatch>> = HashMap::new();
+        let mut output_map: HashMap<OutputSocketMatch, Vec<InputSocketMatch>> = HashMap::new();
+
+        // if this component is a down frame, grab all descendants and add them to the work queue.
+        // if this component is an up frame, grab all ascendants and add them to the work queue.
+        let mut impacted_connections = HashSet::new();
+
+        match Component::get_type_by_id(ctx, child_id).await? {
+            ComponentType::ConfigurationFrameDown => {
+                let children = Component::get_children_for_id(ctx, child_id).await?;
+                for child in children {
+                    work_queue.push_front(child);
+                }
+                while let Some(child) = work_queue.pop_front() {
+                    let input =
+                        Component::build_map_for_component_id_inferred_incoming_connections(
+                            ctx, child,
+                        )
+                        .await?;
+                    input_map.extend(input);
+                    let output =
+                        Component::build_map_for_component_id_inferred_outgoing_connections(
+                            ctx, child,
+                        )
+                        .await?;
+                    output_map.extend(output);
+
+                    let _ = Component::get_children_for_id(ctx, child)
+                        .await?
+                        .into_iter()
+                        .map(|comp| work_queue.push_back(comp));
+                }
+            }
+            ComponentType::ConfigurationFrameUp => {
+                if let Some(parent) = Component::get_parent_by_id(ctx, child_id).await? {
+                    work_queue.push_front(parent);
+                }
+
+                while let Some(parent) = work_queue.pop_front() {
+                    let input =
+                        Component::build_map_for_component_id_inferred_incoming_connections(
+                            ctx, parent,
+                        )
+                        .await?;
+                    input_map.extend(input);
+                    let output =
+                        Component::build_map_for_component_id_inferred_outgoing_connections(
+                            ctx, parent,
+                        )
+                        .await?;
+                    output_map.extend(output);
+                    if let Some(grandparent) = Component::get_parent_by_id(ctx, parent).await? {
+                        work_queue.push_back(grandparent);
+                    }
+                }
+            }
+            _ => {} // Aggregation Frames and Components we don't need to traverse for
+        }
+
+        let input: HashMap<InputSocketMatch, Vec<OutputSocketMatch>> =
             Component::build_map_for_component_id_inferred_incoming_connections(ctx, child_id)
                 .await?;
-        let output_map =
+        input_map.extend(input);
+        let output: HashMap<OutputSocketMatch, Vec<InputSocketMatch>> =
             Component::build_map_for_component_id_inferred_outgoing_connections(ctx, child_id)
                 .await?;
+        output_map.extend(output);
 
-        let mut impacted_connections = HashSet::new();
         for (input_socket, output_sockets) in input_map.into_iter() {
             for output_socket in output_sockets {
                 impacted_connections.insert(SocketAttributeValuePair {
@@ -222,6 +285,7 @@ impl Frame {
                 });
             }
         }
+
         Ok(impacted_connections)
     }
 }
