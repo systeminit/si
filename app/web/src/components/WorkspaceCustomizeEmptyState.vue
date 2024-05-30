@@ -1,17 +1,5 @@
 <template>
-  <div
-    v-if="requestStatus.isPending"
-    class="text-center text-neutral-400 dark:text-neutral-300 w-full h-full"
-  >
-    <RequestStatusMessage
-      :requestStatus="requestStatus"
-      :loadingMessage="loadingMessage"
-    />
-  </div>
-  <div
-    v-else-if="requestStatus.isSuccess"
-    class="w-full h-full flex flex-col items-center gap-sm py-lg"
-  >
+  <div class="w-full h-full flex flex-col items-center gap-sm py-lg">
     <div class="max-w-96">
       <EmptyStateIcon name="customize-big" />
     </div>
@@ -24,6 +12,14 @@
       class="text-sm italic text-neutral-500 dark:text-neutral-400 text-center"
     >
       Use the left panel to get started!
+    </div>
+    <div>
+      <RequestStatusMessage
+        v-if="!requestStatus.isSuccess"
+        :requestStatus="requestStatus"
+        :loadingMessage="loadingMessage"
+        noPadding
+      />
     </div>
   </div>
 </template>
