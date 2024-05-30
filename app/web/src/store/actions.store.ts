@@ -411,7 +411,8 @@ export const useActionsStore = () => {
                 // Short term fix for reactivity issue on apply, since the
                 // first load won't have the actions since the rebaser isnt done
                 // Updated: We may not need this TIMEOUT if new WsEvents fix it!
-                setTimeout(() => this.LOAD_ACTIONS(), 500);
+                // setTimeout(() => this.LOAD_ACTIONS(), 500);
+                // WsEvents in place ought to resolve this
               },
             },
           ]);
