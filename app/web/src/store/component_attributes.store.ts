@@ -458,6 +458,17 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 this.reloadPropertyEditorData();
               },
             },
+            {
+              eventType: "ChangeSetApplied",
+              debounce: true,
+              callback: (data) => {
+                // If the applied change set has rebased into this change set,
+                // then refetch (i.e. there might be updates!)
+                if (data.toRebaseChangeSetId === changeSetId) {
+                  this.reloadPropertyEditorData();
+                }
+              },
+            },
           ]);
 
           return () => {
