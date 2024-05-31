@@ -615,7 +615,7 @@ impl Component {
             self.clear_resource(ctx).await?;
         }
         if reset_name {
-            self.set_name(ctx, &format!("{} - Copy", self.name(ctx).await?))
+            self.set_name(ctx, &Self::generate_copy_name(self.name(ctx).await?))
                 .await?;
         }
 
@@ -1998,7 +1998,7 @@ impl Component {
 
         let mut pasted_comp = Component::new(
             ctx,
-            format!("{} - Copy", self.name(ctx).await?),
+            Self::generate_copy_name(self.name(ctx).await?),
             schema_variant.id(),
         )
         .await?;
@@ -2968,6 +2968,14 @@ impl Component {
             }
         }
         Ok(())
+    }
+
+    fn generate_copy_name(name: String) -> String {
+        if name.ends_with("- Copy") {
+            name
+        } else {
+            format!("{} - Copy", name)
+        }
     }
 }
 
