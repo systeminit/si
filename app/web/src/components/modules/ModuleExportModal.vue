@@ -88,7 +88,7 @@ import {
   Stack,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { format as dateFormat } from "date-fns";
+import { format as dateFormat, parseISO } from "date-fns";
 import { useComponentsStore } from "@/store/components.store";
 import { useModuleStore, ModuleExportRequest } from "@/store/module.store";
 
@@ -160,10 +160,13 @@ const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
     .filter((sv) => sv.isDefault)
-    .map((sv) => ({
-      label: sv.schemaName,
-      value: sv.id,
-    })),
+    .map((sv) => {
+      const d = dateFormat(parseISO(sv.created_at), "M/d/y h:mm:ss a");
+      return {
+        label: `${sv.schemaName}: ${sv.name} ${d} `,
+        value: sv.id,
+      };
+    }),
 );
 
 const getVersionTimestamp = () => dateFormat(Date.now(), "yyyyMMddkkmmss");

@@ -532,7 +532,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     category: variant.category,
                     inputSockets: variant.inputSockets,
                     outputSockets: variant.outputSockets,
-
+                    updated_at: variant.updated_at,
+                    created_at: variant.created_at,
+                    displayName: variant.displayName,
+                    description: variant.description,
                     schemaName: schema.name,
                   });
                 }
