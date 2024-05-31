@@ -379,6 +379,7 @@ import {
   GROUP_HEADER_ICON_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
+  MIN_NODE_DIMENSION,
   SELECTION_COLOR,
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
@@ -473,7 +474,9 @@ const childCount = computed(() => {
   return undeletedChildren.length;
 });
 
-const nodeWidth = computed(() => size.value.width);
+const nodeWidth = computed(() =>
+  Math.max(size.value.width, MIN_NODE_DIMENSION),
+);
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
   !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
@@ -523,7 +526,9 @@ function recalcHeaderHeight() {
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
-const nodeBodyHeight = computed(() => size.value.height);
+const nodeBodyHeight = computed(() =>
+  Math.max(size.value.height, MIN_NODE_DIMENSION),
+);
 const nodeHeight = computed(
   () =>
     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,

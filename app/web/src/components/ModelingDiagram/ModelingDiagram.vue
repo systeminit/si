@@ -1328,6 +1328,8 @@ function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
       movedElementPositions[e.uniqueKey] = { ...e.position };
     }
     if (e.size) {
+      e.size.height = Math.max(e.size.height, MIN_NODE_DIMENSION);
+      e.size.width = Math.max(e.size.width, MIN_NODE_DIMENSION);
       resizedElementSizes[e.uniqueKey] = { ...e.size };
     }
   });
