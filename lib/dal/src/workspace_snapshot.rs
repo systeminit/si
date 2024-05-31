@@ -51,7 +51,6 @@ use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
-use crate::pk;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -60,6 +59,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::{pk, ComponentId, Workspace, WorkspaceError};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
@@ -119,6 +119,10 @@ pub enum WorkspaceSnapshotError {
     UnexpectedEdgeTarget(Ulid, Ulid, EdgeWeightKindDiscriminants),
     #[error("Unexpected number of incoming edges of type {0:?} for node type {1:?} with id {2}")]
     UnexpectedNumberOfIncomingEdges(EdgeWeightKindDiscriminants, NodeWeightDiscriminants, Ulid),
+    #[error("Workspace error: {0}")]
+    Workspace(#[from] Box<WorkspaceError>),
+    #[error("Tenancy missing Workspace")]
+    WorkspaceMissing,
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing at address: {0}")]
@@ -1357,6 +1361,95 @@ impl WorkspaceSnapshot {
             }
         }
         Ok(None)
+    }
+
+    #[instrument(
+        name = "workspace_snapshot.components_added_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn components_added_relative_to_base(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<ComponentId>> {
+        let mut new_component_ids = Vec::new();
+        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
+            change_set_id
+        } else {
+            return Ok(new_component_ids);
+        };
+
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await
+        .map_err(Box::new)?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(new_component_ids);
+        }
+
+        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+        // We need to use the index of the Category node in the base snapshot, as that's the
+        // `to_rebase` when detecting conflicts & updates later, and the source node index in the
+        // Update is from the `to_rebase` graph.
+        let component_category_idx = if let Some((_category_id, category_idx)) = base_snapshot
+            .read_only_graph
+            .get_category_node(None, CategoryNodeKind::Component)?
+        {
+            category_idx
+        } else {
+            // Can't have any new Components if there's no Component category node to put them
+            // under.
+            return Ok(new_component_ids);
+        };
+        let conflicts_and_updates = base_snapshot.read_only_graph.detect_conflicts_and_updates(
+            VectorClockId::from(Ulid::from(base_change_set_id)),
+            &self.read_only_graph,
+            VectorClockId::from(Ulid::from(ctx.change_set_id())),
+        )?;
+
+        for update in &conflicts_and_updates.updates {
+            match update {
+                Update::RemoveEdge {
+                    source: _,
+                    destination: _,
+                    edge_kind: _,
+                }
+                | Update::ReplaceSubgraph {
+                    onto: _,
+                    to_rebase: _,
+                }
+                | Update::MergeCategoryNodes {
+                    to_rebase_category_id: _,
+                    onto_category_id: _,
+                } => {
+                    /* Updates unused for determining if a Component is new with regards to the updates */
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight: _,
+                } => {
+                    if !(source.index == component_category_idx
+                        && destination.node_weight_kind == NodeWeightDiscriminants::Component)
+                    {
+                        // We only care about new edges coming from the Component category node,
+                        // and going to Component nodes, so keep looking.
+                        continue;
+                    }
+
+                    new_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
+                }
+            }
+        }
+
+        Ok(new_component_ids)
     }
 
     /// Returns whether or not any Actions were dispatched.

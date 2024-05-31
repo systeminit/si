@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::collections::{hash_map, HashMap};
+use std::collections::{hash_map, HashMap, HashSet};
 use std::num::{ParseFloatError, ParseIntError};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -129,7 +129,11 @@ pub struct SummaryDiagramComponent {
 }
 
 impl SummaryDiagramComponent {
-    pub async fn assemble(ctx: &DalContext, component: &Component) -> DiagramResult<Self> {
+    pub async fn assemble(
+        ctx: &DalContext,
+        component: &Component,
+        change_status: ChangeStatus,
+    ) -> DiagramResult<Self> {
         let mut diagram_sockets: HashMap<SchemaVariantId, serde_json::Value> = HashMap::new();
         let schema_variant = component.schema_variant(ctx).await?;
 
@@ -229,7 +233,7 @@ impl SummaryDiagramComponent {
             size,
             component_type: component.get_type(ctx).await?.to_string(),
             color: component.color(ctx).await?.unwrap_or("#111111".into()),
-            change_status: ChangeStatus::Added,
+            change_status,
             has_resource: component.resource(ctx).await?.is_some(),
             sockets,
             parent_id: component.parent(ctx).await?,
@@ -260,13 +264,14 @@ impl SummaryDiagramEdge {
         incoming_connection: IncomingConnection,
         from_component: Component,
         to_component: &Component,
+        change_status: ChangeStatus,
     ) -> DiagramResult<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: incoming_connection.from_component_id,
             from_socket_id: incoming_connection.from_output_socket_id,
             to_component_id: incoming_connection.to_component_id,
             to_socket_id: incoming_connection.to_input_socket_id,
-            change_status: ChangeStatus::Added,
+            change_status,
             created_info: serde_json::to_value(incoming_connection.created_info)?,
             deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
             to_delete: from_component.to_delete() || to_component.to_delete(),
@@ -369,9 +374,23 @@ impl Diagram {
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
         let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         let components = Component::list(ctx).await?;
-
         let mut component_views = Vec::with_capacity(components.len());
+        let new_component_ids: HashSet<ComponentId> = ctx
+            .workspace_snapshot()?
+            .components_added_relative_to_base(ctx)
+            .await?
+            .iter()
+            .copied()
+            .collect();
+
         for component in &components {
+            let component_change_status = if new_component_ids.contains(&component.id()) {
+                ChangeStatus::Added
+            } else {
+                // TODO: Eventually, we'll want to also handle detecting ChangeStatus::Modified
+                ChangeStatus::Unmodified
+            };
+
             for incoming_connection in component.incoming_connections(ctx).await? {
                 let from_component =
                     Component::get_by_id(ctx, incoming_connection.from_component_id).await?;
@@ -379,6 +398,7 @@ impl Diagram {
                     incoming_connection,
                     from_component,
                     component,
+                    ChangeStatus::Unmodified,
                 )?);
             }
 
@@ -389,8 +409,13 @@ impl Diagram {
                 )?)
             }
 
-            component_views.push(SummaryDiagramComponent::assemble(ctx, component).await?);
+            component_views.push(
+                SummaryDiagramComponent::assemble(ctx, component, component_change_status).await?,
+            );
         }
+
+        // We also want to display the edges & components that would be actively removed when we
+        // merge this change set into its base change set.
 
         Ok(Self {
             edges: diagram_edges,

@@ -2,6 +2,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::component::ComponentResult;
 use axum::response::IntoResponse;
 use axum::Json;
+use dal::change_status::ChangeStatus;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{
     AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, PropId, Visibility,
@@ -33,7 +34,7 @@ pub async fn delete_property_editor_value(
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
     let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
