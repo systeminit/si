@@ -2151,6 +2151,19 @@ impl AttributeValue {
         Self::fetch_value_from_store(ctx, self.value).await
     }
 
+    pub async fn value_or_default(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> AttributeValueResult<serde_json::Value> {
+        match Self::fetch_value_from_store(ctx, self.value).await {
+            Ok(Some(value)) => Ok(value),
+            _ => Ok(Prop::default_value(ctx, prop_id)
+                .await?
+                .unwrap_or(Value::Null)),
+        }
+    }
+
     pub async fn unprocessed_value(
         &self,
         ctx: &DalContext,

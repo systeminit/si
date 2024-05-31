@@ -74,9 +74,8 @@ impl PropertyEditorValues {
                 prop_id: root_prop_id.into(),
                 key: None,
                 value: root_attribute_value
-                    .value(ctx)
-                    .await?
-                    .unwrap_or(Value::Null),
+                    .value_or_default(ctx, root_prop_id)
+                    .await?,
                 validation,
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
@@ -192,9 +191,8 @@ impl PropertyEditorValues {
                     prop_id: prop_id_for_child_attribute_value.into(),
                     key,
                     value: child_attribute_value
-                        .value(ctx)
-                        .await?
-                        .unwrap_or(Value::Null),
+                        .value_or_default(ctx, prop_id_for_child_attribute_value)
+                        .await?,
                     validation,
                     can_be_set_by_socket: !sockets_for_av.is_empty(),
                     is_from_external_source,
