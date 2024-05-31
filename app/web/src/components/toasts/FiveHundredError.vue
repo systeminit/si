@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Icon } from "@si/vue-lib/design-system";
+import { VButton, Icon } from "@si/vue-lib/design-system";
 
 const emit = defineEmits<{
   (e: "close-toast"): void;
