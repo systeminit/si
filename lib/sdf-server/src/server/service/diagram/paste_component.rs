@@ -82,14 +82,16 @@ pub async fn paste_components(
             } else {
                 return Err(DiagramError::Paste);
             };
-
         let component = Component::get_by_id(&ctx, *component_id).await?;
+
+        // If component parent was also pasted on this batch, keep relationship between new components
         if let Some(parent_id) = component.parent(&ctx).await? {
             if let Some(pasted_parent) = pasted_components_by_original.get(&parent_id) {
                 Frame::upsert_parent(&ctx, pasted_component.id(), pasted_parent.id()).await?;
             };
         }
 
+        // Create on pasted components copies of edges that existed between original components
         for connection in component.incoming_connections(&ctx).await? {
             if let Some(from_component) =
                 pasted_components_by_original.get(&connection.from_component_id)
@@ -105,8 +107,11 @@ pub async fn paste_components(
             }
         }
 
-        if let Some(parent_id) = request.new_parent_node_id {
-            Frame::upsert_parent(&ctx, pasted_component.id(), parent_id).await?;
+        // If the pasted component didn't get a parent already, set the new parent
+        if pasted_component.parent(&ctx).await?.is_none() {
+            if let Some(parent_id) = request.new_parent_node_id {
+                Frame::upsert_parent(&ctx, pasted_component.id(), parent_id).await?;
+            }
         }
     }
 
