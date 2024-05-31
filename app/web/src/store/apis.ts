@@ -82,14 +82,9 @@ async function handleConflictsFound(error: AxiosError) {
 async function handle500(error: AxiosError) {
   const toast = useToast();
   if (error?.response?.status === 500) {
-    toast(
-      {
-        component: FiveHundredError,
-      },
-      {
-        timeout: false,
-      },
-    );
+    toast({
+      component: FiveHundredError,
+    });
   }
   return Promise.reject(error);
 }

@@ -273,17 +273,12 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         actions: {
           addConflictFromHttp(conflict: Conflict): void {
             this.rawConflicts.push(conflict);
-            toast(
-              {
-                component: ConflictToast,
-                props: {
-                  conflict,
-                },
+            toast({
+              component: ConflictToast,
+              props: {
+                conflict,
               },
-              {
-                timeout: false,
-              },
-            );
+            });
           },
         },
         onActivated() {
