@@ -9,7 +9,7 @@ use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     DalContext, InputSocketId, OutputSocketId, Schema, SchemaError, SchemaId, SchemaVariant,
-    SchemaVariantId,
+    SchemaVariantId, Timestamp,
 };
 
 #[remain::sorted]
@@ -82,6 +82,9 @@ impl SchemaView {
                                 name: s.name().to_owned(),
                             })
                             .collect(),
+                        timestamp: schema_variant.timestamp(),
+                        description: schema_variant.description(),
+                        display_name: schema_variant.display_name(),
                     });
                 }
 
@@ -122,6 +125,10 @@ pub struct SchemaVariantView {
     category: String,
     input_sockets: Vec<InputSocketView>,
     output_sockets: Vec<OutputSocketView>,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+    description: Option<String>,
+    display_name: Option<String>,
 }
 
 impl SchemaVariantView {

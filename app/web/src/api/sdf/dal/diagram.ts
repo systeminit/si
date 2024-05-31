@@ -30,6 +30,10 @@ export interface DiagramSchemaVariant {
   category: string;
   inputSockets: DiagramInputSocket[];
   outputSockets: DiagramOutputSocket[];
+  created_at: IsoDateString;
+  updated_at: IsoDateString;
+  displayName: string | null;
+  description: string | null;
 }
 
 export interface DiagramSchema {
