@@ -284,19 +284,14 @@ export function useChangeSetsStore() {
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
                   await this.setActiveChangeset(this.headChangeSetId);
-                  toast(
-                    {
-                      component: MovedToHead,
-                      props: {
-                        icon: "trash",
-                        changeSetName: this.selectedChangeSet?.name,
-                        action: "abandoned",
-                      },
+                  toast({
+                    component: MovedToHead,
+                    props: {
+                      icon: "trash",
+                      changeSetName: this.selectedChangeSet?.name,
+                      action: "abandoned",
                     },
-                    {
-                      timeout: false,
-                    },
-                  );
+                  });
                 }
               }
               await this.FETCH_CHANGE_SETS();
@@ -355,19 +350,14 @@ export function useChangeSetsStore() {
                       changeSetId: "head",
                     },
                   });
-                  toast(
-                    {
-                      component: MovedToHead,
-                      props: {
-                        icon: "tools",
-                        changeSetName: this.selectedChangeSet?.name,
-                        action: "merged",
-                      },
+                  toast({
+                    component: MovedToHead,
+                    props: {
+                      icon: "tools",
+                      changeSetName: this.selectedChangeSet?.name,
+                      action: "merged",
                     },
-                    {
-                      timeout: false,
-                    },
-                  );
+                  });
                 }
               }
             },

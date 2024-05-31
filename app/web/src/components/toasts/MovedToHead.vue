@@ -9,18 +9,11 @@
       </div>
       <div>You are now on HEAD.</div>
     </div>
-    <VButton
-      label="Ok"
-      size="sm"
-      variant="solid"
-      tone="empty"
-      class="self-stretch text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
-    />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { Icon, IconNames, VButton } from "@si/vue-lib/design-system";
+import { Icon, IconNames } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
 
 const props = defineProps({

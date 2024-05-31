@@ -25,13 +25,6 @@
         class="grow text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
         @click="() => (show = !show)"
       ></VButton>
-      <VButton
-        class="grow text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
-        label="Close"
-        tone="empty"
-        variant="solid"
-        @click="$emit('close-toast')"
-      ></VButton>
     </div>
   </div>
 </template>
