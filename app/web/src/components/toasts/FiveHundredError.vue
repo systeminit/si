@@ -8,36 +8,38 @@
       />
       <p class="grow py-md">
         The server encountered an error and could not complete your request.
+        Please reach out on Discord if you need some help! <br />
+        <br />
+        Request to
+        <span class="font-bold">{{ requestUrl }}</span> returned:
       </p>
     </div>
-    <div v-show="show">
-      <ol>
-        <li>Try again</li>
-        <li>Reload the page</li>
-        <li>Reach out to us on Discord</li>
-      </ol>
-    </div>
+    <ErrorMessage class="mx-1" icon="alert-triangle" tone="warning">
+      {{ message }}
+    </ErrorMessage>
     <div class="flex flex-row gap-sm items-center">
       <VButton
-        label="What can I do?"
+        class="grow text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
+        label="Close"
         tone="empty"
         variant="solid"
-        class="grow text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
-        @click="() => (show = !show)"
+        @click="$emit('close-toast')"
       ></VButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { VButton, Icon } from "@si/vue-lib/design-system";
+import { VButton, Icon, ErrorMessage } from "@si/vue-lib/design-system";
 
 const emit = defineEmits<{
   (e: "close-toast"): void;
 }>();
 
-const show = ref(false);
+const props = defineProps({
+  requestUrl: { type: String, required: false },
+  message: { type: String, required: false },
+});
 </script>
 
 <style lang="less">
