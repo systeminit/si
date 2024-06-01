@@ -24,6 +24,9 @@ import {
   createDeferredPromise,
   DeferredPromise,
 } from "@si/ts-lib";
+import { ulid } from "ulid";
+
+export type RequestUlid = string;
 
 // TODO: need to rework these types, and be more flexible... See vue-query for ideas
 type RawRequestStatusKeyArg = string | number | undefined | null;
@@ -69,11 +72,13 @@ declare module "pinia" {
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
       ...keyedByArgs: RequestStatusKeyArg[]
     ): void;
+    RETRY_CONFLICT(requestUlid: RequestUlid): Promise<ApiRequest>;
   }
 
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
     apiRequestStatuses: RawRequestStatusesByKey;
+    availableRetries: ConflictsForRetry;
   }
 }
 
@@ -83,18 +88,18 @@ export class ApiRequest<
 > {
   // these are used to attach the result which can be used directly by the caller
   // most data and request status info should be used via the store, but it is useful sometimes
-  #rawResponseData: Response | undefined;
-  #rawResponseError: Error | AxiosError | undefined;
-  #rawSuccess?: boolean;
+  rawResponseData: Response | undefined;
+  rawResponseError: Error | AxiosError | undefined;
+  rawSuccess?: boolean;
 
   setSuccessfulResult(data: Response | undefined) {
-    this.#rawSuccess = true;
-    this.#rawResponseData = data;
+    this.rawSuccess = true;
+    this.rawResponseData = data;
   }
 
   setFailedResult(err: AxiosError | Error) {
-    this.#rawSuccess = false;
-    this.#rawResponseError = err;
+    this.rawSuccess = false;
+    this.rawResponseError = err;
   }
 
   // we use a getter to get the result so that we can add further type restrictions
@@ -103,19 +108,19 @@ export class ApiRequest<
     | { success: true; data: Response }
     | { success: false; err: Error; errBody?: any } {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
-    if (this.#rawSuccess === undefined)
+    if (this.rawSuccess === undefined)
       throw new Error("You must await the request to access the result");
 
-    if (this.#rawSuccess) {
-      return { success: true, data: this.#rawResponseData! };
+    if (this.rawSuccess) {
+      return { success: true, data: this.rawResponseData! };
     } else {
       return {
         success: false,
         // the raw error object - usually an AxiosError
-        err: this.#rawResponseError!,
+        err: this.rawResponseError!,
         // the (json) body of the failed request, if applicable
-        ...(this.#rawResponseError instanceof AxiosError && {
-          errBody: this.#rawResponseError.response?.data,
+        ...(this.rawResponseError instanceof AxiosError && {
+          errBody: this.rawResponseError.response?.data,
         }),
       };
     }
@@ -169,7 +174,7 @@ export type ApiRequestDescription<
   /** additional axios options */
   options?: Record<string, any>; // TODO: pull in axios options type?
   /** optional optimistic update fn to call before api request is made, should return a rollback fn called on api error */
-  optimistic?: () => (() => void) | void;
+  optimistic?: (requestUlid: RequestUlid) => (() => void) | void;
   /** add artificial delay (in ms) before fetching */
   _delay?: number;
 };
@@ -196,6 +201,7 @@ export type ApiRequestStatus = Partial<RawApiRequestStatus> & {
 };
 
 type RawRequestStatusesByKey = Record<string, RawApiRequestStatus>;
+export type ConflictsForRetry = Record<RequestUlid, [string, ApiRequest]>;
 
 const TRACKING_KEY_SEPARATOR = "%";
 
@@ -215,10 +221,15 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     store.apiRequestStatuses = reactive({} as RawRequestStatusesByKey);
     (store.$state as any).apiRequestStatuses = store.apiRequestStatuses;
 
+    // 409 conflicts get stored in here
+    store.availableRetries = reactive({} as ConflictsForRetry);
+    (store.$state as any).availableRetries = store.availableRetries;
+
     // make available to devtools
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-underscore-dangle
       store._customProperties.add("apiRequestStatuses");
+      store._customProperties.add("availableRetries");
     }
 
     // triggers a named api request passing in a payload
@@ -227,6 +238,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     async function triggerApiRequest(
       actionName: string,
       requestSpec: ApiRequestDescription,
+      requestUlid: RequestUlid,
     ): Promise<any> {
       /* eslint-disable no-param-reassign,consistent-return */
       // console.log('trigger api request', actionName, requestSpec);
@@ -258,6 +270,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         return existingRequest.completed?.promise;
       }
 
+      if (!requestSpec.params) requestSpec.params = {};
+      requestSpec.params.requestUlid = requestUlid;
+
       // mark the request as pending in the store
       // and attach a deferred promise we'll resolve when completed
       // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
@@ -276,7 +291,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // that fn should return a fn to call which rolls back any optimistic updates in case the request fails
       let optimisticRollbackFn;
       if (requestSpec.optimistic) {
-        optimisticRollbackFn = requestSpec.optimistic();
+        optimisticRollbackFn = requestSpec.optimistic(requestUlid);
       }
 
       const { method, url, params, headers, options, onSuccess, onFail } =
@@ -384,6 +399,36 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
     }
 
+    async function fireActionResult(
+      actionName: string,
+      actionResult: ApiRequest,
+      requestUlid: RequestUlid,
+    ) {
+      const request = actionResult;
+      const triggerResult = await triggerApiRequest(
+        actionName,
+        request.requestSpec,
+        requestUlid,
+      );
+      if (!triggerResult) {
+        throw new Error(`No trigger result for ${actionName}`);
+      }
+
+      if (triggerResult.error) {
+        request.setFailedResult(triggerResult.error);
+        if (
+          actionName !== "SET_COMPONENT_GEOMETRY" &&
+          triggerResult.error.response?.status === 409
+        ) {
+          store.$patch((state) => {
+            state.availableRetries[requestUlid] = [actionName, actionResult];
+          });
+        }
+      } else {
+        request.setSuccessfulResult(triggerResult.data);
+      }
+    }
+
     // wrap each action in a fn that will take an action result that is an ApiRequest
     // and actually trigger the request, waiting to finish until the request is complete
     function wrapApiAction(
@@ -392,23 +437,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     ) {
       // NOTE - have to be careful here to deal with non-async actions properly
       return async function wrappedActionFn(...args: any[]) {
+        const requestUlid = ulid();
         const actionResult: any = await originalActionFn(...args);
-        let triggerResult;
         if (actionResult instanceof ApiRequest) {
-          const request = actionResult;
-          triggerResult = await triggerApiRequest(
-            actionName,
-            request.requestSpec,
-          );
-          if (!triggerResult) {
-            throw new Error(`No trigger result for ${actionName}`);
-          }
-
-          if (triggerResult.error) {
-            request.setFailedResult(triggerResult.error);
-          } else {
-            request.setSuccessfulResult(triggerResult.data);
-          }
+          await fireActionResult(actionName, actionResult, requestUlid);
         }
         return actionResult;
       };
@@ -503,10 +535,24 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       delete store.$state.apiRequestStatuses[fullKey];
     };
 
+    const RETRY_CONFLICT = async (requestUlid: RequestUlid) => {
+      const r = store.$state.availableRetries[requestUlid];
+      if (!r) throw Error(`No retry found for: ${requestUlid}`);
+      const actionName = r[0];
+      const apiRequest = r[1];
+      store.$patch((state) => {
+        delete state.availableRetries[requestUlid];
+      });
+      const newRequestUlid = ulid();
+      await fireActionResult(actionName, apiRequest, newRequestUlid);
+      return apiRequest;
+    };
+
     return {
       getRequestStatus,
       getRequestStatuses,
       clearRequestStatus,
+      RETRY_CONFLICT,
       ...apiRequestActions,
     };
   };

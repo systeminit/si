@@ -260,6 +260,9 @@ importers:
       typescript:
         specifier: ^4.9.5
         version: 4.9.5
+      ulid:
+        specifier: ^2.3.0
+        version: 2.3.0
       util-browser:
         specifier: ^0.0.2
         version: 0.0.2
@@ -746,6 +749,9 @@ importers:
       tailwindcss-capsize:
         specifier: ^3.0.3
         version: 3.0.3(tailwindcss@3.2.2)
+      ulid:
+        specifier: ^2.3.0
+        version: 2.3.0
       vue:
         specifier: ^3.4.15
         version: 3.4.15(typescript@4.9.5)
@@ -18093,7 +18099,6 @@ packages:
   /ulid@2.3.0:
     resolution: {integrity: sha512-keqHubrlpvT6G2wH0OEfSW4mquYRcbe/J8NMmveoQOjUqmo+hXtO+ORCpWhdbZ7k72UtY61BL7haGxW6enBnjw==}
     hasBin: true
-    dev: true
 
   /ulidx@0.5.0:
     resolution: {integrity: sha512-fZFAVMxsp3QSwOpIta6uqc3ZjHfRe4m3GllM+HO4MNQMXlzcUhWihHKWuBxFcDYATsuyxjBwCH0MqVsj/D/how==}
