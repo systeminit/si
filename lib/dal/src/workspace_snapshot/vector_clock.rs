@@ -1,6 +1,6 @@
 //! Vector Clocks
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,8 @@ pub enum VectorClockError {
     #[error("Lamport Clock Error: {0}")]
     LamportClock(#[from] LamportClockError),
 }
+
+const CLOCKS_TO_RETAIN: usize = 10;
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
@@ -32,6 +34,14 @@ impl VectorClock {
         entries.insert(vector_clock_id, lamport_clock);
 
         Ok(VectorClock { entries })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 
     pub fn empty() -> Self {
@@ -114,6 +124,32 @@ impl VectorClock {
         }
 
         true
+    }
+
+    pub fn get_shared_clock_ids(&self, other: &HashSet<VectorClockId>) -> HashSet<VectorClockId> {
+        let entry_set = HashSet::from_iter(self.entries.keys().map(ToOwned::to_owned));
+
+        entry_set
+            .intersection(other)
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    pub fn remove_entries(&mut self, allow_list: &[VectorClockId]) {
+        let mut removed_clocks = vec![];
+        self.entries.retain(|clock_id, &mut clock| {
+            let retain = allow_list.contains(clock_id);
+            if !retain {
+                removed_clocks.push((*clock_id, clock));
+            }
+            retain
+        });
+
+        removed_clocks.sort_by(|&(_, clock_a), &(_, clock_b)| clock_a.cmp(&clock_b));
+        // retain some max clocks
+        for (clock_id, clock) in removed_clocks.into_iter().rev().take(CLOCKS_TO_RETAIN) {
+            self.inc_to(clock_id, clock.counter);
+        }
     }
 }
 
