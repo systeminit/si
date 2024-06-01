@@ -86,10 +86,7 @@ async fn import_change_set(
         // This is a hack because the hash of the intrinsics has changed from the version in the
         // packages. We also apply this to si:resourcePayloadToValue since it should be an
         // intrinsic but is only in our packages
-        if func::is_intrinsic(func_spec.name())
-            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
-            || func_spec.is_from_builtin().unwrap_or(false)
-        {
+        if func::is_intrinsic(func_spec.name()) || SPECIAL_CASE_FUNCS.contains(&func_spec.name()) {
             if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
@@ -430,8 +427,8 @@ async fn import_schema(
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let schema_and_category = {
         let mut existing_schema: Option<Schema> = None;
-        if let Some(installed_pkg) = installed_module.clone() {
-            let associated_schemas = installed_pkg.list_associated_schemas(ctx).await?;
+        if installed_module.is_some() {
+            let associated_schemas = Schema::list(ctx).await?;
             let mut maybe_matching_schema: Vec<Schema> = associated_schemas
                 .into_iter()
                 .filter(|s| s.name.clone() == schema_spec.name())
