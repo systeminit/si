@@ -14,6 +14,11 @@ on:
           - sdf
           - veritech
           - web
+      version:
+        type: string
+        required: true
+        description: "version to deploy"
+        default: "stable"
 
 jobs:
   deploy:
@@ -58,7 +63,13 @@ jobs:
             echo "Invalidation of web frontend is complete."
           }
           SERVICE="${{ github.event.inputs.service }}"
+          VERSION="${{ github.event.inputs.version }}"
           if [ "$SERVICE" = "all" ]; then
+            echo "Setting versions to ${VERSION}."
+            aws ssm put-parameter --name "si-tools-version-pinga" --value "$VERSION" --type "String" --overwrite
+            aws ssm put-parameter --name "si-tools-version-rebaser" --value "$VERSION" --type "String" --overwrite
+            aws ssm put-parameter --name "si-tools-version-sdf" --value "$VERSION" --type "String" --overwrite
+            aws ssm put-parameter --name "si-tools-version-veritech" --value "$VERSION" --type "String" --overwrite
             echo "Deploying errything!"
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-pinga
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-rebaser
@@ -71,6 +82,8 @@ jobs:
             aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
             invalidate_distribution E1MTI3007PGD67
           else
+            echo "Setting version to ${VERSION}."
+            aws ssm put-parameter --name "si-tools-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
             echo "Deploying $SERVICE!"
             aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
           fi
