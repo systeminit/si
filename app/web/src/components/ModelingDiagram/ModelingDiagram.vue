@@ -79,8 +79,10 @@ overflow hidden */
             :group="group"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
-            :tempPosition="movedElementPositions[group.uniqueKey]"
-            :tempSize="resizedElementSizes[group.uniqueKey]"
+            :tempPosition="
+              componentsStore.movedElementPositions[group.uniqueKey]
+            "
+            :tempSize="componentsStore.resizedElementSizes[group.uniqueKey]"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
           <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -101,7 +103,9 @@ overflow hidden */
             :isHovered="elementIsHovered(node)"
             :isSelected="elementIsSelected(node)"
             :node="node"
-            :tempPosition="movedElementPositions[node.uniqueKey]"
+            :tempPosition="
+              componentsStore.movedElementPositions[node.uniqueKey]
+            "
             @resize="onNodeLayoutOrLocationChange(node)"
           />
           <DiagramCursor
@@ -124,8 +128,10 @@ overflow hidden */
             v-for="group in groups"
             :key="group.uniqueKey"
             :group="group"
-            :tempPosition="movedElementPositions[group.uniqueKey]"
-            :tempSize="resizedElementSizes[group.uniqueKey]"
+            :tempPosition="
+              componentsStore.movedElementPositions[group.uniqueKey]
+            "
+            :tempSize="componentsStore.resizedElementSizes[group.uniqueKey]"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
 
@@ -240,7 +246,7 @@ import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
   useComponentsStore,
   FullComponent,
-  SingleSetComponentGeometryData,
+  ComponentData,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
@@ -522,7 +528,7 @@ watch(
           height: n.size.height,
         } as Size2D;
       }
-      if (!movedElementPositions[elm.uniqueKey]) {
+      if (!componentsStore.movedElementPositions[elm.uniqueKey]) {
         updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
       }
     });
@@ -592,13 +598,13 @@ watch(
             for (const { componentId, position, size } of positions) {
               const gKey = DiagramGroupData.generateUniqueKey(componentId);
               const nKey = DiagramNodeData.generateUniqueKey(componentId);
-              if (movedElementPositions[gKey]) {
+              if (componentsStore.movedElementPositions[gKey]) {
                 elements.push({
                   uniqueKey: gKey,
                   position,
                   size,
                 } as elementPositionAndSize);
-              } else if (movedElementPositions[nKey]) {
+              } else if (componentsStore.movedElementPositions[nKey]) {
                 elements.push({
                   uniqueKey: nKey,
                   position,
@@ -1280,7 +1286,6 @@ function endDragSelect(doSelection = true) {
  * `movedElementPositions` and `resizedElementSizes` should only be SET via the updateElementPositionAndSize fn
  * You can read from those reactive dictionaries w/o issue
  */
-const movedElementPositions = componentsStore.movedElementPositions;
 const dragElementsActive = ref(false);
 const currentSelectionMovableElements = computed(() => {
   // filter selection for nodes and groups
@@ -1325,12 +1330,12 @@ function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
   */
   _.forEach(e.elements, (e) => {
     if (e.position) {
-      movedElementPositions[e.uniqueKey] = { ...e.position };
+      componentsStore.movedElementPositions[e.uniqueKey] = { ...e.position };
     }
     if (e.size) {
       e.size.height = Math.max(e.size.height, MIN_NODE_DIMENSION);
       e.size.width = Math.max(e.size.width, MIN_NODE_DIMENSION);
-      resizedElementSizes[e.uniqueKey] = { ...e.size };
+      componentsStore.resizedElementSizes[e.uniqueKey] = { ...e.size };
     }
   });
 
@@ -1345,11 +1350,7 @@ function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
 }
 type MoveElementsPayload = {
   // used to send the already existing elements position and size
-  componentData: {
-    key: DiagramElementUniqueKey;
-    detach?: boolean;
-    newParent?: ComponentId;
-  }[];
+  componentData: ComponentData[];
   writeToChangeSet?: boolean;
   broadcastToClients?: boolean;
 };
@@ -1358,33 +1359,9 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
   if (!e.writeToChangeSet && !e.broadcastToClients) return;
   if (!e.componentData) return;
 
-  const componentUpdate: SingleSetComponentGeometryData[] = [];
-  for (const { key, detach, newParent } of e.componentData) {
-    const position = movedElementPositions[key];
-    if (position) {
-      position.x = Math.round(position.x);
-      position.y = Math.round(position.y);
-    }
-    const size = resizedElementSizes[key];
-    if (size) {
-      size.width = Math.round(size.width);
-      size.height = Math.round(size.height);
-    }
-    const componentId = DiagramNodeData.componentIdFromUniqueKey(
-      DiagramGroupData.componentIdFromUniqueKey(key),
-    );
-    if (position && componentId) {
-      componentUpdate.push({
-        geometry: {
-          componentId,
-          position,
-          size,
-        },
-        detach,
-        newParent,
-      });
-    }
-  }
+  const componentUpdate = componentsStore.constructGeometryData(
+    e.componentData,
+  );
 
   if (componentUpdate.length > 0) {
     if (e.writeToChangeSet) {
@@ -1416,7 +1393,9 @@ function beginDragElements() {
 
   draggedElementsPositionsPreDrag.value = _.mapValues(
     allElementsByKey.value,
-    (el) => movedElementPositions[el.uniqueKey] || _.get(el.def, "position"),
+    (el) =>
+      componentsStore.movedElementPositions[el.uniqueKey] ||
+      _.get(el.def, "position"),
   );
 }
 
@@ -1443,7 +1422,7 @@ function endDragElements() {
     currentSelectionMovableElements.value.length === 1;
 
   _.each(currentSelectionMovableElements.value, (el) => {
-    if (!movedElementPositions[el.uniqueKey]) return;
+    if (!componentsStore.movedElementPositions[el.uniqueKey]) return;
     componentData.push({
       key: el.uniqueKey,
       detach,
@@ -1468,10 +1447,11 @@ function endDragElements() {
             // expand me to the inner size of the parent frame
             const fitWithinParent = {
               position:
-                movedElementPositions[newParent.uniqueKey] ??
+                componentsStore.movedElementPositions[newParent.uniqueKey] ??
                 newParent.def.position,
               size:
-                resizedElementSizes[newParent.uniqueKey] ?? newParent.def.size,
+                componentsStore.resizedElementSizes[newParent.uniqueKey] ??
+                newParent.def.size,
             };
             const [position, size] = fitChildInsideParentFrame(
               fitWithinParent.position,
@@ -1792,7 +1772,7 @@ const recursivePositionCompute = (
 ): elementPositionAndSize[] => {
   const elements: elementPositionAndSize[] = [];
   const newPosition = vectorAdd(
-    movedElementPositions[el.uniqueKey] || el.def.position,
+    componentsStore.movedElementPositions[el.uniqueKey] || el.def.position,
     nudgeVector,
   );
   elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
@@ -1845,7 +1825,6 @@ const moveElementsState = computed(() => {
 const resizeElement = ref<DiagramGroupData>();
 const resizeElementActive = computed(() => !!resizeElement.value);
 const resizeElementDirection = ref<SideAndCornerIdentifiers>();
-const resizedElementSizes = componentsStore.resizedElementSizes;
 const resizedElementSizesPreResize = reactive<
   Record<DiagramElementUniqueKey, Size2D>
 >({});
@@ -1854,7 +1833,12 @@ const frameBoundingBoxes = ref<Record<string, IRect>>({});
 
 // Calculate content bounding boxes for every group
 watch(
-  [resizedElementSizes, isMounted, movedElementPositions, stageRef],
+  [
+    componentsStore.resizedElementSizes,
+    isMounted,
+    componentsStore.movedElementPositions,
+    stageRef,
+  ],
   () => {
     if (!kStage) return;
 
@@ -1877,11 +1861,14 @@ watch(
         if (!elShape) continue;
 
         const position =
-          movedElementPositions[child.uniqueKey] ?? child.def.position;
+          componentsStore.movedElementPositions[child.uniqueKey] ??
+          child.def.position;
         let size;
         // if i am not a component, i have a size definition, go find it
         if (child.def.componentType !== ComponentType.Component)
-          size = resizedElementSizes[child.uniqueKey] ?? child.def.size;
+          size =
+            componentsStore.resizedElementSizes[child.uniqueKey] ??
+            child.def.size;
         // if i am a component (or something else broke) use the DOM size data
         if (!size || child.def.componentType === ComponentType.Component) {
           size = { width: elShape.width(), height: elShape.height() };
@@ -1946,10 +1933,10 @@ function beginResizeElement() {
 
   const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
   resizedElementSizesPreResize[resizeTargetKey] =
-    resizedElementSizes[resizeTargetKey] || node.size;
+    componentsStore.resizedElementSizes[resizeTargetKey] || node.size;
 
   draggedElementsPositionsPreDrag.value[resizeTargetKey] =
-    movedElementPositions[resizeTargetKey] || node.position;
+    componentsStore.movedElementPositions[resizeTargetKey] || node.position;
 }
 
 function endResizeElement() {
@@ -1958,8 +1945,8 @@ function endResizeElement() {
   // currently only groups can be resized... this is mostly for TS
   if (!(el instanceof DiagramGroupData)) return;
 
-  const size = resizedElementSizes[el.uniqueKey];
-  const position = movedElementPositions[el.uniqueKey];
+  const size = componentsStore.resizedElementSizes[el.uniqueKey];
+  const position = componentsStore.movedElementPositions[el.uniqueKey];
   if (!size || !position) {
     return;
   }
@@ -2197,7 +2184,8 @@ function onResizeMove() {
     const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
     if (parent && parentShape) {
       const parentPosition =
-        movedElementPositions[parent.uniqueKey] ?? parent.def.position;
+        componentsStore.movedElementPositions[parent.uniqueKey] ??
+        parent.def.position;
 
       const parentContentRect = {
         x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
@@ -2697,7 +2685,7 @@ function getCenterPointOfElement(el: DiagramElementData) {
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
     // TODO: probably want nodes/groups to be able to return their correct center point
     const position = _.clone(
-      movedElementPositions[el.uniqueKey] || el.def.position,
+      componentsStore.movedElementPositions[el.uniqueKey] || el.def.position,
     );
     if (el.def.size) {
       position.y += el.def.size.height / 2;

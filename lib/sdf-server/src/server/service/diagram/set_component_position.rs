@@ -7,6 +7,7 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ulid::Ulid;
 
 use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -25,6 +26,13 @@ pub struct SetComponentPositionRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
     pub data_by_component_id: HashMap<ComponentId, SingleComponentGeometryUpdate>,
+    pub request_ulid: Ulid,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SetComponentPositionResponse {
+    pub request_ulid: Ulid,
 }
 
 pub async fn set_component_position(
@@ -124,5 +132,9 @@ pub async fn set_component_position(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(
+        response.body(serde_json::to_string(&SetComponentPositionResponse {
+            request_ulid: request.request_ulid,
+        })?)?,
+    )
 }

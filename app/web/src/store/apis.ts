@@ -7,7 +7,6 @@ import Axios, {
 import { useToast } from "vue-toastification";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useStatusStore } from "@/store/status.store";
 import { trackEvent } from "@/utils/tracking";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 
@@ -71,14 +70,6 @@ async function handleProxyTimeouts(response: AxiosResponse) {
   return response;
 }
 
-async function handleConflictsFound(error: AxiosError) {
-  if (error?.response?.status === 409) {
-    const statusStore = useStatusStore();
-    statusStore.addConflictFromHttp(JSON.stringify(error?.response?.data));
-  }
-  return Promise.reject(error);
-}
-
 async function handle500(error: AxiosError) {
   const toast = useToast();
   if (error?.response?.status === 500) {
@@ -99,10 +90,7 @@ async function handle500(error: AxiosError) {
 }
 
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts, handle500);
-sdfApiInstance.interceptors.response.use(
-  handleForcedChangesetRedirection,
-  handleConflictsFound,
-);
+sdfApiInstance.interceptors.response.use(handleForcedChangesetRedirection);
 
 export const authApiInstance = Axios.create({
   headers: {

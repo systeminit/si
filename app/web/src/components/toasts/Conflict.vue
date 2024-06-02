@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, VButton } from "@si/vue-lib/design-system";
 import { Conflict } from "@/store/status.store";
 
 const emit = defineEmits<{

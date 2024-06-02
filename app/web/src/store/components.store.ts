@@ -22,11 +22,7 @@ import {
   DiagramSchema,
   DiagramSchemaVariant,
 } from "@/api/sdf/dal/diagram";
-import {
-  ChangeSetId,
-  ChangeStatus,
-  ComponentStats,
-} from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import {
   ComponentDiff,
@@ -40,6 +36,7 @@ import {
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -49,10 +46,14 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
 
+type RequestUlid = string;
+
 export type ComponentNodeId = string;
 type SchemaId = string;
 
 const toast = useToast();
+
+const MAX_RETRIES = 5;
 
 export type FullComponent = RawComponent & {
   // array of parent IDs
@@ -183,6 +184,12 @@ type PendingComponent = {
   componentId?: ComponentId;
 };
 
+export type ComponentData = {
+  key: DiagramElementUniqueKey;
+  detach?: boolean;
+  newParent?: ComponentId;
+};
+
 export const getAssetIcon = (name: string) => {
   const icons = {
     AWS: "logo-aws",
@@ -282,6 +289,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             Vector2d
           >,
           resizedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
+          inflightElementSizes: {} as Record<RequestUlid, ComponentId[]>,
+          // prevents run away retries, unknown what circumstances could lead to this, but protecting ourselves
+          inflightRetryCounter: new DefaultMap<string, number>(() => 0),
         }),
         getters: {
           cachedGeometriesByComponentId(): Record<
@@ -495,6 +505,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 statusIcons,
               };
             });
+          },
+          diagramNodesById(): Record<string, DiagramNodeDef> {
+            const r: Record<string, DiagramNodeDef> = {};
+            for (const node of this.diagramNodes) {
+              r[node.id] = node;
+            }
+            return r;
           },
           modelIsEmpty(): boolean {
             return !this.diagramNodes.length;
@@ -729,6 +746,37 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          constructGeometryData(componentData: ComponentData[]) {
+            const componentUpdate: SingleSetComponentGeometryData[] = [];
+            for (const { key, detach, newParent } of componentData) {
+              const position = this.movedElementPositions[key];
+              if (position) {
+                position.x = Math.round(position.x);
+                position.y = Math.round(position.y);
+              }
+              const size = this.resizedElementSizes[key];
+              if (size) {
+                size.width = Math.round(size.width);
+                size.height = Math.round(size.height);
+              }
+              const componentId = DiagramNodeData.componentIdFromUniqueKey(
+                DiagramGroupData.componentIdFromUniqueKey(key),
+              );
+              if (position && componentId) {
+                componentUpdate.push({
+                  geometry: {
+                    componentId,
+                    position,
+                    size,
+                  },
+                  detach,
+                  newParent,
+                });
+              }
+            }
+            return componentUpdate;
+          },
+
           async SET_COMPONENT_GEOMETRY(
             componentUpdates: SingleSetComponentGeometryData[],
           ) {
@@ -755,7 +803,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             });
 
-            return new ApiRequest<{ componentStats: ComponentStats }>({
+            return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "post",
               url: "diagram/set_component_position",
               params: {
@@ -763,7 +811,74 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 diagramKind: "configuration",
                 ...visibilityParams,
               },
-              optimistic: () => {
+              onFail: (err) => {
+                // only handle conflicts here
+                if (err.response.status !== 409) {
+                  return;
+                }
+                const reqPayload = JSON.parse(err.config.data);
+
+                // are the components that failed currently inflight?
+                // if not, resend their latest data
+                const failed =
+                  this.inflightElementSizes[reqPayload.requestUlid];
+                if (!failed) return;
+                delete this.inflightElementSizes[reqPayload.requestUlid];
+                const all_inflight_components = new Set(
+                  Object.values(this.inflightElementSizes).flat(),
+                );
+
+                const maybe_retry = failed.filter(
+                  (x) => !all_inflight_components.has(x),
+                );
+
+                const prevent = new Set();
+                for (const componentId of maybe_retry) {
+                  const cnt =
+                    (this.inflightRetryCounter.get(componentId) || 0) + 1;
+                  if (cnt > MAX_RETRIES) prevent.add(componentId);
+                  else this.inflightRetryCounter.set(componentId, cnt);
+                }
+
+                if (prevent.size > 0) throw Error("Too many retries");
+
+                const retry = maybe_retry.filter((x) => !prevent.has(x));
+
+                if (retry.length > 0) {
+                  const components = [] as ComponentData[];
+                  for (const componentId of retry) {
+                    const c = this.rawComponentsById[componentId];
+                    if (!c) continue;
+
+                    const node = this.diagramNodesById[c.id];
+                    if (!node) continue;
+
+                    let typedNode: DiagramNodeData | DiagramGroupData;
+                    if (c.componentType === ComponentType.Component) {
+                      typedNode = new DiagramNodeData(node);
+                    } else {
+                      typedNode = new DiagramGroupData(node);
+                    }
+
+                    const newParent = typedNode.def.parentId;
+                    const detach = !newParent;
+                    components.push({
+                      key: typedNode.uniqueKey,
+                      newParent,
+                      detach,
+                    });
+                  }
+                  const payload = this.constructGeometryData(components);
+                  this.SET_COMPONENT_GEOMETRY(payload);
+                }
+              },
+              onSuccess: (response) => {
+                delete this.inflightElementSizes[response.requestUlid];
+              },
+              optimistic: (requestUlid: RequestUlid) => {
+                this.inflightElementSizes[requestUlid] =
+                  Object.keys(dataByComponentId);
+
                 const prevParents: Record<
                   ComponentId,
                   ComponentId | undefined
