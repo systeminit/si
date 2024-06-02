@@ -35,6 +35,8 @@ pub enum ChangeSetError {
     ActionAlreadyEnqueued(ActionPrototypeId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("cannot abandon head change set")]
+    CannotAbandonHead,
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("component error: {0}")]

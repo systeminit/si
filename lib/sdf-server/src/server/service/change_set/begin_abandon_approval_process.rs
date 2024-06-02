@@ -28,6 +28,10 @@ pub async fn begin_abandon_approval_process(
     Json(request): Json<BeginAbandonFlow>,
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
+    if maybe_head_changeset == request.visibility.change_set_id {
+        return Err(ChangeSetError::CannotAbandonHead);
+    }
     let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
