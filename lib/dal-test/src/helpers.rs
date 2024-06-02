@@ -1,6 +1,7 @@
 //! This module contains helpers for use when authoring dal integration tests.
 
 use async_recursion::async_recursion;
+use dal::attribute::value::AttributeValueError;
 use dal::key_pair::KeyPairPk;
 use dal::property_editor::schema::{
     PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
@@ -8,8 +9,8 @@ use dal::property_editor::schema::{
 use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
 use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use dal::{
-    AttributeValue, Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Prop,
-    Schema, SchemaVariant, SchemaVariantId, User, UserClaim, UserPk,
+    AttributeValue, Component, ComponentError, ComponentId, DalContext, InputSocket, KeyPair,
+    OutputSocket, Prop, Schema, SchemaVariant, SchemaVariantId, User, UserClaim, UserPk,
 };
 use itertools::enumerate;
 use jwt_simple::algorithms::RSAKeyPairLike;
@@ -18,6 +19,7 @@ use names::{Generator, Name};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use thiserror::Error;
 
 use crate::jwt_private_signing_key;
 
@@ -25,6 +27,21 @@ mod change_set;
 
 pub use change_set::ChangeSetTestHelpers;
 pub use change_set::ChangeSetTestHelpersError;
+
+#[allow(missing_docs)]
+#[derive(Debug, Error)]
+pub enum DalTestHelpersError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
+    #[error("too many attribute values found")]
+    TooManyAttributeValues,
+    #[error("unexpected empty attribute values found")]
+    UnexpectedEmptyAttributeValues,
+}
+
+type DalTestHelpersResult<T> = Result<T, DalTestHelpersError>;
 
 /// Generates a fake name.
 pub fn generate_fake_name() -> String {
@@ -252,6 +269,31 @@ pub async fn encrypt_message(
         public_key.public_key(),
     );
     crypted
+}
+
+/// Fetches the value stored at "/root/resource/last_synced" for the provided [`Component`].
+pub async fn fetch_resource_last_synced_value(
+    ctx: &DalContext,
+    component_id: ComponentId,
+) -> DalTestHelpersResult<Option<serde_json::Value>> {
+    let mut attribute_value_ids = Component::attribute_values_for_prop_by_id(
+        ctx,
+        component_id,
+        &["root", "resource", "last_synced"],
+    )
+    .await?;
+    let attribute_value_id = attribute_value_ids
+        .pop()
+        .ok_or(DalTestHelpersError::UnexpectedEmptyAttributeValues)?;
+    if !attribute_value_ids.is_empty() {
+        return Err(DalTestHelpersError::TooManyAttributeValues);
+    }
+
+    let last_synced_value = AttributeValue::get_by_id(ctx, attribute_value_id)
+        .await?
+        .view(ctx)
+        .await?;
+    Ok(last_synced_value)
 }
 
 #[allow(missing_docs)]

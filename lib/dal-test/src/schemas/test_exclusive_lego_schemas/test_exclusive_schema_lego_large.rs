@@ -32,7 +32,7 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
             }";
 
     let fn_name = "test:createActionLargeLego";
-    let create_action_func = build_action_func(create_action_code, fn_name).await?;
+    let create_action_func = build_action_func(create_action_code, fn_name)?;
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
@@ -40,13 +40,13 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
             }";
 
     let fn_name = "test:refreshActionLargeLego";
-    let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
+    let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
     let update_action_code = "async function main(component: Input): Promise<Output> {
               return { payload: { \"poonami\": true }, status: \"ok\" };
             }";
     let fn_name = "test:updateActionLargeLego";
-    let update_action_func = build_action_func(update_action_code, fn_name).await?;
+    let update_action_func = build_action_func(update_action_code, fn_name)?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldLargeLegoAsset";
@@ -151,7 +151,7 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
             }";
 
     let fn_name = "test:createActionLargeLego";
-    let create_action_func = build_action_func(create_action_code, fn_name).await?;
+    let create_action_func = build_action_func(create_action_code, fn_name)?;
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
@@ -159,13 +159,13 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
             }";
 
     let fn_name = "test:refreshActionLargeLego";
-    let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
+    let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
     let update_action_code = "async function main(component: Input): Promise<Output> {
               return { payload: { \"poonami\": true }, status: \"ok\" };
             }";
     let fn_name = "test:updateActionLargeLego";
-    let update_action_func = build_action_func(update_action_code, fn_name).await?;
+    let update_action_func = build_action_func(update_action_code, fn_name)?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldLargeLegoAsset";

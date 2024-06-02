@@ -11,49 +11,6 @@ use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
-async fn delete_single_component(
-    ctx: &DalContext,
-    component_id: ComponentId,
-    force_erase: bool,
-    original_uri: &Uri,
-    PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<bool> {
-    let comp = Component::get_by_id(ctx, component_id).await?;
-
-    let id = comp.id();
-    let comp_schema = comp.schema(ctx).await?;
-
-    let component_still_exists = if force_erase {
-        if let Some(parent_id) = Component::get_parent_by_id(ctx, id).await? {
-            for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::upsert_parent(ctx, child_id, parent_id).await?;
-            }
-        }
-
-        Component::remove(ctx, id).await?;
-        false
-    } else {
-        comp.delete(ctx).await?.is_some()
-    };
-
-    track(
-        posthog_client,
-        ctx,
-        original_uri,
-        "delete_component",
-        serde_json::json!({
-            "how": "/diagram/delete_component",
-            "component_id": id,
-            "component_schema_name": comp_schema.name(),
-            "change_set_id": ctx.change_set_id(),
-        }),
-    );
-
-    ctx.commit().await?;
-
-    Ok(component_still_exists)
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteComponentsRequest {
@@ -106,4 +63,47 @@ pub async fn delete_components(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&components)?)?)
+}
+
+async fn delete_single_component(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    force_erase: bool,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): &PosthogClient,
+) -> DiagramResult<bool> {
+    let comp = Component::get_by_id(ctx, component_id).await?;
+
+    let id = comp.id();
+    let comp_schema = comp.schema(ctx).await?;
+
+    let component_still_exists = if force_erase {
+        if let Some(parent_id) = Component::get_parent_by_id(ctx, id).await? {
+            for child_id in Component::get_children_for_id(ctx, id).await? {
+                Frame::upsert_parent(ctx, child_id, parent_id).await?;
+            }
+        }
+
+        Component::remove(ctx, id).await?;
+        false
+    } else {
+        comp.delete(ctx).await?.is_some()
+    };
+
+    track(
+        posthog_client,
+        ctx,
+        original_uri,
+        "delete_component",
+        serde_json::json!({
+            "how": "/diagram/delete_component",
+            "component_id": id,
+            "component_schema_name": comp_schema.name(),
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
+
+    ctx.commit().await?;
+
+    Ok(component_still_exists)
 }

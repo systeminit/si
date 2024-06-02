@@ -67,7 +67,7 @@ async fn get_fallout_module(ctx: &DalContext) {
         assert_eq!("fallout", fallout_module.name());
         assert_eq!("System Initiative", fallout_module.created_by_email());
         assert_eq!("2019-06-03", fallout_module.version());
-        assert_eq!(3, associated_funcs.len());
+        assert_eq!(4, associated_funcs.len());
         assert_eq!(1, associated_schemas.len());
     }
 }

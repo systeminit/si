@@ -31,14 +31,14 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
             }";
 
     let fn_name = "test:createActionSwifty";
-    let create_action_func = build_action_func(create_action_code, fn_name).await?;
+    let create_action_func = build_action_func(create_action_code, fn_name)?;
 
     // Build Update Action Func
     let update_action_code = "async function main(component: Input): Promise<Output> {
               return { payload: { \"poonami\": true }, status: \"ok\" };
             }";
     let fn_name = "test:updateActionSwifty";
-    let update_action_func = build_action_func(update_action_code, fn_name).await?;
+    let update_action_func = build_action_func(update_action_code, fn_name)?;
 
     // Build Delete Action Func
     let delete_action_code = "async function main() {
@@ -46,7 +46,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
             }";
 
     let fn_name = "test:deleteActionSwifty";
-    let delete_action_func = build_action_func(delete_action_code, fn_name).await?;
+    let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
@@ -54,7 +54,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
             }";
 
     let fn_name = "test:refreshActionSwifty";
-    let refresh_action_func = build_action_func(refresh_action_code, fn_name).await?;
+    let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
