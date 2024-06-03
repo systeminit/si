@@ -1464,11 +1464,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             selection: ComponentId | ComponentId[] | null,
             opts?: { toggle?: boolean; detailsTab?: string },
           ) {
+            const key = `${changeSetId}_selected_component`;
             this.selectedEdgeId = null;
             if (!selection || !selection.length) {
               this.selectedComponentIds = [];
               // forget which details tab is active when selection is cleared
               this.selectedComponentDetailsTab = null;
+              if (router.currentRoute.value.name === "workspace-compose")
+                window.localStorage.removeItem(key);
             } else {
               const validSelectionArray = _.reject(
                 _.isArray(selection) ? selection : [selection],
@@ -1485,6 +1488,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             }
             if (opts?.detailsTab) {
               this.selectedComponentDetailsTab = opts.detailsTab;
+            }
+            if (this.selectedComponentIds.length === 1) {
+              const _id = this.selectedComponentIds[0];
+              if (_id) window.localStorage.setItem(key, _id);
             }
             this.syncSelectionIntoUrl();
           },
@@ -1546,6 +1553,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               immediate: true,
             },
           );
+
+          if (router.currentRoute.value.name === "workspace-compose") {
+            const key = `${changeSetId}_selected_component`;
+            const lastId = window.localStorage.getItem(key);
+            window.localStorage.removeItem(key);
+            if (
+              lastId &&
+              Object.values(this.selectedComponentIds).filter(Boolean)
+                .length === 0
+            ) {
+              this.setSelectedComponentId(lastId);
+            }
+          }
 
           // realtime subs
           const realtimeStore = useRealtimeStore();
