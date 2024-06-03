@@ -1,4 +1,5 @@
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
 use dal::component::ComponentGeometry;
 use dal::{
     component::frame::Frame,
@@ -53,7 +54,8 @@ pub async fn set_component_position(
         if update.detach {
             Frame::orphan_child(&ctx, component.id()).await?;
             let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component).await?;
+                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
+                    .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)
@@ -61,7 +63,8 @@ pub async fn set_component_position(
         } else if let Some(new_parent) = update.new_parent {
             Frame::upsert_parent(&ctx, component.id(), new_parent).await?;
             let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component).await?;
+                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
+                    .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)

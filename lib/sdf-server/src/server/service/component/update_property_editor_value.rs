@@ -1,5 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{
     AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Secret,
@@ -86,7 +87,7 @@ pub async fn update_property_editor_value(
     }
 
     let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

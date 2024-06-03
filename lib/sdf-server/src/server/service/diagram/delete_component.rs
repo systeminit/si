@@ -1,5 +1,6 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -70,7 +71,7 @@ pub async fn delete_components(
             // to_delete=True
             let component: Component = Component::get_by_id(&ctx, maybe.id()).await?;
             let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component).await?;
+                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Deleted).await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)

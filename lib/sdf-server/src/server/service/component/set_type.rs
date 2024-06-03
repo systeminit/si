@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 
+use dal::change_status::ChangeStatus;
 use dal::component::ComponentGeometry;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
@@ -52,8 +53,10 @@ pub async fn set_type(
     }
 
     let component = Component::get_by_id(&ctx, component_id).await?;
+    // TODO: We'll want to figure out whether this component is Added/Modified, depending on
+    // whether it existed in the base change set already or not.
     let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component).await?;
+        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

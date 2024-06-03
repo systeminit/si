@@ -5,6 +5,7 @@ use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
 use dal::action::{Action, ActionState};
+use dal::change_status::ChangeStatus;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, SchemaVariant, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -68,7 +69,8 @@ pub async fn upgrade(
     );
 
     let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &upgraded_component).await?;
+        SummaryDiagramComponent::assemble(&ctx, &upgraded_component, ChangeStatus::Unmodified)
+            .await?;
     WsEvent::component_upgraded(&ctx, payload, request.component_id)
         .await?
         .publish_on_commit(&ctx)
