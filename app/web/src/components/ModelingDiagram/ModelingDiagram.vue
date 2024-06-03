@@ -176,6 +176,20 @@ overflow hidden */
               gridPointerPos
             "
           />
+
+          <v-rect
+            v-if="currentSelectionEnclosure"
+            :config="{
+              x: currentSelectionEnclosure.x,
+              y: currentSelectionEnclosure.y,
+              width: currentSelectionEnclosure.width,
+              height: currentSelectionEnclosure.height,
+              fill: SELECTION_BOX_INNER_COLOR,
+              strokeWidth: 1,
+              stroke: SELECTION_COLOR,
+              listening: false,
+            }"
+          />
         </v-layer>
       </v-stage>
 
@@ -2396,28 +2410,92 @@ const pasteElementsActive = computed(() => {
   );
 });
 
+const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
+  const componentIds = componentsStore.selectedComponentIds;
+
+  if (componentIds.length === 0) return;
+
+  let left;
+  let top;
+  let right;
+  let bottom;
+  for (const id of componentIds) {
+    const component = componentsStore.componentsById[id];
+    if (!component) continue;
+
+    const geometry = componentsStore.renderedGeometriesByComponentId[id];
+    if (!geometry) continue;
+
+    const thisBoundaries = {
+      top: geometry.y,
+      bottom: geometry.y + geometry.height,
+      left: geometry.x - geometry.width / 2,
+      right: geometry.x + geometry.width / 2,
+    };
+
+    if (!top || thisBoundaries.top < top) top = thisBoundaries.top;
+    if (!bottom || thisBoundaries.bottom > bottom)
+      bottom = thisBoundaries.bottom;
+    if (!left || thisBoundaries.left < left) left = thisBoundaries.left;
+    if (!right || thisBoundaries.right > right) right = thisBoundaries.right;
+  }
+
+  if (!left || !top || !right || !bottom) return;
+
+  const width = right - left;
+  const height = bottom - top;
+
+  return {
+    x: left,
+    y: top,
+    width,
+    height,
+  };
+});
+
 async function triggerPasteElements() {
   if (!pasteElementsActive.value)
     throw new Error("paste element mode must be active");
-  if (!gridPointerPos.value)
-    throw new Error("Cursor must be in grid to paste element");
+
+  const pasteCenter = gridPointerPos.value;
+  if (!pasteCenter) throw new Error("Cursor must be in grid to paste element");
+
   if (!componentsStore.copyingFrom)
     throw new Error("Copy cursor must be in grid to paste element");
 
+  const selectionEnclosure = currentSelectionEnclosure.value;
+  if (!selectionEnclosure) throw new Error("Couldn't get selection enclosure");
+
+  const selectionCenter = {
+    x: selectionEnclosure.x + selectionEnclosure.width / 2,
+    y: selectionEnclosure.y + selectionEnclosure.height / 2,
+  };
+
   const newParentNodeId =
     allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
-  const copyingFrom = componentsStore.copyingFrom;
-  componentsStore.copyingFrom = null;
 
-  await componentsStore.PASTE_COMPONENTS(
-    componentsStore.selectedComponentIds,
-    {
-      x: gridPointerPos.value.x - copyingFrom.x,
-      y: gridPointerPos.value.y - copyingFrom.y,
-    },
-    gridPointerPos.value,
-    newParentNodeId,
-  );
+  // TODO Constrain enclosure to new parent and calculate by how much to move component to center
+
+  const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
+    const component = componentsStore.componentsById[id];
+    if (!component) throw new Error("Component not found");
+
+    const thisOffset = {
+      x: component.position.x - selectionCenter.x,
+      y: component.position.y - selectionCenter.y,
+    };
+
+    return {
+      id,
+      componentGeometry: {
+        x: (pasteCenter.x + thisOffset.x).toString(),
+        y: (pasteCenter.y + thisOffset.y).toString(),
+      },
+    };
+  });
+
+  componentsStore.copyingFrom = null;
+  await componentsStore.PASTE_COMPONENTS(pasteTargets, newParentNodeId);
 }
 
 // ELEMENT ADDITION
@@ -2430,7 +2508,7 @@ function fitChildInsideParentFrame(
   size: Size2D,
 ): [Vector2d, Size2D] {
   // position the component within its parent cleanly
-  const HEADER_SIZE = 60; // The height of the compoennt header bar; TODO find a better way to detect this
+  const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
   // there is headerTextHeight.value, but we don't have it because the component doesn't exist yet
   const DEFAULT_GUTTER_SIZE = 10; // leaving room for sockets
   const createAtPosition = { ...position };

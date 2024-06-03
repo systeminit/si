@@ -37,6 +37,10 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { DefaultMap } from "@/utils/defaultmap";
+import {
+  GROUP_DEFAULT_HEIGHT,
+  GROUP_DEFAULT_WIDTH,
+} from "@/components/ModelingDiagram/diagram_constants";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -289,38 +293,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             Vector2d
           >,
           resizedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
+          renderedNodeSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
           inflightElementSizes: {} as Record<RequestUlid, ComponentId[]>,
           // prevents run away retries, unknown what circumstances could lead to this, but protecting ourselves
           inflightRetryCounter: new DefaultMap<string, number>(() => 0),
         }),
         getters: {
-          cachedGeometriesByComponentId(): Record<
-            ComponentId,
-            Vector2d & Partial<Size2D>
-          > {
-            const dictionary: Record<ComponentId, Vector2d & Partial<Size2D>> =
-              {};
-
-            _.forEach(this.componentsById, (c) => {
-              let uniqueKey;
-              if (c.componentType === ComponentType.Component) {
-                uniqueKey = DiagramNodeData.generateUniqueKey(c.id);
-              } else {
-                uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
-              }
-
-              const position = this.movedElementPositions[uniqueKey];
-              if (!position) return;
-              const size = this.resizedElementSizes[uniqueKey];
-
-              dictionary[c.id] = {
-                ...position,
-                ...size,
-              };
-            });
-
-            return dictionary;
-          },
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
           selectedComponentId: (state) => {
@@ -513,6 +491,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             }
             return r;
           },
+
           modelIsEmpty(): boolean {
             return !this.diagramNodes.length;
           },
@@ -659,6 +638,46 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             // all other subtabs (currently) are in the component tab
             return ["component", slug];
+          },
+
+          // The following getters use reported back from the diagram. Don't use to render the diagram.
+          // TODO Move these to a diagram stores
+          renderedGeometriesByComponentId(): Record<
+            ComponentId,
+            Vector2d & Size2D
+          > {
+            const dictionary: Record<ComponentId, Vector2d & Size2D> = {};
+
+            _.forEach(this.componentsById, (c) => {
+              let uniqueKey: DiagramElementUniqueKey;
+              let size: Size2D;
+              if (c.isGroup) {
+                uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
+                size = this.resizedElementSizes[uniqueKey] ??
+                  c.size ?? {
+                    width: GROUP_DEFAULT_WIDTH,
+                    height: GROUP_DEFAULT_HEIGHT,
+                  };
+              } else {
+                uniqueKey = DiagramNodeData.generateUniqueKey(c.id);
+
+                const renderedSize = this.renderedNodeSizes[uniqueKey];
+
+                if (!renderedSize) return;
+
+                size = renderedSize;
+              }
+
+              const position =
+                this.movedElementPositions[uniqueKey] ?? c.position;
+
+              dictionary[c.id] = {
+                ...position,
+                ...size,
+              };
+            });
+
+            return dictionary;
           },
         },
         actions: {
@@ -1280,9 +1299,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async PASTE_COMPONENTS(
-            componentIds: ComponentId[],
-            offset: { x: number; y: number },
-            position: { x: number; y: number },
+            components: {
+              id: ComponentId;
+              componentGeometry: APIComponentGeometry;
+            }[],
             newParentNodeId?: ComponentNodeId,
           ) {
             if (changeSetsStore.creatingChangeSet)
@@ -1290,33 +1310,60 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const tempInsertId = _.uniqueId("temp-insert-component");
+            if (components.length === 0) return;
 
+            const tempInserts = _.map(components, (c) => ({
+              id: _.uniqueId("temp-insert-component"),
+              position: {
+                x: parseInt(c.componentGeometry.x),
+                y: parseInt(c.componentGeometry.y),
+              },
+            }));
+
+            for (const { id: tempId, position } of tempInserts) {
+              this.pendingInsertedComponents[tempId] = {
+                tempId,
+                position,
+              };
+            }
+
+            // setTimeout(() => {
+            //   for (const { id } of tempInserts) {
+            //     delete this.pendingInsertedComponents[id];
+            //   }
+            // }, 3000);
+            //
+            // return;
+            //
             return new ApiRequest<{
               id: string;
             }>({
               method: "post",
               url: "diagram/paste_components",
-              keyRequestStatusBy: componentIds,
+              keyRequestStatusBy: components.map((c) => c.id),
               params: {
-                componentIds,
-                offsetX: offset.x,
-                offsetY: offset.y,
+                components,
                 newParentNodeId,
                 ...visibilityParams,
               },
               optimistic: () => {
-                this.pendingInsertedComponents[tempInsertId] = {
-                  tempId: tempInsertId,
-                  position,
-                };
+                for (const { id: tempId, position } of tempInserts) {
+                  this.pendingInsertedComponents[tempId] = {
+                    tempId,
+                    position,
+                  };
+                }
 
                 return () => {
-                  delete this.pendingInsertedComponents[tempInsertId];
+                  for (const { id } of tempInserts) {
+                    delete this.pendingInsertedComponents[id];
+                  }
                 };
               },
               onSuccess: () => {
-                delete this.pendingInsertedComponents[tempInsertId];
+                for (const { id } of tempInserts) {
+                  delete this.pendingInsertedComponents[id];
+                }
               },
             });
           },

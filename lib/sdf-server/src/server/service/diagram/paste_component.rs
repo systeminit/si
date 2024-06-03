@@ -1,5 +1,6 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
+use dal::component::ComponentGeometry;
 use dal::{component::frame::Frame, ChangeSet, Component, ComponentId, DalContext, Visibility};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,13 +13,12 @@ use crate::server::tracking::track;
 async fn paste_single_component(
     ctx: &DalContext,
     component_id: ComponentId,
-    offset_x: f64,
-    offset_y: f64,
+    component_geometry: ComponentGeometry,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<Component> {
     let original_comp = Component::get_by_id(ctx, component_id).await?;
-    let pasted_comp = original_comp.copy_paste(ctx, (offset_x, offset_y)).await?;
+    let pasted_comp = original_comp.copy_paste(ctx, component_geometry).await?;
 
     let schema = pasted_comp.schema(ctx).await?;
     track(
@@ -38,10 +38,15 @@ async fn paste_single_component(
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PasteSingleComponentPayload {
+    id: ComponentId,
+    component_geometry: ComponentGeometry,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PasteComponentsRequest {
-    pub component_ids: Vec<ComponentId>,
-    pub offset_x: f64,
-    pub offset_y: f64,
+    pub components: Vec<PasteSingleComponentPayload>,
     pub new_parent_node_id: Option<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -60,13 +65,14 @@ pub async fn paste_components(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let mut pasted_components_by_original = HashMap::new();
-    for component_id in &request.component_ids {
+    for component_payload in &request.components {
+        let component_id = component_payload.id;
+
         let posthog_client = PosthogClient(posthog_client.clone());
         let pasted_comp = paste_single_component(
             &ctx,
-            *component_id,
-            request.offset_x,
-            request.offset_y,
+            component_id,
+            component_payload.component_geometry.clone(),
             &original_uri,
             &posthog_client,
         )
@@ -75,14 +81,16 @@ pub async fn paste_components(
         pasted_components_by_original.insert(component_id, pasted_comp);
     }
 
-    for component_id in &request.component_ids {
+    for component_payload in &request.components {
+        let component_id = component_payload.id;
+
         let pasted_component =
             if let Some(component) = pasted_components_by_original.get(&component_id) {
                 component
             } else {
                 return Err(DiagramError::Paste);
             };
-        let component = Component::get_by_id(&ctx, *component_id).await?;
+        let component = Component::get_by_id(&ctx, component_id).await?;
 
         // If component parent was also pasted on this batch, keep relationship between new components
         if let Some(parent_id) = component.parent(&ctx).await? {

@@ -261,7 +261,7 @@ impl From<Component> for ComponentContentV1 {
 }
 
 // Used to transfer the size and position of a component
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ComponentGeometry {
     pub x: String,
     pub y: String,
@@ -2004,7 +2004,11 @@ impl Component {
         Ok(results)
     }
 
-    pub async fn copy_paste(&self, ctx: &DalContext, offset: (f64, f64)) -> ComponentResult<Self> {
+    pub async fn copy_paste(
+        &self,
+        ctx: &DalContext,
+        component_geometry: ComponentGeometry,
+    ) -> ComponentResult<Self> {
         let schema_variant = self.schema_variant(ctx).await?;
 
         let mut pasted_comp = Component::new(
@@ -2014,15 +2018,13 @@ impl Component {
         )
         .await?;
 
-        let x: f64 = self.x().parse()?;
-        let y: f64 = self.y().parse()?;
         pasted_comp
             .set_geometry(
                 ctx,
-                (x + offset.0).to_string(),
-                (y + offset.1).to_string(),
-                self.width(),
-                self.height(),
+                component_geometry.x,
+                component_geometry.y,
+                component_geometry.width,
+                component_geometry.height,
             )
             .await?;
 
