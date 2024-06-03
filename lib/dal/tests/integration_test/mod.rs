@@ -10,6 +10,7 @@ mod frame;
 mod func;
 mod input_sources;
 mod module;
+mod pkg;
 mod prop;
 mod property_editor;
 mod qualifications;
