@@ -26,7 +26,9 @@
             />
             <p v-if="numConflicts > 0" class="grow py-md">
               Your changes have produced
-              {{ numConflicts }} conflict(s). Retry them below:
+              <strong class="underline">{{ numConflicts }} conflict(s)</strong>.
+              These changes have not been applied. If necessary, retry them
+              below:
             </p>
             <p v-else>No more conflicts!</p>
           </div>
