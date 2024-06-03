@@ -15,7 +15,7 @@ pub enum VectorClockError {
     LamportClock(#[from] LamportClockError),
 }
 
-const CLOCKS_TO_RETAIN: usize = 10;
+const CLOCKS_TO_RETAIN: usize = 7;
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
@@ -81,13 +81,8 @@ impl VectorClock {
     }
 
     /// Add all entries in `other` to `self`, taking the most recent value if the entry already
-    /// exists in `self`, then increment the entry for [`VectorClockId`] (adding one if it is not
-    /// already there).
-    pub fn merge(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        other: &VectorClock,
-    ) -> VectorClockResult<()> {
+    /// exists in `self`.
+    pub fn merge(&mut self, other: &VectorClock) -> VectorClockResult<()> {
         for (other_vector_clock_id, other_lamport_clock) in other.entries.iter() {
             if let Some(lamport_clock) = self.entries.get_mut(other_vector_clock_id) {
                 lamport_clock.merge(other_lamport_clock);
@@ -96,7 +91,6 @@ impl VectorClock {
                     .insert(*other_vector_clock_id, *other_lamport_clock);
             }
         }
-        self.inc(vector_clock_id)?;
 
         Ok(())
     }
