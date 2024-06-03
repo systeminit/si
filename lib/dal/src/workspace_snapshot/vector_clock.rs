@@ -15,7 +15,7 @@ pub enum VectorClockError {
     LamportClock(#[from] LamportClockError),
 }
 
-const CLOCKS_TO_RETAIN: usize = 7;
+const CLOCKS_TO_RETAIN: usize = 10;
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
