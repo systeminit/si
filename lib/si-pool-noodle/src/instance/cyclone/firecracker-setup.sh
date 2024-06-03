@@ -129,19 +129,20 @@ execute_configuration_management() {
         curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/stop.sh > ./stop.sh
         curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/prepare_jailer.sh > ./prepare_jailer.sh
 
+        arch=$(uname -m)
         # Remainder of the binaries
         # TODO(scott): perform some kind of check to decide if we should
         # download these or not to avoid long downloads if we can.
         if $DOWNLOAD_ROOTFS; then
-          wget https://artifacts.systeminit.com/cyclone/stable/rootfs/linux/$(uname -m)/cyclone-stable-rootfs-linux-$(uname -m).ext4 -O ./rootfs.ext4
+          wget https://artifacts.systeminit.com/cyclone/stable/rootfs/linux/${arch}/cyclone-stable-rootfs-linux-${arch}.ext4 -O ./rootfs.ext4
         fi
 
         if $DOWNLOAD_KERNEL; then
-          wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
+          wget https://artifacts.systeminit.com/firecracker/latest/${arch}/image-kernel.bin -O ./image-kernel.bin
         fi
 
-        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/firecracker -O ./firecracker
-        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/jailer -O ./jailer
+        wget https://artifacts.systeminit.com/firecracker/latest/${arch}/firecracker -O ./firecracker
+        wget https://artifacts.systeminit.com/firecracker/latest/${arch}/jailer -O ./jailer
 
         # Create a device mapped to the rootfs file of the size of the file.
         # This lets us then create another device that is that size plus 5gb
