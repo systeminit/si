@@ -325,34 +325,19 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
-        let open_change_set_clock_ids: Vec<VectorClockId> = ChangeSet::list_open(ctx)
-            .await?
-            .into_iter()
-            .map(|cs| cs.id.into_inner().into())
-            .chain([vector_clock_id])
-            .collect();
-
         // Pull out the working copy and clean it up.
         let new_address = {
-            let self_clone = self.clone();
-            tokio::task::spawn_blocking(move || {
-                let mut working_copy = executor::block_on(self_clone.working_copy_mut());
-                working_copy.cleanup();
+            let mut working_copy = self.working_copy_mut().await;
+            working_copy.cleanup();
 
-                working_copy.remove_vector_clock_entries(&open_change_set_clock_ids);
-
-                // Mark everything left as seen.
-                working_copy.mark_graph_seen(vector_clock_id)?;
-
-                Ok::<(), WorkspaceSnapshotGraphError>(())
-            })
-            .await??;
+            // Mark everything left as seen.
+            working_copy.mark_graph_seen(vector_clock_id)?;
 
             let (new_address, _) = ctx
                 .layer_db()
                 .workspace_snapshot()
                 .write(
-                    Arc::new(self.working_copy().await.clone()),
+                    Arc::new(working_copy.clone()),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),

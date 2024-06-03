@@ -524,15 +524,6 @@ impl WorkspaceSnapshotGraph {
         Ok(source)
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
-        for edge in self.graph.edge_weights_mut() {
-            edge.remove_vector_clock_entries(allow_list);
-        }
-        for node in self.graph.node_weights_mut() {
-            node.remove_vector_clock_entries(allow_list);
-        }
-    }
-
     pub fn cleanup(&mut self) {
         let start = tokio::time::Instant::now();
 
@@ -916,11 +907,6 @@ impl WorkspaceSnapshotGraph {
                                     id: onto_node_weight.id().into(),
                                     node_weight_kind: onto_node_weight.into(),
                                 };
-
-                                dbg!(
-                                    onto_node_weight.vector_clock_write(),
-                                    to_rebase_node_weight.vector_clock_write()
-                                );
 
                                 conflicts.push(Conflict::NodeContent {
                                     to_rebase: to_rebase_node_information,

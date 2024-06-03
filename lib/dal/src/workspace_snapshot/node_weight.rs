@@ -526,62 +526,6 @@ impl NodeWeight {
         }
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => {
-                weight.vector_clock_recently_seen_mut()
-            }
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_recently_seen_mut(),
-        }
-        .remove_entries(allow_list);
-
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_first_seen_mut(),
-        }
-        .remove_entries(allow_list);
-
-        let vector_clock_write_mut = match self {
-            NodeWeight::Action(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_write_mut(),
-        };
-
-        vector_clock_write_mut.remove_entries(allow_list);
-    }
-
     /// Many node kinds need to have complete control of their outgoing edges
     /// relative to another changeset in order to have a correctly constructed
     /// graph. For example, only one set of children of a given attribute value
