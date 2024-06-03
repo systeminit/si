@@ -1523,7 +1523,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<()> {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
-            let mut node_weight_to_copy = other.get_node_weight(node_index_to_copy)?.clone();
+            let node_weight_to_copy = other.get_node_weight(node_index_to_copy)?.clone();
             let node_weight_id = node_weight_to_copy.id();
             let node_weight_lineage_id = node_weight_to_copy.lineage_id();
 
@@ -1532,15 +1532,13 @@ impl WorkspaceSnapshotGraph {
             let node_index = if let Some(equivalent_node_index) =
                 self.find_equivalent_node(node_weight_id, node_weight_lineage_id)?
             {
-                let equivalent_node_weight = self.get_node_weight_mut(equivalent_node_index)?;
+                let equivalent_node_weight = self.get_node_weight(equivalent_node_index)?;
                 if equivalent_node_weight
                     .vector_clock_write()
                     .is_newer_than(node_weight_to_copy.vector_clock_write())
                 {
-                    equivalent_node_weight.merge_clocks(&node_weight_to_copy)?;
                     equivalent_node_index
                 } else {
-                    node_weight_to_copy.merge_clocks(equivalent_node_weight)?;
                     let new_node_index = self.add_node(node_weight_to_copy)?;
 
                     self.replace_references(equivalent_node_index)?;

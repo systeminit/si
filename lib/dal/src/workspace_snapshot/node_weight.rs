@@ -228,50 +228,54 @@ impl NodeWeight {
         }
     }
 
-    pub fn merge_clocks(&mut self, other: &NodeWeight) -> NodeWeightResult<()> {
+    pub fn merge_clocks(
+        &mut self,
+        change_set: &ChangeSet,
+        other: &NodeWeight,
+    ) -> NodeWeightResult<()> {
         match (self, other) {
             (NodeWeight::Action(self_weight), NodeWeight::Action(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (
                 NodeWeight::ActionPrototype(self_weight),
                 NodeWeight::ActionPrototype(other_weight),
-            ) => self_weight.merge_clocks(other_weight),
+            ) => self_weight.merge_clocks(change_set, other_weight),
             (
                 NodeWeight::AttributePrototypeArgument(self_weight),
                 NodeWeight::AttributePrototypeArgument(other_weight),
-            ) => self_weight.merge_clocks(other_weight),
+            ) => self_weight.merge_clocks(change_set, other_weight),
             (NodeWeight::AttributeValue(self_weight), NodeWeight::AttributeValue(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Category(self_weight), NodeWeight::Category(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Component(self_weight), NodeWeight::Component(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Content(self_weight), NodeWeight::Content(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Func(self_weight), NodeWeight::Func(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::FuncArgument(self_weight), NodeWeight::FuncArgument(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Ordering(self_weight), NodeWeight::Ordering(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Prop(self_weight), NodeWeight::Prop(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (NodeWeight::Secret(self_weight), NodeWeight::Secret(other_weight)) => {
-                self_weight.merge_clocks(other_weight)
+                self_weight.merge_clocks(change_set, other_weight)
             }
             (
                 NodeWeight::DependentValueRoot(self_weight),
                 NodeWeight::DependentValueRoot(other_weight),
-            ) => self_weight.merge_clocks(other_weight),
+            ) => self_weight.merge_clocks(change_set, other_weight),
             _ => Err(NodeWeightError::IncompatibleNodeWeightVariants),
         }
     }
