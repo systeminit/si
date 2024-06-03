@@ -102,15 +102,12 @@ impl ActionPrototypeNodeWeight {
         }
     }
 
-    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .merge(change_set.vector_clock_id(), &other.vector_clock_write)?;
+    pub fn merge_clocks(&mut self, other: &Self) -> NodeWeightResult<()> {
+        self.vector_clock_write.merge(&other.vector_clock_write)?;
         self.vector_clock_first_seen
-            .merge(change_set.vector_clock_id(), &other.vector_clock_first_seen)?;
-        self.vector_clock_recently_seen.merge(
-            change_set.vector_clock_id(),
-            &other.vector_clock_recently_seen,
-        )?;
+            .merge(&other.vector_clock_first_seen)?;
+        self.vector_clock_recently_seen
+            .merge(&other.vector_clock_recently_seen)?;
 
         Ok(())
     }
