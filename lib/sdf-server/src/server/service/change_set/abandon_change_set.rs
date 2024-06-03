@@ -28,10 +28,14 @@ pub async fn abandon_change_set(
     Json(request): Json<AbandonChangeSetRequest>,
 ) -> ChangeSetResult<()> {
     let mut ctx = builder.build_head(access_builder).await?;
-
+    let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
+    if maybe_head_changeset == request.change_set_id {
+        return Err(ChangeSetError::CannotAbandonHead);
+    }
     let mut change_set = ChangeSet::find(&ctx, request.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
+
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
         .await?;
     change_set.abandon(&ctx).await?;
