@@ -163,18 +163,6 @@ impl ActionPrototypeNodeWeight {
         &self.vector_clock_write
     }
 
-    pub fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    pub fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[EdgeWeightKindDiscriminants::Use]
     }
