@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -39,7 +38,8 @@ pub enum FrameError {
     #[error("WsEvent error: {0}")]
     WsEvent(#[from] WsEventError),
 }
-#[derive(Eq, Hash, PartialEq, Copy, Clone)]
+
+#[derive(Debug, Eq, Hash, PartialEq, Copy, Clone)]
 struct SocketAttributeValuePair {
     input_socket_match: InputSocketMatch,
     output_socket_match: OutputSocketMatch,
@@ -59,6 +59,7 @@ impl Frame {
         }
         Ok(())
     }
+
     /// Provides the ability to attach or replace a child [`Component`]'s parent
     #[instrument(level = "info", skip(ctx))]
     pub async fn upsert_parent(
@@ -86,6 +87,7 @@ impl Frame {
         }
         Ok(())
     }
+
     #[instrument(level = "info", skip(ctx))]
     async fn attach_child_to_parent_inner(
         ctx: &DalContext,
@@ -120,6 +122,7 @@ impl Frame {
         );
         let mut values_to_run: HashSet<SocketAttributeValuePair> = HashSet::new();
         let current_impacted_values = Self::get_impacted_connections(ctx, child_id).await?;
+
         // if an input socket + output socket is in both sets, we don't need to rerun it
         values_to_run.extend(
             cached_impacted_values
@@ -156,6 +159,7 @@ impl Frame {
 
         Ok(())
     }
+
     async fn detach_child_from_parent_inner(
         ctx: &DalContext,
         parent_id: ComponentId,
@@ -191,75 +195,75 @@ impl Frame {
         Ok(())
     }
 
-    /// For a given component, get all of the input sockets
-    /// that have an inferred connection and for every output socket, get all
-    /// downstream input sockets that have an inferred connection to it
-    /// if this component is a down frame, need to grab all descendants and also see who was/is impacted.
-    /// if this component is an up frame, need to grab all ascendants and also see who was/is imapcted.
+    /// For a given [`Component`], find all input sockets that have an inferred connection. For
+    /// every output socket, get all downstream input sockets that have an inferred connection to
+    /// the provided [`Component`].
     async fn get_impacted_connections(
         ctx: &DalContext,
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
-        let mut work_queue = VecDeque::new();
         let mut input_map: HashMap<InputSocketMatch, Vec<OutputSocketMatch>> = HashMap::new();
         let mut output_map: HashMap<OutputSocketMatch, Vec<InputSocketMatch>> = HashMap::new();
-
-        // if this component is a down frame, grab all descendants and add them to the work queue.
-        // if this component is an up frame, grab all ascendants and add them to the work queue.
         let mut impacted_connections = HashSet::new();
 
-        match Component::get_type_by_id(ctx, child_id).await? {
-            ComponentType::ConfigurationFrameDown => {
-                let children = Component::get_children_for_id(ctx, child_id).await?;
-                for child in children {
-                    work_queue.push_front(child);
-                }
-                while let Some(child) = work_queue.pop_front() {
-                    let input =
-                        Component::build_map_for_component_id_inferred_incoming_connections(
-                            ctx, child,
-                        )
-                        .await?;
-                    input_map.extend(input);
-                    let output =
-                        Component::build_map_for_component_id_inferred_outgoing_connections(
-                            ctx, child,
-                        )
-                        .await?;
-                    output_map.extend(output);
+        // Determine whether we should check descendants and/or ascendants based on the component
+        // type.
+        let (check_descendants, check_ascendants) =
+            match Component::get_type_by_id(ctx, child_id).await? {
+                ComponentType::AggregationFrame => (false, false),
+                ComponentType::Component => (false, true),
+                ComponentType::ConfigurationFrameDown => (true, true),
+                ComponentType::ConfigurationFrameUp => (true, true),
+            };
 
-                    let _ = Component::get_children_for_id(ctx, child)
-                        .await?
-                        .into_iter()
-                        .map(|comp| work_queue.push_back(comp));
-                }
-            }
-            ComponentType::ConfigurationFrameUp => {
-                if let Some(parent) = Component::get_parent_by_id(ctx, child_id).await? {
-                    work_queue.push_front(parent);
-                }
+        // Grab all descendants and see who is impacted.
+        if check_descendants {
+            let mut work_queue = VecDeque::new();
+            let children = Component::get_children_for_id(ctx, child_id).await?;
+            work_queue.extend(children);
 
-                while let Some(parent) = work_queue.pop_front() {
-                    let input =
-                        Component::build_map_for_component_id_inferred_incoming_connections(
-                            ctx, parent,
-                        )
+            while let Some(child) = work_queue.pop_front() {
+                let input =
+                    Component::build_map_for_component_id_inferred_incoming_connections(ctx, child)
                         .await?;
-                    input_map.extend(input);
-                    let output =
-                        Component::build_map_for_component_id_inferred_outgoing_connections(
-                            ctx, parent,
-                        )
+                input_map.extend(input);
+                let output =
+                    Component::build_map_for_component_id_inferred_outgoing_connections(ctx, child)
                         .await?;
-                    output_map.extend(output);
-                    if let Some(grandparent) = Component::get_parent_by_id(ctx, parent).await? {
-                        work_queue.push_back(grandparent);
-                    }
-                }
+                output_map.extend(output);
+
+                let _ = Component::get_children_for_id(ctx, child)
+                    .await?
+                    .into_iter()
+                    .map(|comp| work_queue.push_back(comp));
             }
-            _ => {} // Aggregation Frames and Components we don't need to traverse for
         }
 
+        // Grab all ascendants and see who is impacted.
+        if check_ascendants {
+            let mut work_queue = VecDeque::new();
+            if let Some(parent) = Component::get_parent_by_id(ctx, child_id).await? {
+                work_queue.push_front(parent);
+            }
+
+            while let Some(parent) = work_queue.pop_front() {
+                let input = Component::build_map_for_component_id_inferred_incoming_connections(
+                    ctx, parent,
+                )
+                .await?;
+                input_map.extend(input);
+                let output = Component::build_map_for_component_id_inferred_outgoing_connections(
+                    ctx, parent,
+                )
+                .await?;
+                output_map.extend(output);
+                if let Some(grandparent) = Component::get_parent_by_id(ctx, parent).await? {
+                    work_queue.push_back(grandparent);
+                }
+            }
+        }
+
+        // Check inferred outgoing and incoming connections.
         let input: HashMap<InputSocketMatch, Vec<OutputSocketMatch>> =
             Component::build_map_for_component_id_inferred_incoming_connections(ctx, child_id)
                 .await?;
@@ -269,6 +273,7 @@ impl Frame {
                 .await?;
         output_map.extend(output);
 
+        // Process everything collecting in the input map and output map.
         for (input_socket, output_sockets) in input_map.into_iter() {
             for output_socket in output_sockets {
                 impacted_connections.insert(SocketAttributeValuePair {
@@ -288,11 +293,4 @@ impl Frame {
 
         Ok(impacted_connections)
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct InferredConnection {
-    pub input_socket_match: InputSocketMatch,
-    pub output_socket_match: OutputSocketMatch,
 }

@@ -1,3 +1,9 @@
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_large_even_lego;
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_large_odd_lego;
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_medium_even_lego;
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_medium_odd_lego;
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_small_even_lego;
+pub(crate) use test_exclusive_lego_schemas::migrate_test_exclusive_schema_small_odd_lego;
 pub(crate) use test_exclusive_schema_category_pirate::migrate_test_exclusive_schema_pet_shop;
 pub(crate) use test_exclusive_schema_category_pirate::migrate_test_exclusive_schema_pirate;
 pub(crate) use test_exclusive_schema_category_validated::migrate_test_exclusive_schema_bad_validations;
@@ -6,12 +12,6 @@ pub(crate) use test_exclusive_schema_category_validated::migrate_test_exclusive_
 pub(crate) use test_exclusive_schema_dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 pub(crate) use test_exclusive_schema_fallout::migrate_test_exclusive_schema_fallout;
 pub(crate) use test_exclusive_schema_katy_perry::migrate_test_exclusive_schema_katy_perry;
-pub(crate) use test_exclusive_schema_lego_large::migrate_test_exclusive_schema_large_even_lego;
-pub(crate) use test_exclusive_schema_lego_large::migrate_test_exclusive_schema_large_odd_lego;
-pub(crate) use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_medium_even_lego;
-pub(crate) use test_exclusive_schema_lego_medium::migrate_test_exclusive_schema_medium_odd_lego;
-pub(crate) use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_even_lego;
-pub(crate) use test_exclusive_schema_lego_small::migrate_test_exclusive_schema_small_odd_lego;
 pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_etoiles;
 pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_morningstar;
 pub(crate) use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield;
@@ -21,13 +21,11 @@ const PKG_VERSION: &str = "2019-06-03";
 const PKG_CREATED_BY: &str = "System Initiative";
 
 mod schema_helpers;
+mod test_exclusive_lego_schemas;
 mod test_exclusive_schema_category_pirate;
 mod test_exclusive_schema_category_validated;
 mod test_exclusive_schema_dummy_secret;
 mod test_exclusive_schema_fallout;
 mod test_exclusive_schema_katy_perry;
-mod test_exclusive_schema_lego_large;
-mod test_exclusive_schema_lego_medium;
-mod test_exclusive_schema_lego_small;
 mod test_exclusive_schema_starfield;
 mod test_exclusive_schema_swifty;

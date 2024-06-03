@@ -12,6 +12,8 @@ use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
+mod omega_nesting;
+
 #[test]
 async fn frames_and_connections(ctx: &mut DalContext) {
     //create 1 components and draw edges to another 1
@@ -84,6 +86,7 @@ async fn frames_and_connections(ctx: &mut DalContext) {
         input_value, // actual
     );
 }
+
 #[test]
 async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) {
     let starfield_schema = Schema::find_by_name(ctx, "starfield")
@@ -793,6 +796,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     assert_eq!(input_value, serde_json::json!("5"));
 }
+
 #[test]
 async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     // this is the inverse of the down_frame_moving_deeply_nested_frames test (using up frames vs. down frames)
@@ -1089,6 +1093,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("4"));
 }
+
 #[test]
 async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     let even_component = create_component_for_schema_name(ctx, "small even lego", "even").await;
@@ -1813,6 +1818,7 @@ impl DiagramByKey {
 
         Ok(Self { components, edges })
     }
+
     pub fn get_all_inferred_edges(&self) -> Vec<SummaryDiagramInferredEdge> {
         let mut all = vec![];
         for component in self.components.values() {

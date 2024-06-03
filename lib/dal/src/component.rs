@@ -318,14 +318,14 @@ impl Component {
     }
 
     pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
-        let schema_variant_id = Self::schema_variant_id(ctx, self.id()).await?;
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
 
         let root_value_ids = Prop::attribute_values_for_prop_id(ctx, root_prop_id).await?;
         for value_id in root_value_ids {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
-            if value_component_id == self.id() {
+            if value_component_id == self.id {
                 let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
                 return Ok(root_value.view(ctx).await?);
             }
@@ -2056,6 +2056,7 @@ impl Component {
         );
         Ok(results)
     }
+
     /// For a given [`ComponentId`], map each output socket to the inferred input sockets
     /// it is connected to. Inferred socket connections are determined by following the
     /// lineage of Frame Contains edges and matching relevant output to input sockets.
@@ -2083,6 +2084,7 @@ impl Component {
         );
         Ok(results)
     }
+
     /// For a given [`InputSocketMatch`], find the inferred [`OutputSocketMatch`]es that are driving it
     /// if it exists. This walks up or down the component lineage tree depending on the [`ComponentType`]
     /// and finds the closest matching [`OutputSocket`]
@@ -2096,14 +2098,13 @@ impl Component {
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
     ) -> ComponentResult<Vec<OutputSocketMatch>> {
-        let mut destination_sockets = vec![];
         if InputSocket::is_manually_configured(ctx, input_socket_match).await? {
             //if the input socket is being manually driven (the user has drawn an edge)
             // there will be no inferred connections to it
-            return Ok(destination_sockets);
+            return Ok(Vec::new());
         }
 
-        destination_sockets =
+        let destination_sockets =
             match Component::get_type_by_id(ctx, input_socket_match.component_id).await? {
                 ComponentType::Component | ComponentType::ConfigurationFrameDown => {
                     //For a component, or a down frame, check my parents and other ancestors
@@ -2148,6 +2149,7 @@ impl Component {
 
         Ok(destination_sockets)
     }
+
     /// Walk down the component lineage to find all matching input sockets that a given output
     /// socket is driving
     ///
