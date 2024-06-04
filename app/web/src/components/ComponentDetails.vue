@@ -146,7 +146,7 @@
           </TabGroupItem>
           <TabGroupItem slug="actions">
             <template #label>
-              <Inline noWrap>
+              <Inline noWrap alignY="center">
                 <span>Actions</span>
                 <PillCounter
                   :count="selectedComponentActionsCount"
@@ -158,12 +158,13 @@
           </TabGroupItem>
           <TabGroupItem slug="resource">
             <template #label>
-              <Inline noWrap>
+              <Inline noWrap alignY="center">
                 <span>Resource</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponent.hasResource"
                   type="resource"
                   status="exists"
+                  size="sm"
                 />
               </Inline>
             </template>
