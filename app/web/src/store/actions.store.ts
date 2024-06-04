@@ -330,11 +330,21 @@ export const useActionsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               optimistic: () => {
-                for (const a of this.actions) {
+                const held = {} as Record<string, string>;
+                this.actions.forEach((a) => {
                   if (ids.includes(a.id)) {
+                    held[a.id] = a.state;
                     a.state = ActionState.OnHold;
                   }
-                }
+                });
+
+                return () => {
+                  for (const id of Object.keys(held)) {
+                    const a = this.actions.filter((a) => a.id === id).pop();
+                    const state = held[id] as ActionState;
+                    if (a && state) a.state = state;
+                  }
+                };
               },
             });
           },
@@ -348,12 +358,19 @@ export const useActionsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               optimistic: () => {
-                for (const idx in this.actions) {
-                  const a = this.actions[idx];
+                const removed = [] as ActionProposedView[];
+                this.actions.forEach((a, idx) => {
                   if (a && ids.includes(a.id)) {
+                    removed[idx] = a;
                     delete this.actions[idx];
                   }
-                }
+                });
+
+                return () => {
+                  removed.forEach((a, idx) => {
+                    this.actions.splice(idx, 0, a);
+                  });
+                };
               },
             });
           },
