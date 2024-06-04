@@ -917,11 +917,6 @@ impl WorkspaceSnapshotGraph {
                                     node_weight_kind: onto_node_weight.into(),
                                 };
 
-                                dbg!(
-                                    onto_node_weight.vector_clock_write(),
-                                    to_rebase_node_weight.vector_clock_write()
-                                );
-
                                 conflicts.push(Conflict::NodeContent {
                                     to_rebase: to_rebase_node_information,
                                     onto: onto_node_information,

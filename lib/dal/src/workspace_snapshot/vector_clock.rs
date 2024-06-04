@@ -15,8 +15,6 @@ pub enum VectorClockError {
     LamportClock(#[from] LamportClockError),
 }
 
-const CLOCKS_TO_RETAIN: usize = 10;
-
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
 pk!(VectorClockId);
@@ -135,21 +133,10 @@ impl VectorClock {
             .collect()
     }
 
+    /// Remove all vector clock entries except those in `allow_list`
     pub fn remove_entries(&mut self, allow_list: &[VectorClockId]) {
-        let mut removed_clocks = vec![];
-        self.entries.retain(|clock_id, &mut clock| {
-            let retain = allow_list.contains(clock_id);
-            if !retain {
-                removed_clocks.push((*clock_id, clock));
-            }
-            retain
-        });
-
-        removed_clocks.sort_by(|&(_, clock_a), &(_, clock_b)| clock_a.cmp(&clock_b));
-        // retain some max clocks
-        for (clock_id, clock) in removed_clocks.into_iter().rev().take(CLOCKS_TO_RETAIN) {
-            self.inc_to(clock_id, clock.counter);
-        }
+        self.entries
+            .retain(|clock_id, _| allow_list.contains(clock_id));
     }
 }
 
