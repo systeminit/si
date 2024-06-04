@@ -1717,6 +1717,7 @@ impl Component {
 
         Ok(result)
     }
+
     /// Checks the destination and source component to determine if data flow between them
     /// Both "deleted" and not deleted Components can feed data into
     /// "deleted" Components. **ONLY** not deleted Components can feed
@@ -1737,10 +1738,12 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<bool> {
+        info!("get node idx by id");
         let component_idx = ctx
             .workspace_snapshot()?
             .get_node_index_by_id(component_id)
             .await?;
+        info!("got past get node idx by id");
         let component_node_weight = ctx
             .workspace_snapshot()?
             .get_node_weight(component_idx)

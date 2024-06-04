@@ -167,6 +167,12 @@ impl DependentValueGraph {
             let current_component_id =
                 AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
 
+            info!(
+                "got component id {} for av id {}",
+                current_component_id,
+                current_attribute_value.id()
+            );
+
             // We need to be sure to only construct the graph out of
             // "controlling" values. However, controlled values can still be
             // inputs to functions, so we need to find the prototypes that
@@ -179,6 +185,11 @@ impl DependentValueGraph {
                     &mut controlling_funcs_for_component,
                 )
                 .await?;
+
+            info!(
+                "got controlling attribute value id: {}",
+                current_attribute_value_controlling_value_id
+            );
 
             let value_is_for = AttributeValue::is_for(ctx, current_attribute_value.id()).await?;
 
@@ -198,6 +209,7 @@ impl DependentValueGraph {
                         .get_node_weight(apa_idx)
                         .await?
                         .get_attribute_prototype_argument_node_weight()?;
+                    info!("checking apa");
 
                     match apa.targets() {
                         // If there are no targets, this is a schema-level attribute prototype argument
@@ -207,6 +219,7 @@ impl DependentValueGraph {
                                 // Both "deleted" and not deleted Components can feed data into
                                 // "deleted" Components. **ONLY** not deleted Components can feed
                                 // data into not deleted Components.
+                                info!("should data flow?");
                                 if Component::should_data_flow_between_components(
                                     ctx,
                                     targets.destination_component_id,
@@ -217,6 +230,7 @@ impl DependentValueGraph {
                                 {
                                     relevant_apas.push(apa)
                                 }
+                                info!("should data flow? finished");
                             }
                         }
                     }
@@ -250,6 +264,7 @@ impl DependentValueGraph {
                 // (aka frames/nested frames) note: we filter out non-deleted
                 // targets if the source component is set to be deleted
                 ValueIsFor::OutputSocket(_) => {
+                    info!("finding inferred values");
                     let maybe_values_depend_on =
                         match Component::find_inferred_values_using_this_output_socket(
                             ctx,
@@ -266,6 +281,7 @@ impl DependentValueGraph {
                             }
                             Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
                         };
+                    info!("processing inferred");
 
                     for input_socket_match in maybe_values_depend_on {
                         // Both "deleted" and not deleted Components can feed data into
@@ -273,6 +289,7 @@ impl DependentValueGraph {
                         // data into not deleted Components.
                         let destination_component_id =
                             AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
+                        info!("should data flow (output socket)");
                         if Component::should_data_flow_between_components(
                             ctx,
                             destination_component_id,
@@ -291,6 +308,7 @@ impl DependentValueGraph {
 
                             found_deps = true;
                         }
+                        info!("should data flow (output socket) DONE");
                     }
                 }
                 _ => {}
