@@ -265,7 +265,6 @@ import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
-import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import {
@@ -294,9 +293,6 @@ const props = defineProps({
   node: {
     type: Object as PropType<DiagramNodeData>,
     required: true,
-  },
-  tempPosition: {
-    type: Object as PropType<Vector2d>,
   },
   connectedEdges: {
     type: Object as PropType<DiagramEdgeData[]>,
@@ -433,7 +429,11 @@ const nodeHeight = computed(
 
 const parentComponentId = computed(() => props.node.def.parentId);
 
-const position = computed(() => props.tempPosition || props.node.def.position);
+const position = computed(
+  () =>
+    componentsStore.movedElementPositions[props.node.uniqueKey] ||
+    props.node.def.position,
+);
 
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first

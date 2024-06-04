@@ -79,10 +79,6 @@ overflow hidden */
             :group="group"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
-            :tempPosition="
-              componentsStore.movedElementPositions[group.uniqueKey]
-            "
-            :tempSize="componentsStore.resizedElementSizes[group.uniqueKey]"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
           <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -103,9 +99,6 @@ overflow hidden */
             :isHovered="elementIsHovered(node)"
             :isSelected="elementIsSelected(node)"
             :node="node"
-            :tempPosition="
-              componentsStore.movedElementPositions[node.uniqueKey]
-            "
             @resize="onNodeLayoutOrLocationChange(node)"
           />
           <DiagramCursor
@@ -128,10 +121,6 @@ overflow hidden */
             v-for="group in groups"
             :key="group.uniqueKey"
             :group="group"
-            :tempPosition="
-              componentsStore.movedElementPositions[group.uniqueKey]
-            "
-            :tempSize="componentsStore.resizedElementSizes[group.uniqueKey]"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
 

@@ -47,20 +47,16 @@
 import { computed, nextTick, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
-import { Vector2d } from "konva/lib/types";
 import { CORNER_RADIUS } from "@/components/ModelingDiagram/diagram_constants";
-import { DiagramGroupData, Size2D } from "./diagram_types";
+import { useComponentsStore } from "@/store/components.store";
+import { DiagramGroupData } from "./diagram_types";
+
+const componentsStore = useComponentsStore();
 
 const props = defineProps({
   group: {
     type: Object as PropType<DiagramGroupData>,
     required: true,
-  },
-  tempPosition: {
-    type: Object as PropType<Vector2d>,
-  },
-  tempSize: {
-    type: Object as PropType<Size2D>,
   },
   isHovered: Boolean,
   isSelected: Boolean,
@@ -70,7 +66,9 @@ const titleTextRef = ref();
 const groupRef = ref();
 
 const size = computed(
-  () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
+  () =>
+    componentsStore.resizedElementSizes[props.group.uniqueKey] ||
+    props.group.def.size || { width: 500, height: 500 },
 );
 
 const nodeWidth = computed(() => size.value.width);
@@ -98,7 +96,11 @@ const nodeBodyHeight = computed(() => size.value.height);
 //     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 // );
 
-const position = computed(() => props.tempPosition || props.group.def.position);
+const position = computed(
+  () =>
+    componentsStore.movedElementPositions[props.group.uniqueKey] ||
+    props.group.def.position,
+);
 // const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 // const deletedIconSize = computed(() =>
 //   Math.min(nodeHeight.value, nodeWidth.value, 300),

@@ -367,7 +367,6 @@ import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
-import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
@@ -391,7 +390,6 @@ import {
   DiagramGroupData,
   DiagramSocketData,
   SideAndCornerIdentifiers,
-  Size2D,
 } from "./diagram_types";
 import { useDiagramContext } from "./ModelingDiagram.vue";
 import DiagramIcon from "./DiagramIcon.vue";
@@ -404,12 +402,6 @@ const props = defineProps({
   connectedEdges: {
     type: Object as PropType<DiagramEdgeData[]>,
     default: () => ({}),
-  },
-  tempPosition: {
-    type: Object as PropType<Vector2d>,
-  },
-  tempSize: {
-    type: Object as PropType<Size2D>,
   },
   drawEdgeState: {
     type: Object as PropType<DiagramDrawEdgeState>,
@@ -439,7 +431,9 @@ const titleTextRef = ref();
 const groupRef = ref();
 
 const size = computed(
-  () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
+  () =>
+    componentsStore.resizedElementSizes[props.group.uniqueKey] ||
+    props.group.def.size || { width: 500, height: 500 },
 );
 
 const isDeleted = computed(
@@ -534,7 +528,11 @@ const nodeHeight = computed(
     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 );
 
-const position = computed(() => props.tempPosition || props.group.def.position);
+const position = computed(
+  () =>
+    componentsStore.movedElementPositions[props.group.uniqueKey] ||
+    props.group.def.position,
+);
 
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first
