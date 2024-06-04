@@ -382,6 +382,13 @@ impl Diagram {
             .iter()
             .copied()
             .collect();
+        let new_attribute_prototype_argument_ids: HashSet<AttributePrototypeArgumentId> = ctx
+            .workspace_snapshot()?
+            .socket_edges_added_relative_to_base(ctx)
+            .await?
+            .iter()
+            .copied()
+            .collect();
 
         for component in &components {
             let component_change_status = if new_component_ids.contains(&component.id()) {
@@ -394,11 +401,21 @@ impl Diagram {
             for incoming_connection in component.incoming_connections(ctx).await? {
                 let from_component =
                     Component::get_by_id(ctx, incoming_connection.from_component_id).await?;
+                let edge_change_status = if component_change_status == ChangeStatus::Added
+                    || new_component_ids.contains(&from_component.id())
+                    || new_attribute_prototype_argument_ids
+                        .contains(&incoming_connection.attribute_prototype_argument_id)
+                {
+                    ChangeStatus::Added
+                } else {
+                    ChangeStatus::Unmodified
+                };
+
                 diagram_edges.push(SummaryDiagramEdge::assemble(
                     incoming_connection,
                     from_component,
                     component,
-                    ChangeStatus::Unmodified,
+                    edge_change_status,
                 )?);
             }
 

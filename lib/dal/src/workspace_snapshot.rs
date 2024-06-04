@@ -50,6 +50,9 @@ use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -81,6 +84,8 @@ pub struct NodeInformation {
 pub enum WorkspaceSnapshotError {
     #[error("Action error: {0}")]
     Action(#[from] Box<ActionError>),
+    #[error("Attribute Prototype Argument: {0}")]
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
     #[error("change set error: {0}")]
@@ -1465,6 +1470,96 @@ impl WorkspaceSnapshot {
         }
 
         Ok(new_component_ids)
+    }
+
+    #[instrument(
+        name = "workspace_snapshot.socket_edges_added_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn socket_edges_added_relative_to_base(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<AttributePrototypeArgumentId>> {
+        let mut new_attribute_prototype_argument_ids = Vec::new();
+        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
+            change_set_id
+        } else {
+            return Ok(new_attribute_prototype_argument_ids);
+        };
+
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await
+        .map_err(Box::new)?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(new_attribute_prototype_argument_ids);
+        }
+
+        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+        let conflicts_and_updates = base_snapshot.read_only_graph.detect_conflicts_and_updates(
+            VectorClockId::from(Ulid::from(base_change_set_id)),
+            &self.read_only_graph,
+            VectorClockId::from(Ulid::from(ctx.change_set_id())),
+        )?;
+
+        for update in &conflicts_and_updates.updates {
+            match update {
+                Update::RemoveEdge {
+                    source: _,
+                    destination: _,
+                    edge_kind: _,
+                }
+                | Update::ReplaceSubgraph {
+                    onto: _,
+                    to_rebase: _,
+                }
+                | Update::MergeCategoryNodes {
+                    to_rebase_category_id: _,
+                    onto_category_id: _,
+                } => {
+                    // Updates unused for determining if a socket to socket connection (in frontend
+                    // terms) is new.
+                }
+                Update::NewEdge {
+                    source: _source,
+                    destination,
+                    edge_weight: _,
+                } => {
+                    if destination.node_weight_kind
+                        != NodeWeightDiscriminants::AttributePrototypeArgument
+                    {
+                        // We're interested in new AttributePrototypeArguments as they represent
+                        // the connection between sockets. (The input socket has the output
+                        // socket as one of its function arguments.)
+                        continue;
+                    }
+
+                    let prototype_argument = AttributePrototypeArgument::get_by_id(
+                        ctx,
+                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
+                    )
+                    .await
+                    .map_err(Box::new)?;
+                    if prototype_argument.targets().is_some() {
+                        new_attribute_prototype_argument_ids.push(prototype_argument.id());
+                    } else {
+                        // If the AttributePrototypeArgument doesn't have targets, then it's
+                        // not for a socket to socket connection.
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(new_attribute_prototype_argument_ids)
     }
 
     /// Returns whether or not any Actions were dispatched.
