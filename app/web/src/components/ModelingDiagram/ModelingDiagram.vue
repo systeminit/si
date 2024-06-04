@@ -176,46 +176,6 @@ overflow hidden */
               gridPointerPos
             "
           />
-
-          <v-rect
-            v-if="currentSelectionEnclosure"
-            :config="{
-              x: currentSelectionEnclosure.x,
-              y: currentSelectionEnclosure.y,
-              width: currentSelectionEnclosure.width,
-              height: currentSelectionEnclosure.height,
-              fill: SELECTION_BOX_INNER_COLOR,
-              strokeWidth: 1,
-              stroke: SELECTION_COLOR,
-              listening: false,
-            }"
-          />
-          <v-rect
-            v-if="pasteTarget"
-            :config="{
-              x: pasteTarget.x,
-              y: pasteTarget.y,
-              width: pasteTarget.width,
-              height: pasteTarget.height,
-              fill: 'rgba(154,52,52,0.4)',
-              strokeWidth: 1,
-              stroke: 'rgba(154,52,52,1)',
-              listening: false,
-            }"
-          />
-          <v-rect
-            v-if="pasteTarget2"
-            :config="{
-              x: pasteTarget2.x,
-              y: pasteTarget2.y,
-              width: pasteTarget2.width,
-              height: pasteTarget2.height,
-              fill: 'rgba(52,154,60,0.4)',
-              strokeWidth: 1,
-              stroke: 'rgb(52,154,66)',
-              listening: false,
-            }"
-          />
         </v-layer>
       </v-stage>
 
@@ -2480,9 +2440,6 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   };
 });
 
-const pasteTarget = ref<IRect | undefined>();
-const pasteTarget2 = ref<IRect | undefined>();
-
 async function triggerPasteElements() {
   if (!pasteElementsActive.value)
     throw new Error("paste element mode must be active");
@@ -2537,13 +2494,6 @@ async function triggerPasteElements() {
         (GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING),
     };
 
-    pasteTarget.value = {
-      x: selectionEnclosure.x + selectionOffset.x,
-      y: selectionEnclosure.y + selectionOffset.y,
-      width: selectionEnclosure.width,
-      height: selectionEnclosure.height,
-    };
-
     // Shrink selection
     if (parentContentArea.width < selectionEnclosure.width) {
       selectionShrinkCoefficient.x =
@@ -2571,12 +2521,6 @@ async function triggerPasteElements() {
       parentContentArea,
       offsetPasteArea,
     );
-    pasteTarget2.value = {
-      x: offsetPasteArea.x - fitOffset.x,
-      y: offsetPasteArea.y - fitOffset.y,
-      width: offsetPasteArea.width,
-      height: offsetPasteArea.height,
-    };
 
     selectionOffset.x -= fitOffset.x;
     selectionOffset.y -= fitOffset.y;

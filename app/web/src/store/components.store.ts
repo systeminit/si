@@ -1327,14 +1327,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             }
 
-            setTimeout(() => {
-              for (const { id } of tempInserts) {
-                delete this.pendingInsertedComponents[id];
-              }
-            }, 1000);
-
-            return;
-
             const APIComponents = _.map(components, (c) => ({
               id: c.id,
               componentGeometry: {

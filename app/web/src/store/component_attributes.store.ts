@@ -14,8 +14,6 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/diagram";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
-  GROUP_DEFAULT_HEIGHT,
-  GROUP_DEFAULT_WIDTH,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useChangeSetsStore } from "./change_sets.store";
