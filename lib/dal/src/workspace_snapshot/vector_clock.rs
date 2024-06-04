@@ -1,6 +1,6 @@
 //! Vector Clocks
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,14 @@ impl VectorClock {
         entries.insert(vector_clock_id, lamport_clock);
 
         Ok(VectorClock { entries })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 
     pub fn empty() -> Self {
@@ -114,6 +122,21 @@ impl VectorClock {
         }
 
         true
+    }
+
+    pub fn get_shared_clock_ids(&self, other: &HashSet<VectorClockId>) -> HashSet<VectorClockId> {
+        let entry_set = HashSet::from_iter(self.entries.keys().map(ToOwned::to_owned));
+
+        entry_set
+            .intersection(other)
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    /// Remove all vector clock entries except those in `allow_list`
+    pub fn remove_entries(&mut self, allow_list: &[VectorClockId]) {
+        self.entries
+            .retain(|clock_id, _| allow_list.contains(clock_id));
     }
 }
 

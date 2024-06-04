@@ -524,6 +524,15 @@ impl WorkspaceSnapshotGraph {
         Ok(source)
     }
 
+    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
+        for edge in self.graph.edge_weights_mut() {
+            edge.remove_vector_clock_entries(allow_list);
+        }
+        for node in self.graph.node_weights_mut() {
+            node.remove_vector_clock_entries(allow_list);
+        }
+    }
+
     pub fn cleanup(&mut self) {
         let start = tokio::time::Instant::now();
 
