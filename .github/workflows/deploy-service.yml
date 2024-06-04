@@ -99,7 +99,7 @@ jobs:
               echo "Deploying everything!"
               services=("pinga" "rebaser" "sdf" "veritech")
               for service in "${services[@]}"; do
-                  aws ssm put-parameter --name "si-$ENVIRONMENT-version-$service" --value "$VERSION" --type "String" --overwrite
+                  aws ssm put-parameter --name "$ENVIRONMENT-si-version-$service" --value "$VERSION" --type "String" --overwrite
                   aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$service"
               done
               aws ecs update-service --cluster "$ENVIRONMENT-cluster" --service "$ENVIRONMENT-frontend" --force-new-deployment
@@ -112,7 +112,7 @@ jobs:
 
           else
               echo "Setting version to ${VERSION}."
-              aws ssm put-parameter --name "si-$ENVIRONMENT-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
+              aws ssm put-parameter --name "$ENVIRONMENT-si-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
               echo "Deploying $SERVICE!"
               aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$SERVICE"
           fi
