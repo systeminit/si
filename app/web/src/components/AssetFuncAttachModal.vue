@@ -1,5 +1,10 @@
 <template>
-  <Modal ref="modalRef" :title="title" :size="attachExisting ? '4xl' : 'md'">
+  <Modal
+    ref="modalRef"
+    :title="title"
+    :size="attachExisting ? '4xl' : 'md'"
+    @close="onClose"
+  >
     <div class="flex flex-row">
       <div
         :class="
@@ -66,7 +71,7 @@
           :options="attributeOutputLocationOptions"
         />
         <ErrorMessage
-          v-if="createFuncReqStatus.isError"
+          v-if="createFuncReqStatus.isError && createFuncStarted"
           :requestStatus="createFuncReqStatus"
         />
         <template v-if="attachExisting && funcKind === FuncKind.Attribute">
@@ -168,6 +173,8 @@ const props = defineProps<{
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 const router = useRouter();
+
+const createFuncStarted = ref(false);
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
@@ -415,7 +422,6 @@ const attachToAttributeFunction = async (
 
 const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
   await assetStore.LOAD_ASSET(assetId);
-  close();
   router.push({
     name: "workspace-lab-assets",
     params: {
@@ -505,6 +511,7 @@ const attachExistingFunc = async () => {
 const attachNewFunc = async () => {
   if (schemaVariantId.value) {
     const options = newFuncOptions(funcKind.value, schemaVariantId.value);
+    createFuncStarted.value = true;
     const result = await funcStore.CREATE_FUNC({
       kind: funcKind.value,
       name: name.value,
@@ -522,6 +529,10 @@ const onAttach = async () => {
   } else {
     await attachNewFunc();
   }
+};
+
+const onClose = () => {
+  createFuncStarted.value = false;
 };
 
 defineExpose({ open, close });

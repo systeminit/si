@@ -88,14 +88,14 @@ export type OutputSocketViews = { [key: string]: OutputSocketView[] };
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
-  const changeSetStore = useChangeSetsStore();
-  const selectedChangeSetId = changeSetStore.selectedChangeSet?.id;
+  const changeSetsStore = useChangeSetsStore();
+  const selectedChangeSetId = changeSetsStore.selectedChangeSet?.id;
 
   // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
   // query to find the default change set.
   const visibility: Visibility = {
     visibility_change_set_pk:
-      selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
+      selectedChangeSetId ?? changeSetsStore.headChangeSetId ?? nilId(),
   };
 
   const workspacesStore = useWorkspacesStore();
@@ -360,11 +360,11 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_FUNC(func: FuncWithDetails) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-          const isHead = changeSetStore.headSelected;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+          const isHead = changeSetsStore.headSelected;
 
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
@@ -400,10 +400,10 @@ export const useFuncStore = () => {
           propId?: string,
           outputSocketId?: string,
         ) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -426,10 +426,10 @@ export const useFuncStore = () => {
           propId?: string,
           outputSocketId?: string,
         ) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -445,10 +445,10 @@ export const useFuncStore = () => {
           });
         },
         async REMOVE_ATTRIBUTE_PROTOTYPE(attributePrototypeId: string) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -465,10 +465,10 @@ export const useFuncStore = () => {
           kind: FuncArgumentKind,
           elementKind?: FuncArgumentKind,
         ) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -489,10 +489,10 @@ export const useFuncStore = () => {
           kind: FuncArgumentKind,
           elementKind?: FuncArgumentKind,
         ) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -511,10 +511,10 @@ export const useFuncStore = () => {
           funcId: FuncId,
           funcArgumentId: FuncArgumentId,
         ) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -547,10 +547,10 @@ export const useFuncStore = () => {
             trackEvent("func_save_and_exec", { id: func.id, name: func.name });
           }
 
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
@@ -586,10 +586,10 @@ export const useFuncStore = () => {
           name?: string;
           options?: CreateFuncOptions;
         }) {
-          if (changeSetStore.creatingChangeSet)
+          if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<FuncSummary>({
             method: "post",
@@ -597,6 +597,11 @@ export const useFuncStore = () => {
             params: { ...createFuncRequest, ...visibility },
             onSuccess: (response) => {
               this.funcsById[response.id] = response;
+            },
+            onFail: (response) => {
+              if (changeSetsStore.headSelected) {
+                changeSetsStore.creatingChangeSet = false;
+              }
             },
           });
         },
@@ -701,7 +706,7 @@ export const useFuncStore = () => {
         },
 
         enqueueFuncSave(func: FuncWithDetails) {
-          if (changeSetStore.headSelected) return this.UPDATE_FUNC(func);
+          if (changeSetsStore.headSelected) return this.UPDATE_FUNC(func);
 
           this.funcDetailsById[func.id] = func;
 
@@ -808,7 +813,7 @@ export const useFuncStore = () => {
                   if (
                     typeof this.funcDetailsById[this.selectedFuncId] ===
                       "undefined" ||
-                    changeSetStore.headSelected
+                    changeSetsStore.headSelected
                   ) {
                     this.FETCH_FUNC(this.selectedFuncId);
                   } else {
