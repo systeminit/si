@@ -1729,24 +1729,35 @@ impl Component {
         let destination_component_is_delete =
             Self::is_set_to_delete(ctx, destination_component_id).await?;
         let source_component_is_delete = Self::is_set_to_delete(ctx, source_component_id).await?;
-        let should_data_flow = destination_component_is_delete || !source_component_is_delete;
-        Ok(should_data_flow)
+        Ok(
+            match (destination_component_is_delete, source_component_is_delete) {
+                (None, _) | (_, None) => false,
+                (Some(destination_component_is_delete), Some(source_component_is_delete)) => {
+                    destination_component_is_delete || !source_component_is_delete
+                }
+            },
+        )
     }
     /// Simply gets the to_delete status for a component via the Node Weight
     async fn is_set_to_delete(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<bool> {
-        let component_idx = ctx
+    ) -> ComponentResult<Option<bool>> {
+        match ctx
             .workspace_snapshot()?
-            .get_node_index_by_id(component_id)
-            .await?;
-        let component_node_weight = ctx
-            .workspace_snapshot()?
-            .get_node_weight(component_idx)
+            .try_get_node_index_by_id(component_id)
             .await?
-            .get_component_node_weight()?;
-        Ok(component_node_weight.to_delete())
+        {
+            Some(component_idx) => {
+                let component_node_weight = ctx
+                    .workspace_snapshot()?
+                    .get_node_weight(component_idx)
+                    .await?
+                    .get_component_node_weight()?;
+                Ok(Some(component_node_weight.to_delete()))
+            }
+            None => Ok(None),
+        }
     }
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>
     where
