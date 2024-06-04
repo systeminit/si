@@ -190,6 +190,32 @@ overflow hidden */
               listening: false,
             }"
           />
+          <v-rect
+            v-if="pasteTarget"
+            :config="{
+              x: pasteTarget.x,
+              y: pasteTarget.y,
+              width: pasteTarget.width,
+              height: pasteTarget.height,
+              fill: 'rgba(154,52,52,0.4)',
+              strokeWidth: 1,
+              stroke: 'rgba(154,52,52,1)',
+              listening: false,
+            }"
+          />
+          <v-rect
+            v-if="pasteTarget2"
+            :config="{
+              x: pasteTarget2.x,
+              y: pasteTarget2.y,
+              width: pasteTarget2.width,
+              height: pasteTarget2.height,
+              fill: 'rgba(52,154,60,0.4)',
+              strokeWidth: 1,
+              stroke: 'rgb(52,154,66)',
+              listening: false,
+            }"
+          />
         </v-layer>
       </v-stage>
 
@@ -303,6 +329,7 @@ import {
   getAdjustmentRectToContainAnother,
   pointsToRect,
   rectContainsPoint,
+  vectorSubtract,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -2453,6 +2480,9 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   };
 });
 
+const pasteTarget = ref<IRect | undefined>();
+const pasteTarget2 = ref<IRect | undefined>();
+
 async function triggerPasteElements() {
   if (!pasteElementsActive.value)
     throw new Error("paste element mode must be active");
@@ -2471,31 +2501,128 @@ async function triggerPasteElements() {
     y: selectionEnclosure.y + selectionEnclosure.height / 2,
   };
 
-  const newParentNodeId =
-    allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
+  // Displacement Vector between selection center to paste center.
+  // When added to each component, moves it to be centered around paste area
+  const selectionOffset = vectorBetween(selectionCenter, pasteCenter);
 
-  // TODO Constrain enclosure to new parent and calculate by how much to move component to center
+  // How much to move components in the direction of the paste center
+  // from 0 - move to center - to 1 - don't move
+  const selectionShrinkCoefficient = {
+    x: 1,
+    y: 1,
+  };
+
+  const newParentId =
+    allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
+  let parentContentArea: IRect | undefined;
+
+  // if we're pasting into a new parent, fit the selection area into it first by shrinking and then translating
+  if (newParentId) {
+    const parentGeometry =
+      componentsStore.renderedGeometriesByComponentId[newParentId];
+    if (!parentGeometry) throw new Error("Couldn't get parent geometry");
+
+    // the x in component geometry is centered, so we need to translate it to represent the top left
+    const parentTopLeft = {
+      x: parentGeometry.x - parentGeometry.width / 2,
+      y: parentGeometry.y,
+    };
+
+    parentContentArea = {
+      x: parentTopLeft.x + GROUP_INTERNAL_PADDING,
+      y: parentTopLeft.y + GROUP_INTERNAL_PADDING,
+      width: parentGeometry.width - GROUP_INTERNAL_PADDING * 2,
+      height:
+        parentGeometry.height -
+        (GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING),
+    };
+
+    pasteTarget.value = {
+      x: selectionEnclosure.x + selectionOffset.x,
+      y: selectionEnclosure.y + selectionOffset.y,
+      width: selectionEnclosure.width,
+      height: selectionEnclosure.height,
+    };
+
+    // Shrink selection
+    if (parentContentArea.width < selectionEnclosure.width) {
+      selectionShrinkCoefficient.x =
+        parentContentArea.width / selectionEnclosure.width;
+
+      selectionOffset.x = parentContentArea.x - selectionEnclosure.x;
+    }
+
+    if (parentContentArea.height < selectionEnclosure.height) {
+      selectionShrinkCoefficient.y =
+        parentContentArea.height / selectionEnclosure.height;
+
+      selectionOffset.y = parentContentArea.y - selectionEnclosure.y;
+    }
+
+    // Move selection to be centered around where it was pasted
+    const offsetPasteArea = {
+      x: selectionEnclosure.x + selectionOffset.x,
+      y: selectionEnclosure.y + selectionOffset.y,
+      width: selectionEnclosure.width * selectionShrinkCoefficient.x,
+      height: selectionEnclosure.height * selectionShrinkCoefficient.y,
+    };
+
+    const fitOffset = getAdjustmentRectToContainAnother(
+      parentContentArea,
+      offsetPasteArea,
+    );
+    pasteTarget2.value = {
+      x: offsetPasteArea.x - fitOffset.x,
+      y: offsetPasteArea.y - fitOffset.y,
+      width: offsetPasteArea.width,
+      height: offsetPasteArea.height,
+    };
+
+    selectionOffset.x -= fitOffset.x;
+    selectionOffset.y -= fitOffset.y;
+  }
 
   const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
-    const component = componentsStore.componentsById[id];
-    if (!component) throw new Error("Component not found");
+    const thisGeometry = componentsStore.renderedGeometriesByComponentId[id];
 
-    const thisOffset = {
-      x: component.position.x - selectionCenter.x,
-      y: component.position.y - selectionCenter.y,
-    };
+    if (!thisGeometry) throw new Error("Rendered Component not found");
+
+    // If the selection shrunk, move the children to fit
+    let finalPosition = vectorAdd(selectionOffset, thisGeometry);
+    if (parentContentArea) {
+      const shrinkOffset = getAdjustmentRectToContainAnother(
+        parentContentArea,
+        {
+          x: finalPosition.x - thisGeometry.width / 2,
+          y: finalPosition.y,
+          width: thisGeometry.width,
+          height: thisGeometry.height,
+        },
+      );
+
+      finalPosition = vectorSubtract(finalPosition, shrinkOffset);
+
+      if (thisGeometry.height >= parentContentArea.height) {
+        finalPosition.y = parentContentArea.y;
+      }
+      if (thisGeometry.width >= parentContentArea.width) {
+        finalPosition.x = parentContentArea.x + parentContentArea.width / 2;
+      }
+    }
 
     return {
       id,
       componentGeometry: {
-        x: (pasteCenter.x + thisOffset.x).toString(),
-        y: (pasteCenter.y + thisOffset.y).toString(),
+        ...finalPosition,
+        width: thisGeometry.width,
+        height: thisGeometry.height,
       },
     };
   });
 
   componentsStore.copyingFrom = null;
-  await componentsStore.PASTE_COMPONENTS(pasteTargets, newParentNodeId);
+
+  await componentsStore.PASTE_COMPONENTS(pasteTargets, newParentId);
 }
 
 // ELEMENT ADDITION

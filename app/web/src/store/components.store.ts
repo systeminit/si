@@ -1301,7 +1301,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async PASTE_COMPONENTS(
             components: {
               id: ComponentId;
-              componentGeometry: APIComponentGeometry;
+              componentGeometry: Vector2d & Size2D;
             }[],
             newParentNodeId?: ComponentNodeId,
           ) {
@@ -1315,8 +1315,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const tempInserts = _.map(components, (c) => ({
               id: _.uniqueId("temp-insert-component"),
               position: {
-                x: parseInt(c.componentGeometry.x),
-                y: parseInt(c.componentGeometry.y),
+                x: c.componentGeometry.x,
+                y: c.componentGeometry.y + c.componentGeometry.height / 2,
               },
             }));
 
@@ -1327,14 +1327,24 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             }
 
-            // setTimeout(() => {
-            //   for (const { id } of tempInserts) {
-            //     delete this.pendingInsertedComponents[id];
-            //   }
-            // }, 3000);
-            //
-            // return;
-            //
+            setTimeout(() => {
+              for (const { id } of tempInserts) {
+                delete this.pendingInsertedComponents[id];
+              }
+            }, 1000);
+
+            return;
+
+            const APIComponents = _.map(components, (c) => ({
+              id: c.id,
+              componentGeometry: {
+                x: Math.round(c.componentGeometry.x).toString(),
+                y: Math.round(c.componentGeometry.y).toString(),
+                width: Math.round(c.componentGeometry.width).toString(),
+                height: Math.round(c.componentGeometry.height).toString(),
+              },
+            }));
+
             return new ApiRequest<{
               id: string;
             }>({
@@ -1342,7 +1352,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/paste_components",
               keyRequestStatusBy: components.map((c) => c.id),
               params: {
-                components,
+                components: APIComponents,
                 newParentNodeId,
                 ...visibilityParams,
               },
