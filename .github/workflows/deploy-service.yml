@@ -3,6 +3,14 @@ name: Deploy Service to Tools Prod
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to deploy"
+        default: "tools"
+        options:
+          - tools
+          - production
       service:
         type: choice
         required: true
@@ -17,7 +25,7 @@ on:
       version:
         type: string
         required: true
-        description: "version to deploy"
+        description: "version to deploy -- NOTEL: this does not yet work for web; it will always deploy stable using this"
         default: "stable"
 
 jobs:
@@ -25,6 +33,7 @@ jobs:
     name: Deploy Service
     runs-on: ubuntu-latest
     steps:
+       # invalidate Artifact Store Cloudfront so we get latest
       - name: Configure AWS credentials for shared-prod
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -43,12 +52,24 @@ jobs:
           done
           echo "Invalidation is complete."
 
+       # deploy to tools
       - name: Configure AWS credentials for tools-prod
+        if: ${{ github.event.inputs.environment == 'tools' }}
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_TOOLS_PROD_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_TOOLS_PROD_SECRET_KEY }}
           aws-region: us-east-1
+
+       # deploy to production
+      - name: Configure AWS credentials for production
+        if: ${{ github.event.inputs.environment == 'production' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_PRODUCTION_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_PRODUCTION_SECRET_KEY }}
+          aws-region: us-east-1
+
       - name: Instance Refresh for chosen services & CDN Invalidation
         run: |
           invalidate_distribution() {
@@ -62,30 +83,36 @@ jobs:
             done
             echo "Invalidation of web frontend is complete."
           }
+
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
           SERVICE="${{ github.event.inputs.service }}"
           VERSION="${{ github.event.inputs.version }}"
-          if [ "$SERVICE" = "all" ]; then
-            echo "Setting versions to ${VERSION}."
-            aws ssm put-parameter --name "si-tools-version-pinga" --value "$VERSION" --type "String" --overwrite
-            aws ssm put-parameter --name "si-tools-version-rebaser" --value "$VERSION" --type "String" --overwrite
-            aws ssm put-parameter --name "si-tools-version-sdf" --value "$VERSION" --type "String" --overwrite
-            aws ssm put-parameter --name "si-tools-version-veritech" --value "$VERSION" --type "String" --overwrite
-            echo "Deploying errything!"
-            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-pinga
-            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-rebaser
-            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-sdf
-            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-veritech
-            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
-            invalidate_distribution E1MTI3007PGD67
-          elif [ "$SERVICE" = "web" ]; then
-            echo "Deploying $SERVICE!"
-            aws ecs update-service --cluster tools-cluster --service tools-frontend --force-new-deployment
-            invalidate_distribution E1MTI3007PGD67
+
+          if [ "$ENVIRONMENT" == "tools" ]; then
+              cloudfront="E1MTI3007PGD67"
           else
-            echo "Setting version to ${VERSION}."
-            aws ssm put-parameter --name "si-tools-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
-            echo "Deploying $SERVICE!"
-            aws autoscaling start-instance-refresh --auto-scaling-group-name tools-$SERVICE
+              cloudfront="E3TQ4YC3FXZU7K"
           fi
 
+          if [ "$SERVICE" == "all" ]; then
+              echo "Setting versions to ${VERSION}."
+              echo "Deploying everything!"
+              services=("pinga" "rebaser" "sdf" "veritech")
+              for service in "${services[@]}"; do
+                  aws ssm put-parameter --name "si-$ENVIRONMENT-version-$service" --value "$VERSION" --type "String" --overwrite
+                  aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$service"
+              done
+              aws ecs update-service --cluster "$ENVIRONMENT-cluster" --service "$ENVIRONMENT-frontend" --force-new-deployment
+              invalidate_distribution "$cloudfront"
 
+          elif [ "$SERVICE" == "web" ]; then
+              echo "Deploying $SERVICE!"
+              aws ecs update-service --cluster "$ENVIRONMENT-cluster" --service "$ENVIRONMENT-frontend" --force-new-deployment
+              invalidate_distribution "$cloudfront"
+
+          else
+              echo "Setting version to ${VERSION}."
+              aws ssm put-parameter --name "si-$ENVIRONMENT-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
+              echo "Deploying $SERVICE!"
+              aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$SERVICE"
+          fi
