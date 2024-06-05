@@ -17,12 +17,19 @@
       <Icon
         v-if="actionQueued"
         name="nested-arrow-right"
-        :class="clsx(themeClasses('text-neutral-600', 'text-neutral-300'))"
+        :class="
+          clsx(
+            themeClasses('text-neutral-600', 'text-neutral-300'),
+            'translate-y-[-2px]',
+          )
+        "
+        size="sm"
       />
       <Icon
         v-else-if="actionRunning"
         name="loader"
         :class="clsx(themeClasses('text-action-300', 'text-action-300'))"
+        size="sm"
       />
       <Icon
         v-else-if="actionOnHold"
@@ -37,12 +44,13 @@
               : themeClasses('text-warning-400', 'text-warning-300'),
           )
         "
-        size="lg"
+        size="sm"
       />
       <template v-else-if="actionFailed">
         <Icon
           name="play"
           :class="clsx(themeClasses('text-action-700', 'text-action-300'))"
+          size="sm"
           @click="retry"
         />
         <Icon
@@ -50,17 +58,18 @@
           :class="
             clsx(themeClasses('text-destructive-700', 'text-destructive-700'))
           "
+          size="sm"
         />
       </template>
     </template>
     <template v-else-if="actionHistory">
       <!-- TODO(Wendy) - need to implement a way to retry failed actions here -->
-      <Icon size="lg" :name="resultIcon" :class="resultIconClass" />
+      <Icon :name="resultIcon" :class="resultIconClass" size="sm" />
     </template>
     <Icon
       :name="actionIcon(props.action.kind)"
       :class="actionIconClass(props.action.kind)"
-      size="lg"
+      size="sm"
     />
     <div class="flex flex-col flex-grow min-w-0">
       <div class="w-full truncate">
@@ -110,8 +119,9 @@
       ref="contextMenuRef"
       :forceAbove="false"
       forceAlignRight
+      compact
     >
-      <h5 class="dark:text-neutral-400 text-neutral-700">ACTIONS:</h5>
+      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">ACTIONS:</h5>
       <DropdownMenuItem
         v-if="actionProposed.state === ActionState.Queued"
         label="Put on hold"
@@ -133,13 +143,19 @@
         :onSelect="remove"
       />
       <hr class="border-neutral-600 my-xs" />
-      <h5 class="dark:text-neutral-400 text-neutral-700">APPLY BEFORE:</h5>
+      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">
+        APPLY BEFORE:
+      </h5>
       <ol v-if="myDependencies.length > 0">
-        <li v-for="a in myDependencies" :key="a.id" class="flex flex-row">
+        <li
+          v-for="a in myDependencies"
+          :key="a.id"
+          class="flex flex-row items-center px-2xs gap-xs"
+        >
           <Icon
             :name="actionIcon(a.kind)"
             :class="actionIconClass(a.kind)"
-            size="lg"
+            size="sm"
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
@@ -149,13 +165,17 @@
         </li>
       </ol>
       <p v-else class="ml-xs">None</p>
-      <h5 class="dark:text-neutral-400 text-neutral-700">WAITING ON:</h5>
+      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">WAITING ON:</h5>
       <ol v-if="dependentOn.length > 0">
-        <li v-for="a in dependentOn" :key="a.id" class="flex flex-row">
+        <li
+          v-for="a in dependentOn"
+          :key="a.id"
+          class="flex flex-row items-center px-2xs gap-xs"
+        >
           <Icon
             :name="actionIcon(a.kind)"
             :class="actionIconClass(a.kind)"
-            size="lg"
+            size="sm"
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>

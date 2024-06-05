@@ -70,9 +70,9 @@
             @click.right.prevent
           >
             <template #label>
-              <div class="text-sm">
-                {{ schema.name }}
-              </div>
+              <TruncateWithTooltip class="text-sm">
+                {{ schemaDisplayName(schema, category.schemas) }}
+              </TruncateWithTooltip>
               <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
               >
@@ -117,6 +117,7 @@ import {
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
+import TruncateWithTooltip from "@/components/TruncateWithTooltip.vue";
 
 const componentsStore = useComponentsStore();
 
@@ -193,6 +194,16 @@ const selectedSchema = computed(() => {
   return undefined;
 });
 const mouseNode = ref();
+
+const schemaDisplayName = (
+  schema: DiagramSchemaWithDisplayMetadata,
+  schemas: DiagramSchemaWithDisplayMetadata[],
+) => {
+  const duplicates = schemas.filter((s) => s.name === schema.name);
+  if (duplicates.length > 1) {
+    return `${schema.name} (${duplicates.indexOf(schema)})`;
+  } else return schema.name;
+};
 
 const updateMouseNode = (e: MouseEvent) => {
   if (mouseNode.value) {

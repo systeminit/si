@@ -23,7 +23,7 @@
   >
     <template #label>
       <div class="text-xs w-full truncate">
-        {{ assetDisplayName(a) }}
+        {{ assetNameString(a) }}
       </div>
     </template>
   </TreeNode>
@@ -39,14 +39,28 @@ import {
   AssetListEntry,
   useAssetStore,
   assetDisplayName,
+  ListedVariant,
 } from "@/store/asset.store";
 
-defineProps({
+const props = defineProps({
   a: { type: Object as PropType<AssetListEntry>, required: true },
+  c: { type: Array<ListedVariant> },
 });
 
 const route = useRoute();
 const router = useRouter();
 const assetStore = useAssetStore();
 const { selectedAssetId } = storeToRefs(assetStore);
+
+const assetNameString = (a: AssetListEntry) => {
+  const name = assetDisplayName(a);
+  if (!props.c) return name;
+
+  const duplicates = props.c.filter(
+    (asset) => assetDisplayName(asset) === name,
+  );
+  if (duplicates.length > 1) {
+    return `${name} (${duplicates.indexOf(a)})`;
+  } else return name;
+};
 </script>

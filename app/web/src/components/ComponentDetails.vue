@@ -116,7 +116,8 @@
                       :count="selectedComponentFailingQualificationsCount"
                       tone="destructive"
                       hideIfZero
-                      altStyle
+                      toneToBg
+                      class="text-shade-0"
                     />
                   </Inline>
                 </template>
