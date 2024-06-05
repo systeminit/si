@@ -6,8 +6,8 @@
       x: position.x,
       y: position.y,
     }"
-    @mouseover="onMouseOver"
     @mouseout="onMouseOut"
+    @mouseover="onMouseOver"
   >
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
       <!-- drop shadow -->
@@ -78,13 +78,13 @@
       <!-- parent frame attachment indicator -->
       <DiagramIcon
         v-if="parentComponentId"
-        icon="frame"
+        :color="colors.parentColor"
         :size="16"
         :x="-halfWidth + 12"
         :y="nodeHeaderHeight + nodeBodyHeight - 12"
-        :color="colors.parentColor"
-        @mouseover="(e) => onMouseOver(e, 'parent')"
+        icon="frame"
         @mouseout="onMouseOut"
+        @mouseover="(e) => onMouseOver(e, 'parent')"
       />
 
       <!-- header bottom border -->
@@ -108,19 +108,19 @@
         <DiagramIcon
           v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
           :key="`status-icon-${i}`"
-          :icon="statusIcon.icon"
           :color="
             statusIcon.color || statusIcon.tone
               ? getToneColorHex(statusIcon.tone!)
               : getToneColorHex('neutral')
           "
+          :icon="statusIcon.icon"
           :size="24 + (statusIconHovers[i] ? 4 : 0)"
           :x="i * -26 + (statusIconHovers[i] ? 2 : 0)"
           :y="statusIconHovers[i] ? 2 : 0"
           origin="bottom-right"
           @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
-          @mouseover="statusIconHovers[i] = true"
           @mouseout="statusIconHovers[i] = false"
+          @mouseover="statusIconHovers[i] = true"
         />
       </v-group>
 
@@ -149,26 +149,26 @@
 
       <DiagramIcon
         v-if="node.def.canBeUpgraded"
-        icon="bolt"
         :color="getToneColorHex('action')"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 36"
         :y="nodeHeaderHeight / 2"
+        icon="bolt"
         origin="center"
       />
 
       <!-- added/modified/deleted indicator -->
       <DiagramIcon
         v-if="isAdded || isModified || isDeleted"
-        :icon="topRightIcon"
         :color="topRightIconColor"
+        :icon="topRightIcon"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 12"
         :y="nodeHeaderHeight / 2"
         origin="center"
         @click="onClick('diff')"
-        @mouseover="diffIconHover = true"
         @mouseout="diffIconHover = false"
+        @mouseover="diffIconHover = true"
       />
 
       <!-- added/modified icon hover -->
@@ -213,10 +213,10 @@
         <DiagramNodeSocket
           v-for="(socket, i) in leftSockets"
           :key="socket.uniqueKey"
-          :socket="socket"
-          :y="i * SOCKET_GAP"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
           :nodeWidth="nodeWidth"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
         />
@@ -235,10 +235,10 @@
         <DiagramNodeSocket
           v-for="(socket, i) in rightSockets"
           :key="socket.uniqueKey"
-          :socket="socket"
-          :y="i * SOCKET_GAP"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
           :nodeWidth="nodeWidth"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
         />
@@ -418,7 +418,7 @@ const nodeBodyHeight = computed(() => {
     SOCKET_MARGIN_TOP +
     SOCKET_GAP * (leftSockets.value.length + rightSockets.value.length - 1) +
     SOCKET_SIZE / 2 +
-    // TODO: this isnt right yet!
+    // TODO: this isn't right yet!
     NODE_PADDING_BOTTOM +
     (props.node.def.statusIcons?.length ? 30 : 0)
   );
@@ -438,7 +438,14 @@ const position = computed(
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first
   // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
-  nextTick(() => emit("resize"));
+  nextTick(() => {
+    componentsStore.renderedNodeSizes[props.node.uniqueKey] = {
+      width: nodeWidth.value,
+      height: nodeHeight.value,
+    };
+
+    emit("resize");
+  });
 });
 
 const colors = computed(() => {

@@ -13,6 +13,13 @@ export function vectorAdd(v1: Vector2d, v2: Vector2d) {
   } as Vector2d;
 }
 
+export function vectorSubtract(v1: Vector2d, v2: Vector2d) {
+  return {
+    x: v1.x - v2.x,
+    y: v1.y - v2.y,
+  } as Vector2d;
+}
+
 export function vectorBetween(v1: Vector2d, v2: Vector2d) {
   return {
     x: v2.x - v1.x,
@@ -144,15 +151,15 @@ export function getAdjustmentRectToContainAnother(
   let moveX = 0;
   let moveY = 0;
 
-  if (oMinX < cMinX) {
+  if (oMinX < cMinX + paddingPx) {
     moveX = oMinX - cMinX - paddingPx;
-  } else if (oMaxX > cMaxX) {
+  } else if (oMaxX > cMaxX - paddingPx) {
     moveX = oMaxX - cMaxX + paddingPx;
   }
 
-  if (oMinY < cMinY) {
+  if (oMinY < cMinY + paddingPx) {
     moveY = oMinY - cMinY - paddingPx;
-  } else if (oMaxY > cMaxY) {
+  } else if (oMaxY > cMaxY - paddingPx) {
     moveY = oMaxY - cMaxY + paddingPx;
   }
 

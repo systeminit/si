@@ -289,6 +289,7 @@ import {
   getAdjustmentRectToContainAnother,
   pointsToRect,
   rectContainsPoint,
+  vectorSubtract,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -2396,28 +2397,176 @@ const pasteElementsActive = computed(() => {
   );
 });
 
+const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
+  const componentIds = componentsStore.selectedComponentIds;
+
+  if (componentIds.length === 0) return;
+
+  let left;
+  let top;
+  let right;
+  let bottom;
+  for (const id of componentIds) {
+    const component = componentsStore.componentsById[id];
+    if (!component) continue;
+
+    const geometry = componentsStore.renderedGeometriesByComponentId[id];
+    if (!geometry) continue;
+
+    const thisBoundaries = {
+      top: geometry.y,
+      bottom: geometry.y + geometry.height,
+      left: geometry.x - geometry.width / 2,
+      right: geometry.x + geometry.width / 2,
+    };
+
+    if (!top || thisBoundaries.top < top) top = thisBoundaries.top;
+    if (!bottom || thisBoundaries.bottom > bottom)
+      bottom = thisBoundaries.bottom;
+    if (!left || thisBoundaries.left < left) left = thisBoundaries.left;
+    if (!right || thisBoundaries.right > right) right = thisBoundaries.right;
+  }
+
+  if (!left || !top || !right || !bottom) return;
+
+  const width = right - left;
+  const height = bottom - top;
+
+  return {
+    x: left,
+    y: top,
+    width,
+    height,
+  };
+});
+
 async function triggerPasteElements() {
   if (!pasteElementsActive.value)
     throw new Error("paste element mode must be active");
-  if (!gridPointerPos.value)
-    throw new Error("Cursor must be in grid to paste element");
+
+  const pasteCenter = gridPointerPos.value;
+  if (!pasteCenter) throw new Error("Cursor must be in grid to paste element");
+
   if (!componentsStore.copyingFrom)
     throw new Error("Copy cursor must be in grid to paste element");
 
-  const newParentNodeId =
+  const selectionEnclosure = currentSelectionEnclosure.value;
+  if (!selectionEnclosure) throw new Error("Couldn't get selection enclosure");
+
+  const selectionCenter = {
+    x: selectionEnclosure.x + selectionEnclosure.width / 2,
+    y: selectionEnclosure.y + selectionEnclosure.height / 2,
+  };
+
+  // Displacement Vector between selection center to paste center.
+  // When added to each component, moves it to be centered around paste area
+  const selectionOffset = vectorBetween(selectionCenter, pasteCenter);
+
+  // How much to move components in the direction of the paste center
+  // from 0 - move to center - to 1 - don't move
+  const selectionShrinkCoefficient = {
+    x: 1,
+    y: 1,
+  };
+
+  const newParentId =
     allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
-  const copyingFrom = componentsStore.copyingFrom;
+  let parentContentArea: IRect | undefined;
+
+  // if we're pasting into a new parent, fit the selection area into it first by shrinking and then translating
+  if (newParentId) {
+    const parentGeometry =
+      componentsStore.renderedGeometriesByComponentId[newParentId];
+    if (!parentGeometry) throw new Error("Couldn't get parent geometry");
+
+    // the x in component geometry is centered, so we need to translate it to represent the top left
+    const parentTopLeft = {
+      x: parentGeometry.x - parentGeometry.width / 2,
+      y: parentGeometry.y,
+    };
+
+    parentContentArea = {
+      x: parentTopLeft.x + GROUP_INTERNAL_PADDING,
+      y: parentTopLeft.y + GROUP_INTERNAL_PADDING,
+      width: parentGeometry.width - GROUP_INTERNAL_PADDING * 2,
+      height:
+        parentGeometry.height -
+        (GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING),
+    };
+
+    // Shrink selection
+    if (parentContentArea.width < selectionEnclosure.width) {
+      selectionShrinkCoefficient.x =
+        parentContentArea.width / selectionEnclosure.width;
+
+      selectionOffset.x = parentContentArea.x - selectionEnclosure.x;
+    }
+
+    if (parentContentArea.height < selectionEnclosure.height) {
+      selectionShrinkCoefficient.y =
+        parentContentArea.height / selectionEnclosure.height;
+
+      selectionOffset.y = parentContentArea.y - selectionEnclosure.y;
+    }
+
+    // Move selection to be centered around where it was pasted
+    const offsetPasteArea = {
+      x: selectionEnclosure.x + selectionOffset.x,
+      y: selectionEnclosure.y + selectionOffset.y,
+      width: selectionEnclosure.width * selectionShrinkCoefficient.x,
+      height: selectionEnclosure.height * selectionShrinkCoefficient.y,
+    };
+
+    const fitOffset = getAdjustmentRectToContainAnother(
+      parentContentArea,
+      offsetPasteArea,
+    );
+
+    selectionOffset.x -= fitOffset.x;
+    selectionOffset.y -= fitOffset.y;
+  }
+
+  const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
+    const thisGeometry = componentsStore.renderedGeometriesByComponentId[id];
+
+    if (!thisGeometry) throw new Error("Rendered Component not found");
+
+    // If the selection shrunk, move the children to fit
+    let finalPosition = vectorAdd(selectionOffset, thisGeometry);
+    if (parentContentArea) {
+      const shrinkOffset = getAdjustmentRectToContainAnother(
+        parentContentArea,
+        {
+          x: finalPosition.x - thisGeometry.width / 2,
+          y: finalPosition.y,
+          width: thisGeometry.width,
+          height: thisGeometry.height,
+        },
+      );
+
+      finalPosition = vectorSubtract(finalPosition, shrinkOffset);
+
+      if (thisGeometry.height >= parentContentArea.height) {
+        finalPosition.y = parentContentArea.y;
+      }
+      if (thisGeometry.width >= parentContentArea.width) {
+        finalPosition.x = parentContentArea.x + parentContentArea.width / 2;
+      }
+    }
+
+    return {
+      id,
+      componentGeometry: {
+        ...finalPosition,
+        width: thisGeometry.width,
+        height: thisGeometry.height,
+      },
+    };
+  });
+
   componentsStore.copyingFrom = null;
 
-  await componentsStore.PASTE_COMPONENTS(
-    componentsStore.selectedComponentIds,
-    {
-      x: gridPointerPos.value.x - copyingFrom.x,
-      y: gridPointerPos.value.y - copyingFrom.y,
-    },
-    gridPointerPos.value,
-    newParentNodeId,
-  );
+  await componentsStore.PASTE_COMPONENTS(pasteTargets, newParentId);
 }
 
 // ELEMENT ADDITION
@@ -2430,7 +2579,7 @@ function fitChildInsideParentFrame(
   size: Size2D,
 ): [Vector2d, Size2D] {
   // position the component within its parent cleanly
-  const HEADER_SIZE = 60; // The height of the compoennt header bar; TODO find a better way to detect this
+  const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
   // there is headerTextHeight.value, but we don't have it because the component doesn't exist yet
   const DEFAULT_GUTTER_SIZE = 10; // leaving room for sockets
   const createAtPosition = { ...position };

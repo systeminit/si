@@ -2,7 +2,7 @@ use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
 use dal::attribute::value::DependentValueGraph;
 use dal::component::resource::ResourceData;
-use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
+use dal::component::{ComponentGeometry, DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::prop::{Prop, PropPath};
@@ -1205,7 +1205,15 @@ async fn paste_component(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     let pasted_pirate_component = pirate_component
-        .copy_paste(ctx, (20., 20.))
+        .copy_paste(
+            ctx,
+            ComponentGeometry {
+                x: pirate_component.x().to_string(),
+                y: pirate_component.y().to_string(),
+                width: None,
+                height: None,
+            },
+        )
         .await
         .expect("unable to paste component");
 

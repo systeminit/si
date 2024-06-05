@@ -14,8 +14,6 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/diagram";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
-  GROUP_DEFAULT_HEIGHT,
-  GROUP_DEFAULT_WIDTH,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -325,36 +323,17 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const parent = componentStore.componentsById[component.parentId];
               if (!parent) throw new Error("Could not find parent in store");
 
-              const componentCachedGeometry =
-                componentStore.cachedGeometriesByComponentId[component.id];
+              const componentGeometry =
+                componentStore.renderedGeometriesByComponentId[component.id];
 
-              const componentGeometry = {
-                x: componentCachedGeometry?.x ?? component.position.x,
-                y: componentCachedGeometry?.y ?? component.position.y,
-                width:
-                  componentCachedGeometry?.width ??
-                  component.size?.width ??
-                  GROUP_DEFAULT_WIDTH,
-                height:
-                  componentCachedGeometry?.height ??
-                  component.size?.height ??
-                  GROUP_DEFAULT_HEIGHT,
-              };
-              const parentCachedGeometry =
-                componentStore.cachedGeometriesByComponentId[parent.id];
+              if (!componentGeometry)
+                throw new Error("Could not rendered geometry for component");
 
-              const parentGeometry = {
-                x: parentCachedGeometry?.x ?? parent.position.x,
-                y: parentCachedGeometry?.y ?? parent.position.y,
-                width:
-                  parentCachedGeometry?.width ??
-                  parent.size?.width ??
-                  GROUP_DEFAULT_WIDTH,
-                height:
-                  parentCachedGeometry?.height ??
-                  parent.size?.height ??
-                  GROUP_DEFAULT_HEIGHT,
-              };
+              const parentGeometry =
+                componentStore.renderedGeometriesByComponentId[parent.id];
+
+              if (!parentGeometry)
+                throw new Error("Could not rendered geometry for parent");
 
               // Assuming that the component already fits in the parent
               // we need to shrink the group until it fits the parent
