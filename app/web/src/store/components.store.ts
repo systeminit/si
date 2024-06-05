@@ -513,7 +513,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           schemas: (state) => _.values(state.schemasById),
 
           schemaVariants(): DiagramSchemaVariantWithDisplayMetadata[] {
-            // NOTE(nick): there is likely a prettier way to do this using lodash. Sorry Wendy and John <3.
             const schemaVariants = [];
             for (const schema of this.schemas) {
               for (const variant of schema.variants) {

@@ -4,44 +4,48 @@
       <VormInput
         v-model="packageExportReq.name"
         label="Name"
-        required
         placeholder="The name of this module..."
+        required
       />
       <VormInput
         v-model="packageExportReq.description"
         label="Description"
-        type="textarea"
         placeholder="Give this module a short description..."
+        type="textarea"
       />
       <div class="flex flex-row items-end gap-sm">
         <VormInput
           v-model="selectedSchemaVariant"
+          :options="schemaVariantOptions"
+          class="flex-1"
           label="Assets"
           type="dropdown"
-          class="flex-1"
-          :options="schemaVariantOptions"
         />
         <VButton
-          label="Add"
-          tone="action"
-          icon="plus"
-          size="xs"
           class="mb-1"
+          icon="plus"
+          label="Add"
+          size="xs"
+          tone="action"
           @click="addSchemaVariantToExport"
         />
       </div>
-      <ul class="flex flex-col gap-2xs max-h-72 overflow-y-scroll">
+      <ul class="flex flex-col gap-2xs max-h-72">
         <li
           v-for="svId in schemaVariantsForExport"
           :key="svId"
           class="flex px-1 items-center"
         >
-          <span class="pr-2" role="decoration">•</span>
+          <span class="pr-2 select-none">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
+          <span class="text-2xs italic text-neutral-500 ml-xs">
+            {{ schemaVariantsById?.[svId]?.name }}
+            {{ svTimestampStringById[svId] }}
+          </span>
           <VButton
             class="ml-auto"
-            size="xs"
             icon="trash"
+            size="xs"
             @click="removeSchemaVariant(svId)"
           />
         </li>
@@ -59,19 +63,19 @@
         By clicking the 'Contribute to System Initiative' button, you agree to
         license any code submitted under the terms of the
         <a
-          href="https://www.apache.org/licenses/LICENSE-2.0"
           class="text-green-500"
+          href="https://www.apache.org/licenses/LICENSE-2.0"
           >Apache License, Version 2.0</a
         >, and that you intend for System Initiative, Inc. to distribute it.
       </p>
       <VButton
-        :requestStatus="exportPkgReqStatus"
-        :loadingText="loadingText"
         :disabled="!enableExportButton"
         :label="label"
-        tone="action"
+        :loadingText="loadingText"
+        :requestStatus="exportPkgReqStatus"
         icon="cloud-upload"
         size="sm"
+        tone="action"
         @click="exportPkg"
       />
     </Stack>
@@ -89,6 +93,7 @@ import {
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { format as dateFormat, parseISO } from "date-fns";
+import * as _ from "lodash-es";
 import { useComponentsStore } from "@/store/components.store";
 import { useModuleStore, ModuleExportRequest } from "@/store/module.store";
 
@@ -156,17 +161,27 @@ defineExpose({ open, close, isOpen });
 
 const schemaVariantsById = computed(() => componentStore.schemaVariantsById);
 
+const svTimestampStringById = computed(() =>
+  _.reduce(
+    componentStore.schemaVariantsById,
+    (acc, sv, id) => ({
+      ...acc,
+      [id]: dateFormat(parseISO(sv.created_at), "M/d/y h:mm:ss a"),
+    }),
+    {} as Record<string, string>,
+  ),
+);
+
 const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
     .filter((sv) => sv.isDefault)
-    .map((sv) => {
-      const d = dateFormat(parseISO(sv.created_at), "M/d/y h:mm:ss a");
-      return {
-        label: `${sv.schemaName}: ${sv.name} ${d} `,
-        value: sv.id,
-      };
-    }),
+    .map((sv) => ({
+      label: `${sv.schemaName}: ${sv.name} ${
+        svTimestampStringById.value[sv.id]
+      }`,
+      value: sv.id,
+    })),
 );
 
 const getVersionTimestamp = () => dateFormat(Date.now(), "yyyyMMddkkmmss");
