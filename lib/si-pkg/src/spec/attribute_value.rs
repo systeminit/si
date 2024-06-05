@@ -64,12 +64,6 @@ impl AttributeValuePath {
         }
     }
 
-    pub fn set_index_or_key(&self, key_or_index: Option<KeyOrIndex>) -> AttributeValuePath {
-        Self::Prop {
-            path: self.path().to_string(),
-            key_or_index,
-        }
-    }
     pub fn assemble_from_parts_with_separator(
         parts: impl IntoIterator<Item = AttributeValuePath>,
         separator: Option<&str>,

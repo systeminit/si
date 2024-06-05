@@ -406,6 +406,12 @@ impl WorkspaceSnapshotGraph {
         self.graph.edges_directed(node_index, direction)
     }
 
+    pub fn find_edge(&self, from_idx: NodeIndex, to_idx: NodeIndex) -> Option<&EdgeWeight> {
+        self.graph
+            .find_edge(from_idx, to_idx)
+            .and_then(|edge_idx| self.graph.edge_weight(edge_idx))
+    }
+
     pub fn edges_directed_for_edge_weight_kind(
         &self,
         node_index: NodeIndex,
@@ -980,6 +986,89 @@ impl WorkspaceSnapshotGraph {
             "Root Node Weight: {current_root_weight:?}\n{:?}",
             petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
         );
+    }
+
+    /// Produces a subgraph of self that includes only the parent and child trees
+    /// of `subgraph_root`. Useful for producing a manageable slice of the graph
+    /// for debugging.
+    pub fn subgraph(&self, subgraph_root: NodeIndex) -> Option<Self> {
+        let mut subgraph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::new();
+        let mut index_map = HashMap::new();
+        let mut node_index_by_id = HashMap::new();
+        let mut node_indices_by_lineage_id = HashMap::new();
+        let mut new_root = None;
+
+        let mut add_node_to_idx = |node_id: Ulid, lineage_id: Ulid, node_idx: NodeIndex| {
+            node_index_by_id.insert(node_id, node_idx);
+            node_indices_by_lineage_id
+                .entry(lineage_id)
+                .and_modify(|set: &mut HashSet<NodeIndex>| {
+                    set.insert(node_idx);
+                })
+                .or_insert_with(|| HashSet::from([node_idx]));
+        };
+
+        let mut parent_q = VecDeque::from([subgraph_root]);
+        let node_weight = self.graph.node_weight(subgraph_root)?.to_owned();
+        let sub_id = node_weight.id();
+        let sub_lineage_id = node_weight.lineage_id();
+        let new_subgraph_root = subgraph.add_node(node_weight);
+        add_node_to_idx(sub_id, sub_lineage_id, new_subgraph_root);
+        index_map.insert(subgraph_root, new_subgraph_root);
+
+        // Walk to parent
+        while let Some(node_idx) = parent_q.pop_front() {
+            let mut has_parents = false;
+            for edge_ref in self.edges_directed(node_idx, Incoming) {
+                has_parents = true;
+                let source_idx = edge_ref.source();
+                let source_node_weight = self.graph.node_weight(source_idx)?.to_owned();
+                let id = source_node_weight.id();
+                let lineage_id = source_node_weight.lineage_id();
+                let new_source_idx = subgraph.add_node(source_node_weight);
+                index_map.insert(source_idx, new_source_idx);
+
+                add_node_to_idx(id, lineage_id, new_source_idx);
+
+                let edge_weight = edge_ref.weight().to_owned();
+
+                let current_node_idx_in_sub = index_map.get(&node_idx).copied()?;
+                subgraph.add_edge(new_source_idx, current_node_idx_in_sub, edge_weight);
+
+                parent_q.push_back(edge_ref.source());
+            }
+            if !has_parents {
+                new_root = Some(index_map.get(&node_idx).copied()?);
+            }
+        }
+
+        // Walk to leaves from subgraph_root
+        let mut child_q = VecDeque::from([subgraph_root]);
+        while let Some(node_idx) = child_q.pop_front() {
+            for edge_ref in self.edges_directed(node_idx, Outgoing) {
+                let target_idx = edge_ref.target();
+                let target_node_weight = self.graph.node_weight(target_idx)?.to_owned();
+                let id = target_node_weight.id();
+                let lineage_id = target_node_weight.lineage_id();
+                let new_target_idx = subgraph.add_node(target_node_weight);
+                index_map.insert(target_idx, new_target_idx);
+                add_node_to_idx(id, lineage_id, new_target_idx);
+
+                let edge_weight = edge_ref.weight().to_owned();
+
+                let current_node_idx_in_sub = index_map.get(&edge_ref.source()).copied()?;
+                subgraph.add_edge(current_node_idx_in_sub, new_target_idx, edge_weight);
+
+                child_q.push_back(edge_ref.source());
+            }
+        }
+
+        Some(Self {
+            graph: subgraph,
+            node_index_by_id,
+            node_indices_by_lineage_id,
+            root_index: new_root?,
+        })
     }
 
     #[allow(dead_code, clippy::disallowed_methods)]

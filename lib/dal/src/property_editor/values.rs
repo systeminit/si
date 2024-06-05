@@ -115,7 +115,7 @@ impl PropertyEditorValues {
                 }
 
                 let maybe_ordering =
-                    AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                    AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
                         .await
                         .ok();
 

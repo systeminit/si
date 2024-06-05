@@ -80,6 +80,8 @@ pub enum ComponentError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cannot clone attributes from a component with a different schema variant id")]
+    CannotCloneFromDifferentVariants,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
@@ -447,8 +449,6 @@ impl Component {
             // create child values when that function is executed
             let should_descend = key.is_none();
 
-            // Ensure that we are processing a prop before creating attribute values. Cache the
-            // prop kind for later.
             let prop_kind = workspace_snapshot
                 .get_node_weight_by_id(prop_id)
                 .await?
@@ -543,13 +543,84 @@ impl Component {
         Ok(component)
     }
 
+    /// Attempts to merge the avlues from other_component into this component,
+    /// if values exist for the prop in other. Only use this immediately after
+    /// Component::new, so that we can make certain assumptions (for example, we
+    /// can assume that the prototypes are correct, and that arrays and maps are
+    /// empty)
+    async fn merge_from_component_with_different_schema_variant(
+        &self,
+        ctx: &DalContext,
+        other_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let self_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
+        let other_root_id = Component::root_attribute_value_id(ctx, other_component_id).await?;
+
+        let other_root_view = AttributeValue::get_by_id(ctx, other_root_id)
+            .await?
+            .view(ctx)
+            .await?;
+
+        // The the entire component based on the value of the other component
+        AttributeValue::update(ctx, self_root_id, other_root_view).await?;
+        // The update operation orphans deeply nested values, clear them out to
+        // avoid issues downstream
+        ctx.workspace_snapshot()?.cleanup().await?;
+
+        // Now, walk the attribute value tree and reset all prototypes to the default
+
+        let mut value_q = VecDeque::from([self_root_id]);
+        while let Some(current_av_id) = value_q.pop_front() {
+            if let Some(component_prototype_id) =
+                AttributeValue::component_prototype_id(ctx, current_av_id).await?
+            {
+                let variant_prototype_id =
+                    AttributeValue::schema_variant_prototype_id(ctx, current_av_id).await?;
+                let is_dependent_func = Func::get_by_id_or_error(
+                    ctx,
+                    AttributePrototype::func_id(ctx, variant_prototype_id).await?,
+                )
+                .await?
+                .is_dynamic();
+                // If the SV prototype is dynamic, but we have overridden it in
+                // the update, then we need to reset it to the original proto
+                if is_dependent_func {
+                    ctx.workspace_snapshot()?
+                        .remove_edge_for_ulids(
+                            ctx.change_set()?,
+                            current_av_id,
+                            component_prototype_id,
+                            EdgeWeightKindDiscriminants::Prototype,
+                        )
+                        .await?;
+                }
+            }
+
+            for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, current_av_id).await?
+            {
+                value_q.push_back(child_av_id);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Copy all the attribute values from copied_component_id into this
+    /// component. Components must be on the same schema variant. This will
+    /// preserve any component specific prototypes defined on the component
+    /// being copied from.
     pub async fn clone_attributes_from(
         &self,
         ctx: &DalContext,
         copied_component_id: ComponentId,
-        clear_resource: bool,
-        reset_name: bool,
     ) -> ComponentResult<()> {
+        let copied_sv_id = Component::schema_variant_id(ctx, copied_component_id).await?;
+        let pasted_sv_id = Component::schema_variant_id(ctx, self.id).await?;
+
+        if copied_sv_id != pasted_sv_id {
+            return Err(ComponentError::CannotCloneFromDifferentVariants);
+        }
+
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
         let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
 
@@ -572,8 +643,10 @@ impl Component {
             }
 
             // Enqueue children
-            let copied_children = AttributeValue::list_all_children(ctx, copied_av_id).await?;
-            let pasted_children = AttributeValue::list_all_children(ctx, pasted_av_id).await?;
+            let copied_children =
+                AttributeValue::get_child_av_ids_in_order(ctx, copied_av_id).await?;
+            let pasted_children =
+                AttributeValue::get_child_av_ids_in_order(ctx, pasted_av_id).await?;
             let mut pasted_children_paths = HashMap::new();
 
             for pasted_child_av_id in &pasted_children {
@@ -611,13 +684,9 @@ impl Component {
             }
         }
 
-        if clear_resource {
-            self.clear_resource(ctx).await?;
-        }
-        if reset_name {
-            self.set_name(ctx, &Self::generate_copy_name(self.name(ctx).await?))
-                .await?;
-        }
+        self.clear_resource(ctx).await?;
+        self.set_name(ctx, &Self::generate_copy_name(self.name(ctx).await?))
+            .await?;
 
         let copied_root_id = Component::root_attribute_value_id(ctx, copied_component_id).await?;
         let pasted_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
@@ -713,8 +782,10 @@ impl Component {
             }
 
             // Enqueue children
-            let copied_children = AttributeValue::list_all_children(ctx, copied_av_id).await?;
-            let pasted_children = AttributeValue::list_all_children(ctx, pasted_av_id).await?;
+            let copied_children =
+                AttributeValue::get_child_av_ids_in_order(ctx, copied_av_id).await?;
+            let pasted_children =
+                AttributeValue::get_child_av_ids_in_order(ctx, pasted_av_id).await?;
             let mut pasted_children_paths = HashMap::new();
 
             for pasted_child_av_id in &pasted_children {
@@ -1707,7 +1778,7 @@ impl Component {
             result.insert(av_id, controlling_tuple);
 
             av_queue.extend(
-                AttributeValue::get_child_av_ids_for_ordered_parent(ctx, av_id)
+                AttributeValue::get_child_av_ids_in_order(ctx, av_id)
                     .await?
                     .into_iter()
                     .map(|child_av_id| (child_av_id, Some(av_id)))
@@ -2028,9 +2099,7 @@ impl Component {
             )
             .await?;
 
-        pasted_comp
-            .clone_attributes_from(ctx, self.id(), true, true)
-            .await?;
+        pasted_comp.clone_attributes_from(ctx, self.id()).await?;
         Ok(pasted_comp)
     }
     /// For a given [`ComponentId`], map each input socket to the inferred output sockets
@@ -2810,8 +2879,9 @@ impl Component {
         }
 
         new_component
-            .clone_attributes_from(ctx, self.id(), false, false)
+            .merge_from_component_with_different_schema_variant(ctx, original_component.id())
             .await?;
+
         new_component
             .set_geometry(ctx, self.x(), self.y(), self.width(), self.height())
             .await?;

@@ -359,7 +359,7 @@ impl ValidationOutput {
                     .map(|node| node.validation);
 
             let children_av_ids =
-                AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
                     .await
                     .map_err(|e| ValidationError::AttributeValue(e.to_string()))?;
 

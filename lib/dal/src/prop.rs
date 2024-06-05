@@ -19,7 +19,7 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
@@ -728,6 +728,48 @@ impl Prop {
             node_index,
             child_name.as_ref().to_string(),
         ))
+    }
+
+    /// Find the `SchemaVariantId`` for a given prop. If the prop tree is
+    /// orphaned, we just return `None`
+    pub async fn schema_variant_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<SchemaVariantId>> {
+        let root_prop_id = Self::root_prop_for_prop_id(ctx, prop_id).await?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        match workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(root_prop_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+            .first()
+        {
+            Some(parent_node_idx) => {
+                match workspace_snapshot.get_node_weight(*parent_node_idx).await? {
+                    NodeWeight::Content(content_inner)
+                        if matches!(
+                            content_inner.content_address(),
+                            ContentAddress::SchemaVariant(_)
+                        ) =>
+                    {
+                        Ok(Some(content_inner.id().into()))
+                    }
+                    _ => Err(PropError::PropParentInvalid(root_prop_id)),
+                }
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Walk the prop tree up, finding the root prop for the passed in `prop_id`
+    pub async fn root_prop_for_prop_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropId> {
+        let mut cursor = prop_id;
+
+        while let Some(new_cursor) = Self::parent_prop_id_by_id(ctx, cursor).await? {
+            cursor = new_cursor;
+        }
+
+        Ok(cursor)
     }
 
     pub async fn find_prop_id_by_path_opt(
