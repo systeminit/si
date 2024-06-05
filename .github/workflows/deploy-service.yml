@@ -1,118 +1,82 @@
-name: Deploy Service to Tools Prod
+name: Deploy Service
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
-        type: choice
+        type: string
         required: true
         description: "where to deploy"
-        default: "tools"
-        options:
-          - tools
-          - production
       service:
-        type: choice
+        type: string
         required: true
         description: "service to deploy"
-        options:
-          - all
-          - pinga
-          - rebaser
-          - sdf
-          - veritech
-          - web
       version:
         type: string
         required: true
-        description: "version to deploy -- NOTEL: this does not yet work for web; it will always deploy stable using this"
-        default: "stable"
+        description: "version to deploy"
+    secrets:
+      access_key:
+        required: true
+      secret_key:
+        required: true
 
 jobs:
   deploy:
     name: Deploy Service
     runs-on: ubuntu-latest
     steps:
-       # invalidate Artifact Store Cloudfront so we get latest
-      - name: Configure AWS credentials for shared-prod
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
-          aws-region: us-east-1
-      - name: Invalidate Artifacts Cache
-        run: |
-          DIST_ID=E2HW6000JEVIPB
-          # Create a CloudFront invalidation for all objects (/*)
-          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
-          # Check the status of the invalidation until it's completed
-          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
-              echo "Invalidation is still in progress. Waiting..."
-              sleep 5
-          done
-          echo "Invalidation is complete."
-
-       # deploy to tools
-      - name: Configure AWS credentials for tools-prod
-        if: ${{ github.event.inputs.environment == 'tools' }}
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_TOOLS_PROD_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_TOOLS_PROD_SECRET_KEY }}
-          aws-region: us-east-1
-
-       # deploy to production
       - name: Configure AWS credentials for production
-        if: ${{ github.event.inputs.environment == 'production' }}
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_PRODUCTION_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_PRODUCTION_SECRET_KEY }}
+          aws-access-key-id: ${{ secrets.access_key }}
+          aws-secret-access-key: ${{ secrets.secret_key }}
           aws-region: us-east-1
 
-      - name: Instance Refresh for chosen services & CDN Invalidation
+      - name: Deploy web
+        id: deploy-web
+        if: ${{ github.event.inputs.service == 'web' }}
         run: |
-          invalidate_distribution() {
-            DIST_ID=$1
-            # Create a CloudFront invalidation for all objects (/*)
-            invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
-            # Check the status of the invalidation until it's completed
-            while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
-                echo "Invalidation is still in progress. Waiting..."
-                sleep 5
-            done
-            echo "Invalidation of web frontend is complete."
-          }
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            VERSION="${{ github.event.inputs.version }}"
+            if docker manifest inspect "systeminit/web:$VERSION" >/dev/null 2>&1; then
+                echo "Setting web to $VERSION."
+                task_definition_arn=$(aws ecs describe-services --cluster "${ENVIRONMENT}-cluster" --services "${ENVIRONMENT}-frontend" --query 'services[0].taskDefinition' --output text)
+                new_task_definition=$(aws ecs describe-task-definition --task-definition "$task_definition_arn" | \
+                    jq --arg version "$VERSION" '.taskDefinition.containerDefinitions[0].image = "systeminit/web:\($version)"')
+                aws ecs register-task-definition --cli-input-json "$new_task_definition"
+                aws ecs update-service --cluster "${ENVIRONMENT}-cluster" --service "${ENVIRONMENT}-frontend" --force-new-deployment
+            else
+                echo "Image systeminit/web:$VERSION not found on Docker Hub. Skipping!"
+            fi
 
-          ENVIRONMENT="${{ github.event.inputs.environment }}"
-          SERVICE="${{ github.event.inputs.service }}"
-          VERSION="${{ github.event.inputs.version }}"
+      - name: Deploy service
+        if: ${{ github.event.inputs.service != 'web' }}
+        run: |
+            check_version_exists() {
+                local version="$1"
+                local service="$2"
+                local URL="https://artifacts.systeminit.com/${service}/${version}/omnibus/linux/x86_64/${service}-${version}-omnibus-linux-x86_64.tar.gz"
+                local check=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+                [[ "$check" -eq 200 || "$check" -eq 301 ]]
+            }
 
-          if [ "$ENVIRONMENT" == "tools" ]; then
-              cloudfront="E1MTI3007PGD67"
-          else
-              cloudfront="E3TQ4YC3FXZU7K"
-          fi
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            SERVICE="${{ github.event.inputs.service }}"
+            VERSION="${{ github.event.inputs.version }}"
 
-          if [ "$SERVICE" == "all" ]; then
-              echo "Setting versions to ${VERSION}."
-              echo "Deploying everything!"
-              services=("pinga" "rebaser" "sdf" "veritech")
-              for service in "${services[@]}"; do
-                  aws ssm put-parameter --name "$ENVIRONMENT-si-version-$service" --value "$VERSION" --type "String" --overwrite
-                  aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$service"
-              done
-              aws ecs update-service --cluster "$ENVIRONMENT-cluster" --service "$ENVIRONMENT-frontend" --force-new-deployment
-              invalidate_distribution "$cloudfront"
+            if check_version_exists "$VERSION" "$SERVICE"; then
+                echo "Setting $SERVICE to $VERSION."
+                aws ssm put-parameter --name "${ENVIRONMENT}-si-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
+                aws autoscaling start-instance-refresh --auto-scaling-group-name "${ENVIRONMENT}-${SERVICE}"
+            else
+                echo "Version $VERSION for $SERVICE not found in the artifacts registry. Skipping!"
+            fi
 
-          elif [ "$SERVICE" == "web" ]; then
-              echo "Deploying $SERVICE!"
-              aws ecs update-service --cluster "$ENVIRONMENT-cluster" --service "$ENVIRONMENT-frontend" --force-new-deployment
-              invalidate_distribution "$cloudfront"
-
-          else
-              echo "Setting version to ${VERSION}."
-              aws ssm put-parameter --name "$ENVIRONMENT-si-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
-              echo "Deploying $SERVICE!"
-              aws autoscaling start-instance-refresh --auto-scaling-group-name "$ENVIRONMENT-$SERVICE"
-          fi
+  invalidate-cache:
+    if: ${{ github.event.inputs.service == 'web' }}
+    needs: deploy
+    uses: ./.github/workflows/invalidate-cache.yml
+    with:
+      environment: shared
+    secrets: inherit

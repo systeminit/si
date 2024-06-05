@@ -1,0 +1,45 @@
+name: Set init version
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+      service:
+        type: string
+        required: true
+        description: "service to deploy"
+      version:
+        type: string
+        required: true
+        description: "version to deploy"
+    secrets:
+      access_key:
+        required: true
+      secret_key:
+        required: true
+
+jobs:
+  deploy:
+    name: Set init version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for production
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.access_key }}
+          aws-secret-access-key: ${{ secrets.secret_key }}
+          aws-region: us-east-1
+
+      - name: Set init version
+        if: ${{ github.event.inputs.service != 'web' }}
+        run: |
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            VERSION="${{ github.event.inputs.version }}"
+            if docker manifest inspect "systeminit/init:$VERSION" >/dev/null 2>&1; then
+              aws ssm put-parameter --name "${ENVIRONMENT}-si-version-init" --value "$VERSION" --type "String" --overwrite
+            else
+              aws ssm put-parameter --name "${ENVIRONMENT}-si-version-init" --value "stable" --type "String" --overwrite
+            fi

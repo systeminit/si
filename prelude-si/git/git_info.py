@@ -10,6 +10,7 @@ import sys
 from typing import Any, Dict
 
 ABBREVIATED_COMMIT_HASH = "abbreviated_commit_hash"
+BRANCH_NAME = "branch"
 CAL_VER = "cal_ver"
 CANONICAL_VERSION = "canonical_version"
 COMMITER_DATE_STRICT = "committer_date_strict_iso8601"
@@ -29,6 +30,7 @@ def main() -> int:
     args = parser.parse_args()
 
     data = {}
+    data.update(parse_git_branch())
     data.update(parse_git_status())
     data.update(parse_git_show())
     finalize(data)
@@ -40,6 +42,18 @@ def main() -> int:
             json.dump(data, file, sort_keys=True)
 
     return 0
+
+
+def parse_git_branch() -> Dict[str, str]:
+    git_branch_command = [
+        "git",
+        "branch",
+        "--show-current",
+    ]
+    result = subprocess.run(git_branch_command, capture_output=True, text=True)
+    result.check_returncode()
+
+    return {BRANCH_NAME: result.stdout.strip()}
 
 
 def parse_git_show() -> Dict[str, str]:

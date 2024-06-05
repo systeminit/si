@@ -3,7 +3,7 @@ services:
 
   init:
     container_name: init
-    image: systeminit/init:${SI_VERSION}
+    image: systeminit/init:${INIT_VERSION:-stable}
     profiles: [rebaser, pinga, sdf, veritech]
     environment:
       - SI_HOSTENV=${SI_HOSTENV}
@@ -14,7 +14,7 @@ services:
 
   otelcol:
     container_name: otelcol
-    image: systeminit/otelcol:${SI_VERSION}
+    image: systeminit/otelcol:${SI_VERSION:-stable}
     profiles: [rebaser, pinga, sdf, veritech]
     ports:
       - 4317:4317
@@ -46,7 +46,7 @@ services:
 
   pgbouncer:
     container_name: pgbouncer
-    image: systeminit/pgbouncer:stable
+    image: systeminit/pgbouncer:${SI_VERSION:-stable}
     profiles: [rebaser, pinga, sdf]
     ports:
       - 5432:5432

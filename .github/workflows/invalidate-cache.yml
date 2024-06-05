@@ -1,0 +1,37 @@
+name: Invalidate Cloudfront
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        description: "which environment to invalidate"
+    secrets:
+      access_key:
+        required: true
+      secret_key:
+        required: true
+
+jobs:
+  invalidate-cache:
+    runs-on: ubuntu-latest
+    steps:
+       # invalidate Artifact Store Cloudfront so we get latest
+      - name: Configure AWS credentials for shared-prod
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.access_key }}
+          aws-secret-access-key: ${{ secrets.secret_key }}
+          aws-region: us-east-1
+      - name: Invalidate Artifacts Cache
+        run: |
+          ENV=${{ inputs.environment }}
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='$ENV-cdn'].Id | [0]" --output text)
+          # Create a CloudFront invalidation for all objects (/*)
+          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
+          # Check the status of the invalidation until it's completed
+          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+              echo "Invalidation is still in progress. Waiting..."
+              sleep 5
+          done
+          echo "Invalidation is complete."

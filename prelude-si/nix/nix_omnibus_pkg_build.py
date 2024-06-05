@@ -329,6 +329,7 @@ def compute_pkg_metadata(
         "architecture": architecture.value,
         "os": platform_os.value,
         "commit": git_info.get("commit_hash"),
+        "branch": git_info.get("branch"),
         "binaries": binaries,
         "nix_closure": pkgs_closure
     }
