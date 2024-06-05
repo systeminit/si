@@ -1,0 +1,76 @@
+name: Deploy Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to deploy"
+        default: "tools"
+        options:
+          - tools
+          - production
+      service:
+        type: choice
+        required: true
+        description: "service to deploy"
+        options:
+          - all
+          - pinga
+          - rebaser
+          - sdf
+          - veritech
+          - web
+      version:
+        type: string
+        required: true
+        description: "version to deploy"
+        default: "stable"
+
+jobs:
+  invalidate-cache:
+    uses: ./.github/workflows/invalidate-cache.yml
+    with:
+      environment: shared
+    secrets:
+      access_key: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
+      secret_key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
+
+  deploy-service:
+    needs: invalidate-cache
+    if: ${{ github.event.inputs.service != 'all' }}
+    uses: ./.github/workflows/deploy-service.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      service: ${{ github.event.inputs.service }}
+      version: ${{ github.event.inputs.version }}
+    secrets:
+      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
+      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
+
+  deploy-services:
+    needs: invalidate-cache
+    if: ${{ github.event.inputs.service == 'all' }}
+    strategy:
+     matrix:
+      service: ["pinga", "rebaser", "sdf", "web"]
+    uses: ./.github/workflows/deploy-service.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      service: ${{ matrix.service }}
+      version: ${{ github.event.inputs.version }}
+    secrets:
+      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
+      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
+
+  set-init:
+    needs: invalidate-cache
+    uses: ./.github/workflows/set-init-version.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      service: ${{ github.event.inputs.service }}
+      version: ${{ github.event.inputs.version }}
+    secrets:
+      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
+      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
