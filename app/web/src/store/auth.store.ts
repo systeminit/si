@@ -8,6 +8,7 @@ import { posthog } from "@/utils/posthog";
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useWorkspacesStore } from "./workspaces.store";
+import handleStoreError from "./errors";
 
 export type UserId = string;
 
@@ -214,5 +215,12 @@ export const useAuthStore = defineStore("auth", {
         },
       });
     },
+  },
+  onActivated() {
+    const actionUnsub = this.$onAction(handleStoreError);
+
+    return () => {
+      actionUnsub();
+    };
   },
 });

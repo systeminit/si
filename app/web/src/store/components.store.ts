@@ -43,6 +43,7 @@ import {
   GROUP_DEFAULT_WIDTH,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
+import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -1820,11 +1821,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             ],
           );
 
+          const actionUnsub = this.$onAction(handleStoreError);
+
           return () => {
             // clear selection without triggering url stuff
             this.selectedComponentIds = [];
             this.selectedEdgeId = null;
 
+            actionUnsub();
             stopWatchingUrl();
             realtimeStore.unsubscribe(`${this.$id}-changeset`);
             realtimeStore.unsubscribe(`${this.$id}-workspace`);

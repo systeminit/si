@@ -15,6 +15,7 @@ import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
+import handleStoreError from "./errors";
 
 const toast = useToast();
 
@@ -433,7 +434,10 @@ export function useChangeSetsStore() {
           },
         ]);
 
+        const actionUnsub = this.$onAction(handleStoreError);
+
         return () => {
+          actionUnsub();
           stopWatchSelectedChangeSet();
           realtimeStore.unsubscribe(this.$id);
         };

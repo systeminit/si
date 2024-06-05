@@ -1,4 +1,12 @@
+// Example filename: tracing.js
 import { Buffer } from "buffer";
+import { HoneycombWebSDK } from "@honeycombio/opentelemetry-web";
+import { getWebAutoInstrumentations } from "@opentelemetry/auto-instrumentations-web";
+import { DocumentLoadInstrumentation } from "@opentelemetry/instrumentation-document-load";
+import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-user-interaction";
+import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-task";
+import opentelemetry, { Span } from "@opentelemetry/api";
+
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
@@ -15,6 +23,44 @@ import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
+const backendHosts = import.meta.env.VITE_BACKEND_HOSTS
+  ? JSON.parse(import.meta.env.VITE_BACKEND_HOSTS).map(
+      (r: string) => new RegExp(r),
+    )
+  : [];
+const sdk = new HoneycombWebSDK({
+  endpoint: `${
+    import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT
+  }:4318/v1/traces`,
+  serviceName: "si-vue",
+  skipOptionsValidation: true,
+  instrumentations: [
+    getWebAutoInstrumentations({
+      // load custom configuration for xml-http-request instrumentation
+      "@opentelemetry/instrumentation-xml-http-request": {
+        propagateTraceHeaderCorsUrls: backendHosts,
+      },
+      "@opentelemetry/instrumentation-fetch": {
+        propagateTraceHeaderCorsUrls: backendHosts,
+      },
+    }), // add automatic instrumentation
+    new DocumentLoadInstrumentation(),
+    new UserInteractionInstrumentation({
+      shouldPreventSpanCreation: (eventType, element, span) => {
+        span.setAttribute("target.tagName", element.tagName);
+        span.setAttribute("target.html", element.outerHTML);
+      },
+    }), // just click events for now
+    new LongTaskInstrumentation({
+      observerCallback: (span, _longtaskEvent) => {
+        span.setAttribute("location.pathname", window.location.pathname);
+      },
+    }),
+  ],
+});
+
+sdk.start();
+
 // this is for joi - because we are importing the source rather than the default build made for the browser
 globalThis.Buffer = Buffer;
 
@@ -23,6 +69,31 @@ const app = createApp(App);
 app.use(createHead());
 app.use(router);
 app.use(store);
+
+window.onerror = (message, source, lineno, colno, error) => {
+  const span = opentelemetry.trace.getActiveSpan();
+
+  const _report = (span: Span) => {
+    span.setAttribute("error.stacktrace", error?.stack || "");
+    span.setAttribute("error.message", message.toString());
+    span.setAttribute("error.source", source || "");
+    span.setAttribute("error.lineno", lineno || "");
+    span.setAttribute("error.colno", colno || "");
+  };
+
+  if (span) {
+    _report(span);
+  } else {
+    const tracer = opentelemetry.trace.getTracer("errorHandler");
+    tracer.startActiveSpan("error", (span) => {
+      _report(span);
+      span.end();
+    });
+  }
+};
+
+// seemingly this doesnt do anything at all
+// app.config.errorHandler = (err, instance, info) => {};
 
 // set the default tooltip delay to show and hide faster
 FloatingVue.options.themes.tooltip.delay = { show: 10, hide: 100 };

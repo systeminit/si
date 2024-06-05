@@ -9,6 +9,7 @@ import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import handleStoreError from "./errors";
 
 /**
  * A public key with metadata, used to encrypt secrets
@@ -500,6 +501,12 @@ export function useSecretsStore() {
               },
             },
           ]);
+          const actionUnsub = this.$onAction(handleStoreError);
+
+          return () => {
+            actionUnsub();
+            realtimeStore.unsubscribe(this.$id);
+          };
         },
       },
     ),
