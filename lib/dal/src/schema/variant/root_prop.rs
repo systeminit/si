@@ -107,6 +107,10 @@ pub struct RootProp {
 
 impl RootProp {
     /// Create and set a [`RootProp`] for the [`SchemaVariant`].
+    /// *BIG BOLD BANNER*: changes to this structure must be followed up with
+    /// changes to the structure of the root props defined in the si-pkg crate!
+    /// TODO: use the si-pkg definition of the root prop to drive this code, so
+    /// we have one source of truth
     pub async fn new(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -124,7 +128,6 @@ impl RootProp {
         .await?;
         let root_prop_id = root_prop.id();
 
-        // info!("setting up si, domain and secrets");
         let si_prop_id = Self::setup_si(ctx, root_prop_id).await?;
 
         let domain_prop =

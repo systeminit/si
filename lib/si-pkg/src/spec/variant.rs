@@ -66,7 +66,9 @@ pub enum SchemaVariantSpecComponentType {
     Copy,
 )]
 pub enum SchemaVariantSpecPropRoot {
+    Code,
     Domain,
+    Qualification,
     Resource,
     ResourceValue,
     SecretDefinition,
@@ -81,6 +83,8 @@ impl SchemaVariantSpecPropRoot {
             Self::Resource => &["root", "resource"],
             Self::SecretDefinition => &["root", "secret_definition"],
             Self::Secrets => &["root", "secrets"],
+            Self::Code => &["root", "code"],
+            Self::Qualification => &["root", "qualification"],
         }
     }
 
@@ -91,6 +95,8 @@ impl SchemaVariantSpecPropRoot {
             "resource_value" => Some(SchemaVariantSpecPropRoot::ResourceValue),
             "secret_definition" => Some(SchemaVariantSpecPropRoot::SecretDefinition),
             "secrets" => Some(SchemaVariantSpecPropRoot::Secrets),
+            "qualification" => Some(SchemaVariantSpecPropRoot::Qualification),
+            "code" => Some(SchemaVariantSpecPropRoot::Code),
             _ => None,
         }
     }
@@ -189,13 +195,107 @@ impl SchemaVariantSpec {
         SchemaVariantSpecBuilder::default()
     }
 
-    fn get_root_prop(&self, root: SchemaVariantSpecPropRoot) -> Option<&PropSpec> {
+    // This is only used when merging prototypes. If the structure of
+    // resource/code/qualification changes, these have to be updated
+    fn get_root_prop_for_merge(&self, root: SchemaVariantSpecPropRoot) -> Option<PropSpec> {
+        // On the expects: A panic here means we used the builder wrong, and
+        // should occur during tests
+        let resource_spec = PropSpec::builder()
+            .name("resource")
+            .kind(PropSpecKind::Object)
+            .entry(
+                PropSpec::builder()
+                    .kind(PropSpecKind::String)
+                    .name("last_synced")
+                    .build()
+                    .expect("should build"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .kind(PropSpecKind::String)
+                    .name("status")
+                    .build()
+                    .expect("should build"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .kind(PropSpecKind::Json)
+                    .name("payload")
+                    .build()
+                    .expect("should build"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .kind(PropSpecKind::Json)
+                    .name("message")
+                    .build()
+                    .expect("should build"),
+            )
+            .build()
+            .expect("should build");
+
+        let qualification_spec = PropSpec::builder()
+            .name("qualification")
+            .kind(PropSpecKind::Map)
+            .type_prop(
+                PropSpec::builder()
+                    .kind(PropSpecKind::Object)
+                    .name("qualificationItem")
+                    .entry(
+                        PropSpec::builder()
+                            .name("result")
+                            .kind(PropSpecKind::String)
+                            .build()
+                            .expect("should build"),
+                    )
+                    .entry(
+                        PropSpec::builder()
+                            .name("message")
+                            .kind(PropSpecKind::String)
+                            .build()
+                            .expect("should build"),
+                    )
+                    .build()
+                    .expect("build prop"),
+            )
+            .build()
+            .expect("should build");
+
+        let code_spec = PropSpec::builder()
+            .name("code")
+            .kind(PropSpecKind::Map)
+            .type_prop(
+                PropSpec::builder()
+                    .kind(PropSpecKind::Object)
+                    .name("codeItem")
+                    .entry(
+                        PropSpec::builder()
+                            .name("code")
+                            .kind(PropSpecKind::String)
+                            .build()
+                            .expect("should build"),
+                    )
+                    .entry(
+                        PropSpec::builder()
+                            .name("format")
+                            .kind(PropSpecKind::String)
+                            .build()
+                            .expect("should build"),
+                    )
+                    .build()
+                    .expect("build prop"),
+            )
+            .build()
+            .expect("should build");
+
         match root {
-            SchemaVariantSpecPropRoot::Domain => Some(&self.domain),
-            SchemaVariantSpecPropRoot::ResourceValue => Some(&self.resource_value),
-            SchemaVariantSpecPropRoot::SecretDefinition => self.secret_definition.as_ref(),
-            SchemaVariantSpecPropRoot::Secrets => Some(&self.secrets),
-            SchemaVariantSpecPropRoot::Resource => None,
+            SchemaVariantSpecPropRoot::Domain => Some(self.domain.to_owned()),
+            SchemaVariantSpecPropRoot::ResourceValue => Some(self.resource_value.to_owned()),
+            SchemaVariantSpecPropRoot::SecretDefinition => self.secret_definition.to_owned(),
+            SchemaVariantSpecPropRoot::Secrets => Some(self.secrets.to_owned()),
+            SchemaVariantSpecPropRoot::Resource => Some(resource_spec),
+            SchemaVariantSpecPropRoot::Code => Some(code_spec),
+            SchemaVariantSpecPropRoot::Qualification => Some(qualification_spec),
         }
     }
 
@@ -223,7 +323,7 @@ impl SchemaVariantSpec {
         let mut root = PropSpec::builder();
         root.kind(PropSpecKind::Object).name("root");
         for root_prop_kind in SchemaVariantSpecPropRoot::iter() {
-            if let Some(prop_spec) = self.get_root_prop(root_prop_kind) {
+            if let Some(prop_spec) = self.get_root_prop_for_merge(root_prop_kind) {
                 root.entry(prop_spec.clone());
             }
         }
@@ -564,14 +664,16 @@ impl SchemaVariantSpecBuilder {
                 Some(SchemaVariantSpecPropRoot::ResourceValue) => {
                     self.resource_value = Some(child.to_owned());
                 }
-                Some(SchemaVariantSpecPropRoot::Resource) => {}
                 Some(SchemaVariantSpecPropRoot::SecretDefinition) => {
                     self.secret_definition = Some(Some(child.to_owned()));
                 }
                 Some(SchemaVariantSpecPropRoot::Secrets) => {
                     self.secrets = Some(child.to_owned());
                 }
-                None => {}
+                Some(SchemaVariantSpecPropRoot::Resource)
+                | Some(SchemaVariantSpecPropRoot::Code)
+                | Some(SchemaVariantSpecPropRoot::Qualification)
+                | None => {}
             }
         }
 
@@ -603,7 +705,9 @@ impl SchemaVariantSpecBuilder {
             SchemaVariantSpecPropRoot::Secrets => {
                 Some(self.secrets.get_or_insert_with(Self::default_secrets))
             }
-            SchemaVariantSpecPropRoot::Resource => None,
+            SchemaVariantSpecPropRoot::Resource
+            | SchemaVariantSpecPropRoot::Code
+            | SchemaVariantSpecPropRoot::Qualification => None,
         };
 
         if let Some(converted_root) = maybe_root {

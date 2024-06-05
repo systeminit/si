@@ -1056,14 +1056,24 @@ impl FuncRunner {
             let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
             let mut maybe_value = None;
             for av_id in av_ids {
-                if AttributeValue::component_id(ctx, av_id).await? != component_id {
-                    continue;
+                match AttributeValue::component_id(ctx, av_id).await {
+                    Ok(av_component_id) => {
+                        if av_component_id != component_id {
+                            continue;
+                        }
+                        let av = AttributeValue::get_by_id(ctx, av_id).await?;
+
+                        maybe_value = av.value(ctx).await?;
+                        break;
+                    }
+                    // We might encounter an orphaned value because an update
+                    // operation has destroyed a deeply-nested value tree. This
+                    // is fine, just keep looking.
+                    Err(AttributeValueError::OrphanedAttributeValue(_)) => {
+                        continue;
+                    }
+                    Err(other_err) => return Err(other_err)?,
                 }
-
-                let av = AttributeValue::get_by_id(ctx, av_id).await?;
-
-                maybe_value = av.value(ctx).await?;
-                break;
             }
 
             if let Some(value) = maybe_value {

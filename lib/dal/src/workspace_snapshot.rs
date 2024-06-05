@@ -42,7 +42,6 @@ use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
-use si_pkg::KeyOrIndex;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -1224,6 +1223,21 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    pub async fn find_edge(
+        &self,
+        from_id: impl Into<Ulid>,
+        to_id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Option<EdgeWeight>> {
+        let working_copy = self.working_copy().await;
+
+        let from_idx = working_copy.get_node_index_by_id(from_id)?;
+        let to_idx = working_copy.get_node_index_by_id(to_id)?;
+
+        Ok(working_copy
+            .find_edge(from_idx, to_idx)
+            .map(ToOwned::to_owned))
+    }
+
     #[instrument(
         name = "workspace_snapshot.remove_edge_for_ulids",
         level = "debug",
@@ -1333,54 +1347,6 @@ impl WorkspaceSnapshot {
                 None
             },
         )
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.index_or_key_of_child_entry",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
-    pub async fn index_or_key_of_child_entry(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Option<KeyOrIndex>> {
-        // First, let's see if this node has an incoming, ordinal edge which means
-        // it has an index, in this case, it's an element in an Array
-        let maybe_id = id.into();
-        let maybe_ordering_node = self
-            .incoming_sources_for_edge_weight_kind(maybe_id, EdgeWeightKindDiscriminants::Ordinal)
-            .await
-            .map_or(None, |node| node.first().cloned());
-
-        if let Some(maybe_ordering_node) = maybe_ordering_node {
-            // there's an ordering node, so let's grab the edgeweight which includes a
-            // a vec with the ids for all of the ordered children.
-            let order_node_weight = self
-                .get_node_weight(maybe_ordering_node)
-                .await?
-                .get_ordering_node_weight()?;
-            let index = order_node_weight.get_index_for_id(maybe_id)?;
-
-            return Ok(Some(KeyOrIndex::Index(index)));
-        }
-
-        // now let's see if we have a child entry for a Map
-        let maybe_containing_node = self
-            .edges_directed_for_edge_weight_kind(
-                maybe_id,
-                Direction::Incoming,
-                EdgeWeightKindDiscriminants::Contain,
-            )
-            .await
-            .map_or(None, |node| node.first().cloned());
-        if let Some((edge_weight, _, _)) = maybe_containing_node {
-            // grab the key from the edge weight
-            if let EdgeWeightKind::Contain(Some(contain_key)) = edge_weight.kind() {
-                return Ok(Some(KeyOrIndex::Key(contain_key.to_string())));
-            }
-        }
-        Ok(None)
     }
 
     #[instrument(

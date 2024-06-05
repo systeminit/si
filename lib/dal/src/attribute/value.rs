@@ -87,8 +87,11 @@ use super::prototype::argument::{
     AttributePrototypeArgumentId,
 };
 
+pub use is_for::ValueIsFor;
+
 pub mod debug;
 pub mod dependent_value_graph;
+pub mod is_for;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -229,84 +232,6 @@ pub struct AttributeValue {
     pub value: Option<ContentAddress>,
     // DEPRECATED, should always be None
     pub func_execution_pk: Option<FuncExecutionPk>,
-}
-
-/// What "thing" on the schema variant, (either a prop, input socket, or output socket),
-/// is a particular value the value of/for?
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", tag = "kind", content = "id")]
-pub enum ValueIsFor {
-    Prop(PropId),
-    InputSocket(InputSocketId),
-    OutputSocket(OutputSocketId),
-}
-
-impl ValueIsFor {
-    pub fn prop_id(&self) -> Option<PropId> {
-        match self {
-            ValueIsFor::Prop(prop_id) => Some(*prop_id),
-            _ => None,
-        }
-    }
-
-    pub fn output_socket_id(&self) -> Option<OutputSocketId> {
-        match self {
-            ValueIsFor::OutputSocket(id) => Some(*id),
-            _ => None,
-        }
-    }
-
-    pub fn input_socket_id(&self) -> Option<InputSocketId> {
-        match self {
-            ValueIsFor::InputSocket(id) => Some(*id),
-            _ => None,
-        }
-    }
-
-    pub async fn debug_info(&self, ctx: &DalContext) -> AttributeValueResult<String> {
-        Ok(match self {
-            ValueIsFor::OutputSocket(output_socket_id) => {
-                let socket = OutputSocket::get_by_id(ctx, *output_socket_id).await?;
-                format!("Output Socket: {}", socket.name())
-            }
-            ValueIsFor::InputSocket(input_socket_id) => {
-                let socket = InputSocket::get_by_id(ctx, *input_socket_id).await?;
-                format!("Input Socket: {}", socket.name())
-            }
-            ValueIsFor::Prop(prop_id) => {
-                let prop = Prop::get_by_id_or_error(ctx, *prop_id).await?;
-                format!("Prop: {}", prop.path(ctx).await?.with_replaced_sep("."))
-            }
-        })
-    }
-}
-
-impl From<ValueIsFor> for Ulid {
-    fn from(value: ValueIsFor) -> Self {
-        match value {
-            ValueIsFor::OutputSocket(output_socket_id) => output_socket_id.into(),
-            ValueIsFor::InputSocket(input_socket_id) => input_socket_id.into(),
-            ValueIsFor::Prop(prop_id) => prop_id.into(),
-        }
-    }
-}
-
-impl From<PropId> for ValueIsFor {
-    fn from(value: PropId) -> Self {
-        Self::Prop(value)
-    }
-}
-
-impl From<OutputSocketId> for ValueIsFor {
-    fn from(value: OutputSocketId) -> Self {
-        Self::OutputSocket(value)
-    }
-}
-
-impl From<InputSocketId> for ValueIsFor {
-    fn from(value: InputSocketId) -> Self {
-        Self::InputSocket(value)
-    }
 }
 
 impl From<AttributeValueNodeWeight> for AttributeValue {
@@ -1295,11 +1220,9 @@ impl AttributeValue {
                         let mut object_view: IndexMap<String, serde_json::Value> = IndexMap::new();
                         let mut av_prop_map = HashMap::new();
 
-                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
-                            ctx,
-                            attribute_value_id,
-                        )
-                        .await?
+                        for child_av_id in
+                            AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
+                                .await?
                         {
                             let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
 
@@ -1351,11 +1274,9 @@ impl AttributeValue {
                                 .collect()
                         };
 
-                        for child_av_id in AttributeValue::get_child_av_ids_for_ordered_parent(
-                            ctx,
-                            attribute_value_id,
-                        )
-                        .await?
+                        for child_av_id in
+                            AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
+                                .await?
                         {
                             let node_index =
                                 workspace_snapshot.get_node_index_by_id(child_av_id).await?;
@@ -2228,7 +2149,11 @@ impl AttributeValue {
         Ok(Some(parent_av_id))
     }
 
-    pub async fn get_child_av_ids_for_ordered_parent(
+    /// Get the child attribute values for this attribute value, if any exist.
+    /// Returns them in order. All container values (Object, Map, Array), are
+    /// ordered, so this will always return the child attribute values of a
+    /// container values.
+    pub async fn get_child_av_ids_in_order(
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
@@ -2299,10 +2224,6 @@ impl AttributeValue {
             let attribute_path = match Self::is_for(ctx, attribute_value_id).await? {
                 ValueIsFor::Prop(prop_id) => {
                     let prop_name = Prop::get_by_id_or_error(ctx, prop_id).await?.name;
-                    let attribute_path = AttributeValuePath::Prop {
-                        path: prop_name,
-                        key_or_index: None,
-                    };
                     // check the parent of this attribute value
                     // if the parent is an array or map, we need to add the key/index to the attribute value path
                     if let Some(parent_attribute_value_id) =
@@ -2310,11 +2231,19 @@ impl AttributeValue {
                     {
                         let key_or_index =
                             Self::get_index_or_key_of_child_entry(ctx, attribute_value_id).await?;
-                        attribute_path.set_index_or_key(key_or_index);
+
                         attribute_value_id = parent_attribute_value_id;
                         work_queue.push_back(attribute_value_id);
+                        AttributeValuePath::Prop {
+                            path: prop_name,
+                            key_or_index,
+                        }
+                    } else {
+                        AttributeValuePath::Prop {
+                            path: prop_name,
+                            key_or_index: None,
+                        }
                     }
-                    attribute_path
                 }
                 ValueIsFor::InputSocket(input_socket_id) => {
                     let input_socket_name = InputSocket::get_by_id(ctx, input_socket_id)
@@ -2344,13 +2273,44 @@ impl AttributeValue {
 
     pub async fn get_index_or_key_of_child_entry(
         ctx: &DalContext,
-        id: AttributeValueId,
+        child_id: AttributeValueId,
     ) -> AttributeValueResult<Option<KeyOrIndex>> {
-        let maybe_key = ctx
-            .workspace_snapshot()?
-            .index_or_key_of_child_entry(id)
-            .await?;
-        Ok(maybe_key)
+        Ok(
+            match Self::parent_attribute_value_id(ctx, child_id).await? {
+                Some(pav_id) => match Self::is_for(ctx, pav_id).await? {
+                    ValueIsFor::Prop(prop_id) => {
+                        match Prop::get_by_id_or_error(ctx, prop_id).await?.kind {
+                            PropKind::Array => {
+                                match ctx
+                                    .workspace_snapshot()?
+                                    .ordering_node_for_container(pav_id)
+                                    .await?
+                                {
+                                    Some(ordering_node) => {
+                                        let index =
+                                            ordering_node.get_index_for_id(child_id.into())?;
+                                        Some(KeyOrIndex::Index(index))
+                                    }
+                                    None => None,
+                                }
+                            }
+                            PropKind::Map => ctx
+                                .workspace_snapshot()?
+                                .find_edge(pav_id, child_id)
+                                .await?
+                                .and_then(|weight| match weight.kind() {
+                                    EdgeWeightKind::Contain(key) => key.to_owned(),
+                                    _ => None,
+                                })
+                                .map(KeyOrIndex::Key),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                },
+                None => None,
+            },
+        )
     }
 
     pub async fn tree_for_component(
@@ -2365,7 +2325,7 @@ impl AttributeValue {
 
         let mut work_queue = VecDeque::from([root_attribute_value_id]);
         while let Some(attribute_value_id) = work_queue.pop_front() {
-            let children = Self::list_all_children(ctx, attribute_value_id).await?;
+            let children = Self::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
             child_values.insert(attribute_value_id, children.clone());
 
             // Load the work queue with the child attribute value.
@@ -2390,8 +2350,7 @@ impl AttributeValue {
                 let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 if prop.kind == PropKind::Object {
                     for child_value_id in
-                        AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
-                            .await?
+                        AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?
                     {
                         values.push(child_value_id);
                         work_queue.push_back(child_value_id);
@@ -2401,67 +2360,5 @@ impl AttributeValue {
         }
 
         Ok(values)
-    }
-
-    pub async fn list_all_children(
-        ctx: &DalContext,
-        id: AttributeValueId,
-    ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        // Collect all child attribute values.
-        let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
-
-        let mut child_attribute_values_with_keys_by_id: HashMap<
-            AttributeValueId,
-            (NodeIndex, Option<String>),
-        > = HashMap::new();
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for (edge_weight, _, target_idx) in workspace_snapshot
-            .edges_directed(id, Direction::Outgoing)
-            .await?
-        {
-            if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                let child_id = workspace_snapshot
-                    .get_node_weight(target_idx)
-                    .await?
-                    .id()
-                    .into();
-                child_attribute_values_with_keys_by_id
-                    .insert(child_id, (target_idx, key.to_owned()));
-            }
-        }
-
-        let maybe_ordering = AttributeValue::get_child_av_ids_for_ordered_parent(ctx, id)
-            .await
-            .ok();
-        // Ideally every attribute value with children is connected via an ordering node
-        // We don't error out on ordering not existing here because we don't have that
-        // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
-        for av_id in maybe_ordering.unwrap_or_else(|| {
-            child_attribute_values_with_keys_by_id
-                .keys()
-                .cloned()
-                .collect()
-        }) {
-            let (child_attribute_value_node_index, key) =
-                &child_attribute_values_with_keys_by_id[&av_id];
-            let child_attribute_value_node_weight = workspace_snapshot
-                .get_node_weight(*child_attribute_value_node_index)
-                .await?;
-            let content = child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-            cache.push((content.id().into(), key.clone()));
-        }
-
-        // Now that we have the child props, prepare debug views and load the work queue.
-        let mut child_attribute_value_ids = Vec::new();
-        for (child_attribute_value_id, _key) in cache {
-            let child_attribute_value =
-                AttributeValue::get_by_id(ctx, child_attribute_value_id).await?;
-
-            // Cache the  prop values to eventually insert into the child property editor values map.
-            child_attribute_value_ids.push(child_attribute_value.id());
-        }
-
-        Ok(child_attribute_value_ids)
     }
 }

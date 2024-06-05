@@ -239,7 +239,6 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         node,
                         PkgNode::SchemaVariantChild(SchemaVariantChildNode::ResourceValue)
                     ),
-                    SchemaVariantSpecPropRoot::Resource => false,
                     SchemaVariantSpecPropRoot::Secrets => matches!(
                         node,
                         PkgNode::SchemaVariantChild(SchemaVariantChildNode::Secrets)
@@ -250,6 +249,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
                             PkgNode::SchemaVariantChild(SchemaVariantChildNode::SecretDefinition)
                         )
                     }
+                    SchemaVariantSpecPropRoot::Resource
+                    | SchemaVariantSpecPropRoot::Code
+                    | SchemaVariantSpecPropRoot::Qualification => false,
                 }
             });
 

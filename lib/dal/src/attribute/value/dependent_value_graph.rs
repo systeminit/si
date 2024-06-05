@@ -233,7 +233,7 @@ impl DependentValueGraph {
                         // the calculation of the graph, as we encounter them.
                         // We use `seen_list` to ensure we don't reprocess these
                         // values or the parents of these values.
-                        for child_value_id in AttributeValue::get_child_av_ids_for_ordered_parent(
+                        for child_value_id in AttributeValue::get_child_av_ids_in_order(
                             ctx,
                             current_attribute_value.id(),
                         )

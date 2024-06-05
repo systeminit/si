@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
 use dal::diagram::Diagram;
@@ -5,7 +7,7 @@ use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient};
 use dal::func::FuncAssociations;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Prop};
+use dal::{AttributeValue, Component, DalContext, Prop};
 use dal_test::helpers::create_component_for_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -78,7 +80,14 @@ async fn upgrade_component(ctx: &mut DalContext) {
     .expect("could save func");
 
     // Now let's update the variant
-    let first_code_update = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string();
+    let first_code_update = "function main() {\n
+         const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()
+         const myProp2 = new PropBuilder().setName(\"testPropWillRemove\").setKind(\"string\").build()
+         const arrayProp = new PropBuilder().setName(\"arrayProp\").setKind(\"array\").setEntry(\n
+            new PropBuilder().setName(\"arrayElem\").setKind(\"string\").build()\n
+        ).build();\n
+         return new AssetBuilder().addProp(myProp).addProp(arrayProp).build()\n}"
+        .to_string();
     let updated_variant_id = VariantAuthoringClient::update_variant(
         ctx,
         variant_zero.id(),
@@ -107,6 +116,27 @@ async fn upgrade_component(ctx: &mut DalContext) {
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());
+
+    let domain_prop_av_id = initial_component
+        .domain_prop_attribute_value(ctx)
+        .await
+        .expect("able to get domain prop");
+
+    // Set the domain so we get some array elements
+    AttributeValue::update(
+        ctx,
+        domain_prop_av_id,
+        Some(serde_json::json!({
+            "testProp": "test",
+            "testPropWillRemove": "testToBeRemoved",
+            "arrayProp": [
+                "first",
+                "second"
+            ]
+        })),
+    )
+    .await
+    .expect("update failed");
 
     // see that there's one action enqueued
     let mut actions = Action::find_for_component_id(ctx, initial_component.id())
@@ -141,7 +171,15 @@ async fn upgrade_component(ctx: &mut DalContext) {
     assert_eq!(initial_component_schema_variant.id(), variant_zero.id());
 
     // Now let's update the asset a second time!
-    let second_code_update = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addProp(anotherProp).build()\n}".to_string();
+    let second_code_update = "function main() {\n
+        const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n
+        const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n
+        const arrayProp = new PropBuilder().setName(\"arrayProp\").setKind(\"array\").setEntry(\n
+            new PropBuilder().setName(\"arrayElem\").setKind(\"string\").build()\n
+        ).build();\n
+
+         return new AssetBuilder().addProp(myProp).addProp(arrayProp).addProp(anotherProp).build()\n
+        }".to_string();
     let variant_one = VariantAuthoringClient::update_variant(
         ctx,
         variant_zero.id(),
@@ -194,6 +232,56 @@ async fn upgrade_component(ctx: &mut DalContext) {
         .upgrade_to_new_variant(ctx, variant_one)
         .await
         .expect("unable to upgrade the component");
+
+    let view_after_upgrade = my_upgraded_comp
+        .view(ctx)
+        .await
+        .expect("get component view");
+
+    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_comp.id())
+        .await
+        .expect("unable to get root av id");
+
+    let mut value_q = VecDeque::from([root_id]);
+
+    while let Some(current_av_id) = value_q.pop_front() {
+        let is_for = AttributeValue::is_for(ctx, current_av_id)
+            .await
+            .expect("get is for");
+        if let Some(prop_id) = is_for.prop_id() {
+            let prop_variant_id = Prop::schema_variant_id(ctx, prop_id)
+                .await
+                .expect("get sv for prop")
+                .expect("should have a sv");
+
+            assert_eq!(variant_one, prop_variant_id);
+        }
+        for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, current_av_id)
+            .await
+            .expect("unable to get child av ids")
+        {
+            value_q.push_back(child_av_id);
+        }
+    }
+    // This test confirms we handle deleted props, and we copy over the values of arrays
+    assert_eq!(
+        Some(serde_json::json!({
+            "si": {
+                "name": "demo component",
+                "type": "component",
+                "color": "#00b0b0",
+            },
+            "domain": {
+                "testProp": "test",
+                "arrayProp": [
+                    "first",
+                    "second",
+                ]
+            }
+        })),
+        view_after_upgrade
+    );
+
     // see that there's still only one action enqueued
     let mut actions = Action::find_for_component_id(ctx, my_upgraded_comp.id())
         .await

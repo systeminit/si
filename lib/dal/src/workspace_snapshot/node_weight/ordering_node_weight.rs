@@ -191,12 +191,15 @@ impl OrderingNodeWeight {
         }
     }
     pub fn get_index_for_id(&self, id: Ulid) -> NodeWeightResult<i64> {
-        let order = self.order.to_owned();
-        let index = order
+        let index = &self
+            .order
             .iter()
             .position(|&key| key == id)
             .ok_or(NodeWeightError::MissingKeytForChildEntry(id))?;
-        let ret: i64 = index.try_into().map_err(NodeWeightError::TryFromIntError)?;
+
+        let ret: i64 = (*index)
+            .try_into()
+            .map_err(NodeWeightError::TryFromIntError)?;
         Ok(ret)
     }
 
