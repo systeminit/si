@@ -126,6 +126,7 @@ pub struct SummaryDiagramComponent {
     pub deleted_info: serde_json::Value,
     pub to_delete: bool,
     pub can_be_upgraded: bool,
+    pub from_base_change_set: bool,
 }
 
 impl SummaryDiagramComponent {
@@ -242,6 +243,7 @@ impl SummaryDiagramComponent {
             deleted_info: serde_json::Value::Null,
             to_delete: component.to_delete(),
             can_be_upgraded: default_schema_variant.id() != schema_variant.id(),
+            from_base_change_set: false,
         })
     }
 }
@@ -257,6 +259,7 @@ pub struct SummaryDiagramEdge {
     pub created_info: serde_json::Value,
     pub deleted_info: serde_json::Value,
     pub to_delete: bool,
+    pub from_base_change_set: bool,
 }
 
 impl SummaryDiagramEdge {
@@ -275,6 +278,7 @@ impl SummaryDiagramEdge {
             created_info: serde_json::to_value(incoming_connection.created_info)?,
             deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
             to_delete: from_component.to_delete() || to_component.to_delete(),
+            from_base_change_set: false,
         })
     }
 }
@@ -433,6 +437,18 @@ impl Diagram {
 
         // We also want to display the edges & components that would be actively removed when we
         // merge this change set into its base change set.
+        let _removed_component_ids = ctx
+            .workspace_snapshot()?
+            .components_removed_relative_to_base(ctx)
+            .await?;
+        // We now need to retrieve these Components from the base change set, and build
+        // SummaryDiagramComponents for them with from_base_change_set true, and change_status
+        // ChangeStatus::Removed
+
+        // let removed_attribute_prototype_aguments = ctx
+        //     .workspace_snapshot()?
+        //     .socket_edges_removed_relative_to_base(ctx)
+        //     .await?;
 
         Ok(Self {
             edges: diagram_edges,
