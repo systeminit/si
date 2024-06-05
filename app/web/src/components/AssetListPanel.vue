@@ -64,6 +64,7 @@
           v-for="asset in categorizedAssets[category]"
           :key="asset.id"
           :a="asset"
+          :c="categorizedAssets[category]"
         />
       </TreeNode>
     </template>
