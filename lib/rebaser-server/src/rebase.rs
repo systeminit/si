@@ -81,7 +81,6 @@ pub async fn perform_rebase(
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
     let message: RebaseStatus = if conflicts_and_updates.conflicts.is_empty() {
-        // TODO(nick): store the offset with the change set.
         to_rebase_workspace_snapshot
             .perform_updates(
                 &to_rebase_change_set,

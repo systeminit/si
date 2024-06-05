@@ -786,7 +786,6 @@ impl AttributeValue {
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<Value>> {
-        // let mut maybe_result: Option<Value> = None;
         let maybe_input_socket_id =
             match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
                 ValueIsFor::InputSocket(input_socket_id) => Some(input_socket_id),
@@ -804,33 +803,44 @@ impl AttributeValue {
             attribute_value_id: input_attribute_value_id,
         };
         let mut inputs = vec![];
-        if let Ok(maybe_matches) =
-            Component::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
-                .await
-                .map_err(|e| AttributeValueError::Component(Box::new(e)))
+
+        match Component::find_available_inferred_connections_to_input_socket(
+            ctx,
+            input_socket_match,
+        )
+        .await
         {
-            for output_match in maybe_matches {
-                // Both deleted and non deleted components can feed data into deleted components.
-                // ** ONLY ** non-deleted components can feed data into non-deleted components
-                if !Component::should_data_flow_between_components(
-                    ctx,
-                    input_socket_match.component_id,
-                    output_match.component_id,
-                )
-                .await
-                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
-                {
-                    return Ok(vec![]);
+            Ok(maybe_matches) => {
+                for output_match in maybe_matches {
+                    // Both deleted and non deleted components can feed data into deleted components.
+                    // ** ONLY ** non-deleted components can feed data into non-deleted components
+                    if !Component::should_data_flow_between_components(
+                        ctx,
+                        input_socket_match.component_id,
+                        output_match.component_id,
+                    )
+                    .await
+                    .map_err(Box::new)?
+                    {
+                        return Ok(vec![]);
+                    }
+                    // XXX: We need to properly handle the difference between "there is
+                    // XXX: no value" vs "the value is null", but right now we collapse
+                    // XXX: the two to just be "null" when passing these to a function.
+                    let output_av = Self::get_by_id(ctx, output_match.attribute_value_id).await?;
+                    let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                    inputs.push(view);
                 }
-                // XXX: We need to properly handle the difference between "there is
-                // XXX: no value" vs "the value is null", but right now we collapse
-                // XXX: the two to just be "null" when passing these to a function.
-                let output_av =
-                    AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
-                inputs.push(view);
             }
-        };
+            Err(err) => error!(
+                ?err,
+                %component_id,
+                %input_socket_id,
+                %input_attribute_value_id,
+                "error found while finding available inferred connections to input socket"
+            ),
+        }
+
         Ok(inputs)
     }
 
