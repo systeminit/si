@@ -220,7 +220,7 @@ where
     pub async fn get(&mut self) -> Result<LifeGuard<I>> {
         let me = Arc::clone(&self.0);
 
-        let max_retries = 300; // Set the maximum number of retries
+        let max_retries = 6000; // Set the maximum number of retries
         let mut retries = 0;
         loop {
             if retries >= max_retries {
@@ -254,7 +254,7 @@ where
                     "Failed to get from pool, retry ({} of {})",
                     retries, max_retries
                 );
-                sleep(Duration::from_millis(500)).await;
+                sleep(Duration::from_millis(100)).await;
             }
         }
     }
