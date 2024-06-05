@@ -385,7 +385,7 @@ async fn create_action_no_options(ctx: &mut DalContext) {
     assert_eq!(func_name, func.name);
     assert_eq!(Some("main".to_string()), func.handler);
     assert_eq!(
-        Some("async function main() {\n  throw new Error(\"unimplemented!\");\n}\n".to_string()),
+        Some("async function main(component: Input): Promise<Output> {\n  throw new Error(\"unimplemented!\");\n}\n".to_string()),
         func.code
     );
 
@@ -440,7 +440,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
     assert_eq!(func_name, func.name);
     assert_eq!(Some("main".to_string()), func.handler);
     assert_eq!(
-        Some("async function main() {\n  throw new Error(\"unimplemented!\");\n}\n".to_string()),
+        Some("async function main(component: Input): Promise<Output> {\n  throw new Error(\"unimplemented!\");\n}\n".to_string()),
         func.code
     );
 
