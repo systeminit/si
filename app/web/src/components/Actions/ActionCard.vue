@@ -62,8 +62,8 @@
       :class="actionIconClass(props.action.kind)"
       size="lg"
     />
-    <div class="flex flex-col flex-grow">
-      <div>
+    <div class="flex flex-col flex-grow min-w-0">
+      <div class="w-full truncate">
         <span class="font-bold">
           {{ actionKindToAbbreviation(props.action.kind) }}:
         </span>
@@ -72,9 +72,8 @@
             clsx(
               props.noInteraction
                 ? 'text-neutral-500 dark:text-neutral-400'
-                : 'truncate cursor-pointer ',
-              (component?.displayName || actionHistory?.componentName) &&
-                !props.noInteraction
+                : 'cursor-pointer',
+              component?.displayName && !props.noInteraction
                 ? 'dark:text-action-300 text-action-500'
                 : 'text-neutral-500 dark:text-neutral-400',
               isHover && !props.noInteraction && 'underline',
@@ -413,9 +412,12 @@ const actionKindToAbbreviation = (actionKind: ActionKind) => {
 };
 
 const component = computed(() => {
-  // if i am looking at history, the component might no longer be around
-  if (actionHistory.value) return undefined;
   if (!props.action.componentId) return undefined;
+  else if (
+    actionHistory.value &&
+    !componentsStore.componentsById[props.action.componentId]
+  )
+    return undefined;
   return componentsStore.componentsById[props.action.componentId];
 });
 
@@ -444,7 +446,7 @@ const isHover = computed(
 function onHoverStart() {
   if (props.noInteraction) return false;
   if (component.value) {
-    componentsStore.setHoveredComponentId(component.value.id);
+    componentsStore.setHoveredComponentId(props.action.componentId);
   }
 }
 
