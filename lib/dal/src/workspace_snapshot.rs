@@ -1439,6 +1439,96 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(
+        name = "workspace_snapshot.components_removed_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn components_removed_relative_to_base(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<ComponentId>> {
+        let mut removed_component_ids = Vec::new();
+        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
+            change_set_id
+        } else {
+            return Ok(removed_component_ids);
+        };
+
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await
+        .map_err(Box::new)?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(removed_component_ids);
+        }
+
+        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+        // We need to use the index of the Category node in the base snapshot, as that's the
+        // `to_rebase` when detecting conflicts & updates later, and the source node index in the
+        // Update is from the `to_rebase` graph.
+        let component_category_idx = if let Some((_category_id, category_idx)) = base_snapshot
+            .read_only_graph
+            .get_category_node(None, CategoryNodeKind::Component)?
+        {
+            category_idx
+        } else {
+            // Can't have any new Components if there's no Component category node to put them
+            // under.
+            return Ok(removed_component_ids);
+        };
+        let conflicts_and_updates = base_snapshot.read_only_graph.detect_conflicts_and_updates(
+            VectorClockId::from(Ulid::from(base_change_set_id)),
+            &self.read_only_graph,
+            VectorClockId::from(Ulid::from(ctx.change_set_id())),
+        )?;
+
+        for update in &conflicts_and_updates.updates {
+            match update {
+                Update::ReplaceSubgraph {
+                    onto: _,
+                    to_rebase: _,
+                }
+                | Update::MergeCategoryNodes {
+                    to_rebase_category_id: _,
+                    onto_category_id: _,
+                }
+                | Update::NewEdge {
+                    source: _,
+                    destination: _,
+                    edge_weight: _,
+                } => {
+                    /* Updates unused for determining if a Component is removed with regards to the updates */
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind: _,
+                } => {
+                    if !(source.index == component_category_idx
+                        && destination.node_weight_kind == NodeWeightDiscriminants::Component)
+                    {
+                        // We are only interested in updates that remove the edge from the
+                        // Components category to the Component itself, as this means we would
+                        // be deleting that Component.
+                        continue;
+                    }
+
+                    removed_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
+                }
+            }
+        }
+
+        Ok(removed_component_ids)
+    }
+
+    #[instrument(
         name = "workspace_snapshot.socket_edges_added_relative_to_base",
         level = "debug",
         skip_all

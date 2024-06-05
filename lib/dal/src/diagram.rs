@@ -20,8 +20,9 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, Component, ComponentId, DalContext, HistoryEventError, InputSocketId,
-    OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, StandardModelError,
+    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HistoryEventError,
+    InputSocketId, OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
+    StandardModelError, TransactionsError, Workspace, WorkspaceError,
 };
 
 #[remain::sorted]
@@ -35,6 +36,8 @@ pub enum DiagramError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found")]
     AttributeValueNotFound,
+    #[error("Change Set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
@@ -77,8 +80,12 @@ pub enum DiagramError {
     SocketNotFound,
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("Transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("Workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -437,8 +444,57 @@ impl Diagram {
             );
         }
 
-        // We also want to display the edges & components that would be actively removed when we
-        // merge this change set into its base change set.
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await?;
+        if workspace.default_change_set_id() != ctx.change_set_id()
+            && ctx.change_set()?.base_change_set_id.is_some()
+        {
+            // We also want to display the edges & components that would be actively removed when we
+            // merge this change set into its base change set.
+            let removed_component_ids = ctx
+                .workspace_snapshot()?
+                .components_removed_relative_to_base(ctx)
+                .await?;
+
+            // We now need to retrieve these Components from the base change set, and build
+            // SummaryDiagramComponents for them with from_base_change_set true, and change_status
+            // ChangeStatus::Removed
+            let base_snapshot_ctx = ctx.clone_with_base().await?;
+            let base_snapshot_ctx = &base_snapshot_ctx;
+
+            for removed_component_id in removed_component_ids {
+                // We don't need to worry about these duplicating SummaryDiagramComponents that
+                // have already been generated as they're generated from the list of Components
+                // still in the change set's snapshot, while the list of Component IDs we're
+                // working on here are explicitly ones that do not exist in that snapshot anymore.
+                let base_change_set_component =
+                    Component::get_by_id(base_snapshot_ctx, removed_component_id).await?;
+                let mut summary_diagram_component = SummaryDiagramComponent::assemble(
+                    base_snapshot_ctx,
+                    &base_change_set_component,
+                    ChangeStatus::Deleted,
+                )
+                .await?;
+                summary_diagram_component.from_base_change_set = true;
+
+                component_views.push(summary_diagram_component);
+            }
+
+            // We need to bring in any AttributePrototypeArguments for incoming & outgoing connections.
+
+            // let removed_attribute_prototype_aguments = ctx
+            //     .workspace_snapshot()?
+            //     .socket_edges_removed_relative_to_base(ctx)
+            //     .await?;
+        }
 
         Ok(Self {
             edges: diagram_edges,
