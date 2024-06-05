@@ -13,7 +13,7 @@ mount /dev/nvme1n1 /layer_cache
 # get build metadata
 METADATA=$(curl -Ls https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/x86_64/${SI_SERVICE}-${SI_VERSION}-omnibus-linux-x86_64.tar.gz.metadata.json)
 
-BRANCH=$(echo $METADATA | jq -r '.branch')
+BRANCH=$(echo $METADATA | jq -r '.branch // empty')
 COMMIT=$(echo $METADATA | jq -r '.commit')
 VERSION=$(echo $METADATA | jq -r '.version')
 
@@ -22,7 +22,7 @@ wget https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/
 
 # prep system
 mkdir -p /run/app
-wget https://raw.githubusercontent.com/systeminit/si/${BRANCH}/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
+wget https://raw.githubusercontent.com/systeminit/si/${BRANCH:-main}/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
 
 docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
 

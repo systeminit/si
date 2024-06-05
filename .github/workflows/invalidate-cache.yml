@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       environment:
+        type: string
         required: true
         description: "which environment to invalidate"
     secrets:

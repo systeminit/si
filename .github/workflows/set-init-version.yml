@@ -34,10 +34,10 @@ jobs:
           aws-region: us-east-1
 
       - name: Set init version
-        if: ${{ github.event.inputs.service != 'web' }}
+        if: ${{ inputs.service != 'web' }}
         run: |
-            ENVIRONMENT="${{ github.event.inputs.environment }}"
-            VERSION="${{ github.event.inputs.version }}"
+            ENVIRONMENT="${{ inputs.environment }}"
+            VERSION="${{ inputs.version }}"
             if docker manifest inspect "systeminit/init:$VERSION" >/dev/null 2>&1; then
               aws ssm put-parameter --name "${ENVIRONMENT}-si-version-init" --value "$VERSION" --type "String" --overwrite
             else
