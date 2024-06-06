@@ -2,7 +2,7 @@
   <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import {
   DropdownMenu,
@@ -24,8 +24,10 @@ const {
   selectedComponentId,
   selectedComponentIds,
   selectedComponent,
+  selectedComponentsAndChildren,
   deletableSelectedComponents,
   restorableSelectedComponents,
+  erasableSelectedComponents,
   selectedEdgeId,
   selectedEdge,
 } = storeToRefs(componentsStore);
@@ -36,10 +38,18 @@ function typeDisplayName(action = "delete") {
       return "Component";
     else return "Frame";
   } else if (selectedComponentIds.value.length) {
-    const components =
-      action === "delete"
-        ? deletableSelectedComponents.value
-        : restorableSelectedComponents.value;
+    let components;
+    switch (action) {
+      case "delete":
+        components = deletableSelectedComponents.value;
+        break;
+      case "erase":
+        components = erasableSelectedComponents.value;
+        break;
+      case "restore":
+      default:
+        components = restorableSelectedComponents.value;
+    }
 
     for (const c of components) {
       if (c.componentType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
@@ -133,6 +143,29 @@ const rightClickMenuItems = computed(() => {
   }
 
   if (
+    erasableSelectedComponents.value.length > 0 &&
+    erasableSelectedComponents.value.length ===
+      selectedComponentsAndChildren.value.length
+  ) {
+    const label =
+      erasableSelectedComponents.value.length === 1
+        ? `Erase ${typeDisplayName("erase")} "${
+            erasableSelectedComponents.value[0]?.displayName
+          }"`
+        : `Erase ${erasableSelectedComponents.value.length} ${plur(
+            typeDisplayName("erase"),
+            erasableSelectedComponents.value.length,
+          )}`;
+
+    items.push({
+      label,
+      icon: "erase",
+      onSelect: triggerWipeFromDiagram,
+      disabled,
+    });
+  }
+
+  if (
     selectedComponent.value?.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
   ) {
@@ -163,6 +196,11 @@ function triggerDeleteSelection() {
 
 function triggerRestoreSelection() {
   modelingEventBus.emit("restoreSelection");
+  elementPos.value = null;
+}
+
+function triggerWipeFromDiagram() {
+  modelingEventBus.emit("eraseSelection");
   elementPos.value = null;
 }
 

@@ -47,6 +47,7 @@ import Save from "~icons/heroicons-solid/save";
 import Download from "~icons/heroicons-solid/download";
 import Trash from "~icons/heroicons-solid/trash";
 import TrashRestore from "~icons/material-symbols/restore-from-trash";
+import Eraser from "~icons/solar/eraser-bold";
 
 import ThumbsUp from "~icons/heroicons-solid/thumb-up";
 import ThumbsDown from "~icons/heroicons-solid/thumb-down";
@@ -221,6 +222,7 @@ export const ICONS = Object.freeze({
   download: Download,
   edit: Pencil,
   "empty-square": EmptySquare,
+  erase: Eraser,
   "exclamation-circle": ExclamationCircle,
   "expand-row": ExpandAll,
   "external-link": ExternalLink,

@@ -4,14 +4,14 @@
   <component
     :is="ResizablePanel"
     ref="leftResizablePanelRef"
+    :minSize="250"
     rememberSizeKey="changeset-and-asset"
     side="left"
-    :minSize="250"
   >
     <template #subpanel1>
       <DiagramOutline
-        class=""
         :actionsAreRunning="actionsAreRunning"
+        class=""
         @right-click-item="onOutlineRightClick"
       />
     </template>
@@ -22,18 +22,18 @@
 
   <ModelingDiagram
     ref="diagramRef"
-    @right-click-element="onRightClickElement"
     @mouseout="presenceStore.clearCursor"
+    @right-click-element="onRightClickElement"
   />
 
   <!-- Right panel (selection details) -->
   <component
     :is="ResizablePanel"
     ref="rightResizablePanelRef"
-    rememberSizeKey="details-panel"
-    side="right"
     :defaultSize="400"
     :minSize="400"
+    rememberSizeKey="details-panel"
+    side="right"
   >
     <div class="h-full overflow-hidden relative">
       <EdgeDetailsPanel v-if="selectedEdge" @openMenu="onThreeDotMenuClick" />
@@ -53,6 +53,7 @@
   <ModelingRightClickMenu ref="contextMenuRef" />
   <DeleteSelectionModal />
   <RestoreSelectionModal />
+  <EraseSelectionModal />
 </template>
 
 <script lang="ts" setup>
@@ -66,6 +67,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { usePresenceStore } from "@/store/presence.store";
 // import ActionProgressOverlay from "@/components/ActionProgressOverlay.vue";
 import { useSecretsStore } from "@/store/secrets.store";
+import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
