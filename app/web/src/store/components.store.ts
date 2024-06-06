@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { Vector2d } from "konva/lib/types";
+import { Vector2d, IRect } from "konva/lib/types";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
@@ -38,8 +38,10 @@ import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { DefaultMap } from "@/utils/defaultmap";
 import {
+  GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_DEFAULT_HEIGHT,
   GROUP_DEFAULT_WIDTH,
+  GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -688,6 +690,58 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
 
             return dictionary;
+          },
+          // The area that encloses all the components children
+          contentBoundingBoxesByGroupId(): Record<ComponentId, IRect> {
+            const boxDictionary: Record<string, IRect> = {};
+            const groups = this.allComponents.filter((c) => c.isGroup);
+
+            for (const group of groups) {
+              const childIds = group.childIds;
+              if (!childIds) continue;
+
+              let top;
+              let bottom;
+              let left;
+              let right;
+
+              for (const childId of childIds) {
+                const geometry = this.renderedGeometriesByComponentId[childId];
+                if (!geometry) continue;
+
+                if (!top || geometry.y < top) top = geometry.y;
+
+                const thisLeft = geometry.x - geometry.width / 2;
+                if (!left || thisLeft < left) left = thisLeft;
+
+                const thisRight = geometry.x + geometry.width / 2;
+                if (!right || thisRight > right) right = thisRight;
+
+                const thisBottom = geometry.y + geometry.height;
+                if (!bottom || thisBottom > bottom) bottom = thisBottom;
+              }
+
+              if (
+                left === undefined ||
+                right === undefined ||
+                top === undefined ||
+                bottom === undefined
+              )
+                continue;
+
+              boxDictionary[group.id] = {
+                x: left - GROUP_INTERNAL_PADDING,
+                y: top - GROUP_INTERNAL_PADDING,
+                width: right - left + GROUP_INTERNAL_PADDING * 2,
+                height:
+                  bottom -
+                  top +
+                  GROUP_INTERNAL_PADDING +
+                  GROUP_BOTTOM_INTERNAL_PADDING,
+              };
+            }
+
+            return boxDictionary;
           },
         },
         actions: {

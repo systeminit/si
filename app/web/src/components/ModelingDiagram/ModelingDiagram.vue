@@ -1819,96 +1819,6 @@ const resizedElementSizesPreResize = reactive<
   Record<DiagramElementUniqueKey, Size2D>
 >({});
 
-const frameBoundingBoxes = ref<Record<string, IRect>>({});
-
-// Calculate content bounding boxes for every group
-watch(
-  [
-    componentsStore.resizedElementSizes,
-    isMounted,
-    componentsStore.movedElementPositions,
-    stageRef,
-  ],
-  () => {
-    if (!kStage) return;
-
-    const boxDictionary: Record<string, IRect> = {};
-
-    for (const group of groups.value) {
-      const childIds = group.def.childIds;
-      if (!childIds) continue;
-
-      let top;
-      let bottom;
-      let left;
-      let right;
-      for (const childId of childIds) {
-        const child = _.concat(groups.value, nodes.value).find(
-          (c) => c.def.id === childId,
-        );
-        if (!child) continue;
-        const elShape = kStage.findOne(`#${child.uniqueKey}--bg`);
-        if (!elShape) continue;
-
-        const position =
-          componentsStore.movedElementPositions[child.uniqueKey] ??
-          child.def.position;
-        let size;
-        // if i am not a component, i have a size definition, go find it
-        if (child.def.componentType !== ComponentType.Component)
-          size =
-            componentsStore.resizedElementSizes[child.uniqueKey] ??
-            child.def.size;
-        // if i am a component (or something else broke) use the DOM size data
-        if (!size || child.def.componentType === ComponentType.Component) {
-          size = { width: elShape.width(), height: elShape.height() };
-        }
-
-        const geometry = {
-          ...position,
-          ...size,
-        };
-
-        if (child instanceof DiagramGroupData) {
-          geometry.y -= GROUP_INNER_Y_BOUNDARY_OFFSET;
-          geometry.height += GROUP_INNER_Y_BOUNDARY_OFFSET;
-        }
-
-        if (!top || geometry.y < top) top = geometry.y;
-
-        const thisLeft = geometry.x - geometry.width / 2;
-        if (!left || thisLeft < left) left = thisLeft;
-
-        const thisRight = geometry.x + geometry.width / 2;
-        if (!right || thisRight > right) right = thisRight;
-
-        const thisBottom = geometry.y + geometry.height;
-        if (!bottom || thisBottom > bottom) bottom = thisBottom;
-      }
-
-      if (
-        left === undefined ||
-        right === undefined ||
-        top === undefined ||
-        bottom === undefined
-      )
-        continue;
-
-      // TODO(Wendy) - Eventually we need to decide what happens if you add a Frame to another Frame that is smaller than it!
-      boxDictionary[group.uniqueKey] = {
-        x: left - GROUP_INTERNAL_PADDING,
-        y: top - GROUP_INTERNAL_PADDING,
-        width: right - left + GROUP_INTERNAL_PADDING * 2,
-        height:
-          bottom - top + GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING,
-      };
-    }
-
-    frameBoundingBoxes.value = boxDictionary;
-  },
-  { immediate: true },
-);
-
 function beginResizeElement() {
   if (!lastMouseDownElement.value) return;
   if (lastMouseDownHoverMeta.value?.type !== "resize") return;
@@ -1951,6 +1861,7 @@ function endResizeElement() {
 function onResizeMove() {
   if (!resizeElement.value || !resizeElementDirection.value) return;
   const resizeTargetKey = resizeElement.value.uniqueKey;
+  const resizeTargetId = resizeElement.value.def.id;
 
   const node = resizeElement.value.def as DiagramNodeDef;
 
@@ -1987,6 +1898,7 @@ function onResizeMove() {
 
   const rightBound = presentPosition.x + presentSize.width / 2;
 
+  // Ensure the component never gets smaller than its minimum dimensions
   switch (resizeElementDirection.value) {
     case "bottom":
       {
@@ -2106,7 +2018,8 @@ function onResizeMove() {
   };
 
   // Make sure the frame doesn't shrink to be smaller than it's children
-  const contentsBox = frameBoundingBoxes.value[resizeTargetKey];
+  const contentsBox =
+    componentsStore.contentBoundingBoxesByGroupId[resizeTargetId];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
