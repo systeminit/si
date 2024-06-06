@@ -179,6 +179,7 @@ type EventBusEvents = {
   deleteSelection: void;
   restoreSelection: void;
   refreshSelectionResource: void;
+  eraseSelection: void;
   panToComponent: { componentId: ComponentId; center?: boolean };
 };
 
@@ -406,7 +407,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return this.componentsById[this.hoveredComponentId || 0];
           },
 
-          deletableSelectedComponents(): FullComponent[] {
+          selectedComponentsAndChildren(): FullComponent[] {
             const selectedAndChildren: Record<string, FullComponent> = {};
             this.allComponents.forEach((component) => {
               this.selectedComponents?.forEach((el) => {
@@ -418,8 +419,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedComponents?.forEach((el) => {
               selectedAndChildren[el.id] = el;
             });
+
+            return _.values(selectedAndChildren);
+          },
+
+          deletableSelectedComponents(): FullComponent[] {
             return _.reject(
-              Object.values(selectedAndChildren),
+              this.selectedComponentsAndChildren,
               (c) => c.changeStatus === "deleted",
             );
           },
@@ -427,6 +433,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return _.filter(
               this.selectedComponents,
               (c) => c.changeStatus === "deleted",
+            );
+          },
+          erasableSelectedComponents(): FullComponent[] {
+            return _.filter(
+              this.deletableSelectedComponents,
+              (c) => c.hasResource,
             );
           },
 
@@ -1369,7 +1381,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async DELETE_COMPONENTS(componentIds: ComponentId[]) {
+          async DELETE_COMPONENTS(
+            componentIds: ComponentId[],
+            skipActions = false,
+          ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -1381,6 +1396,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               keyRequestStatusBy: componentIds,
               params: {
                 componentIds,
+                skipActions,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
