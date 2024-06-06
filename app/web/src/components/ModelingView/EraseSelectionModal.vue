@@ -46,7 +46,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { Modal, Stack, useModal, VButton } from "@si/vue-lib/design-system";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
 import ComponentCard from "../ComponentCard.vue";

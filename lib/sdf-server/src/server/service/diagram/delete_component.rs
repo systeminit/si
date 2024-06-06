@@ -13,15 +13,21 @@ use crate::server::tracking::track;
 async fn delete_single_component(
     ctx: &DalContext,
     component_id: ComponentId,
+    skip_actions: bool,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<Option<Component>> {
+) -> DiagramResult<bool> {
     let comp = Component::get_by_id(ctx, component_id).await?;
 
     let id = comp.id();
     let comp_schema = comp.schema(ctx).await?;
 
-    let maybe = comp.delete(ctx).await?;
+    let component_still_exists = if skip_actions {
+        Component::remove(ctx, id).await?;
+        false
+    } else {
+        comp.delete(ctx).await?.is_some()
+    };
 
     track(
         posthog_client,
@@ -38,13 +44,14 @@ async fn delete_single_component(
 
     ctx.commit().await?;
 
-    Ok(maybe)
+    Ok(component_still_exists)
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
+    pub skip_actions: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -63,13 +70,19 @@ pub async fn delete_components(
 
     let mut components = HashMap::new();
     for component_id in request.component_ids {
-        let maybe =
-            delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;
-        components.insert(component_id, maybe.is_some());
+        let component_still_exists = delete_single_component(
+            &ctx,
+            component_id,
+            request.skip_actions,
+            &original_uri,
+            &posthog_client,
+        )
+        .await?;
+        components.insert(component_id, component_still_exists);
 
-        if let Some(maybe) = maybe {
+        if component_still_exists {
             // to_delete=True
-            let component: Component = Component::get_by_id(&ctx, maybe.id()).await?;
+            let component: Component = Component::get_by_id(&ctx, component_id).await?;
             let payload: SummaryDiagramComponent =
                 SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Deleted).await?;
             WsEvent::component_updated(&ctx, payload)
