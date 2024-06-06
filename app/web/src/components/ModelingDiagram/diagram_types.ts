@@ -213,6 +213,8 @@ export type DiagramNodeDef = {
   changeStatus?: ChangeStatus;
   /** component will be deleted after next action run */
   toDelete: boolean;
+  /** component is deleted in this changeset, but exists in base change set */
+  fromBaseChangeSet: boolean;
   /** can the component be upgraded */
   canBeUpgraded: boolean;
 };

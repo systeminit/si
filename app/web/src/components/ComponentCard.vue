@@ -6,6 +6,7 @@
         'p-xs border-l-4 border relative',
         titleCard ? 'mb-xs' : 'rounded-md',
         component.toDelete && 'opacity-70',
+        component.fromBaseChangeSet && 'opacity-70',
       )
     "
     :style="{
