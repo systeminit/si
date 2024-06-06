@@ -16,7 +16,7 @@ mod with_actions;
 
 #[test]
 async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
-    let name = generate_fake_name();
+    let name = generate_fake_name().expect("could not generate fake name");
 
     // Ensure that secret creation works.
     let secret = Secret::new(
@@ -56,7 +56,7 @@ async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
 #[test]
 async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     let pkey = nw.key_pair.public_key();
-    let name = generate_fake_name();
+    let name = generate_fake_name().expect("could not generate fake name");
 
     // Create an encrypted message.
     let message = serde_json::json!({"song": "Bar Round Here"});
@@ -109,7 +109,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     let key_pair_pk = nw.key_pair.pk();
     let version = SecretVersion::default();
     let algorithm = SecretAlgorithm::default();
-    let name = generate_fake_name();
+    let name = generate_fake_name().expect("could not generate fake name");
 
     // Create a message to encrypt and use for the secret.
     let message = serde_json::json!({"song": "Smile", "artist": "midwxst"});
@@ -264,8 +264,9 @@ async fn update_encrypted_contents_with_dependent_values(
     nw: &WorkspaceSignup,
 ) {
     // Create a component and commit.
-    let component =
-        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition").await;
+    let component = create_component_for_schema_name(ctx, "dummy-secret", "secret-definition")
+        .await
+        .expect("could not create component");
     let schema_variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("could not get schema variant id for component");
@@ -291,10 +292,11 @@ async fn update_encrypted_contents_with_dependent_values(
         nw.key_pair.pk(),
         &serde_json::json![{"value": "howard"}],
     )
-    .await;
+    .await
+    .expect("could not encrypt message");
     let secret = Secret::new(
         ctx,
-        generate_fake_name(),
+        generate_fake_name().expect("could not generate fake name"),
         secret_definition_name,
         None,
         &encrypted_message_that_will_fail_the_qualification,
@@ -338,7 +340,9 @@ async fn update_encrypted_contents_with_dependent_values(
 
     // Update the encrypted contents.
     let encrypted_message_that_will_pass_the_qualification =
-        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await;
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+            .await
+            .expect("could not encrypt message");
     let updated_secret = secret
         .update_encrypted_contents(
             ctx,
@@ -435,7 +439,9 @@ async fn secret_definition_works_with_dummy_qualification(
 ) {
     // Create a component and commit.
     let secret_definition_component =
-        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition").await;
+        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition")
+            .await
+            .expect("could not create component");
     let secret_definition_component_id = secret_definition_component.id();
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -472,7 +478,8 @@ async fn secret_definition_works_with_dummy_qualification(
             nw.key_pair.pk(),
             &serde_json::json![{"value": "howard"}],
         )
-        .await;
+        .await
+        .expect("could not encrypt message");
         let secret_that_will_fail_the_qualification = Secret::new(
             ctx,
             "secret that will fail the qualification",
@@ -553,7 +560,9 @@ async fn secret_definition_works_with_dummy_qualification(
     {
         // Create a secret with a value that will pass the qualification and commit.
         let encrypted_message_that_will_pass_the_qualification =
-            encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await;
+            encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+                .await
+                .expect("could not encrypt message");
         let secret_that_will_pass_the_qualification = Secret::new(
             ctx,
             "secret that will pass the qualification",

@@ -10,7 +10,9 @@ use serde_json::json;
 
 #[test]
 async fn validation_format_errors(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "BadValidations", "bad").await;
+    let component = create_component_for_schema_name(ctx, "BadValidations", "bad")
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -18,7 +20,9 @@ async fn validation_format_errors(ctx: &mut DalContext) {
     let bad_json_path = &["root", "domain", "bad_validation_json"];
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
-        .get_value(bad_json_path);
+        .expect("could not get property editor test view")
+        .get_value(bad_json_path)
+        .expect("could not get value");
     assert_eq!(
         json!({
             "value": null,
@@ -33,7 +37,9 @@ async fn validation_format_errors(ctx: &mut DalContext) {
     let bad_format_path = &["root", "domain", "bad_validation_format"];
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
-        .get_value(bad_format_path);
+        .expect("could not get property editor test view")
+        .get_value(bad_format_path)
+        .expect("could not get value");
 
     assert_eq!(
         json!({
@@ -49,7 +55,9 @@ async fn validation_format_errors(ctx: &mut DalContext) {
 
 #[test]
 async fn prop_editor_validation(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe").await;
+    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe")
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -64,7 +72,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property editor test view")
+        .get_value(prop_path)
+        .expect("could not get value");
 
     assert_eq!(
         json!({
@@ -87,7 +97,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property editor test view")
+        .get_value(prop_path)
+        .expect("could not get value");
 
     assert_eq!(
         json!({
@@ -110,7 +122,9 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 
     let prop_view = PropEditorTestView::for_component_id(ctx, component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property editor test view")
+        .get_value(prop_path)
+        .expect("could not get value");
 
     assert_eq!(
         json!({
@@ -126,8 +140,12 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 
 #[test]
 async fn validation_on_dependent_value(ctx: &mut DalContext) {
-    let output_component = create_component_for_schema_name(ctx, "ValidatedOutput", "Output").await;
-    let input_component = create_component_for_schema_name(ctx, "ValidatedInput", "Input").await;
+    let output_component = create_component_for_schema_name(ctx, "ValidatedOutput", "Output")
+        .await
+        .expect("could not create component");
+    let input_component = create_component_for_schema_name(ctx, "ValidatedInput", "Input")
+        .await
+        .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -140,7 +158,8 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         input_component.id(),
         "number",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
 
     let prop_path = &["root", "domain", "a_number"];
     let av_id = output_component
@@ -160,10 +179,14 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property test view")
+        .get_value(prop_path)
+        .expect("could not get value");
     let destination_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property test view")
+        .get_value(prop_path)
+        .expect("could not get value");
 
     // Check validations and values
     let source_result = extract_value_and_validation(source_prop_view);
@@ -192,10 +215,14 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
 
     let source_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property test view")
+        .get_value(prop_path)
+        .expect("could not get value");
     let destination_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
         .await
-        .get_value(prop_path);
+        .expect("could not get property test view")
+        .get_value(prop_path)
+        .expect("could not get value");
 
     let source_result = extract_value_and_validation(source_prop_view);
     assert_eq!(
@@ -216,7 +243,9 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
 
 #[test]
 async fn multiple_changes_single_validation(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe").await;
+    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe")
+        .await
+        .expect("could not create component");
 
     let prop_path = &["root", "domain", "working_eyes"];
     let av_id = component
@@ -272,7 +301,9 @@ async fn multiple_changes_single_validation(ctx: &mut DalContext) {
 
 #[test]
 async fn validation_qualification(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe").await;
+    let component = create_component_for_schema_name(ctx, "pirate", "Robinson Crusoe")
+        .await
+        .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

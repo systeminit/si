@@ -1,19 +1,13 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    env,
-    fs::File,
-    io::prelude::*,
-};
+use std::{collections::HashMap, env, fs::File, io::prelude::*};
 
 use si_layer_cache::db::serialize;
 
 use dal::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        edge_weight,
         node_weight::{NodeWeight, NodeWeightDiscriminants},
     },
-    EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph,
 };
 use tokio::time::Instant;
 
@@ -24,7 +18,7 @@ async fn main() -> Result<()> {
     let mut args = env::args();
     let snap_path = args.nth(1).expect("usage: program <SNAPSHOT_FILE_PATH>");
 
-    let mut snap_file = File::open(&snap_path)?;
+    let mut snap_file = File::open(snap_path)?;
 
     let mut snap_bytes = vec![];
     snap_file.read_to_end(&mut snap_bytes)?;

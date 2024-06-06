@@ -11,7 +11,7 @@ mod view;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = create_schema(ctx).await;
+    let schema = create_schema(ctx).await.expect("could not create schema");
 
     let (variant, _) = SchemaVariant::new(
         ctx,
@@ -33,7 +33,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_code_item_prop(ctx: &DalContext) {
-    let schema = create_schema(ctx).await;
+    let schema = create_schema(ctx).await.expect("could not create schema");
     let (schema_variant, root_prop) = SchemaVariant::new(
         ctx,
         schema.id(),
@@ -66,7 +66,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
 
 #[test]
 async fn list_root_si_child_props(ctx: &DalContext) {
-    let schema = create_schema(ctx).await;
+    let schema = create_schema(ctx).await.expect("could not create schema");
     let (schema_variant, root_prop) = SchemaVariant::new(
         ctx,
         schema.id(),

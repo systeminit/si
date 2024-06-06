@@ -11,8 +11,12 @@ use serde::Deserialize;
 #[test]
 async fn make_multiple_trees(ctx: &mut DalContext) {
     // create 2 even legos
-    let even_lego_1 = create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
-    let even_lego_2 = create_component_for_schema_name(ctx, "large even lego", "even lego 2").await;
+    let even_lego_1 = create_component_for_schema_name(ctx, "large even lego", "even lego 1")
+        .await
+        .expect("could not create component");
+    let even_lego_2 = create_component_for_schema_name(ctx, "large even lego", "even lego 2")
+        .await
+        .expect("could not create component");
 
     let even_sv_id = even_lego_1
         .schema_variant(ctx)
@@ -28,8 +32,12 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     //create 2 odd legos
-    let odd_lego_1 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
-    let odd_lego_2 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    let odd_lego_1 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 1")
+        .await
+        .expect("could not create component");
+    let odd_lego_2 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 2")
+        .await
+        .expect("could not create component");
     let odd_sv = odd_lego_1
         .schema_variant(ctx)
         .await
@@ -84,12 +92,15 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
 #[test]
 async fn make_chain_remove_middle(ctx: &mut DalContext) {
     // make chain of odd lego 1 -> even lego 1 -> odd lego 2
-    let odd_component_1 =
-        create_component_for_schema_name(ctx, "large odd lego", "odd lego 1").await;
-    let even_component_1 =
-        create_component_for_schema_name(ctx, "large even lego", "even lego 1").await;
-    let odd_component_2 =
-        create_component_for_schema_name(ctx, "large odd lego", "odd lego 2").await;
+    let odd_component_1 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 1")
+        .await
+        .expect("could not create component");
+    let even_component_1 = create_component_for_schema_name(ctx, "large even lego", "even lego 1")
+        .await
+        .expect("could not create component");
+    let odd_component_2 = create_component_for_schema_name(ctx, "large odd lego", "odd lego 2")
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -426,16 +437,22 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
 async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_variant_on_diagram(
     ctx: &mut DalContext,
 ) {
-    let source = create_component_for_schema_name(ctx, "fallout", "source").await;
+    let source = create_component_for_schema_name(ctx, "fallout", "source")
+        .await
+        .expect("could not create component");
     let source_sv_id = Component::schema_variant_id(ctx, source.id())
         .await
         .expect("find variant id for component");
 
-    let destination = create_component_for_schema_name(ctx, "starfield", "destination").await;
+    let destination = create_component_for_schema_name(ctx, "starfield", "destination")
+        .await
+        .expect("could not create component");
     let destination_sv_id = Component::schema_variant_id(ctx, destination.id())
         .await
         .expect("find variant id for component");
-    create_component_for_schema_name(ctx, "starfield", "not destination").await;
+    create_component_for_schema_name(ctx, "starfield", "not destination")
+        .await
+        .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

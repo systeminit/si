@@ -7,10 +7,11 @@ use si_pkg::{
     ActionFuncSpec, PkgSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
 };
 
-use crate::schemas::schema_helpers::{
-    build_action_func, build_asset_func, build_resource_payload_to_value_func, create_identity_func,
+use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
+use crate::test_exclusive_schemas::{
+    build_action_func, build_asset_func, build_resource_payload_to_value_func,
+    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
 };
-use crate::schemas::test_exclusive_lego_schemas::bricks::LegoBricks;
 
 pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
     ctx: &DalContext,
@@ -21,8 +22,8 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
 
     medium_lego_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
@@ -50,10 +51,10 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldMediumLegoAsset";
-    let medium_lego_authoring_schema_func = build_asset_func(fn_name).await?;
+    let medium_lego_authoring_schema_func = build_asset_func(fn_name)?;
 
     // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let bricks = LegoBricks::new_for_odd()?;
 
@@ -64,8 +65,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -77,8 +77,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
                         .color("#ffffff")
                         .func_unique_id(&medium_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(bricks.domain_name_prop)
                 .domain_prop(bricks.domain_one_prop)
@@ -135,8 +134,8 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
 
     medium_lego_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
@@ -164,10 +163,10 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldMediumLegoAsset";
-    let medium_lego_authoring_schema_func = build_asset_func(fn_name).await?;
+    let medium_lego_authoring_schema_func = build_asset_func(fn_name)?;
 
     // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let bricks = LegoBricks::new_for_even()?;
 
@@ -178,8 +177,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -191,8 +189,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
                         .color("#ffffff")
                         .func_unique_id(&medium_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(bricks.domain_name_prop)
                 .domain_prop(bricks.domain_one_prop)

@@ -61,7 +61,9 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_eq!(my_first_variant.id(), updated_sv_id);
 
     // Add a component to the diagram
-    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component").await;
+    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
+        .await
+        .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -100,7 +102,9 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_ne!(second_updated_sv_id, my_first_variant.id());
 
     // Let's ensure that our latest prop is visible in the component
-    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component 2").await;
+    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component 2")
+        .await
+        .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");

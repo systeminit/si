@@ -4,12 +4,12 @@
 //! macro expansion.
 
 use dal::{ChangeSet, ChangeSetId, DalContext, UserClaim};
+use jwt_simple::algorithms::RSAKeyPairLike;
+use jwt_simple::claims::Claims;
+use jwt_simple::prelude::Duration;
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
-use crate::{
-    helpers::{create_auth_token, generate_fake_name},
-    WorkspaceSignup,
-};
+use crate::{helpers::generate_fake_name, jwt_private_signing_key, WorkspaceSignup};
 
 /// This function is used during macro expansion for setting up a [`ChangeSet`] in an integration test.
 pub async fn create_change_set_and_update_ctx(
@@ -25,7 +25,7 @@ pub async fn create_change_set_and_update_ctx(
         .expect("no workspace snapshot set on base change set");
     let change_set = ChangeSet::new(
         ctx,
-        generate_fake_name(),
+        generate_fake_name().expect("could not generate fake name"),
         Some(base_change_set_id),
         workspace_snapshot_address,
     )
@@ -142,7 +142,7 @@ pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignu
 
     let mut ctx = ctx.clone_with_head().await?;
 
-    let workspace_name = generate_fake_name();
+    let workspace_name = generate_fake_name().expect("could not generate fake name");
     let user_name = format!("frank {workspace_name}");
     let user_email = format!("{workspace_name}@example.com");
 
@@ -153,6 +153,17 @@ pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignu
         user_pk: nw.user.pk(),
         workspace_pk: *nw.workspace.pk(),
     })
-    .await;
+    .await
+    .expect("could not create auth token");
     Ok((nw, auth_token))
+}
+
+async fn create_auth_token(claim: UserClaim) -> crate::Result<String> {
+    let key_pair = jwt_private_signing_key().await?;
+    let claim = Claims::with_custom_claims(claim, Duration::from_days(1))
+        .with_audience("https://app.systeminit.com")
+        .with_issuer("https://app.systeminit.com")
+        .with_subject(claim.user_pk);
+
+    Ok(key_pair.sign(claim).expect("could not sign"))
 }

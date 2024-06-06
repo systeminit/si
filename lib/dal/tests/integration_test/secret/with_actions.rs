@@ -12,12 +12,15 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     // Create the components we need and commit.
-    let source_component = create_component_for_schema_name(ctx, "dummy-secret", "source").await;
+    let source_component = create_component_for_schema_name(ctx, "dummy-secret", "source")
+        .await
+        .expect("could not create component");
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
-    let destination_component =
-        create_component_for_schema_name(ctx, "fallout", "destination").await;
+    let destination_component = create_component_for_schema_name(ctx, "fallout", "destination")
+        .await
+        .expect("could not create component");
     let destination_schema_variant_id =
         Component::schema_variant_id(ctx, destination_component.id())
             .await
@@ -66,7 +69,9 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         "johnqt",
         secret_definition_name.to_string(),
         None,
-        &encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await,
+        &encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+            .await
+            .expect("could not encrypt message"),
         nw.key_pair.pk(),
         Default::default(),
         Default::default(),

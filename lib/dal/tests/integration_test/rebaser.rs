@@ -1,13 +1,10 @@
 use base64::{engine::general_purpose, Engine};
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::workspace_snapshot::conflict::Conflict;
 use dal::{
     AttributeValue, ChangeSet, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, TransactionsError,
+    FuncBackendResponseType,
 };
-use dal_test::helpers::{
-    create_component_for_schema_name, ChangeSetTestHelpers, ChangeSetTestHelpersError,
-};
+use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -294,24 +291,30 @@ async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
         .expect("able to list args");
     assert_eq!(1, args.len());
 
-    let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx).await;
-    assert!(matches!(
-        result,
-        Err(ChangeSetTestHelpersError::ChangeSetApply(_))
-    ));
-
-    if let Err(ChangeSetTestHelpersError::Transactions(TransactionsError::ConflictsOccurred(
-        conflicts,
-    ))) = result
-    {
-        assert_eq!(1, conflicts.conflicts_found.len());
-        let conflict = conflicts
-            .conflicts_found
-            .first()
-            .expect("conflict should be there")
-            .to_owned();
-        assert!(matches!(conflict, Conflict::ExclusiveEdgeMismatch { .. }));
-    }
+    // NOTE(nick): at the time of writing, this test has the "#![ignore]" macro applied and we've
+    // removed the formal "ChangeSetTestHelpersError" enum in favor of the "eyre!" and "Result"
+    // type. As an aside, that change was made to help make error reporting more clear for runtime
+    // assertion failures and explicit "expect" and "panic" usages in tests. Anyway, how the
+    // conflicts are detected will likely be slightly different in the future, so commenting this
+    // out for now should suffice. Please don't hesitate to reach out with questions or rage.
+    // let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx).await;
+    // assert!(matches!(
+    //     result,
+    //     Err(ChangeSetTestHelpersError::ChangeSetApply(_))
+    // ));
+    //
+    // if let Err(ChangeSetTestHelpersError::Transactions(TransactionsError::ConflictsOccurred(
+    //     conflicts,
+    // ))) = result
+    // {
+    //     assert_eq!(1, conflicts.conflicts_found.len());
+    //     let conflict = conflicts
+    //         .conflicts_found
+    //         .first()
+    //         .expect("conflict should be there")
+    //         .to_owned();
+    //     assert!(matches!(conflict, Conflict::ExclusiveEdgeMismatch { .. }));
+    // }
 }
 
 #[test]
@@ -368,6 +371,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     let shared_component_id =
         create_component_for_schema_name(ctx, "Docker Image", "Shared component")
             .await
+            .expect("could not create component")
             .id();
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -419,6 +423,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     let _change_set_b_component_id =
         create_component_for_schema_name(ctx, "Docker Image", "Change Set B Component")
             .await
+            .expect("could not creat component")
             .id();
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

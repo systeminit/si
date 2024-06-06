@@ -39,7 +39,9 @@ async fn assemble(ctx: &DalContext) {
 
 #[test]
 async fn array_map_manipulation(ctx: &DalContext) {
-    let component = create_component_for_schema_name(ctx, "pirate", "ss poopcanoe").await;
+    let component = create_component_for_schema_name(ctx, "pirate", "ss poopcanoe")
+        .await
+        .expect("could not create component");
 
     let parrot_names_value_id = component
         .attribute_values_for_prop(ctx, &["root", "domain", "parrot_names"])
@@ -292,8 +294,9 @@ async fn array_map_manipulation(ctx: &DalContext) {
 #[test]
 async fn override_value_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component =
-        create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -325,7 +328,9 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 
     // if we set a value directly on domain/name, overridden becomes true
@@ -352,7 +357,9 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 
     AttributeValue::use_default_prototype(ctx, av_id)
@@ -377,15 +384,18 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 }
 
 #[test]
 async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component =
-        create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -417,7 +427,9 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 
     AttributeValue::update(ctx, av_id, Some(serde_json::json!([])))
@@ -442,7 +454,9 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 
     AttributeValue::use_default_prototype(ctx, av_id)
@@ -467,14 +481,18 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
     );
 }
 
 #[test]
 async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
     let pirate_name = "Blackbeard";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name)
+        .await
+        .expect("could not create component");
 
     let parrots_path = &["root", "domain", "parrot_names"];
 
@@ -505,10 +523,14 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(parrots_path)
+            .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia")
+        .await
+        .expect("could not create component");
 
     connect_components_with_socket_names(
         ctx,
@@ -517,7 +539,8 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         pirate_component.id(),
         "parrot_names",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -538,7 +561,9 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(parrots_path)
+            .expect("could not get value")
     );
 }
 
@@ -546,7 +571,9 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
 async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
     let pirate_name = "Long John Silver";
     let parrot_name = "Captain Flint";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name)
+        .await
+        .expect("could not create component");
 
     let parrots_path = &["root", "domain", "parrot_names"];
     let parrot_entry_path = &["root", "domain", "parrot_names", "parrot_name"];
@@ -577,10 +604,14 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(parrots_path)
+            .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia")
+        .await
+        .expect("could not create component");
 
     // set value on source component
     {
@@ -603,7 +634,8 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         pirate_component.id(),
         "parrot_names",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -625,7 +657,9 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         }], // expected
         PropEditorTestView::for_component_id(ctx, pirate_component.id())
             .await
+            .expect("could not get property editor test view")
             .get_value(parrots_path)
+            .expect("could not get value")
     );
 
     // av for entry is controlled by ancestor
@@ -658,7 +692,9 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
             }], // expected
             PropEditorTestView::for_component_id(ctx, pirate_component.id())
                 .await
+                .expect("could not get property editor test view")
                 .get_value(&["root", "domain", "parrot_names", "0"])
+                .expect("could not get value")
         );
     }
 }

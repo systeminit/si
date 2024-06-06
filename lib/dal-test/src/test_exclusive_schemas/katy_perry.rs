@@ -1,7 +1,3 @@
-use crate::schemas::schema_helpers::{
-    build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
-    create_identity_func,
-};
 use dal::pkg::import_pkg_from_pkg;
 use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -10,6 +6,11 @@ use si_pkg::{
     SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
 };
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
+
+use crate::test_exclusive_schemas::{
+    build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
+    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+};
 
 pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
     ctx: &DalContext,
@@ -20,17 +21,17 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
 
     kp_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldKatyPerryAsset";
-    let kp_authoring_schema_func = build_asset_func(fn_name).await?;
+    let kp_authoring_schema_func = build_asset_func(fn_name)?;
 
     // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     // Build YAML CodeGen Func
     let yaml_codegen_fn_name = "test:generateYamlCode";
@@ -40,8 +41,7 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
                     code: Object.keys(input.domain).length > 0 ? YAML.stringify(input.domain) : \"\"
                 };
             }";
-    let yaml_code_gen_func =
-        build_codegen_func(yaml_codegen_func_code, yaml_codegen_fn_name).await?;
+    let yaml_code_gen_func = build_codegen_func(yaml_codegen_func_code, yaml_codegen_fn_name)?;
 
     // Build string CodeGen Func
     let string_codegen_fn_name = "test:generateStringCode";
@@ -52,7 +52,7 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
                 };
             }";
     let string_code_gen_func =
-        build_codegen_func(string_codegen_func_code, string_codegen_fn_name).await?;
+        build_codegen_func(string_codegen_func_code, string_codegen_fn_name)?;
 
     let kp_schema = SchemaSpec::builder()
         .name(schema_name)
@@ -61,8 +61,7 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -74,8 +73,7 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
                         .color("#ffffff")
                         .func_unique_id(&kp_authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()
