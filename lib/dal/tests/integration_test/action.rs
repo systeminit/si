@@ -150,17 +150,14 @@ async fn run(ctx: &mut DalContext) {
         .expect("unable to list prototypes for variant")
         .pop()
         .expect("unable to find prototype for variant");
-    let action = Action::new(ctx, proto.id, Some(component.id()))
-        .await
-        .expect("unable to create action runner");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    assert!(Action::run(ctx, action.id())
+    assert!(ActionPrototype::run(ctx, proto.id(), component.id())
         .await
-        .expect("unable to run")
+        .expect("unable to run ActionPrototype")
         .is_some());
 }
 

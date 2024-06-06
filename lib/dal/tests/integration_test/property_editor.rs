@@ -115,9 +115,10 @@ async fn array_map_manipulation(ctx: &DalContext) {
     .expect("five items in map");
 
     // Grab the children for the array and check that they match what they should be
-    let parrot_names_child_ids = AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
-        .await
-        .expect("get the vec of child ids");
+    let parrot_names_child_ids =
+        AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
+            .await
+            .expect("get the vec of child ids");
     let parrot_names_third_item = AttributeValue::get_by_id(
         ctx,
         *parrot_names_child_ids
@@ -176,9 +177,10 @@ async fn array_map_manipulation(ctx: &DalContext) {
     AttributeValue::remove_by_id(ctx, parrot_names_third_item.id())
         .await
         .expect("remove the third item in parrot_names array");
-    let parrot_names_child_ids = AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
-        .await
-        .expect("get the vec of child ids");
+    let parrot_names_child_ids =
+        AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
+            .await
+            .expect("get the vec of child ids");
 
     // Check that there are four items in the array
     assert_eq!(parrot_names_child_ids.len(), 4);

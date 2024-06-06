@@ -3,12 +3,11 @@ use std::collections::{HashSet, VecDeque};
 use petgraph::prelude::*;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ActionResultState};
+use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
     action::{
@@ -16,16 +15,15 @@ use crate::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
     },
     attribute::value::{AttributeValueError, DependentValueGraph},
-    component::resource::ResourceData,
     func::FuncExecutionPk,
     id, implement_add_edge_to,
     job::definition::ActionJob,
     workspace_snapshot::node_weight::{
         category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
-    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
-    DalContext, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError,
-    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;
@@ -549,64 +547,6 @@ impl Action {
         Ok(reasons_for_hold)
     }
 
-    pub async fn run(
-        ctx: &DalContext,
-        id: ActionId,
-    ) -> ActionResult<Option<ActionRunResultSuccess>> {
-        let component_id = Action::component_id(ctx, id)
-            .await?
-            .ok_or(ActionError::ComponentNotFoundForAction(id))?;
-
-        let prototype_id = Action::prototype_id(ctx, id).await?;
-
-        let (func_run_value, resource) =
-            ActionPrototype::run(ctx, prototype_id, component_id).await?;
-
-        if matches!(
-            resource.as_ref().map(|r| r.status),
-            Some(ResourceStatus::Ok)
-        ) {
-            ctx.workspace_snapshot()?
-                .remove_node_by_id(ctx.change_set()?, id)
-                .await?;
-
-            ctx.layer_db()
-                .func_run()
-                .set_action_result_state(
-                    func_run_value.func_run_id(),
-                    ActionResultState::Success,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
-
-            let component = Component::get_by_id(ctx, component_id).await?;
-
-            if component.to_delete()
-                && matches!(resource.as_ref().map(|r| r.payload.is_none()), Some(true))
-            {
-                Component::remove(ctx, component.id()).await?;
-            }
-        } else {
-            Action::set_state(ctx, id, ActionState::Failed).await?;
-            ctx.layer_db()
-                .func_run()
-                .set_action_result_state(
-                    func_run_value.func_run_id(),
-                    ActionResultState::Failure,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
-        }
-        WsEvent::action_list_updated(ctx)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-
-        Ok(resource)
-    }
-
     /// An Action is dispatchable if all of the following are true:
     ///   * The action is in the state [`ActionState::Queued`](ActionState)
     ///   * The graph of values for `DependentValuesUpdate` does *NOT* include
@@ -674,34 +614,7 @@ impl Action {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ActionReturn {
-    id: ActionId,
-    component_id: ComponentId,
-    kind: ActionKind,
-    resource: Option<ResourceData>,
-}
-
 impl WsEvent {
-    pub async fn action_return(
-        ctx: &DalContext,
-        id: ActionId,
-        kind: ActionKind,
-        component_id: ComponentId,
-        resource: Option<ResourceData>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ActionReturn(ActionReturn {
-                id,
-                kind,
-                component_id,
-                resource,
-            }),
-        )
-        .await
-    }
     pub async fn action_list_updated(ctx: &DalContext) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ActionsListUpdated(ctx.change_set_id())).await
     }

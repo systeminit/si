@@ -58,6 +58,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-stream",
+        "//third-party/rust:tryhard",
         "//third-party/rust:ulid",
         "//third-party/rust:url",
     ],

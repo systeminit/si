@@ -11,6 +11,7 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
 use crate::{
@@ -43,6 +44,8 @@ pub enum JobConsumerError {
     ComponentIsDestroyed(ComponentId),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] DependentValueUpdateError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]

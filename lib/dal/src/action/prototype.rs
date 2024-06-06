@@ -2,16 +2,14 @@ use std::sync::Arc;
 
 use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
-use si_events::FuncRunValue;
+use si_events::ActionResultState;
 use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
 use thiserror::Error;
-use veritech_client::ActionRunResultSuccess;
+use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
-    action::ResourceStatus,
-    change_status::ChangeStatus,
     component::ComponentUpdatedPayload,
     diagram::{DiagramError, SummaryDiagramComponent},
     func::{
@@ -271,7 +269,7 @@ impl ActionPrototype {
         ctx: &DalContext,
         id: ActionPrototypeId,
         component_id: ComponentId,
-    ) -> ActionPrototypeResult<(FuncRunValue, Option<ActionRunResultSuccess>)> {
+    ) -> ActionPrototypeResult<Option<ActionRunResultSuccess>> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.view(ctx).await?;
         let func_id = Self::func_id(ctx, id).await?;
@@ -337,45 +335,43 @@ impl ActionPrototype {
             )
             .await?;
 
-        let run_result = match func_run_value.value() {
-            Some(value) => {
-                let run_result: ActionRunResultSuccess = serde_json::from_value(value.clone())?;
-
-                if run_result.payload.is_some() {
-                    component
-                        .set_resource(ctx, run_result.clone().into())
-                        .await?;
-
-                    let payload = SummaryDiagramComponent::assemble(
-                        ctx,
-                        &component,
-                        ChangeStatus::Unmodified,
-                    )
-                    .await?;
-                    WsEvent::resource_refreshed(ctx, payload)
-                        .await?
-                        .publish_on_commit(ctx)
-                        .await?;
-                } else if run_result.status == ResourceStatus::Ok {
-                    component.clear_resource(ctx).await?;
-                    let payload = SummaryDiagramComponent::assemble(
-                        ctx,
-                        &component,
-                        ChangeStatus::Unmodified,
-                    )
-                    .await?;
-                    WsEvent::resource_refreshed(ctx, payload)
-                        .await?
-                        .publish_on_commit(ctx)
-                        .await?;
-                }
-
-                Some(run_result)
-            }
+        let maybe_run_result = match func_run_value.value() {
+            Some(value) => Some(serde_json::from_value::<ActionRunResultSuccess>(
+                value.clone(),
+            )?),
             None => None,
         };
 
-        Ok((func_run_value, run_result))
+        match maybe_run_result.as_ref().map(|r| r.status) {
+            // If we have a resource and an ok status
+            Some(ResourceStatus::Ok) => {
+                // Set the `FuncRun`'s action-specific metadata to successful
+                ctx.layer_db()
+                    .func_run()
+                    .set_action_result_state(
+                        func_run_value.func_run_id(),
+                        ActionResultState::Success,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+            }
+            // In all other cases
+            Some(_) | None => {
+                // Set the `FuncRun`'s action-specific metadata to falure
+                ctx.layer_db()
+                    .func_run()
+                    .set_action_result_state(
+                        func_run_value.func_run_id(),
+                        ActionResultState::Failure,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+            }
+        }
+
+        Ok(maybe_run_result)
     }
 
     pub async fn for_variant(

@@ -30,9 +30,9 @@ impl ResourceData {
     }
 }
 
-impl From<ActionRunResultSuccess> for ResourceData {
-    fn from(value: ActionRunResultSuccess) -> Self {
-        ResourceData::new(value.status, value.payload)
+impl From<&ActionRunResultSuccess> for ResourceData {
+    fn from(value: &ActionRunResultSuccess) -> Self {
+        ResourceData::new(value.status, value.payload.clone())
     }
 }
 

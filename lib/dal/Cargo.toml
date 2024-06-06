@@ -58,6 +58,7 @@ telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
+tryhard = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
