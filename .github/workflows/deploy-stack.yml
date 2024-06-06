@@ -1,5 +1,7 @@
 name: Deploy Services
 
+run-name: Deploy to ${{ inputs.environment }} by @${{ github.actor }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -37,8 +39,21 @@ jobs:
       access_key: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
       secret_key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
 
-  deploy-service:
+  secrets:
     needs: invalidate-cache
+    runs-on: ubuntu-latest
+    outputs:
+      aws_access_key: ${{ steps.prepare.outputs.aws_access_key }}
+      aws_secret_key: ${{ steps.prepare.outputs.aws_secret_key }}
+    steps:
+      - name: prepare
+        id: prepare
+        run: |
+          echo "aws_access_key=aws_${{ github.event.inputs.environment }}_access_key" >> "$GITHUB_OUTPUT"
+          echo "aws_secret_key=aws_${{ github.event.inputs.environment }}_secret_key" >> "$GITHUB_OUTPUT"
+
+  deploy-service:
+    needs: secrets
     if: ${{ github.event.inputs.service != 'all' }}
     uses: ./.github/workflows/deploy-service.yml
     with:
@@ -46,31 +61,32 @@ jobs:
       service: ${{ github.event.inputs.service }}
       version: ${{ github.event.inputs.version }}
     secrets:
-      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
-      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
+      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
+      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}
 
   deploy-services:
-    needs: invalidate-cache
+    needs: secrets
     if: ${{ github.event.inputs.service == 'all' }}
     strategy:
+     fail-fast: false
      matrix:
-      service: ["pinga", "rebaser", "sdf", "web"]
+      service: ["pinga", "rebaser", "sdf", "veritech", "web"]
     uses: ./.github/workflows/deploy-service.yml
     with:
       environment: ${{ github.event.inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ github.event.inputs.version }}
     secrets:
-      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
-      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
+      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
+      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}
 
   set-init:
-    needs: invalidate-cache
+    needs: secrets
     uses: ./.github/workflows/set-init-version.yml
     with:
       environment: ${{ github.event.inputs.environment }}
       service: ${{ github.event.inputs.service }}
       version: ${{ github.event.inputs.version }}
     secrets:
-      access_key: ${{ secrets["aws_access_key_${{ github.event.inputs.environment }}"] }}
-      secret_key: ${{ secrets["aws_secret_key_${{ github.event.inputs.environment }}"] }}
+      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
+      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}

@@ -373,6 +373,8 @@ def compute_build_metadata(
         platform_os.value,
         "commit":
         git_info.get("commit_hash"),
+        "branch":
+        git_info.get("branch"),
         "b3sum":
         b3sum,
     }
