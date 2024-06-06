@@ -60,7 +60,7 @@ async fn open_change_sets(ctx: &mut DalContext) {
         head_change_set_view.id  // actual
     );
 
-    // Create a new change set and perform a commit without rebasing.
+    // Create a new change set off HEAD.
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
         .expect("could not fork change set");

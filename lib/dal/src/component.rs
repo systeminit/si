@@ -320,14 +320,21 @@ impl Component {
     }
 
     pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
-        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
+        Self::view_by_id(ctx, self.id).await
+    }
+
+    pub async fn view_by_id(
+        ctx: &DalContext,
+        id: ComponentId,
+    ) -> ComponentResult<Option<serde_json::Value>> {
+        let schema_variant_id = Self::schema_variant_id(ctx, id).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
 
         let root_value_ids = Prop::attribute_values_for_prop_id(ctx, root_prop_id).await?;
         for value_id in root_value_ids {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
-            if value_component_id == self.id {
+            if value_component_id == id {
                 let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
                 return Ok(root_value.view(ctx).await?);
             }
@@ -1889,6 +1896,7 @@ impl Component {
         Ok(Component::assemble(&component_node_weight, updated))
     }
 
+    #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
         let change_set = ctx.change_set()?;
 
@@ -1946,8 +1954,164 @@ impl Component {
         Ok(())
     }
 
+    /// A [`Component`] is allowed to be removed from the graph if it meets the following
+    /// requirements:
+    ///
+    /// 1. It doesn't have a populated resource.
+    /// 2. It is not feeding data to a [`Component`] that has a populated resource.
+    #[instrument(level = "info", skip_all)]
+    async fn allowed_to_be_removed(&self, ctx: &DalContext) -> ComponentResult<bool> {
+        if self.resource(ctx).await?.is_some() {
+            return Ok(false);
+        }
+
+        // Check all outgoing connections.
+        let outgoing_connections = self.outgoing_connections(ctx).await?;
+        for outgoing_connection in outgoing_connections {
+            let connected_to_component =
+                Self::get_by_id(ctx, outgoing_connection.to_component_id).await?;
+            if connected_to_component.resource(ctx).await?.is_some() {
+                debug!(
+                    "component {:?} cannot be removed because {:?} has resource",
+                    self.id,
+                    connected_to_component.id()
+                );
+                return Ok(false);
+            }
+        }
+
+        // Check all inferred outgoing connections, which accounts for up and down configuration
+        // frames alike due to the direction of the connection.
+        let inferred_outgoing_connections = self.inferred_outgoing_connections(ctx).await?;
+        for inferred_outgoing in inferred_outgoing_connections {
+            let connected_to_component =
+                Self::get_by_id(ctx, inferred_outgoing.to_component_id).await?;
+            if connected_to_component.resource(ctx).await?.is_some() {
+                debug!(
+                    "component {:?} cannot be removed because {:?} has resource",
+                    self.id,
+                    connected_to_component.id()
+                );
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Find all [`Components`](Component) have an outgoing connection from [`self`](Component),
+    /// including inferred connections from frames, that have a populated resource.
+    ///
+    /// This is used to determine if [`self`](Component) can be removed.
+    #[instrument(level = "info", skip_all)]
+    async fn find_outgoing_connections_with_resources(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let mut blocking_component_ids = Vec::new();
+
+        // Check all outgoing connections.
+        let outgoing_connections = self.outgoing_connections(ctx).await?;
+        for outgoing_connection in outgoing_connections {
+            let connected_to_component =
+                Self::get_by_id(ctx, outgoing_connection.to_component_id).await?;
+            if connected_to_component.resource(ctx).await?.is_some() {
+                blocking_component_ids.push(connected_to_component.id());
+            }
+        }
+
+        // Check all inferred outgoing connections, which accounts for up and down configuration
+        // frames alike due to the direction of the connection.
+        let inferred_outgoing_connections = self.inferred_outgoing_connections(ctx).await?;
+        for inferred_outgoing in inferred_outgoing_connections {
+            let connected_to_component =
+                Self::get_by_id(ctx, inferred_outgoing.to_component_id).await?;
+            if connected_to_component.resource(ctx).await?.is_some() {
+                blocking_component_ids.push(connected_to_component.id());
+            }
+        }
+
+        debug!(
+            "component {:?} cannot be removed because of blocking components: {:?}",
+            self.id(),
+            &blocking_component_ids
+        );
+        Ok(blocking_component_ids)
+    }
+
+    /// Find all components that are set to be deleted (i.e. have the `to_delete` flag set to true)
+    /// that are incoming connections, including inferred incoming connections, to
+    /// [`self`](Component).
+    #[instrument(level = "info", skip_all)]
+    async fn find_incoming_connections_waiting_to_be_removed(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let mut needy_components = vec![];
+
+        // Check all incoming connections.
+        let incoming_connections = self.incoming_connections(ctx).await?;
+        for incoming in incoming_connections {
+            let connected = Self::get_by_id(ctx, incoming.from_component_id).await?;
+            if connected.to_delete() {
+                needy_components.push(connected.id());
+            }
+        }
+
+        // Check all inferred incoming connections, which includes frames.
+        let inferred_incoming = self.inferred_incoming_connections(ctx).await?;
+        for inferred in inferred_incoming {
+            let connected = Self::get_by_id(ctx, inferred.from_component_id).await?;
+            if connected.to_delete() {
+                needy_components.push(connected.id());
+            }
+        }
+
+        debug!(
+            "Incoming connections waiting ot be removed {:?}",
+            &needy_components
+        );
+        Ok(needy_components)
+    }
+
+    /// Find all [`Components`](Component) that have not been allowed to be removed because of
+    /// [`self`](Component) and [`self`](Component) alone (i.e. [`self`](Component) must be the sole
+    /// [`Component`] disallowing their removal).
+    #[instrument(level = "info", skip_all)]
+    pub async fn find_components_to_be_removed(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let maybe_can_be_removed_component_ids = self
+            .find_incoming_connections_waiting_to_be_removed(ctx)
+            .await?;
+
+        // For each component waiting on self, see if anything else is blocking that component from
+        // being removed. If nothing else is blocking that component from removal, we can safely add
+        // it to the list.
+        let mut can_be_removed_component_ids = Vec::new();
+        for maybe_can_be_removed_component_id in maybe_can_be_removed_component_ids {
+            let maybe_can_be_removed_component =
+                Self::get_by_id(ctx, maybe_can_be_removed_component_id).await?;
+            let blocking_component_ids = maybe_can_be_removed_component
+                .find_outgoing_connections_with_resources(ctx)
+                .await?;
+            if blocking_component_ids.is_empty()
+                || (blocking_component_ids.len() == 1 && blocking_component_ids.contains(&self.id))
+            {
+                can_be_removed_component_ids.push(maybe_can_be_removed_component_id);
+            }
+        }
+
+        debug!(
+            ?can_be_removed_component_ids,
+            "finished collecting components that can be removed"
+        );
+        Ok(can_be_removed_component_ids)
+    }
+
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
-        if self.resource(ctx).await?.is_none() {
+        if self.allowed_to_be_removed(ctx).await? {
             Self::remove(ctx, self.id).await?;
             Ok(None)
         } else {
@@ -2307,11 +2471,13 @@ impl Component {
 
         Ok(maybe_matches)
     }
-    /// Find all [`InputSocketMatch`]es in the ancestry tree for a [`Component`] with the provided [`ComponentId`]
-    /// This searches for matches in the component's parents and up the entire lineage tree
+
+    /// Find all [`InputSocketMatches`](InputSocketMatch) in the ancestry tree for a [`Component`]
+    /// with the provided [`ComponentId`](Component). This searches for matches in the
+    /// [`Component's`] parents and up the entire lineage tree.
     ///
     /// Note: this does not check if data should actually flow between the components with matches
-    #[instrument(level = "debug" skip(ctx))]
+    #[instrument(level = "debug", skip(ctx))]
     async fn find_all_input_socket_matches_in_ascendants(
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
@@ -2408,10 +2574,10 @@ impl Component {
         }
         Ok(connections)
     }
-    /// Finds all inferred outgoing connections for the [`Component`]
-    /// A connection is inferred if it's output sockets is driving
-    /// another component's [`InputSocket`] as a result of lineage via
-    /// the FrameContains edge.
+
+    /// Finds all inferred outgoing connections for the [`Component`]. A connection is inferred if
+    /// its output sockets are driving another [`Component's`](Component) [`InputSocket`] as a
+    /// result of lineage via an [`EdgeWeightKind::FrameContains`] edge.
     #[instrument(level = "debug", skip(ctx))]
     pub async fn inferred_outgoing_connections(
         &self,

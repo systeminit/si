@@ -26,30 +26,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
 
     let identity_func_spec = create_identity_func()?;
 
-    let code = "async function main() {
-        const authCheck = requestStorage.getItem('dummySecretString');
-        if (authCheck) {
-            if (authCheck === 'todd') {
-                return {
-                    status: 'ok',
-                    payload: {
-                        'poop': true
-                    }
-                };
-            }
-            return {
-                status: 'error',
-                message: 'cannot create: dummy secret string does not match expected value'
-            };
-        } else {
-            return {
-                status: 'error',
-                message: 'cannot create: dummy secret string is empty'
-            };
-        }
-    }";
-    let fn_name = "test:createActionFallout";
-    let fallout_create_action_func = build_action_func(code, fn_name).await?;
+    let (fallout_create_action_func, fallout_delete_action_func) = action_funcs()?;
 
     let fallout_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
@@ -179,6 +156,12 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
                         .func_unique_id(&fallout_create_action_func.unique_id)
                         .build()?,
                 )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(ActionKind::Destroy)
+                        .func_unique_id(&fallout_delete_action_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -186,6 +169,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
     let fallout_spec = fallout_builder
         .func(identity_func_spec)
         .func(fallout_create_action_func)
+        .func(fallout_delete_action_func)
         .func(fallout_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .schema(fallout_schema)
@@ -243,4 +227,44 @@ fn assemble_dummy_secret_socket_and_prop(
         .build()?;
 
     Ok((secret_input_socket, secret_prop))
+}
+
+fn action_funcs() -> BuiltinsResult<(FuncSpec, FuncSpec)> {
+    // Add the action create func.
+    let code = "async function main() {
+        const authCheck = requestStorage.getItem('dummySecretString');
+        if (authCheck) {
+            if (authCheck === 'todd') {
+                return {
+                    status: 'ok',
+                    payload: {
+                        'poop': true
+                    }
+                };
+            }
+            return {
+                status: 'error',
+                message: 'cannot create: dummy secret string does not match expected value'
+            };
+        } else {
+            return {
+                status: 'error',
+                message: 'cannot create: dummy secret string is empty'
+            };
+        }
+    }";
+    let fn_name = "test:createActionFallout";
+    let fallout_create_action_func = build_action_func(code, fn_name)?;
+
+    // Add the action delete func.
+    let delete_action_code = "async function main() {
+        return {
+            status: 'ok',
+            payload: undefined
+        };
+    }";
+    let fn_name = "test:deleteActionFallout";
+    let fallout_delete_action_func = build_action_func(delete_action_code, fn_name)?;
+
+    Ok((fallout_create_action_func, fallout_delete_action_func))
 }

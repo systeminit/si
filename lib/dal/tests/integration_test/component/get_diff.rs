@@ -90,12 +90,10 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
         .await
         .expect("could not commit");
 
-    // Apply the change set and perform a blocking commit.
+    // Apply the change set and create a new change set.
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("could not apply change set");
-
-    // Create a new change set and perform a commit without rebasing.
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
         .expect("could not fork change set");

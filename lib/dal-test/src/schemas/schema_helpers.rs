@@ -37,10 +37,7 @@ pub(crate) async fn build_resource_payload_to_value_func() -> BuiltinsResult<Fun
     Ok(resource_payload_to_value_func)
 }
 
-pub(crate) async fn build_action_func(
-    code: &str,
-    fn_name: &str,
-) -> Result<FuncSpec, BuiltinsError> {
+pub(crate) fn build_action_func(code: &str, fn_name: &str) -> Result<FuncSpec, BuiltinsError> {
     let func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)

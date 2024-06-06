@@ -59,13 +59,7 @@ impl ChangeSetTestHelpers {
     pub async fn commit_and_update_snapshot_to_visibility(
         ctx: &mut DalContext,
     ) -> ChangeSetTestHelpersResult<()> {
-        // TODO(nick,brit): we need to expand Brit's 409 conflict work to work with blocking commits
-        // too rather than evaluating an optional set of conflicts.
-        if let Some(conflicts) = ctx.blocking_commit().await? {
-            return Err(ChangeSetTestHelpersError::ConflictsFoundAfterCommit(
-                conflicts,
-            ));
-        }
+        Self::blocking_commit(ctx).await?;
         ctx.update_snapshot_to_visibility().await?;
         Ok(())
     }
@@ -111,7 +105,7 @@ impl ChangeSetTestHelpers {
             Ok(change_set) => change_set,
         };
 
-        ctx.commit().await?;
+        Self::blocking_commit(ctx).await?;
 
         ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
             applied_change_set.base_change_set_id.ok_or(
@@ -162,5 +156,16 @@ impl ChangeSetTestHelpers {
             .await?;
 
         Ok(new_change_set)
+    }
+
+    async fn blocking_commit(ctx: &DalContext) -> ChangeSetTestHelpersResult<()> {
+        // TODO(nick,brit): we need to expand Brit's 409 conflict work to work with blocking commits
+        // too rather than evaluating an optional set of conflicts.
+        match ctx.blocking_commit().await? {
+            Some(conflicts) => Err(ChangeSetTestHelpersError::ConflictsFoundAfterCommit(
+                conflicts,
+            )),
+            None => Ok(()),
+        }
     }
 }

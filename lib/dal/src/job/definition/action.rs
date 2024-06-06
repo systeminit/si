@@ -208,6 +208,13 @@ async fn process_and_record_execution(
                 component.clear_resource(&ctx).await?;
 
                 if component.to_delete() {
+                    // Before we remove a component, we delete any other components that exist
+                    // solely because this component exists.
+                    for component_to_be_removed_id in
+                        component.find_components_to_be_removed(&ctx).await?
+                    {
+                        Component::remove(&ctx, component_to_be_removed_id).await?;
+                    }
                     Component::remove(&ctx, component.id()).await?;
                 } else {
                     let summary = SummaryDiagramComponent::assemble(
