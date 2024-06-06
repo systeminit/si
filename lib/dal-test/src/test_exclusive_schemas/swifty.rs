@@ -1,7 +1,3 @@
-use crate::schemas::schema_helpers::{
-    build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
-    create_identity_func,
-};
 use dal::action::prototype::ActionKind;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{prop::PropPath, ComponentType};
@@ -13,6 +9,11 @@ use si_pkg::{
 };
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
+use crate::test_exclusive_schemas::{
+    build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
+    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+};
+
 pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
 
@@ -20,8 +21,8 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
 
     swifty_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
@@ -58,10 +59,10 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldSwiftyAsset";
-    let swifty_authoring_schema_func = build_asset_func(fn_name).await?;
+    let swifty_authoring_schema_func = build_asset_func(fn_name)?;
 
     // Author Resource Payload Func
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     // Build CodeGen Func
     let codegen_fn_name = "test:generateCode";
@@ -71,7 +72,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                     code: JSON.stringify(input.domain || {}, null, 2),
                 };
             }";
-    let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name).await?;
+    let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name)?;
 
     let swifty_schema = SchemaSpec::builder()
         .name(schema_name)
@@ -80,8 +81,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -93,8 +93,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                         .color("#ffffff")
                         .func_unique_id(&swifty_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()

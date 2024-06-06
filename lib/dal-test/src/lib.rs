@@ -3,6 +3,9 @@
 
 #![warn(
     bad_style,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unwrap_used,
     dead_code,
     improper_ctypes,
     missing_debug_implementations,
@@ -31,7 +34,7 @@ use std::{
 
 use buck2_resources::Buck2Resources;
 use dal::{
-    builtins::{func, schema},
+    builtins::func,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
@@ -52,10 +55,15 @@ use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 
+/// This module contains helpers for macro expansion. We allow panics and "expects" here because we
+/// want to bail during macro expansion. We still do not allow "unwrap" because "expect" should be
+/// used instead.
+#[allow(clippy::expect_used, clippy::panic)]
 pub mod expand_helpers;
+
 pub mod helpers;
-mod schemas;
 mod signup;
+mod test_exclusive_schemas;
 
 pub use color_eyre::{
     self,
@@ -77,9 +85,6 @@ const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
-const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
-const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
-const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 
 #[allow(missing_docs)]
 pub static COLOR_EYRE_INIT: Once = Once::new();
@@ -348,6 +353,7 @@ impl TestContext {
     }
 
     /// Creates a new [`ServicesContext`].
+    #[allow(clippy::expect_used, clippy::panic)]
     pub async fn create_services_context(
         &self,
         token: CancellationToken,
@@ -541,6 +547,7 @@ pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
 }
 
 /// Returns a JWT private signing key, which is used to sign claims.
+#[allow(clippy::expect_used, clippy::panic)]
 pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
     let key_path = {
         let context_builder = TEST_CONTEXT_BUILDER.lock().await;
@@ -734,9 +741,12 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     tracker.close();
 
-    // Check if the user would like to skip migrating schemas. This is helpful for boosting
-    // performance when running integration tests that do not rely on builtin schemas.
-    // let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
+    #[allow(clippy::expect_used)]
+    let pkgs_path = test_context
+        .config
+        .pkgs_path
+        .to_owned()
+        .expect("no pkgs path configured");
 
     info!("creating builtins");
     migrate_local_builtins(
@@ -745,11 +755,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
-        test_context
-            .config
-            .pkgs_path
-            .to_owned()
-            .expect("no pkgs path configured"),
+        pkgs_path,
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
         services_ctx.layer_db().clone(),
@@ -813,71 +819,14 @@ async fn migrate_local_builtins(
     info!("migrating intrinsic functions");
     func::migrate_intrinsics(&ctx).await?;
 
-    // FIXME(nick): restore builtin migration functionality for all variants.
-    info!("migrate minimal number of schemas for testing the new engine");
+    info!("migrating test exclusive schemas");
+    test_exclusive_schemas::migrate(&ctx).await?;
 
-    schema::migrate_pkg(&ctx, SI_DOCKER_IMAGE_PKG, None).await?;
-    schema::migrate_pkg(&ctx, SI_COREOS_PKG, None).await?;
-    schema::migrate_pkg(&ctx, SI_AWS_EC2_PKG, None).await?;
-    schemas::migrate_test_exclusive_schema_starfield(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_etoiles(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_morningstar(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_fallout(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_dummy_secret(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_katy_perry(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_pirate(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_pet_shop(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_validated_input(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_validated_output(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_bad_validations(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_large_odd_lego(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_large_even_lego(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_medium_even_lego(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_medium_odd_lego(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_small_odd_lego(&ctx).await?;
-    schemas::migrate_test_exclusive_schema_small_even_lego(&ctx).await?;
+    info!("migrations complete, commiting");
     ctx.blocking_commit().await?;
 
     Ok(())
 }
-
-// fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
-//     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
-//     // all are prefixed with `SI_TEST_`
-//     //
-//     // TODO(fnichol): remove conditional schema execution
-//     match env::var(ENV_VAR_BUILTIN_SCHEMAS) {
-//         Ok(found_value) => {
-//             let mut builtin_schemas = HashSet::new();
-//
-//             // If the value does not contain a comma, we will have exactly once item to iterate
-//             // over.
-//             for builtin_schema in found_value.split(',') {
-//                 // Trim and ensure the string is lowercase.
-//                 let cleaned = builtin_schema.trim().to_lowercase();
-//
-//                 // If we receive any keywords indicating that we need to return early, let's do so.
-//                 if &cleaned == "none" || &cleaned == "false" {
-//                     return SelectedTestBuiltinSchemas::None;
-//                 } else if &cleaned == "all" {
-//                     return SelectedTestBuiltinSchemas::All;
-//                 } else if &cleaned == "test" || &cleaned == "true" {
-//                     return SelectedTestBuiltinSchemas::Test;
-//                 }
-//
-//                 // If we do not find any keywords, we assume that the user provided the name for a
-//                 // builtin schema.
-//                 builtin_schemas.insert(cleaned);
-//             }
-//             SelectedTestBuiltinSchemas::Some(builtin_schemas)
-//         }
-//         Err(_) => {
-//             // If the variable is unset, then we migrate everything. This is the default behavior.
-//             SelectedTestBuiltinSchemas::Test
-//         }
-//     }
-// }
 
 async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
     let name_prefix = format!("{}_%", pg_pool.db_name());

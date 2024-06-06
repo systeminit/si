@@ -111,7 +111,9 @@ async fn upgrade_component(ctx: &mut DalContext) {
 
     // Add a component to the diagram
     let initial_component =
-        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component").await;
+        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
+            .await
+            .expect("could not create component");
     let initial_diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");

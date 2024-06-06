@@ -22,7 +22,9 @@ mod set_type;
 mod upgrade;
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;
+    let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup")
+        .await
+        .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -225,7 +227,9 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 #[test]
 async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     let name = "across the universe";
-    let component = create_component_for_schema_name(ctx, "starfield", name).await;
+    let component = create_component_for_schema_name(ctx, "starfield", name)
+        .await
+        .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -400,7 +404,9 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
 #[test]
 async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     let name = "across the universe";
-    let component = create_component_for_schema_name(ctx, "starfield", name).await;
+    let component = create_component_for_schema_name(ctx, "starfield", name)
+        .await
+        .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -560,13 +566,17 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
 #[test]
 async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) {
     let etoiles_name = "À la belle étoile";
-    let etoiles_component = create_component_for_schema_name(ctx, "etoiles", etoiles_name).await;
+    let etoiles_component = create_component_for_schema_name(ctx, "etoiles", etoiles_name)
+        .await
+        .expect("could not create component");
     let etoiles_variant_id = Component::schema_variant_id(ctx, etoiles_component.id())
         .await
         .expect("find variant id for etoiles component");
     let morningstar_name = "hesperus is phosphorus";
     let morningstar_component =
-        create_component_for_schema_name(ctx, "morningstar", morningstar_name).await;
+        create_component_for_schema_name(ctx, "morningstar", morningstar_name)
+            .await
+            .expect("could not create component");
     let morningstar_variant_id = Component::schema_variant_id(ctx, morningstar_component.id())
         .await
         .expect("find variant id for morningstar component");
@@ -657,7 +667,8 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
         morningstar_component.id(),
         "naming_and_necessity",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -692,7 +703,9 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
 
 #[test]
 async fn set_the_universe(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
+    let component = create_component_for_schema_name(ctx, "starfield", "across the universe")
+        .await
+        .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -1171,11 +1184,15 @@ async fn undoing_deletion_updates_inputs(ctx: &mut DalContext) {
 async fn paste_component(ctx: &mut DalContext) {
     let pirate_name = "Long John Silver";
     let parrot_name = "Captain Flint";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name).await;
+    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name)
+        .await
+        .expect("could not create component");
 
     let parrots_path = &["root", "domain", "parrot_names"];
 
-    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia").await;
+    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia")
+        .await
+        .expect("could not create component");
 
     // set value on source component
     {
@@ -1198,7 +1215,8 @@ async fn paste_component(ctx: &mut DalContext) {
         pirate_component.id(),
         "parrot_names",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1254,7 +1272,9 @@ async fn paste_component(ctx: &mut DalContext) {
 
 #[test]
 async fn delete(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
+    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+        .await
+        .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1269,7 +1289,9 @@ async fn delete(ctx: &mut DalContext) {
 
 #[test]
 async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy").await;
+    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy")
+        .await
+        .expect("could not create component");
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
         Some(serde_json::json![{"resource": "something"}]),
@@ -1313,7 +1335,9 @@ async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
 
 #[test]
 async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy").await;
+    let component = create_component_for_schema_name(ctx, "VPC", "component with destroy")
+        .await
+        .expect("could not create component");
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
         Some(serde_json::json![{"resource": "something"}]),

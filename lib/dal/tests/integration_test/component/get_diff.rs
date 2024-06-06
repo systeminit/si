@@ -9,7 +9,9 @@ use serde_json::Value;
 #[test]
 async fn get_diff_new_component(ctx: &mut DalContext) {
     let starfield_component =
-        create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
+        create_component_for_schema_name(ctx, "starfield", "this is a new component")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -36,7 +38,9 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
 #[test]
 async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     let starfield_component =
-        create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
+        create_component_for_schema_name(ctx, "starfield", "this is a new component")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -85,7 +89,9 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
 #[test]
 async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     let starfield_component =
-        create_component_for_schema_name(ctx, "starfield", "this is a new component").await;
+        create_component_for_schema_name(ctx, "starfield", "this is a new component")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit");

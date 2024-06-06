@@ -11,6 +11,8 @@ use si_pkg::{
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
 
+use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
+
 pub(crate) async fn migrate_test_exclusive_schema_starfield(
     ctx: &DalContext,
 ) -> BuiltinsResult<()> {
@@ -20,12 +22,10 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
 
     starfield_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
-    let identity_func_spec = IntrinsicFunc::Identity
-        .to_spec()
-        .expect("create identity func spec");
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
     let starfield_create_action_code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
@@ -188,8 +188,7 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -200,8 +199,7 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
                         .name("v0")
                         .color("#ffffff")
                         .func_unique_id(&starfield_authoring_schema_func.unique_id)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()
@@ -427,12 +425,10 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
 
     morningstar_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
-    let identity_func_spec = IntrinsicFunc::Identity
-        .to_spec()
-        .expect("create identity func spec");
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
     let star_func_code = "async function star(input: Input): Promise<Output> {
         if (!input?.stars) {
@@ -453,18 +449,15 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                 .handler(star_func_name)
                 .backend_kind(FuncSpecBackendKind::JsAttribute)
                 .response_type(FuncSpecBackendResponseType::String)
-                .build()
-                .expect("star func data build"),
+                .build()?,
         )
         .argument(
             FuncArgumentSpec::builder()
                 .name("stars")
                 .kind(FuncArgumentKind::Array)
-                .build()
-                .expect("stars arg build"),
+                .build()?,
         )
-        .build()
-        .expect("star_func_build");
+        .build()?;
 
     let morningstar_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
@@ -480,11 +473,9 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                 .handler("createAsset")
                 .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
                 .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
-                .build()
-                .expect("scaffold data buidl"),
+                .build()?,
         )
-        .build()
-        .expect("scaffold func build");
+        .build()?;
 
     let morningstar_schema = SchemaSpec::builder()
         .name(schema_name)
@@ -493,8 +484,7 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec morningstar data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -505,8 +495,7 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                         .name("v0")
                         .color("#ffffff")
                         .func_unique_id(&morningstar_authoring_schema_func.unique_id)
-                        .build()
-                        .expect("sv spec data build"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()
@@ -518,11 +507,9 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                                 .kind(AttrFuncInputSpecKind::InputSocket)
                                 .name("stars")
                                 .socket_name("naming_and_necessity")
-                                .build()
-                                .expect("stars prop attr input build"),
+                                .build()?,
                         )
-                        .build()
-                        .expect("stars prop build"),
+                        .build()?,
                 )
                 .socket(
                     SocketSpec::builder()
@@ -534,25 +521,20 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                                     "naming_and_necessity",
                                 ])?)
                                 .kind(SocketSpecKind::Input)
-                                .build()
-                                .expect("socket spec data build"),
+                                .build()?,
                         )
-                        .build()
-                        .expect("socket spec build"),
+                        .build()?,
                 )
-                .build()
-                .expect("sv spec build"),
+                .build()?,
         )
-        .build()
-        .expect("sv build");
+        .build()?;
 
     let morningstar_spec = morningstar_builder
         .func(identity_func_spec)
         .func(star_func)
         .func(morningstar_authoring_schema_func)
         .schema(morningstar_schema)
-        .build()
-        .expect("schema build");
+        .build()?;
 
     let pkg = SiPkg::load_from_spec(morningstar_spec)?;
 
@@ -568,12 +550,10 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
 
     etoiles_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
-    let identity_func_spec = IntrinsicFunc::Identity
-        .to_spec()
-        .expect("create identity func spec");
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
     let etoiles_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
@@ -661,8 +641,7 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -673,8 +652,7 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
                         .name("v0")
                         .color("#ffffff")
                         .func_unique_id(&etoiles_authoring_schema_func.unique_id)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()

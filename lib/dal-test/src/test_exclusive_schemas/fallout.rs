@@ -10,9 +10,10 @@ use si_pkg::{
 };
 use si_pkg::{SchemaSpecData, SocketSpecArity};
 
-use crate::schemas::schema_helpers::{
+use crate::test_exclusive_schemas::{
     build_action_func, build_resource_payload_to_value_func, create_identity_func,
 };
+use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
 pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
@@ -21,8 +22,8 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
 
     fallout_builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
@@ -46,7 +47,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
         )
         .build()?;
 
-    let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+    let resource_payload_to_value_func = build_resource_payload_to_value_func()?;
 
     let (dummy_secret_input_scoket, dummy_secret_prop) =
         assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
@@ -58,8 +59,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(schema_name)
-                .build()
-                .expect("build schema spec data"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -70,8 +70,7 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
                         .name("v0")
                         .color("#ffffff")
                         .func_unique_id(&fallout_authoring_schema_func.unique_id)
-                        .build()
-                        .expect("fallout variant data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()

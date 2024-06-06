@@ -14,6 +14,8 @@ use si_pkg::{
     SchemaSpecData, SocketSpecArity,
 };
 
+use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
+
 pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
     ctx: &DalContext,
 ) -> BuiltinsResult<()> {
@@ -32,8 +34,8 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
 
     builder
         .name(name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
@@ -92,8 +94,7 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
                 .name(name)
                 .category("test exclusive")
                 .category_name(name)
-                .build()
-                .expect("build schema spec data"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
