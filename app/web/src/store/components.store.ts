@@ -436,12 +436,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             );
           },
           erasableSelectedComponents(): FullComponent[] {
-            return _.filter(
-              this.deletableSelectedComponents,
-              (c) => c.hasResource,
+            return _.reject(
+              this.selectedComponents,
+              (c) => c.changeStatus === "deleted",
             );
           },
-
           selectedComponentDiff(): ComponentDiff | undefined {
             return this.componentDiffsById[this.selectedComponentId || 0];
           },
@@ -1383,7 +1382,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async DELETE_COMPONENTS(
             componentIds: ComponentId[],
-            skipActions = false,
+            forceErase = false,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -1396,7 +1395,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               keyRequestStatusBy: componentIds,
               params: {
                 componentIds,
-                skipActions,
+                forceErase,
                 ...visibilityParams,
               },
               onSuccess: (response) => {

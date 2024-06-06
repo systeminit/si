@@ -4,7 +4,7 @@
       <div>
         You are about to erase
         {{
-          componentsStore.deletableSelectedComponents.length > 1
+          componentsStore.erasableSelectedComponents.length > 1
             ? "the following components"
             : "this component"
         }}:
@@ -12,7 +12,7 @@
       <div class="flex-grow overflow-y-auto">
         <Stack spacing="xs">
           <ComponentCard
-            v-for="component in componentsStore.deletableSelectedComponents"
+            v-for="component in componentsStore.erasableSelectedComponents"
             :key="component.id"
             :componentId="component.id"
           />

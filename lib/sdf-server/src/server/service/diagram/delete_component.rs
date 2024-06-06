@@ -1,6 +1,7 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
+use dal::component::frame::Frame;
 use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,7 @@ use crate::server::tracking::track;
 async fn delete_single_component(
     ctx: &DalContext,
     component_id: ComponentId,
-    skip_actions: bool,
+    force_erase: bool,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<bool> {
@@ -22,7 +23,13 @@ async fn delete_single_component(
     let id = comp.id();
     let comp_schema = comp.schema(ctx).await?;
 
-    let component_still_exists = if skip_actions {
+    let component_still_exists = if force_erase {
+        if let Some(parent_id) = Component::get_parent_by_id(ctx, id).await? {
+            for child_id in Component::get_children_for_id(ctx, id).await? {
+                Frame::upsert_parent(ctx, child_id, parent_id).await?;
+            }
+        }
+
         Component::remove(ctx, id).await?;
         false
     } else {
@@ -51,7 +58,7 @@ async fn delete_single_component(
 #[serde(rename_all = "camelCase")]
 pub struct DeleteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
-    pub skip_actions: bool,
+    pub force_erase: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -73,7 +80,7 @@ pub async fn delete_components(
         let component_still_exists = delete_single_component(
             &ctx,
             component_id,
-            request.skip_actions,
+            request.force_erase,
             &original_uri,
             &posthog_client,
         )
