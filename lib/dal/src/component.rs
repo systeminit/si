@@ -1894,9 +1894,12 @@ impl Component {
 
         let component = Self::get_by_id(ctx, id).await?;
 
-        let _ = Frame::orphan_child(ctx, id)
-            .await
-            .map_err(|e| ComponentError::Frame(Box::new(e)));
+        if component.parent(ctx).await?.is_some() {
+            Frame::orphan_child(ctx, id)
+                .await
+                .map_err(|e| ComponentError::Frame(Box::new(e)))?;
+        }
+
         for incoming_connection in component.incoming_connections(ctx).await? {
             Component::remove_connection(
                 ctx,
