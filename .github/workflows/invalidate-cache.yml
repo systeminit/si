@@ -7,22 +7,18 @@ on:
         type: string
         required: true
         description: "which environment to invalidate"
-    secrets:
-      access_key:
-        required: true
-      secret_key:
-        required: true
 
 jobs:
   invalidate-cache:
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     steps:
        # invalidate Artifact Store Cloudfront so we get latest
       - name: Configure AWS credentials for shared-prod
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.access_key }}
-          aws-secret-access-key: ${{ secrets.secret_key }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-east-1
       - name: Invalidate Artifacts Cache
         run: |

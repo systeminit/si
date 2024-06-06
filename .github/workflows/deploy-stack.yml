@@ -35,9 +35,7 @@ jobs:
     uses: ./.github/workflows/invalidate-cache.yml
     with:
       environment: shared
-    secrets:
-      access_key: ${{ secrets.AWS_SHARED_PROD_ACCESS_KEY }}
-      secret_key: ${{ secrets.AWS_SHARED_PROD_SECRET_KEY }}
+    secrets: inherit
 
   secrets:
     needs: invalidate-cache
@@ -60,9 +58,7 @@ jobs:
       environment: ${{ github.event.inputs.environment }}
       service: ${{ github.event.inputs.service }}
       version: ${{ github.event.inputs.version }}
-    secrets:
-      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
-      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}
+    secrets: inherit
 
   deploy-services:
     needs: secrets
@@ -76,9 +72,7 @@ jobs:
       environment: ${{ github.event.inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ github.event.inputs.version }}
-    secrets:
-      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
-      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}
+    secrets: inherit
 
   set-init:
     needs: secrets
@@ -87,6 +81,4 @@ jobs:
       environment: ${{ github.event.inputs.environment }}
       service: ${{ github.event.inputs.service }}
       version: ${{ github.event.inputs.version }}
-    secrets:
-      access_key: ${{ secrets[needs.secrets.outputs.aws_access_key] }}
-      secret_key: ${{ secrets[needs.secrets.outputs.aws_secret_key] }}
+    secrets: inherit
