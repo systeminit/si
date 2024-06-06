@@ -136,6 +136,7 @@ tower-http = { version = "0.4.4", features = ["compression-br", "compression-def
 tracing = { version = "0.1.40" }
 tracing-opentelemetry = "0.23.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "std"] }
+tryhard = "0.5.1"
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 uuid = { version = "1.8.0", features = ["serde", "v4"] }

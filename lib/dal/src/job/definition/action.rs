@@ -1,14 +1,17 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, time::Duration};
 
 use async_trait::async_trait;
+use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_events::ActionResultState;
 use telemetry::prelude::*;
+use tryhard::RetryPolicy;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
     action::{prototype::ActionPrototype, Action, ActionError, ActionId, ActionState},
-    component::resource::ResourceData,
+    change_status::ChangeStatus,
+    diagram::SummaryDiagramComponent,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -16,7 +19,8 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, DalContext, Visibility, WsEvent,
+    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, TransactionsError,
+    Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -81,24 +85,17 @@ impl JobConsumer for ActionJob {
         fields(
             id=?self.id,
             job=?self.job,
+            // TODO: determine what this field is called for retries
+            si.poopadoop.retries = Empty,
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
-        match action_task(ctx, self.id, Span::current()).await {
-            Ok(_) => {
-                debug!(?self.id, "action job completed");
-            }
-            Err(err) => {
-                error!("Unable to finish action {}: {err}", self.id);
-                if let Err(err) =
-                    process_failed_action(ctx, self.id, format!("Action failed: {err}")).await
-                {
-                    error!("Failed to process action failure: {err}");
-                }
+        if let Err(err) = inner_run(ctx, self.id).await {
+            error!(error = ?err, si.action.id = %self.id, "unable to finish action");
+            if let Err(err) = process_failed_action(ctx, self.id).await {
+                error!(error = ?err, "failed to process action failure");
             }
         }
-
-        ctx.commit().await?;
 
         Ok(JobCompletionState::Done)
     }
@@ -121,99 +118,187 @@ impl TryFrom<JobInfo> for ActionJob {
 
 #[instrument(
     name = "action_job.action_task",
-    parent = &parent_span,
     skip_all,
     level = "info",
     fields(
-        ?id,
+        si.action.id = ?action_id,
         si.action.kind = Empty,
         si.component.id = Empty,
+        // TODO: determine what this field is called for retries
+        si.action_job.process.retries = Empty,
     )
 )]
-async fn action_task(
+async fn inner_run(
     ctx: &mut DalContext,
-    id: ActionId,
-    parent_span: Span,
+    action_id: ActionId,
 ) -> JobConsumerResult<Option<ActionRunResultSuccess>> {
-    let span = Span::current();
-    let component_id = Action::component_id(ctx, id)
-        .await?
-        .ok_or(ActionError::ComponentNotFoundForAction(id))?;
+    let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
-    let prototype_id = Action::prototype_id(ctx, id).await?;
+    // Execute the action function
+    let maybe_resource = ActionPrototype::run(ctx, prototype_id, component_id).await?;
+
+    // Retry process_and_record_execution on a conflict error up to a max
+    retry_on_conflicts(
+        || process_and_record_execution(ctx.clone(), maybe_resource.as_ref(), action_id),
+        10,
+        Duration::from_millis(10),
+        "si.action_job.process.retries",
+    )
+    .await?;
+
+    Ok(maybe_resource)
+}
+
+async fn prepare_for_execution(
+    ctx: &mut DalContext,
+    action_id: ActionId,
+) -> JobConsumerResult<(ActionPrototypeId, ComponentId)> {
+    let span = Span::current();
+
+    let component_id = Action::component_id(ctx, action_id)
+        .await?
+        .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
+
+    let prototype_id = Action::prototype_id(ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
     span.record("si.action.kind", &tracing::field::debug(&prototype.kind));
     span.record("si.component.id", &tracing::field::debug(&component_id));
-    Action::set_state(ctx, id, ActionState::Running).await?;
+    Action::set_state(ctx, action_id, ActionState::Running).await?;
 
     // Updates the action's state
     ctx.commit().await?;
     ctx.update_snapshot_to_visibility().await?;
 
-    let status = Action::run(ctx, id).await?;
+    let component_id = Action::component_id(ctx, action_id)
+        .await?
+        .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
 
-    WsEvent::action_return(
-        ctx,
-        id,
-        prototype.kind,
-        component_id,
-        status.clone().map(|s| s.into()),
-    )
-    .await?
-    .publish_on_commit(ctx)
-    .await?;
+    Ok((prototype_id, component_id))
+}
 
-    if matches!(status.as_ref().map(|r| r.status), Some(ResourceStatus::Ok)) {
-        let triggered_prototypes =
-            ActionPrototype::get_prototypes_to_trigger(ctx, prototype_id).await?;
-        for dependency_prototype_id in triggered_prototypes {
-            Action::new(ctx, dependency_prototype_id, Some(component_id)).await?;
+async fn process_and_record_execution(
+    mut ctx: DalContext,
+    maybe_resource: Option<&ActionRunResultSuccess>,
+    action_id: ActionId,
+) -> JobConsumerResult<()> {
+    ctx.update_snapshot_to_visibility().await?;
+
+    let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+    let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+
+    let component_id = Action::component_id(&ctx, action_id)
+        .await?
+        .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
+    let component = Component::get_by_id(&ctx, component_id).await?;
+
+    if let Some(resource) = maybe_resource {
+        // Set the resource if we have a payload, regardless of status *and* assemble a
+        // summary
+        if resource.payload.is_some() {
+            component.set_resource(&ctx, resource.into()).await?;
         }
+
+        if resource.status == ResourceStatus::Ok {
+            // Remove `ActionId` from graph as the execution succeeded
+            Action::remove_by_id(&ctx, action_id).await?;
+
+            if resource.payload.is_none() {
+                // Clear the resource if the status is ok and we don't have a payload. This could
+                // be from invoking a delete action directly, rather than deleting the component.
+                component.clear_resource(&ctx).await?;
+
+                if component.to_delete() {
+                    Component::remove(&ctx, component.id()).await?;
+                } else {
+                    let summary = SummaryDiagramComponent::assemble(
+                        &ctx,
+                        &component,
+                        ChangeStatus::Unmodified,
+                    )
+                    .await?;
+                    WsEvent::resource_refreshed(&ctx, summary)
+                        .await?
+                        .publish_on_commit(&ctx)
+                        .await?;
+                }
+            }
+
+            let triggered_prototypes =
+                ActionPrototype::get_prototypes_to_trigger(&ctx, prototype.id()).await?;
+            for dependency_prototype_id in triggered_prototypes {
+                Action::new(&ctx, dependency_prototype_id, Some(component_id)).await?;
+            }
+        } else {
+            // If status is not ok, set action state to failed
+            Action::set_state(&ctx, action_id, ActionState::Failed).await?;
+        }
+    } else {
+        // If the maybe_resource is none, set action state to failed
+        Action::set_state(&ctx, action_id, ActionState::Failed).await?;
     }
 
-    Ok(status)
+    WsEvent::action_list_updated(&ctx)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    ctx.commit().await?;
+
+    Ok(())
 }
 
 #[instrument(name = "action_job.process_failed_action", skip_all, level = "info")]
-async fn process_failed_action(
-    ctx: &DalContext,
-    id: ActionId,
-    _error_message: String,
-) -> JobConsumerResult<()> {
-    info!(%id, "processing action failed");
+async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobConsumerResult<()> {
+    info!(%action_id, "processing action failed");
 
-    let component_id = Action::component_id(ctx, id)
-        .await?
-        .ok_or(ActionError::ComponentNotFoundForAction(id))?;
-    let component = Component::get_by_id(ctx, component_id).await?;
+    Action::set_state(ctx, action_id, ActionState::Failed).await?;
 
-    let prototype_id = Action::prototype_id(ctx, id).await?;
-    let maybe_resource_data = component.resource(ctx).await?;
-    let resource_data = match maybe_resource_data {
-        Some(mut resource_data) => {
-            resource_data.set_status(ResourceStatus::Error);
-            resource_data
-        }
-        None => ResourceData::new(ResourceStatus::Error, None),
-    };
-
-    component.set_resource(ctx, resource_data.clone()).await?;
-    Action::set_state(ctx, id, ActionState::Failed).await?;
     ctx.layer_db()
         .func_run()
         .set_action_result_state_for_action_id(
-            id.into(),
+            action_id.into(),
             ActionResultState::Failure,
             ctx.events_tenancy(),
             ctx.events_actor(),
         )
         .await?;
 
-    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-    WsEvent::action_return(ctx, id, prototype.kind, component_id, Some(resource_data))
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+    ctx.commit().await?;
 
     Ok(())
+}
+
+async fn retry_on_conflicts<F, Fut, T>(
+    f: F,
+    max_attempts: u32,
+    fixed_delay: Duration,
+    span_field: &'static str,
+) -> Result<T, JobConsumerError>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, JobConsumerError>>,
+{
+    let span = Span::current();
+
+    // Jitter implementation thanks to the `fure` crate, released under the MIT license.
+    //
+    // See: https://github.com/Leonqn/fure/blob/8945c35655f7e0f6966d8314ab21a297181cc080/src/backoff.rs#L44-L51
+    fn jitter(duration: Duration) -> Duration {
+        let jitter = rand::random::<f64>();
+        let secs = ((duration.as_secs() as f64) * jitter).ceil() as u64;
+        let nanos = ((f64::from(duration.subsec_nanos())) * jitter).ceil() as u32;
+        Duration::new(secs, nanos)
+    }
+
+    tryhard::retry_fn(f)
+        .retries(max_attempts.saturating_sub(1))
+        .custom_backoff(|attempt, err: &JobConsumerError| {
+            if let JobConsumerError::Transactions(TransactionsError::ConflictsOccurred(_)) = err {
+                span.record(span_field, attempt);
+                RetryPolicy::Delay(jitter(fixed_delay))
+            } else {
+                RetryPolicy::Break
+            }
+        })
+        .await
 }

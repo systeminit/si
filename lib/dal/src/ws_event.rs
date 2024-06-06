@@ -27,8 +27,8 @@ use crate::schema::variant::{
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
-    action::ActionReturn, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetId, DalContext,
-    FuncError, PropId, StandardModelError, TransactionsError, WorkspacePk,
+    pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId,
+    StandardModelError, TransactionsError, WorkspacePk,
 };
 use crate::{SecretCreatedPayload, SecretUpdatedPayload};
 
@@ -62,7 +62,6 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ActionReturn(ActionReturn),
     ActionsListUpdated(ChangeSetId),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),

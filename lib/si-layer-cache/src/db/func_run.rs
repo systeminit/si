@@ -213,7 +213,10 @@ impl FuncRunDb {
         let maybe_row = self
             .cache
             .pg()
-            .query_opt(&self.get_last_action_by_action_id, &[&tenancy.workspace_pk])
+            .query_opt(
+                &self.get_last_action_by_action_id,
+                &[&tenancy.workspace_pk, &action_id],
+            )
             .await?
             .ok_or_else(|| LayerDbError::ActionIdNotFound(action_id))?;
         let mut func_run: FuncRun = serialize::from_bytes(maybe_row.get("value"))?;
