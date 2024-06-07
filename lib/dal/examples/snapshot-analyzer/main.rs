@@ -5,7 +5,6 @@ use std::{
     io::prelude::*,
 };
 
-use blake3::Hash;
 use si_layer_cache::db::serialize;
 
 use dal::{
