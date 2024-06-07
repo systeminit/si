@@ -2110,7 +2110,7 @@ impl WorkspaceSnapshotGraph {
                 } => {
                     let updated_source = self.get_latest_node_idx(source.index)?;
                     let destination =
-                        self.find_in_self_or_create_using_onto(destination.index, onto)?;
+                        self.reuse_from_self_or_import_subgraph_from_onto(destination.index, onto)?;
 
                     self.add_edge(updated_source, edge_weight.clone(), destination)?;
                 }
@@ -2213,8 +2213,8 @@ impl WorkspaceSnapshotGraph {
         Ok(self.get_node_index_by_id(other_id).ok())
     }
 
-    /// Find in self where self is the "to rebase" side or create using "onto".
-    fn find_in_self_or_create_using_onto(
+    /// Find in self (and use it as-is) where self is the "to rebase" side or import the entire subgraph from "onto".
+    fn reuse_from_self_or_import_subgraph_from_onto(
         &mut self,
         unchecked: NodeIndex,
         onto: &WorkspaceSnapshotGraph,
@@ -2234,19 +2234,7 @@ impl WorkspaceSnapshotGraph {
             };
 
             match equivalent_node {
-                Some(found_equivalent_node) => {
-                    let found_equivalent_node_weight =
-                        self.get_node_weight(found_equivalent_node)?;
-                    if found_equivalent_node_weight.merkle_tree_hash()
-                        != unchecked_node_weight.merkle_tree_hash()
-                    {
-                        self.import_subgraph(onto, unchecked)?;
-                        self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
-                            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
-                    } else {
-                        found_equivalent_node
-                    }
-                }
+                Some(found_equivalent_node) => found_equivalent_node,
                 None => {
                     self.import_subgraph(onto, unchecked)?;
                     self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
