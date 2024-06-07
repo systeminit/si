@@ -29,10 +29,7 @@
             </div>
           </SidebarSubpanelTitle>
 
-          <SiSearch
-            placeholder="search assets"
-            @search="onSearchUpdated"
-          />
+          <SiSearch placeholder="search assets" @search="onSearchUpdated" />
         </template>
 
         <TreeNode
