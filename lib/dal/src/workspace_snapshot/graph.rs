@@ -218,6 +218,11 @@ impl WorkspaceSnapshotGraph {
         self.root_index
     }
 
+    /// Access the internal petgraph for this snapshot
+    pub fn graph(&self) -> &StableGraph<NodeWeight, EdgeWeight> {
+        &self.graph
+    }
+
     pub fn get_latest_node_idx_opt(
         &self,
         node_idx: NodeIndex,

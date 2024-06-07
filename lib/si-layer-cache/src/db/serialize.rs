@@ -42,3 +42,9 @@ where
         .map_err(|e| LayerDbError::Decompress(e.to_string()))?;
     Ok(postcard::from_bytes(&uncompressed)?)
 }
+
+pub fn decompress_to_vec(compressed_bytes: &[u8]) -> LayerDbResult<Vec<u8>> {
+    let uncompressed = miniz_oxide::inflate::decompress_to_vec(compressed_bytes)
+        .map_err(|e| LayerDbError::Decompress(e.to_string()))?;
+    Ok(uncompressed)
+}
