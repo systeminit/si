@@ -1606,6 +1606,36 @@ impl WorkspaceSnapshotGraph {
         algo::has_path_connecting(&self.graph, self.root_index, node, None)
     }
 
+    /// Import a single node from the `other` [`WorkspaceSnapshotGraph`] into `self`, if it does
+    /// not already exist in `self`.
+    pub fn find_in_self_or_import_node_from_other(
+        &mut self,
+        other: &WorkspaceSnapshotGraph,
+        other_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let node_weight_to_import = other.get_node_weight(other_node_index)?.clone();
+        let node_weight_id = node_weight_to_import.id();
+        let node_weight_lineage_id = node_weight_to_import.lineage_id();
+
+        if let Some(equivalent_node_index) =
+            self.find_equivalent_node(node_weight_id, node_weight_lineage_id)?
+        {
+            let equivalent_node_weight = self.get_node_weight(equivalent_node_index)?;
+            if !equivalent_node_weight
+                .vector_clock_write()
+                .is_newer_than(node_weight_to_import.vector_clock_write())
+            {
+                self.add_node(node_weight_to_import)?;
+
+                self.replace_references(equivalent_node_index)?;
+            }
+        } else {
+            self.add_node(node_weight_to_import)?;
+        };
+
+        Ok(())
+    }
+
     pub fn import_subgraph(
         &mut self,
         other: &WorkspaceSnapshotGraph,
@@ -2104,7 +2134,14 @@ impl WorkspaceSnapshotGraph {
                 } => {
                     let updated_to_rebase =
                         self.get_latest_node_idx(to_rebase_subgraph_root.index)?;
-                    self.find_in_self_or_create_using_onto(onto_subgraph_root.index, onto)?;
+                    // We really only want to import the single node here, not the entire subgraph,
+                    // as we also generate Updates on how to handle bringing in the child
+                    // nodes. If we try to bring in the entire subgraph, we'll have a bad
+                    // interaction with `replace_references` where we'll end up with the set
+                    // union of the edges outgoing from both the "old" and "new" node. We only
+                    // want the edges from the "old" node as we'll have further Update events
+                    // that will handle bringing in the appropriate "new" edges.
+                    self.find_in_self_or_import_node_from_other(onto, onto_subgraph_root.index)?;
                     self.replace_references(updated_to_rebase)?;
                 }
                 Update::MergeCategoryNodes {

@@ -21,6 +21,8 @@ pub enum Update {
         destination: NodeInformation,
         edge_kind: EdgeWeightKindDiscriminants,
     },
+    // This is not correctly named. We really only want to replace the single node, as we also
+    // generate Update entries to handle processing the rest of the subgraph.
     ReplaceSubgraph {
         onto: NodeInformation,
         // Check if already exists in "onto". Grab node weight from "to_rebase" and see if there is
