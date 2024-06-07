@@ -397,6 +397,8 @@ impl Diagram {
         for component in &components {
             let component_change_status = if new_component_ids.contains(&component.id()) {
                 ChangeStatus::Added
+            } else if component.to_delete() {
+                ChangeStatus::Deleted
             } else {
                 // TODO: Eventually, we'll want to also handle detecting ChangeStatus::Modified
                 ChangeStatus::Unmodified
