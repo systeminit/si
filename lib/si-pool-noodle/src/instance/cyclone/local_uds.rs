@@ -71,7 +71,7 @@ pub enum LocalUdsInstanceError {
     DockerAPINotFound,
     /// Failed to firecracker jail.
     #[error("failed in working with a jail: {0}")]
-    Firecracker(#[from] std::io::Error),
+    Firecracker(String),
     /// Failed to create firecracker-setup file.
     #[error("failed to create firecracker-setup file")]
     FirecrackerSetupCreate(#[source] io::Error),
@@ -807,23 +807,38 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
 impl LocalFirecrackerRuntime {
     async fn clean(id: u32) -> Result<()> {
         let command = String::from("/firecracker-data/stop.sh");
-        Command::new("sudo")
-            .arg(command)
+        let output = Command::new(command)
             .arg(id.to_string())
             .output()
-            .await?;
+            .await
+            .map_err(LocalUdsInstanceError::ChildSpawn)?;
+
+        if !output.status.success() {
+            return Err(LocalUdsInstanceError::Firecracker(
+                String::from_utf8(output.stderr)
+                    .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
+            ));
+        }
         Ok(())
     }
 
     async fn prepare(id: u32) -> Result<()> {
         let command = String::from("/firecracker-data/prepare_jailer.sh");
-        let _output = Command::new("sudo")
-            .arg(command)
+        let output = Command::new(command)
             .arg(id.to_string())
             .output()
-            .await?;
+            .await
+            .map_err(LocalUdsInstanceError::ChildSpawn)?;
+
+        if !output.status.success() {
+            return Err(LocalUdsInstanceError::Firecracker(
+                String::from_utf8(output.stderr)
+                    .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
+            ));
+        }
         Ok(())
     }
+
     async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
         let script_bytes = include_bytes!("firecracker-setup.sh");
         let command = Path::new("/firecracker-data/firecracker-setup.sh");

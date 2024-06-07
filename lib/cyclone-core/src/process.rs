@@ -44,7 +44,7 @@ pub async fn child_shutdown(
         Ok(wait_result) => {
             let exit_status = wait_result.map_err(ShutdownError::ChildWait)?;
             if !exit_status.success() {
-                warn!("child process had a nonzero exit; code={}", exit_status);
+                debug!("child process had a nonzero exit; code={}", exit_status);
             }
 
             Ok(exit_status)
@@ -53,7 +53,7 @@ pub async fn child_shutdown(
             child.start_kill().map_err(ShutdownError::StartKill)?;
             let exit_status = child.wait().await.map_err(ShutdownError::ChildWait)?;
             if !exit_status.success() {
-                warn!("child process had a nonzero exit; code={}", exit_status);
+                debug!("child process had a nonzero exit; code={}", exit_status);
             }
 
             Ok(exit_status)

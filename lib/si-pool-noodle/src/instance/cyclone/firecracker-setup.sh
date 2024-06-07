@@ -305,34 +305,6 @@ execute_cleanup() {
 
 }
 
-clean_jails() {
-  ITERATIONS="${1:-100}" # Default to 100 jails
-  DOWNLOAD_ROOTFS="${2:-false}" # Default to false
-  DOWNLOAD_KERNEL="${3:-false}" # Default to false
-  FORCE_CLEAN_JAILS="${4:-false}" # Default to false
-
-  # we need to recreate jails if we get a new kernel or rootfs.
-  # This is heavy-handed and should be mnade more specific.
-  if $DOWNLOAD_ROOTFS || $DOWNLOAD_KERNEL || $FORCE_CLEAN_JAILS; then
-    echo "Force cleaning jails due to passed flags..."
-    IN_PARALLEL=1
-    SECONDS=0
-    for (( iter=0; iter<$ITERATIONS; iter++ ))
-    do
-      echo -ne "Cleaning jail $(($iter + 1 )) out of $ITERATIONS ... \r"
-        # this ensures we only run n jobs in parallel at a time to avoid
-        # process locks. This is an unreliable hack.
-        if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
-         wait $(jobs -r -p | head -1)
-        fi
-        /firecracker-data/stop.sh $iter
-    done
-    wait
-    echo
-    echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
-  fi
-}
-
 # -----------------------------------------
 usage() {
    echo "Usage: $0 [ -v /tmp/variables.txt ] [ -j 1000 ] [ -r ] [ -k ] [ -c ]" 1>&2
@@ -340,9 +312,6 @@ usage() {
    echo "Examples:"
    echo "$0 -v /tmp/variables.txt -j 100 -rk " 1>&2
    echo "Download a new rootfs and kernel and then create 100 new jails."
-   echo
-   echo "$0 -v /tmp/variables.txt -j 10 -c" 1>&2
-   echo "Force clean the existing jails and then create 10 new ones."
    echo
    echo "Prepares a machine to be used with Firecracker."
    echo
@@ -353,8 +322,6 @@ usage() {
    echo "-r     Whether to download a new rootfs."
    echo "       This will force a recreation of all jails"
    echo "-k     Whether to download a new kernel."
-   echo "       This will force a recreation of all jails."
-   echo "-c     Force clean the jails to recreate all of them."
    echo
 }
 
@@ -383,9 +350,6 @@ do
    k) #  Whether to download a new kernel
    DOWNLOAD_KERNEL=true
    ;;
-   c) #  Whether to force clean created jails
-   FORCE_CLEAN_JAILS=true
-   ;;
    \?)
      usage
      exit 1
@@ -397,5 +361,4 @@ check_params_set && echo -e "Installation Values found to be:\n - $VARIABLES_FIL
 check_os_release && echo -e "Operating System found to be:\n - $OS_VARIANT"
 install_pre_reqs
 execute_configuration_management $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL
-clean_jails $JAILS_TO_CREATE $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL $FORCE_CLEAN_JAILS
 execute_cleanup
