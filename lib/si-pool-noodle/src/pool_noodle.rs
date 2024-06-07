@@ -3,13 +3,13 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::info;
 
-use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::time::Duration;
 
 use tracing::{debug, warn};
@@ -81,20 +81,20 @@ where
 {
     /// Creates a new instance of PoolNoodle
     pub fn new(pool_size: u32, spec: S, shutdown_rx: tokio::sync::broadcast::Receiver<()>) -> Self {
-        let (drop_tx, drop_rx) = mpsc::channel(16);
-        let unprepared = ArrayQueue::new(pool_size as usize);
+        // start by cleaning jails just to make sure
+        let to_be_cleaned = ArrayQueue::new(pool_size as usize);
         for n in 1..=pool_size {
-            let _ = unprepared.push(n);
+            let _ = to_be_cleaned.push(n);
         }
         PoolNoodle(Arc::new(PoolNoodleInner {
             pool_size,
             spec,
+            active: AtomicUsize::new(0),
+            dropped: ArrayQueue::new(pool_size as usize),
             ready: ArrayQueue::new(pool_size as usize),
-            to_be_cleaned: ArrayQueue::new(pool_size as usize),
-            unprepared,
+            to_be_cleaned,
+            unprepared: ArrayQueue::new(pool_size as usize),
             shutdown_rx: shutdown_rx.into(),
-            drop_tx,
-            drop_rx: drop_rx.into(),
         }))
     }
 
@@ -115,32 +115,27 @@ where
         for _ in 0..10 {
             let _ = tokio::spawn(Self::handle_prepare(me.clone(), stop.clone()));
 
-            let _ = tokio::spawn(Self::handle_clean(me.clone(), stop.clone()));
+            let _ = tokio::spawn(Self::handle_clean(me.clone()));
 
-            let _ = tokio::spawn(Self::handle_drop(me.clone(), stop.clone()));
+            let _ = tokio::spawn(Self::handle_drop(me.clone()));
         }
     }
 
     async fn handle_shutdown(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
         debug!("PoolNoodle: starting shutdown handler...");
-        loop {
-            if me.shutdown_rx.lock().await.try_recv().is_ok() {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-                stop.store(true, Ordering::Relaxed);
-                break;
-            }
+
+        while me.shutdown_rx.lock().await.try_recv().is_err() {
             sleep(Duration::from_millis(1)).await;
         }
+
+        debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+        stop.store(true, Ordering::Relaxed);
     }
 
     async fn handle_prepare(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
         debug!("PoolNoodle: starting prepare handler...");
-        loop {
-            if stop.load(Ordering::Relaxed) {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-                break;
-            }
 
+        while !stop.load(Ordering::Relaxed) {
             // let's make more instances!
             if let Some(id) = me.unprepared.pop() {
                 debug!("PoolNoodle: readying instance");
@@ -150,19 +145,67 @@ where
                         match PoolNoodleInner::spawn(id, &me.spec).await {
                             Ok(instance) => {
                                 debug!("PoolNoodle: instance started: {}", id);
-                                let _ = me.ready.push(instance);
+                                Self::push_to_ready(me.clone(), instance).await;
                             }
                             Err(e) => {
                                 warn!("PoolNoodle: failed to start instance: {}", id);
                                 warn!("{:?}", e);
-                                let _ = me.to_be_cleaned.push(id);
+                                Self::push_to_clean(me.clone(), id).await;
                             }
                         }
                     }
                     Err(e) => {
                         warn!("PoolNoodle: failed to ready instance: {}", id);
                         warn!("{:?}", e);
-                        let _ = me.to_be_cleaned.push(id);
+                        Self::push_to_clean(me.clone(), id).await;
+                    }
+                }
+            }
+            sleep(Duration::from_millis(1)).await;
+        }
+        debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+    }
+
+    async fn handle_clean(me: Arc<PoolNoodleInner<I, S>>) {
+        debug!("PoolNoodle: starting clean handler...");
+
+        loop {
+            if let Some(id) = me.to_be_cleaned.pop() {
+                debug!("PoolNoodle: cleaning instance {}", id);
+                match PoolNoodleInner::clean(id, &me.spec).await {
+                    Ok(_) => {
+                        debug!("PoolNoodle: instance cleaned: {}", id);
+                        Self::push_to_unprepared(me.clone(), id).await
+                    }
+                    Err(e) => {
+                        warn!("PoolNoodle: failed to clean instance: {}", id);
+                        warn!("{:?}", e);
+                        Self::push_to_clean(me.clone(), id).await;
+                    }
+                }
+            }
+
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    }
+
+    async fn handle_drop(me: Arc<PoolNoodleInner<I, S>>) {
+        debug!("PoolNoodle: starting drop handler...");
+
+        loop {
+            if let Some(instance) = me.dropped.pop() {
+                debug!("{}", me.stats().await.to_string());
+                let id = instance.id();
+                debug!("PoolNoodle: dropping: {}", id);
+                match PoolNoodleInner::terminate(instance, &me.spec).await {
+                    Ok(_) => {
+                        debug!("PoolNoodle: instance terminated: {}", id);
+                        Self::push_to_clean(me.clone(), id).await;
+                    }
+                    Err(e) => {
+                        warn!("PoolNoodle: failed to terminate instance: {}", id);
+                        warn!("{:?}", e);
+                        Self::push_to_clean(me.clone(), id).await;
                     }
                 }
             }
@@ -170,54 +213,36 @@ where
         }
     }
 
-    async fn handle_clean(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
-        debug!("PoolNoodle: starting clean handler...");
-        loop {
-            if stop.load(Ordering::Relaxed) {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-                break;
-            }
-
-            // let's go clean some dead instances!
-            if let Some(id) = me.to_be_cleaned.pop() {
-                debug!("PoolNoodle: cleaning instance");
-                match PoolNoodleInner::clean(id, &me.spec).await {
-                    Ok(_) => {
-                        debug!("PoolNoodle: instance cleaned: {}", id);
-                        let _ = me.unprepared.push(id);
-                    }
-                    Err(e) => {
-                        warn!("PoolNoodle: failed to clean: {}", id);
-                        warn!("{}", e);
-                        let _ = me.to_be_cleaned.push(id);
-                    }
-                };
-            };
-            sleep(Duration::from_millis(1)).await;
+    async fn push_to_clean(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
+        if let Err(e) = me.to_be_cleaned.push(id) {
+            warn!(
+                "PoolNoodle: failed to push instance to to_be_cleaned: {}",
+                id
+            );
+            warn!("{:?}", e);
         }
+        debug!("{}", me.stats().await.to_string());
     }
 
-    async fn handle_drop(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
-        debug!("PoolNoodle: starting drop handler...");
-        loop {
-            if stop.load(Ordering::Relaxed) {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-                break;
-            }
-
-            // an instance has dropped, let's make sure we clean it up
-            if let Ok(instance) = me.drop_rx.lock().await.try_recv() {
-                debug!("PoolNoodle: drop message receieved");
-                let _ = me.to_be_cleaned.push(instance.id());
-            }
-            sleep(Duration::from_millis(1)).await;
+    async fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
+        if let Err(i) = me.ready.push(instance) {
+            warn!("PoolNoodle: failed to push instance to ready: {}", i.id());
         }
+        debug!("{}", me.stats().await.to_string());
+    }
+
+    async fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
+        if let Err(e) = me.unprepared.push(id) {
+            warn!("PoolNoodle: failed to push instance to unprepared: {}", id);
+            warn!("{:?}", e);
+        }
+        debug!("{}", me.stats().await.to_string());
     }
 
     /// This will attempt to get a ready, healthy instance from the pool.
     /// If there are no instances, it will give the main loop a chance to fill the pool and try
     /// again. It will throw an error if there are no available instances after enough retries.
-    pub async fn get(&mut self) -> Result<LifeGuard<I>> {
+    pub async fn get(&mut self) -> Result<LifeGuard<I, S>> {
         let me = Arc::clone(&self.0);
 
         let max_retries = 6000; // Set the maximum number of retries
@@ -226,28 +251,27 @@ where
             if retries >= max_retries {
                 return Err(PoolNoodleError::ExecutionPoolStarved);
             }
-            if !me.ready.is_empty() {
-                if let Some(mut instance) = me.ready.pop() {
-                    debug!("PoolNoodle: got instance: {}", instance.id());
-                    // Try to ensure the item is healthy
-                    match &mut instance.ensure_healthy().await {
-                        Ok(_) => {
-                            info!(
-                                "PoolNoodle: got instance for func execution: {}",
-                                &instance.id()
-                            );
-                            let drop_tx = me.drop_tx.clone();
-                            return Ok(LifeGuard {
-                                drop_tx,
-                                item: Some(instance),
-                            });
-                        }
-                        Err(_) => {
-                            debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
-                            drop(instance);
-                        }
+            if let Some(mut instance) = me.ready.pop() {
+                debug!("PoolNoodle: got instance: {}", instance.id());
+                // Try to ensure the item is healthy
+                match &mut instance.ensure_healthy().await {
+                    Ok(_) => {
+                        info!(
+                            "PoolNoodle: got instance for func execution: {}",
+                            &instance.id()
+                        );
+                        me.active.fetch_add(1, Ordering::Relaxed);
+                        debug!("{}", me.stats().await.to_string());
+                        return Ok(LifeGuard {
+                            pool: me.clone(),
+                            item: Some(instance),
+                        });
                     }
-                };
+                    Err(_) => {
+                        debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
+                        drop(instance);
+                    }
+                }
             } else {
                 retries += 1;
                 debug!(
@@ -267,12 +291,12 @@ where
 {
     pool_size: u32,
     spec: S,
+    active: AtomicUsize,
+    dropped: ArrayQueue<I>,
     ready: ArrayQueue<I>,
     to_be_cleaned: ArrayQueue<u32>,
     unprepared: ArrayQueue<u32>,
     shutdown_rx: Mutex<tokio::sync::broadcast::Receiver<()>>,
-    drop_tx: Sender<I>,
-    drop_rx: Mutex<Receiver<I>>,
 }
 
 impl<B, I, E, S> PoolNoodleInner<I, S>
@@ -300,10 +324,20 @@ where
             .map_err(|e| PoolNoodleError::InstanceSpawn(e.to_string()))
     }
 
+    /// This terminates the instance
+    async fn terminate(mut instance: I, _: &S) -> Result<()> {
+        instance
+            .terminate()
+            .await
+            .map_err(|e| PoolNoodleError::InstanceTerminate(e.to_string()))
+    }
+
     /// This outputs the current state of the pool
     pub async fn stats(&self) -> PoolNoodleStats {
         PoolNoodleStats {
             pool_size: self.pool_size as usize,
+            active: self.active.load(Ordering::Relaxed),
+            dropped: self.dropped.len(),
             ready: self.ready.len(),
             to_be_cleaned: self.to_be_cleaned.len(),
             unprepared: self.unprepared.len(),
@@ -316,7 +350,11 @@ where
 pub struct PoolNoodleStats {
     /// Total number of instances allowed in the pool
     pub pool_size: usize,
+    /// Total number of instances that have been fetched from the pool and not yet dropped
+    pub active: usize,
     /// Total number of instances currently running and able to accept work
+    pub dropped: usize,
+    /// Total number of instances dropped and awating to be cleaned
     pub ready: usize,
     /// Total number of instances that need to be cleaned up
     pub to_be_cleaned: usize,
@@ -328,8 +366,8 @@ impl Display for PoolNoodleStats {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "PoolNoodle Stats -- pool size: {}, ready: {}, to be cleaned: {}, unprepared: {}",
-            self.pool_size, self.ready, self.to_be_cleaned, self.unprepared
+            "PoolNoodle Stats -- pool size: {}, active: {}, dropped: {}, ready: {}, to be cleaned: {}, unprepared: {}",
+            self.pool_size, self.active, self.dropped, self.ready, self.to_be_cleaned, self.unprepared
         )
     }
 }
@@ -338,33 +376,44 @@ impl Display for PoolNoodleStats {
 /// It is carries a Sender and implements Drop. When an instance goes out of
 /// scope, it lets PoolNoodle know that the instance needs to be cleaned up.
 #[derive(Debug)]
-pub struct LifeGuard<I>
+pub struct LifeGuard<I, S>
 where
     I: Instance + Send + Sync,
+    S: Spec,
 {
-    drop_tx: Sender<I>,
+    pool: Arc<PoolNoodleInner<I, S>>,
     item: Option<I>,
 }
 
-impl<I> Drop for LifeGuard<I>
+impl<I, S> Drop for LifeGuard<I, S>
 where
     I: Instance + Send + Sync,
+    S: Spec,
 {
     fn drop(&mut self) {
-        debug!("PoolNoodle: dropping instance");
         let item = self
             .item
             .take()
             .expect("Item must be present as it is initialized with Some and never replaced.");
-        if futures::executor::block_on(self.drop_tx.send(item)).is_err() {
-            warn!("Failed to send drop message for an instance. It will not be cleaned up!");
-        };
+        debug!("PoolNoodle: dropping instance: {}", item.id());
+
+        if self.pool.active.load(Ordering::Relaxed) > 0 {
+            self.pool.active.fetch_sub(1, Ordering::Relaxed);
+        }
+        if let Err(i) = self.pool.dropped.push(item) {
+            warn!(
+                "PoolNoodle: failed to push instance to dropped: {}",
+                &i.id()
+            );
+        }
+        debug!("PoolNoodle: instance pushed to dropped");
     }
 }
 
-impl<I> std::ops::Deref for LifeGuard<I>
+impl<I, S> std::ops::Deref for LifeGuard<I, S>
 where
     I: Instance + Send + Sync,
+    S: Spec,
 {
     type Target = I;
 
@@ -375,9 +424,10 @@ where
     }
 }
 
-impl<I> std::ops::DerefMut for LifeGuard<I>
+impl<I, S> std::ops::DerefMut for LifeGuard<I, S>
 where
     I: Instance + Send + Sync,
+    S: Spec,
 {
     fn deref_mut(&mut self) -> &mut I {
         self.item
