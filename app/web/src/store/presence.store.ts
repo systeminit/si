@@ -168,7 +168,7 @@ export const usePresenceStore = () => {
           this.now = new Date();
         }, 1000);
 
-        // This subscribes to events based on your current changeset for Presence data that is changeset specific
+        // This subscribes to events based on your current change set for Presence data that is change set specific
         watch(
           () => changeSetsStore.selectedChangeSetId,
           (newChangeSetId) => {

@@ -30,7 +30,6 @@
           </SidebarSubpanelTitle>
 
           <SiSearch
-            autoSearch
             placeholder="search assets"
             @search="onSearchUpdated"
           />

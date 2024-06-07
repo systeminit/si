@@ -4,6 +4,7 @@
       <template #top>
         <SidebarSubpanelTitle label="Multiple Assets" icon="multiselect">
           <DetailsPanelMenuIcon
+            :selected="menuSelected"
             @click="
               (e) => {
                 emit('openMenu', e);
@@ -35,6 +36,10 @@ import { useComponentsStore } from "@/store/components.store";
 import ComponentCard from "./ComponentCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
+
+defineProps({
+  menuSelected: { type: Boolean },
+});
 
 const componentsStore = useComponentsStore();
 

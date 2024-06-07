@@ -30,7 +30,11 @@
         </Inline>
         <div class="text-md font-bold text-action-400 hover:underline">
           <RouterLink :to="{ name: 'svg' }">
-            SVG Debug Page (see all Icons and EmptyStateIcons)
+            <div class="text-2xl pb-2xs">Debug Design Reference Page</div>
+            <div class="italic text-sm">
+              (see all Icons, EmptyStateIcons, other SVGs, and Semantic
+              Sizes/Colors)
+            </div>
           </RouterLink>
         </div>
       </Stack>

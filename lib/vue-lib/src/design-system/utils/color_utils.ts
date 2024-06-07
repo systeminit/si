@@ -25,9 +25,12 @@ const TONES = {
   },
   destructive: {
     colorHex: COLOR_PALETTE.destructive[500],
-    bgColorClass: tw`bg-destructive-500`,
-    textColorClass: tw`text-destructive-500`,
-    borderColorClass: tw`border-destructive-500`,
+    bgColorClassLight: tw`bg-destructive-500`,
+    bgColorClassDark: tw`bg-destructive-600`,
+    textColorClassLight: tw`text-destructive-500`,
+    textColorClassDark: tw`text-destructive-600`,
+    borderColorClassLight: tw`border-destructive-500`,
+    borderColorClassDark: tw`border-destructive-600`,
   },
   error: {
     colorHex: COLOR_PALETTE.destructive[500],
@@ -73,6 +76,17 @@ const TONES = {
 };
 
 export type Tones = keyof typeof TONES;
+
+export const ColorNamesArray = [
+  "neutral",
+  "action",
+  "success",
+  "warning",
+  "destructive",
+  "shade",
+] as const;
+
+export type ColorNames = (typeof ColorNamesArray)[number];
 
 export function getToneBgColorClass(tone: Tones) {
   const { theme } = useTheme();

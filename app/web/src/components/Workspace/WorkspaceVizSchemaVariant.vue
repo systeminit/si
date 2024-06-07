@@ -42,7 +42,11 @@
       -->
     </Inline>
     <h1 v-show="reqData?.isPending" align="center">Loading...</h1>
-    <h1 v-show="reqData?.isError" align="center" class="text-destructive-500">
+    <h1
+      v-show="reqData?.isError"
+      align="center"
+      class="text-destructive-500 dark:text-destructive-600"
+    >
       Error Loading Data...
     </h1>
     <section

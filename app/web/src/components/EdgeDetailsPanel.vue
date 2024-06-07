@@ -3,6 +3,7 @@
     <template #top>
       <SidebarSubpanelTitle label="Connection Details" icon="plug">
         <DetailsPanelMenuIcon
+          :selected="menuSelected"
           @click="
             (e) => {
               emit('openMenu', e);
@@ -61,6 +62,10 @@ import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
+
+defineProps({
+  menuSelected: { type: Boolean },
+});
 
 const componentsStore = useComponentsStore();
 const modelingEventBus = componentsStore.eventBus;

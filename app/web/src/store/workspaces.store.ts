@@ -37,7 +37,7 @@ export type WorkspaceImportSummary = {
 
 const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 
-// Note(victor): The workspace import exists outside a changeset context
+// Note(victor): The workspace import exists outside a change set context
 // (since change sets exists inside tenancies) - So no endpoints in this store
 // should use a visibility. If one seems like it should, then it belongs
 // in a different store.

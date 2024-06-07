@@ -5,7 +5,7 @@
     :is="ResizablePanel"
     ref="leftResizablePanelRef"
     :minSize="250"
-    rememberSizeKey="changeset-and-asset"
+    rememberSizeKey="change-set-and-asset"
     side="left"
   >
     <template #subpanel1>
@@ -36,14 +36,20 @@
     side="right"
   >
     <div class="h-full overflow-hidden relative">
-      <EdgeDetailsPanel v-if="selectedEdge" @openMenu="onThreeDotMenuClick" />
+      <EdgeDetailsPanel
+        v-if="selectedEdge"
+        :menuSelected="contextMenuRef?.isOpen"
+        @openMenu="onThreeDotMenuClick"
+      />
       <ComponentDetails
         v-else-if="selectedComponent"
         :key="selectedComponent.id"
+        :menuSelected="contextMenuRef?.isOpen"
         @openMenu="onThreeDotMenuClick"
       />
       <MultiSelectDetailsPanel
         v-else-if="selectedComponentIds.length > 1"
+        :menuSelected="contextMenuRef?.isOpen"
         @openMenu="onThreeDotMenuClick"
       />
       <NoSelectionDetailsPanel v-else />

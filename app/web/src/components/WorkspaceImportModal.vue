@@ -135,7 +135,7 @@
               </template>
               <div class="flex w-full text-xs justify-center pt-4 gap-xs">
                 <Icon name="tools" size="sm" tone="warning" /> Importing a
-                workspace means replacing all the changesets in this workspace.
+                workspace means replacing all the change sets in this workspace.
                 They cannot be recovered. If you want to save current work
                 please export your workspace now.
               </div>
@@ -157,7 +157,7 @@
                 class="text-sm pb-2 italic text-center w-full text-neutral-400 border-b dark:border-neutral-500"
               >
                 <template v-if="!allUsersVoted"
-                  >Waiting on other users in the changeset to vote.</template
+                  >Waiting on other users in the change set to vote.</template
                 >
               </div>
               <div class="pt-2">
@@ -167,7 +167,7 @@
                   class="flex items-center pr-sm justify-center gap-4"
                 >
                   <div class="min-w-0">
-                    <UserCard :user="user" hideChangesetInfo />
+                    <UserCard :user="user" hideChangeSetInfo />
                   </div>
                   <Icon
                     v-if="
@@ -181,7 +181,7 @@
                     v-else-if="
                       workspaceStore.workspaceApprovals[user.pk] === 'Reject'
                     "
-                    class="text-destructive-500"
+                    class="text-destructive-500 dark:text-destructive-600"
                     name="thumbs-down"
                     size="lg"
                   />

@@ -3,6 +3,7 @@
     <template #top>
       <ComponentCard :componentId="selectedComponent.id" titleCard>
         <DetailsPanelMenuIcon
+          :selected="menuSelected"
           @click="
             (e) => {
               emit('openMenu', e);
@@ -31,8 +32,8 @@
           <VButton
             v-if="
               selectedComponent.hasResource &&
-              changeSetStore.selectedChangeSetId ===
-                changeSetStore.headChangeSetId
+              changeSetsStore.selectedChangeSetId ===
+                changeSetsStore.headChangeSetId
             "
             icon="refresh"
             size="sm"
@@ -49,7 +50,7 @@
     </template>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
-      <Stack v-if="!changeSetStore.headSelected" class="p-sm">
+      <Stack v-if="!changeSetsStore.headSelected" class="p-sm">
         <ErrorMessage icon="alert-triangle" tone="warning">
           This component will be removed from your model when this change set is
           merged
@@ -209,6 +210,10 @@ import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 import ComponentDetailsCode from "./ComponentDetailsCode.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
+defineProps({
+  menuSelected: { type: Boolean },
+});
+
 const emit = defineEmits<{
   (e: "delete"): void;
   (e: "restore"): void;
@@ -217,7 +222,7 @@ const emit = defineEmits<{
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
-const changeSetStore = useChangeSetsStore();
+const changeSetsStore = useChangeSetsStore();
 const actionsStore = useActionsStore();
 
 const modelingEventBus = componentsStore.eventBus;

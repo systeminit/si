@@ -1,16 +1,14 @@
 <template>
-  <VButton
-    v-tooltip="'Attach Function'"
-    tone="action"
+  <IconButton
+    iconTone="action"
     icon="link"
-    iconRight="chevron--down"
-    variant="ghost"
     :requestStatus="requestStatus"
-    loadingText="Attaching new function..."
-    size="2xs"
-    @click="menuRef?.open"
+    :selected="menuRef?.isOpen"
+    tooltip="Attach Function"
+    loadingTooltip="Attaching new function..."
+    @click="onClick"
   >
-    <DropdownMenu ref="menuRef" compact>
+    <DropdownMenu ref="menuRef" compact forceAlignRight>
       <DropdownMenuItem icon="plus" @select="emit('selectedAttachType', 'new')">
         New function
       </DropdownMenuItem>
@@ -21,17 +19,14 @@
         Existing
       </DropdownMenuItem>
     </DropdownMenu>
-  </VButton>
+  </IconButton>
 </template>
 
 <script setup lang="ts">
 import { PropType, ref } from "vue";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  VButton,
-} from "@si/vue-lib/design-system";
+import { DropdownMenu, DropdownMenuItem } from "@si/vue-lib/design-system";
+import IconButton from "./IconButton.vue";
 
 defineProps({
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
@@ -42,4 +37,8 @@ const emit = defineEmits<{
 }>();
 
 const menuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const onClick = (e: MouseEvent) => {
+  menuRef.value?.open(e);
+};
 </script>

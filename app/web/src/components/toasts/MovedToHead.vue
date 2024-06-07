@@ -13,7 +13,11 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon, IconNames } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  getToneTextColorClass,
+} from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
 
 const props = defineProps({
@@ -23,8 +27,8 @@ const props = defineProps({
 });
 
 const iconClass = computed(() => {
-  if (props.icon === "trash") return "text-destructive-500";
-  else if (props.icon === "tools") return "text-success-500";
+  if (props.icon === "trash") return getToneTextColorClass("destructive");
+  else if (props.icon === "tools") return getToneTextColorClass("success");
   else return "";
 });
 </script>

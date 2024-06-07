@@ -25,7 +25,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
       cy.contains('Create change set', { timeout: 30000 }).click();
 
-      // Give time to redirect onto the new changeset
+      // Give time to redirect onto the new change set
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Find the AWS Credential
@@ -53,9 +53,9 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Check to make sure a component has been added to the outliner
       cy.get('[class="diagram-outline-node"]', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible');
 
-      // Click the button to destroy changeset
+      // Click the button to destroy change set
       cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')
-        .eq(1) // Selects the second button (index starts from 0 for create changeset button)
+        .eq(1) // Selects the second button (index starts from 0 for create change set button)
         .click();
 
       // Wait for the delete panel to appear

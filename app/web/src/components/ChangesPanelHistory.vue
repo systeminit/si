@@ -74,7 +74,7 @@ const getChangeSet = (detail: ChangeSetDetail) => {
 
   if (changeSet) return changeSet;
   else {
-    // NOTE: changesets that have been applied will not be in the change set store
+    // NOTE: change sets that have been applied will not be in the change set store
     return {
       id: detail.changeSetId,
       name: detail.changeSetName,

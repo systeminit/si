@@ -19,7 +19,7 @@ import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
 import NavbarPanelLeft from "./NavbarPanelLeft.vue";
 
-// top bar is always dark, so this keeps the workspace/changeset dropdowns looking correct
+// top bar is always dark, so this keeps the workspace and change set dropdowns looking correct
 useThemeContainer("dark");
 </script>
 

@@ -31,7 +31,7 @@ describe("workspace", () => {
 
     cy.wait(5000);
 
-    // Check that it loaded the workspace + prompted to create a new changeset
+    // Check that it loaded the workspace + prompted to create a new change set
     cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
   });
 });

@@ -81,11 +81,16 @@
         <div class="ml-auto flex flex-none">
           <!-- refresh resource button -->
           <div class="pr-xs group-hover:block hidden">
-            <VButton
+            <IconButton
               v-if="component.hasResource"
+              v-tooltip="{
+                content: 'Refresh Resource',
+                theme: 'instant-show',
+              }"
               icon="refresh"
+              loadingIcon="refresh-active"
               size="xs"
-              variant="ghost"
+              :requestStatus="refreshRequestStatus"
               @click="componentsStore.REFRESH_RESOURCE_INFO(component!.id)"
             />
           </div>
@@ -94,14 +99,26 @@
           <div :class="clsx('flex items-center mr-xs')">
             <div v-if="component.canBeUpgraded">
               <StatusIndicatorIcon
+                v-tooltip="{
+                  content: 'Upgrade',
+                  theme: 'instant-show',
+                }"
                 class="hover:scale-110"
                 size="sm"
                 type="upgradable"
+                @click.stop="upgradeComponent"
               />
             </div>
 
             <!-- change status -->
             <StatusIndicatorIcon
+              v-tooltip="{
+                content:
+                  hasChanges && hasChanges !== 'unmodified'
+                    ? hasChanges.charAt(0).toUpperCase() + hasChanges.slice(1)
+                    : '',
+                theme: 'instant-show',
+              }"
               class="hover:scale-110"
               size="sm"
               type="change"
@@ -114,6 +131,10 @@
             <Icon v-if="isDestroyed" name="none" size="sm" />
             <StatusIndicatorIcon
               v-else
+              v-tooltip="{
+                content: 'Qualifications',
+                theme: 'instant-show',
+              }"
               class="hover:scale-110"
               type="qualification"
               size="sm"
@@ -125,6 +146,10 @@
 
             <StatusIndicatorIcon
               v-if="component.hasResource"
+              v-tooltip="{
+                content: 'Resource',
+                theme: 'instant-show',
+              }"
               class="hover:scale-110"
               type="resource"
               status="exists"
@@ -155,7 +180,7 @@ import { computed, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
-import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
+import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useQualificationsStore } from "@/store/qualifications.store";
@@ -164,6 +189,7 @@ import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-lin
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 import { useDiagramOutlineContext } from "./DiagramOutline.vue";
+import IconButton from "../IconButton.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -182,6 +208,10 @@ const qualificationsStore = useQualificationsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
+);
+
+const refreshRequestStatus = componentsStore.getRequestStatus(
+  "REFRESH_RESOURCE_INFO",
 );
 
 const hasChanges = computed(() => component.value?.changeStatus);
@@ -233,4 +263,12 @@ const parentBreadcrumbsText = computed(() => {
     (parentId) => componentsStore.componentsById[parentId]?.displayName,
   ).join(" > ");
 });
+
+const upgradeComponent = async () => {
+  componentsStore.setSelectedComponentId(null);
+  await componentsStore.UPGRADE_COMPONENT(
+    props.componentId,
+    component.value?.displayName || "",
+  );
+};
 </script>

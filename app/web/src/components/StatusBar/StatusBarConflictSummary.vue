@@ -5,12 +5,12 @@
     :click="() => numConflicts > 0 && openModal()"
   >
     <template #icon>
-      <Icon class="text-destructive-700" name="read-only" />
+      <Icon class="text-destructive-600" name="read-only" />
     </template>
     <template #name>Conflicts</template>
     <template #summary>
       <StatusBarTabPill
-        class="bg-destructive-100 text-destructive-700 font-bold"
+        class="bg-destructive-100 text-destructive-600 font-bold"
       >
         <div @click="() => numConflicts > 0 && openModal()">
           {{ numConflicts }}

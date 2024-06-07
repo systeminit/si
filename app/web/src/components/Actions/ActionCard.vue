@@ -56,7 +56,7 @@
         <Icon
           name="x-hex-outline"
           :class="
-            clsx(themeClasses('text-destructive-700', 'text-destructive-700'))
+            clsx(themeClasses('text-destructive-500', 'text-destructive-600'))
           "
           size="sm"
         />
@@ -121,7 +121,7 @@
       forceAlignRight
       compact
     >
-      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">ACTIONS:</h5>
+      <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>
       <DropdownMenuItem
         v-if="actionProposed.state === ActionState.Queued"
         label="Put on hold"
@@ -139,13 +139,11 @@
       <DropdownMenuItem
         label="Remove from list"
         icon="x"
-        iconClass="text-destructive-400"
+        iconClass="text-destructive-500 dark:text-destructive-600"
         :onSelect="remove"
       />
       <hr class="border-neutral-600 my-xs" />
-      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">
-        APPLY BEFORE:
-      </h5>
+      <h5 class="text-neutral-400 pl-2xs">APPLY BEFORE:</h5>
       <ol v-if="myDependencies.length > 0">
         <li
           v-for="a in myDependencies"
@@ -165,7 +163,7 @@
         </li>
       </ol>
       <p v-else class="ml-xs">None</p>
-      <h5 class="dark:text-neutral-400 text-neutral-700 pl-2xs">WAITING ON:</h5>
+      <h5 class="text-neutral-400 pl-2xs">WAITING ON:</h5>
       <ol v-if="dependentOn.length > 0">
         <li
           v-for="a in dependentOn"
@@ -230,6 +228,7 @@
     </DropdownMenu>
     <DetailsPanelMenuIcon
       v-if="!props.noInteraction"
+      :selected="contextMenuRef?.isOpen"
       @click="
         (e) => {
           contextMenuRef?.open(e, false);
@@ -381,7 +380,7 @@ const resultIconClass = computed(() => {
   if (actionHistory.value) {
     return {
       Success: "text-success-600",
-      Failure: "text-destructive-600",
+      Failure: "text-destructive-500 dark:text-destructive-600",
       Unknown: "text-warning-600",
     }[actionHistory.value.result];
   } else return undefined;
@@ -404,7 +403,7 @@ const resultIcon = computed(() => {
 const actionIconClass = (kind: ActionKind) => {
   return {
     Create: "text-success-600",
-    Destroy: "text-destructive-600",
+    Destroy: "text-destructive-500 dark:text-destructive-600",
     Refresh: "text-action-600",
     Manual: "text-action-600",
     Update: "text-warning-600",

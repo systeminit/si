@@ -332,10 +332,10 @@ export function useChangeSetsStore() {
                   this.postApplyActor = userPk;
                 }
                 this.changeSetsById[changeSetId] = changeSet;
-                // whenever the changeset is applied move us to head
+                // whenever the change set is applied move us to head
               }
               // `list_open_change_sets` gets called prior on voters
-              // which means the changeset is gone, so always move
+              // which means the change set is gone, so always move
               if (
                 !this.selectedChangeSetId ||
                 this.selectedChangeSetId === changeSetId

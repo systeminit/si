@@ -24,7 +24,7 @@
       </StatusBarTabPill>
       <StatusBarTabPill
         v-if="stats.deleted > 0"
-        class="bg-destructive-100 text-destructive-700 font-bold"
+        class="bg-destructive-100 text-destructive-600 font-bold"
       >
         <StatusIndicatorIcon type="change" status="deleted" size="xs" />
         <div>{{ stats.deleted }}</div>

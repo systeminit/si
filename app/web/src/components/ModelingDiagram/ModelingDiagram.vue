@@ -611,7 +611,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  // this fires when you change the changeset from the drop down
+  // this fires when you change the change set from the drop down
   // which feels unexpected that this component is destroyed and recreated?
   if (executionKey) realtimeStore.unsubscribe(executionKey);
 

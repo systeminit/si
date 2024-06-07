@@ -59,7 +59,7 @@
                 class="flex items-center pr-sm justify-between gap-4"
               >
                 <div class="min-w-0">
-                  <UserCard :user="user" hideChangesetInfo hideStatus />
+                  <UserCard :user="user" hideChangeSetInfo hideStatus />
                 </div>
                 <!-- while waiting show all options dimmer, once voted only show the selected vote -->
                 <div class="grow flex justify-end items-center">
@@ -276,7 +276,7 @@
         </template>
         <template v-if="rejectedWorkflow && votingStartedByYou">
           <div class="text-sm mt-xs">
-            One of the users in this changeset has rejected the
+            One of the users in this change set has rejected the
             {{ votingKind }}. You can either override the vote to force the
             {{ votingKind }} to happen anyway or you can cancel.
           </div>

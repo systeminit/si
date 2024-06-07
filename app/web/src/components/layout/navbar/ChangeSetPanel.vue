@@ -168,7 +168,7 @@ function onSelectChangeSet(newVal: string) {
   }
 
   if (newVal && route.name) {
-    // do not allow people to navigate to a changeset that NeedsApproval
+    // do not allow people to navigate to a change set that NeedsApproval
     // unless they were the one that initiated the merge request (avoids dead end)
     if (
       changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open &&

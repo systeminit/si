@@ -1059,7 +1059,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               optimistic: () => {
                 /**
                  * NOTE: WsEvents are firing *BEFORE* the POST returns
-                 * And when a new changeset is created by the backend, we end up
+                 * And when a new change set is created by the backend, we end up
                  * re-creating componentStore, so the store for HEAD never runs onSuccess below
                  * We end up with pending components on HEAD that never go away
                  *

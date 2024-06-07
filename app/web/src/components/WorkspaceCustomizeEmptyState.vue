@@ -1,5 +1,7 @@
 <template>
-  <div class="w-full h-full flex flex-col items-center gap-sm py-lg">
+  <div
+    class="w-full h-full flex flex-col items-center gap-sm py-lg overflow-hidden"
+  >
     <div class="max-w-96">
       <EmptyStateIcon name="customize-big" />
     </div>

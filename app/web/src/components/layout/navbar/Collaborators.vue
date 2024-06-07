@@ -74,7 +74,6 @@
         <SiSearch
           class="pt-0"
           placeholder="search users"
-          autoSearch
           @search="onSearchUpdated"
         />
 
@@ -115,7 +114,7 @@ export type UserInfo = {
   name: string;
   color?: string | null;
   status?: string | null;
-  changeset?: string;
+  changeSet?: string;
   pictureUrl?: string | null;
 };
 
@@ -129,7 +128,7 @@ const users = computed<UserInfo[]>(() => {
       name: user.name,
       color: user.color,
       status: user.idle ? "idle" : "active",
-      changeset: user.changeSetId,
+      changeSet: user.changeSetId,
       pictureUrl: user.pictureUrl,
     });
   }
@@ -142,14 +141,14 @@ const sortedUsers = computed(() => {
   return usersCopy.sort((a, b) => {
     if (changeSetsStore.selectedChangeSetId) {
       if (
-        a.changeset !== changeSetsStore.selectedChangeSetId &&
-        b.changeset === changeSetsStore.selectedChangeSetId
+        a.changeSet !== changeSetsStore.selectedChangeSetId &&
+        b.changeSet === changeSetsStore.selectedChangeSetId
       ) {
         return 2;
       }
       if (
-        a.changeset === changeSetsStore.selectedChangeSetId &&
-        b.changeset !== changeSetsStore.selectedChangeSetId
+        a.changeSet === changeSetsStore.selectedChangeSetId &&
+        b.changeSet !== changeSetsStore.selectedChangeSetId
       ) {
         return -2;
       }
@@ -187,8 +186,8 @@ const userTooltips = computed(() => {
           user.name
         }</div>
         <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
-          user.changeset
-            ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
+          user.changeSet
+            ? changeSetsStore.changeSetsById[user.changeSet]?.name || "Head"
             : "Head"
         }</div>
         <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
@@ -270,13 +269,13 @@ const filteredUsers = computed(() => {
 });
 
 function goToUserChangeSet(user: UserInfo) {
-  if (!user || !user.changeset) return;
+  if (!user || !user.changeSet) return;
 
   router.push({
     name: "change-set-home",
     params: {
       ...route.params,
-      changeSetId: changeSetsStore.changeSetsById[user.changeset]?.id || "auto",
+      changeSetId: changeSetsStore.changeSetsById[user.changeSet]?.id || "auto",
     },
     query: route.query,
   });
