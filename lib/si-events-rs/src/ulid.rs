@@ -1,5 +1,5 @@
-use ulid::Ulid as CoreUlid;
 pub use ulid::ULID_LEN;
+use ulid::{DecodeError, Ulid as CoreUlid};
 
 /// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;
@@ -15,6 +15,13 @@ impl Ulid {
     pub fn inner(&self) -> CoreUlid {
         self.0
     }
+
+    pub fn from_string(encoded: &str) -> Result<Self, DecodeError> {
+        match CoreUlid::from_string(encoded) {
+            Ok(ulid) => Ok(ulid.into()),
+            Err(err) => Err(err),
+        }
+    }
 }
 struct UlidVisitor;
 
@@ -22,7 +29,7 @@ impl<'de> ::serde::de::Visitor<'de> for UlidVisitor {
     type Value = Ulid;
 
     fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        formatter.write_str("a 16 byte slice representing an xxh3 hash")
+        formatter.write_str("a 16 byte slice representing a Ulid")
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -62,7 +69,7 @@ impl ::serde::Serialize for Ulid {
 
 impl std::fmt::Display for Ulid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Ulid({})", self.0.to_string())
+        write!(f, "{}", self.0.to_string())
     }
 }
 
