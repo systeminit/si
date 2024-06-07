@@ -735,6 +735,12 @@ impl WorkspaceSnapshotGraph {
                 if edge_kind_updates.additions.len()
                     > (edge_kind_updates.removals.len() + (1 - existing_outgoing_edges_of_kind))
                 {
+                    warn!(
+                        "ExclusiveEdgeMismatch: Found {} pre-existing edges. Requested {} removals, {} additions.",
+                        existing_outgoing_edges_of_kind,
+                        edge_kind_updates.removals.len(),
+                        edge_kind_updates.additions.len(),
+                    );
                     // The net count of outgoing edges of this kind is >1. Consider *ALL* of the
                     // additions to be in conflict.
                     for (
