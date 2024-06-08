@@ -16,11 +16,20 @@ async function main(component: Input): Promise < Output > {
 
   if (child.exitCode !== 0) {
     const payload = _.get(component, 'properties.resource.payload');
-    if (payload) {
+<% for (const missing of it.missingResources) { %>
+    if (child.stderr.includes("<%= missing %>")) {
       return {
         status: "error",
-        payload,
-        message: \`Refresh error; exit code \${child.exitCode}.\\n\\nSTDOUT:\\n\\n\${child.stdout}\\n\\nSTDERR:\\n\\n\${child.stderr}\`,
+        message: \`Refresh error; resource not found; (<%= missing %>)\`,
+      }
+    }
+<% } %>
+
+    if (payload) {
+  return {
+    status: "error",
+    payload,
+    message: \`Refresh error; exit code \${child.exitCode}.\\n\\nSTDOUT:\\n\\n\${child.stdout}\\n\\nSTDERR:\\n\\n\${child.stderr}\`,
       }
     } else {
       return {
@@ -50,4 +59,4 @@ async function main(component: Input): Promise < Output > {
     status: "ok"
   }
 }
-`
+`;
