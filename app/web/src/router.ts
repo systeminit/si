@@ -138,7 +138,7 @@ const routes: RouteRecordRaw[] = [
           path: "/w/:workspacePk/svg",
           name: "svg",
           meta: { public: true },
-          component: () => import("@/pages/DebugSVG.vue"),
+          component: () => import("@/pages/DebugPage.vue"),
         },
       ]
     : []),

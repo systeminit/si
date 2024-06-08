@@ -29,7 +29,13 @@
       </Stack>
 
       <!-- ICONS AFTER THIS POINT ARE RIGHT ALIGNED DUE TO THE ml-auto STYLE ON THIS DIV -->
-      <div class="ml-auto cursor-pointer rounded hover:scale-125">
+      <div
+        v-tooltip="{
+          content: 'Upgrade',
+          theme: 'instant-show',
+        }"
+        class="ml-auto cursor-pointer rounded hover:scale-125"
+      >
         <StatusIndicatorIcon
           v-if="component.canBeUpgraded"
           type="upgradable"
@@ -40,6 +46,12 @@
       <!-- change status icon -->
       <div
         v-if="component.changeStatus !== 'unmodified'"
+        v-tooltip="{
+          content:
+            component.changeStatus.charAt(0).toUpperCase() +
+            component.changeStatus.slice(1),
+          theme: 'instant-show',
+        }"
         class="cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon

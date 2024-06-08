@@ -100,7 +100,7 @@ export type RemoteModuleDetails = RemoteModuleSummary & {
   };
 };
 
-// Gather the current changeset ID, since our components don't appear to be
+// Gather the current change set ID, since our components don't appear to be
 // reacting to the visibility changes that happen on the setup code
 // TODO: Generalize this and make the api client pass these arguments implicitly
 function getVisibilityParams(forceChangeSetId?: ChangeSetId) {

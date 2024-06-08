@@ -3,7 +3,6 @@
     <SiSearch
       v-model="textSearch"
       class="flex-none"
-      autoSearch
       placeholder="search modules"
       @search="triggerSearch"
     />

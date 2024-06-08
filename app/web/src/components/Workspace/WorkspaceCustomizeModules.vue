@@ -18,9 +18,7 @@
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
-    <div class="inset-0 p-sm absolute overflow-auto">
-      <ModuleDisplay :key="moduleSlug" />
-    </div>
+    <ModuleDisplay :key="moduleSlug" />
   </div>
   <component
     :is="ResizablePanel"

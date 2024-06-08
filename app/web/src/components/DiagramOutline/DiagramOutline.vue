@@ -27,7 +27,7 @@
         <SiSearch
           v-if="rootComponents.length"
           ref="searchRef"
-          autoSearch
+          placeholder="search components"
           :filters="searchFiltersWithCounts"
           @search="onSearchUpdated"
         />

@@ -49,7 +49,7 @@
     </div>
     <div
       v-if="changeStatus === 'deleted'"
-      class="flex flex-row gap-2xs items-center text-destructive-500"
+      class="flex flex-row gap-2xs items-center text-destructive-500 dark:text-destructive-600"
     >
       <StatusIndicatorIcon
         type="change"

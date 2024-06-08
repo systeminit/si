@@ -34,7 +34,7 @@
           />
         </div>
       </SidebarSubpanelTitle>
-      <SiSearch autoSearch placeholder="search assets" @search="onSearch" />
+      <SiSearch placeholder="search assets" @search="onSearch" />
       <!-- <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
       >

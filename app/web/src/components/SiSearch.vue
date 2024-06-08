@@ -1,52 +1,43 @@
 <template>
-  <!-- TODO(Wendy) - implement new search bar design -->
-  <div class="dark:border-neutral-600 border-b py-2xs">
-    <div class="flex nowrap gap-xs px-xs justify-between">
-      <label
-        class="relative text-neutral-400 focus-within:text-neutral-600 block flex-grow"
-      >
-        <input
-          v-model="searchString"
-          :placeholder="placeholder"
-          :class="
-            clsx(
-              'w-full px-1 py-1 text-xs rounded',
-              'border text-black dark:text-white bg-shade-0 dark:bg-shade-100 border-neutral-300 dark:border-neutral-600',
-              'placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400',
-              'focus:outline focus:outline-2 focus:outline-action-500 outline-offset-[-1px]',
-            )
-          "
-          @keydown="onKeyDown"
-        />
-        <Icon
-          name="x-circle"
-          class="absolute top-1 right-1 text-neutral-400 dark:text-neutral-500 cursor-pointer hover:text-shade-100 hover:dark:text-shade-0"
-          size="sm"
-          @click="clearSearch"
-        />
-      </label>
-      <button
-        v-if="!disableFilters && filters"
+  <div class="dark:border-neutral-600 border-b">
+    <label
+      class="relative text-neutral-400 focus-within:text-neutral-600 block h-[34px]"
+    >
+      <input
+        v-model="searchString"
+        :placeholder="placeholder"
         :class="
           clsx(
-            'w-6 hover:scale-110 active:dark:text-action-300 active:text-action-500',
-            showFilters
-              ? 'text-action-400'
-              : 'text-neutral-500 hover:text-shade-100 dark:hover:text-shade-0',
+            'w-full text-xs pl-[32px] py-2xs text-black dark:text-white h-[34px] bg-shade-0 dark:bg-neutral-800',
+            'placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400',
+            'focus:bg-neutral-50 focus:dark:bg-shade-100 focus:outline focus:outline-2 focus:outline-action-500 outline-offset-[-1px]',
+            filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
-        @click="toggleShowFilters"
+        @keydown="onKeyDown"
+      />
+      <Icon
+        name="search"
+        class="absolute left-2xs top-[6px] dark:text-neutral-600"
+      />
+      <div
+        class="absolute right-0 top-0 h-[34px] flex flex-row items-center px-2xs"
       >
-        <Icon name="filter" />
-      </button>
-      <button
-        v-if="!autoSearch || disableFilters || !filters"
-        class="w-6 text-neutral-500 hover:text-shade-100 hover:dark:text-shade-0 hover:scale-110 active:dark:text-action-300 active:text-action-500"
-        @click="triggerSearch"
-      >
-        <Icon name="search" />
-      </button>
-    </div>
+        <Icon
+          v-if="searchString"
+          name="x-circle"
+          class="text-neutral-400 dark:text-neutral-500 cursor-pointer hover:text-shade-100 hover:dark:text-shade-0"
+          @click="clearSearch"
+        />
+        <IconButton
+          v-if="filtersEnabled"
+          icon="filter"
+          :selected="showFilters"
+          @click="toggleShowFilters"
+        />
+      </div>
+    </label>
+
     <Transition
       v-show="showFilters"
       name="expand-height"
@@ -92,6 +83,7 @@ import { computed, ref, watch } from "vue";
 import { Icon, IconNames, Tones } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import FilterPill from "./FilterPill.vue";
+import IconButton from "./IconButton.vue";
 
 const transitionRef = ref<HTMLDivElement>();
 
@@ -124,10 +116,11 @@ const emit = defineEmits<{
 const props = defineProps({
   placeholder: { type: String, default: "search" },
   modelValue: { type: String },
-  autoSearch: { type: Boolean },
   filters: { type: Array<Filter> },
   disableFilters: { type: Boolean },
 });
+
+const filtersEnabled = computed(() => props.filters && !props.disableFilters);
 
 const showFilters = ref(false);
 
@@ -177,15 +170,13 @@ function clearSearch() {
 
 const debouncedAutoSearch = _.debounce(triggerAutoSearch, 50);
 
-// if autoSearch prop is true, we'll trigger the search event as the user types (debounced)
-// rather than only when they click the search icon
 watch(searchString, () => {
   emit("update:modelValue", searchString.value || "");
   debouncedAutoSearch();
 });
 
 function triggerAutoSearch() {
-  if (props.autoSearch) triggerSearch();
+  triggerSearch();
 }
 
 function onKeyDown(e: KeyboardEvent) {

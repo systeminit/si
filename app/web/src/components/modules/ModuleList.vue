@@ -11,7 +11,16 @@
     class="min-h-[32px]"
   >
     <ErrorMessage :requestStatus="loading" />
-    <template v-if="loading.isPending"> {{ loadingMessage }} </template>
+    <div
+      v-if="loading.isPending"
+      class="h-full flex flex-col items-center justify-center"
+    >
+      <LoadingMessage
+        :message="loadingMessage"
+        :requestStatus="loading"
+        noPadding
+      />
+    </div>
     <template v-else-if="loading.isSuccess">
       <div v-if="!modules.length" class="p-sm italic text-center text-xs">
         {{ textSearch ? "No modules match your search" : noModulesMessage }}
@@ -26,7 +35,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ErrorMessage, PillCounter, TreeNode } from "@si/vue-lib/design-system";
+import {
+  ErrorMessage,
+  LoadingMessage,
+  PillCounter,
+  TreeNode,
+} from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import { LocalModuleSummary } from "@/store/module.store";

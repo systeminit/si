@@ -21,7 +21,10 @@
       <template v-else-if="moduleStore.exportingWorkspaceOperationId">
         <template v-if="moduleStore.exportingWorkspaceOperationError">
           <p class="flex gap-1 items-center">
-            <Icon name="x" class="text-destructive-500" />
+            <Icon
+              name="x"
+              class="text-destructive-500 dark:text-destructive-600"
+            />
 
             Export Failed!
           </p>

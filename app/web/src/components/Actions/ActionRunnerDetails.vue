@@ -56,7 +56,7 @@ const icon = computed(() => {
     case ResourceHealth.Error:
       return {
         name: "alert-triangle" as IconNames,
-        class: "text-destructive-500",
+        class: "text-destructive-500 dark:text-destructive-600",
       };
     case ResourceHealth.Unknown:
     default:

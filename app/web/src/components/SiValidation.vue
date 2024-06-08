@@ -51,7 +51,8 @@ const errorClasses = (id: string) => {
   const classes: Record<string, boolean> = {};
   classes["text-xs"] = true;
   classes["lg:text-sm"] = true;
-  classes["text-destructive-400"] = true;
+  classes["text-destructive-500"] = true;
+  classes["dark:text-destructive-600"] = true;
   return classes;
 };
 </script>

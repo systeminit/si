@@ -198,7 +198,7 @@ export const useActionsStore = () => {
             ChangeSetDetail,
             Array<ActionHistoryView>
           > {
-            // display actions, in order, and if the action is from a different changeset than the previous action display the header
+            // display actions, in order, and if the action is from a different change set than the previous action display the header
             const r = new DefaultMap<ChangeSetDetail, Array<ActionHistoryView>>(
               () => [],
             );

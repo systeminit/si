@@ -179,7 +179,8 @@ const readOnlyIsOpen = computed(() => isOpen.value);
 const isRepositioning = ref(false);
 
 function open(e?: MouseEvent, anchorToMouse?: boolean) {
-  const clickTargetIsElement = e?.target instanceof HTMLElement;
+  const clickTargetIsElement =
+    e?.target instanceof HTMLElement || e?.target instanceof Element;
 
   if (props.anchorTo) {
     // can anchor to a specific element via props
@@ -212,7 +213,7 @@ function close() {
   // TODO: could return focus to the menu button (if one exists)
 }
 
-const anchorEl = ref<HTMLElement>();
+const anchorEl = ref<HTMLElement | Element>();
 const anchorPos = ref<{ x: number; y: number }>();
 
 const hAlign = ref<"left" | "right">("left");

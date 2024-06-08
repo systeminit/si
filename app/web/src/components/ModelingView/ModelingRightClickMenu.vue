@@ -215,5 +215,7 @@ function open(
   contextMenuRef.value?.open(e, anchorToMouse);
 }
 
-defineExpose({ open });
+const isOpen = computed(() => contextMenuRef.value?.isOpen);
+
+defineExpose({ open, isOpen });
 </script>

@@ -18,7 +18,7 @@
         label="Remove"
         :disabled="disabledMultiple"
         icon="x"
-        iconClass="text-destructive-400"
+        iconClass="dark:text-destructive-600 text-destructive-500"
         size="xs"
         tone="empty"
         variant="solid"

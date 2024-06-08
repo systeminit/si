@@ -51,7 +51,7 @@ export interface ComponentPositionRequest {
 }
 
 // TODO: a few of these use the same id objects (ex: componentId)
-// but in a few cases the changeset ID may have been accidentally left out?
+// but in a few cases the change set ID may have been accidentally left out?
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
 
 export type WsEventPayloadMap = {

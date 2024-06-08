@@ -6,7 +6,7 @@
     <UserIcon
       :user="user"
       changeSetStarSide
-      :hideChangesetStar="hideChangesetInfo"
+      :hideChangesetStar="hideChangeSetInfo"
       :hasHoverState="iconHasHoverState"
       @click="emit('iconClicked')"
     />
@@ -16,12 +16,12 @@
         {{ user.name }}
       </div>
       <div
-        v-if="!hideChangesetInfo"
+        v-if="!hideChangeSetInfo"
         class="text-xs font-bold line-clamp-3 break-words"
       >
         {{
-          user.changeset
-            ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
+          user.changeSet
+            ? changeSetsStore.changeSetsById[user.changeSet]?.name || "Head"
             : "Head"
         }}
       </div>
@@ -42,7 +42,7 @@ const changeSetsStore = useChangeSetsStore();
 
 defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
-  hideChangesetInfo: { type: Boolean },
+  hideChangeSetInfo: { type: Boolean },
   iconHasHoverState: { type: Boolean },
   hideStatus: { type: Boolean },
 });

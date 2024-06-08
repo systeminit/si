@@ -51,6 +51,9 @@
     @mouseup="endActive"
   >
     <Icon :name="iconShowing" :rotate="rotate" />
+
+    <!-- Slot is for dropdown menus or modals to go in only! -->
+    <slot />
   </div>
 </template>
 

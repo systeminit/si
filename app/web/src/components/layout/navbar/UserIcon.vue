@@ -30,7 +30,7 @@
       v-if="
         !hideChangesetStar &&
         changeSetsStore.selectedChangeSetId &&
-        changeSetsStore.selectedChangeSetId === user.changeset
+        changeSetsStore.selectedChangeSetId === user.changeSet
       "
       :class="
         clsx(
