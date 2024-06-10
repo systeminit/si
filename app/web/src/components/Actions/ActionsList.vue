@@ -1,8 +1,8 @@
 <template>
   <TreeNode
+    :enableGroupToggle="displayActions.length > 0"
     clickLabelToToggle
     styleAsGutter
-    :enableGroupToggle="displayActions.length > 0"
   >
     <template #label>
       <div
@@ -17,13 +17,13 @@
           <div class="flex flex-col flex-grow min-w-0">
             <Timestamp
               :date="changeSet.appliedAt"
-              size="long"
-              showTimeIfToday
-              class="text-sm"
-              dateClasses="font-bold"
               :timeClasses="
                 themeClasses('text-neutral-500', 'text-neutral-400')
               "
+              class="text-sm"
+              dateClasses="font-bold"
+              showTimeIfToday
+              size="long"
             />
             <div
               :class="
@@ -50,8 +50,8 @@
         <template v-else>
           <div class="grow-0 mx-[.66em]">
             <Icon
-              name="bullet-list"
               class="attributes-panel-item__type-icon"
+              name="bullet-list"
               size="sm"
             />
           </div>
@@ -64,9 +64,9 @@
             >
               <div class="mx-2xs">{{ cnt }}</div>
               <StatusIndicatorIcon
-                type="action"
                 :status="actionKind.toString()"
                 size="sm"
+                type="action"
               />
             </div>
           </div>
@@ -84,13 +84,13 @@
       "
     >
       <ActionCard
-        :slim="props.slim"
-        :selected="isSelected(action)"
         :action="action"
         :noInteraction="props.noInteraction"
-        @click="props.clickAction && props.clickAction(action)"
-        @remove="actionsStore.CANCEL([action.id])"
+        :selected="isSelected(action)"
+        :slim="props.slim"
+        @click="props.clickAction && props.clickAction(action, $event)"
         @history="openHistory"
+        @remove="actionsStore.CANCEL([action.id])"
       />
     </div>
   </TreeNode>
@@ -121,7 +121,10 @@ export type ActionsListKind = "proposed" | "history";
 
 const actionsStore = useActionsStore();
 
-type clickFn = (action: ActionHistoryView | ActionProposedView) => void;
+type clickFn = (
+  action: ActionHistoryView | ActionProposedView,
+  e: MouseEvent,
+) => void;
 
 const props = defineProps({
   actions: { type: Array<ActionView> },

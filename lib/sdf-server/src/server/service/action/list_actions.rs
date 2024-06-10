@@ -4,6 +4,7 @@ use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
 use dal::{action::ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
+use si_events::FuncRunId;
 
 use super::ActionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -19,6 +20,7 @@ pub struct ActionView {
     pub kind: ActionKind,
     pub state: ActionState,
     pub originating_change_set_id: ChangeSetId,
+    pub func_run_id: Option<FuncRunId>,
     // Actions that will wait until I've successfully completed before running
     pub my_dependencies: Vec<ActionId>,
     // Things that need to finish before I can start
@@ -52,6 +54,12 @@ pub async fn list_actions(
         let action = Action::get_by_id(&ctx, action_id).await?;
         let prototype_id = Action::prototype_id(&ctx, action_id).await?;
         let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+        let func_run_id = ctx
+            .layer_db()
+            .func_run()
+            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action.id().into())
+            .await?
+            .map(|f| f.id());
 
         let action_view = ActionView {
             id: action_id,
@@ -61,6 +69,7 @@ pub async fn list_actions(
             description: prototype.description().clone(),
             kind: prototype.kind,
             state: action.state(),
+            func_run_id,
             originating_change_set_id: action.originating_changeset_id(),
             my_dependencies: action.get_all_dependencies(&ctx).await?,
             dependent_on: Action::get_dependent_actions_by_id(&ctx, action_id).await?,

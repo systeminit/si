@@ -85,6 +85,29 @@ impl FuncRunDb {
         Ok(result)
     }
 
+    pub async fn get_last_run_for_action_id(
+        &self,
+        workspace_pk: WorkspacePk,
+        action_id: ActionId,
+    ) -> LayerDbResult<Option<FuncRun>> {
+        let maybe_row = self
+            .cache
+            .pg()
+            .query_opt(
+                &self.get_last_action_by_action_id,
+                &[&workspace_pk, &action_id],
+            )
+            .await?;
+
+        let maybe_func = if let Some(row) = maybe_row {
+            Some(serialize::from_bytes(row.get("value"))?)
+        } else {
+            None
+        };
+
+        Ok(maybe_func)
+    }
+
     pub async fn get_last_qualification_for_attribute_value_id(
         &self,
         workspace_id: WorkspacePk,

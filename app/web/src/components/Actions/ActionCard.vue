@@ -16,24 +16,23 @@
     <template v-if="actionProposed">
       <Icon
         v-if="actionQueued"
-        name="nested-arrow-right"
         :class="
           clsx(
             themeClasses('text-neutral-600', 'text-neutral-300'),
             'translate-y-[-2px]',
           )
         "
+        name="nested-arrow-right"
         size="sm"
       />
       <Icon
         v-else-if="actionRunning"
-        name="loader"
         :class="clsx(themeClasses('text-action-300', 'text-action-300'))"
+        name="loader"
         size="sm"
       />
       <Icon
         v-else-if="actionOnHold"
-        name="circle-stop"
         :class="
           clsx(
             holdStatusInfluencedBy.length > 0
@@ -44,31 +43,31 @@
               : themeClasses('text-warning-400', 'text-warning-300'),
           )
         "
+        name="circle-stop"
         size="sm"
       />
       <template v-else-if="actionFailed">
         <Icon
-          name="play"
           :class="clsx(themeClasses('text-action-700', 'text-action-300'))"
+          name="play"
           size="sm"
           @click="retry"
         />
         <Icon
-          name="x-hex-outline"
           :class="
             clsx(themeClasses('text-destructive-500', 'text-destructive-600'))
           "
+          name="x-hex-outline"
           size="sm"
         />
       </template>
     </template>
     <template v-else-if="actionHistory">
-      <!-- TODO(Wendy) - need to implement a way to retry failed actions here -->
-      <Icon :name="resultIcon" :class="resultIconClass" size="sm" />
+      <Icon :class="resultIconClass" :name="resultIcon" size="sm" />
     </template>
     <Icon
-      :name="actionIcon(props.action.kind)"
       :class="actionIconClass(props.action.kind)"
+      :name="actionIcon(props.action.kind)"
       size="sm"
     />
     <div class="flex flex-col flex-grow min-w-0">
@@ -118,29 +117,29 @@
       v-if="!props.noInteraction && actionProposed"
       ref="contextMenuRef"
       :forceAbove="false"
-      forceAlignRight
       compact
+      forceAlignRight
     >
       <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>
       <DropdownMenuItem
         v-if="actionProposed.state === ActionState.Queued"
-        label="Put on hold"
+        :onSelect="hold"
         icon="circle-stop"
         iconClass="text-warning-400"
-        :onSelect="hold"
+        label="Put on hold"
       />
       <DropdownMenuItem
         v-if="actionProposed.state === ActionState.OnHold"
-        label="Put in Queue"
+        :onSelect="retry"
         icon="nested-arrow-right"
         iconClass="text-action-400"
-        :onSelect="retry"
+        label="Put in Queue"
       />
       <DropdownMenuItem
-        label="Remove from list"
+        :onSelect="remove"
         icon="x"
         iconClass="text-destructive-500 dark:text-destructive-600"
-        :onSelect="remove"
+        label="Remove from list"
       />
       <hr class="border-neutral-600 my-xs" />
       <h5 class="text-neutral-400 pl-2xs">APPLY BEFORE:</h5>
@@ -151,8 +150,8 @@
           class="flex flex-row items-center px-2xs gap-xs"
         >
           <Icon
-            :name="actionIcon(a.kind)"
             :class="actionIconClass(a.kind)"
+            :name="actionIcon(a.kind)"
             size="sm"
           />
           <span class="align-baseline leading-[30px]"
@@ -171,8 +170,8 @@
           class="flex flex-row items-center px-2xs gap-xs"
         >
           <Icon
-            :name="actionIcon(a.kind)"
             :class="actionIconClass(a.kind)"
+            :name="actionIcon(a.kind)"
             size="sm"
           />
           <span class="align-baseline leading-[30px]"
@@ -191,39 +190,39 @@
       forceAlignRight
     >
       <DropdownMenuItem
-        label="Arguments"
         :onSelect="
           () => {
             actionHistory &&
               emit('history', actionHistory.funcRunId, 'arguments');
           }
         "
+        label="Arguments"
       />
       <DropdownMenuItem
-        label="Code Executed"
         :onSelect="
           () => {
             actionHistory &&
               emit('history', actionHistory.funcRunId, 'codeExecuted');
           }
         "
+        label="Code Executed"
       />
       <DropdownMenuItem
-        label="Resource Result"
         :onSelect="
           () => {
             actionHistory &&
               emit('history', actionHistory.funcRunId, 'resourceResult');
           }
         "
+        label="Resource Result"
       />
       <DropdownMenuItem
-        label="Logs"
         :onSelect="
           () => {
             actionHistory && emit('history', actionHistory.funcRunId, 'logs');
           }
         "
+        label="Logs"
       />
     </DropdownMenu>
     <DetailsPanelMenuIcon
@@ -238,7 +237,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed, ref } from "vue";
 
 import {

@@ -79,6 +79,7 @@ export interface ActionView {
   description?: string;
   kind: ActionKind;
   originatingChangeSetId: ChangeSetId;
+  funcRunId?: FuncRunId;
 }
 
 export interface ActionProposedView extends ActionView {
