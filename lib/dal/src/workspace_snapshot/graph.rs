@@ -740,6 +740,12 @@ impl WorkspaceSnapshotGraph {
                 if edge_kind_updates.additions.len()
                     > (edge_kind_updates.removals.len() + (1 - existing_outgoing_edges_of_kind))
                 {
+                    warn!(
+                        "ExclusiveEdgeMismatch: Found {} pre-existing edges. Requested {} removals, {} additions.",
+                        existing_outgoing_edges_of_kind,
+                        edge_kind_updates.removals.len(),
+                        edge_kind_updates.additions.len(),
+                    );
                     // The net count of outgoing edges of this kind is >1. Consider *ALL* of the
                     // additions to be in conflict.
                     for (
@@ -1605,6 +1611,36 @@ impl WorkspaceSnapshotGraph {
         algo::has_path_connecting(&self.graph, self.root_index, node, None)
     }
 
+    /// Import a single node from the `other` [`WorkspaceSnapshotGraph`] into `self`, if it does
+    /// not already exist in `self`.
+    pub fn find_in_self_or_import_node_from_other(
+        &mut self,
+        other: &WorkspaceSnapshotGraph,
+        other_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let node_weight_to_import = other.get_node_weight(other_node_index)?.clone();
+        let node_weight_id = node_weight_to_import.id();
+        let node_weight_lineage_id = node_weight_to_import.lineage_id();
+
+        if let Some(equivalent_node_index) =
+            self.find_equivalent_node(node_weight_id, node_weight_lineage_id)?
+        {
+            let equivalent_node_weight = self.get_node_weight(equivalent_node_index)?;
+            if !equivalent_node_weight
+                .vector_clock_write()
+                .is_newer_than(node_weight_to_import.vector_clock_write())
+            {
+                self.add_node(node_weight_to_import)?;
+
+                self.replace_references(equivalent_node_index)?;
+            }
+        } else {
+            self.add_node(node_weight_to_import)?;
+        };
+
+        Ok(())
+    }
+
     pub fn import_subgraph(
         &mut self,
         other: &WorkspaceSnapshotGraph,
@@ -2079,7 +2115,7 @@ impl WorkspaceSnapshotGraph {
                 } => {
                     let updated_source = self.get_latest_node_idx(source.index)?;
                     let destination =
-                        self.find_in_self_or_create_using_onto(destination.index, onto)?;
+                        self.reuse_from_self_or_import_subgraph_from_onto(destination.index, onto)?;
 
                     self.add_edge(updated_source, edge_weight.clone(), destination)?;
                 }
@@ -2103,7 +2139,14 @@ impl WorkspaceSnapshotGraph {
                 } => {
                     let updated_to_rebase =
                         self.get_latest_node_idx(to_rebase_subgraph_root.index)?;
-                    self.find_in_self_or_create_using_onto(onto_subgraph_root.index, onto)?;
+                    // We really only want to import the single node here, not the entire subgraph,
+                    // as we also generate Updates on how to handle bringing in the child
+                    // nodes. If we try to bring in the entire subgraph, we'll have a bad
+                    // interaction with `replace_references` where we'll end up with the set
+                    // union of the edges outgoing from both the "old" and "new" node. We only
+                    // want the edges from the "old" node as we'll have further Update events
+                    // that will handle bringing in the appropriate "new" edges.
+                    self.find_in_self_or_import_node_from_other(onto, onto_subgraph_root.index)?;
                     self.replace_references(updated_to_rebase)?;
                 }
                 Update::MergeCategoryNodes {
@@ -2175,8 +2218,8 @@ impl WorkspaceSnapshotGraph {
         Ok(self.get_node_index_by_id(other_id).ok())
     }
 
-    /// Find in self where self is the "to rebase" side or create using "onto".
-    fn find_in_self_or_create_using_onto(
+    /// Find in self (and use it as-is) where self is the "to rebase" side or import the entire subgraph from "onto".
+    fn reuse_from_self_or_import_subgraph_from_onto(
         &mut self,
         unchecked: NodeIndex,
         onto: &WorkspaceSnapshotGraph,
@@ -2196,19 +2239,7 @@ impl WorkspaceSnapshotGraph {
             };
 
             match equivalent_node {
-                Some(found_equivalent_node) => {
-                    let found_equivalent_node_weight =
-                        self.get_node_weight(found_equivalent_node)?;
-                    if found_equivalent_node_weight.merkle_tree_hash()
-                        != unchecked_node_weight.merkle_tree_hash()
-                    {
-                        self.import_subgraph(onto, unchecked)?;
-                        self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
-                            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
-                    } else {
-                        found_equivalent_node
-                    }
-                }
+                Some(found_equivalent_node) => found_equivalent_node,
                 None => {
                     self.import_subgraph(onto, unchecked)?;
                     self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
