@@ -1,4 +1,3 @@
-use crate::schemas::schema_helpers::{build_asset_func, create_identity_func};
 use dal::pkg::import_pkg_from_pkg;
 use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -7,6 +6,8 @@ use si_pkg::{
     SchemaVariantSpecData, SiPkg,
 };
 use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
+
+use crate::test_exclusive_schemas::{build_asset_func, create_identity_func};
 
 const CATEGORY: &str = "validations";
 
@@ -26,7 +27,7 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
 
     // Create Scaffold Func
     let fn_name = format!("test:scaffold{schema_name}Asset");
-    let authoring_schema_func = build_asset_func(fn_name.as_str()).await?;
+    let authoring_schema_func = build_asset_func(fn_name.as_str())?;
 
     let schema = SchemaSpec::builder()
         .name(schema_name)
@@ -35,8 +36,7 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
-                .build()
-                .expect("schema spec data build"),
+                .build()?
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -47,8 +47,7 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?
                 )
                 .domain_prop(
                     PropSpec::builder()
@@ -103,7 +102,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
 
     // Create Scaffold Func
     let fn_name = format!("test:scaffold{schema_name}Asset");
-    let authoring_schema_func = build_asset_func(fn_name.as_str()).await?;
+    let authoring_schema_func = build_asset_func(fn_name.as_str())?;
 
     let schema = SchemaSpec::builder()
         .name(schema_name)
@@ -112,9 +111,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
-                .build()
-                .expect("schema spec data build"),
-        )
+                .build()?)
         .variant(
             SchemaVariantSpec::builder()
                 .name("v0")
@@ -124,8 +121,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?
                 )
                 .domain_prop(
                     PropSpec::builder()
@@ -188,7 +184,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
 
     // Create Scaffold Func
     let fn_name = format!("test:scaffold{schema_name}Asset");
-    let authoring_schema_func = build_asset_func(fn_name.as_str()).await?;
+    let authoring_schema_func = build_asset_func(fn_name.as_str())?;
 
     let schema = SchemaSpec::builder()
         .name(schema_name)
@@ -197,8 +193,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
-                .build()
-                .expect("schema spec data build"),
+                .build()?
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -209,8 +204,7 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?
                 )
                 .domain_prop(
                     PropSpec::builder()

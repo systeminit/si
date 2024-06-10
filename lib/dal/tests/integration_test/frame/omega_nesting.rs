@@ -35,7 +35,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_one_schema_name,
             level_one_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_one
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -48,7 +49,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_two_schema_name,
             level_two_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_two
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -61,7 +63,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_three_schema_name,
             level_three_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_three
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -74,7 +77,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_three_no_children_schema_name,
             level_three_no_children_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_three_no_children
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -87,7 +91,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_four_schema_name,
             level_four_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_four
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -100,7 +105,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_five_schema_name,
             level_five_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_five
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -113,7 +119,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_five_no_children_schema_name,
             level_five_no_children_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_five_no_children
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await
@@ -126,7 +133,8 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
             level_six_schema_name,
             level_six_component_name.as_str(),
         )
-        .await;
+        .await
+        .expect("could not create component");
         level_six
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await

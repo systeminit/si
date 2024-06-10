@@ -16,7 +16,8 @@ async fn list_qualifications(ctx: &mut DalContext) {
         "dummy-secret",
         "deserializing serde json value null into an option results in None and that's insane",
     )
-    .await;
+    .await
+    .expect("could not create component");
 
     // Prepare expected qualification views.
     let expected_prop_validations_qualification_view = QualificationView {

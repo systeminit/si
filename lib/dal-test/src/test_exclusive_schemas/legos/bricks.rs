@@ -5,7 +5,7 @@ use si_pkg::{
     SocketSpecKind,
 };
 
-use crate::schemas::schema_helpers::create_identity_func;
+use crate::test_exclusive_schemas::create_identity_func;
 
 #[derive(Debug)]
 pub(crate) struct LegoBricks {

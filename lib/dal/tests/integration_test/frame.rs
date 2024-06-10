@@ -19,9 +19,13 @@ mod with_actions;
 async fn frames_and_connections(ctx: &mut DalContext) {
     //create 1 components and draw edges to another 1
     let first_component =
-        create_component_for_schema_name(ctx, "small even lego", "first_component").await;
+        create_component_for_schema_name(ctx, "small even lego", "first_component")
+            .await
+            .expect("could not create component");
     let second_component =
-        create_component_for_schema_name(ctx, "small odd lego", "second_component").await;
+        create_component_for_schema_name(ctx, "small odd lego", "second_component")
+            .await
+            .expect("could not create component");
 
     //connect them
     connect_components_with_socket_names(
@@ -31,14 +35,16 @@ async fn frames_and_connections(ctx: &mut DalContext) {
         second_component.id(),
         "one",
     )
-    .await;
+    .await
+    .expect("could not connect components with socket names");
     update_attribute_value_for_component(
         ctx,
         first_component.id(),
         &["root", "domain", "one"],
         serde_json::json!["1"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit");
@@ -46,6 +52,7 @@ async fn frames_and_connections(ctx: &mut DalContext) {
     // make sure the value propagates
     let input_value = get_component_input_socket_value(ctx, second_component.id(), "one")
         .await
+        .expect("could not get component input socket value")
         .expect("has value");
     assert_eq!(
         "1",         // expected
@@ -54,9 +61,13 @@ async fn frames_and_connections(ctx: &mut DalContext) {
     //create 2 of the same schema variant, only use frames to connect them
     //create 1 components and draw edges to another 1
     let third_component =
-        create_component_for_schema_name(ctx, "small even lego", "third_component").await;
+        create_component_for_schema_name(ctx, "small even lego", "third_component")
+            .await
+            .expect("could not create component");
     let fourth_component =
-        create_component_for_schema_name(ctx, "small odd lego", "fourth_component").await;
+        create_component_for_schema_name(ctx, "small odd lego", "fourth_component")
+            .await
+            .expect("could not create component");
     fourth_component
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
         .await
@@ -74,13 +85,15 @@ async fn frames_and_connections(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["2"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit");
     // values should propagate
     let input_value = get_component_input_socket_value(ctx, fourth_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(
         "2",         // expected
@@ -464,13 +477,21 @@ async fn simple_frames(ctx: &mut DalContext) {
 #[test]
 async fn output_sockets_can_have_both(ctx: &mut DalContext) {
     // create an even frame
-    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even").await;
+    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even")
+        .await
+        .expect("could not create component");
 
-    let _ = even_frame
+    even_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd1").await;
-    let _ = odd_component.set_type(ctx, ComponentType::Component).await;
+        .await
+        .expect("could not set type");
+    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd1")
+        .await
+        .expect("could not create component");
+    odd_component
+        .set_type(ctx, ComponentType::Component)
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(ctx, odd_component.id(), even_frame.id())
         .await
         .expect("could not upsert parent");
@@ -491,13 +512,17 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // create another odd component, but manually connect to the frame (not a child!)
-    let odd_component_2 = create_component_for_schema_name(ctx, "large odd lego", "odd2").await;
-    let _ = odd_component_2
+    let odd_component_2 = create_component_for_schema_name(ctx, "large odd lego", "odd2")
+        .await
+        .expect("could not create component");
+    odd_component_2
         .set_type(ctx, ComponentType::Component)
-        .await;
+        .await
+        .expect("could not set type");
 
     connect_components_with_socket_names(ctx, even_frame.id(), "one", odd_component_2.id(), "one")
-        .await;
+        .await
+        .expect("could not connect components with socket names");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -556,14 +581,22 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
 
 #[test]
 async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
-    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even").await;
+    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even")
+        .await
+        .expect("could not create component");
     let even_frame_component_id = even_frame.id();
-    let _ = even_frame
+    even_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
 
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd").await;
-    let _ = odd_component.set_type(ctx, ComponentType::Component).await;
+    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd")
+        .await
+        .expect("could not create component");
+    odd_component
+        .set_type(ctx, ComponentType::Component)
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(ctx, odd_component.id(), even_frame.id())
         .await
         .expect("could not upsert parent");
@@ -574,7 +607,8 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["1"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -582,11 +616,13 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     // the output socket value is updated with 1
     let output_value = get_component_output_socket_value(ctx, even_frame_component_id, "one")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("1"));
 
     let input_value = get_component_input_socket_value(ctx, odd_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("1"));
 }
@@ -603,33 +639,47 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // create first greatgrandparent
     let first_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1").await;
+        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1")
+            .await
+            .expect("could not create component");
 
-    let _ = first_greatgrandparent_frame
+    first_greatgrandparent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     // create grandparent frame
     let first_grand_parent_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "grandparent").await;
-    let _ = first_grand_parent_frame
+        create_component_for_schema_name(ctx, "medium odd lego", "grandparent")
+            .await
+            .expect("could not create component");
+    first_grand_parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     // create parent frame
-    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent").await;
-    let _ = parent_frame
+    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent")
+        .await
+        .expect("could not create component");
+    parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     // create child components
-    let first_child_component =
-        create_component_for_schema_name(ctx, "medium odd lego", "child 1").await;
-    let _ = first_child_component
+    let first_child_component = create_component_for_schema_name(ctx, "medium odd lego", "child 1")
+        .await
+        .expect("could not create component");
+    first_child_component
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     let second_child_component =
-        create_component_for_schema_name(ctx, "medium even lego", "child 2").await;
-    let _ = second_child_component
+        create_component_for_schema_name(ctx, "medium even lego", "child 2")
+            .await
+            .expect("could not create component");
+    second_child_component
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
 
     // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
     Frame::upsert_parent(ctx, first_child_component.id(), parent_frame.id())
@@ -661,7 +711,8 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["3"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should only pass to the grandparent, the first_child has a closer match with its parent
     update_attribute_value_for_component(
         ctx,
@@ -669,7 +720,8 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["2"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass to the first_child
     update_attribute_value_for_component(
         ctx,
@@ -677,7 +729,8 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["1"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass to the second_child
     update_attribute_value_for_component(
         ctx,
@@ -685,43 +738,54 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!["2"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the first_component is updated with 3
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("3"));
     // the first_componenent is updated with 1
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("1"));
     // the second_component is updated with 2
     let input_value = get_component_input_socket_value(ctx, second_child_component.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("2"));
     // the parent is updated with 2
     let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("2"));
 
     // now create the other great grandparent and grandparent frame and move the parent into it
     let second_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2").await;
+        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2")
+            .await
+            .expect("could not create component");
 
-    let _ = second_greatgrandparent_frame
+    second_greatgrandparent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     let second_grand_parent_frame =
-        create_component_for_schema_name(ctx, "small odd lego", "grandparent").await;
-    let _ = second_grand_parent_frame
+        create_component_for_schema_name(ctx, "small odd lego", "grandparent")
+            .await
+            .expect("could not create component");
+    second_grand_parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(
         ctx,
         second_grand_parent_frame.id(),
@@ -740,17 +804,20 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     assert!(
         get_component_input_socket_value(ctx, first_child_component.id(), "three")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
     // the value coming from the first grandparent should be unset
     assert!(
         get_component_input_socket_value(ctx, second_child_component.id(), "two")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
     assert!(
         get_component_input_socket_value(ctx, parent_frame.id(), "two")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
 
@@ -761,7 +828,8 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["4"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass as the parent frame doesn't have an output socket for "3"
     update_attribute_value_for_component(
         ctx,
@@ -769,30 +837,35 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!["5"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the first_componenent still has 1
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("1"));
     // the component is updated with 4
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
 
     assert_eq!(input_value, serde_json::json!("4"));
     // the second component is updated with 5
     let input_value = get_component_input_socket_value(ctx, second_child_component.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
 
     assert_eq!(input_value, serde_json::json!("5"));
     // the parent is updated with 5
     let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
 
     assert_eq!(input_value, serde_json::json!("5"));
@@ -804,28 +877,39 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // create first greatgrandparent
     let first_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1").await;
+        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1")
+            .await
+            .expect("could not create component");
 
-    let _ = first_greatgrandparent_frame
+    first_greatgrandparent_frame
         .set_type(ctx, ComponentType::Component)
-        .await;
+        .await
+        .expect("could not set type");
     // create grandparent frame
     let first_grand_parent_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "grandparent").await;
-    let _ = first_grand_parent_frame
+        create_component_for_schema_name(ctx, "medium odd lego", "grandparent")
+            .await
+            .expect("could not create component");
+    first_grand_parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
     // create parent frame
-    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent").await;
-    let _ = parent_frame
+    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent")
+        .await
+        .expect("could not create component");
+    parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
     // create child components
-    let first_child_component =
-        create_component_for_schema_name(ctx, "medium odd lego", "child 1").await;
-    let _ = first_child_component
+    let first_child_component = create_component_for_schema_name(ctx, "medium odd lego", "child 1")
+        .await
+        .expect("could not create component");
+    first_child_component
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
 
     // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
     Frame::upsert_parent(ctx, parent_frame.id(), first_child_component.id())
@@ -855,7 +939,8 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["3"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should only pass to the grandparent, the first_child has a closer match with its parent
     update_attribute_value_for_component(
         ctx,
@@ -863,7 +948,8 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["2"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass to the first_child
     update_attribute_value_for_component(
         ctx,
@@ -871,7 +957,8 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["1"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass to the second_child
     update_attribute_value_for_component(
         ctx,
@@ -879,39 +966,49 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!["2"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the first_component is updated with 3
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("3"));
     // the first_componenent is updated with 1
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("1"));
 
     // the parent is updated with 2
     let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("2"));
 
     // now create the other great grandparent and grandparent frame and move the parent into it
     let second_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2").await;
+        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2")
+            .await
+            .expect("could not create component");
 
-    let _ = second_greatgrandparent_frame
+    second_greatgrandparent_frame
         .set_type(ctx, ComponentType::Component)
-        .await;
+        .await
+        .expect("could not set type");
     let second_grand_parent_frame =
-        create_component_for_schema_name(ctx, "small odd lego", "grandparent").await;
-    let _ = second_grand_parent_frame
+        create_component_for_schema_name(ctx, "small odd lego", "grandparent")
+            .await
+            .expect("could not create component");
+    second_grand_parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(
         ctx,
         second_greatgrandparent_frame.id(),
@@ -934,12 +1031,14 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     assert!(
         get_component_input_socket_value(ctx, first_child_component.id(), "three")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
 
     assert!(
         get_component_input_socket_value(ctx, parent_frame.id(), "two")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
 
@@ -950,7 +1049,8 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["4"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     // this value should pass as the parent frame doesn't have an output socket for "3"
     update_attribute_value_for_component(
         ctx,
@@ -958,18 +1058,21 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!["5"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // the first_componenent still has 1
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("1"));
     // the component is updated with 4
     let input_value = get_component_input_socket_value(ctx, first_child_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
 
     assert_eq!(input_value, serde_json::json!("4"));
@@ -978,6 +1081,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     // the parent is updated with 5
     let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
 
     assert_eq!(input_value, serde_json::json!("5"));
@@ -986,26 +1090,35 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 #[test]
 async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // create parent frame
-    let even_parent_frame =
-        create_component_for_schema_name(ctx, "large even lego", "even parent").await;
+    let even_parent_frame = create_component_for_schema_name(ctx, "large even lego", "even parent")
+        .await
+        .expect("could not create component");
 
-    let _ = even_parent_frame
+    even_parent_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     // create child frame
-    let even_child_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "even child").await;
+    let even_child_frame = create_component_for_schema_name(ctx, "medium even lego", "even child")
+        .await
+        .expect("could not create component");
 
-    let _ = even_child_frame
+    even_child_frame
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
-        .await;
+        .await
+        .expect("could not set type");
     // insert child frame into parent frame
     Frame::upsert_parent(ctx, even_child_frame.id(), even_parent_frame.id())
         .await
         .expect("can upsert parent");
     // create component
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd").await;
-    let _ = odd_component.set_type(ctx, ComponentType::Component).await;
+    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd")
+        .await
+        .expect("could not create component");
+    odd_component
+        .set_type(ctx, ComponentType::Component)
+        .await
+        .expect("could not set type");
     // insert component into CHILD frame
     Frame::upsert_parent(ctx, odd_component.id(), even_child_frame.id())
         .await
@@ -1016,7 +1129,8 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         &["root", "domain", "five"],
         serde_json::json!["5"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1025,12 +1139,14 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // the output socket value is updated with 1
     let output_value = get_component_output_socket_value(ctx, even_parent_frame.id(), "five")
         .await
+        .expect("could not get output socket value")
         .expect("is some");
     assert_eq!(output_value, serde_json::json!("5"));
 
     // the component is updated with 5
     let input_value = get_component_input_socket_value(ctx, odd_component.id(), "five")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("5"));
 
@@ -1041,7 +1157,8 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["4"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1050,6 +1167,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     assert!(
         get_component_input_socket_value(ctx, odd_component.id(), "three")
             .await
+            .expect("could not get input socket value")
             .is_none()
     );
 
@@ -1060,7 +1178,8 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!["3"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1068,6 +1187,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // the component gets the update as the child frame is a closer match
     let input_value = get_component_input_socket_value(ctx, odd_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("3"));
 
@@ -1091,20 +1211,29 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // make sure the input socket for the component is updated
     let input_value = get_component_input_socket_value(ctx, odd_component.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("4"));
 }
 
 #[test]
 async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
-    let even_component = create_component_for_schema_name(ctx, "small even lego", "even").await;
+    let even_component = create_component_for_schema_name(ctx, "small even lego", "even")
+        .await
+        .expect("could not create component");
 
-    let _ = even_component.set_type(ctx, ComponentType::Component).await;
+    even_component
+        .set_type(ctx, ComponentType::Component)
+        .await
+        .expect("could not set type");
 
-    let odd_up_frame = create_component_for_schema_name(ctx, "large odd lego", "odd").await;
-    let _ = odd_up_frame
+    let odd_up_frame = create_component_for_schema_name(ctx, "large odd lego", "odd")
+        .await
+        .expect("could not create component");
+    odd_up_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(ctx, even_component.id(), odd_up_frame.id())
         .await
         .expect("could not upsert parent");
@@ -1115,7 +1244,8 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!["1"],
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1123,23 +1253,28 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     // the output socket value is updated with "1"
     let output_value = get_component_output_socket_value(ctx, even_component.id(), "one")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("1"));
 
     // make sure component output socket matches on the up frames input socket
     let input_value = get_component_input_socket_value(ctx, odd_up_frame.id(), "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
 
     assert_eq!(input_value, serde_json::json!("1"));
 
     //let's add another component to the frame, to drive the "3" input socket
     let another_even_component =
-        create_component_for_schema_name(ctx, "medium even lego", "another even").await;
+        create_component_for_schema_name(ctx, "medium even lego", "another even")
+            .await
+            .expect("could not create component");
 
-    let _ = another_even_component
+    another_even_component
         .set_type(ctx, ComponentType::Component)
-        .await;
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(ctx, another_even_component.id(), odd_up_frame.id())
         .await
         .expect("could not upsert parent");
@@ -1154,7 +1289,8 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         &["root", "domain", "three"],
         serde_json::json!("3"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1162,21 +1298,25 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     // the output socket value is updated with "3"
     let output_value = get_component_output_socket_value(ctx, another_even_component.id(), "three")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("3"));
     // make sure component output socket matches on the up frames input socket
     let input_value = get_component_input_socket_value(ctx, odd_up_frame.id(), "three")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("3"));
 
     //now let's drop that up frame into an even up frame, driving the even values
-    let even_up_frame =
-        create_component_for_schema_name(ctx, "large even lego", "another even").await;
+    let even_up_frame = create_component_for_schema_name(ctx, "large even lego", "another even")
+        .await
+        .expect("could not create component");
 
-    let _ = even_up_frame
+    even_up_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await;
+        .await
+        .expect("could not set type");
     Frame::upsert_parent(ctx, odd_up_frame.id(), even_up_frame.id())
         .await
         .expect("could not upsert parent frame");
@@ -1191,7 +1331,8 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!("2"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -1200,12 +1341,14 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     // the output socket value is updated with "2"
     let output_value = get_component_output_socket_value(ctx, odd_up_frame.id(), "two")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("2"));
 
     // even up frame input socket matches odd up frame output socket
     let input_value = get_component_input_socket_value(ctx, even_up_frame.id(), "two")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("2"));
 }
@@ -1214,12 +1357,17 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
 async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     // create two components to feed an up frame
     let first_component =
-        create_component_for_schema_name(ctx, "medium even lego", "first_component").await;
+        create_component_for_schema_name(ctx, "medium even lego", "first_component")
+            .await
+            .expect("could not create component");
 
     let second_component =
-        create_component_for_schema_name(ctx, "medium even lego", "second_component").await;
-    let first_up_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "first_frame").await;
+        create_component_for_schema_name(ctx, "medium even lego", "second_component")
+            .await
+            .expect("could not create component");
+    let first_up_frame = create_component_for_schema_name(ctx, "medium odd lego", "first_frame")
+        .await
+        .expect("could not create component");
     first_up_frame
         .set_type(ctx, ComponentType::ConfigurationFrameUp)
         .await
@@ -1243,23 +1391,27 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!("1"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     update_attribute_value_for_component(
         ctx,
         second_component_id,
         &["root", "domain", "one"],
         serde_json::json!("2"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // make sure output socket values are updated for components
     let first_output = get_component_output_socket_value(ctx, first_component_id, "one")
         .await
+        .expect("could not get output socket value")
         .expect("has some");
     let second_output = get_component_output_socket_value(ctx, second_component_id, "one")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(first_output, serde_json::json!("1"));
     assert_eq!(second_output, serde_json::json!("2"));
@@ -1267,15 +1419,21 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     //make sure input socket value is updated
     let input_value = get_component_input_socket_value(ctx, first_up_frame_id, "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!(["1", "2"]));
     // create two more components in another up frame
     let third_component =
-        create_component_for_schema_name(ctx, "medium even lego", "first_component").await;
+        create_component_for_schema_name(ctx, "medium even lego", "first_component")
+            .await
+            .expect("could not create component");
     let fourth_component =
-        create_component_for_schema_name(ctx, "medium even lego", "second_component").await;
-    let second_up_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "first_frame").await;
+        create_component_for_schema_name(ctx, "medium even lego", "second_component")
+            .await
+            .expect("could not create component");
+    let second_up_frame = create_component_for_schema_name(ctx, "medium odd lego", "first_frame")
+        .await
+        .expect("could not create component");
     //cache ids for later
     let third_component_id = third_component.id();
     let fourth_component_id = fourth_component.id();
@@ -1298,23 +1456,27 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
         &["root", "domain", "one"],
         serde_json::json!("3"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     update_attribute_value_for_component(
         ctx,
         fourth_component.id(),
         &["root", "domain", "one"],
         serde_json::json!("4"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // make sure output socket values are updated for components
     let third_output = get_component_output_socket_value(ctx, third_component_id, "one")
         .await
+        .expect("could not get output socket value")
         .expect("has some");
     let fourth_output = get_component_output_socket_value(ctx, fourth_component_id, "one")
         .await
+        .expect("could not get output socket value")
         .expect("has value");
     assert_eq!(third_output, serde_json::json!("3"));
     assert_eq!(fourth_output, serde_json::json!("4"));
@@ -1322,12 +1484,14 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     //make sure input socket value is updated
     let input_value = get_component_input_socket_value(ctx, second_up_frame_id, "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!(["3", "4"]));
     // both up frames feed the final up frame
 
-    let parent_up_frame =
-        create_component_for_schema_name(ctx, "small even lego", "parent_frame").await;
+    let parent_up_frame = create_component_for_schema_name(ctx, "small even lego", "parent_frame")
+        .await
+        .expect("could not create component");
     let parent_up_frame_id = parent_up_frame.id();
     Frame::upsert_parent(ctx, first_up_frame_id, parent_up_frame_id)
         .await
@@ -1342,6 +1506,7 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     assert_eq!(
         get_component_input_socket_value(ctx, parent_up_frame_id, "two")
             .await
+            .expect("could not get input socket value")
             .expect("value exists"),
         serde_json::json!([null, null])
     );
@@ -1352,12 +1517,14 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!("5"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     let input_value = get_component_input_socket_value(ctx, parent_up_frame_id, "two")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!(["5", null]));
     //set second frame's outptu socket value and make sure both are now flowing
@@ -1367,12 +1534,14 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
         &["root", "domain", "two"],
         serde_json::json!("6"),
     )
-    .await;
+    .await
+    .expect("could not update attribute value");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     let input_value = get_component_input_socket_value(ctx, parent_up_frame_id, "two")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!(["5", "6"]));
 
@@ -1393,11 +1562,13 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     // first frame should have two components
     let input_value = get_component_input_socket_value(ctx, first_up_frame_id, "one")
         .await
+        .expect("could not get input socket value")
         .expect("got value");
     assert_eq!(input_value, serde_json::json!(["2", "3"]));
     // second frame should have one component
     let input_value = get_component_input_socket_value(ctx, second_up_frame_id, "one")
         .await
+        .expect("could not get input socket value")
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("4"));
 }

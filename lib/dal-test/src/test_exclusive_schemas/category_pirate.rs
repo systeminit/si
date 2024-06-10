@@ -1,4 +1,3 @@
-use crate::schemas::schema_helpers::{build_asset_func, create_identity_func};
 use dal::pkg::import_pkg_from_pkg;
 use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
@@ -7,6 +6,10 @@ use si_pkg::{
     SchemaVariantSpecData, SiPkg,
 };
 use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
+
+use crate::test_exclusive_schemas::{
+    build_asset_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+};
 
 const CATEGORY: &str = "pirate";
 
@@ -17,14 +20,14 @@ pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> Bu
 
     builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldPirateAsset";
-    let authoring_schema_func = build_asset_func(fn_name).await?;
+    let authoring_schema_func = build_asset_func(fn_name)?;
 
     let schema = SchemaSpec::builder()
         .name(schema_name)
@@ -33,8 +36,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> Bu
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -45,8 +47,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> Bu
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()
@@ -138,14 +139,14 @@ pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> 
 
     builder
         .name(schema_name)
-        .version(crate::schemas::PKG_VERSION)
-        .created_by(crate::schemas::PKG_CREATED_BY);
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
 
     let identity_func_spec = create_identity_func()?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldPetShopAsset";
-    let authoring_schema_func = build_asset_func(fn_name).await?;
+    let authoring_schema_func = build_asset_func(fn_name)?;
 
     let schema = SchemaSpec::builder()
         .name(schema_name)
@@ -154,8 +155,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> 
                 .name(schema_name)
                 .category("test exclusive")
                 .category_name(CATEGORY)
-                .build()
-                .expect("schema spec data build"),
+                .build()?,
         )
         .variant(
             SchemaVariantSpec::builder()
@@ -166,8 +166,7 @@ pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> 
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
-                        .build()
-                        .expect("build variant spec data"),
+                        .build()?,
                 )
                 .domain_prop(
                     PropSpec::builder()

@@ -22,7 +22,9 @@ async fn export_import_loop(ctx: &mut DalContext) {
 
     // Create Component With Value
     let original_pirate_name = "Cap'n Crunch ";
-    create_component_for_schema_name(ctx, "pirate", original_pirate_name).await;
+    create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+        .await
+        .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("commit and update snapshot to visibility");
@@ -99,7 +101,9 @@ async fn export_import_loop(ctx: &mut DalContext) {
         original_pirate_name, // expected
         PropEditorTestView::for_component_id(ctx, component.id) //actual
             .await
+            .expect("could not get property editor test view")
             .get_value(name_path)
+            .expect("could not get value")
             .get("value")
             .expect("get value for domain/name")
     );
