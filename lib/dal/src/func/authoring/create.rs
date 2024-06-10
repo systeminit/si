@@ -277,7 +277,7 @@ async fn create_func_stub(
     handler: &str,
 ) -> FuncAuthoringResult<Func> {
     let name = name.unwrap_or(generate_name());
-    if Func::find_by_name(ctx, &name).await?.is_some() {
+    if Func::find_id_by_name(ctx, &name).await?.is_some() {
         return Err(FuncAuthoringError::FuncNameExists(name));
     }
 

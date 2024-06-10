@@ -17,7 +17,7 @@ async fn find_for_prop(ctx: &mut DalContext) {
     let func_name = "test:generateCode";
 
     // Find the sole attribute prototype via its func. Ensure that we find one and only one.
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find by name")
         .expect("func not found");

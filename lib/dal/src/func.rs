@@ -313,7 +313,7 @@ impl Func {
         Ok(Self::assemble(func_node_weight, &inner))
     }
 
-    pub async fn find_by_name(
+    pub async fn find_id_by_name(
         ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> FuncResult<Option<FuncId>> {
@@ -514,7 +514,7 @@ impl Func {
 
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
-        Self::find_by_name(ctx, name)
+        Self::find_id_by_name(ctx, name)
             .await?
             .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }

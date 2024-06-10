@@ -24,7 +24,7 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
     let total_funcs = funcs.len();
 
     // Attach one action func to the schema variant and commit.
-    let func_id = Func::find_by_name(ctx, "test:createActionFallout")
+    let func_id = Func::find_id_by_name(ctx, "test:createActionFallout")
         .await
         .expect("unable to find the func")
         .expect("no func found");
@@ -59,7 +59,7 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Attach a second action func to the same schema variant and commit.
-    let func_id = Func::find_by_name(ctx, "test:deleteActionSwifty")
+    let func_id = Func::find_id_by_name(ctx, "test:deleteActionSwifty")
         .await
         .expect("unable to find the func")
         .expect("no func found");
@@ -112,7 +112,7 @@ async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
         .await
         .expect("unable to get default schema variant");
-    let func_id = Func::find_by_name(ctx, "test:createActionFallout")
+    let func_id = Func::find_id_by_name(ctx, "test:createActionFallout")
         .await
         .expect("unable to find the func");
     assert!(func_id.is_some());
@@ -127,7 +127,7 @@ async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
     .await
     .expect("could not create func");
 
-    let func_id = Func::find_by_name(ctx, new_action_func_name)
+    let func_id = Func::find_id_by_name(ctx, new_action_func_name)
         .await
         .expect("unable to find the func")
         .expect("no func found");
@@ -176,7 +176,7 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
     let total_funcs = funcs.len();
 
     // Attach one auth func to the schema variant and commit.
-    let func_id = Func::find_by_name(ctx, "test:setDummySecretString")
+    let func_id = Func::find_id_by_name(ctx, "test:setDummySecretString")
         .await
         .expect("unable to find the func")
         .expect("no func found");
@@ -222,7 +222,7 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Attach a second auth func (the new one) to the same schema variant and commit.
-    let func_id = Func::find_by_name(ctx, new_auth_func_name)
+    let func_id = Func::find_id_by_name(ctx, new_auth_func_name)
         .await
         .expect("unable to find the func")
         .expect("no func found");

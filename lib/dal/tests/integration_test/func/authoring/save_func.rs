@@ -33,7 +33,7 @@ async fn qualification(ctx: &mut DalContext) {
 // Sets up the tests within the module. Find the func to be saved by name and then save it
 // immediately when found. This is the basic "does it work in place" check.
 async fn save_func_setup(ctx: &mut DalContext, func_name: impl AsRef<str>) -> (FuncId, FuncView) {
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");

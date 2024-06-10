@@ -7,7 +7,7 @@ use dal_test::test;
 #[test]
 async fn save_and_exec_action_func(ctx: &mut DalContext) {
     let func_name = "test:createActionStarfield";
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
@@ -42,7 +42,7 @@ async fn save_and_exec_action_func(ctx: &mut DalContext) {
 #[test]
 async fn save_and_exec_attribute_func(ctx: &mut DalContext) {
     let func_name = "test:falloutEntriesToGalaxies";
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");

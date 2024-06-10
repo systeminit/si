@@ -13,6 +13,7 @@ use serde_json::Value;
 
 mod bench;
 mod with_actions;
+mod with_schema_variant_authoring;
 
 #[test]
 async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {

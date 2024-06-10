@@ -940,7 +940,7 @@ impl PkgExporter {
             let intrinsic_name = intrinsic.name();
             // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
             // mapping one prop to another via si:identity)
-            let intrinsic_func_id = Func::find_by_name(ctx, intrinsic_name)
+            let intrinsic_func_id = Func::find_id_by_name(ctx, intrinsic_name)
                 .await?
                 .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
@@ -1021,7 +1021,7 @@ impl PkgExporter {
     async fn export_intrinsics(&mut self, ctx: &DalContext) -> PkgResult<Vec<FuncSpec>> {
         let mut funcs = vec![];
         for instrinsic in IntrinsicFunc::iter() {
-            let intrinsic_func_id = Func::find_by_name(ctx, instrinsic.name()).await?.ok_or(
+            let intrinsic_func_id = Func::find_id_by_name(ctx, instrinsic.name()).await?.ok_or(
                 PkgError::MissingIntrinsicFunc(instrinsic.name().to_string()),
             )?;
 

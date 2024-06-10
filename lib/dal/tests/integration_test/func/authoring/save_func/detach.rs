@@ -23,7 +23,7 @@ async fn detach_attribute_func(ctx: &mut DalContext) {
     let total_funcs = funcs.len();
 
     // Detach one action func to the schema variant and commit.
-    let func_id = Func::find_by_name(ctx, "test:falloutEntriesToGalaxies")
+    let func_id = Func::find_id_by_name(ctx, "test:falloutEntriesToGalaxies")
         .await
         .expect("unable to find the func")
         .expect("no func found");

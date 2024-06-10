@@ -7,7 +7,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn modify(ctx: &mut DalContext) {
-    let func_id = Func::find_by_name(ctx, "test:falloutEntriesToGalaxies")
+    let func_id = Func::find_id_by_name(ctx, "test:falloutEntriesToGalaxies")
         .await
         .expect("could not perform find by name")
         .expect("no func found");
@@ -43,7 +43,7 @@ async fn modify(ctx: &mut DalContext) {
 
 #[test]
 async fn list_attribute_prototype_argument_ids(ctx: &DalContext) {
-    let func_id = Func::find_by_name(ctx, "test:falloutEntriesToGalaxies")
+    let func_id = Func::find_id_by_name(ctx, "test:falloutEntriesToGalaxies")
         .await
         .expect("could not perform find by name")
         .expect("no func found");
