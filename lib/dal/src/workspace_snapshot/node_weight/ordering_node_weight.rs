@@ -1,10 +1,9 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::NodeWeightError;
 use crate::change_set::ChangeSet;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 use crate::EdgeWeightKindDiscriminants;
 
@@ -34,49 +33,8 @@ impl OrderingNodeWeight {
         self.id
     }
 
-    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_first_seen
-            .inc(change_set.vector_clock_id())?;
-
-        Ok(())
-    }
-
-    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .inc(change_set.vector_clock_id())
-            .map_err(Into::into)
-    }
-
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
-    }
-
-    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
-        self.vector_clock_recently_seen
-            .inc_to(vector_clock_id, seen_at);
-        if self
-            .vector_clock_first_seen
-            .entry_for(vector_clock_id)
-            .is_none()
-        {
-            self.vector_clock_first_seen
-                .inc_to(vector_clock_id, seen_at);
-        }
-    }
-
-    pub fn merge_clocks(
-        &mut self,
-        change_set: &ChangeSet,
-        other: &OrderingNodeWeight,
-    ) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .merge(change_set.vector_clock_id(), other.vector_clock_write())?;
-        self.vector_clock_first_seen.merge(
-            change_set.vector_clock_id(),
-            other.vector_clock_first_seen(),
-        )?;
-
-        Ok(())
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
@@ -87,20 +45,10 @@ impl OrderingNodeWeight {
         Ok(Self {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
             ..Default::default()
         })
-    }
-
-    pub fn new_with_incremented_vector_clock(
-        &self,
-        change_set: &ChangeSet,
-    ) -> NodeWeightResult<Self> {
-        let mut new_ordering_weight = self.clone();
-        new_ordering_weight.increment_vector_clock(change_set)?;
-
-        Ok(new_ordering_weight)
     }
 
     pub fn node_hash(&self) -> ContentHash {
@@ -115,21 +63,16 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
+    pub fn set_order(
+        &mut self,
+        vector_clock_id: VectorClockId,
+        order: Vec<Ulid>,
+    ) -> NodeWeightResult<()> {
         self.order = order;
         self.update_content_hash();
-        self.increment_vector_clock(change_set)?;
+        self.increment_vector_clocks(vector_clock_id);
 
         Ok(())
-    }
-
-    pub fn set_vector_clock_recently_seen_to(
-        &mut self,
-        change_set: &ChangeSet,
-        new_val: DateTime<Utc>,
-    ) {
-        self.vector_clock_recently_seen
-            .inc_to(change_set.vector_clock_id(), new_val);
     }
 
     fn update_content_hash(&mut self) {
@@ -146,45 +89,25 @@ impl OrderingNodeWeight {
         self.content_hash = content_hasher.finalize();
     }
 
-    pub fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    pub fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    pub fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    pub fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-
-    pub fn push_to_order(&mut self, change_set: &ChangeSet, id: Ulid) -> NodeWeightResult<()> {
+    pub fn push_to_order(
+        &mut self,
+        vector_clock_id: VectorClockId,
+        id: Ulid,
+    ) -> NodeWeightResult<()> {
         let mut order = self.order().to_owned();
         order.push(id);
-        self.set_order(change_set, order)
+        self.set_order(vector_clock_id, order)
     }
 
     pub fn remove_from_order(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
     ) -> NodeWeightResult<bool> {
         let mut order = self.order.to_owned();
         order.retain(|&item_id| item_id != id);
         if order.len() != self.order().len() {
-            self.set_order(change_set, order)?;
+            self.set_order(vector_clock_id, order)?;
             Ok(true)
         } else {
             Ok(false)
@@ -205,6 +128,32 @@ impl OrderingNodeWeight {
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
+    }
+}
+
+impl HasVectorClocks for OrderingNodeWeight {
+    fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
+
+    fn vector_clock_recently_seen(&self) -> &VectorClock {
+        &self.vector_clock_recently_seen
+    }
+
+    fn vector_clock_write(&self) -> &VectorClock {
+        &self.vector_clock_write
+    }
+
+    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_first_seen
+    }
+
+    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_recently_seen
+    }
+
+    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_write
     }
 }
 

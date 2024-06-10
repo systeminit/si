@@ -1,8 +1,7 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockId};
+use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClock};
 use crate::{ChangeSet, EdgeWeightKindDiscriminants};
 
 use super::NodeWeightResult;
@@ -12,11 +11,7 @@ pub struct DependentValueRootNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
     value_id: Ulid,
-    // how many times has this been re-enqueued before being processed. u16 is
-    // maybe small (65536 touches), although if that many snapshots are produced
-    // before a dependent value update processes this root, something has gone
-    // wrong.
-    pub touch_count: u16,
+    pub touch_count: u16, // unused
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
@@ -40,45 +35,17 @@ impl DependentValueRootNodeWeight {
         self.value_id
     }
 
-    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_first_seen
-            .inc(change_set.vector_clock_id())?;
-
-        Ok(())
-    }
-
-    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .inc(change_set.vector_clock_id())
-            .map_err(Into::into)
-    }
-
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
     }
 
-    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
-        self.vector_clock_recently_seen
-            .inc_to(vector_clock_id, seen_at);
-        if self
-            .vector_clock_first_seen
-            .entry_for(vector_clock_id)
-            .is_none()
-        {
-            self.vector_clock_first_seen
-                .inc_to(vector_clock_id, seen_at);
-        }
-    }
-
-    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) -> NodeWeightResult<()> {
+    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) {
         self.vector_clock_write
-            .merge(change_set.vector_clock_id(), other.vector_clock_write())?;
+            .merge(change_set.vector_clock_id(), other.vector_clock_write());
         self.vector_clock_first_seen.merge(
             change_set.vector_clock_id(),
             other.vector_clock_first_seen(),
-        )?;
-
-        Ok(())
+        );
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
@@ -91,28 +58,11 @@ impl DependentValueRootNodeWeight {
             lineage_id: change_set.generate_ulid()?,
             value_id,
             touch_count: 0,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
             merkle_tree_hash: Default::default(),
             vector_clock_recently_seen: Default::default(),
         })
-    }
-
-    pub fn touch(self, change_set: &ChangeSet) -> NodeWeightResult<Self> {
-        let mut new = self.new_with_incremented_vector_clock(change_set)?;
-        new.touch_count += 1;
-
-        Ok(new)
-    }
-
-    pub fn new_with_incremented_vector_clock(
-        &self,
-        change_set: &ChangeSet,
-    ) -> NodeWeightResult<Self> {
-        let mut new_node_weight = self.clone();
-        new_node_weight.increment_vector_clock(change_set)?;
-
-        Ok(new_node_weight)
     }
 
     pub fn node_hash(&self) -> ContentHash {
@@ -126,41 +76,34 @@ impl DependentValueRootNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_vector_clock_recently_seen_to(
-        &mut self,
-        change_set: &ChangeSet,
-        new_val: DateTime<Utc>,
-    ) {
-        self.vector_clock_recently_seen
-            .inc_to(change_set.vector_clock_id(), new_val);
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
+}
 
-    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+impl HasVectorClocks for DependentValueRootNodeWeight {
+    fn vector_clock_first_seen(&self) -> &VectorClock {
         &self.vector_clock_first_seen
     }
 
-    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+    fn vector_clock_recently_seen(&self) -> &VectorClock {
         &self.vector_clock_recently_seen
     }
 
-    pub fn vector_clock_write(&self) -> &VectorClock {
+    fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
     }
 
-    pub fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
+    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_first_seen
     }
 
-    pub fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
+    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_recently_seen
     }
 
-    pub fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
+    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
     }
 }
 

@@ -43,6 +43,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::SocketArity;
 
@@ -1859,8 +1860,8 @@ impl Component {
                 .get_node_weight(component_idx)
                 .await?
                 .get_component_node_weight()?;
-            let mut new_component_node_weight =
-                component_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+            let mut new_component_node_weight = component_node_weight
+                .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))

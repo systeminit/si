@@ -6,6 +6,7 @@ use dal::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         node_weight::{NodeWeight, NodeWeightDiscriminants},
+        vector_clock::HasVectorClocks,
     },
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph,
 };

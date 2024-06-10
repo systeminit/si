@@ -18,8 +18,11 @@ use crate::{
     func::FuncExecutionPk,
     id, implement_add_edge_to,
     job::definition::ActionJob,
-    workspace_snapshot::node_weight::{
-        category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
+    workspace_snapshot::{
+        node_weight::{
+            category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
+        },
+        vector_clock::HasVectorClocks,
     },
     AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
@@ -314,7 +317,7 @@ impl Action {
             .await?
             .get_action_node_weight()?;
         let mut new_node_weight =
-            node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+            node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
         new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
             .add_node(NodeWeight::Action(new_node_weight))

@@ -61,6 +61,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
@@ -647,7 +648,8 @@ impl Secret {
 
             workspace_snapshot
                 .add_node(NodeWeight::Secret(
-                    secret_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
+                    secret_node_weight
+                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
                 ))
                 .await?;
 

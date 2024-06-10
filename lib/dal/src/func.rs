@@ -19,6 +19,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, pk, ChangeSetId, DalContext, HelperError, Timestamp,
@@ -440,7 +441,8 @@ impl Func {
 
             workspace_snapshot
                 .add_node(NodeWeight::Func(
-                    node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
+                    node_weight
+                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
                 ))
                 .await?;
 

@@ -1,16 +1,15 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     change_set::ChangeSet,
     workspace_snapshot::{
-        graph::LineageId, node_weight::NodeWeightResult, vector_clock::VectorClock,
+        graph::LineageId,
+        node_weight::NodeWeightResult,
+        vector_clock::{HasVectorClocks, VectorClock},
     },
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
-
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
@@ -43,9 +42,9 @@ impl AttributePrototypeArgumentNodeWeight {
             lineage_id: change_set.generate_ulid()?,
             merkle_tree_hash: MerkleTreeHash::default(),
             targets,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
             timestamp: Timestamp::now(),
         })
     }
@@ -80,42 +79,8 @@ impl AttributePrototypeArgumentNodeWeight {
         self.id
     }
 
-    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_write.inc(change_set.vector_clock_id())?;
-        self.vector_clock_recently_seen
-            .inc(change_set.vector_clock_id())?;
-
-        Ok(())
-    }
-
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
-    }
-
-    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
-        self.vector_clock_recently_seen
-            .inc_to(vector_clock_id, seen_at);
-        if self
-            .vector_clock_first_seen
-            .entry_for(vector_clock_id)
-            .is_none()
-        {
-            self.vector_clock_first_seen
-                .inc_to(vector_clock_id, seen_at);
-        }
-    }
-
-    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .merge(change_set.vector_clock_id(), &other.vector_clock_write)?;
-        self.vector_clock_first_seen
-            .merge(change_set.vector_clock_id(), &other.vector_clock_first_seen)?;
-        self.vector_clock_recently_seen.merge(
-            change_set.vector_clock_id(),
-            &other.vector_clock_recently_seen,
-        )?;
-
-        Ok(())
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
@@ -126,51 +91,8 @@ impl AttributePrototypeArgumentNodeWeight {
         self.targets
     }
 
-    pub fn new_with_incremented_vector_clock(
-        &self,
-        change_set: &ChangeSet,
-    ) -> NodeWeightResult<Self> {
-        let mut new_node_weight = self.clone();
-        new_node_weight.increment_vector_clock(change_set)?;
-
-        Ok(new_node_weight)
-    }
-
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         self.merkle_tree_hash = new_hash;
-    }
-
-    pub fn set_vector_clock_recently_seen_to(
-        &mut self,
-        change_set: &ChangeSet,
-        new_val: DateTime<Utc>,
-    ) {
-        self.vector_clock_recently_seen
-            .inc_to(change_set.vector_clock_id(), new_val);
-    }
-
-    pub fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    pub fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    pub fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    pub fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
@@ -178,6 +100,32 @@ impl AttributePrototypeArgumentNodeWeight {
             EdgeWeightKindDiscriminants::Use,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         ]
+    }
+}
+
+impl HasVectorClocks for AttributePrototypeArgumentNodeWeight {
+    fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
+
+    fn vector_clock_recently_seen(&self) -> &VectorClock {
+        &self.vector_clock_recently_seen
+    }
+
+    fn vector_clock_write(&self) -> &VectorClock {
+        &self.vector_clock_write
+    }
+
+    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_first_seen
+    }
+
+    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_recently_seen
+    }
+
+    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_write
     }
 }
 
