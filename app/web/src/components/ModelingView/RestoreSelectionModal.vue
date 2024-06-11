@@ -32,6 +32,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 
 const componentsStore = useComponentsStore();
 const selectedEdge = computed(() => componentsStore.selectedEdge);
@@ -78,9 +79,11 @@ function open() {
 
 async function onConfirmRestore() {
   if (componentsStore.selectedComponentIds) {
-    await componentsStore.RESTORE_COMPONENTS(
-      componentsStore.selectedComponentIds,
-    );
+    const data = {} as Record<ComponentId, boolean>;
+    componentsStore.selectedComponentIds.forEach((cId) => {
+      data[cId] = !!componentsStore.componentsById[cId]?.fromBaseChangeSet;
+    });
+    await componentsStore.RESTORE_COMPONENTS(data);
   }
   componentsStore.setSelectedComponentId(null);
   close();
