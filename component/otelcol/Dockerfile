@@ -1,6 +1,6 @@
 ARG BASE_VERSION
 
-FROM otel/opentelemetry-collector:$BASE_VERSION AS otelcol
+FROM otel/opentelemetry-collector-contrib:$BASE_VERSION AS otelcol
 
 ENV SI_OTEL_COL__CONFIG_PATH=/etc/otelcol/config.yaml
 ENV SI_OTEL_COL__HONEYCOMB_API_KEY=""
@@ -9,7 +9,7 @@ ENV SI_OTEL_COL__HONEYCOMB_API_KEY=""
 # `docker exec` into a running instance for debugging
 FROM alpine:3 AS final
 WORKDIR /app
-COPY --from=otelcol /otelcol /bin/otelcol
+COPY --from=otelcol /otelcol-contrib /bin/otelcol
 COPY ./*config.yaml /etc/otelcol/
 COPY ./docker-entrypoint.sh /app/docker-entrypoint.sh
 

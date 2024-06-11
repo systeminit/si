@@ -19,6 +19,7 @@ import {
   useFuncStore,
 } from "./func/funcs.store";
 import { useRouterStore } from "./router.store";
+import handleStoreError from "./errors";
 
 export type AssetId = string;
 
@@ -471,7 +472,10 @@ export const useAssetStore = () => {
             },
           },
         ]);
+
+        const actionUnsub = this.$onAction(handleStoreError);
         return () => {
+          actionUnsub();
           realtimeStore.unsubscribe(this.$id);
         };
       },

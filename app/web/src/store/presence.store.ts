@@ -7,6 +7,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { UserId, useAuthStore } from "@/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import handleStoreError from "./errors";
 
 const MOUSE_REFRESH_RATE = 5;
 export const ONLINE_PING_RATE = 5000; // 5 seconds
@@ -232,7 +233,10 @@ export const usePresenceStore = () => {
         window.addEventListener("mousemove", this.updateLastSeen);
         window.addEventListener("keydown", this.updateLastSeen);
 
+        const actionUnsub = this.$onAction(handleStoreError);
+
         return () => {
+          actionUnsub();
           realtimeStore.unsubscribe(`${this.$id}-changeset`);
           realtimeStore.unsubscribe(`${this.$id}-workspace`);
           clearInterval(interval);

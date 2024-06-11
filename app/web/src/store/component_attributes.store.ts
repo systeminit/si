@@ -16,6 +16,7 @@ import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
+import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { APIComponentGeometry, useComponentsStore } from "./components.store";
@@ -447,7 +448,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             },
           ]);
 
+          const actionUnsub = this.$onAction(handleStoreError);
+
           return () => {
+            actionUnsub();
             realtimeStore.unsubscribe(this.$id);
           };
         },

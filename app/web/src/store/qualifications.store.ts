@@ -7,6 +7,7 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useComponentsStore } from "./components.store";
+import handleStoreError from "./errors";
 
 export type QualificationStatus = "success" | "failure" | "running" | "warning";
 
@@ -194,7 +195,10 @@ export const useQualificationsStore = () => {
             },
           ]);
 
+          const actionUnsub = this.$onAction(handleStoreError);
+
           return () => {
+            actionUnsub();
             realtimeStore.unsubscribe(this.$id);
           };
         },

@@ -8,6 +8,7 @@ import { ModuleId } from "@/store/module.store";
 import router from "@/router";
 import { useAuthStore, UserId } from "./auth.store";
 import { useRouterStore } from "./router.store";
+import handleStoreError from "./errors";
 import { AuthApiRequest } from ".";
 
 export type WorkspacePk = string;
@@ -255,6 +256,8 @@ export const useWorkspacesStore = () => {
           },
           { immediate: true },
         );
+
+        this.$onAction(handleStoreError);
 
         // NOTE - don't need to clean up here, since there is only one workspace
         // store, and it will always be loaded

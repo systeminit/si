@@ -11,6 +11,7 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";
+import handleStoreError from "./errors";
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -155,6 +156,12 @@ export const useFuncRunsStore = () => {
             },
           });
         },
+      },
+      onActivated() {
+        const actionUnsub = this.$onAction(handleStoreError);
+        return () => {
+          actionUnsub();
+        };
       },
     }),
   )();

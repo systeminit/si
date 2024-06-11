@@ -13,6 +13,7 @@ import UpdatingModel from "../components/toasts/UpdatingModel.vue";
 import ConflictToast from "../components/toasts/Conflict.vue";
 
 import { useComponentsStore } from "./components.store";
+import handleStoreError from "./errors";
 
 const GLOBAL_STATUS_TOAST_TIMEOUT = 1000;
 const GLOBAL_STATUS_TOAST_DEBOUNCE = 300;
@@ -398,7 +399,10 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             },
           );
 
+          const actionUnsub = this.$onAction(handleStoreError);
+
           return () => {
+            actionUnsub();
             clearTimeout(cleanupTimeout);
             realtimeStore.unsubscribe(this.$id);
           };
