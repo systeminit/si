@@ -1,5 +1,10 @@
 #!/bin/bash
 
+export SI_SERVICE=veritech
+export SI_HOSTENV={}
+export SI_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-$SI_SERVICE")
+export INIT_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-init")
+
 # Detects all ssd devices present on the machine,
 function detect_devices {
   local block_devices=$(ls /dev | grep nvme[1-9]*n[0-9]*$)
@@ -38,12 +43,6 @@ function create_md_array {
   echo $((30*1024)) > /proc/sys/dev/raid/speed_limit_min
 }
 
-POOL_SIZE=${1:-500}
-NATS=${2:-tls://connect.ngs.global}
-VERITECH_ENCRYPTION_KEY_SECRET=${3:-tools-encryption-key}
-NATS_CREDS_SECRET=${4:-tools-prod-nats-creds}
-HONEYCOMB_API_SECRET=${5:-tools-honeycomb-api-key}
-
 # create raid array from local volumes for veritech
 VOLUME="/dev/md0"
 create_md_array
@@ -51,79 +50,42 @@ mkfs -t xfs -f $VOLUME
 mkdir -p /srv/jailer
 mount $VOLUME /srv/jailer
 
-# install latest app
-wget https://artifacts.systeminit.com/veritech/stable/omnibus/linux/$(arch)/veritech-stable-omnibus-linux-$(arch).tar.gz -O - | tar -xzvf - -C /
-
-# add vector repo
-wget https://repositories.timber.io/public/vector/gpg.3543DB2D0A2BC4B8.key -O - | sudo apt-key add -
-cat <<EOF | sudo tee /etc/apt/sources.list.d/timber-vector.list
-deb https://repositories.timber.io/public/vector/deb/ubuntu focal main
-deb-src https://repositories.timber.io/public/vector/deb/ubuntu focal main
-EOF
-
-# install deps
-sudo apt update
-sudo DEBIAN_FRONTEND=noninteractive apt install unzip jq vector -y
-
-# Awkward install of the aws cli
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-
-# configure vector
-cat <<EOF > /etc/vector/vector.yaml
-sources:
-  veritech-journal:
-    type: "journald"
-    include_units: ["veritech"]
-
-sinks:
-  cloudwatch:
-    type: "aws_cloudwatch_logs"
-    inputs: ["veritech-journal"]
-    compression: "gzip"
-    encoding:
-      codec: "json"
-    region: "us-east-1"
-    group_name: "/ec2/tools-veritech"
-    stream_name: "{{ host }}"
-EOF
-systemctl restart vector
-
-# create a volume for our friend the decryption key
-KEY_VOLUME=/firecracker-data/decrypt_key.ext4
-KEY_MOUNT=/firecracker-data/key
+# create a volume for our friend the scripts dir
+KEY_VOLUME=/firecracker-data/scripts
+KEY_MOUNT=/firecracker-data/mnt
 mkdir -p $KEY_MOUNT
 dd if=/dev/zero of="$KEY_VOLUME" bs=1M count=1
 mkfs.ext4 -v $KEY_VOLUME
-e2label $KEY_VOLUME dkey
+e2label $KEY_VOLUME scripts
 mount $KEY_VOLUME $KEY_MOUNT
-aws secretsmanager get-secret-value --region us-east-1 --secret-id $VERITECH_ENCRYPTION_KEY_SECRET | jq -r '.SecretString' > $KEY_MOUNT/decryption.key
-chmod 777 $KEY_MOUNT/decryption.key
+aws secretsmanager get-secret-value --region us-east-1 --secret-id ${SI_HOSTENV}-veritech-scripts | jq -r '.SecretString' > $KEY_MOUNT/scripts
 umount $KEY_VOLUME
 
-# get nats creds
-aws secretsmanager get-secret-value --region us-east-1 --secret-id $NATS_CREDS_SECRET | jq -r '.SecretString' >> /tmp/nats-creds
+# get build metadata
+METADATA=$(curl -Ls https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/x86_64/${SI_SERVICE}-${SI_VERSION}-omnibus-linux-x86_64.tar.gz.metadata.json)
 
-# Install + run docker with otel on 4317 on the host interface
-curl -fsSL get.docker.com | bash
+BRANCH=$(echo $METADATA | jq -r '.branch // empty')
+COMMIT=$(echo $METADATA | jq -r '.commit')
+VERSION=$(echo $METADATA | jq -r '.version')
 
-docker run \
- --restart always \
- --env SI_OTEL_COL__CONFIG_PATH=/etc/otelcol/honeycomb-config.yaml \
- --env SI_OTEL_COL__HONEYCOMB_API_KEY=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id $HONEYCOMB_API_SECRET | jq -r '.SecretString') \
- -p 4317:4317 \
- -d systeminit/otelcol:stable
+# install build
+wget https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/$(arch)/$SI_SERVICE-${SI_VERSION}-omnibus-linux-$(arch).tar.gz -O - | tar -xzvf - -C /
 
-# create and start systemd service
-cat << EOF > /etc/systemd/system/veritech.service
+# prep system
+mkdir -p /run/app
+wget https://raw.githubusercontent.com/systeminit/si/${BRANCH:-main}/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
+
+docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
+
+cat << EOF > /etc/systemd/system/$SI_SERVICE.service
 
 [Unit]
-Description=Veritech Server
+Description=$SI_SERVICE
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/veritech --cyclone-local-firecracker --cyclone-pool-size $POOL_SIZE --nats-url $NATS --nats-creds-path /tmp/nats-creds --cyclone-connect-timeout 100
+ExecStart=/usr/local/bin/$SI_SERVICE
+
 Type=exec
 Restart=always
 
@@ -132,4 +94,11 @@ WantedBy=default.target
 RequiredBy=network.target
 EOF
 
-systemctl enable --now veritech
+systemctl enable --now $SI_SERVICE
+
+# marker in honeycomb
+HONEYCOMB_API_KEY=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id ${SI_HOSTENV}-honeycomb-api-key | jq -r '.SecretString')
+
+curl https://api.honeycomb.io/1/markers/$SI_SERVICE -X POST \
+    -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" \
+    -d '{"message":" '"$SI_SERVICE replica deployed! Commit: $COMMIT Version: $VERSION"' ", "type":"deploy"}'
