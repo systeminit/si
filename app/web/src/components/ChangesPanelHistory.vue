@@ -8,17 +8,17 @@
     <ActionsList
       v-for="[detail, actions] in actionsStore.historyActionsGrouped"
       :key="detail.changeSetId"
-      :changeSet="getChangeSet(detail)"
       :actions="actions"
-      kind="history"
+      :changeSet="getChangeSet(detail)"
       :clickAction="clickAction"
       :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
+      kind="history"
       @history="openHistory"
     />
     <FuncRunTabGroup
-      :selectedAction="selectedAction"
-      :funcRun="funcRun"
       :close="deselectAction"
+      :funcRun="funcRun"
+      :selectedAction="selectedAction"
       :selectedTab="selectedTab"
     />
   </ScrollArea>
@@ -31,17 +31,16 @@
 </template>
 
 <script lang="ts" setup>
-import * as _ from "lodash-es";
 import { ScrollArea } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import {
   ActionHistoryView,
   ActionProposedView,
-  useActionsStore,
   ChangeSetDetail,
+  useActionsStore,
 } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFuncRunsStore, FuncRun, FuncRunId } from "@/store/func_runs.store";
+import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import EmptyStateCard from "./EmptyStateCard.vue";
 import ActionsList from "./Actions/ActionsList.vue";
@@ -60,10 +59,9 @@ const selectedTab = ref<string | undefined>();
 
 const selectedAction = computed(() => {
   if (selectedFuncRunId.value) {
-    const action = actionsStore.historyActionsByFuncRunId.get(
+    return actionsStore.historyActionsByFuncRunId.get(
       selectedFuncRunId.value,
     ) as ActionHistoryView;
-    return action;
   } else {
     return undefined;
   }

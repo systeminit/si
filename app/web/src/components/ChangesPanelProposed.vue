@@ -3,22 +3,22 @@
     <!-- TODO(Wendy)- SEARCH BAR SHOULD GO HERE -->
     <div class="flex flex-row place-content-center">
       <VButton
-        class="flex-1 m-xs dark:hover:bg-action-900 hover:bg-action-100 dark:hover:text-action-300 hover:text-action-700 hover:underline"
-        label="Put On Hold"
         :disabled="disabledMultiple"
+        class="flex-1 m-xs dark:hover:bg-action-900 hover:bg-action-100 dark:hover:text-action-300 hover:text-action-700 hover:underline"
         icon="circle-stop"
         iconClass="text-warning-400"
+        label="Put On Hold"
         size="xs"
         tone="empty"
         variant="solid"
         @click="holdAll"
       />
       <VButton
-        class="flex-1 m-xs dark:hover:bg-action-900 hover:bg-action-100 dark:hover:text-action-300 hover:text-action-700 hover:underline"
-        label="Remove"
         :disabled="disabledMultiple"
+        class="flex-1 m-xs dark:hover:bg-action-900 hover:bg-action-100 dark:hover:text-action-300 hover:text-action-700 hover:underline"
         icon="x"
         iconClass="dark:text-destructive-600 text-destructive-500"
+        label="Remove"
         size="xs"
         tone="empty"
         variant="solid"
@@ -27,9 +27,16 @@
     </div>
     <ConfirmHoldModal ref="confirmRef" :ok="finishHold" />
     <ActionsList
-      kind="proposed"
       :clickAction="clickAction"
       :selectedActionIds="selectedActionIds"
+      kind="proposed"
+    />
+
+    <FuncRunTabGroup
+      :close="deselectAction"
+      :funcRun="funcRun"
+      :selectedAction="singleSelectedAction"
+      :selectedTab="selectedTab"
     />
   </div>
   <EmptyStateCard
@@ -49,16 +56,26 @@ import {
   ActionProposedView,
   ActionId,
   ActionView,
+  ActionState,
 } from "@/store/actions.store";
+import FuncRunTabGroup from "@/components/Actions/FuncRunTabGroup.vue";
+import { FuncRun, useFuncRunsStore } from "@/store/func_runs.store";
 import ConfirmHoldModal from "./Actions/ConfirmHoldModal.vue";
 import ActionsList from "./Actions/ActionsList.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
 
 const actionsStore = useActionsStore();
+const funcRunsStore = useFuncRunsStore();
 
 const confirmRef = ref<InstanceType<typeof ConfirmHoldModal> | null>(null);
 
 const selectedActions: Map<ActionId, ActionProposedView> = reactive(new Map());
+
+const singleSelectedAction = computed(() =>
+  selectedActions.size === 1
+    ? selectedActions.values().next().value
+    : undefined,
+);
 
 const selectedActionIds = computed(() =>
   Object.keys(Object.fromEntries(selectedActions)),
@@ -84,10 +101,46 @@ const removeAll = () => {
     actionsStore.CANCEL(selectedActionIds.value);
 };
 
-const clickAction = (action: ActionView) => {
-  if (!selectedActions.has(action.id)) {
+const funcRun = ref<FuncRun | undefined>();
+const selectedTab = ref<string | undefined>();
+
+const clickAction = async (action_view: ActionView, e: MouseEvent) => {
+  const action = action_view as ActionProposedView;
+
+  if (e.shiftKey) {
+    if (!selectedActions.has(action.id)) {
+      selectedActions.set(action.id, action as ActionProposedView);
+    } else selectedActions.delete(action.id);
+  } else {
+    const singleSelectionActionId = singleSelectedAction.value?.id;
+    selectedActions.clear();
+
+    if (singleSelectionActionId === action.id) {
+      funcRun.value = undefined;
+      return;
+    }
+
     selectedActions.set(action.id, action as ActionProposedView);
-  } else selectedActions.delete(action.id);
+
+    const { funcRunId } = action;
+
+    if (!funcRunId) {
+      return;
+    }
+
+    await funcRunsStore.GET_FUNC_RUN(funcRunId);
+    funcRun.value = funcRunsStore.funcRuns[funcRunId];
+
+    if ([ActionState.Queued, ActionState.OnHold].includes(action.state)) {
+      selectedTab.value = "arguments";
+    } else {
+      selectedTab.value = "logs";
+    }
+  }
+};
+
+const deselectAction = () => {
+  selectedActions.clear();
 };
 
 defineProps({
