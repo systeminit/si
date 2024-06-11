@@ -20,7 +20,7 @@ async fn test_execute_action_func(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
@@ -66,7 +66,7 @@ async fn test_execute_attribute_func(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
@@ -112,7 +112,7 @@ async fn test_execute_code_generation_func(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
@@ -158,7 +158,7 @@ async fn test_execute_qualification_func(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
@@ -204,7 +204,7 @@ async fn test_execute_with_modified_code(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let func_id = Func::find_by_name(ctx, func_name)
+    let func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
         .expect("no func found");

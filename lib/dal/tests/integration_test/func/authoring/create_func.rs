@@ -45,7 +45,7 @@ async fn create_qualification_no_options(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -103,7 +103,7 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -135,7 +135,7 @@ async fn create_codegen_no_options(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -193,7 +193,7 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -226,7 +226,7 @@ async fn create_attribute_no_options(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -297,7 +297,7 @@ async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(head_change_set)
         .await
         .expect("Unable to go back to HEAD");
-    let head_func = Func::find_by_name(ctx, func_name)
+    let head_func = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -367,7 +367,7 @@ async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalC
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(head_change_set)
         .await
         .expect("Unable to go back to HEAD");
-    let head_func = Func::find_by_name(ctx, func_name)
+    let head_func = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -398,7 +398,7 @@ async fn create_action_no_options(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());
@@ -462,7 +462,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to go back to HEAD");
 
-    let head_func = Func::find_by_name(ctx, func_name.clone())
+    let head_func = Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("Unable to get a func");
     assert!(head_func.is_none());

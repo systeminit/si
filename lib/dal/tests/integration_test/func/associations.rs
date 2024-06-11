@@ -20,7 +20,7 @@ async fn for_action(ctx: &mut DalContext) {
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
 
-    let func_id = Func::find_by_name(ctx, "test:createActionSwifty")
+    let func_id = Func::find_id_by_name(ctx, "test:createActionSwifty")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");
@@ -42,7 +42,7 @@ async fn for_action(ctx: &mut DalContext) {
 
 #[test]
 async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
-    let func_id = Func::find_by_name(ctx, "test:falloutEntriesToGalaxies")
+    let func_id = Func::find_id_by_name(ctx, "test:falloutEntriesToGalaxies")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");
@@ -140,7 +140,7 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
 
 #[test]
 async fn for_attribute_with_prop_input(ctx: &mut DalContext) {
-    let func_id = Func::find_by_name(ctx, "hesperus_is_phosphorus")
+    let func_id = Func::find_id_by_name(ctx, "hesperus_is_phosphorus")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");
@@ -262,7 +262,7 @@ async fn for_authentication(ctx: &mut DalContext) {
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
 
-    let func_id = Func::find_by_name(ctx, "test:setDummySecretString")
+    let func_id = Func::find_id_by_name(ctx, "test:setDummySecretString")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");
@@ -293,7 +293,7 @@ async fn for_code_generation(ctx: &mut DalContext) {
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
 
-    let func_id = Func::find_by_name(ctx, "test:generateStringCode")
+    let func_id = Func::find_id_by_name(ctx, "test:generateStringCode")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");
@@ -326,7 +326,7 @@ async fn for_qualification(ctx: &mut DalContext) {
         .expect("could not perform get default schema variant")
         .expect("default schema variant not found");
 
-    let func_id = Func::find_by_name(ctx, "test:qualificationDummySecretStringIsTodd")
+    let func_id = Func::find_id_by_name(ctx, "test:qualificationDummySecretStringIsTodd")
         .await
         .expect("could not perform find func by name")
         .expect("func not found");

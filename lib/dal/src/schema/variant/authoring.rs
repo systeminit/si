@@ -84,17 +84,18 @@ impl VariantAuthoringClient {
     #[allow(clippy::too_many_arguments)]
     pub async fn create_variant(
         ctx: &DalContext,
-        name: String,
+        name: impl Into<String>,
         display_name: Option<String>,
         description: Option<String>,
         link: Option<String>,
-        category: String,
-        color: String,
+        category: impl Into<String>,
+        color: impl Into<String>,
     ) -> VariantAuthoringResult<SchemaVariant> {
+        let name = name.into();
         let code_base64 = general_purpose::STANDARD_NO_PAD.encode(DEFAULT_ASSET_CODE);
         let asset_func = Func::new(
             ctx,
-            generate_scaffold_func_name(name.clone()),
+            generate_scaffold_func_name(&name),
             display_name.clone(),
             description.clone(),
             link.clone(),
@@ -111,10 +112,10 @@ impl VariantAuthoringClient {
         let definition = execute_asset_func(ctx, &asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
-            name: name.clone(),
+            name,
             menu_name: display_name.clone(),
-            category,
-            color,
+            category: category.into(),
+            color: color.into(),
             component_type: ComponentType::Component,
             link: link.clone(),
             description: description.clone(),
@@ -227,12 +228,12 @@ impl VariantAuthoringClient {
     pub async fn update_variant(
         ctx: &DalContext,
         current_sv_id: SchemaVariantId,
-        name: String,
+        name: impl Into<String>,
         menu_name: Option<String>,
-        category: String,
-        color: String,
+        category: impl Into<String>,
+        color: impl Into<String>,
         link: Option<String>,
-        code: String,
+        code: impl Into<String>,
         description: Option<String>,
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
@@ -245,12 +246,12 @@ impl VariantAuthoringClient {
                     ctx,
                     &asset_func,
                     current_sv_id,
-                    name.clone(),
+                    name,
                     menu_name.clone(),
-                    category.clone(),
-                    color.clone(),
+                    category,
+                    color,
                     link.clone(),
-                    code.clone(),
+                    code,
                     description.clone(),
                     component_type,
                 )
@@ -259,12 +260,12 @@ impl VariantAuthoringClient {
                 Self::update_existing_variant_and_regenerate(
                     ctx,
                     current_sv_id,
-                    name.clone(),
+                    name,
                     menu_name.clone(),
-                    category.clone(),
-                    color.clone(),
+                    category,
+                    color,
                     link.clone(),
-                    code.clone(),
+                    code,
                     description.clone(),
                     component_type,
                 )
@@ -287,143 +288,145 @@ impl VariantAuthoringClient {
     )]
     async fn update_existing_variant_and_regenerate(
         ctx: &DalContext,
-        current_sv_id: SchemaVariantId,
-        name: String,
+        current_schema_variant_id: SchemaVariantId,
+        name: impl Into<String>,
         menu_name: Option<String>,
-        category: String,
-        color: String,
+        category: impl Into<String>,
+        color: impl Into<String>,
         link: Option<String>,
-        code: String,
+        code: impl Into<String>,
         description: Option<String>,
         component_type: ComponentType,
     ) -> VariantAuthoringResult<()> {
         // Ok we need to delete the first level of outgoing children for the schema variant
-        let sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, current_schema_variant_id).await?;
+
         // then we can build the package and reimport ALL but the schema variant itself
-        if let Some(asset_func_id) = sv.asset_func_id {
-            let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
+        let asset_func_id = schema_variant.asset_func_id.ok_or(
+            VariantAuthoringError::SchemaVariantAssetNotFound(current_schema_variant_id),
+        )?;
 
-            let mut asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
-            asset_func = asset_func
-                .modify(ctx, |func| {
-                    func.name.clone_from(&name);
-                    func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
-                    func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
-                    func.display_name = menu_name
-                        .clone()
-                        .map(|display_name| display_name.to_owned());
-                    func.code_base64 = Some(code_base64);
-                    func.description.clone_from(&description);
-                    func.handler = Some("main".to_string());
-                    func.hidden = false;
-                    func.link.clone_from(&link);
-                    Ok(())
-                })
-                .await?;
-            let asset_func_spec = build_asset_func_spec(&asset_func)?;
-            let definition = execute_asset_func(ctx, &asset_func).await?;
-            let metadata = SchemaVariantMetadataJson {
-                name: name.clone(),
-                menu_name: menu_name.clone(),
-                category: category.clone(),
-                color: color.clone(),
-                component_type,
-                link: link.clone(),
-                description: description.clone(),
-            };
+        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
+        let name = name.into();
+        let category = category.into();
+        let color = color.into();
 
-            let (new_variant_spec, _skips, variant_funcs) =
-                build_variant_spec_based_on_existing_variant(
-                    ctx,
-                    definition,
-                    &asset_func_spec,
-                    &metadata,
-                    current_sv_id,
-                )
-                .await?;
-
-            let schema_spec = metadata.to_spec(new_variant_spec)?;
-            //TODO @stack72 - figure out how we get the current user in this!
-            let pkg_spec = PkgSpec::builder()
-                .name(&metadata.name)
-                .created_by("sally@systeminit.com")
-                .funcs(variant_funcs.clone())
-                .func(asset_func_spec)
-                .schema(schema_spec)
-                .version("0")
-                .build()?;
-            let pkg = SiPkg::load_from_spec(pkg_spec)?;
-
-            let pkg_schemas = pkg.schemas()?;
-            let pkg_variants = pkg_schemas
-                .first()
-                .ok_or(VariantAuthoringError::PkgMissingSchema)?
-                .variants()?;
-
-            let schema_spec = pkg_schemas
-                .first()
-                .ok_or(VariantAuthoringError::PkgMissingSchema)?;
-            let variant_pkg_spec = pkg_variants
-                .first()
-                .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
-
-            let mut schema = SchemaVariant::get_by_id(ctx, current_sv_id)
-                .await?
-                .schema(ctx)
-                .await?;
-
-            schema
-                .clone()
-                .modify(ctx, |s| {
-                    s.name.clone_from(&name);
-                    Ok(())
-                })
-                .await?;
-
-            // We need to clean up the old graph before we re-import the new parts!
-            sv.remove_direct_connected_edges(ctx).await?;
-            sv.rebuild_variant_root_prop(ctx).await?;
-
-            // Now we can reimport all parts of the schema variant in place!
-            let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
-            if let Some(new_schema_variant) = import_schema_variant(
-                ctx,
-                &mut schema,
-                schema_spec.clone(),
-                variant_pkg_spec,
-                None,
-                &mut thing_map,
-                Some(sv),
-            )
-            .await?
-            {
-                if new_schema_variant.id != current_sv_id {
-                    return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
-                        current_sv_id,
-                    ));
-                }
-
-                // Let's update the SV struct now to reflect any changes
-                new_schema_variant
+        let mut asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+        asset_func = asset_func
+            .modify(ctx, |func| {
+                func.name.clone_from(&name);
+                func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
+                func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
+                func.display_name = menu_name
                     .clone()
-                    .modify(ctx, |sv| {
-                        sv.description = description;
-                        sv.link = link;
-                        sv.category.clone_from(&category);
-                        sv.component_type = component_type;
-                        sv.color.clone_from(&color);
-                        sv.display_name = menu_name;
-                        Ok(())
-                    })
-                    .await?;
+                    .map(|display_name| display_name.to_owned());
+                func.code_base64 = Some(code_base64);
+                func.description.clone_from(&description);
+                func.handler = Some("main".to_string());
+                func.hidden = false;
+                func.link.clone_from(&link);
+                Ok(())
+            })
+            .await?;
+        let asset_func_spec = build_asset_func_spec(&asset_func)?;
+        let definition = execute_asset_func(ctx, &asset_func).await?;
+        let metadata = SchemaVariantMetadataJson {
+            name: name.clone(),
+            menu_name: menu_name.clone(),
+            category: category.clone(),
+            color: color.clone(),
+            component_type,
+            link: link.clone(),
+            description: description.clone(),
+        };
+
+        let (new_variant_spec, _skips, variant_funcs) =
+            build_variant_spec_based_on_existing_variant(
+                ctx,
+                definition,
+                &asset_func_spec,
+                &metadata,
+                current_schema_variant_id,
+            )
+            .await?;
+
+        let schema_spec = metadata.to_spec(new_variant_spec)?;
+        //TODO @stack72 - figure out how we get the current user in this!
+        let pkg_spec = PkgSpec::builder()
+            .name(&metadata.name)
+            .created_by("sally@systeminit.com")
+            .funcs(variant_funcs.clone())
+            .func(asset_func_spec)
+            .schema(schema_spec)
+            .version("0")
+            .build()?;
+        let pkg = SiPkg::load_from_spec(pkg_spec)?;
+
+        let pkg_schemas = pkg.schemas()?;
+        let pkg_variants = pkg_schemas
+            .first()
+            .ok_or(VariantAuthoringError::PkgMissingSchema)?
+            .variants()?;
+
+        let schema_spec = pkg_schemas
+            .first()
+            .ok_or(VariantAuthoringError::PkgMissingSchema)?;
+        let variant_pkg_spec = pkg_variants
+            .first()
+            .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
+
+        let mut schema = SchemaVariant::get_by_id(ctx, current_schema_variant_id)
+            .await?
+            .schema(ctx)
+            .await?;
+
+        schema
+            .clone()
+            .modify(ctx, |s| {
+                s.name.clone_from(&name);
+                Ok(())
+            })
+            .await?;
+
+        // We need to clean up the old graph before we re-import the new parts!
+        schema_variant.remove_direct_connected_edges(ctx).await?;
+        schema_variant.rebuild_variant_root_prop(ctx).await?;
+
+        // Now we can reimport all parts of the schema variant in place!
+        let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
+        if let Some(new_schema_variant) = import_schema_variant(
+            ctx,
+            &mut schema,
+            schema_spec.clone(),
+            variant_pkg_spec,
+            None,
+            &mut thing_map,
+            Some(schema_variant),
+        )
+        .await?
+        {
+            if new_schema_variant.id != current_schema_variant_id {
+                return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
+                    current_schema_variant_id,
+                ));
             }
 
-            Ok(())
-        } else {
-            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
-                current_sv_id,
-            ));
+            // Let's update the SV struct now to reflect any changes
+            new_schema_variant
+                .clone()
+                .modify(ctx, |sv| {
+                    sv.description = description;
+                    sv.link = link;
+                    sv.category.clone_from(&category);
+                    sv.component_type = component_type;
+                    sv.color.clone_from(&color);
+                    sv.display_name = menu_name;
+                    Ok(())
+                })
+                .await?;
         }
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -436,20 +439,21 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         old_asset_func: &Func,
         current_sv_id: SchemaVariantId,
-        name: String,
+        name: impl Into<String>,
         menu_name: Option<String>,
-        category: String,
-        color: String,
+        category: impl Into<String>,
+        color: impl Into<String>,
         link: Option<String>,
-        code: String,
+        code: impl Into<String>,
         description: Option<String>,
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
+        let name = name.into();
         let mut new_asset_func = old_asset_func
-            .duplicate(ctx, generate_scaffold_func_name(name.clone()))
+            .duplicate(ctx, generate_scaffold_func_name(&name))
             .await?;
 
-        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
+        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
         new_asset_func = new_asset_func
             .clone()
             .modify(ctx, |func| {
@@ -473,8 +477,8 @@ impl VariantAuthoringClient {
         let metadata = SchemaVariantMetadataJson {
             name: name.clone(),
             menu_name: menu_name.clone(),
-            category,
-            color,
+            category: category.into(),
+            color: color.into(),
             component_type,
             link: link.clone(),
             description: description.clone(),
@@ -558,41 +562,40 @@ impl VariantAuthoringClient {
     )]
     pub async fn save_variant_content(
         ctx: &DalContext,
-        current_sv_id: SchemaVariantId,
-        name: String,
+        current_schema_variant_id: SchemaVariantId,
+        name: impl Into<String>,
         menu_name: Option<String>,
         link: Option<String>,
-        code: String,
+        code: impl Into<String>,
         description: Option<String>,
     ) -> VariantAuthoringResult<()> {
-        let current_sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        let current_schema_variant =
+            SchemaVariant::get_by_id(ctx, current_schema_variant_id).await?;
 
-        if let Some(asset_func_id) = current_sv.asset_func_id {
-            let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
+        let asset_func_id = current_schema_variant.asset_func_id.ok_or(
+            VariantAuthoringError::SchemaVariantAssetNotFound(current_schema_variant_id),
+        )?;
 
-            let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
-            current_func
-                .modify(ctx, |func| {
-                    func.name = name;
-                    func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
-                    func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
-                    func.display_name = menu_name
-                        .clone()
-                        .map(|display_name| display_name.to_owned());
-                    func.code_base64 = Some(code_base64);
-                    func.description.clone_from(&description);
-                    func.handler = Some("main".to_string());
-                    func.hidden = false;
-                    func.link.clone_from(&link);
-                    Ok(())
-                })
-                .await?;
-            Ok(())
-        } else {
-            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
-                current_sv_id,
-            ));
-        }
+        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
+
+        let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+        current_func
+            .modify(ctx, |func| {
+                func.name = name.into();
+                func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
+                func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
+                func.display_name = menu_name
+                    .clone()
+                    .map(|display_name| display_name.to_owned());
+                func.code_base64 = Some(code_base64);
+                func.description.clone_from(&description);
+                func.handler = Some("main".to_string());
+                func.hidden = false;
+                func.link.clone_from(&link);
+                Ok(())
+            })
+            .await?;
+        Ok(())
     }
 }
 
@@ -724,8 +727,8 @@ fn build_pkg_spec_for_variant(
         .build()?)
 }
 
-fn generate_scaffold_func_name(name: String) -> String {
+fn generate_scaffold_func_name(name: impl AsRef<str>) -> String {
     let version = Utc::now().format("%Y%m%d%H%M%S%f").to_string();
-    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
+    let generated_name = format!("{}Scaffold_{}", name.as_ref().to_case(Case::Camel), version);
     generated_name
 }
