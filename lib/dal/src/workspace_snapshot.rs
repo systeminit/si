@@ -61,7 +61,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::{pk, ComponentId, Workspace, WorkspaceError};
+use crate::{pk, Component, ComponentError, ComponentId, Workspace, WorkspaceError};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
@@ -91,6 +91,8 @@ pub enum WorkspaceSnapshotError {
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} has no workspace snapshot address")]
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
+    #[error("Component error: {0}")]
+    Component(#[from] Box<ComponentError>),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("join error: {0}")]
@@ -1400,7 +1402,7 @@ impl WorkspaceSnapshot {
             VectorClockId::from(Ulid::from(ctx.change_set_id())),
         )?;
 
-        for update in &conflicts_and_updates.updates {
+        for update in conflicts_and_updates.updates {
             match update {
                 Update::RemoveEdge {
                     source: _,
@@ -1616,6 +1618,151 @@ impl WorkspaceSnapshot {
         }
 
         Ok(new_attribute_prototype_argument_ids)
+    }
+
+    #[instrument(
+        name = "workspace_snapshot.socket_edges_removed_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn socket_edges_removed_relative_to_base(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<AttributePrototypeArgumentId>> {
+        let mut removed_attribute_prototype_argument_ids = Vec::new();
+        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
+            change_set_id
+        } else {
+            return Ok(removed_attribute_prototype_argument_ids);
+        };
+
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await
+        .map_err(Box::new)?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(removed_attribute_prototype_argument_ids);
+        }
+
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+        let base_change_set_ctx = &base_change_set_ctx;
+
+        // * For each Component being removed (all edges to/from removed components should also
+        //   show as removed):
+        let removed_component_ids: HashSet<ComponentId> = self
+            .components_removed_relative_to_base(ctx)
+            .await?
+            .iter()
+            .copied()
+            .collect();
+        let remaining_component_ids: HashSet<ComponentId> = Component::list(ctx)
+            .await
+            .map_err(Box::new)?
+            .iter()
+            .map(Component::id)
+            .collect();
+        for removed_component_id in &removed_component_ids {
+            let base_change_set_component =
+                Component::get_by_id(base_change_set_ctx, *removed_component_id)
+                    .await
+                    .map_err(Box::new)?;
+
+            // * Get incoming edges
+            for incoming_connection in base_change_set_component
+                .incoming_connections(base_change_set_ctx)
+                .await
+                .map_err(Box::new)?
+            {
+                //* Interested in:
+                //  * Edge is coming from a Component being removed
+                //  * Edge is coming from a Component that exists in current change set
+                if removed_component_ids.contains(&incoming_connection.from_component_id)
+                    || remaining_component_ids.contains(&incoming_connection.from_component_id)
+                {
+                    removed_attribute_prototype_argument_ids
+                        .push(incoming_connection.attribute_prototype_argument_id);
+                }
+            }
+
+            //* Get outgoing edges
+            for outgoing_connection in base_change_set_component
+                .outgoing_connections(base_change_set_ctx)
+                .await
+                .map_err(Box::new)?
+            {
+                //  * Interested in:
+                //    * Edge is going to a Component being removed
+                //    * Edge is going to a Component that exists in current change set
+                if removed_component_ids.contains(&outgoing_connection.to_component_id)
+                    || remaining_component_ids.contains(&outgoing_connection.to_component_id)
+                {
+                    removed_attribute_prototype_argument_ids
+                        .push(outgoing_connection.attribute_prototype_argument_id);
+                }
+            }
+        }
+
+        // * For each removed AttributePrototypeArgument (removed edge connects two Components
+        //   that have not been removed):
+        let conflicts_and_updates = base_change_set_ctx
+            .workspace_snapshot()?
+            .read_only_graph
+            .detect_conflicts_and_updates(
+                VectorClockId::from(Ulid::from(base_change_set_id)),
+                &self.read_only_graph,
+                VectorClockId::from(Ulid::from(ctx.change_set_id())),
+            )?;
+
+        for update in conflicts_and_updates.updates {
+            match update {
+                Update::ReplaceSubgraph {
+                    onto: _,
+                    to_rebase: _,
+                }
+                | Update::NewEdge {
+                    source: _,
+                    destination: _,
+                    edge_weight: _,
+                }
+                | Update::MergeCategoryNodes {
+                    to_rebase_category_id: _,
+                    onto_category_id: _,
+                } => {
+                    /* Updates unused for determining if a connection between sockets has been removed */
+                }
+                Update::RemoveEdge {
+                    source: _,
+                    destination,
+                    edge_kind,
+                } => {
+                    if edge_kind != EdgeWeightKindDiscriminants::PrototypeArgument {
+                        continue;
+                    }
+                    let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
+                        base_change_set_ctx,
+                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
+                    )
+                    .await
+                    .map_err(Box::new)?;
+
+                    // * Interested in all of them that have targets (connecting two Components
+                    //   via sockets).
+                    if attribute_prototype_argument.targets().is_some() {
+                        removed_attribute_prototype_argument_ids
+                            .push(attribute_prototype_argument.id());
+                    }
+                }
+            }
+        }
+
+        Ok(removed_attribute_prototype_argument_ids)
     }
 
     /// Returns whether or not any Actions were dispatched.
