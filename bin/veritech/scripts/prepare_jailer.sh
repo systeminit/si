@@ -29,6 +29,7 @@ JAILER_BINARY="/usr/bin/jailer"
 
 ROOTFS="rootfs.ext4"
 KERNEL="image-kernel.bin"
+SCRIPTS="scripts"
 
 RO_DRIVE="$DATA_DIR/$ROOTFS"
 KERNEL_IMG="$DATA_DIR/$KERNEL"
@@ -66,6 +67,7 @@ rm -rf "$JAIL/{dev,run}"
 
 touch $JAIL/logs
 touch $JAIL/metrics
+cp $DATA_DIR/$SCRIPTS $JAIL
 
 function kernel_prep() {
   cp $KERNEL_IMG "$JAIL/$KERNEL"
@@ -159,7 +161,8 @@ fi
 ##########        Firecracker Prep       #########
 ########## ############################# #########
 
-cat << EOF > $JAIL/firecracker.conf
+{
+cat << EOF
 {
   "boot-source": {
     "kernel_image_path": "./$KERNEL",
@@ -171,7 +174,22 @@ cat << EOF > $JAIL/firecracker.conf
       "is_root_device": true,
       "is_read_only": false,
       "path_on_host": "./rootfs.ext4"
+    },
+EOF
+
+if [ -e $JAIL/$SCRIPTS ]; then
+
+cat << EOF
+    {
+      "drive_id": "2",
+      "is_root_device": false,
+      "is_read_only": true,
+      "path_on_host": "./scripts"
     }
+EOF
+fi
+
+cat << EOF
   ],
   "machine-config": {
     "vcpu_count": 4,
@@ -197,3 +215,4 @@ cat << EOF > $JAIL/firecracker.conf
   }
 }
 EOF
+} > $JAIL/firecracker.conf

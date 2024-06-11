@@ -132,7 +132,7 @@ sed -i 's/root:*::0:::::/root:::0:::::/g' /etc/shadow
 
 # mount decryption key volume
 cat <<EOV >>"/etc/fstab"
-LABEL=dkey     /mnt/dkey    ext4   defaults 0 0
+LABEL=scripts     /mnt/scripts    ext4   defaults 0 0
 EOV
 
 # autostart cyclone
@@ -146,6 +146,7 @@ pidfile="/cyclone/agent.pid"
 
 start(){
   export OTEL_EXPORTER_OTLP_ENDPOINT=http://1.0.0.1:4316
+  source /mnt/scripts/scripts
   cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 &
 }
 
