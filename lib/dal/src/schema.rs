@@ -138,7 +138,7 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;

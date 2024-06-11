@@ -273,7 +273,7 @@ impl WorkspaceSnapshot {
             let category_node_index = graph.add_category_node(change_set, category_node_kind)?;
             graph.add_edge(
                 graph.root(),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
                 category_node_index,
             )?;
         }
@@ -544,7 +544,7 @@ impl WorkspaceSnapshot {
     )]
     pub async fn add_ordered_edge(
         &self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
@@ -555,7 +555,7 @@ impl WorkspaceSnapshot {
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
         let (edge_index, _) = self.working_copy_mut().await.add_ordered_edge(
-            change_set,
+            vector_clock_id,
             from_node_index,
             edge_weight,
             to_node_index,
@@ -1558,7 +1558,7 @@ impl WorkspaceSnapshot {
                     .add_category_node(change_set, CategoryNodeKind::DependentValueRoots)?;
                 working_copy.add_edge(
                     root_idx,
-                    EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                    EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
                     category_node_idx,
                 )?;
 
@@ -1610,7 +1610,7 @@ impl WorkspaceSnapshot {
 
         self.add_edge(
             dv_category_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+            EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
             new_dv_node_id,
         )
         .await?;

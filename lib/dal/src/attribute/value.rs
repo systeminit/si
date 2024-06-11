@@ -73,7 +73,9 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
+use crate::workspace_snapshot::{
+    serde_value_to_string_type, vector_clock::HasVectorClocks, WorkspaceSnapshotError,
+};
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
@@ -1941,7 +1943,7 @@ impl AttributeValue {
             .await?;
 
         let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
 
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight

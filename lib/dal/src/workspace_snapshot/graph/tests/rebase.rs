@@ -28,8 +28,11 @@ mod test {
         to_rebase
             .add_edge(
                 to_rebase.root_index,
-                EdgeWeight::new(to_rebase_change_set, EdgeWeightKind::new_use())
-                    .expect("could not create edge weight"),
+                EdgeWeight::new(
+                    to_rebase_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("could not create edge weight"),
                 schema_category_node_index,
             )
             .expect("could not add edge");
@@ -39,8 +42,11 @@ mod test {
         to_rebase
             .add_edge(
                 to_rebase.root_index,
-                EdgeWeight::new(to_rebase_change_set, EdgeWeightKind::new_use())
-                    .expect("could not create edge weight"),
+                EdgeWeight::new(
+                    to_rebase_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("could not create edge weight"),
                 func_category_node_index,
             )
             .expect("could not add edge");
@@ -67,7 +73,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             func_category_node_index,
-            EdgeWeight::new(onto_change_set, EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             func_node_index,
         )
@@ -87,7 +93,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             schema_category_node_index,
-            EdgeWeight::new(onto_change_set, EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             schema_node_index,
         )
@@ -107,7 +113,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             schema_node_index,
-            EdgeWeight::new(onto_change_set, EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             schema_variant_node_index,
         )
@@ -119,7 +125,7 @@ mod test {
             .expect("could not get node index by id");
         onto.add_edge(
             schema_variant_node_index,
-            EdgeWeight::new(onto_change_set, EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             func_node_index,
         )

@@ -20,20 +20,24 @@ pub struct LamportClock {
     pub counter: DateTime<Utc>,
 }
 
+impl Default for LamportClock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LamportClock {
-    pub fn new() -> LamportClockResult<LamportClock> {
+    pub fn new() -> Self {
         let counter = Utc::now();
-        Ok(LamportClock { counter })
+        Self { counter }
     }
 
     pub fn new_with_value(new_value: DateTime<Utc>) -> Self {
         LamportClock { counter: new_value }
     }
 
-    pub fn inc(&mut self) -> LamportClockResult<()> {
+    pub fn inc(&mut self) {
         self.counter = Utc::now();
-
-        Ok(())
     }
 
     pub fn inc_to(&mut self, new_value: DateTime<Utc>) {

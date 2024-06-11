@@ -26,12 +26,12 @@ pub struct VectorClock {
 
 impl VectorClock {
     /// Create a new [`VectorClock`] with an entry for [`VectorClockId`].
-    pub fn new(vector_clock_id: VectorClockId) -> VectorClockResult<VectorClock> {
-        let lamport_clock = LamportClock::new()?;
+    pub fn new(vector_clock_id: VectorClockId) -> Self {
+        let lamport_clock = LamportClock::new();
         let mut entries = HashMap::new();
         entries.insert(vector_clock_id, lamport_clock);
 
-        Ok(VectorClock { entries })
+        VectorClock { entries }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -68,24 +68,18 @@ impl VectorClock {
     }
 
     /// Increment the entry for [`VectorClockId`], adding one if there wasn't one already.
-    pub fn inc(&mut self, vector_clock_id: VectorClockId) -> VectorClockResult<()> {
+    pub fn inc(&mut self, vector_clock_id: VectorClockId) {
         if let Some(lamport_clock) = self.entries.get_mut(&vector_clock_id) {
-            lamport_clock.inc()?;
+            lamport_clock.inc();
         } else {
-            self.entries.insert(vector_clock_id, LamportClock::new()?);
+            self.entries.insert(vector_clock_id, LamportClock::new());
         }
-
-        Ok(())
     }
 
     /// Add all entries in `other` to `self`, taking the most recent value if the entry already
     /// exists in `self`, then increment the entry for [`VectorClockId`] (adding one if it is not
     /// already there).
-    pub fn merge(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        other: &VectorClock,
-    ) -> VectorClockResult<()> {
+    pub fn merge(&mut self, vector_clock_id: VectorClockId, other: &VectorClock) {
         for (other_vector_clock_id, other_lamport_clock) in other.entries.iter() {
             if let Some(lamport_clock) = self.entries.get_mut(other_vector_clock_id) {
                 lamport_clock.merge(other_lamport_clock);
@@ -94,17 +88,15 @@ impl VectorClock {
                     .insert(*other_vector_clock_id, *other_lamport_clock);
             }
         }
-        self.inc(vector_clock_id)?;
-
-        Ok(())
+        self.inc(vector_clock_id);
     }
 
     /// Return a new [`VectorClock`] with the entry for [`VectorClockId`] incremented.
-    pub fn fork(&self, vector_clock_id: VectorClockId) -> VectorClockResult<VectorClock> {
+    pub fn fork(&self, vector_clock_id: VectorClockId) -> VectorClock {
         let mut forked = self.clone();
-        forked.inc(vector_clock_id)?;
+        forked.inc(vector_clock_id);
 
-        Ok(forked)
+        forked
     }
 
     /// Returns true if all entries in `other` are present in `self`, and `<=` the entry in
@@ -145,5 +137,44 @@ impl std::fmt::Debug for VectorClock {
         fmt.debug_map()
             .entries(self.entries.iter().map(|(k, v)| (k.to_string(), v)))
             .finish()
+    }
+}
+
+pub trait HasVectorClocks {
+    fn vector_clock_first_seen(&self) -> &VectorClock;
+    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock;
+
+    fn vector_clock_recently_seen(&self) -> &VectorClock;
+    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock;
+
+    fn vector_clock_write(&self) -> &VectorClock;
+    fn vector_clock_write_mut(&mut self) -> &mut VectorClock;
+
+    fn increment_vector_clocks(&mut self, vector_clock_id: VectorClockId) {
+        self.vector_clock_write_mut().inc(vector_clock_id);
+        self.vector_clock_recently_seen_mut().inc(vector_clock_id);
+    }
+
+    fn new_with_incremented_vector_clock(&self, vector_clock_id: VectorClockId) -> Self
+    where
+        Self: Sized + Clone,
+    {
+        let mut new_self = self.clone();
+        new_self.increment_vector_clocks(vector_clock_id);
+
+        new_self
+    }
+
+    fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
+        self.vector_clock_recently_seen_mut()
+            .inc_to(vector_clock_id, seen_at);
+        if self
+            .vector_clock_first_seen()
+            .entry_for(vector_clock_id)
+            .is_none()
+        {
+            self.vector_clock_first_seen_mut()
+                .inc_to(vector_clock_id, seen_at);
+        }
     }
 }

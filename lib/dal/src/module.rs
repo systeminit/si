@@ -148,7 +148,7 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 schema_module_index_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -214,7 +214,10 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 self.id,
-                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(
+                    ctx.change_set()?.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )?,
                 target_id,
             )
             .await?;

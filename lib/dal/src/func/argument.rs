@@ -18,6 +18,7 @@ use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::{
     FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
+use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
@@ -386,7 +387,8 @@ impl FuncArgument {
 
             workspace_snapshot
                 .add_node(NodeWeight::FuncArgument(
-                    node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
+                    node_weight
+                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
                 ))
                 .await?;
 

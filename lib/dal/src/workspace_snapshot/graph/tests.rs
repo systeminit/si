@@ -71,7 +71,8 @@ fn add_edges(
         graph
             .add_edge(
                 source,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use()).expect("create edge weight"),
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
+                    .expect("create edge weight"),
                 target,
             )
             .expect("add edge");
@@ -285,7 +286,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 component_index,
             )
@@ -293,7 +294,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -303,7 +304,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -313,7 +314,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(schema_variant_id)
@@ -351,7 +352,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 func_index,
             )
@@ -361,7 +362,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 prop_index,
             )
@@ -371,7 +372,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(func_id)
@@ -432,7 +433,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 initial_component_node_index,
             )
@@ -440,7 +441,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 initial_schema_node_index,
             )
@@ -450,7 +451,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 initial_schema_variant_node_index,
             )
@@ -460,7 +461,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(schema_variant_id)
@@ -476,7 +477,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(component_id)
@@ -533,7 +534,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 component_index,
             )
@@ -541,7 +542,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -551,7 +552,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -561,7 +562,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(schema_variant_id)
@@ -671,7 +672,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -681,7 +682,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -703,7 +704,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 func_index,
             )
@@ -728,7 +729,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 prop_index,
             )
@@ -738,7 +739,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(func_id)
@@ -763,11 +764,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_1_index,
             )
@@ -788,11 +789,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_2_index,
             )
@@ -813,11 +814,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_3_index,
             )
@@ -867,8 +868,11 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(active_change_set, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(
+                    active_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("Unable to create EdgeWeight"),
                 prop_index,
             )
             .expect("Unable to add root -> prop edge");
@@ -924,7 +928,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -934,7 +938,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -956,7 +960,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 func_index,
             )
@@ -981,7 +985,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 prop_index,
             )
@@ -991,7 +995,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(func_id)
@@ -1016,11 +1020,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_1_index,
             )
@@ -1041,11 +1045,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_2_index,
             )
@@ -1066,11 +1070,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_3_index,
             )
@@ -1091,11 +1095,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_4_index,
             )
@@ -1129,7 +1133,7 @@ mod test {
         ];
 
         graph
-            .update_order(change_set, prop_id, new_order)
+            .update_order(change_set.vector_clock_id(), prop_id, new_order)
             .expect("Unable to update order of prop's children");
 
         assert_eq!(
@@ -1191,8 +1195,11 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(initial_change_set, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(
+                    initial_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -1201,8 +1208,11 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(initial_change_set, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(
+                    initial_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -1228,8 +1238,11 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(initial_change_set, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(
+                    initial_change_set.vector_clock_id(),
+                    EdgeWeightKind::new_use(),
+                )
+                .expect("Unable to create EdgeWeight"),
                 schema_variant_2_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -1348,7 +1361,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -1358,7 +1371,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -1383,7 +1396,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_2_index,
             )
@@ -1471,7 +1484,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_index,
             )
@@ -1481,7 +1494,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 schema_variant_index,
             )
@@ -1503,7 +1516,7 @@ mod test {
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 func_index,
             )
@@ -1528,7 +1541,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 root_prop_index,
             )
@@ -1538,7 +1551,7 @@ mod test {
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create EdgeWeight"),
                 graph
                     .get_node_index_by_id(func_id)
@@ -1563,11 +1576,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_1_index,
             )
@@ -1588,11 +1601,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_2_index,
             )
@@ -1613,11 +1626,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_3_index,
             )
@@ -1638,11 +1651,11 @@ mod test {
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                change_set,
+                change_set.vector_clock_id(),
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(change_set, EdgeWeightKind::new_use())
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
                     .expect("Unable to create uses edge weight"),
                 ordered_prop_4_index,
             )

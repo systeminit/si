@@ -19,7 +19,7 @@ use crate::change_set::{ChangeSet, ChangeSetError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
-use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{
     conflict::Conflict,
     content_address::ContentAddress,
@@ -465,7 +465,7 @@ impl WorkspaceSnapshotGraph {
     #[allow(clippy::type_complexity)]
     pub fn add_ordered_edge(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -485,7 +485,7 @@ impl WorkspaceSnapshotGraph {
         {
             let ordinal_edge_index = self.add_edge(
                 container_ordering_node_index,
-                EdgeWeight::new(change_set, EdgeWeightKind::Ordinal)?,
+                EdgeWeight::new(vector_clock_id, EdgeWeightKind::Ordinal)?,
                 to_node_index,
             )?;
 
@@ -501,7 +501,7 @@ impl WorkspaceSnapshotGraph {
 
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
-                new_container_ordering_node_weight.push_to_order(change_set, element_id)?;
+                new_container_ordering_node_weight.push_to_order(vector_clock_id, element_id)?;
                 self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
@@ -528,7 +528,7 @@ impl WorkspaceSnapshotGraph {
             self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(change_set)?))?;
         let edge_index = self.add_edge(
             new_node_index,
-            EdgeWeight::new(change_set, EdgeWeightKind::Ordering)?,
+            EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::Ordering)?,
             ordering_node_index,
         )?;
         let (source, _) = self.edge_endpoints(edge_index)?;
@@ -1832,7 +1832,9 @@ impl WorkspaceSnapshotGraph {
 
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
-                if new_container_ordering_node_weight.remove_from_order(change_set, element_id)? {
+                if new_container_ordering_node_weight
+                    .remove_from_order(change_set.vector_clock_id(), element_id)?
+                {
                     self.inner_remove_edge(
                         previous_container_ordering_node_index,
                         target_node_index,
@@ -1970,7 +1972,7 @@ impl WorkspaceSnapshotGraph {
         let original_node_index = self.get_node_index_by_id(id)?;
         let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.increment_vector_clock(change_set)?;
+        node_weight.increment_vector_clocks(change_set.vector_clock_id());
         node_weight.new_content_hash(new_content_hash)?;
 
         self.replace_references(original_node_index)?;
@@ -1979,7 +1981,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn update_order(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         container_id: Ulid,
         new_order: Vec<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<()> {
@@ -1988,7 +1990,7 @@ impl WorkspaceSnapshotGraph {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
         let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.set_order(change_set, new_order)?;
+        node_weight.set_order(vector_clock_id, new_order)?;
 
         self.replace_references(original_node_index)?;
         Ok(())

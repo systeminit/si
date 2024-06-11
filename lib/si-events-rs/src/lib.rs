@@ -11,6 +11,7 @@ mod func_execution;
 mod func_run;
 mod func_run_log;
 mod tenancy;
+mod vector_clock_id;
 mod web_event;
 
 pub use crate::{
@@ -29,6 +30,7 @@ pub use crate::{
     tenancy::ChangeSetId,
     tenancy::Tenancy,
     tenancy::WorkspacePk,
+    vector_clock_id::{VectorClockActorId, VectorClockChangeSetId, VectorClockId},
     web_event::WebEvent,
     workspace_snapshot_address::WorkspaceSnapshotAddress,
 };

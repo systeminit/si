@@ -1,12 +1,12 @@
 //! Edges
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
+
+use super::vector_clock::HasVectorClocks;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -96,30 +96,8 @@ pub struct EdgeWeight {
 }
 
 impl EdgeWeight {
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
-        self.vector_clock_recently_seen
-            .inc(change_set.vector_clock_id())?;
-        self.vector_clock_write.inc(change_set.vector_clock_id())?;
-
-        Ok(())
-    }
-
     pub fn kind(&self) -> &EdgeWeightKind {
         &self.kind
-    }
-
-    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
-        self.vector_clock_recently_seen
-            .inc_to(vector_clock_id, seen_at);
-
-        if self
-            .vector_clock_first_seen
-            .entry_for(vector_clock_id)
-            .is_none()
-        {
-            self.vector_clock_first_seen
-                .inc_to(vector_clock_id, seen_at);
-        }
     }
 
     /// Remove stale vector clock entries. `allow_list` should always include
@@ -130,8 +108,8 @@ impl EdgeWeight {
         self.vector_clock_write.remove_entries(allow_list);
     }
 
-    pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
-        let empty_vector_clock = VectorClock::new(change_set.vector_clock_id())?;
+    pub fn new(vector_clock_id: VectorClockId, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
+        let empty_vector_clock = VectorClock::new(vector_clock_id);
 
         Ok(Self {
             kind,
@@ -140,27 +118,31 @@ impl EdgeWeight {
             vector_clock_write: empty_vector_clock,
         })
     }
+}
 
-    pub fn new_with_incremented_vector_clocks(
-        &self,
-        change_set: &ChangeSet,
-    ) -> EdgeWeightResult<Self> {
-        let mut new_weight = self.clone();
-        new_weight.increment_vector_clocks(change_set)?;
-
-        Ok(new_weight)
-    }
-
-    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+impl HasVectorClocks for EdgeWeight {
+    fn vector_clock_recently_seen(&self) -> &VectorClock {
         &self.vector_clock_recently_seen
     }
 
-    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_recently_seen
+    }
+
+    fn vector_clock_first_seen(&self) -> &VectorClock {
         &self.vector_clock_first_seen
     }
 
-    pub fn vector_clock_write(&self) -> &VectorClock {
+    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_first_seen
+    }
+
+    fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
+        &mut self.vector_clock_write
     }
 }
 
@@ -180,54 +162,5 @@ impl From<DeprecatedEdgeWeight> for EdgeWeight {
             vector_clock_recently_seen: VectorClock::empty(),
             vector_clock_write: deprecated_edge_weight.vector_clock_write,
         }
-    }
-}
-
-impl DeprecatedEdgeWeight {
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
-        self.vector_clock_write.inc(change_set.vector_clock_id())?;
-
-        Ok(())
-    }
-
-    pub fn kind(&self) -> &EdgeWeightKind {
-        &self.kind
-    }
-
-    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
-        if self
-            .vector_clock_first_seen
-            .entry_for(vector_clock_id)
-            .is_none()
-        {
-            self.vector_clock_first_seen
-                .inc_to(vector_clock_id, seen_at);
-        }
-    }
-
-    pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
-        Ok(Self {
-            kind,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
-        })
-    }
-
-    pub fn new_with_incremented_vector_clocks(
-        &self,
-        change_set: &ChangeSet,
-    ) -> EdgeWeightResult<Self> {
-        let mut new_weight = self.clone();
-        new_weight.increment_vector_clocks(change_set)?;
-
-        Ok(new_weight)
-    }
-
-    pub fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    pub fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
     }
 }

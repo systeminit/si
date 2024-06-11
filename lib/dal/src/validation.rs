@@ -16,6 +16,7 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
@@ -158,7 +159,7 @@ impl ValidationOutputNode {
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::ValidationOutput)?;
 
             let mut new_node_weight =
-                node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
+                node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
 
             new_node_weight.new_content_hash(hash)?;
 
@@ -178,7 +179,10 @@ impl ValidationOutputNode {
             workspace_snapshot
                 .add_edge(
                     attribute_value_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::ValidationOutput)?,
+                    EdgeWeight::new(
+                        change_set.vector_clock_id(),
+                        EdgeWeightKind::ValidationOutput,
+                    )?,
                     id,
                 )
                 .await?;
