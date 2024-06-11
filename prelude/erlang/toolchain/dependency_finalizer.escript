@@ -1,9 +1,13 @@
 %%% % @format
+%%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%%
+%%% This source code is licensed under both the MIT license found in the
+%%% LICENSE-MIT file in the root directory of this source tree and the Apache
+%%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
+%%% of this source tree.
 
 -module(dependency_finalizer).
 -author("loscher@meta.com").
-
--mode(compile).
 
 -spec main([string()]) -> ok | no_return().
 main([Source, InFile]) ->
@@ -45,7 +49,6 @@ collect_dependencies([], _, _, Acc) ->
 collect_dependencies([Key | Rest], DepFiles, Visited, Acc) ->
     case DepFiles of
         #{Key := #{"dep_file" := DepFile}} ->
-            io:format("~p~n", [file:consult(DepFile)]),
             {ok, [Dependencies]} = file:consult(DepFile),
             {NextKeys, NextVisited, NextAcc} = lists:foldl(
                 fun(#{"file" := File} = Dep, {KeysAcc, VisitedAcc, DepAcc}) ->

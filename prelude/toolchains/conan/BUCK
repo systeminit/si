@@ -1,0 +1,63 @@
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
+export_file(
+    name = "buckler",
+    src = "buckler/conanfile.py",
+    visibility = ["PUBLIC"],
+)
+
+python_bootstrap_library(
+    name = "conan_common",
+    srcs = ["conan_common.py"],
+)
+
+python_bootstrap_binary(
+    name = "conan_generate",
+    main = "conan_generate.py",
+    visibility = ["PUBLIC"],
+    deps = [":conan_common"],
+)
+
+python_bootstrap_binary(
+    name = "conan_init",
+    main = "conan_init.py",
+    visibility = ["PUBLIC"],
+    deps = [":conan_common"],
+)
+
+python_bootstrap_binary(
+    name = "conan_lock",
+    main = "conan_lock.py",
+    visibility = ["PUBLIC"],
+    deps = [":conan_common"],
+)
+
+python_bootstrap_binary(
+    name = "conan_package",
+    main = "conan_package.py",
+    visibility = ["PUBLIC"],
+    deps = [":conan_common"],
+)
+
+python_bootstrap_binary(
+    name = "conan_package_extract",
+    main = "conan_package_extract.py",
+    visibility = ["PUBLIC"],
+)
+
+python_bootstrap_binary(
+    name = "conan_update",
+    main = "conan_update.py",
+    visibility = ["PUBLIC"],
+)
+
+python_bootstrap_binary(
+    name = "lock_generate",
+    main = "lock_generate.py",
+    visibility = ["PUBLIC"],
+    deps = [":conan_common"],
+)

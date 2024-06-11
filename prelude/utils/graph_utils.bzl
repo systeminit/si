@@ -9,7 +9,7 @@ load("@prelude//utils:expect.bzl", "expect")
 
 def pre_order_traversal(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable = str) -> list[typing.Any]:
+        node_formatter: typing.Callable[[typing.Any], str] = str) -> list[typing.Any]:
     """
     Perform a pre-order (topologically sorted) traversal of `graph` and return the ordered nodes
     """
@@ -46,23 +46,20 @@ def pre_order_traversal(
 
 def post_order_traversal(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable = str) -> list[typing.Any]:
+        node_formatter: typing.Callable[[typing.Any], str] = str) -> list[typing.Any]:
     """
     Performs a post-order traversal of `graph`.
     """
 
-    out_degrees = {node: 0 for node in graph}
+    out_degrees = {}
     rdeps = {node: [] for node in graph}
     for node, deps in graph.items():
-        for dep in dedupe(deps):
-            out_degrees[node] += 1
+        deps = dedupe(deps)
+        out_degrees[node] = len(deps)
+        for dep in deps:
             rdeps[dep].append(node)
 
-    queue = []
-
-    for node, out_degree in out_degrees.items():
-        if out_degree == 0:
-            queue.append(node)
+    queue = [node for node, out_degree in out_degrees.items() if out_degree == 0]
 
     ordered = []
 
@@ -85,7 +82,7 @@ def post_order_traversal(
 
 def fail_cycle(
         graph: dict[typing.Any, list[typing.Any]],
-        node_formatter: typing.Callable) -> typing.Never:
+        node_formatter: typing.Callable[[typing.Any], str]) -> typing.Never:
     cycle = find_cycle(graph)
     if cycle:
         fail(
@@ -169,52 +166,75 @@ def pre_order_traversal_by(
     ordered = post_order_traversal_by(roots, get_nodes_to_traverse_func)
     return ordered[::-1]
 
-def breadth_first_traversal(
+def depth_first_traversal(
         graph_nodes: dict[typing.Any, list[typing.Any]],
         roots: list[typing.Any]) -> list[typing.Any]:
     """
-    Like `breadth_first_traversal_by` but the nodes are stored in the graph.
+    Like `depth_first_traversal_by` but the nodes are stored in the graph.
     """
 
     def lookup(x):
         return graph_nodes[x]
 
-    return breadth_first_traversal_by(graph_nodes, roots, lookup)
+    return depth_first_traversal_by(graph_nodes, roots, lookup)
 
-def breadth_first_traversal_by(
+# With following graph
+#
+#          A
+#        /   \
+#      B      C
+#     / \    / \
+#    D   E  F   G
+#
+# preorder-left-to-right starting from A will go to left leg first
+#                       A-B-D-E-C-F-G
+#
+# preorder-right-to-left starting from A will go to right leg first
+#                       A-C-G-F-B-E-D
+#
+GraphTraversal = enum(
+    "preorder-right-to-left",
+    "preorder-left-to-right",
+)
+
+def depth_first_traversal_by(
         graph_nodes: [dict[typing.Any, typing.Any], None],
         roots: list[typing.Any],
         get_nodes_to_traverse_func: typing.Callable,
-        node_formatter: typing.Callable = str) -> list[typing.Any]:
+        traversal: GraphTraversal = GraphTraversal("preorder-right-to-left"),
+        node_formatter: typing.Callable[[typing.Any], str] = str) -> list[typing.Any]:
     """
-    Performs a breadth first traversal of `graph_nodes`, beginning
+    Performs a depth first traversal of `graph_nodes`, beginning
     with the `roots` and queuing the nodes returned by`get_nodes_to_traverse_func`.
     Returns a list of all visisted nodes.
 
     get_nodes_to_traverse_func(node: '_a') -> ['_a']:
 
     Starlark does not offer while loops, so this implementation
-    must make use of a for loop. We pop from the end of the queue
-    as a matter of performance.
+    must make use of a for loop.
     """
 
     # Dictify for O(1) lookup
     visited = {k: None for k in roots}
+    stride = -1 if traversal == GraphTraversal("preorder-left-to-right") else 1
 
-    queue = visited.keys()
+    stack = []
+    for node in visited.keys()[::stride]:
+        stack.append(node)
 
     for _ in range(len(graph_nodes) if graph_nodes else 2000000000):
-        if not queue:
+        if not stack:
             break
-        node = queue.pop()
-        if graph_nodes:
-            expect(node in graph_nodes, "Expected node {} in graph nodes", node_formatter(node))
+        node = stack.pop()
+        if graph_nodes and node not in graph_nodes:
+            fail("Expected node {} in graph nodes".format(node_formatter(node)))
         nodes_to_visit = get_nodes_to_traverse_func(node)
-        for node in nodes_to_visit:
-            if node not in visited:
-                visited[node] = None
-                queue.append(node)
+        if nodes_to_visit:
+            for node in nodes_to_visit[::stride]:
+                if node not in visited:
+                    visited[node] = None
+                    stack.append(node)
 
-    expect(not queue, "Expected to be done with graph traversal queue.")
+    expect(not stack, "Expected to be done with graph traversal stack.")
 
     return visited.keys()

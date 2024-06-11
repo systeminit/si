@@ -5,25 +5,34 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import List, Optional, Type, TypeVar
 
 from .apple_platform import ApplePlatform
 
+from .identity import CodeSigningIdentity
+
 from .provisioning_profile_metadata import ProvisioningProfileMetadata
 
-META_IOS_DEVELOPER_CERTIFICATE_LINK: str = "https://www.internalfb.com/intern/qa/5198/how-do-i-get-the-fb-ios-developer-certificate"
+META_IOS_DEVELOPER_CERTIFICATE_LINK: str = (
+    "https://www.internalfb.com/intern/qa/5198/how-do-i-get-the-fb-ios-developer-certificate"
+)
 META_IOS_PROVISIONING_PROFILES_LINK: str = (
     "https://www.internalfb.com/intern/apple/download-provisioning-profile/"
 )
-META_IOS_BUILD_AND_RUN_ON_DEVICE_LINK: str = "https://www.internalfb.com/intern/wiki/Ios-first-steps/running-on-device/#2-register-your-device-i"
+META_IOS_PROVISIONING_PROFILES_COMMAND: str = "arc download-provisioning-profiles"
+META_IOS_BUILD_AND_RUN_ON_DEVICE_LINK: str = (
+    "https://www.internalfb.com/intern/wiki/Ios-first-steps/running-on-device/#2-register-your-device-i"
+)
 
 
 class IProvisioningProfileDiagnostics(metaclass=ABCMeta):
     profile: ProvisioningProfileMetadata
 
-    def __init__(self, profile: ProvisioningProfileMetadata):
+    def __init__(self, profile: ProvisioningProfileMetadata) -> None:
         self.profile = profile
 
     @abstractmethod
@@ -40,7 +49,7 @@ class TeamIdMismatch(IProvisioningProfileDiagnostics):
         profile: ProvisioningProfileMetadata,
         team_id: str,
         team_id_constraint: str,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.team_id = team_id
         self.team_id_constraint = team_id_constraint
@@ -58,7 +67,7 @@ class BundleIdMismatch(IProvisioningProfileDiagnostics):
         profile: ProvisioningProfileMetadata,
         bundle_id: str,
         bundle_id_constraint: str,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.bundle_id = bundle_id
         self.bundle_id_constraint = bundle_id_constraint
@@ -74,7 +83,7 @@ class ProfileExpired(IProvisioningProfileDiagnostics):
         self,
         profile: ProvisioningProfileMetadata,
         bundle_id_match_length: int,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.bundle_id_match_length = bundle_id_match_length
 
@@ -91,7 +100,7 @@ class UnsupportedPlatform(IProvisioningProfileDiagnostics):
         profile: ProvisioningProfileMetadata,
         bundle_id_match_length: int,
         platform_constraint: ApplePlatform,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.bundle_id_match_length = bundle_id_match_length
         self.platform_constraint = platform_constraint
@@ -112,7 +121,7 @@ class EntitlementsMismatch(IProvisioningProfileDiagnostics):
         bundle_id_match_length: int,
         mismatched_key: str,
         mismatched_value: str,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.bundle_id_match_length = bundle_id_match_length
         self.mismatched_key = mismatched_key
@@ -129,7 +138,7 @@ class DeveloperCertificateMismatch(IProvisioningProfileDiagnostics):
         self,
         profile: ProvisioningProfileMetadata,
         bundle_id_match_length: int,
-    ):
+    ) -> None:
         super().__init__(profile)
         self.bundle_id_match_length = bundle_id_match_length
 
@@ -147,6 +156,7 @@ def interpret_provisioning_profile_diagnostics(
     diagnostics: List[IProvisioningProfileDiagnostics],
     bundle_id: str,
     provisioning_profiles_dir: Path,
+    identities: List[CodeSigningIdentity],
     log_file_path: Optional[Path] = None,
 ) -> str:
     if not diagnostics:
@@ -182,10 +192,16 @@ def interpret_provisioning_profile_diagnostics(
         )
 
     if mismatch := find_mismatch(DeveloperCertificateMismatch):
+        identities_description = (
+            "WARNING: NO SIGNING IDENTITIES FOUND!"
+            if len(identities) == 0
+            else f"List of signing identities: `{identities}`."
+        )
         return "".join(
             [
                 header,
                 f"The provisioning profile `{mismatch.profile.file_path.name}` satisfies all constraints, but no matching certificates were found in your keychain. ",
+                identities_description,
                 f"Please download and install the latest certificate from {META_IOS_DEVELOPER_CERTIFICATE_LINK}.",
                 footer,
             ]
@@ -197,7 +213,8 @@ def interpret_provisioning_profile_diagnostics(
                 header,
                 f"The provisioning profile `{mismatch.profile.file_path.name}` is the best match, but it doesn't contain all the needed entitlements. ",
                 f"Expected entitlement item with key `{mismatch.mismatched_key}` and value `{mismatch.mismatched_value}` is missing. ",
-                f"Usually that means the application entitlements were changed recently, provisioning profile was updated and you need to download & install the latest version of provisioning profile for Bundle ID `{bundle_id}` from {META_IOS_PROVISIONING_PROFILES_LINK}",
+                f"Usually that means the application entitlements were changed recently, provisioning profile was updated and you need to download & install the latest version of provisioning profile for Bundle ID `{bundle_id}`.",
+                f"Execute `{META_IOS_PROVISIONING_PROFILES_COMMAND}` or download from from {META_IOS_PROVISIONING_PROFILES_LINK}",
                 footer,
             ]
         )
@@ -218,7 +235,8 @@ def interpret_provisioning_profile_diagnostics(
             [
                 header,
                 f"The provisioning profile `{mismatch.profile.file_path.name}` is the the best match; however, it has expired",
-                f"Please download and install a valid profile from {META_IOS_PROVISIONING_PROFILES_LINK}",
+                f"Execute `{META_IOS_PROVISIONING_PROFILES_COMMAND}` to get the latest provisioning profiles.",
+                f"Alternatively, please download and install a valid profile from {META_IOS_PROVISIONING_PROFILES_LINK}",
                 footer,
             ]
         )
@@ -227,7 +245,8 @@ def interpret_provisioning_profile_diagnostics(
         [
             header,
             f"No provisioning profile matching the Bundle ID `{bundle_id}` was found. ",
-            f"Please download and install the appropriate profile from {META_IOS_PROVISIONING_PROFILES_LINK}",
+            f"Execute `{META_IOS_PROVISIONING_PROFILES_COMMAND}` to get the latest provisioning profiles.",
+            f"Alternatively, please download and install the appropriate profile from {META_IOS_PROVISIONING_PROFILES_LINK}",
             footer,
         ]
     )

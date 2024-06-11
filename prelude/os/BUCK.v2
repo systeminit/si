@@ -1,3 +1,11 @@
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
+prelude = native  # Avoid warnings and auto-formatters
+
 # The short list of ubiquitous, mainstream operating systems:
 
 config_setting(
@@ -34,12 +42,12 @@ config_setting(
     visibility = ["PUBLIC"],
 )
 
-native.constraint_setting(
+prelude.constraint_setting(
     name = "maybe_building_android_binary",
     visibility = ["prelude//..."],
 )
 
-native.constraint_value(
+prelude.constraint_value(
     name = "building_android_binary",
     constraint_setting = ":maybe_building_android_binary",
     visibility = ["prelude//..."],
@@ -110,6 +118,14 @@ config_setting(
     name = "wasi",
     constraint_values = [
         "//os/constraints:wasi",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "linux-sgx",
+    constraint_values = [
+        "//os/constraints:linux",
     ],
     visibility = ["PUBLIC"],
 )

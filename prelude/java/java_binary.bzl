@@ -22,7 +22,7 @@ load(
     "get_java_packaging_info",
 )
 
-def _generate_script(generate_wrapper: bool, native_libs: dict[str, SharedLibrary]) -> bool:
+def _generate_script(generate_wrapper: bool, native_libs: list[SharedLibrary]) -> bool:
     # if `generate_wrapper` is set and no native libs then it should be a wrapper script as result,
     # otherwise fat jar will be generated (inner jar or script will be included inside a final fat jar)
     return generate_wrapper and len(native_libs) == 0
@@ -31,7 +31,7 @@ def _create_fat_jar(
         ctx: AnalysisContext,
         java_toolchain: JavaToolchainInfo,
         jars: cmd_args,
-        native_libs: dict[str, SharedLibrary],
+        native_libs: list[SharedLibrary],
         do_not_create_inner_jar: bool,
         generate_wrapper: bool) -> list[Artifact]:
     extension = "sh" if _generate_script(generate_wrapper, native_libs) else "jar"
@@ -55,7 +55,7 @@ def _create_fat_jar(
         )
         args += [
             "--native_libs_file",
-            ctx.actions.write("native_libs", [cmd_args([so_name, native_lib.lib.output], delimiter = " ") for so_name, native_lib in native_libs.items()]),
+            ctx.actions.write("native_libs", [cmd_args([native_lib.soname.ensure_str(), native_lib.lib.output], delimiter = " ") for native_lib in native_libs]),
         ]
         if do_not_create_inner_jar:
             args += [
@@ -79,9 +79,6 @@ def _create_fat_jar(
 
     main_class = ctx.attrs.main_class
     if main_class:
-        if do_not_create_inner_jar and native_libs:
-            fail("For performance reasons, java binaries with a main class and native libs should always generate an inner jar.\
-            The reason for having inner.jar is so that we don't have to compress the native libraries, which is slow at compilation time and also at runtime (when decompressing).")
         args += ["--main_class", main_class]
 
     manifest_file = ctx.attrs.manifest_file
@@ -109,8 +106,10 @@ def _create_fat_jar(
         ]
         outputs.append(classpath_args_output)
 
-    fat_jar_cmd = cmd_args(args)
-    fat_jar_cmd.hidden(jars, [native_lib.lib.output for native_lib in native_libs.values()])
+    fat_jar_cmd = cmd_args(
+        args,
+        hidden = [jars] + [native_lib.lib.output for native_lib in native_libs],
+    )
 
     ctx.actions.run(
         fat_jar_cmd,
@@ -188,16 +187,16 @@ def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     if need_to_generate_wrapper:
         classpath_file = outputs[1]
-        run_cmd.hidden(
+        run_cmd.add(cmd_args(hidden = [
             java_toolchain.java[RunInfo],
             classpath_file,
             packaging_jar_args,
-        )
+        ]))
         other_outputs = [classpath_file] + [packaging_jar_args] + _get_java_tool_artifacts(java_toolchain)
 
     sub_targets = get_classpath_subtarget(ctx.actions, packaging_info)
 
-    class_to_src_map, _ = get_class_to_source_map_info(
+    class_to_src_map, _, _ = get_class_to_source_map_info(
         ctx,
         outputs = None,
         deps = ctx.attrs.deps,

@@ -18,25 +18,32 @@ def create_universal_binary(
         dsym_bundle_name: [str, None],
         split_arch_dsym: bool) -> AppleBundleBinaryOutput:
     binary_output = ctx.actions.declare_output("UniversalBinary" if binary_name == None else binary_name, dir = False)
-    lipo_cmd = cmd_args([ctx.attrs._apple_toolchain[AppleToolchainInfo].lipo])
+    lipo_cmd = [ctx.attrs._apple_toolchain[AppleToolchainInfo].lipo]
 
     for (_, binary) in binary_deps.items():
-        lipo_cmd.add(cmd_args(binary[DefaultInfo].default_outputs[0]))
+        lipo_cmd.append(cmd_args(binary[DefaultInfo].default_outputs[0]))
 
-    lipo_cmd.add(["-create", "-output", binary_output.as_output()])
-    ctx.actions.run(lipo_cmd, category = "lipo")
+    lipo_cmd.extend(["-create", "-output", binary_output.as_output()])
+    ctx.actions.run(cmd_args(lipo_cmd), category = "lipo")
+
+    # Universal binaries can be created out of plain `cxx_binary()` / `cxx_library()`
+    # which lack the `AppleDebuggableInfo` provider.
+    # TODO(T174234334): Uniformly support debuggable info for apple_*/cxx_*
+    contains_full_debuggable_info = _all_binaries_have_apple_debuggable_info(binary_deps)
 
     dsym_output = None
-    if split_arch_dsym:
+    if split_arch_dsym and contains_full_debuggable_info:
         dsym_output = ctx.actions.declare_output("UniversalBinary.dSYM" if dsym_bundle_name == None else dsym_bundle_name, dir = True)
-        dsym_combine_cmd = cmd_args([ctx.attrs._apple_tools[AppleToolsInfo].split_arch_combine_dsym_bundles_tool])
+        dsym_combine_cmd = [ctx.attrs._apple_tools[AppleToolsInfo].split_arch_combine_dsym_bundles_tool]
 
         for (arch, binary) in binary_deps.items():
-            dsym_combine_cmd.add(["--dsym-bundle", cmd_args(binary.get(AppleDebuggableInfo).dsyms[0]), "--arch", arch])
-        dsym_combine_cmd.add(["--output", dsym_output.as_output()])
-        ctx.actions.run(dsym_combine_cmd, category = "universal_binaries_dsym")
+            dsym_combine_cmd.extend(["--dsym-bundle", cmd_args(binary.get(AppleDebuggableInfo).dsyms[0]), "--arch", arch])
+        dsym_combine_cmd.extend(["--output", dsym_output.as_output()])
+        ctx.actions.run(cmd_args(dsym_combine_cmd), category = "universal_binaries_dsym")
 
-    all_debug_info_tsets = [binary.get(AppleDebuggableInfo).debug_info_tset for binary in binary_deps.values()]
+    all_debug_info_tsets = []
+    if contains_full_debuggable_info:
+        all_debug_info_tsets = [binary.get(AppleDebuggableInfo).debug_info_tset for binary in binary_deps.values()]
 
     return AppleBundleBinaryOutput(
         binary = binary_output,
@@ -50,3 +57,10 @@ def create_universal_binary(
                 ),
             ),
     )
+
+def _all_binaries_have_apple_debuggable_info(binary_deps: dict[str, Dependency]) -> bool:
+    for binary in binary_deps.values():
+        info = binary.get(AppleDebuggableInfo)
+        if info == None:
+            return False
+    return True

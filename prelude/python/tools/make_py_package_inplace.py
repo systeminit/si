@@ -6,6 +6,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 """
 Create a bootstrapper pex for inplace python binaries
 
@@ -129,6 +131,13 @@ def parse_args() -> argparse.Namespace:
         help="The dynamic loader env used to find native library deps",
     )
     parser.add_argument(
+        "--native-library-runtime-path",
+        dest="native_library_runtime_paths",
+        default=[],
+        action="append",
+        help="The dynamic loader env used to find native library deps",
+    )
+    parser.add_argument(
         "-e",
         "--runtime_env",
         action="append",
@@ -137,6 +146,10 @@ def parse_args() -> argparse.Namespace:
     )
     # Compatibility with existing make_par scripts
     parser.add_argument("--passthrough", action="append", default=[])
+    # No-op, added for compatibility with existing make_par scripts
+    parser.add_argument(
+        "--omnibus-debug-info", choices=["separate", "strip", "extract"]
+    )
 
     return parser.parse_args()
 
@@ -155,6 +168,7 @@ def write_bootstrapper(args: argparse.Namespace) -> None:
     # Because this can be invoked from other directories, find the relative path
     # from this .par to the modules dir, and use that.
     relative_modules_dir = os.path.relpath(args.modules_dir, args.output.parent)
+    native_lib_dirs = [relative_modules_dir] + args.native_library_runtime_paths
 
     # TODO(nmj): Remove this hack. So, if arg0 in your shebang is a bash script
     #                 (like /usr/local/fbcode/platform007/bin/python3.7 on macs is)
@@ -166,9 +180,9 @@ def write_bootstrapper(args: argparse.Namespace) -> None:
     #                 exclude it for now, because linux doesn't like multiple args
     #                 after /usr/bin/env
 
-    ld_preload = "None"
+    ld_preload = None
     if args.preload_libraries:
-        ld_preload = repr(":".join(p.name for p in args.preload_libraries))
+        ld_preload = [p.name for p in args.preload_libraries]
 
     new_data = data.replace("<PYTHON>", "/usr/bin/env " + str(args.python))
     new_data = new_data.replace("<PYTHON_INTERPRETER_FLAGS>", "")
@@ -187,9 +201,9 @@ def write_bootstrapper(args: argparse.Namespace) -> None:
 
     # Things that are only required for the full template
     new_data = new_data.replace("<NATIVE_LIBS_ENV_VAR>", args.native_libs_env_var)
-    new_data = new_data.replace("<NATIVE_LIBS_DIR>", repr(relative_modules_dir))
+    new_data = new_data.replace("<NATIVE_LIBS_DIRS>", repr(native_lib_dirs))
     new_data = new_data.replace("<NATIVE_LIBS_PRELOAD_ENV_VAR>", "LD_PRELOAD")
-    new_data = new_data.replace("<NATIVE_LIBS_PRELOAD>", ld_preload)
+    new_data = new_data.replace("<NATIVE_LIBS_PRELOAD>", repr(ld_preload))
 
     if args.runtime_env:
         runtime_env = dict(e.split("=", maxsplit=1) for e in args.runtime_env)

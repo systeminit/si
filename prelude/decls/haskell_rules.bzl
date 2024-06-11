@@ -10,7 +10,8 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load(":common.bzl", "LinkableDepType", "Linkage", "buck", "prelude_rule")
+load("@prelude//linking:types.bzl", "Linkage")
+load(":common.bzl", "LinkableDepType", "buck", "prelude_rule")
 load(":haskell_common.bzl", "haskell_common")
 load(":native_common.bzl", "native_common")
 
@@ -106,10 +107,11 @@ haskell_haddock = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps": attrs.list(attrs.dep(), default = []),
             "deps_query": attrs.option(attrs.query(), default = None),
-            "haddock_flags": attrs.list(attrs.string(), default = []),
+            "haddock_flags": attrs.list(attrs.arg(), default = []),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "platform": attrs.option(attrs.string(), default = None),
+            "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
         }
     ),
 )
@@ -165,14 +167,14 @@ haskell_library = prelude_rule(
         haskell_common.deps_arg() |
         buck.platform_deps_arg() |
         native_common.link_whole(link_whole_type = attrs.bool(default = False)) |
-        native_common.preferred_linkage(preferred_linkage_type = attrs.enum(Linkage)) |
+        native_common.preferred_linkage(preferred_linkage_type = attrs.enum(Linkage.values())) |
         {
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "enable_profiling": attrs.bool(default = False),
             "ghci_platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "ghci_preload_deps": attrs.set(attrs.dep(), sorted = True, default = []),
-            "haddock_flags": attrs.list(attrs.string(), default = []),
+            "haddock_flags": attrs.list(attrs.arg(), default = []),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "linker_flags": attrs.list(attrs.arg(), default = []),

@@ -14,11 +14,10 @@ def _impl(platform: PlatformInfo, refs: struct, attrs: struct) -> PlatformInfo:
         return platform
     else:
         cpu_constraint_label = refs.cpu[ConstraintSettingInfo].label
-        universal_constraint_label = refs.universal[ConstraintSettingInfo].label
         filtered_constraints = {
             constraint_setting_label: constraint_setting_value
             for (constraint_setting_label, constraint_setting_value) in platform.configuration.constraints.items()
-            if constraint_setting_label != cpu_constraint_label and constraint_setting_label != universal_constraint_label
+            if constraint_setting_label != cpu_constraint_label
         }
         return PlatformInfo(
             label = "apple_universal_deduped_resource",
@@ -32,8 +31,8 @@ apple_resource_transition = transition(
     impl = _impl,
     refs = {
         "cpu": "config//cpu/constraints:cpu",
-        "universal": "config//build_mode/apple/constraints:universal",
-        "universal_enabled": "config//build_mode/apple/constraints:universal-enabled",
+        "universal": "config//cpu/constraints:universal",
+        "universal_enabled": "config//cpu/constraints:universal-enabled",
     },
     attrs = [
         "skip_universal_resource_dedupe",

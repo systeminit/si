@@ -6,9 +6,10 @@
 # of this source tree.
 
 load("@prelude//apple:apple_bundle.bzl", "apple_bundle_impl")
+load("@prelude//apple:apple_platforms.bzl", "APPLE_PLATFORMS_KEY")
 load("@prelude//apple:apple_rules_impl_utility.bzl", "apple_bundle_extra_attrs")
+load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
-load("@prelude//decls/common.bzl", "Traversal")
 load("@prelude//decls/ios_rules.bzl", "AppleBundleExtension")
 load(":watch_transition.bzl", "watch_transition")
 
@@ -34,7 +35,7 @@ def _apple_bundle_base_attrs():
         "platform_binary": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.dep())), default = None),
         "product_name": attrs.option(attrs.string(), default = None),
         "resource_group": attrs.option(attrs.string(), default = None),
-        "resource_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+        "resource_group_map": attrs.option(RESOURCE_GROUP_MAP_ATTR, default = None),
         "skip_copying_swift_stdlib": attrs.option(attrs.bool(), default = None),
         "try_skip_code_signing": attrs.option(attrs.bool(), default = None),
         "xcode_product_type": attrs.option(attrs.string(), default = None),
@@ -44,6 +45,10 @@ def _apple_watchos_bundle_attrs():
     attributes = {}
     attributes.update(_apple_bundle_base_attrs())
     attributes.update(apple_bundle_extra_attrs())
+    attributes.update({
+        APPLE_PLATFORMS_KEY: attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
+        "bundle_type": attrs.string(default = "watchapp"),
+    })
     return attributes
 
 def apple_watchos_bundle_impl(ctx: AnalysisContext) -> list[Provider]:

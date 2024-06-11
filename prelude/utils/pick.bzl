@@ -12,10 +12,13 @@ def pick_bin(override, underlying):
     return override[RunInfo] if override != None else underlying
 
 def pick_dep(override, underlying):
+    return pick_raw(override, underlying)
+
+def pick_raw(override, underlying):
     return override if override != None else underlying
 
 def pick_and_add(override, additional, underlying):
-    flags = cmd_args(pick(override, underlying))
+    flags = [pick(override, underlying)]
     if additional:
-        flags.add(additional)
-    return flags
+        flags.append(additional)
+    return cmd_args(flags)

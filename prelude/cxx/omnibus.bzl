@@ -20,7 +20,6 @@ load(
     "LinkInfo",
     "LinkInfos",
     "LinkStrategy",
-    "Linkage",
     "LinkedObject",
     "SharedLibLinkable",
     "get_lib_output_style",
@@ -38,10 +37,16 @@ load(
     "linkable_deps",
     "linkable_graph",
 )
+load(
+    "@prelude//linking:shared_libraries.bzl",
+    "SharedLibrary",  # @unused Used as a type
+    "create_shlib",
+)
+load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//utils:expect.bzl", "expect")
 load(
     "@prelude//utils:graph_utils.bzl",
-    "breadth_first_traversal_by",
+    "depth_first_traversal_by",
     "post_order_traversal",
 )
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
@@ -118,7 +123,7 @@ OmnibusRootProduct = record(
 # The result of the omnibus link.
 OmnibusSharedLibraries = record(
     omnibus = field([CxxLinkResult, None], None),
-    libraries = field(dict[str, LinkedObject], {}),
+    libraries = field(list[SharedLibrary], []),
     roots = field(dict[Label, OmnibusRootProduct], {}),
     exclusion_roots = field(list[Label]),
     excluded = field(list[Label]),
@@ -139,7 +144,8 @@ def get_roots(deps: list[Dependency]) -> dict[Label, LinkableRootInfo]:
     roots = {}
     for dep in deps:
         if LinkableRootInfo in dep:
-            roots[dep.label] = dep[LinkableRootInfo]
+            root = dep[LinkableRootInfo]
+            roots[root.label] = root
     return roots
 
 def get_excluded(deps: list[Dependency] = []) -> dict[Label, None]:
@@ -151,11 +157,13 @@ def get_excluded(deps: list[Dependency] = []) -> dict[Label, None]:
     return excluded_nodes
 
 def create_linkable_root(
+        label: Label,
         link_infos: LinkInfos,
         name: [str, None] = None,
-        deps: list[Dependency] = []) -> LinkableRootInfo:
+        deps: list[LinkableGraph | Dependency] = []) -> LinkableRootInfo:
     # Only include dependencies that are linkable.
     return LinkableRootInfo(
+        label = label,
         name = name,
         link_infos = link_infos,
         deps = linkable_deps(deps),
@@ -192,7 +200,7 @@ def _link_deps(
     def find_deps(node: Label):
         return get_deps_for_link(link_infos[node], LinkStrategy("shared"), pic_behavior)
 
-    return breadth_first_traversal_by(link_infos, deps, find_deps)
+    return depth_first_traversal_by(link_infos, deps, find_deps)
 
 def _create_root(
         ctx: AnalysisContext,
@@ -512,9 +520,9 @@ def _create_omnibus(
             root_products.values(),
             # ... and the shared libs from excluded nodes.
             [
-                shared_lib.output
+                shared_lib.lib.output
                 for label in spec.excluded
-                for shared_lib in spec.link_infos[label].shared_libs.values()
+                for shared_lib in spec.link_infos[label].shared_libs.libraries
             ],
             # Extract explicit global symbol names from flags in all body link args.
             global_symbols_link_args,
@@ -587,11 +595,18 @@ def _build_omnibus_spec(
         if label not in excluded
     }
 
-    # Find the deps of the root nodes.  These form the roots of the nodes
-    # included in the omnibus link.
+    # Find the deps of the root nodes that should be linked into
+    # 'libomnibus.so'.
+    #
+    # If a dep indicates preferred linkage static, it is linked directly into
+    # this omnimbus root and therefore not added to `first_order_root_deps` and
+    # thereby will not be linked into 'libomnibus.so'. If the dep does not
+    # indicate preferred linkage static, then it is added to
+    # `first_order_root_deps` and thereby will be linked into 'libomnibus.so'.
     first_order_root_deps = []
     for label in _link_deps(graph.nodes, flatten([r.deps for r in roots.values()]), get_cxx_toolchain_info(ctx).pic_behavior):
-        # We only consider deps which aren't *only* statically linked.
+        # Per the comment above, only consider deps which aren't *only*
+        # statically linked.
         if _is_static_only(graph.nodes[label]):
             continue
 
@@ -647,9 +662,10 @@ def _ordered_roots(
     """
 
     # Calculate all deps each root node needs to link against.
-    link_deps = {}
-    for label, root in spec.roots.items():
-        link_deps[label] = _link_deps(spec.link_infos, root.deps, pic_behavior)
+    link_deps = {
+        label: _link_deps(spec.link_infos, root.deps, pic_behavior)
+        for label, root in spec.roots.items()
+    }
 
     # Used the link deps to create the graph of root nodes.
     root_graph = {
@@ -657,14 +673,12 @@ def _ordered_roots(
         for node, deps in link_deps.items()
     }
 
-    ordered_roots = []
-
     # Emit the root link info in post-order, so that we generate root link rules
     # for dependencies before their dependents.
-    for label in post_order_traversal(root_graph):
-        root = spec.roots[label]
-        deps = link_deps[label]
-        ordered_roots.append((label, root, deps))
+    ordered_roots = [
+        (label, spec.roots[label], link_deps[label])
+        for label in post_order_traversal(root_graph)
+    ]
 
     return ordered_roots
 
@@ -679,7 +693,7 @@ def create_omnibus_libraries(
     # Create dummy omnibus
     dummy_omnibus = create_dummy_omnibus(ctx, extra_ldflags)
 
-    libraries = {}
+    libraries = []
     root_products = {}
 
     # Link all root nodes against the dummy libomnibus lib.
@@ -698,7 +712,13 @@ def create_omnibus_libraries(
             allow_cache_upload = True,
         )
         if root.name != None:
-            libraries[root.name] = product.shared_library
+            libraries.append(
+                create_shlib(
+                    soname = root.name,
+                    lib = product.shared_library,
+                    label = label,
+                ),
+            )
         root_products[label] = product
 
     # If we have body nodes, then link them into the monolithic libomnibus.so.
@@ -713,12 +733,17 @@ def create_omnibus_libraries(
             prefer_stripped_objects,
             allow_cache_upload = True,
         )
-        libraries[_omnibus_soname(ctx)] = omnibus.linked_object
+        libraries.append(
+            create_shlib(
+                soname = _omnibus_soname(ctx),
+                lib = omnibus.linked_object,
+                label = ctx.label,
+            ),
+        )
 
     # For all excluded nodes, just add their regular shared libs.
     for label in spec.excluded:
-        for name, lib in spec.link_infos[label].shared_libs.items():
-            libraries[name] = lib
+        libraries.extend(spec.link_infos[label].shared_libs.libraries)
 
     return OmnibusSharedLibraries(
         omnibus = omnibus,

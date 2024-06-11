@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import argparse
 import cProfile
 import json
@@ -13,17 +15,19 @@ import pstats
 import shlex
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from apple.tools.code_signing.apple_platform import ApplePlatform
 from apple.tools.code_signing.codesign_bundle import (
     AdhocSigningContext,
     codesign_bundle,
     CodesignConfiguration,
-    non_adhoc_signing_context,
+    CodesignedPath,
+    signing_context_with_profile_selection,
 )
-from apple.tools.code_signing.list_codesign_identities_command_factory import (
-    ListCodesignIdentitiesCommandFactory,
+from apple.tools.code_signing.list_codesign_identities import (
+    AdHocListCodesignIdentities,
+    ListCodesignIdentities,
 )
 
 from apple.tools.re_compatibility_utils.writable import make_dir_recursively_writable
@@ -33,11 +37,13 @@ from .action_metadata import action_metadata_if_present
 from .assemble_bundle import assemble_bundle
 from .assemble_bundle_types import BundleSpecItem, IncrementalContext
 from .incremental_state import (
+    CodesignedOnCopy,
     IncrementalState,
     IncrementalStateItem,
     IncrementalStateJSONEncoder,
     parse_incremental_state,
 )
+from .incremental_utils import codesigned_on_copy_item
 from .swift_support import run_swift_stdlib_tool, SwiftSupportArguments
 
 
@@ -73,6 +79,20 @@ def _args_parser() -> argparse.ArgumentParser:
         type=Path,
         required=False,
         help="Path to code signing utility. If not provided standard `codesign` tool will be used.",
+    )
+    parser.add_argument(
+        "--strict-provisioning-profile-search",
+        action="store_true",
+        required=False,
+        help="Fail code signing if more than one matching profile found.",
+    )
+    parser.add_argument(
+        "--codesign-args",
+        type=str,
+        default=[],
+        required=False,
+        action="append",
+        help="Add additional args to pass during codesigning. Pass as`--codesign-args=ARG` to ensure correct arg parsing.",
     )
     parser.add_argument(
         "--info-plist-source",
@@ -115,11 +135,16 @@ def _args_parser() -> argparse.ArgumentParser:
         help="Perform ad-hoc signing if set.",
     )
     parser.add_argument(
+        "--embed-provisioning-profile-when-signing-ad-hoc",
+        action="store_true",
+        help="Perform selection of provisioining profile and embed it into final bundle when ad-hoc signing if set.",
+    )
+    parser.add_argument(
         "--ad-hoc-codesign-identity",
         metavar="<identity>",
         type=str,
         required=False,
-        help="Codesign identity to use when ad-hoc signing is performed.",
+        help="Codesign identity to use when ad-hoc signing is performed. Should be present when selection of provisioining profile is requested for ad-hoc signing.",
     )
     parser.add_argument(
         "--codesign-configuration",
@@ -223,6 +248,17 @@ def _args_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Check there are no path conflicts between different source parts of the bundle if enabled.",
     )
+    parser.add_argument(
+        "--fast-provisioning-profile-parsing",
+        action="store_true",
+        help="Uses experimental faster provisioning profile parsing.",
+    )
+    parser.add_argument(
+        "--versioned-if-macos",
+        action="store_true",
+        help="Create symlinks for versioned macOS bundle",
+    )
+
     return parser
 
 
@@ -249,28 +285,71 @@ def _main() -> None:
         pr.enable()
 
     if args.codesign:
-        assert args.info_plist_source and args.info_plist_destination and args.platform
+        if not args.info_plist_source:
+            raise RuntimeError(
+                "Paths to Info.plist source file should be set when code signing is required."
+            )
+        if not args.info_plist_destination:
+            raise RuntimeError(
+                "Info.plist destination path should be set when code signing is required."
+            )
+        if not args.platform:
+            raise RuntimeError(
+                "Apple platform should be set when code signing is required."
+            )
+        list_codesign_identities = (
+            ListCodesignIdentities.override(
+                shlex.split(args.codesign_identities_command)
+            )
+            if args.codesign_identities_command
+            else ListCodesignIdentities.default()
+        )
         if args.ad_hoc:
+            if args.embed_provisioning_profile_when_signing_ad_hoc:
+                if not args.profiles_dir:
+                    raise RuntimeError(
+                        "Path to directory with provisioning profile files should be set when selection of provisioining profile is enabled for ad-hoc code signing."
+                    )
+                if not args.ad_hoc_codesign_identity:
+                    raise RuntimeError(
+                        "Code signing identity should be set when selection of provisioining profile is enabled for ad-hoc code signing."
+                    )
+                profile_selection_context = signing_context_with_profile_selection(
+                    info_plist_source=args.info_plist_source,
+                    info_plist_destination=args.info_plist_destination,
+                    provisioning_profiles_dir=args.profiles_dir,
+                    entitlements_path=args.entitlements,
+                    platform=args.platform,
+                    list_codesign_identities=AdHocListCodesignIdentities(
+                        original=list_codesign_identities,
+                        subject_common_name=args.ad_hoc_codesign_identity,
+                    ),
+                    log_file_path=args.log_file,
+                    should_use_fast_provisioning_profile_parsing=args.fast_provisioning_profile_parsing,
+                    strict_provisioning_profile_search=args.strict_provisioning_profile_search,
+                )
+            else:
+                profile_selection_context = None
             signing_context = AdhocSigningContext(
-                codesign_identity=args.ad_hoc_codesign_identity
+                codesign_identity=args.ad_hoc_codesign_identity,
+                profile_selection_context=profile_selection_context,
             )
             selected_identity_argument = args.ad_hoc_codesign_identity
         else:
-            assert (
-                args.profiles_dir
-            ), "Path to directory with provisioning profile files should be set when signing is not ad-hoc."
-            signing_context = non_adhoc_signing_context(
+            if not args.profiles_dir:
+                raise RuntimeError(
+                    "Path to directory with provisioning profile files should be set when signing is not ad-hoc."
+                )
+            signing_context = signing_context_with_profile_selection(
                 info_plist_source=args.info_plist_source,
                 info_plist_destination=args.info_plist_destination,
                 provisioning_profiles_dir=args.profiles_dir,
                 entitlements_path=args.entitlements,
                 platform=args.platform,
-                list_codesign_identities_command_factory=ListCodesignIdentitiesCommandFactory.override(
-                    shlex.split(args.codesign_identities_command)
-                )
-                if args.codesign_identities_command
-                else None,
+                list_codesign_identities=list_codesign_identities,
                 log_file_path=args.log_file,
+                should_use_fast_provisioning_profile_parsing=args.fast_provisioning_profile_parsing,
+                strict_provisioning_profile_search=args.strict_provisioning_profile_search,
             )
             selected_identity_argument = (
                 signing_context.selected_profile_info.identity.fingerprint
@@ -281,12 +360,15 @@ def _main() -> None:
 
     with args.spec.open(mode="rb") as spec_file:
         spec = json.load(spec_file, object_hook=lambda d: BundleSpecItem(**d))
+        spec = _deduplicate_spec(spec)
 
     incremental_context = _incremental_context(
         incremenatal_state_path=args.incremental_state,
         codesigned=args.codesign,
         codesign_configuration=args.codesign_configuration,
         codesign_identity=selected_identity_argument,
+        codesign_arguments=args.codesign_args,
+        versioned_if_macos=args.versioned_if_macos,
     )
 
     incremental_state = assemble_bundle(
@@ -294,6 +376,7 @@ def _main() -> None:
         bundle_path=args.output,
         incremental_context=incremental_context,
         check_conflicts=args.check_conflicts,
+        versioned_if_macos=args.versioned_if_macos,
     )
 
     swift_support_args = _swift_support_arguments(
@@ -304,7 +387,6 @@ def _main() -> None:
     if swift_support_args:
         swift_stdlib_paths = run_swift_stdlib_tool(
             bundle_path=args.output,
-            signing_identity=selected_identity_argument,
             args=swift_support_args,
         )
     else:
@@ -319,18 +401,47 @@ def _main() -> None:
             raise RuntimeError(
                 "Expected signing context to be created before bundling is done if codesign is requested."
             )
+
+        bundle_path = CodesignedPath(
+            path=args.output, entitlements=args.entitlements, flags=args.codesign_args
+        )
+        codesign_on_copy_paths = [
+            CodesignedPath(
+                path=bundle_path.path / i.dst,
+                entitlements=(
+                    Path(i.codesign_entitlements) if i.codesign_entitlements else None
+                ),
+                flags=(
+                    i.codesign_flags_override
+                    if (i.codesign_flags_override is not None)
+                    else args.codesign_args
+                ),
+            )
+            for i in spec
+            if i.codesign_on_copy
+        ] + [
+            CodesignedPath(
+                path=bundle_path.path / path,
+                entitlements=None,
+                flags=args.codesign_args,
+            )
+            for path in swift_stdlib_paths
+        ]
+
         codesign_bundle(
-            bundle_path=args.output,
+            bundle_path=bundle_path,
             signing_context=signing_context,
-            entitlements_path=args.entitlements,
             platform=args.platform,
-            codesign_on_copy_paths=[i.dst for i in spec if i.codesign_on_copy],
-            codesign_args=[],
+            codesign_on_copy_paths=codesign_on_copy_paths,
             codesign_tool=args.codesign_tool,
             codesign_configuration=args.codesign_configuration,
         )
 
     if incremental_state:
+        if incremental_context is None:
+            raise RuntimeError(
+                "Expected incremental context to be present when incremental state is non-null."
+            )
         _write_incremental_state(
             spec=spec,
             items=incremental_state,
@@ -338,7 +449,10 @@ def _main() -> None:
             codesigned=args.codesign,
             codesign_configuration=args.codesign_configuration,
             selected_codesign_identity=selected_identity_argument,
+            codesign_arguments=args.codesign_args,
             swift_stdlib_paths=swift_stdlib_paths,
+            versioned_if_macos=args.versioned_if_macos,
+            incremental_context=incremental_context,
         )
 
     if profiling_enabled:
@@ -354,6 +468,8 @@ def _incremental_context(
     codesigned: bool,
     codesign_configuration: CodesignConfiguration,
     codesign_identity: Optional[str],
+    codesign_arguments: List[str],
+    versioned_if_macos: bool,
 ) -> Optional[IncrementalContext]:
     action_metadata = action_metadata_if_present(_METADATA_PATH_KEY)
     if action_metadata is None:
@@ -372,6 +488,8 @@ def _incremental_context(
         codesigned=codesigned,
         codesign_configuration=codesign_configuration,
         codesign_identity=codesign_identity,
+        codesign_arguments=codesign_arguments,
+        versioned_if_macos=versioned_if_macos,
     )
 
 
@@ -443,15 +561,31 @@ def _write_incremental_state(
     codesigned: bool,
     codesign_configuration: CodesignConfiguration,
     selected_codesign_identity: Optional[str],
+    codesign_arguments: List[str],
     swift_stdlib_paths: List[Path],
-):
+    versioned_if_macos: bool,
+    incremental_context: IncrementalContext,
+) -> None:
     state = IncrementalState(
         items,
         codesigned=codesigned,
         codesign_configuration=codesign_configuration,
-        codesign_on_copy_paths=[Path(i.dst) for i in spec if i.codesign_on_copy],
+        codesigned_on_copy=[
+            codesigned_on_copy_item(
+                path=Path(i.dst),
+                entitlements=(
+                    Path(i.codesign_entitlements) if i.codesign_entitlements else None
+                ),
+                incremental_context=incremental_context,
+                codesign_flags_override=i.codesign_flags_override,
+            )
+            for i in spec
+            if i.codesign_on_copy
+        ],
         codesign_identity=selected_codesign_identity,
+        codesign_arguments=codesign_arguments,
         swift_stdlib_paths=swift_stdlib_paths,
+        versioned_if_macos=versioned_if_macos,
     )
     path.touch()
     try:
@@ -460,6 +594,22 @@ def _write_incremental_state(
     except Exception:
         path.unlink()
         raise
+
+
+def _deduplicate_spec(spec: List[BundleSpecItem]) -> List[BundleSpecItem]:
+    # It's possible to have the same spec multiple times as different
+    # apple_resource() targets can refer to the _same_ resource file.
+    #
+    # On RE, we're not allowed to overwrite files, so prevent doing
+    # identical file copies.
+    #
+    # Do not reorder spec items to achieve determinism.
+    # Rely on the fact that `dict` preserves key order.
+    deduplicated_spec = list(dict.fromkeys(spec))
+    # Force same sorting as in Buck1 for `SourcePathWithAppleBundleDestination`
+    # WARNING: This logic is tightly coupled with how spec filtering is done in `_filter_conflicting_paths` method during incremental bundling. Don't change unless you fully understand what is going on here.
+    deduplicated_spec.sort()
+    return deduplicated_spec
 
 
 def _setup_logging(
@@ -489,7 +639,7 @@ def _setup_logging(
 
 class ColoredLogFormatter(logging.Formatter):
 
-    _colors = {
+    _colors: Dict[int, str] = {
         logging.DEBUG: "\x1b[m",
         logging.INFO: "\x1b[37m",
         logging.WARNING: "\x1b[33m",
@@ -498,10 +648,10 @@ class ColoredLogFormatter(logging.Formatter):
     }
     _reset_color = "\x1b[0m"
 
-    def __init__(self, text_format: str):
+    def __init__(self, text_format: str) -> None:
         self.text_format = text_format
 
-    def format(self, record: logging.LogRecord):
+    def format(self, record: logging.LogRecord) -> str:
         colored_format = (
             self._colors[record.levelno] + self.text_format + self._reset_color
         )

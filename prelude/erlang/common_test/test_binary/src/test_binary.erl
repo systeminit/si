@@ -31,16 +31,7 @@ main([TestInfoFile, "list", OutputDir]) ->
         after
             test_logger:flush()
         end,
-    init:stop(ExitCode),
-    receive
-    after ?INIT_STOP_TIMEOUT ->
-        ?LOG_ERROR(
-            io_lib:format("~p failed to terminate within ~c millisecond", [
-                ?MODULE, ?INIT_STOP_TIMEOUT
-            ])
-        ),
-        erlang:halt(ExitCode)
-    end;
+    erlang:halt(ExitCode);
 main([TestInfoFile, "run", OutputDir | Tests]) ->
     test_logger:set_up_logger(OutputDir, test_runner),
     ExitCode =
@@ -55,16 +46,7 @@ main([TestInfoFile, "run", OutputDir | Tests]) ->
         after
             test_logger:flush()
         end,
-    init:stop(ExitCode),
-    receive
-    after ?INIT_STOP_TIMEOUT ->
-        ?LOG_ERROR(
-            io_lib:format("~p failed to terminate within ~c millisecond", [
-                ?MODULE, ?INIT_STOP_TIMEOUT
-            ])
-        ),
-        erlang:halt(ExitCode)
-    end;
+    erlang:halt(ExitCode);
 main([TestInfoFile]) ->
     %% without test runner support we run all tests and need to create our own test dir
     OutputDir = string:trim(os:cmd("mktemp -d")),
@@ -105,7 +87,9 @@ load_test_info(TestInfoFile) ->
             "ct_opts" := CtOpts,
             "extra_ct_hooks" := ExtraCtHooks,
             "erl_cmd" := ErlCmd,
-            "artifact_annotation_mfa" := ArtifactAnnotationMFA
+            "extra_flags" := ExtraFlags,
+            "artifact_annotation_mfa" := ArtifactAnnotationMFA,
+            "common_app_env" := CommonAppEnv
         }
     ]} = file:consult(TestInfoFile),
     Providers1 = buck_ct_parser:parse_str(Providers),
@@ -120,10 +104,12 @@ load_test_info(TestInfoFile) ->
         providers = Providers1,
         artifact_annotation_mfa = parse_mfa(ArtifactAnnotationMFA),
         ct_opts = CtOpts1,
-        erl_cmd = ErlCmd
+        erl_cmd = ErlCmd,
+        extra_flags = ExtraFlags,
+        common_app_env = CommonAppEnv
     }.
 
--spec parse_mfa(string()) -> {ok, artifact_annotations:annotation_function()} | {error, term()}.
+-spec parse_mfa(string()) -> artifact_annotations:annotation_function() | {error, term()}.
 parse_mfa(MFA) ->
     case erl_scan:string(MFA) of
         {ok,

@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//haskell:haskell.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
+load("@prelude//haskell:toolchain.bzl", "HaskellPlatformInfo", "HaskellToolchainInfo")
 
 def _system_haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
     return [
@@ -14,11 +14,12 @@ def _system_haskell_toolchain(_ctx: AnalysisContext) -> list[Provider]:
             compiler = "ghc",
             packager = "ghc-pkg",
             linker = "ghc",
+            haddock = "haddock",
             compiler_flags = [],
             linker_flags = [],
         ),
         HaskellPlatformInfo(
-            name = "x86_64",
+            name = host_info().arch,
         ),
     ]
 

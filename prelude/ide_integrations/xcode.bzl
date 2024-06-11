@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+XCODE_ARGSFILES_SUB_TARGET = "xcode-argsfiles"
+
 XCODE_DATA_SUB_TARGET = "xcode-data"
 _XCODE_DATA_FILE_NAME = "xcode_data.json"
 
@@ -15,7 +17,7 @@ XcodeDataInfo = provider(fields = {
 def generate_xcode_data(
         ctx: AnalysisContext,
         rule_type: str,
-        output: [Artifact, None],
+        output: Artifact | None,
         populate_rule_specific_attributes_func: [typing.Callable, None] = None,
         **kwargs) -> (list[DefaultInfo], XcodeDataInfo):
     data = {
@@ -26,6 +28,10 @@ def generate_xcode_data(
         data["output"] = output
     if populate_rule_specific_attributes_func:
         data.update(populate_rule_specific_attributes_func(ctx, **kwargs))
+
+    data["extra_xcode_files"] = []
+    if hasattr(ctx.attrs, "extra_xcode_files"):
+        data["extra_xcode_files"] = ctx.attrs.extra_xcode_files
 
     json_file = ctx.actions.write_json(_XCODE_DATA_FILE_NAME, data)
     return [DefaultInfo(default_output = json_file)], XcodeDataInfo(data = data)

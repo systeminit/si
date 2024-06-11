@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import os
 import plistlib
 import tempfile
@@ -14,6 +16,7 @@ from typing import Optional
 from apple.tools.info_plist_processor.process import process as process_info_plist
 
 from .provisioning_profile_metadata import ProvisioningProfileMetadata
+
 
 # Buck v1 corresponding code is in `ProvisioningProfileCopyStep::execute` in `ProvisioningProfileCopyStep.java`
 def prepare_code_signing_entitlements(

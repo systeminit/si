@@ -12,12 +12,12 @@ load(":apple_sdk_metadata.bzl", "IPhoneSimulatorSdkMetadata", "MacOSXCatalystSdk
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo")
 
 def get_entitlements_codesign_args(ctx: AnalysisContext, codesign_type: CodeSignType) -> list[ArgLike]:
-    include_entitlements = _should_include_entitlements(ctx, codesign_type)
+    include_entitlements = should_include_entitlements(ctx, codesign_type)
     maybe_entitlements = _entitlements_file(ctx) if include_entitlements else None
     entitlements_args = ["--entitlements", maybe_entitlements] if maybe_entitlements else []
     return entitlements_args
 
-def _should_include_entitlements(ctx: AnalysisContext, codesign_type: CodeSignType) -> bool:
+def should_include_entitlements(ctx: AnalysisContext, codesign_type: CodeSignType) -> bool:
     if codesign_type.value == "distribution":
         return True
 
@@ -29,7 +29,7 @@ def _should_include_entitlements(ctx: AnalysisContext, codesign_type: CodeSignTy
 
     return False
 
-def _entitlements_file(ctx: AnalysisContext) -> [Artifact, None]:
+def _entitlements_file(ctx: AnalysisContext) -> Artifact | None:
     if hasattr(ctx.attrs, "entitlements_file"):
         # Bundling `apple_test` which doesn't have a binary to provide the entitlements, so they are provided via `entitlements_file` attribute directly.
         return ctx.attrs.entitlements_file
@@ -38,7 +38,7 @@ def _entitlements_file(ctx: AnalysisContext) -> [Artifact, None]:
         return None
 
     # The `binary` attribute can be either an apple_binary or a dynamic library from apple_library
-    binary_entitlement_info = get_default_binary_dep(ctx.attrs.binary)[AppleEntitlementsInfo]
+    binary_entitlement_info = get_default_binary_dep(ctx.attrs.binary).get(AppleEntitlementsInfo)
     if binary_entitlement_info and binary_entitlement_info.entitlements_file:
         return binary_entitlement_info.entitlements_file
 

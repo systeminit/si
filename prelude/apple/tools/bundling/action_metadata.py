@@ -5,12 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import json
 import os
 from dataclasses import dataclass
 from io import TextIOBase
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 _METADATA_VERSION = 1
 
@@ -27,7 +29,7 @@ class _Metadata:
     digests: List[_Item]
 
 
-def _object_hook(dict: Dict[str, Any]) -> Any:
+def _object_hook(dict: Dict[str, Any]) -> Union[_Item, _Metadata]:
     if "version" in dict:
         return _Metadata(**dict)
     else:

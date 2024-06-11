@@ -57,13 +57,13 @@ def _compile_with_argsfile(
     argfile, _ = ctx.actions.write(module_name + ".pcm.argsfile", shell_quoted_cmd, allow_args = True)
 
     swift_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info
-    cmd = cmd_args(swift_toolchain.compiler)
-    cmd.add(cmd_args(["@", argfile], delimiter = ""))
-
-    # Action should also depend on all artifacts from the argsfile, otherwise they won't be materialised.
-    cmd.hidden([args])
-
-    cmd.add(additional_cmd)
+    cmd = cmd_args(
+        swift_toolchain.compiler,
+        cmd_args(["@", argfile], delimiter = ""),
+        additional_cmd,
+        # Action should also depend on all artifacts from the argsfile, otherwise they won't be materialised.
+        hidden = args,
+    )
 
     ctx.actions.run(
         cmd,
@@ -77,9 +77,9 @@ def _compiled_module_info(
         module_name: str,
         pcm_output: Artifact,
         pcm_info: SwiftPCMUncompiledInfo) -> SwiftCompiledModuleInfo:
-    clang_importer_args = cmd_args()
-    clang_importer_args.add("-Xcc")
-    clang_importer_args.add(
+    clang_deps_args = cmd_args()
+    clang_deps_args.add("-Xcc")
+    clang_deps_args.add(
         cmd_args(
             [
                 "-fmodule-file=",
@@ -90,8 +90,8 @@ def _compiled_module_info(
             delimiter = "",
         ),
     )
-    clang_importer_args.add("-Xcc")
-    clang_importer_args.add(
+    clang_deps_args.add("-Xcc")
+    clang_deps_args.add(
         cmd_args(
             [
                 "-fmodule-map-file=",
@@ -100,16 +100,22 @@ def _compiled_module_info(
             delimiter = "",
         ),
     )
-    clang_importer_args.add("-Xcc")
-    clang_importer_args.add(pcm_info.exported_preprocessor.relative_args.args)
-    clang_importer_args.hidden(pcm_info.exported_preprocessor.modular_args)
+
+    clang_importer_args = cmd_args(
+        "-Xcc",
+        pcm_info.exported_preprocessor.args.args,
+        hidden = pcm_info.exported_preprocessor.modular_args,
+    )
 
     return SwiftCompiledModuleInfo(
+        clang_module_file_args = clang_deps_args,
         clang_importer_args = clang_importer_args,
         is_framework = False,
+        is_sdk_module = False,
         is_swiftmodule = False,
         module_name = module_name,
         output_artifact = pcm_output,
+        clang_modulemap = pcm_info.exported_preprocessor.modulemap_path,
     )
 
 def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> [Promise, list[Provider]]:
@@ -240,7 +246,7 @@ def compile_underlying_pcm(
         "-Xcc",
         "-I",
         "-Xcc",
-        cmd_args([cmd_args(modulemap_path).parent(), "exported_symlink_tree"], delimiter = "/"),
+        cmd_args([cmd_args(modulemap_path, parent = 1), "exported_symlink_tree"], delimiter = "/"),
     ])
     cmd.add(framework_search_path_flags)
 
@@ -261,41 +267,37 @@ def _get_base_pcm_flags(
         pcm_deps_tset: SwiftCompiledModuleTset,
         swift_cxx_args: list[str]) -> (cmd_args, cmd_args, Artifact):
     swift_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info
-
-    cmd = cmd_args()
-    cmd.add(get_shared_pcm_compilation_args(module_name))
-    cmd.add(["-sdk", swift_toolchain.sdk_path])
-    cmd.add(swift_toolchain.compiler_flags)
-
-    if swift_toolchain.resource_dir:
-        cmd.add([
-            "-resource-dir",
-            swift_toolchain.resource_dir,
-        ])
-
-    cmd.add(sdk_deps_tset.project_as_args("clang_deps"))
-    cmd.add(pcm_deps_tset.project_as_args("clang_deps"))
-
     modulemap_path = uncompiled_pcm_info.exported_preprocessor.modulemap_path
     pcm_output = ctx.actions.declare_output(module_name + ".pcm")
 
-    additional_cmd = cmd_args(swift_cxx_args)
-    additional_cmd.add([
+    cmd = cmd_args(
+        get_shared_pcm_compilation_args(module_name),
+        ["-sdk", swift_toolchain.sdk_path],
+        swift_toolchain.compiler_flags,
+        ([
+            "-resource-dir",
+            swift_toolchain.resource_dir,
+        ] if swift_toolchain.resource_dir else []),
+        sdk_deps_tset.project_as_args("clang_module_file_flags"),
+        pcm_deps_tset.project_as_args("clang_module_file_flags"),
+        pcm_deps_tset.project_as_args("clang_importer_flags"),
+        # To correctly resolve modulemap's headers,
+        # a search path to the root of modulemap should be passed.
+        [
+            "-Xcc",
+            "-I",
+            "-Xcc",
+            cmd_args(modulemap_path, parent = 1),
+        ],
+        # Modular deps like `-Swift.h` have to be materialized.
+        hidden = uncompiled_pcm_info.exported_preprocessor.modular_args,
+    )
+
+    additional_cmd = cmd_args(
+        swift_cxx_args,
         "-o",
         pcm_output.as_output(),
         modulemap_path,
-    ])
-
-    # To correctly resolve modulemap's headers,
-    # a search path to the root of modulemap should be passed.
-    cmd.add([
-        "-Xcc",
-        "-I",
-        "-Xcc",
-        cmd_args(modulemap_path).parent(),
-    ])
-
-    # Modular deps like `-Swift.h` have to be materialized.
-    cmd.hidden(uncompiled_pcm_info.exported_preprocessor.modular_args)
+    )
 
     return (cmd, additional_cmd, pcm_output)

@@ -9,15 +9,16 @@ load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "RDotJava
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//java:java_library.bzl", "compile_to_jar")
 load("@prelude//java:java_providers.bzl", "JavaClasspathEntry", "JavaLibraryInfo", "derive_compiling_deps")
+load("@prelude//utils:argfile.bzl", "argfile")
 load("@prelude//utils:set.bzl", "set")
 
 RDotJavaSourceCode = record(
     r_dot_java_source_code_dir = Artifact,
     r_dot_java_source_code_zipped = Artifact,
-    strings_source_code_dir = [Artifact, None],
-    strings_source_code_zipped = [Artifact, None],
-    ids_source_code_dir = [Artifact, None],
-    ids_source_code_zipped = [Artifact, None],
+    strings_source_code_dir = Artifact | None,
+    strings_source_code_zipped = Artifact | None,
+    ids_source_code_dir = Artifact | None,
+    ids_source_code_zipped = Artifact | None,
 )
 
 def get_dummy_r_dot_java(
@@ -39,7 +40,7 @@ def generate_r_dot_javas(
         banned_duplicate_resource_types: list[str],
         uber_r_dot_txt_files: list[Artifact],
         override_symbols_paths: list[Artifact],
-        duplicate_resources_allowlist: [Artifact, None],
+        duplicate_resources_allowlist: Artifact | None,
         union_package: [str, None],
         referenced_resources_lists: list[Artifact],
         generate_strings_and_ids_separately: [bool, None] = True,
@@ -107,7 +108,7 @@ def _generate_r_dot_java_source_code(
         banned_duplicate_resource_types: list[str] = [],
         uber_r_dot_txt_files: list[Artifact] = [],
         override_symbols_paths: list[Artifact] = [],
-        duplicate_resources_allowlist: [Artifact, None] = None,
+        duplicate_resources_allowlist: Artifact | None = None,
         union_package: [str, None] = None,
         referenced_resources_lists: list[Artifact] = []) -> RDotJavaSourceCode:
     merge_resources_cmd = cmd_args(merge_android_resources_tool)
@@ -119,8 +120,11 @@ def _generate_r_dot_java_source_code(
 
     r_dot_txt_info_file = ctx.actions.write("r_dot_txt_info_file_for_{}.txt".format(identifier), r_dot_txt_info)
     merge_resources_cmd.add(["--symbol-file-info", r_dot_txt_info_file])
-    merge_resources_cmd.hidden([android_resource.r_dot_java_package for android_resource in android_resources])
-    merge_resources_cmd.hidden([android_resource.text_symbols for android_resource in android_resources])
+    merge_resources_cmd.add(cmd_args(
+        hidden =
+            [android_resource.r_dot_java_package for android_resource in android_resources] +
+            [android_resource.text_symbols for android_resource in android_resources],
+    ))
 
     output_dir = ctx.actions.declare_output("{}_source_code".format(identifier), dir = True)
     merge_resources_cmd.add(["--output-dir", output_dir.as_output()])
@@ -150,14 +154,12 @@ def _generate_r_dot_java_source_code(
         merge_resources_cmd.add(["--banned-duplicate-resource-types", banned_duplicate_resource_types_file])
 
     if len(uber_r_dot_txt_files) > 0:
-        uber_r_dot_txt_files_list = ctx.actions.write("uber_r_dot_txt_files_list", uber_r_dot_txt_files)
+        uber_r_dot_txt_files_list = argfile(actions = ctx.actions, name = "uber_r_dot_txt_files_list", args = uber_r_dot_txt_files)
         merge_resources_cmd.add(["--uber-r-dot-txt", uber_r_dot_txt_files_list])
-        merge_resources_cmd.hidden(uber_r_dot_txt_files)
 
     if len(override_symbols_paths) > 0:
-        override_symbols_paths_list = ctx.actions.write("override_symbols_paths_list", override_symbols_paths)
+        override_symbols_paths_list = argfile(actions = ctx.actions, name = "override_symbols_paths_list", args = override_symbols_paths)
         merge_resources_cmd.add(["--override-symbols", override_symbols_paths_list])
-        merge_resources_cmd.hidden(override_symbols_paths)
 
     if duplicate_resources_allowlist != None:
         merge_resources_cmd.add(["--duplicate-resource-allowlist-path", duplicate_resources_allowlist])
@@ -166,9 +168,8 @@ def _generate_r_dot_java_source_code(
         merge_resources_cmd.add(["--union-package", union_package])
 
     if referenced_resources_lists:
-        referenced_resources_file = ctx.actions.write("referenced_resources_lists", referenced_resources_lists)
+        referenced_resources_file = argfile(actions = ctx.actions, name = "referenced_resources_lists", args = referenced_resources_lists)
         merge_resources_cmd.add(["--referenced-resources-lists", referenced_resources_file])
-        merge_resources_cmd.hidden(referenced_resources_lists)
 
     ctx.actions.run(merge_resources_cmd, category = "r_dot_java_merge_resources", identifier = identifier)
 

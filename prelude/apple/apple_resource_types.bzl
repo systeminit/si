@@ -28,9 +28,11 @@ AppleResourceSpec = record(
     # `{ "ru.lproj" : ["Localizable.strings"] }`
     named_variant_files = field(dict[str, list[Artifact]], {}),
     codesign_files_on_copy = field(bool, False),
+    codesign_entitlements = field(Artifact | None, None),
+    codesign_flags_override = field(list[str] | None, None),
 )
 
-# Used when invoking `ibtool`, `actool` and `momc`
+# Used when invoking `ibtool`, `actool`, `mapc` and `momc`
 AppleResourceProcessingOptions = record(
     prefer_local = field(bool, False),
     allow_cache_upload = field(bool, False),

@@ -7,7 +7,7 @@
 
 load("@prelude//:build_mode.bzl", "BuildModeInfo")
 load("@prelude//tests:remote_test_execution_toolchain.bzl", "RemoteTestExecutionToolchainInfo")
-load("@prelude//utils:utils.bzl", "expect_non_none")
+load("@prelude//utils:expect.bzl", "expect_non_none")
 
 def _get_re_arg(ctx: AnalysisContext):
     if not hasattr(ctx.attrs, "remote_execution"):
@@ -28,20 +28,25 @@ def _get_re_arg(ctx: AnalysisContext):
 
     return None
 
-def get_re_executor_from_props(ctx: AnalysisContext) -> [CommandExecutorConfig, None]:
+def get_re_executors_from_props(ctx: AnalysisContext) -> ([CommandExecutorConfig, None], dict[str, CommandExecutorConfig]):
     """
-    Convert the `remote_execution` properties param into a `CommandExecutorConfig`
-    to use with test providers.
+    Convert the `remote_execution` properties param into `CommandExecutorConfig` objects to use with test providers.
+
+    Returns (default_executor, executor_overrides).
     """
 
     re_props = _get_re_arg(ctx)
     if re_props == None:
-        return None
+        return None, {}
 
     re_props_copy = dict(re_props)
     capabilities = re_props_copy.pop("capabilities")
     use_case = re_props_copy.pop("use_case")
+    listing_capabilities = re_props_copy.pop("listing_capabilities", None)
     remote_cache_enabled = re_props_copy.pop("remote_cache_enabled", None)
+    re_dependencies = re_props_copy.pop("dependencies", [])
+    local_enabled = re_props_copy.pop("local_enabled", False)
+    re_resource_units = re_props_copy.pop("resource_units", None)
     if re_props_copy:
         unexpected_props = ", ".join(re_props_copy.keys())
         fail("found unexpected re props: " + unexpected_props)
@@ -51,11 +56,25 @@ def get_re_executor_from_props(ctx: AnalysisContext) -> [CommandExecutorConfig, 
     if build_mode_info != None:
         remote_execution_action_key = "{}={}".format(build_mode_info.cell, build_mode_info.mode)
 
-    return CommandExecutorConfig(
-        local_enabled = False,
+    default_executor = CommandExecutorConfig(
+        local_enabled = local_enabled,
         remote_enabled = True,
         remote_execution_properties = capabilities,
         remote_execution_use_case = use_case or "tpx-default",
         remote_cache_enabled = remote_cache_enabled,
         remote_execution_action_key = remote_execution_action_key,
+        remote_execution_dependencies = re_dependencies,
+        remote_execution_resource_units = re_resource_units,
     )
+    listing_executor = default_executor
+    if listing_capabilities:
+        listing_executor = CommandExecutorConfig(
+            local_enabled = local_enabled,
+            remote_enabled = True,
+            remote_execution_properties = listing_capabilities,
+            remote_execution_use_case = use_case or "tpx-default",
+            remote_cache_enabled = remote_cache_enabled,
+            remote_execution_action_key = remote_execution_action_key,
+            remote_execution_resource_units = re_resource_units,
+        )
+    return default_executor, {"listing": listing_executor}

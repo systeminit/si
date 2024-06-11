@@ -39,7 +39,9 @@ run_tests(Tests, #test_info{} = TestInfo, OutputDir, Listing) ->
                 config_files = TestInfo#test_info.config_files,
                 providers = TestInfo#test_info.providers,
                 ct_opts = TestInfo#test_info.ct_opts,
+                common_app_env = TestInfo#test_info.common_app_env,
                 erl_cmd = TestInfo#test_info.erl_cmd,
+                extra_flags = TestInfo#test_info.extra_flags,
                 artifact_annotation_mfa = TestInfo#test_info.artifact_annotation_mfa
             })
     end.
@@ -170,7 +172,7 @@ provide_output_file(
                     Tests, Suite, "test binary internal crash", ResultExec, OutLog
                 );
             Other when Other =:= passed orelse Other =:= timeout ->
-                % Here we either pased or timeout.
+                % Here we either passed or timeout.
                 case file:read_file(ResultsFile) of
                     {ok, JsonFile} ->
                         TreeResults = binary_to_term(JsonFile),

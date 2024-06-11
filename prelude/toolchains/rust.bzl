@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//rust:rust_toolchain.bzl", "RustToolchainInfo")
+load("@prelude//rust:rust_toolchain.bzl", "PanicRuntime", "RustToolchainInfo")
 load("@prelude//rust/tools:attrs.bzl", "internal_tool_attrs")
 
 _DEFAULT_TRIPLE = select({
@@ -42,23 +42,22 @@ def _system_rust_toolchain_impl(ctx):
             clippy_driver = RunInfo(args = ["clippy-driver"]),
             clippy_toml = ctx.attrs.clippy_toml[DefaultInfo].default_outputs[0] if ctx.attrs.clippy_toml else None,
             compiler = RunInfo(args = ["rustc"]),
-            concat_tool = ctx.attrs.concat_tool[RunInfo],
             default_edition = ctx.attrs.default_edition,
+            panic_runtime = PanicRuntime("unwind"),
             deny_lints = ctx.attrs.deny_lints,
             doctests = ctx.attrs.doctests,
             extern_html_root_url_prefix = ctx.attrs.extern_html_root_url_prefix,
             failure_filter_action = ctx.attrs.failure_filter_action[RunInfo],
-            pipelined = ctx.attrs.pipelined,
             report_unused_deps = ctx.attrs.report_unused_deps,
             rustc_action = ctx.attrs.rustc_action[RunInfo],
             rustc_binary_flags = ctx.attrs.rustc_binary_flags,
-            rustc_check_flags = ctx.attrs.rustc_check_flags,
             rustc_flags = ctx.attrs.rustc_flags,
             rustc_target_triple = ctx.attrs.rustc_target_triple,
             rustc_test_flags = ctx.attrs.rustc_test_flags,
             rustdoc = RunInfo(args = ["rustdoc"]),
             rustdoc_flags = ctx.attrs.rustdoc_flags,
             rustdoc_test_with_resources = ctx.attrs.rustdoc_test_with_resources[RunInfo],
+            rustdoc_coverage = ctx.attrs.rustdoc_coverage[RunInfo],
             transitive_dependency_symlinks_tool = ctx.attrs.transitive_dependency_symlinks_tool[RunInfo],
             warn_lints = ctx.attrs.warn_lints,
         ),
@@ -73,10 +72,8 @@ system_rust_toolchain = rule(
         "deny_lints": attrs.list(attrs.string(), default = []),
         "doctests": attrs.bool(default = False),
         "extern_html_root_url_prefix": attrs.option(attrs.string(), default = None),
-        "pipelined": attrs.bool(default = False),
         "report_unused_deps": attrs.bool(default = False),
         "rustc_binary_flags": attrs.list(attrs.string(), default = []),
-        "rustc_check_flags": attrs.list(attrs.string(), default = []),
         "rustc_flags": attrs.list(attrs.string(), default = []),
         "rustc_target_triple": attrs.string(default = _DEFAULT_TRIPLE),
         "rustc_test_flags": attrs.list(attrs.string(), default = []),

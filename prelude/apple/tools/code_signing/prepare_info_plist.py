@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import os
 import tempfile
 from pathlib import Path
@@ -14,6 +16,7 @@ from apple.tools.info_plist_processor.process import process as process_info_pli
 
 from .info_plist_metadata import InfoPlistMetadata
 from .provisioning_profile_metadata import ProvisioningProfileMetadata
+
 
 # Buck v1 corresponding code is in `ProvisioningProfileCopyStep::execute` in `ProvisioningProfileCopyStep.java`
 def prepare_info_plist(

@@ -41,11 +41,10 @@ def erlang_tests_macro(
         deps: list[str] = [],
         resources: list[str] = [],
         property_tests: list[str] = [],
-        config_files: list[str] = [],
         srcs: list[str] = [],
-        use_default_configs: bool = True,
-        use_default_deps: bool = True,
-        **common_attributes: dict) -> None:
+        prefix: str | None = None,
+        generated_app_labels: list[str] = [],
+        **common_attributes) -> None:
     """
     Generate multiple erlang_test targets based on the `suites` field.
     Also adds the default 'config' and 'deps' from the buck2 config.
@@ -53,7 +52,6 @@ def erlang_tests_macro(
     resource targets for files in the suite associated <suitename>_data folder.
     """
     deps = [normalize_application(dep) for dep in deps]
-    config_files = list(config_files)
 
     if not suites:
         return
@@ -67,25 +65,10 @@ def erlang_tests_macro(
         erlang_app_rule(
             name = srcs_app,
             srcs = srcs,
-            labels = ["generated", "test_application", "test_utils"],
+            labels = generated_app_labels,
             applications = app_deps,
         )
         deps.append(":" + srcs_app)
-
-    # add default apps
-
-    default_deps = read_root_config("erlang", "erlang_tests_default_apps", None) if use_default_deps else None
-    default_config_files = read_root_config("erlang", "erlang_tests_default_config", None) if use_default_configs else None
-    trampoline = read_root_config("erlang", "erlang_tests_trampoline", None) if use_default_configs else None
-    providers = read_root_config("erlang", "erlang_test_providers", "") if use_default_configs else ""
-    defaultAnnotationMFA = "artifact_annotations:default_annotation/1"
-    annotationsMFA = read_root_config("erlang", "test_artifacts_annotation_mfa", defaultAnnotationMFA) if use_default_configs else defaultAnnotationMFA
-
-    if default_config_files:
-        config_files += default_config_files.split()
-
-    if default_deps != None:
-        deps += default_deps.split()
 
     target_resources = list(resources)
 
@@ -95,11 +78,7 @@ def erlang_tests_macro(
         if prop_target:
             property_tests = [prop_target]
 
-    common_attributes["labels"] = common_attributes.get("labels", []) + ["tpx-enable-artifact-reporting", "test-framework=39:erlang_common_test"]
-
-    additional_labels = read_config("erlang", "test_labels", None)
-    if additional_labels != None:
-        common_attributes["labels"] += additional_labels.split()
+    common_attributes["labels"] = common_attributes.get("labels", [])
 
     common_attributes["labels"] = list_dedupe(common_attributes["labels"])
 
@@ -117,17 +96,16 @@ def erlang_tests_macro(
             suite_resource = [target for target in target_resources]
             suite_resource.append(data_target)
 
+        if prefix != None:
+            suite_name = "{}_{}".format(prefix, suite_name)
+
         # forward resources and deps fields and generate erlang_test target
         erlang_test_rule(
             name = suite_name,
             suite = suite,
             deps = deps,
             resources = suite_resource,
-            config_files = config_files,
             property_tests = property_tests,
-            _trampoline = trampoline,
-            _providers = providers,
-            _artifact_annotation_mfa = annotationsMFA,
             **common_attributes
         )
 
@@ -145,26 +123,22 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     # prepare build environment
     pre_build_environment = erlang_build.prepare_build_environment(ctx, primary_toolchain, dependencies)
 
-    new_private_include_dir = pre_build_environment.private_include_dir
-
-    # pre_build_environment.private_includes is immutable, that's how we change that.
-    new_private_includes = {a: b for (a, b) in pre_build_environment.private_includes.items()}
-
-    #Pull private deps from dependencies
-    for dep in dependencies.values():
-        if ErlangAppInfo in dep:
-            if dep[ErlangAppInfo].private_include_dir:
-                new_private_include_dir = new_private_include_dir + dep[ErlangAppInfo].private_include_dir[primary_toolchain_name]
-                new_private_includes.update(dep[ErlangAppInfo].private_includes[primary_toolchain_name])
+    pre_build_environment = erlang_build.utils.peek_private_includes(
+        ctx,
+        primary_toolchain,
+        pre_build_environment,
+        dependencies,
+        force_peek = True,
+    )
 
     # Records are immutable, hence we need to create a new record from the previous one.
     build_environment = BuildEnvironment(
         includes = pre_build_environment.includes,
-        private_includes = new_private_includes,
+        private_includes = pre_build_environment.private_includes,
         beams = pre_build_environment.beams,
         priv_dirs = pre_build_environment.priv_dirs,
         include_dirs = pre_build_environment.include_dirs,
-        private_include_dir = new_private_include_dir,
+        private_include_dir = pre_build_environment.private_include_dir,
         ebin_dirs = pre_build_environment.ebin_dirs,
         deps_files = pre_build_environment.deps_files,
         app_files = pre_build_environment.app_files,
@@ -180,15 +154,14 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     # Config files for ct
     config_files = [config_file[DefaultInfo].default_outputs[0] for config_file in ctx.attrs.config_files]
 
-    test_binary = ctx.attrs._test_binary[DefaultInfo].default_outputs
+    test_binary_cmd_args = ctx.attrs._test_binary[RunInfo]
 
     trampoline = ctx.attrs._trampoline
     cmd = cmd_args([])
     if trampoline:
         cmd.add(trampoline[RunInfo])
 
-    cmd.add(primary_toolchain.otp_binaries.escript)
-    cmd.add(test_binary)
+    cmd.add(test_binary_cmd_args)
 
     suite = ctx.attrs.suite
     suite_name = module_name(suite)
@@ -218,13 +191,16 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     )
     cmd.add(test_info_file)
 
+    hidden_args = []
+
     default_info = _build_default_info(dependencies, output_dir)
     for output_artifact in default_info.other_outputs:
-        cmd.hidden(output_artifact)
+        hidden_args.append(output_artifact)
     for config_file in config_files:
-        cmd.hidden(config_file)
+        hidden_args.append(config_file)
 
-    cmd.hidden(output_dir)
+    hidden_args.append(output_dir)
+    cmd.add(cmd_args(hidden = hidden_args))
 
     # prepare shell dependencies
     additional_paths = [
@@ -258,7 +234,7 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
             type = "erlang_test",
             command = [cmd],
             env = ctx.attrs.env,
-            labels = ["tpx-fb-test-type=16"] + ctx.attrs.labels,
+            labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             run_from_project_root = True,
             use_project_relative_paths = True,
@@ -293,11 +269,13 @@ def _write_test_info_file(
         erl_cmd: [cmd_args, Artifact]) -> Artifact:
     tests_info = {
         "artifact_annotation_mfa": ctx.attrs._artifact_annotation_mfa,
+        "common_app_env": ctx.attrs.common_app_env,
         "config_files": config_files,
         "ct_opts": ctx.attrs._ct_opts,
         "dependencies": _list_code_paths(dependencies),
         "erl_cmd": cmd_args(['"', cmd_args(erl_cmd, delimiter = " "), '"'], delimiter = ""),
         "extra_ct_hooks": ctx.attrs.extra_ct_hooks,
+        "extra_flags": ctx.attrs.extra_erl_flags,
         "providers": ctx.attrs._providers,
         "test_dir": test_dir,
         "test_suite": test_suite,

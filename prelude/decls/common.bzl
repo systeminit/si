@@ -39,8 +39,6 @@ IncludeType = ["local", "system", "raw"]
 
 LinkableDepType = ["static", "static_pic", "shared"]
 
-Linkage = ["any", "static", "shared"]
-
 LogLevel = ["off", "severe", "warning", "info", "config", "fine", "finer", "finest", "all"]
 
 OnDuplicateEntry = ["fail", "overwrite", "append"]
@@ -48,8 +46,6 @@ OnDuplicateEntry = ["fail", "overwrite", "append"]
 SourceAbiVerificationMode = ["off", "log", "fail"]
 
 TestType = ["junit", "junit5", "testng"]
-
-Traversal = ["tree", "node", "subfolders"]
 
 UnusedDependenciesAction = ["unknown", "fail", "warn", "ignore", "unrecognized"]
 
@@ -205,8 +201,9 @@ def _exec_os_type_arg() -> Attr:
 
 def _allow_cache_upload_arg():
     return {
-        "allow_cache_upload": attrs.bool(
-            default = False,
+        "allow_cache_upload": attrs.option(
+            attrs.bool(),
+            default = None,
             doc = """
             Whether to allow uploading the output of this rule to be uploaded
             to cache when the action is executed locally if the configuration

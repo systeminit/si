@@ -621,6 +621,10 @@ _FRAMEWORK_INTRODUCED_VERSIONS = {
         "watchos": (5, 0, 0),
     },
     "MediaSetup": {"iphoneos": (14, 0, 0), "maccatalyst": (15, 4, 0)},
+    "MediaToolbox": {
+        "iphoneos": (6, 0, 0),
+        "macosx": (10, 9, 0),
+    },
     "MessageUI": {"iphoneos": (3, 0, 0), "maccatalyst": (13, 0, 0)},
     "Messages": {"iphoneos": (10, 0, 0), "maccatalyst": (14, 0, 0)},
     "Metal": {
@@ -660,6 +664,7 @@ _FRAMEWORK_INTRODUCED_VERSIONS = {
     "MobileCoreServices": {
         "appletvos": (9, 0, 0),
         "iphoneos": (2, 0, 0),
+        "maccatalyst": (14, 0, 0),
         "watchos": (1, 0, 0),
     },
     "ModelIO": {
@@ -834,6 +839,11 @@ _FRAMEWORK_INTRODUCED_VERSIONS = {
     },
     "SecurityFoundation": {"maccatalyst": (13, 0, 0), "macosx": (10, 3, 0)},
     "SecurityInterface": {"macosx": (10, 3, 0)},
+    "SensitiveContentAnalysis": {
+        "iphoneos": (17, 0, 0),
+        "maccatalyst": (17, 0, 0),
+        "macosx": (14, 0, 0),
+    },
     "SensorKit": {
         "iphoneos": (14, 0, 0),
         "maccatalyst": (14, 0, 0),
@@ -1014,6 +1024,13 @@ def _parse_version(version: str) -> (int, int, int):
     for i in range(0, len(components)):
         result[i] = components[i]
     return (result[0], result[1], result[2])
+
+def validate_sdk_frameworks(frameworks: list[str]) -> None:
+    for framework in frameworks:
+        if framework.startswith("$SDKROOT/System/Library/Frameworks"):
+            framework_name = framework[len("$SDKROOT/System/Library/Frameworks/"):-len(".framework")]
+            if framework_name not in _FRAMEWORK_INTRODUCED_VERSIONS:
+                fail("Framework {} is missing version information".format(framework_name))
 
 def get_framework_linker_args(ctx: AnalysisContext, framework_names: list[str]) -> list[str]:
     if not has_apple_toolchain(ctx):

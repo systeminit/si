@@ -25,11 +25,9 @@ load(
     "LinkInfo",
     "LinkInfos",
     "LinkStrategy",
-    "Linkage",
     "LinkedObject",
     "SharedLibLinkable",
     "create_merged_link_info",
-    "create_merged_link_info_for_propagation",
     "get_lib_output_style",
     "get_output_styles_for_linkage",
 )
@@ -46,6 +44,7 @@ load(
     "merge_shared_libraries",
 )
 load("@prelude//linking:strip.bzl", "strip_debug_info")
+load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:utils.bzl", "flatten_dict")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
@@ -268,7 +267,7 @@ def prebuilt_cxx_library_group_impl(ctx: AnalysisContext) -> list[Provider]:
     args.extend(ctx.attrs.exported_preprocessor_flags)
     for inc_dir in ctx.attrs.include_dirs:
         args += ["-isystem", inc_dir]
-    preprocessor = CPreprocessor(relative_args = CPreprocessorArgs(args = args))
+    preprocessor = CPreprocessor(args = CPreprocessorArgs(args = args))
     inherited_pp_info = cxx_inherited_preprocessor_infos(exported_deps)
     providers.append(cxx_merge_cpreprocessors(ctx, [preprocessor], inherited_pp_info))
 
@@ -322,11 +321,6 @@ def prebuilt_cxx_library_group_impl(ctx: AnalysisContext) -> list[Provider]:
     static_output_style = get_lib_output_style(LinkStrategy("static"), preferred_linkage, pic_behavior)
     providers.append(DefaultInfo(default_outputs = outputs[static_output_style]))
 
-    # TODO(cjhopman): This is preserving existing behavior, but it doesn't make sense. These lists can be passed
-    # unmerged to create_merged_link_info below. Potentially that could change link order, so needs to be done more carefully.
-    merged_inherited_non_exported_link = create_merged_link_info_for_propagation(ctx, inherited_non_exported_link)
-    merged_inherited_exported_link = create_merged_link_info_for_propagation(ctx, inherited_exported_link)
-
     # Provider for native link.
     providers.append(create_merged_link_info(
         ctx,
@@ -335,15 +329,16 @@ def prebuilt_cxx_library_group_impl(ctx: AnalysisContext) -> list[Provider]:
         preferred_linkage = preferred_linkage,
         # Export link info from our (non-exported) deps (e.g. when we're linking
         # statically).
-        deps = [merged_inherited_non_exported_link],
+        deps = inherited_non_exported_link,
         # Export link info from our (exported) deps.
-        exported_deps = [merged_inherited_exported_link],
+        exported_deps = inherited_exported_link,
     ))
 
     # Propagate shared libraries up the tree.
+    shared_libs = create_shared_libraries(ctx, solibs)
     providers.append(merge_shared_libraries(
         ctx.actions,
-        create_shared_libraries(ctx, solibs),
+        shared_libs,
         filter(None, [x.get(SharedLibraryInfo) for x in deps + exported_deps]),
     ))
 
@@ -358,7 +353,7 @@ def prebuilt_cxx_library_group_impl(ctx: AnalysisContext) -> list[Provider]:
                 exported_deps = exported_deps,
                 preferred_linkage = preferred_linkage,
                 link_infos = libraries,
-                shared_libs = solibs,
+                shared_libs = shared_libs,
                 can_be_asset = getattr(ctx.attrs, "can_be_asset", False) or False,
                 # TODO(cjhopman): this should be set to non-None
                 default_soname = None,

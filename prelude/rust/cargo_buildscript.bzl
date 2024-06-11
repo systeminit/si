@@ -20,15 +20,21 @@
 
 load("@prelude//:prelude.bzl", "native")
 load("@prelude//decls:common.bzl", "buck")
-load("@prelude//linking:link_info.bzl", "LinkStyle")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//rust:rust_toolchain.bzl", "RustToolchainInfo")
 load("@prelude//rust:targets.bzl", "targets")
 load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
 load(":build.bzl", "dependency_args")
-load(":build_params.bzl", "CrateType")
+load(":build_params.bzl", "MetadataKind")
 load(":context.bzl", "DepCollectionContext")
-load(":link_info.bzl", "RustProcMacroPlugin", "gather_explicit_sysroot_deps", "resolve_rust_deps_inner")
+load(
+    ":link_info.bzl",
+    "DEFAULT_STATIC_LINK_STRATEGY",
+    "RustProcMacroPlugin",
+    "gather_explicit_sysroot_deps",
+    "resolve_rust_deps_inner",
+)
+load(":rust_toolchain.bzl", "PanicRuntime")
 
 def _make_rustc_shim(ctx: AnalysisContext, cwd: Artifact) -> cmd_args:
     # Build scripts expect to receive a `rustc` which "just works." However,
@@ -38,22 +44,23 @@ def _make_rustc_shim(ctx: AnalysisContext, cwd: Artifact) -> cmd_args:
     explicit_sysroot_deps = toolchain_info.explicit_sysroot_deps
     if explicit_sysroot_deps:
         dep_ctx = DepCollectionContext(
-            native_unbundle_deps = False,
+            advanced_unstable_linking = False,
             include_doc_deps = False,
             is_proc_macro = False,
             explicit_sysroot_deps = explicit_sysroot_deps,
+            panic_runtime = PanicRuntime("unwind"),  # not actually used
         )
         deps = gather_explicit_sysroot_deps(dep_ctx)
         deps = resolve_rust_deps_inner(ctx, deps)
         dep_args, _ = dependency_args(
-            ctx,
-            None,  # compile_ctx
-            deps,
-            "any",  # subdir
-            CrateType("rlib"),
-            LinkStyle("static_pic"),
-            True,  # is_check
-            False,  # is_rustdoc_test
+            ctx = ctx,
+            compile_ctx = None,
+            toolchain_info = toolchain_info,
+            deps = deps,
+            subdir = "any",
+            dep_link_strategy = DEFAULT_STATIC_LINK_STRATEGY,
+            dep_metadata_kind = MetadataKind("full"),
+            is_rustdoc_test = False,
         )
 
         null_path = "nul" if ctx.attrs._exec_os_type[OsLookup].platform == "windows" else "/dev/null"
@@ -61,7 +68,7 @@ def _make_rustc_shim(ctx: AnalysisContext, cwd: Artifact) -> cmd_args:
         dep_args = cmd_args("-Zunstable-options", dep_args)
         dep_args = dep_args.relative_to(cwd)
         dep_file, _ = ctx.actions.write("rustc_dep_file", dep_args, allow_args = True)
-        sysroot_args = cmd_args("@", dep_file, delimiter = "").hidden(dep_args)
+        sysroot_args = cmd_args("@", dep_file, delimiter = "", hidden = dep_args)
     else:
         sysroot_args = cmd_args()
 
@@ -84,7 +91,7 @@ def _make_rustc_shim(ctx: AnalysisContext, cwd: Artifact) -> cmd_args:
             is_executable = True,
             allow_args = True,
         )
-    return cmd_args(shim).relative_to(cwd).hidden(toolchain_info.compiler).hidden(sysroot_args)
+    return cmd_args(shim, relative_to = cwd, hidden = [toolchain_info.compiler, sysroot_args])
 
 def _cargo_buildscript_impl(ctx: AnalysisContext) -> list[Provider]:
     toolchain_info = ctx.attrs._rust_toolchain[RustToolchainInfo]
@@ -113,6 +120,10 @@ def _cargo_buildscript_impl(ctx: AnalysisContext) -> list[Provider]:
     env["RUSTC_LINKER"] = "/bin/false"
     env["RUST_BACKTRACE"] = "1"
     env["TARGET"] = toolchain_info.rustc_target_triple
+
+    # \037 == \x1f == the magic delimiter specified in the environment variable
+    # reference above.
+    env["CARGO_ENCODED_RUSTFLAGS"] = cmd_args(toolchain_info.rustc_flags, delimiter = "\037")
 
     host_triple = targets.exec_triple(ctx)
     if host_triple:
@@ -152,7 +163,7 @@ _cargo_buildscript_rule = rule(
         "runner": attrs.default_only(attrs.exec_dep(providers = [RunInfo], default = "prelude//rust/tools:buildscript_run")),
         # *IMPORTANT* rustc_cfg must be a `dep` and not an `exec_dep` because
         # we want the `rustc --cfg` for the target platform, not the exec platform.
-        "rustc_cfg": attrs.default_only(attrs.dep(default = "prelude//rust/tools:rustc_cfg")),
+        "rustc_cfg": attrs.dep(default = "prelude//rust/tools:rustc_cfg"),
         "version": attrs.string(),
         "_exec_os_type": buck.exec_os_type_arg(),
         "_rust_toolchain": toolchains_common.rust(),

@@ -6,28 +6,29 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-import importlib
+# pyre-strict
+
+from __future__ import annotations
+
 import multiprocessing.util as mp_util
 import os
 import sys
 import threading
+import warnings
 from importlib.machinery import PathFinder
 from importlib.util import module_from_spec
 
 lock = threading.Lock()
 
 
-# pyre-fixme[3]: Return type must be annotated.
-# pyre-fixme[2]: Parameter must be annotated.
-def __patch_spawn(var_names, saved_env):
+def __patch_spawn(var_names: list[str], saved_env: dict[str, str]) -> None:
     std_spawn = mp_util.spawnv_passfds
 
     # pyre-fixme[53]: Captured variable `std_spawn` is not annotated.
     # pyre-fixme[53]: Captured variable `saved_env` is not annotated.
     # pyre-fixme[53]: Captured variable `var_names` is not annotated.
-    # pyre-fixme[3]: Return type must be annotated.
     # pyre-fixme[2]: Parameter must be annotated.
-    def spawnv_passfds(path, args, passfds):
+    def spawnv_passfds(path, args, passfds) -> None | int:
         with lock:
             try:
                 for var in var_names:
@@ -44,18 +45,32 @@ def __patch_spawn(var_names, saved_env):
     mp_util.spawnv_passfds = spawnv_passfds
 
 
-# pyre-fixme[3]: Return type must be annotated.
-# pyre-fixme[2]: Parameter must be annotated.
-def __clear_env(patch_spawn=True):
+def __clear_env(patch_spawn: bool = True) -> None:
     saved_env = {}
-    darwin_vars = ("DYLD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES")
-    linux_vars = ("LD_LIBRARY_PATH", "LD_PRELOAD")
-    python_vars = ("PYTHONPATH",)
+
+    var_names = [
+        "PYTHONPATH",
+        # We use this env var to tag the process and it's `multiprocessing`
+        # workers.  It's important that we clear it out (so that unrelated sub-
+        # processes don't inherit it), but it can be read via
+        # `/proc/<pid>/environ`.
+        "PAR_INVOKED_NAME_TAG",
+    ]
 
     if sys.platform == "darwin":
-        var_names = darwin_vars + python_vars
+        var_names.extend(
+            [
+                "DYLD_LIBRARY_PATH",
+                "DYLD_INSERT_LIBRARIES",
+            ]
+        )
     else:
-        var_names = linux_vars + python_vars
+        var_names.extend(
+            [
+                "LD_LIBRARY_PATH",
+                "LD_PRELOAD",
+            ]
+        )
 
     # Restore the original value of environment variables that we altered
     # as part of the startup process.
@@ -72,26 +87,17 @@ def __clear_env(patch_spawn=True):
         __patch_spawn(var_names, saved_env)
 
 
-# pyre-fixme[3]: Return type must be annotated.
-def __startup__():
-    for name, var in os.environ.items():
-        if name.startswith("STARTUP_"):
-            name, sep, func = var.partition(":")
-            if sep:
-                try:
-                    module = importlib.import_module(name)
-                    getattr(module, func)()
-                except Exception as e:
-                    # TODO: Ignoring errors for now. The way to properly fix this should be to make
-                    # sure we are still at the same binary that configured `STARTUP_` before importing.
-                    print(
-                        "Error running startup function %s:%s: %s" % (name, func, e),
-                        file=sys.stderr,
-                    )
+def __startup__() -> None:
+    try:
+        # pyre-fixme[21]: Could not find module `__par__.__startup_function_loader__`.
+        from __par__.__startup_function_loader__ import load_startup_functions
+
+        load_startup_functions()
+    except Exception:
+        warnings.warn("could not load startup functions", stacklevel=1)
 
 
-# pyre-fixme[3]: Return type must be annotated.
-def __passthrough_exec_module():
+def __passthrough_exec_module() -> None:
     # Delegate this module execution to the next module in the path, if any,
     # effectively making this sitecustomize.py a passthrough module.
     spec = PathFinder.find_spec(

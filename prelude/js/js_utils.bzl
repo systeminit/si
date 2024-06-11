@@ -10,6 +10,7 @@ load("@prelude//:worker_tool.bzl", "WorkerToolInfo")
 load("@prelude//apple:apple_resource_types.bzl", "AppleResourceDestination", "AppleResourceSpec")
 load("@prelude//apple:resource_groups.bzl", "ResourceGraphInfo", "create_resource_graph")  # @unused `ResourceGraphInfo` used as a type
 load("@prelude//js:js_providers.bzl", "JsBundleInfo")
+load("@prelude//utils:argfile.bzl", "at_argfile")
 load("@prelude//utils:expect.bzl", "expect")
 
 RAM_BUNDLE_TYPES = {
@@ -142,17 +143,25 @@ def run_worker_commands(
         identifier: str,
         category: str,
         hidden_artifacts = [cmd_args]):
-    worker_args = cmd_args("--command-args-file", command_args_files)
-    worker_args.add("--command-args-file-extra-data-fixup-hack=true")
-
-    worker_argsfile = ctx.actions.declare_output(paths.join(identifier, "worker_{}.argsfile".format(category)))
-    ctx.actions.write(worker_argsfile.as_output(), worker_args)
+    worker_args = cmd_args(
+        "--command-args-file",
+        command_args_files,
+        "--command-args-file-extra-data-fixup-hack=true",
+    )
 
     worker_tool_info = worker_tool[WorkerToolInfo]
-    worker_command = worker_tool_info.command.copy()
-    worker_command.hidden(hidden_artifacts)
-    worker_command.hidden(command_args_files)
-    worker_command.add(cmd_args(worker_argsfile, format = "@{}"))
+    worker_command = cmd_args(
+        worker_tool_info.command.copy(),
+        at_argfile(
+            actions = ctx.actions,
+            name = paths.join(identifier, "worker_{}.argsfile".format(category)),
+            args = worker_args,
+        ),
+        hidden = [
+            hidden_artifacts,
+            command_args_files,
+        ],
+    )
 
     ctx.actions.run(
         worker_command,

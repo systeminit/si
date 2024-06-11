@@ -158,9 +158,12 @@ command_alias = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
-            "exe": attrs.option(attrs.dep(), default = None, doc = """
-                A `build target`for a rule that outputs
-                 an executable, such as an `sh\\_binary()`.
+            # Match `dep` before `source` so that we can support extracting the
+            # `RunInfo` provider of it, if one exists.
+            "exe": attrs.option(attrs.one_of(attrs.dep(), attrs.source()), default = None, doc = """
+                A `build target` for a rule that outputs
+                 an executable, such as an `sh\\_binary()`,
+                 or an executable source file.
             """),
             "platform_exe": attrs.dict(key = attrs.enum(Platform), value = attrs.dep(), sorted = False, default = {}, doc = """
                 A mapping from platforms to `build target`.
@@ -217,6 +220,23 @@ config_setting = prelude_rule(
         {
             "constraint_values": attrs.list(attrs.configuration_label(), default = []),
             "values": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
+        }
+    ),
+)
+
+configuration_alias = prelude_rule(
+    name = "configuration_alias",
+    docs = "",
+    examples = None,
+    further = None,
+    attrs = (
+        # @unsorted-dict-items
+        {
+            # configuration_alias acts like alias but for configuration rules.
+
+            # The configuration_alias itself is a configuration rule and the `actual` argument is
+            # expected to be a configuration rule as well.
+            "actual": attrs.dep(pulls_and_pushes_plugins = plugins.All),
         }
     ),
 )
@@ -280,10 +300,6 @@ constraint_value = prelude_rule(
 export_file = prelude_rule(
     name = "export_file",
     docs = """
-        **Warning:** this build rule is deprecated for folders.
-         Use `filegroup()`instead. It is still supported for individual files.
-
-
         An `export_file()` takes a single file or folder and exposes it so other rules can
          use it.
     """,
@@ -362,7 +378,7 @@ export_file = prelude_rule(
 
         genrule(
           name = 'demo',
-          out = 'result.html'
+          out = 'result.html',
           cmd = 'cp $(location :example) $OUT',
         )
 
@@ -735,7 +751,7 @@ http_archive = prelude_rule(
                 * foo\\_prime/bar-0.1.2
 
                  Only `data.dat` will be extracted, and it will be extracted into the output
-                 directory specified in\302\240`http\\_archive()out`.
+                 directory specified in `out`.
             """),
             "excludes": attrs.list(attrs.regex(), default = [], doc = """
                 An optional list of regex patterns. All file paths in the extracted archive which match
@@ -1096,6 +1112,19 @@ test_suite = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
         }
     ),
+)
+
+toolchain_alias = prelude_rule(
+    name = "toolchain_alias",
+    docs = """
+toolchain_alias acts like alias but for toolchain rules.
+
+The toolchain_alias itself is a toolchain rule and the `actual` argument is
+expected to be a toolchain_rule as well.
+    """,
+    examples = None,
+    further = None,
+    attrs = {"actual": attrs.toolchain_dep(doc = "The actual toolchain that is being aliased. This should be a toolchain rule.")},
 )
 
 versioned_alias = prelude_rule(
@@ -1473,6 +1502,7 @@ core_rules = struct(
     alias = alias,
     command_alias = command_alias,
     config_setting = config_setting,
+    configuration_alias = configuration_alias,
     configured_alias = configured_alias,
     constraint_setting = constraint_setting,
     constraint_value = constraint_value,
@@ -1485,6 +1515,7 @@ core_rules = struct(
     platform = platform,
     remote_file = remote_file,
     test_suite = test_suite,
+    toolchain_alias = toolchain_alias,
     versioned_alias = versioned_alias,
     worker_tool = worker_tool,
     zip_file = zip_file,

@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//tests:re_utils.bzl", "get_re_executor_from_props")
+load("@prelude//tests:re_utils.bzl", "get_re_executors_from_props")
 load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 
 def sh_test_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -14,22 +14,24 @@ def sh_test_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.list_args or ctx.attrs.list_env or ctx.attrs.run_args or ctx.attrs.run_env:
         fail("An unsupported attribute was passed")
 
-    args = cmd_args()
+    args_args = []
+    args_hidden = []
 
     if ctx.attrs.test != None:
         if type(ctx.attrs.test) == "artifact":
-            args.add(ctx.attrs.test)
+            args_args.append(ctx.attrs.test)
         elif isinstance(ctx.attrs.test, Dependency):
             run_info = ctx.attrs.test.get(RunInfo)
             if run_info != None:
-                args.add(run_info.args)
+                args_args.append(run_info.args)
             else:
                 info = ctx.attrs.test[DefaultInfo]
-                args.add(info.default_outputs).hidden(info.other_outputs)
+                args_args.append(info.default_outputs)
+                args_hidden.append(info.other_outputs)
         else:
             fail("Unexpected type for test attribute")
 
-    args.hidden(ctx.attrs.resources)
+    args_hidden.append(ctx.attrs.resources)
 
     deps = []
     for dep in ctx.attrs.deps:
@@ -37,15 +39,17 @@ def sh_test_impl(ctx: AnalysisContext) -> list[Provider]:
         deps.extend(info.default_outputs)
         deps.extend(info.other_outputs)
 
-    args.hidden(deps)
+    args_hidden.append(deps)
+
+    args = cmd_args(args_args, hidden = args_hidden)
 
     command = [args] + ctx.attrs.args
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx)
+    re_executor, executor_overrides = get_re_executors_from_props(ctx)
 
     # We implicitly make the target run from the project root if remote
-    # excution options were specified
+    # execution options were specified
     run_from_project_root = "buck2_run_from_project_root" in (ctx.attrs.labels or []) or re_executor != None
 
     # TODO support default info and runinfo properly by writing a sh script that invokes the command properly
@@ -59,6 +63,7 @@ def sh_test_impl(ctx: AnalysisContext) -> list[Provider]:
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
+            executor_overrides = executor_overrides,
             run_from_project_root = run_from_project_root,
             use_project_relative_paths = run_from_project_root,
         ),

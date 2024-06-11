@@ -41,6 +41,7 @@ Toolchain = record(
     dependency_analyzer = field(Artifact),
     dependency_finalizer = field(Artifact),
     erlc_trampoline = field(Artifact),
+    escript_trampoline = field(Artifact),
     escript_builder = field(Artifact),
     otp_binaries = field(Tools),
     release_variables_builder = field(Artifact),
@@ -50,6 +51,7 @@ Toolchain = record(
     parse_transforms_filters = field(dict[str, list[str]]),
     edoc = field(Artifact),
     edoc_options = field(list[str]),
+    edoc_preprocess = field(list[str]),
     utility_modules = field(Artifact),
     env = field(dict[str, str]),
 )
@@ -64,6 +66,7 @@ ToolchainUtillInfo = provider(
         "dependency_finalizer": provider_field(typing.Any, default = None),
         "edoc": provider_field(typing.Any, default = None),
         "erlc_trampoline": provider_field(typing.Any, default = None),
+        "escript_trampoline": provider_field(typing.Any, default = None),
         "escript_builder": provider_field(typing.Any, default = None),
         "release_variables_builder": provider_field(typing.Any, default = None),
         "include_erts": provider_field(typing.Any, default = None),
@@ -96,6 +99,7 @@ def _multi_version_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             dependency_finalizer = toolchain_info.dependency_finalizer,
             erl_opts = toolchain_info.erl_opts,
             erlc_trampoline = toolchain_info.erlc_trampoline,
+            escript_trampoline = toolchain_info.escript_trampoline,
             escript_builder = toolchain_info.escript_builder,
             otp_binaries = toolchain_info.otp_binaries,
             release_variables_builder = toolchain_info.release_variables_builder,
@@ -105,6 +109,7 @@ def _multi_version_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             parse_transforms_filters = toolchain_info.parse_transforms_filters,
             edoc = toolchain_info.edoc,
             edoc_options = toolchain_info.edoc_options,
+            edoc_preprocess = toolchain_info.edoc_preprocess,
             utility_modules = toolchain_info.utility_modules,
             env = toolchain_info.env,
         )
@@ -124,9 +129,6 @@ multi_version_toolchain_rule = rule(
     is_toolchain_rule = True,
 )
 
-def as_target(name: str) -> str:
-    return ":" + name
-
 def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     """ rule for erlang toolchain
     """
@@ -135,14 +137,13 @@ def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     erl_opts = ctx.attrs.erl_opts.split()
     emu_flags = ctx.attrs.emu_flags.split()
     edoc_options = ctx.attrs.edoc_options.split()
+    edoc_preprocess = ctx.attrs.edoc_preprocess.split()
 
     # get otp binaries
     binaries_info = ctx.attrs.otp_binaries[ErlangOTPBinariesInfo]
     erl = cmd_args([binaries_info.erl] + emu_flags)
-    erlc = cmd_args(binaries_info.erlc)
-    escript = cmd_args(binaries_info.escript)
-    erlc.hidden(binaries_info.erl)
-    escript.hidden(binaries_info.erl)
+    erlc = cmd_args(binaries_info.erlc, hidden = binaries_info.erl)
+    escript = cmd_args(binaries_info.escript, hidden = binaries_info.erl)
     tools_binaries = ToolsBinaries(
         erl = binaries_info.erl,
         erlc = binaries_info.erl,
@@ -188,6 +189,7 @@ def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             env = ctx.attrs.env,
             emu_flags = emu_flags,
             erlc_trampoline = utils.erlc_trampoline,
+            escript_trampoline = utils.escript_trampoline,
             escript_builder = utils.escript_builder,
             otp_binaries = otp_binaries,
             release_variables_builder = utils.release_variables_builder,
@@ -197,6 +199,7 @@ def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             parse_transforms_filters = ctx.attrs.parse_transforms_filters,
             edoc = utils.edoc,
             edoc_options = edoc_options,
+            edoc_preprocess = edoc_preprocess,
             utility_modules = utility_modules,
         ),
     ]
@@ -266,7 +269,7 @@ def _gen_parse_transform_beam(
         erlc,
         "+deterministic",
         "-o",
-        cmd_args(output.as_output()).parent(),
+        cmd_args(output.as_output(), parent = 1),
         src,
     ])
     ctx.actions.run(cmd, category = "erlc", identifier = src.short_path)
@@ -277,6 +280,7 @@ config_erlang_toolchain_rule = rule(
     attrs = {
         "core_parse_transforms": attrs.list(attrs.dep(), default = ["@prelude//erlang/toolchain:transform_project_root"]),
         "edoc_options": attrs.string(default = ""),
+        "edoc_preprocess": attrs.string(default = ""),
         "emu_flags": attrs.string(default = ""),
         "env": attrs.dict(key = attrs.string(), value = attrs.string(), default = {}),
         "erl_opts": attrs.string(default = ""),
@@ -302,7 +306,7 @@ def _gen_util_beams(
                 erlc,
                 "+deterministic",
                 "-o",
-                cmd_args(output.as_output()).parent(),
+                cmd_args(output.as_output(), parent = 1),
                 src,
             ],
             category = "erlc",
@@ -357,6 +361,7 @@ def _toolchain_utils(ctx: AnalysisContext) -> list[Provider]:
             dependency_finalizer = ctx.attrs.dependency_finalizer,
             edoc = ctx.attrs.edoc,
             erlc_trampoline = ctx.attrs.erlc_trampoline,
+            escript_trampoline = ctx.attrs.escript_trampoline,
             escript_builder = ctx.attrs.escript_builder,
             release_variables_builder = ctx.attrs.release_variables_builder,
             include_erts = ctx.attrs.include_erts,
@@ -375,6 +380,7 @@ toolchain_utilities = rule(
         "edoc": attrs.source(),
         "erlc_trampoline": attrs.source(),
         "escript_builder": attrs.source(),
+        "escript_trampoline": attrs.source(),
         "include_erts": attrs.source(),
         "release_variables_builder": attrs.source(),
         "utility_modules": attrs.list(attrs.source()),

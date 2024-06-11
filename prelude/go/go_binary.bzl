@@ -16,24 +16,33 @@ load(
     "map_val",
     "value_or",
 )
-load(":compile.bzl", "compile", "get_filtered_srcs")
 load(":link.bzl", "link")
+load(":package_builder.bzl", "build_package")
 
 def go_binary_impl(ctx: AnalysisContext) -> list[Provider]:
-    lib = compile(
+    lib = build_package(
         ctx,
         "main",
-        get_filtered_srcs(ctx, ctx.attrs.srcs),
+        ctx.attrs.srcs,
+        package_root = ctx.attrs.package_root,
         deps = ctx.attrs.deps,
-        compile_flags = ctx.attrs.compiler_flags,
+        compiler_flags = ctx.attrs.compiler_flags,
+        race = ctx.attrs._race,
+        asan = ctx.attrs._asan,
+        embedcfg = ctx.attrs.embedcfg,
+        # We need to set CGO_DESABLED for "pure" Go libraries, otherwise CGo files may be selected for compilation.
+        force_disable_cgo = True,
     )
     (bin, runtime_files, external_debug_info) = link(
         ctx,
-        lib,
+        lib.pkg,
         deps = ctx.attrs.deps,
         link_style = value_or(map_val(LinkStyle, ctx.attrs.link_style), LinkStyle("static")),
         linker_flags = ctx.attrs.linker_flags,
         link_mode = ctx.attrs.link_mode,
+        race = ctx.attrs._race,
+        asan = ctx.attrs._asan,
+        external_linker_flags = ctx.attrs.external_linker_flags,
     )
 
     # runtime_files are all the artifacts that must be present in order for this
@@ -60,6 +69,6 @@ def go_binary_impl(ctx: AnalysisContext) -> list[Provider]:
             default_output = bin,
             other_outputs = other_outputs,
         ),
-        RunInfo(args = cmd_args(bin).hidden(other_outputs)),
+        RunInfo(args = cmd_args(bin, hidden = other_outputs)),
         DistInfo(nondebug_runtime_files = runtime_files),
     ]

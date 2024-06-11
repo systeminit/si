@@ -1,3 +1,9 @@
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
 erlang_application(
     name = "test_cli_lib",
     srcs = glob(["src/*.erl"]),
@@ -12,4 +18,22 @@ erlang_application(
         # "//erl/config:sys.ct.config",
     ],
     visibility = ["PUBLIC"],
+)
+
+erlang_tests(
+    contacts = ["whatsapp_testing_infra"],
+    labels = ["e2e"],
+    suites = ["test/test_cli_e2e_SUITE.erl"],
+    deps = [
+        "stdlib",
+        ":test_cli_e2e_SUITE_fixtures",
+        ":test_cli_lib",
+    ],
+)
+
+erlang_application(
+    name = "test_cli_e2e_SUITE_fixtures",
+    srcs = glob(["test/test_cli_e2e_SUITE_data/*.erl"]),
+    applications = [],
+    labels = ["test_application"],
 )

@@ -32,7 +32,7 @@ LinkOptions = record(
     strip = bool,
     # A function/lambda which will generate the strip args using the ctx.
     strip_args_factory = [typing.Callable, None],
-    import_library = [Artifact, None],
+    import_library = Artifact | None,
     allow_cache_upload = bool,
     cxx_toolchain = [CxxToolchainInfo, None],
     # Force callers to use link_options() or merge_link_options() to create.
@@ -49,7 +49,7 @@ def link_options(
         identifier: [str, None] = None,
         strip: bool = False,
         strip_args_factory = None,
-        import_library: [Artifact, None] = None,
+        import_library: Artifact | None = None,
         allow_cache_upload: bool = False,
         cxx_toolchain: [CxxToolchainInfo, None] = None) -> LinkOptions:
     """
@@ -72,7 +72,7 @@ def link_options(
         __private_use_link_options_function_to_construct = None,
     )
 
-# A marker instance to differentiate explicitly-passed None and a field tha
+# A marker instance to differentiate explicitly-passed None and a field that
 # isn't provided in merge_link_options.
 _NotProvided = record()
 _NOT_PROVIDED = _NotProvided()

@@ -1,4 +1,9 @@
-# @oss-disable: load("@prelude//apple/tools/defs.bzl", "meta_python_test")
+load("@prelude//utils:source_listing.bzl", "source_listing")
+load("@prelude//apple/tools/defs.bzl", "meta_python_test")
+
+oncall("build_infra")
+
+source_listing()
 
 python_library(
     name = "lib",
@@ -11,11 +16,11 @@ python_library(
             "main.py",
         ],
     ),
+    visibility = ["PUBLIC"],
     deps = [
         "prelude//apple/tools:plistlib_utils",
         "prelude//apple/tools/info_plist_processor:process",
     ],
-    visibility = ["PUBLIC"],
 )
 
 # @oss-disable: meta_python_test(
@@ -35,6 +40,7 @@ python_binary(
     main = "main.py",
     visibility = ["PUBLIC"],
     deps = [
+        "fbsource//third-party/pypi/typed-argument-parser:typed-argument-parser",
         ":lib",
     ],
 )

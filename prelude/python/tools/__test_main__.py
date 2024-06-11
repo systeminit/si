@@ -32,12 +32,8 @@ import sys
 import time
 import traceback
 import unittest
-import warnings
+from importlib.machinery import PathFinder
 
-
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    import imp
 
 try:
     from StringIO import StringIO  # type: ignore
@@ -88,7 +84,7 @@ class PathMatcher:
         return not self.omit(path)
 
 
-class DebugWipeFinder:
+class DebugWipeFinder(PathFinder):
     """
     PEP 302 finder that uses a DebugWipeLoader for all files which do not need
     coverage
@@ -97,27 +93,14 @@ class DebugWipeFinder:
     def __init__(self, matcher):
         self.matcher = matcher
 
-    def find_module(self, fullname, path=None):
-        _, _, basename = fullname.rpartition(".")
-        try:
-            fd, pypath, (_, _, kind) = imp.find_module(basename, path)
-        except Exception:
-            # Finding without hooks using the imp module failed. One reason
-            # could be that there is a zip file on sys.path. The imp module
-            # does not support loading from there. Leave finding this module to
-            # the others finders in sys.meta_path.
+    def find_spec(self, fullname, path=None, target=None):
+        spec = super().find_spec(fullname, path=path, target=target)
+        if spec is None or spec.origin is None:
             return None
-
-        if hasattr(fd, "close"):
-            fd.close()
-        if kind != imp.PY_SOURCE:
+        if not spec.origin.endswith(".py"):
             return None
-        if self.matcher.include(pypath):
+        if self.matcher.include(spec.origin):
             return None
-
-        """
-        This is defined to match CPython's PyVarObject struct
-        """
 
         class PyVarObject(ctypes.Structure):
             _fields_ = [
@@ -132,8 +115,9 @@ class DebugWipeFinder:
             """
 
             def get_code(self, fullname):
-                code = super(DebugWipeLoader, self).get_code(fullname)
-                if code:
+                code = super().get_code(fullname)
+                # This can segfault in 3.12
+                if code and sys.version_info < (3, 12):
                     # Ideally we'd do
                     # code.co_lnotab = b''
                     # But code objects are READONLY. Not to worry though; we'll
@@ -142,7 +126,9 @@ class DebugWipeFinder:
                     code_impl.ob_size = 0
                 return code
 
-        return DebugWipeLoader(fullname, pypath)
+        if isinstance(spec.loader, SourceFileLoader):
+            spec.loader = DebugWipeLoader(fullname, spec.origin)
+        return spec
 
 
 def optimize_for_coverage(cov, include_patterns, omit_patterns):
@@ -200,8 +186,7 @@ class CallbackStream:
         return self._fileno
 
 
-# pyre-fixme[11]: Annotation `unittest._TextTestResult` is not defined as a type.
-class BuckTestResult(unittest._TextTestResult):
+class BuckTestResult(unittest.TextTestResult):
     """
     Our own TestResult class that outputs data in a format that can be easily
     parsed by buck's test runner.
@@ -273,7 +258,14 @@ class BuckTestResult(unittest._TextTestResult):
         # test cases, and fall back to looking the test up from the suite
         # otherwise.
         if not hasattr(test, "_testMethodName"):
-            test = self._find_next_test(self._suite)
+            potential_test = self._find_next_test(self._suite)
+
+            if potential_test is not None:
+                test = potential_test
+            elif hasattr(test, "id"):
+                # If the next test can't be found, this could be a failure in class teardown. Fallback
+                # to using the id, which will likely be the method name as the test method.
+                test._testMethodName = test.id()
 
         self._results.append(
             {
@@ -672,11 +664,20 @@ class MainProgram:
 
         if self.options.list:
             for test in self.get_tests(test_suite):
+                # Python 3.12 changed the implementation of `TestCase.__str__`.
+                # We construct the name manually here to ensure consistency between
+                # Python versions.
+                # Example: "test_basic (tests.test_object.TestAbsent)".
+                method_name = getattr(test, "_testMethodName", "")
+                cls = test.__class__
                 if self.options.list_format == "python":
-                    name = str(test)
+                    if method_name:
+                        name = f"{method_name} ({cls.__module__}.{cls.__qualname__})"
+                    else:
+                        name = str(test)
+
                 elif self.options.list_format == "buck":
-                    method_name = getattr(test, "_testMethodName", "")
-                    name = _format_test_name(test.__class__, method_name)
+                    name = _format_test_name(cls, method_name)
                 else:
                     raise Exception(
                         "Bad test list format: %s" % (self.options.list_format,)
@@ -772,12 +773,12 @@ class MainProgram:
             analysis[3][-1] if len(analysis[3]) else 0,
         )
         lines = ["N"] * numLines
-        for l in analysis[1]:
-            lines[l - 1] = "C"
-        for l in analysis[2]:
-            lines[l - 1] = "X"
-        for l in analysis[3]:
-            lines[l - 1] = "U"
+        for line in analysis[1]:
+            lines[line - 1] = "C"
+        for line in analysis[2]:
+            lines[line - 1] = "X"
+        for line in analysis[3]:
+            lines[line - 1] = "U"
         return "".join(lines)
 
 

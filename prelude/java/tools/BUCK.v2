@@ -1,3 +1,9 @@
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
 prelude = native
 
 prelude.python_bootstrap_binary(
@@ -77,7 +83,7 @@ prelude.python_bootstrap_library(
     ],
     visibility = [
         "prelude//android/tools/...",
-        "prelude//kotlin/tools/...",
         "prelude//java/tools/...",
+        "prelude//kotlin/tools/...",
     ],
 )
