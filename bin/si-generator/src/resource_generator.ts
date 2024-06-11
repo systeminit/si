@@ -1,15 +1,16 @@
 export interface ArgInput {
-  toSet: string,
-  readFrom: string,
+  toSet: string;
+  readFrom: string;
 }
 
 export interface ArgOutput {
-  toSet?: string,
-  readFrom: string,
+  toSet?: string;
+  readFrom: string;
 }
 
 export interface RefreshOptions {
   inputs: Array<ArgInput>;
+  missingResources: Array<String>;
   outputs: Array<ArgOutput>;
 }
 
@@ -18,29 +19,41 @@ export interface DeleteOptions {
 }
 
 export function parseInputOption(input: string): ArgInput {
-    const [toSet, readFrom] = input.split(':');
-    if (toSet && readFrom) {
+  const [toSet, readFrom] = input.split(":");
+  if (toSet && readFrom) {
     return { toSet, readFrom };
-    } else {
-      throw new Error(`Invalid input specifier; must be 'awsInputPath:siPropertiesPath': ${input}`);
-    }
+  } else {
+    throw new Error(
+      `Invalid input specifier; must be 'awsInputPath:siPropertiesPath': ${input}`,
+    );
+  }
 }
 
 export function parseOutputOption(output: string): ArgOutput {
-    if (output.includes(':')) {
-      const [toSet, readFrom] = output.split(':');
-      return { toSet, readFrom };
-    } else {
-      return { readFrom: output };
-    }
+  if (output.includes(":")) {
+    const [toSet, readFrom] = output.split(":");
+    return { toSet, readFrom };
+  } else {
+    return { readFrom: output };
+  }
 }
 
-
-export function makeRefreshOptions(options: { input: Array<string>, output: Array<string> }): RefreshOptions {
-  const refreshOptions: RefreshOptions = { inputs: [], outputs: [] };
+export function makeRefreshOptions(options: {
+  input: Array<string>;
+  missingResource: Array<string>;
+  output: Array<string>;
+}): RefreshOptions {
+  const refreshOptions: RefreshOptions = {
+    inputs: [],
+    missingResources: [],
+    outputs: [],
+  };
   for (const input of options.input) {
     const argInput = parseInputOption(input);
     refreshOptions.inputs.push(argInput);
+  }
+  for (const missing of options.missingResource) {
+    refreshOptions.missingResources.push(missing);
   }
   for (const output of options.output) {
     const argOutput = parseOutputOption(output);
@@ -49,8 +62,14 @@ export function makeRefreshOptions(options: { input: Array<string>, output: Arra
   return refreshOptions;
 }
 
-export function makeDeleteOrActionOptions(options: { input: Array<string> }): DeleteOptions {
-  const deleteOptions: RefreshOptions = { inputs: [], outputs: [] };
+export function makeDeleteOrActionOptions(options: {
+  input: Array<string>;
+}): DeleteOptions {
+  const deleteOptions: RefreshOptions = {
+    inputs: [],
+    missingResources: [],
+    outputs: [],
+  };
   for (const input of options.input) {
     const argInput = parseInputOption(input);
     deleteOptions.inputs.push(argInput);

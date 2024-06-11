@@ -61,7 +61,10 @@ export async function fmt(ts: string): Promise<string> {
   }
 }
 
-export async function renderAsset(props: Array<Prop>, provider: RenderProvider): Promise<string> {
+export async function renderAsset(
+  props: Array<Prop>,
+  provider: RenderProvider,
+): Promise<string> {
   const eta = useEta();
   const assetDefinition = eta.render("@assetMain", { props, provider });
   return await fmt(assetDefinition);
@@ -74,7 +77,7 @@ export async function renderCodeGen(provider: RenderProvider): Promise<string> {
 }
 
 export interface RenderCreateBase {
-  provider: RenderProvider
+  provider: RenderProvider;
 }
 
 export interface RenderCreateAws extends RenderCreateBase {
@@ -85,7 +88,9 @@ export interface RenderCreateAws extends RenderCreateBase {
 
 export type RenderCreateOptions = RenderCreateAws;
 
-export async function renderCreate(options: RenderCreateOptions): Promise<string> {
+export async function renderCreate(
+  options: RenderCreateOptions,
+): Promise<string> {
   const eta = useEta();
   const create = eta.render("@createMain", { options });
   return await fmt(create);
@@ -96,10 +101,13 @@ export interface RenderRefreshOptions {
   awsService: string;
   awsCommand: string;
   inputs: Array<ArgInput>;
+  missingResources: Array<String>;
   outputs: Array<ArgOutput>;
-};
+}
 
-export async function renderRefresh(options: RenderRefreshOptions): Promise<string> {
+export async function renderRefresh(
+  options: RenderRefreshOptions,
+): Promise<string> {
   const eta = useEta();
   const refresh = eta.render("@refreshMain", options);
   return await fmt(refresh);
@@ -114,13 +122,17 @@ export interface RenderDeleteOptions {
 
 export type RenderActionOptions = RenderDeleteOptions;
 
-export async function renderDelete(options: RenderDeleteOptions): Promise<string> {
+export async function renderDelete(
+  options: RenderDeleteOptions,
+): Promise<string> {
   const eta = useEta();
   const deletetemp = eta.render("@deleteMain", options);
   return await fmt(deletetemp);
 }
 
-export async function renderAction(options: RenderActionOptions): Promise<string> {
+export async function renderAction(
+  options: RenderActionOptions,
+): Promise<string> {
   const eta = useEta();
   const actiontemp = eta.render("@actionMain", options);
   return await fmt(actiontemp);
