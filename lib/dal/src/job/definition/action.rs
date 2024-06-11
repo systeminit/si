@@ -228,6 +228,14 @@ async fn process_and_record_execution(
                         .publish_on_commit(&ctx)
                         .await?;
                 }
+            } else {
+                let summary =
+                    SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
+                        .await?;
+                WsEvent::resource_refreshed(&ctx, summary)
+                    .await?
+                    .publish_on_commit(&ctx)
+                    .await?;
             }
 
             let triggered_prototypes =
