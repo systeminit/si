@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,10 +22,10 @@ class InfoPlistMetadata:
     is_watchos_app: bool
 
     @staticmethod
-    def from_file(info_plist_file: IO) -> InfoPlistMetadata:
+    def from_file(info_plist_file: IO[bytes]) -> InfoPlistMetadata:
         root = detect_format_and_load(info_plist_file)
         return InfoPlistMetadata(
             root["CFBundleIdentifier"],
             root.get("CFBundlePackageType"),
-            root.get("WKWatchKitApp", False),
+            root.get("WKApplication", False),
         )

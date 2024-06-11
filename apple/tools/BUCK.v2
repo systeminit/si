@@ -1,16 +1,28 @@
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
 apple_tools(
     name = "apple-tools",
-    assemble_bundle = "prelude//apple/tools/bundling:assemble_bundle",
+    adhoc_codesign_tool = None, # @oss-enable
     # @oss-disable: adhoc_codesign_tool = "prelude//apple/tools/meta_only/codesign_rust:adhoc-signer", 
-    adhoc_codesign_tool = None # @oss-enable
-    split_arch_combine_dsym_bundles_tool = ":split_arch_combine_dsym_bundles_tool",
+    assemble_bundle = "prelude//apple/tools/bundling:assemble_bundle",
     dry_codesign_tool = ":dry_codesign_tool",
     info_plist_processor = "prelude//apple/tools/info_plist_processor:tool",
     ipa_package_maker = ":ipa_package_maker",
     make_modulemap = ":make_modulemap",
     make_vfsoverlay = ":make_vfsoverlay",
     selective_debugging_scrubber = "prelude//apple/tools/selective_debugging:tool",
-    swift_objc_header_postprocess = ":swift_objc_header_postprocess",
+    split_arch_combine_dsym_bundles_tool = ":split_arch_combine_dsym_bundles_tool",
+    visibility = ["PUBLIC"],
+    xcframework_maker = ":xcframework_maker",
+)
+
+python_binary(
+    name = "xcframework_maker",
+    main = "xcframework_maker.py",
     visibility = ["PUBLIC"],
 )
 
@@ -42,6 +54,12 @@ python_bootstrap_binary(
 )
 
 python_bootstrap_binary(
+    name = "make_swift_interface",
+    main = "make_swift_interface.py",
+    visibility = ["PUBLIC"],
+)
+
+python_bootstrap_binary(
     name = "make_vfsoverlay",
     main = "make_vfsoverlay.py",
     visibility = ["PUBLIC"],
@@ -68,10 +86,4 @@ command_alias(
 export_file(
     name = "swift_exec.sh",
     src = "swift_exec.sh",
-)
-
-python_bootstrap_binary(
-    name = "swift_objc_header_postprocess",
-    main = "swift_objc_header_postprocess.py",
-    visibility = ["PUBLIC"],
 )

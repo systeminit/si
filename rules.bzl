@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:buck2_compatibility.bzl", "BUCK2_COMPATIBILITY_ATTRIB_NAME", "BUCK2_COMPATIBILITY_ATTRIB_TYPE", "check_buck2_compatibility")
+load("@prelude//apple:apple_platforms.bzl", "APPLE_PLATFORMS_KEY")
 load("@prelude//configurations:rules.bzl", _config_implemented_rules = "implemented_rules")
 load("@prelude//decls/common.bzl", "prelude_rule")
 load("@prelude//is_full_meta_repo.bzl", "is_full_meta_repo")
@@ -21,7 +23,7 @@ def _unimplemented_impl(name):
     # some features disabled.
     return partial(_unimplemented, name)
 
-def _mk_rule(rule_spec: typing.Any):
+def _mk_rule(rule_spec: typing.Any, extra_attrs: dict[str, typing.Any] = dict(), impl_override: [typing.Callable, None] = None, **kwargs):
     name = rule_spec.name
     attributes = rule_spec.attrs
 
@@ -36,22 +38,26 @@ def _mk_rule(rule_spec: typing.Any):
             if toolchain_attr in attributes:
                 fat_platform_compatible = False
 
+    #Add buck2_compatibility attribute to all rules
+    extra_attrs[BUCK2_COMPATIBILITY_ATTRIB_NAME] = BUCK2_COMPATIBILITY_ATTRIB_TYPE
+
     # Fat platforms is an idea specific to our toolchains, so doesn't apply to
     # open source. Ideally this restriction would be done at the toolchain level.
     if not is_full_meta_repo():
         fat_platform_compatible = True
 
     attributes = dict(attributes)
+    attributes.update(extra_attrs)
     if not fat_platform_compatible:
         # copy so we don't try change the passed in object
         attributes["_cxx_toolchain_target_configuration"] = attrs.dep(default = "prelude//platforms:fat_platform_incompatible")
 
     # Add _apple_platforms to all rules so that we may query the target platform to use until we support configuration
     # modifiers and can use them to set the configuration to use for operations.
-    # Map of string identifer to platform.
-    attributes["_apple_platforms"] = attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {})
+    # Map of string identifier to platform.
+    attributes[APPLE_PLATFORMS_KEY] = attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {})
 
-    extra_args = {}
+    extra_args = dict(kwargs)
     cfg = transitions.get(name)
     if cfg != None:
         extra_args["cfg"] = cfg
@@ -79,16 +85,25 @@ def _mk_rule(rule_spec: typing.Any):
         impl = extra_impl
     if not impl:
         impl = _unimplemented_impl(name)
+    if impl_override != None:
+        impl = impl_override
     if rule_spec.uses_plugins != None:
         extra_args["uses_plugins"] = rule_spec.uses_plugins
 
+    extra_args.setdefault("is_configuration_rule", name in _config_implemented_rules)
+    extra_args.setdefault("is_toolchain_rule", name in toolchain_rule_names)
     return rule(
-        impl = impl,
+        impl = buck2_compatibility_check_wrapper(impl),
         attrs = attributes,
-        is_configuration_rule = name in _config_implemented_rules,
-        is_toolchain_rule = name in toolchain_rule_names,
         **extra_args
     )
+
+def buck2_compatibility_check_wrapper(impl) -> typing.Callable:
+    def buck2_compatibility_shim(ctx: AnalysisContext) -> [list[Provider], Promise]:
+        check_buck2_compatibility(ctx)
+        return impl(ctx)
+
+    return buck2_compatibility_shim
 
 def _flatten_decls():
     decls = {}
@@ -130,3 +145,9 @@ rules = {rule.name: _mk_rule(rule) for rule in _declared_rules.values()}
 
 # The rules are accessed by doing module.name, so we have to put them on the correct module.
 load_symbols(rules)
+
+# TODO(akrieger): Remove this and instead refactor to allow impl bzl files to export attrs.
+def clone_rule(rule: str, extra_attrs: dict[str, typing.Any] = dict(), impl_override = None, **kwargs):
+    if not rule in _declared_rules:
+        fail("Tried clone rule {} which does not exist".format(rule))
+    return _mk_rule(_declared_rules[rule], extra_attrs, impl_override, **kwargs)

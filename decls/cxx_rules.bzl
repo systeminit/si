@@ -10,8 +10,10 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load(":apple_common.bzl", "apple_common")
-load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "LinkableDepType", "Linkage", "Traversal", "buck", "prelude_rule")
+load("@prelude//apple:apple_common.bzl", "apple_common")
+load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
+load("@prelude//linking:types.bzl", "Linkage")
+load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "LinkableDepType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":genrule_common.bzl", "genrule_common")
 load(":native_common.bzl", "native_common")
@@ -117,7 +119,7 @@ cxx_binary = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_deps_query_whole": attrs.bool(default = False),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
@@ -136,8 +138,8 @@ cxx_genrule = prelude_rule(
     name = "cxx_genrule",
     docs = """
         A `cxx_genrule()` enables you to run shell commands as part
-        of the Buck build process. A `cxx_genrule()` exposes\342\200\224through
-        a set of string parameter macros and variables\342\200\224information about the
+        of the Buck build process. A `cxx_genrule()` exposes - through
+        a set of string parameter macros and variables - information about the
         tools and configuration options used by the
         Buck environment, specifically those related to the C/C++ toolchain.
 
@@ -517,18 +519,12 @@ cxx_library = prelude_rule(
         cxx_common.exported_post_platform_linker_flags_arg() |
         native_common.link_style() |
         native_common.link_whole(link_whole_type = attrs.option(attrs.bool(), default = None)) |
+        native_common.soname() |
         cxx_common.raw_headers_arg() |
         cxx_common.include_directories_arg() |
         cxx_common.public_include_directories_arg() |
         cxx_common.public_system_include_directories_arg() |
         {
-            "soname": attrs.option(attrs.string(), default = None, doc = """
-                Sets the soname ("shared object name") of any shared library produced from this rule.
-                 The default value is based on the full rule name.
-                 The macro `$(ext)` will be replaced with a platform-appropriate extension.
-                 An argument can be provided, which is a library version.
-                 For example `soname = 'libfoo.$(ext 2.3)'` will be `libfoo.2.3.dylib` on Mac and `libfoo.so.2.3` on Linux.
-            """),
             "used_by_wrap_script": attrs.bool(default = False, doc = """
                 When using an exopackage
                  Android, if this parameter is set to `True`, then the library is
@@ -542,7 +538,7 @@ cxx_library = prelude_rule(
         } |
         cxx_common.supported_platforms_regex_arg() |
         cxx_common.force_static(force_static_type = attrs.option(attrs.bool(), default = None)) |
-        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage), default = None)) |
+        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage.values()), default = None)) |
         cxx_common.reexport_all_header_dependencies_arg() |
         cxx_common.exported_deps_arg() |
         cxx_common.exported_platform_deps_arg() |
@@ -570,7 +566,7 @@ cxx_library = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "module_name": attrs.option(attrs.string(), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
@@ -586,9 +582,8 @@ cxx_library = prelude_rule(
             "uses_explicit_modules": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-            "xcode_private_headers_symlinks": attrs.option(attrs.bool(), default = None),
-            "xcode_public_headers_symlinks": attrs.option(attrs.bool(), default = None),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -729,6 +724,56 @@ cxx_precompiled_header = prelude_rule(
     ),
 )
 
+windows_resource = prelude_rule(
+    name = "windows_resource",
+    docs = """
+        A `windows_resource()` rule specifies a set of Window's Resource File (.rc) that
+        are compiled into object files.
+
+        The files are compiled into .res files using rc.exe and then compiled into object files
+        using cvtres.exe.
+        They are not part of cxx_library because Microsoft's linker ignores the resources
+        unless they are specified as an object file, meaning including them in a possibly static
+        library is unintuitive.
+    """,
+    examples = """
+        ```
+
+        # A rule that includes a single .rc file and compiles it into an object file.
+        windows_resource(
+          name = "resources",
+          srcs = [
+            "resources.rc",
+          ],
+        )
+
+        # A rule that links against the above windows_resource rule.
+        cxx_binary(
+          name = "app",
+          srcs = [
+            "main.cpp",
+          ],
+          deps = [
+            ":resources"
+          ],
+        )
+
+        ```
+    """,
+    further = None,
+    attrs = (
+        cxx_common.srcs_arg() |
+        cxx_common.headers_arg() |
+        cxx_common.platform_headers_arg() |
+        cxx_common.header_namespace_arg() |
+        cxx_common.raw_headers_arg() |
+        cxx_common.include_directories_arg() |
+        {
+            "labels": attrs.list(attrs.string(), default = []),
+        }
+    ),
+)
+
 cxx_test = prelude_rule(
     name = "cxx_test",
     docs = """
@@ -832,7 +877,7 @@ cxx_test = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_deps_query_whole": attrs.bool(default = False),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "link_style": attrs.option(attrs.enum(LinkableDepType), default = None),
             "linker_extra_outputs": attrs.list(attrs.string(), default = []),
             "platform_compiler_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
@@ -849,7 +894,8 @@ cxx_test = prelude_rule(
             "use_default_test_main": attrs.option(attrs.bool(), default = None),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -889,6 +935,10 @@ cxx_toolchain = prelude_rule(
             "cuda_compiler_flags": attrs.list(attrs.arg(), default = []),
             "cuda_compiler_type": attrs.option(attrs.enum(CxxToolProviderType), default = None),
             "cuda_preprocessor_flags": attrs.list(attrs.arg(), default = []),
+            "cvtres_compiler": attrs.option(attrs.source(), default = None),
+            "cvtres_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "cvtres_compiler_type": attrs.option(attrs.enum(CxxToolProviderType), default = None),
+            "cvtres_preprocessor_flags": attrs.list(attrs.arg(), default = []),
             "cxx_compiler": attrs.source(),
             "cxx_compiler_flags": attrs.list(attrs.arg(), default = []),
             "cxx_compiler_type": attrs.option(attrs.enum(CxxToolProviderType), default = None),
@@ -906,18 +956,25 @@ cxx_toolchain = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "link_path_normalization_args_enabled": attrs.bool(default = False),
+            "link_style": attrs.string(default = "static"),
             "linker": attrs.source(),
             "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "linker_type": attrs.enum(LinkerProviderType),
             "nm": attrs.source(),
             "objcopy_for_shared_library_interface": attrs.source(),
             "objcopy_recalculates_layout": attrs.bool(default = False),
+            "objdump": attrs.option(attrs.source(), default = None),
             "object_file_extension": attrs.string(default = ""),
             "pic_type_for_shared_linking": attrs.enum(PicType, default = "pic"),
+            "post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "private_headers_symlinks_enabled": attrs.bool(default = False),
             "public_headers_symlinks_enabled": attrs.bool(default = False),
             "ranlib": attrs.option(attrs.source(), default = None),
             "ranlib_flags": attrs.list(attrs.arg(), default = []),
+            "rc_compiler": attrs.option(attrs.source(), default = None),
+            "rc_compiler_flags": attrs.list(attrs.arg(), default = []),
+            "rc_compiler_type": attrs.option(attrs.enum(CxxToolProviderType), default = None),
+            "rc_preprocessor_flags": attrs.list(attrs.arg(), default = []),
             "requires_archives": attrs.bool(default = False),
             "shared_dep_runtime_ld_flags": attrs.list(attrs.arg(), default = []),
             "shared_library_extension": attrs.string(default = ""),
@@ -1055,7 +1112,7 @@ prebuilt_cxx_library = prelude_rule(
         cxx_common.exported_platform_preprocessor_flags_arg() |
         cxx_common.exported_linker_flags_arg() |
         cxx_common.force_static(force_static_type = attrs.bool(default = False)) |
-        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage), default = None)) |
+        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage.values()), default = None)) |
         cxx_common.exported_deps_arg() |
         cxx_common.exported_platform_deps_arg() |
         cxx_common.supports_merged_linking() |
@@ -1070,6 +1127,7 @@ prebuilt_cxx_library = prelude_rule(
             "exported_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "exported_post_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "exported_post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
+            "extract_soname": attrs.bool(default = False),
             "frameworks": attrs.list(attrs.string(), default = []),
             "import_lib": attrs.option(attrs.source(), default = None),
             "include_in_android_merge_map_output": attrs.bool(default = True),
@@ -1092,7 +1150,8 @@ prebuilt_cxx_library = prelude_rule(
             "versioned_soname": attrs.option(attrs.versioned(attrs.string()), default = None),
             "versioned_static_lib": attrs.option(attrs.versioned(attrs.source()), default = None),
             "versioned_static_pic_lib": attrs.option(attrs.versioned(attrs.source()), default = None),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -1239,6 +1298,7 @@ cxx_rules = struct(
     cxx_genrule = cxx_genrule,
     cxx_library = cxx_library,
     cxx_precompiled_header = cxx_precompiled_header,
+    windows_resource = windows_resource,
     cxx_test = cxx_test,
     cxx_toolchain = cxx_toolchain,
     prebuilt_cxx_library = prebuilt_cxx_library,

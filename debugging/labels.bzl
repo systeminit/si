@@ -12,7 +12,7 @@
 # For example:
 #    Running "buck run //another:target" (or via using [RunInfo]) should produce `ExecInfo` as its stdout
 
-# 3. If target has a label `dbg:info:ref=//another:target` we assume a presense of //another:target which we can inspect for the presense of relevant providers (see fdb.bxl)
+# 3. If target has a label `dbg:info:ref=//another:target` we assume a presence of //another:target which we can inspect for the presence of relevant providers (see fdb.bxl)
 
 # This label indicates where to locate "[RunInfo]" which would output `ExecInfo` -compatible output
 DBG_INFO_EXEC = "dbg:info:exec"
@@ -30,13 +30,6 @@ def dbg_info_ref(target_label) -> list[str]:
 def get_info_ref(labels: list[str]) -> [str, None]:
     for label in labels:
         result = _get_value_by_mark(DBG_INFO_REF, label)
-        if result:
-            return result
-    return None
-
-def get_info_exec(labels: list[str]) -> [str, None]:
-    for label in labels:
-        result = _get_value_by_mark(DBG_INFO_EXEC, label)
         if result:
             return result
     return None

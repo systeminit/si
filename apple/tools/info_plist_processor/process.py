@@ -5,11 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import json
 import plistlib
-from typing import Any, Dict, IO, Optional
+from typing import Any, Dict, IO, Optional, TextIO
 
 from apple.tools.plistlib_utils import detect_format_and_load
+
 
 # Corresponding v1 code is contained in `com/facebook/buck/apple/PlistProcessStep.java`, `PlistProcessStep::execute` method.
 def _merge_plist_dicts(
@@ -26,12 +29,12 @@ def _merge_plist_dicts(
 
 
 def process(
-    input_file: IO,
-    output_file: IO,
-    override_input_file: Optional[IO] = None,
+    input_file: IO[bytes],
+    output_file: IO[bytes],
+    override_input_file: Optional[IO[bytes]] = None,
     additional_keys: Optional[Dict[str, Any]] = None,
-    additional_keys_file: Optional[IO] = None,
-    override_keys_file: Optional[IO] = None,
+    additional_keys_file: Optional[TextIO] = None,
+    override_keys_file: Optional[TextIO] = None,
     output_format: plistlib.PlistFormat = plistlib.FMT_BINARY,
 ) -> None:
     root = detect_format_and_load(input_file)

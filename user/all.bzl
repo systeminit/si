@@ -5,14 +5,17 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//apple:apple_resource_dedupe_alias.bzl", _apple_resource_dedupe_alias_spec = "registration_spec")
+load("@prelude//apple/mockingbird:mockingbird_mock.bzl", _mockingbird_mock_spec = "registration_spec")
 load("@prelude//apple/user:apple_resource_bundle.bzl", _apple_resource_bundle_spec = "registration_spec")
 load("@prelude//apple/user:apple_selective_debugging.bzl", _apple_selective_debugging_spec = "registration_spec")
 load("@prelude//apple/user:apple_simulators.bzl", _apple_simulators_spec = "registration_spec")
 load("@prelude//apple/user:apple_toolchain_override.bzl", _apple_toolchain_override_spec = "registration_spec")
 load("@prelude//apple/user:apple_tools.bzl", _apple_tools_spec = "registration_spec")
 load("@prelude//apple/user:apple_watchos_bundle.bzl", _apple_watchos_bundle_spec = "registration_spec")
+load("@prelude//apple/user:apple_xcframework.bzl", _apple_xcframework_spec = "registration_spec")
 load("@prelude//apple/user:resource_group_map.bzl", _resource_group_map_spec = "registration_spec")
-load("@prelude//cxx/user:cxx_toolchain_override.bzl", _cxx_toolchain_override_inheriting_target_platform_spec = "cxx_toolchain_override_inheriting_target_platform_registration_spec", _cxx_toolchain_override_spec = "cxx_toolchain_override_registration_spec")
+load("@prelude//cxx/user:cxx_toolchain_override.bzl", _cxx_toolchain_override_spec = "cxx_toolchain_override_registration_spec")
 load("@prelude//cxx/user:link_group_map.bzl", _link_group_map_spec = "registration_spec")
 load(":cxx_headers_bundle.bzl", _cxx_headers_bundle_spec = "registration_spec")
 load(":extract_archive.bzl", _extract_archive_spec = "registration_spec")
@@ -23,15 +26,17 @@ _all_specs = [
     _apple_tools_spec,
     _apple_selective_debugging_spec,
     _apple_resource_bundle_spec,
+    _apple_resource_dedupe_alias_spec,
+    _apple_xcframework_spec,
     _link_group_map_spec,
     _resource_group_map_spec,
     _apple_watchos_bundle_spec,
     _apple_toolchain_override_spec,
     _cxx_headers_bundle_spec,
     _cxx_toolchain_override_spec,
-    _cxx_toolchain_override_inheriting_target_platform_spec,
     _apple_simulators_spec,
     _write_file_spec,
+    _mockingbird_mock_spec,
 ]
 
 rules = {

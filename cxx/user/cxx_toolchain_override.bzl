@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//cxx:cxx_toolchain_types.bzl", "AsCompilerInfo", "AsmCompilerInfo", "BinaryUtilitiesInfo", "CCompilerInfo", "CxxCompilerInfo", "CxxObjectFormat", "CxxPlatformInfo", "CxxToolchainInfo", "LinkerInfo", "LinkerType", "PicBehavior", "ShlibInterfacesMode", "StripFlagsInfo", "cxx_toolchain_infos")
+load("@prelude//cxx:cxx_utility.bzl", "cxx_toolchain_allow_cache_upload_args")
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 load("@prelude//cxx:headers.bzl", "HeaderMode")
 load("@prelude//cxx:linker.bzl", "is_pdb_generated")
@@ -15,8 +16,8 @@ load(
 )
 load("@prelude//linking:lto.bzl", "LtoMode")
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
-load("@prelude//utils:pick.bzl", _pick = "pick", _pick_and_add = "pick_and_add", _pick_bin = "pick_bin", _pick_dep = "pick_dep")
-load("@prelude//utils:utils.bzl", "map_val", "value_or")
+load("@prelude//utils:pick.bzl", _pick = "pick", _pick_and_add = "pick_and_add", _pick_bin = "pick_bin", _pick_dep = "pick_dep", _pick_raw = "pick_raw")
+load("@prelude//utils:utils.bzl", "flatten", "map_val", "value_or")
 
 def _cxx_toolchain_override(ctx):
     base_toolchain = ctx.attrs.base[CxxToolchainInfo]
@@ -36,7 +37,7 @@ def _cxx_toolchain_override(ctx):
     if asm_info != None:
         asm_info = AsmCompilerInfo(
             compiler = _pick_bin(ctx.attrs.asm_compiler, asm_info.compiler),
-            compiler_type = asm_info.compiler_type,
+            compiler_type = _pick_raw(ctx.attrs.asm_compiler_type, asm_info.compiler_type),
             compiler_flags = _pick(ctx.attrs.asm_compiler_flags, asm_info.compiler_flags),
             preprocessor = _pick_bin(ctx.attrs.asm_compiler, asm_info.preprocessor),
             preprocessor_type = asm_info.preprocessor_type,
@@ -52,6 +53,7 @@ def _cxx_toolchain_override(ctx):
         preprocessor_type = base_c_info.preprocessor_type,
         preprocessor_flags = _pick(ctx.attrs.c_preprocessor_flags, base_c_info.preprocessor_flags),
         dep_files_processor = base_c_info.dep_files_processor,
+        allow_cache_upload = _pick_raw(ctx.attrs.c_compiler_allow_cache_upload, base_c_info.allow_cache_upload),
     )
     base_cxx_info = base_toolchain.cxx_compiler_info
     cxx_info = CxxCompilerInfo(
@@ -62,12 +64,13 @@ def _cxx_toolchain_override(ctx):
         preprocessor_type = base_cxx_info.preprocessor_type,
         preprocessor_flags = _pick(ctx.attrs.cxx_preprocessor_flags, base_cxx_info.preprocessor_flags),
         dep_files_processor = base_cxx_info.dep_files_processor,
+        allow_cache_upload = _pick_raw(ctx.attrs.cxx_compiler_allow_cache_upload, base_cxx_info.allow_cache_upload),
     )
     base_linker_info = base_toolchain.linker_info
     linker_type = ctx.attrs.linker_type if ctx.attrs.linker_type != None else base_linker_info.type
     pdb_expected = is_pdb_generated(linker_type, ctx.attrs.linker_flags) if ctx.attrs.linker_flags != None else base_linker_info.is_pdb_generated
 
-    # This handles case when linker type is overriden to non-windows from
+    # This handles case when linker type is overridden to non-windows from
     # windows but linker flags are inherited.
     # When it's changed from non-windows to windows but flags are not changed,
     # we can't inspect base linker flags and disable PDB subtargets.
@@ -75,6 +78,7 @@ def _cxx_toolchain_override(ctx):
     # linker flags should be changed as well.
     pdb_expected = linker_type == "windows" and pdb_expected
     shlib_interfaces = ShlibInterfacesMode(ctx.attrs.shared_library_interface_mode) if ctx.attrs.shared_library_interface_mode else None
+    sanitizer_runtime_files = flatten([runtime_file[DefaultInfo].default_outputs for runtime_file in ctx.attrs.sanitizer_runtime_files]) if ctx.attrs.sanitizer_runtime_files != None else None
     linker_info = LinkerInfo(
         archiver = _pick_bin(ctx.attrs.archiver, base_linker_info.archiver),
         archiver_type = base_linker_info.archiver_type,
@@ -90,6 +94,7 @@ def _cxx_toolchain_override(ctx):
         link_ordering = base_linker_info.link_ordering,
         linker = _pick_bin(ctx.attrs.linker, base_linker_info.linker),
         linker_flags = _pick(ctx.attrs.linker_flags, base_linker_info.linker_flags),
+        post_linker_flags = _pick(ctx.attrs.post_linker_flags, base_linker_info.post_linker_flags),
         lto_mode = value_or(map_val(LtoMode, ctx.attrs.lto_mode), base_linker_info.lto_mode),
         object_file_extension = base_linker_info.object_file_extension,
         shlib_interfaces = value_or(shlib_interfaces, base_linker_info.shlib_interfaces),
@@ -98,6 +103,8 @@ def _cxx_toolchain_override(ctx):
         requires_objects = base_linker_info.requires_objects,
         supports_distributed_thinlto = base_linker_info.supports_distributed_thinlto,
         independent_shlib_interface_linker_flags = base_linker_info.independent_shlib_interface_linker_flags,
+        sanitizer_runtime_enabled = value_or(ctx.attrs.sanitizer_runtime_enabled, base_linker_info.sanitizer_runtime_enabled),
+        sanitizer_runtime_files = value_or(sanitizer_runtime_files, base_linker_info.sanitizer_runtime_files),
         shared_dep_runtime_ld_flags = [],
         shared_library_name_default_prefix = ctx.attrs.shared_library_name_default_prefix if ctx.attrs.shared_library_name_default_prefix != None else base_linker_info.shared_library_name_default_prefix,
         shared_library_name_format = ctx.attrs.shared_library_name_format if ctx.attrs.shared_library_name_format != None else base_linker_info.shared_library_name_format,
@@ -109,13 +116,13 @@ def _cxx_toolchain_override(ctx):
         use_archiver_flags = value_or(ctx.attrs.use_archiver_flags, base_linker_info.use_archiver_flags),
         force_full_hybrid_if_capable = value_or(ctx.attrs.force_full_hybrid_if_capable, base_linker_info.force_full_hybrid_if_capable),
         is_pdb_generated = pdb_expected,
-        produce_interface_from_stub_shared_library = value_or(ctx.attrs.produce_interface_from_stub_shared_library, base_linker_info.produce_interface_from_stub_shared_library),
     )
 
     base_binary_utilities_info = base_toolchain.binary_utilities_info
     binary_utilities_info = BinaryUtilitiesInfo(
         nm = _pick_bin(ctx.attrs.nm, base_binary_utilities_info.nm),
         objcopy = _pick_bin(ctx.attrs.objcopy, base_binary_utilities_info.objcopy),
+        objdump = _pick_bin(ctx.attrs.objdump, base_binary_utilities_info.objdump),
         ranlib = _pick_bin(ctx.attrs.ranlib, base_binary_utilities_info.ranlib),
         strip = _pick_bin(ctx.attrs.strip, base_binary_utilities_info.strip),
         dwp = base_binary_utilities_info.dwp,
@@ -123,11 +130,14 @@ def _cxx_toolchain_override(ctx):
     )
 
     base_strip_flags_info = base_toolchain.strip_flags_info
-    strip_flags_info = StripFlagsInfo(
-        strip_debug_flags = _pick(ctx.attrs.strip_debug_flags, base_strip_flags_info.strip_debug_flags),
-        strip_non_global_flags = _pick(ctx.attrs.strip_non_global_flags, base_strip_flags_info.strip_non_global_flags),
-        strip_all_flags = _pick(ctx.attrs.strip_all_flags, base_strip_flags_info.strip_all_flags),
-    )
+    if base_strip_flags_info:
+        strip_flags_info = StripFlagsInfo(
+            strip_debug_flags = _pick(ctx.attrs.strip_debug_flags, base_strip_flags_info.strip_debug_flags),
+            strip_non_global_flags = _pick(ctx.attrs.strip_non_global_flags, base_strip_flags_info.strip_non_global_flags),
+            strip_all_flags = _pick(ctx.attrs.strip_all_flags, base_strip_flags_info.strip_all_flags),
+        )
+    else:
+        strip_flags_info = None
 
     return [
         DefaultInfo(),
@@ -152,35 +162,38 @@ def _cxx_toolchain_override(ctx):
         dist_lto_tools_info = base_toolchain.dist_lto_tools_info,
         use_dep_files = base_toolchain.use_dep_files,
         clang_remarks = base_toolchain.clang_remarks,
+        gcno_files = base_toolchain.gcno_files,
         clang_trace = base_toolchain.clang_trace,
         object_format = CxxObjectFormat(ctx.attrs.object_format) if ctx.attrs.object_format != None else base_toolchain.object_format,
         conflicting_header_basename_allowlist = base_toolchain.conflicting_header_basename_allowlist,
         strip_flags_info = strip_flags_info,
         pic_behavior = PicBehavior(ctx.attrs.pic_behavior) if ctx.attrs.pic_behavior != None else base_toolchain.pic_behavior.value,
         split_debug_mode = SplitDebugMode(value_or(ctx.attrs.split_debug_mode, base_toolchain.split_debug_mode.value)),
+        target_sdk_version = base_toolchain.target_sdk_version,
     )
 
-def _cxx_toolchain_override_inheriting_target_platform_attrs(is_toolchain_rule):
-    dep_type = attrs.exec_dep if is_toolchain_rule else attrs.dep
-    base_dep_type = attrs.toolchain_dep if is_toolchain_rule else attrs.dep
-    return {
+cxx_toolchain_override_registration_spec = RuleRegistrationSpec(
+    name = "cxx_toolchain_override",
+    impl = _cxx_toolchain_override,
+    attrs = {
         "additional_c_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "additional_cxx_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "archive_objects_locally": attrs.option(attrs.bool(), default = None),
-        "archiver": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "archiver": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "archiver_supports_argfiles": attrs.option(attrs.bool(), default = None),
-        "as_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "as_compiler": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "as_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "as_preprocessor_flags": attrs.option(attrs.list(attrs.arg()), default = None),
-        "asm_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "asm_compiler": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "asm_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
+        "asm_compiler_type": attrs.option(attrs.string(), default = None),
         "asm_preprocessor_flags": attrs.option(attrs.list(attrs.arg()), default = None),
-        "base": base_dep_type(providers = [CxxToolchainInfo]),
+        "base": attrs.toolchain_dep(providers = [CxxToolchainInfo]),
         "bolt_enabled": attrs.option(attrs.bool(), default = None),
-        "c_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "c_compiler": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "c_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "c_preprocessor_flags": attrs.option(attrs.list(attrs.arg()), default = None),
-        "cxx_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "cxx_compiler": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "cxx_compiler_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "cxx_preprocessor_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "force_full_hybrid_if_capable": attrs.option(attrs.bool(), default = None),
@@ -190,43 +203,35 @@ def _cxx_toolchain_override_inheriting_target_platform_attrs(is_toolchain_rule):
         "link_libraries_locally": attrs.option(attrs.bool(), default = None),
         "link_style": attrs.option(attrs.enum(LinkStyle.values()), default = None),
         "link_weight": attrs.option(attrs.int(), default = None),
-        "linker": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "linker": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "linker_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "linker_type": attrs.option(attrs.enum(LinkerType), default = None),
-        "llvm_link": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "llvm_link": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "lto_mode": attrs.option(attrs.enum(LtoMode.values()), default = None),
-        "mk_comp_db": attrs.option(dep_type(providers = [RunInfo]), default = None),
-        "mk_hmap": attrs.option(dep_type(providers = [RunInfo]), default = None),
-        "mk_shlib_intf": attrs.option(dep_type(providers = [RunInfo]), default = None),
-        "nm": attrs.option(dep_type(providers = [RunInfo]), default = None),
-        "objcopy": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "mk_comp_db": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "mk_hmap": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "mk_shlib_intf": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "nm": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "objcopy": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "objdump": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "object_format": attrs.enum(CxxObjectFormat.values(), default = "native"),
         "pic_behavior": attrs.enum(PicBehavior.values(), default = "supported"),
         "platform_deps_aliases": attrs.option(attrs.list(attrs.string()), default = None),
         "platform_name": attrs.option(attrs.string(), default = None),
-        "produce_interface_from_stub_shared_library": attrs.option(attrs.bool(), default = None),
-        "ranlib": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "post_linker_flags": attrs.option(attrs.list(attrs.arg()), default = None),
+        "ranlib": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "sanitizer_runtime_enabled": attrs.bool(default = False),
+        "sanitizer_runtime_files": attrs.option(attrs.set(attrs.dep(), sorted = True, default = []), default = None),  # Use `attrs.dep()` as it's not a tool, always propagate target platform
         "shared_library_interface_mode": attrs.option(attrs.enum(ShlibInterfacesMode.values()), default = None),
         "shared_library_name_default_prefix": attrs.option(attrs.string(), default = None),
         "shared_library_name_format": attrs.option(attrs.string(), default = None),
         "shared_library_versioned_name_format": attrs.option(attrs.string(), default = None),
         "split_debug_mode": attrs.option(attrs.enum(SplitDebugMode.values()), default = None),
-        "strip": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "strip": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         "strip_all_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "strip_debug_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "strip_non_global_flags": attrs.option(attrs.list(attrs.arg()), default = None),
         "use_archiver_flags": attrs.option(attrs.bool(), default = None),
-    }
-
-cxx_toolchain_override_registration_spec = RuleRegistrationSpec(
-    name = "cxx_toolchain_override",
-    impl = _cxx_toolchain_override,
-    attrs = _cxx_toolchain_override_inheriting_target_platform_attrs(is_toolchain_rule = False),
-)
-
-cxx_toolchain_override_inheriting_target_platform_registration_spec = RuleRegistrationSpec(
-    name = "cxx_toolchain_override_inheriting_target_platform",
-    impl = _cxx_toolchain_override,
-    attrs = _cxx_toolchain_override_inheriting_target_platform_attrs(is_toolchain_rule = True),
+    } | cxx_toolchain_allow_cache_upload_args(),
     is_toolchain_rule = True,
 )

@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 from enum import Enum
 from typing import Optional
 
@@ -36,12 +38,12 @@ class ApplePlatform(str, Enum):
         else:
             return None
 
-    def embedded_provisioning_profile_file_name(self) -> str:
+    def embedded_provisioning_profile_path(self) -> str:
         """
         Returns:
            The name of the provisioning profile in the final application bundle.
         """
         if self.is_desktop():
-            return "embedded.provisionprofile"
+            return "Contents/embedded.provisionprofile"
         else:
             return "embedded.mobileprovision"

@@ -24,56 +24,55 @@ def _command_alias_impl_target_unix(ctx, exec_is_windows: bool):
     else:
         base = _get_run_info_from_exe(ctx.attrs.exe)
 
-    run_info_args = cmd_args()
+    trampoline_args = cmd_args()
+    trampoline_args.add("#!/usr/bin/env bash")
+    trampoline_args.add("set -euo pipefail")
+    trampoline_args.add('BUCK_COMMAND_ALIAS_ABSOLUTE=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)')
 
-    if len(ctx.attrs.env) > 0 or len(ctx.attrs.platform_exe.items()) > 0:
-        trampoline_args = cmd_args()
-        trampoline_args.add("#!/usr/bin/env bash")
-        trampoline_args.add("set -euo pipefail")
-        trampoline_args.add('BUCK_COMMAND_ALIAS_ABSOLUTE=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)')
+    for (k, v) in ctx.attrs.env.items():
+        # TODO(akozhevnikov): maybe check environment variable is not conflicting with pre-existing one
+        trampoline_args.add(cmd_args(["export ", k, "=", cmd_args(v, quote = "shell")], delimiter = ""))
 
-        for (k, v) in ctx.attrs.env.items():
-            # TODO(akozhevnikov): maybe check environment variable is not conflicting with pre-existing one
-            trampoline_args.add(cmd_args(["export ", k, "=", cmd_args(v, quote = "shell")], delimiter = ""))
+    if len(ctx.attrs.platform_exe.items()) > 0:
+        trampoline_args.add('case "$(uname)" in')
+        for platform, exe in ctx.attrs.platform_exe.items():
+            # Only linux and macos are supported.
+            if platform == "linux":
+                _add_platform_case_to_trampoline_args(trampoline_args, "Linux", _get_run_info_from_exe(exe), ctx.attrs.args)
+            elif platform == "macos":
+                _add_platform_case_to_trampoline_args(trampoline_args, "Darwin", _get_run_info_from_exe(exe), ctx.attrs.args)
 
-        if len(ctx.attrs.platform_exe.items()) > 0:
-            trampoline_args.add('case "$(uname)" in')
-            for platform, exe in ctx.attrs.platform_exe.items():
-                # Only linux and macos are supported.
-                if platform == "linux":
-                    _add_platform_case_to_trampoline_args(trampoline_args, "Linux", _get_run_info_from_exe(exe), ctx.attrs.args)
-                elif platform == "macos":
-                    _add_platform_case_to_trampoline_args(trampoline_args, "Darwin", _get_run_info_from_exe(exe), ctx.attrs.args)
-
-            # Default case
-            _add_platform_case_to_trampoline_args(trampoline_args, "*", base, ctx.attrs.args)
-            trampoline_args.add("esac")
-        else:
-            _add_args_declaration_to_trampoline_args(trampoline_args, base, ctx.attrs.args)
-
-        trampoline_args.add('exec "${ARGS[@]}"')
-
-        trampoline = _relativize_path(
-            ctx,
-            trampoline_args,
-            "sh",
-            "$BUCK_COMMAND_ALIAS_ABSOLUTE",
-            exec_is_windows,
-        )
-
-        run_info_args.add(trampoline)
-        run_info_args.hidden([trampoline_args])
+        # Default case
+        _add_platform_case_to_trampoline_args(trampoline_args, "*", base, ctx.attrs.args)
+        trampoline_args.add("esac")
     else:
-        run_info_args.add(base.args)
-        run_info_args.add(ctx.attrs.args)
+        _add_args_declaration_to_trampoline_args(trampoline_args, base, ctx.attrs.args)
 
-    run_info_args.hidden(ctx.attrs.resources)
+    trampoline_args.add('exec "${ARGS[@]}"')
 
-    # TODO(cjhopman): Consider what this should have for default outputs. Using
-    # the base's default outputs may not really be correct (it makes more sense to
-    # be the outputs required by the args).
+    trampoline = _relativize_path(
+        ctx,
+        trampoline_args,
+        "sh",
+        "$BUCK_COMMAND_ALIAS_ABSOLUTE",
+        exec_is_windows,
+    )
+
+    run_info_args_args = []
+    run_info_args_hidden = []
+    if len(ctx.attrs.env) > 0 or len(ctx.attrs.platform_exe.items()) > 0:
+        run_info_args_args.append(trampoline)
+        run_info_args_hidden.append(trampoline_args)
+    else:
+        run_info_args_args.append(base.args)
+        run_info_args_args.append(ctx.attrs.args)
+
+    run_info_args_hidden.append(ctx.attrs.resources)
+
+    run_info_args = cmd_args(run_info_args_args, hidden = run_info_args_hidden)
+
     return [
-        DefaultInfo(),
+        DefaultInfo(default_output = trampoline, other_outputs = [trampoline_args] + ctx.attrs.resources),
         RunInfo(args = run_info_args),
     ]
 
@@ -87,50 +86,51 @@ def _command_alias_impl_target_windows(ctx, exec_is_windows: bool):
     else:
         base = RunInfo()
 
-    run_info_args = cmd_args()
+    trampoline_args = cmd_args()
+    trampoline_args.add("@echo off")
+
+    # Set BUCK_COMMAND_ALIAS_ABSOLUTE to the drive and full path of the script being created here
+    # We use this below to prefix any artifacts being referenced in the script
+    trampoline_args.add("set BUCK_COMMAND_ALIAS_ABSOLUTE=%~dp0")
+
+    # Handle envs
+    for (k, v) in ctx.attrs.env.items():
+        # TODO(akozhevnikov): maybe check environment variable is not conflicting with pre-existing one
+        trampoline_args.add(cmd_args(["set ", k, "=", v], delimiter = ""))
+
+    # Handle args
+    # We shell quote the args but not the base. This is due to the same limitation detailed below with T111687922
+    cmd = cmd_args([base.args], delimiter = " ")
+    for arg in ctx.attrs.args:
+        cmd.add(cmd_args(arg, quote = "shell"))
+
+    # Add on %* to handle any other args passed through the command
+    cmd.add("%*")
+    trampoline_args.add(cmd)
+
+    trampoline = _relativize_path(
+        ctx,
+        trampoline_args,
+        "bat",
+        "%BUCK_COMMAND_ALIAS_ABSOLUTE%",
+        exec_is_windows,
+    )
+
+    run_info_args_args = []
+    run_info_args_hidden = []
     if len(ctx.attrs.env) > 0:
-        trampoline_args = cmd_args()
-        trampoline_args.add("@echo off")
-
-        # Set BUCK_COMMAND_ALIAS_ABSOLUTE to the drive and full path of the script being created here
-        # We use this below to prefix any artifacts being referenced in the script
-        trampoline_args.add("set BUCK_COMMAND_ALIAS_ABSOLUTE=%~dp0")
-
-        # Handle envs
-        for (k, v) in ctx.attrs.env.items():
-            # TODO(akozhevnikov): maybe check environment variable is not conflicting with pre-existing one
-            trampoline_args.add(cmd_args(["set ", k, "=", v], delimiter = ""))
-
-        # Handle args
-        # We shell quote the args but not the base. This is due to the same limitation detailed below with T111687922
-        cmd = cmd_args([base.args], delimiter = " ")
-        for arg in ctx.attrs.args:
-            cmd.add(cmd_args(arg, quote = "shell"))
-
-        # Add on %* to handle any other args passed through the command
-        cmd.add("%*")
-        trampoline_args.add(cmd)
-
-        trampoline = _relativize_path(
-            ctx,
-            trampoline_args,
-            "bat",
-            "%BUCK_COMMAND_ALIAS_ABSOLUTE%",
-            exec_is_windows,
-        )
-        run_info_args.add(trampoline)
-        run_info_args.hidden([trampoline_args])
+        run_info_args_args.append(trampoline)
+        run_info_args_hidden.append(trampoline_args)
     else:
-        run_info_args.add(base.args)
-        run_info_args.add(ctx.attrs.args)
+        run_info_args_args.append(base.args)
+        run_info_args_args.append(ctx.attrs.args)
 
-    run_info_args.hidden(ctx.attrs.resources)
+    run_info_args_hidden.append(ctx.attrs.resources)
 
-    # TODO(cjhopman): Consider what this should have for default outputs. Using
-    # the base's default outputs may not really be correct (it makes more sense to
-    # be the outputs required by the args).
+    run_info_args = cmd_args(run_info_args_args, hidden = run_info_args_hidden)
+
     return [
-        DefaultInfo(),
+        DefaultInfo(default_output = trampoline, other_outputs = [trampoline_args] + ctx.attrs.resources),
         RunInfo(args = run_info_args),
     ]
 
@@ -154,7 +154,11 @@ def _relativize_path_unix(
         trampoline_args: cmd_args) -> Artifact:
     # FIXME(ndmitchell): more straightforward relativization with better API
     non_materialized_reference = ctx.actions.write("dummy", "")
-    trampoline_args.relative_to(non_materialized_reference, parent = 1).absolute_prefix("__BUCK_COMMAND_ALIAS_ABSOLUTE__/")
+    trampoline_args = cmd_args(
+        trampoline_args,
+        relative_to = (non_materialized_reference, 1),
+        absolute_prefix = "__BUCK_COMMAND_ALIAS_ABSOLUTE__/",
+    )
 
     trampoline_tmp, _ = ctx.actions.write("__command_alias_trampoline.{}.pre".format(extension), trampoline_args, allow_args = True)
 
@@ -184,7 +188,11 @@ def _relativize_path_windows(
         trampoline_args: cmd_args) -> Artifact:
     # FIXME(ndmitchell): more straightforward relativization with better API
     non_materialized_reference = ctx.actions.write("dummy", "")
-    trampoline_args.relative_to(non_materialized_reference, parent = 1).absolute_prefix(var + "/")
+    trampoline_args = cmd_args(
+        trampoline_args,
+        relative_to = (non_materialized_reference, 1),
+        absolute_prefix = var + "/",
+    )
 
     trampoline, _ = ctx.actions.write("__command_alias_trampoline.{}".format(extension), trampoline_args, allow_args = True)
 
@@ -215,7 +223,10 @@ def _add_args_declaration_to_trampoline_args(trampoline_args: cmd_args, base: Ru
 
     trampoline_args.add(")")
 
-def _get_run_info_from_exe(exe: Dependency) -> RunInfo:
+def _get_run_info_from_exe(exe: Dependency | Artifact) -> RunInfo:
+    if isinstance(exe, Artifact):
+        return RunInfo(args = cmd_args(exe))
+
     run_info = exe.get(RunInfo)
     if run_info == None:
         run_info = RunInfo(

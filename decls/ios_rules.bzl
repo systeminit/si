@@ -10,8 +10,11 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load(":apple_common.bzl", "apple_common")
-load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "IncludeType", "Linkage", "Traversal", "buck", "prelude_rule")
+load("@prelude//apple:apple_common.bzl", "apple_common")
+load("@prelude//apple:resource_groups.bzl", "RESOURCE_GROUP_MAP_ATTR")
+load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
+load("@prelude//linking:types.bzl", "Linkage")
+load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "IncludeType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":native_common.bzl", "native_common")
 
@@ -83,7 +86,7 @@ apple_asset_catalog = prelude_rule(
 apple_binary = prelude_rule(
     name = "apple_binary",
     docs = """
-        An `apple_binary()` rule builds a native executable\342\200\224such as an iOS or OSX app\342\200\224from
+        An `apple_binary()` rule builds a native executable - such as an iOS or OSX app - from
         the supplied set of Objective-C/C++ source files and dependencies. It is similar to
         a `cxx\\_binary()`rule with which it shares many attributes. In addition
         to those common attributes, `apple_binary()` has a some additional attributes
@@ -155,7 +158,6 @@ apple_binary = prelude_rule(
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
-            "configs": attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False, default = {}),
             "contacts": attrs.list(attrs.string(), default = []),
             "cxx_runtime_type": attrs.option(attrs.enum(CxxRuntimeType), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -193,7 +195,7 @@ apple_binary = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "link_whole": attrs.option(attrs.bool(), default = None),
             "modular": attrs.bool(default = False),
             "module_name": attrs.option(attrs.string(), default = None),
@@ -204,7 +206,7 @@ apple_binary = prelude_rule(
             "post_linker_flags": attrs.list(attrs.arg(), default = []),
             "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "precompiled_header": attrs.option(attrs.source(), default = None),
-            "preferred_linkage": attrs.option(attrs.enum(Linkage), default = None),
+            "preferred_linkage": attrs.option(attrs.enum(Linkage.values()), default = None),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
@@ -223,9 +225,8 @@ apple_binary = prelude_rule(
             "uses_cxx_explicit_modules": attrs.bool(default = False),
             "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
-            "xcode_private_headers_symlinks": attrs.option(attrs.bool(), default = None),
-            "xcode_public_headers_symlinks": attrs.option(attrs.bool(), default = None),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -342,10 +343,12 @@ apple_bundle = prelude_rule(
         } |
         apple_common.info_plist_arg() |
         apple_common.info_plist_substitutions_arg() |
+        apple_common.privacy_manifest_arg() |
         {
             "asset_catalogs_compilation_options": attrs.dict(key = attrs.string(), value = attrs.any(), default = {}, doc = """
                 A dict holding parameters for asset catalogs compiler (actool). Its options include:
-                 * `notices` (defaults to `True`)
+
+                * `notices` (defaults to `True`)
                 * `warnings` (defaults to `True`)
                 * `errors` (defaults to `True`)
                 * `compress_pngs` (defaults to `True`)
@@ -367,7 +370,7 @@ apple_bundle = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "platform_binary": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.dep())), default = None),
             "resource_group": attrs.option(attrs.string(), default = None),
-            "resource_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "resource_group_map": attrs.option(RESOURCE_GROUP_MAP_ATTR, default = None),
             "skip_copying_swift_stdlib": attrs.option(attrs.bool(), default = None),
             "try_skip_code_signing": attrs.option(attrs.bool(), default = None),
             "xcode_product_type": attrs.option(attrs.string(), default = None),
@@ -438,7 +441,7 @@ apple_library = prelude_rule(
         cxx_common.exported_linker_flags_arg() |
         cxx_common.exported_platform_linker_flags_arg() |
         apple_common.target_sdk_version() |
-        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage), default = None)) |
+        native_common.preferred_linkage(preferred_linkage_type = attrs.option(attrs.enum(Linkage.values()), default = None)) |
         native_common.link_style() |
         native_common.link_whole(link_whole_type = attrs.option(attrs.bool(), default = None)) |
         cxx_common.reexport_all_header_dependencies_arg() |
@@ -448,7 +451,6 @@ apple_library = prelude_rule(
         {
             "bridging_header": attrs.option(attrs.source(), default = None),
             "can_be_asset": attrs.option(attrs.bool(), default = None),
-            "configs": attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False, default = {}),
             "contacts": attrs.list(attrs.string(), default = []),
             "cxx_runtime_type": attrs.option(attrs.enum(CxxRuntimeType), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -483,7 +485,7 @@ apple_library = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "modular": attrs.bool(default = False),
             "module_name": attrs.option(attrs.string(), default = None),
             "module_requires_cxx": attrs.bool(default = False),
@@ -495,6 +497,7 @@ apple_library = prelude_rule(
             "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "precompiled_header": attrs.option(attrs.source(), default = None),
             "prefix_header": attrs.option(attrs.source(), default = None),
+            "public_framework_headers": attrs.named_set(attrs.source(), sorted = True, default = []),
             "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
@@ -511,9 +514,8 @@ apple_library = prelude_rule(
             "uses_cxx_explicit_modules": attrs.bool(default = False),
             "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
-            "xcode_private_headers_symlinks": attrs.option(attrs.bool(), default = None),
-            "xcode_public_headers_symlinks": attrs.option(attrs.bool(), default = None),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -696,7 +698,6 @@ apple_test = prelude_rule(
             "can_be_asset": attrs.option(attrs.bool(), default = None),
             "codesign_flags": attrs.list(attrs.string(), default = []),
             "codesign_identity": attrs.option(attrs.string(), default = None),
-            "configs": attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False, default = {}),
             "contacts": attrs.list(attrs.string(), default = []),
             "cxx_runtime_type": attrs.option(attrs.enum(CxxRuntimeType), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -739,7 +740,7 @@ apple_test = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "link_whole": attrs.option(attrs.bool(), default = None),
             "linker_extra_outputs": attrs.list(attrs.string(), default = []),
             "modular": attrs.bool(default = False),
@@ -752,7 +753,7 @@ apple_test = prelude_rule(
             "post_linker_flags": attrs.list(attrs.arg(), default = []),
             "post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())), default = []),
             "precompiled_header": attrs.option(attrs.source(), default = None),
-            "preferred_linkage": attrs.option(attrs.enum(Linkage), default = None),
+            "preferred_linkage": attrs.option(attrs.enum(Linkage.values()), default = None),
             "prefix_header": attrs.option(attrs.source(), default = None),
             "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
@@ -778,10 +779,9 @@ apple_test = prelude_rule(
             "uses_cxx_explicit_modules": attrs.bool(default = False),
             "uses_explicit_modules": attrs.bool(default = False),
             "uses_modules": attrs.bool(default = False),
-            "xcode_private_headers_symlinks": attrs.option(attrs.bool(), default = None),
             "xcode_product_type": attrs.option(attrs.string(), default = None),
-            "xcode_public_headers_symlinks": attrs.option(attrs.bool(), default = None),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -810,6 +810,7 @@ apple_toolchain = prelude_rule(
             "libtool": attrs.source(),
             "licenses": attrs.list(attrs.source(), default = []),
             "lipo": attrs.source(),
+            "mapc": attrs.option(attrs.source(), default = None),
             "min_version": attrs.string(default = ""),
             "momc": attrs.source(),
             "platform_path": attrs.source(),
@@ -900,7 +901,7 @@ prebuilt_apple_framework = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
-            "preferred_linkage": attrs.enum(Linkage, doc = """
+            "preferred_linkage": attrs.enum(Linkage.values(), doc = """
                 How to link to a binary: use `dynamic` for a dynamic
                  framework, and `static` for old universal static
                  frameworks manually lipo-ed together. `dynamic` will
@@ -962,7 +963,7 @@ swift_library = prelude_rule(
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "module_name": attrs.option(attrs.string(), default = None),
-            "preferred_linkage": attrs.option(attrs.enum(Linkage), default = None),
+            "preferred_linkage": attrs.option(attrs.enum(Linkage.values()), default = None),
             "sdk_modules": attrs.list(attrs.string(), default = []),
             "serialize_debugging_options": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
@@ -1010,81 +1011,6 @@ swift_toolchain = prelude_rule(
     ),
 )
 
-xcode_postbuild_script = prelude_rule(
-    name = "xcode_postbuild_script",
-    docs = "",
-    examples = None,
-    further = None,
-    attrs = (
-        # @unsorted-dict-items
-        {
-            "cmd": attrs.string(default = ""),
-            "contacts": attrs.list(attrs.string(), default = []),
-            "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "input_file_lists": attrs.list(attrs.string(), default = []),
-            "inputs": attrs.list(attrs.string(), default = []),
-            "labels": attrs.list(attrs.string(), default = []),
-            "licenses": attrs.list(attrs.source(), default = []),
-            "output_file_lists": attrs.list(attrs.string(), default = []),
-            "outputs": attrs.list(attrs.string(), default = []),
-            "srcs": attrs.list(attrs.source(), default = []),
-        }
-    ),
-)
-
-xcode_prebuild_script = prelude_rule(
-    name = "xcode_prebuild_script",
-    docs = "",
-    examples = None,
-    further = None,
-    attrs = (
-        # @unsorted-dict-items
-        {
-            "cmd": attrs.string(default = ""),
-            "contacts": attrs.list(attrs.string(), default = []),
-            "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "input_file_lists": attrs.list(attrs.string(), default = []),
-            "inputs": attrs.list(attrs.string(), default = []),
-            "labels": attrs.list(attrs.string(), default = []),
-            "licenses": attrs.list(attrs.source(), default = []),
-            "output_file_lists": attrs.list(attrs.string(), default = []),
-            "outputs": attrs.list(attrs.string(), default = []),
-            "srcs": attrs.list(attrs.source(), default = []),
-        }
-    ),
-)
-
-xcode_workspace_config = prelude_rule(
-    name = "xcode_workspace_config",
-    docs = "",
-    examples = None,
-    further = None,
-    attrs = (
-        # @unsorted-dict-items
-        {
-            "action_config_names": attrs.dict(key = attrs.enum(SchemeActionType), value = attrs.string(), sorted = False, default = {}),
-            "additional_scheme_actions": attrs.option(attrs.dict(key = attrs.enum(SchemeActionType), value = attrs.dict(key = attrs.enum(AdditionalActions), value = attrs.list(attrs.string()), sorted = False), sorted = False), default = None),
-            "contacts": attrs.list(attrs.string(), default = []),
-            "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "environment_variables": attrs.option(attrs.dict(key = attrs.enum(SchemeActionType), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False), default = None),
-            "explicit_runnable_path": attrs.option(attrs.string(), default = None),
-            "extra_schemes": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
-            "extra_shallow_targets": attrs.list(attrs.dep(), default = []),
-            "extra_targets": attrs.list(attrs.dep(), default = []),
-            "extra_tests": attrs.list(attrs.dep(), default = []),
-            "is_remote_runnable": attrs.option(attrs.bool(), default = None),
-            "labels": attrs.list(attrs.string(), default = []),
-            "launch_style": attrs.option(attrs.enum(LaunchStyle), default = None),
-            "licenses": attrs.list(attrs.source(), default = []),
-            "notification_payload_file": attrs.option(attrs.string(), default = None),
-            "src_target": attrs.option(attrs.dep(), default = None),
-            "was_created_for_app_extension": attrs.option(attrs.bool(), default = None),
-            "watch_interface": attrs.option(attrs.enum(WatchInterface), default = None),
-            "workspace_name": attrs.option(attrs.string(), default = None),
-        }
-    ),
-)
-
 ios_rules = struct(
     apple_asset_catalog = apple_asset_catalog,
     apple_binary = apple_binary,
@@ -1100,7 +1026,4 @@ ios_rules = struct(
     scene_kit_assets = scene_kit_assets,
     swift_library = swift_library,
     swift_toolchain = swift_toolchain,
-    xcode_postbuild_script = xcode_postbuild_script,
-    xcode_prebuild_script = xcode_prebuild_script,
-    xcode_workspace_config = xcode_workspace_config,
 )

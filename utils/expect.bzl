@@ -20,6 +20,7 @@ load(
     "is_list",
     "is_number",
     "is_string",
+    "is_struct",
 )
 
 def expect(condition: typing.Any, message: str = "condition not expected", *format_args):
@@ -32,10 +33,27 @@ def expect(condition: typing.Any, message: str = "condition not expected", *form
       format_args: optional arguments to format the error message with
     """
     if not condition:
-        formatted_message = message.format(format_args)
+        formatted_message = message.format(*format_args)
         fail(formatted_message)
 
-def expect_type(name: str, check: typing.Callable, desc: str, val: typing.Any):
+def expect_equal(left: typing.Any, right: typing.Any, message: str | None = None, *format_args):
+    if left != right:
+        if message == None:
+            msg = "Expected values to be equal, but got '{}' and '{}' instead.".format(left, right)
+            fail(msg)
+        else:
+            formatted_message = message.format(*format_args)
+            fail(formatted_message)
+
+def expect_non_none(val, msg: str = "unexpected none", *fmt_args, **fmt_kwargs):
+    """
+    Require the given value not be `None`.
+    """
+    if val == None:
+        fail(msg.format(*fmt_args, **fmt_kwargs))
+    return val
+
+def expect_type(name: str, check: typing.Callable[[typing.Any], bool], desc: str, val: typing.Any):
     """Fails if check(val) if not truthy. name, desc are used for the error message.
 
     Usually you shouldn't need to directly use this, and prefer the expect_* family of functions
@@ -103,6 +121,9 @@ def expect_contains_all(name, val, options):
     for index, val in enumerate(val):
         expect_contains("{name}[{index}]".format(name = name, index = index), val, options)
 
+def expect_struct(name: str, val: struct):
+    expect_type(name, is_struct, "struct", val)
+
 # You'll likely want to import this struct for convenience, instead of each method separately
 expects = struct(
     type = expect_type,
@@ -118,4 +139,6 @@ expects = struct(
     collection = expect_collection,
     contains = expect_contains,
     contains_all = expect_contains_all,
+    equal = expect_equal,
+    struct = expect_struct,
 )

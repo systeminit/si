@@ -5,16 +5,21 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//:artifacts.bzl", "ArtifactGroupInfo")
 load("@prelude//go:toolchain.bzl", "GoToolchainInfo")
 load("@prelude//utils:utils.bzl", "value_or")
 
 GoPkg = record(
-    # Built w/ `-shared`.
-    shared = field(Artifact),
-    # Built w/o `-shared`.
-    static = field(Artifact),
-    cgo = field(bool, default = False),
+    pkg = field(Artifact),
+    coverage_vars = field(cmd_args | None, default = None),
+    srcs_list = field(cmd_args | None, default = None),
+    cgo_gen_dir = field(Artifact),
+)
+
+GoStdlib = provider(
+    fields = {
+        "importcfg": provider_field(Artifact),
+        "pkgdir": provider_field(Artifact),
+    },
 )
 
 def go_attr_pkg_name(ctx: AnalysisContext) -> str:
@@ -39,35 +44,50 @@ def merge_pkgs(pkgss: list[dict[str, typing.Any]]) -> dict[str, typing.Any]:
 
     return all_pkgs
 
-def pkg_artifacts(pkgs: dict[str, GoPkg], shared: bool = False) -> dict[str, Artifact]:
+def pkg_artifacts(pkgs: dict[str, GoPkg]) -> dict[str, Artifact]:
     """
     Return a map package name to a `shared` or `static` package artifact.
     """
     return {
-        name: pkg.shared if shared else pkg.static
+        name: pkg.pkg
         for name, pkg in pkgs.items()
     }
 
-def stdlib_pkg_artifacts(toolchain: GoToolchainInfo, shared: bool = False) -> dict[str, Artifact]:
-    """
-    Return a map package name to a `shared` or `static` package artifact of stdlib.
-    """
+def make_importcfg(
+        ctx: AnalysisContext,
+        pkg_name: str,
+        own_pkgs: dict[str, typing.Any],
+        with_importmap: bool) -> cmd_args:
+    go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
+    stdlib = ctx.attrs._go_stdlib[GoStdlib]
 
-    prebuilt_stdlib = toolchain.prebuilt_stdlib_shared if shared else toolchain.prebuilt_stdlib
-    stdlib_pkgs = prebuilt_stdlib[ArtifactGroupInfo].artifacts
+    content = []
+    for name_, pkg_ in own_pkgs.items():
+        # Hack: we use cmd_args get "artifact" valid path and write it to a file.
+        content.append(cmd_args("packagefile ", name_, "=", pkg_, delimiter = ""))
 
-    if len(stdlib_pkgs) == 0:
-        fail("Stdlib for current platfrom is missing from toolchain.")
+        # Note: matters for packages which do not specify package_name
+        # Future work: support importmap in buck rules instead of hacking here.
+        # BUG: Should use go.vendor_path instead of hard-coding values.
+        for vendor_prefix in ["third-party-source/go/", "third-party-go/vendor/"]:
+            if with_importmap and name_.startswith(vendor_prefix):
+                real_name_ = name_.removeprefix(vendor_prefix)
+                content.append(cmd_args("importmap ", real_name_, "=", name_, delimiter = ""))
 
-    pkgs = {}
-    for pkg in stdlib_pkgs:
-        # remove first directory like `pgk`
-        _, _, temp_path = pkg.short_path.partition("/")
+    own_importcfg = ctx.actions.declare_output("{}.importcfg".format(pkg_name))
+    ctx.actions.write(own_importcfg, content)
 
-        # remove second directory like `darwin_amd64`
-        # now we have name like `net/http.a`
-        _, _, pkg_relpath = temp_path.partition("/")
-        name = pkg_relpath.removesuffix(".a")  # like `net/http`
-        pkgs[name] = pkg
+    final_importcfg = ctx.actions.declare_output("{}.final.importcfg".format(pkg_name))
+    ctx.actions.run(
+        [
+            go_toolchain.concat_files,
+            "--output",
+            final_importcfg.as_output(),
+            stdlib.importcfg,
+            own_importcfg,
+        ],
+        category = "concat_importcfgs",
+        identifier = pkg_name,
+    )
 
-    return pkgs
+    return cmd_args(final_importcfg, hidden = [stdlib.pkgdir, own_pkgs.values()])

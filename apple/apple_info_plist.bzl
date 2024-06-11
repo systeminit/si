@@ -7,7 +7,7 @@
 
 load(":apple_bundle_destination.bzl", "AppleBundleDestination")
 load(":apple_bundle_part.bzl", "AppleBundlePart")
-load(":apple_bundle_utility.bzl", "get_bundle_min_target_version", "get_product_name")
+load(":apple_bundle_utility.bzl", "get_bundle_min_target_version", "get_default_binary_dep", "get_product_name")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(
     ":apple_sdk_metadata.bzl",
@@ -20,7 +20,7 @@ load(
 )
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 
-def process_info_plist(ctx: AnalysisContext, override_input: [Artifact, None]) -> AppleBundlePart:
+def process_info_plist(ctx: AnalysisContext, override_input: Artifact | None) -> AppleBundlePart:
     input = _preprocess_info_plist(ctx)
     output = ctx.actions.declare_output("Info.plist")
     additional_keys = _additional_keys_as_json_file(ctx)
@@ -64,7 +64,7 @@ def _preprocess_info_plist(ctx: AnalysisContext) -> Artifact:
     ctx.actions.run(command, category = "apple_preprocess_info_plist", **_get_plist_run_options())
     return output
 
-def _plist_substitutions_as_json_file(ctx: AnalysisContext) -> [Artifact, None]:
+def _plist_substitutions_as_json_file(ctx: AnalysisContext) -> Artifact | None:
     info_plist_substitutions = ctx.attrs.info_plist_substitutions
     if not info_plist_substitutions:
         return None
@@ -72,7 +72,7 @@ def _plist_substitutions_as_json_file(ctx: AnalysisContext) -> [Artifact, None]:
     substitutions_json = ctx.actions.write_json("plist_substitutions.json", info_plist_substitutions)
     return substitutions_json
 
-def process_plist(ctx: AnalysisContext, input: Artifact, output: OutputArtifact, override_input: [Artifact, None] = None, additional_keys: [Artifact, None] = None, override_keys: [Artifact, None] = None, action_id: [str, None] = None):
+def process_plist(ctx: AnalysisContext, input: Artifact, output: OutputArtifact, override_input: Artifact | None = None, additional_keys: Artifact | None = None, override_keys: Artifact | None = None, action_id: [str, None] = None):
     apple_tools = ctx.attrs._apple_tools[AppleToolsInfo]
     processor = apple_tools.info_plist_processor
     override_input_arguments = ["--override-input", override_input] if override_input != None else []
@@ -112,7 +112,7 @@ def _info_plist_additional_keys(ctx: AnalysisContext) -> dict[str, typing.Any]:
     xcode_version = ctx.attrs._apple_toolchain[AppleToolchainInfo].xcode_version
     if xcode_version:
         result["DTXcode"] = xcode_version
-    result[sdk_metadata.min_version_plist_info_key] = get_bundle_min_target_version(ctx, ctx.attrs.binary)
+    result[sdk_metadata.min_version_plist_info_key] = get_bundle_min_target_version(ctx, get_default_binary_dep(ctx.attrs.binary))
 
     identify_build_system = ctx.attrs._info_plist_identify_build_system_default
     if ctx.attrs.info_plist_identify_build_system != None:
@@ -124,7 +124,7 @@ def _info_plist_additional_keys(ctx: AnalysisContext) -> dict[str, typing.Any]:
     return result
 
 def _extra_mac_info_plist_keys(sdk_metadata: AppleSdkMetadata, extension: str) -> dict[str, typing.Any]:
-    if sdk_metadata.name == MacOSXSdkMetadata.name and extension == "xpc":
+    if sdk_metadata.name == MacOSXSdkMetadata.name and extension != "xpc":
         return {
             "NSHighResolutionCapable": True,
             "NSSupportsAutomaticGraphicsSwitching": True,
@@ -142,6 +142,9 @@ def _info_plist_override_keys(ctx: AnalysisContext) -> dict[str, typing.Any]:
     if sdk_name == MacOSXSdkMetadata.name:
         if ctx.attrs.extension != "xpc":
             result["LSRequiresIPhoneOS"] = False
-    elif sdk_name not in [WatchOSSdkMetadata.name, WatchSimulatorSdkMetadata.name, MacOSXCatalystSdkMetadata.name]:
+    elif sdk_name in [WatchOSSdkMetadata.name, WatchSimulatorSdkMetadata.name]:
+        result["UIDeviceFamily"] = [4]
+        result["WKApplication"] = True
+    elif sdk_name not in [MacOSXCatalystSdkMetadata.name]:
         result["LSRequiresIPhoneOS"] = True
     return result

@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//cxx:cxx_toolchain_types.bzl", "LinkerInfo")
+load("@prelude//utils:argfile.bzl", "at_argfile")
 load("@prelude//utils:utils.bzl", "value_or")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 
@@ -35,14 +36,19 @@ def _bundle(ctx: AnalysisContext, name: str, args: cmd_args, prefer_local: bool)
 
     bundle_output = ctx.actions.declare_output(name)
 
-    argsfile, _ = ctx.actions.write(name + ".argsfile", args, allow_args = True)
-
-    command = cmd_args(argsfile, format = "@{}", delimiter = "").hidden(args)
-    llvm_cmd = cmd_args(llvm_link)
-    llvm_cmd.add(command)
-    llvm_cmd.add("-v")
-    llvm_cmd.add("-o")
-    llvm_cmd.add(bundle_output.as_output())
+    command = at_argfile(
+        actions = ctx.actions,
+        name = name + ".argsfile",
+        args = args,
+        allow_args = True,
+    )
+    llvm_cmd = cmd_args(
+        llvm_link,
+        command,
+        "-v",
+        "-o",
+        bundle_output.as_output(),
+    )
 
     ctx.actions.run(llvm_cmd, category = "bitcode_bundle", identifier = name, prefer_local = prefer_local)
     return bundle_output
@@ -70,7 +76,7 @@ def make_bitcode_bundle(
     if override and len(objects) > 1:
         args.add(objects[0])
         overrides = cmd_args(objects[1:], format = "--override={}")
-        args.add(overrides).hidden(objects)
+        args.add(overrides)
     else:
         args.add(objects)
 

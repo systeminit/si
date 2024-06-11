@@ -25,6 +25,7 @@ def android_prebuilt_aar_impl(ctx: AnalysisContext) -> list[Provider]:
     jni = ctx.actions.declare_output("jni", dir = True)
     annotation_jars_dir = ctx.actions.declare_output("annotation_jars", dir = True)
     proguard_config = ctx.actions.declare_output("proguard.txt")
+    lint_jar = ctx.actions.declare_output("lint.jar")
 
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     unpack_aar_tool = android_toolchain.unpack_aar[RunInfo]
@@ -53,6 +54,8 @@ def android_prebuilt_aar_impl(ctx: AnalysisContext) -> list[Provider]:
         proguard_config.as_output(),
         "--jar-builder-tool",
         jar_builder_tool,
+        "--lint-jar-path",
+        lint_jar.as_output(),
     ]
 
     ctx.actions.run(unpack_aar_cmd, category = "android_unpack_aar")
@@ -82,10 +85,13 @@ def android_prebuilt_aar_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx = ctx,
         library_output = library_output_classpath_entry,
         exported_deps = ctx.attrs.deps,
+        provided_deps = ctx.attrs.desugar_deps,
         needs_desugar = True,
         is_prebuilt_jar = True,
         annotation_jars_dir = annotation_jars_dir,
         proguard_config = proguard_config,
+        lint_jar = lint_jar,
+        sources_jar = ctx.attrs.source_jar,
     )
 
     native_library = PrebuiltNativeLibraryDir(
@@ -103,7 +109,15 @@ def android_prebuilt_aar_impl(ctx: AnalysisContext) -> list[Provider]:
         linkable_graph,
         template_placeholder_info,
         java_library_intellij_info,
-        merge_android_packageable_info(ctx.label, ctx.actions, ctx.attrs.deps, manifest = manifest, prebuilt_native_library_dir = native_library, resource_info = resource_info),
+        merge_android_packageable_info(
+            ctx.label,
+            ctx.actions,
+            ctx.attrs.deps,
+            manifest = manifest,
+            prebuilt_native_library_dir = native_library,
+            resource_info = resource_info,
+            for_primary_apk = ctx.attrs.for_primary_apk,
+        ),
         resource_info,
         DefaultInfo(default_output = all_classes_jar, other_outputs = [
             manifest,

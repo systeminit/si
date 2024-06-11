@@ -21,8 +21,6 @@
 -module(edoc_cli).
 -export([main/1]).
 
--mode(compile).
-
 main([]) ->
     print(usage());
 main(Args) ->
@@ -87,7 +85,7 @@ verify_files_exist(#{files := Files, out_dir := OutputDir}) ->
                 true ->
                     true;
                 false ->
-                    io:format(standard_error, "error: coudn't generate ~s~n", [ChunkPath]),
+                    io:format(standard_error, "error: couldn't generate ~s~n", [ChunkPath]),
                     false
             end
         end,

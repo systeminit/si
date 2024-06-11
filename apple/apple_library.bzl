@@ -7,15 +7,18 @@
 
 load(
     "@prelude//:artifact_tset.bzl",
+    "ArtifactTSet",
+    "make_artifact_tset",
     "project_artifacts",
 )
-load("@prelude//apple:apple_buck2_compatibility.bzl", "apple_check_buck2_compatibility")
+load("@prelude//:validation_deps.bzl", "get_validation_deps_outputs")
 load("@prelude//apple:apple_dsym.bzl", "DSYM_SUBTARGET", "get_apple_dsym")
 load("@prelude//apple:apple_stripping.bzl", "apple_strip_args")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 # @oss-disable: load("@prelude//apple/meta_only:linker_outputs.bzl", "add_extra_linker_outputs") 
 load(
     "@prelude//apple/swift:swift_compilation.bzl",
+    "SwiftLibraryForDistributionOutput",  # @unused Used as a type
     "compile_swift",
     "get_swift_anonymous_targets",
     "get_swift_debug_infos",
@@ -31,10 +34,6 @@ load(
     "CompileArgsfiles",
 )
 load(
-    "@prelude//cxx:compile.bzl",
-    "CxxSrcWithFlags",  # @unused Used as a type
-)
-load(
     "@prelude//cxx:cxx_library.bzl",
     "CxxLibraryOutput",  # @unused Used as a type
     "cxx_library_parameterized",
@@ -44,7 +43,11 @@ load(
     "cxx_attr_deps",
     "cxx_attr_exported_deps",
 )
-load("@prelude//cxx:cxx_sources.bzl", "get_srcs_with_flags")
+load(
+    "@prelude//cxx:cxx_sources.bzl",
+    "CxxSrcWithFlags",  # @unused Used as a type
+    "get_srcs_with_flags",
+)
 load(
     "@prelude//cxx:cxx_types.bzl",
     "CxxRuleAdditionalParams",
@@ -52,7 +55,7 @@ load(
     "CxxRuleProviderParams",
     "CxxRuleSubTargetParams",
 )
-load("@prelude//cxx:headers.bzl", "cxx_attr_exported_headers")
+load("@prelude//cxx:headers.bzl", "cxx_attr_exported_headers", "cxx_attr_headers_list")
 load(
     "@prelude//cxx:linker.bzl",
     "SharedLibraryFlagOverrides",
@@ -69,11 +72,11 @@ load(
 )
 load("@prelude//utils:arglike.bzl", "ArgLike")
 load("@prelude//utils:expect.bzl", "expect")
+load("@prelude//apple/mockingbird/mockingbird_types.bzl", "MockingbirdLibraryInfo", "MockingbirdLibraryInfoTSet", "MockingbirdLibraryRecord", "MockingbirdSourcesInfo", "MockingbirdTargetType")
 load(":apple_bundle_types.bzl", "AppleBundleLinkerMapInfo", "AppleMinDeploymentVersionInfo")
 load(":apple_frameworks.bzl", "get_framework_search_path_flags")
-load(":apple_genrule_deps.bzl", "get_apple_build_genrule_deps_attr_value", "get_apple_genrule_deps_outputs")
 load(":apple_modular_utility.bzl", "MODULE_CACHE_PATH")
-load(":apple_target_sdk_version.bzl", "get_min_deployment_version_for_node", "get_min_deployment_version_target_linker_flags", "get_min_deployment_version_target_preprocessor_flags")
+load(":apple_target_sdk_version.bzl", "get_min_deployment_version_for_node", "get_min_deployment_version_target_linker_flags", "get_min_deployment_version_target_preprocessor_flags", "get_unversioned_target_triple", "get_versioned_target_triple")
 load(":apple_utility.bzl", "get_apple_cxx_headers_layout", "get_apple_stripped_attr_value_with_default_fallback", "get_module_name")
 load(
     ":debug.bzl",
@@ -84,6 +87,13 @@ load(":modulemap.bzl", "preprocessor_info_for_modulemap")
 load(":resource_groups.bzl", "create_resource_graph")
 load(":xcode.bzl", "apple_populate_xcode_attributes")
 load(":xctest_swift_support.bzl", "xctest_swift_support_info")
+
+AppleSharedLibraryMachOFileType = enum(
+    # dynamically bound shared library file
+    "dylib",
+    # dynamically bound bundle file aka Mach-O bundle
+    "bundle",
+)
 
 AppleLibraryAdditionalParams = record(
     # Name of the top level rule utilizing the apple_library rule.
@@ -107,11 +117,36 @@ AppleLibraryAdditionalParams = record(
     force_link_group_linking = field(bool, False),
 )
 
-def apple_library_impl(ctx: AnalysisContext) -> [Promise, list[Provider]]:
-    apple_check_buck2_compatibility(ctx)
+AppleLibraryForDistributionInfo = provider(
+    fields = {
+        "module_name": str,
+        "private_swiftinterface": Artifact,
+        "swiftdoc": Artifact,
+        "swiftinterface": Artifact,
+        "target_triple": str,
+    },
+)
+AppleLibraryInfo = provider(
+    fields = {
+        "public_framework_headers": ArtifactTSet,
+        "swift_header": [Artifact, None],
+    },
+)
 
+def apple_library_impl(ctx: AnalysisContext) -> [Promise, list[Provider]]:
     def get_apple_library_providers(deps_providers) -> list[Provider]:
-        constructor_params = apple_library_rule_constructor_params_and_swift_providers(
+        shared_type = AppleSharedLibraryMachOFileType(ctx.attrs.shared_library_macho_file_type)
+        if shared_type == AppleSharedLibraryMachOFileType("bundle"):
+            shared_library_flags_overrides = SharedLibraryFlagOverrides(
+                # When `-bundle` is used we can't use the `-install_name` args, thus we keep this field empty.
+                shared_library_name_linker_flags_format = [],
+                shared_library_flags = ["-bundle"],
+            )
+        elif shared_type == AppleSharedLibraryMachOFileType("dylib"):
+            shared_library_flags_overrides = None
+        else:
+            fail("Unsupported `shared_library_macho_file_type` attribute value: `{}`".format(shared_type))
+        constructor_params, swift_library_for_distribution = apple_library_rule_constructor_params_and_swift_providers(
             ctx,
             AppleLibraryAdditionalParams(
                 rule_type = "apple_library",
@@ -122,19 +157,97 @@ def apple_library_impl(ctx: AnalysisContext) -> [Promise, list[Provider]]:
                     # We generate a provider on our own, disable to avoid several providers of same type.
                     cxx_resources_as_apple_resources = False,
                 ),
+                shared_library_flags = shared_library_flags_overrides,
             ),
             deps_providers,
         )
+        swift_header = constructor_params.swift_objc_header
         output = cxx_library_parameterized(ctx, constructor_params)
-        return output.providers
+
+        return output.providers + _make_mockingbird_library_info_provider(ctx) + _make_apple_library_info_provider(ctx, swift_header) + _make_apple_library_for_distribution_info_provider(ctx, swift_library_for_distribution)
 
     if uses_explicit_modules(ctx):
         return get_swift_anonymous_targets(ctx, get_apple_library_providers)
     else:
         return get_apple_library_providers([])
 
-def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisContext, params: AppleLibraryAdditionalParams, deps_providers: list = [], is_test_target: bool = False) -> CxxRuleConstructorParams:
-    cxx_srcs, swift_srcs = _filter_swift_srcs(ctx)
+def _make_apple_library_for_distribution_info_provider(ctx: AnalysisContext, swift_library_for_distribution: [None, SwiftLibraryForDistributionOutput]) -> list[AppleLibraryForDistributionInfo]:
+    if not swift_library_for_distribution:
+        return []
+    return [AppleLibraryForDistributionInfo(
+        target_triple = get_unversioned_target_triple(ctx).replace("macosx", "macos"),
+        swiftinterface = swift_library_for_distribution.swiftinterface,
+        private_swiftinterface = swift_library_for_distribution.private_swiftinterface,
+        swiftdoc = swift_library_for_distribution.swiftdoc,
+        module_name = get_module_name(ctx),
+    )]
+
+def _make_apple_library_info_provider(ctx: AnalysisContext, swift_header: [None, Artifact]) -> list[AppleLibraryInfo]:
+    public_framework_headers = cxx_attr_headers_list(ctx, ctx.attrs.public_framework_headers, [], get_apple_cxx_headers_layout(ctx))
+    all_deps = cxx_attr_deps(ctx) + cxx_attr_exported_deps(ctx)
+    apple_library_infos = filter(None, [dep.get(AppleLibraryInfo) for dep in all_deps])
+
+    public_framework_header_tset = make_artifact_tset(
+        actions = ctx.actions,
+        label = ctx.label,
+        artifacts = [header.artifact for header in public_framework_headers],
+        children = [apple_library.public_framework_headers for apple_library in apple_library_infos],
+    )
+
+    return [AppleLibraryInfo(public_framework_headers = public_framework_header_tset, swift_header = swift_header)]
+
+def _make_mockingbird_library_info_provider(ctx: AnalysisContext) -> list[MockingbirdLibraryInfo]:
+    _, swift_sources = _filter_swift_srcs(ctx)
+
+    if len(swift_sources) == 0:
+        return []
+
+    deps_mockingbird_infos = filter(None, [dep.get(MockingbirdLibraryInfo) for dep in cxx_attr_deps(ctx)])
+    exported_deps_mockingbird_infos = filter(None, [dep.get(MockingbirdLibraryInfo) for dep in cxx_attr_exported_deps(ctx)])
+
+    children = []
+    dep_names = []
+    exported_dep_names = []
+    for info in deps_mockingbird_infos:
+        dep_names.append(info.name)
+        children.append(info.tset)
+
+    for info in exported_deps_mockingbird_infos:
+        exported_dep_names.append(info.name)
+        children.append(info.tset)
+
+    mockingbird_srcs_folder = ctx.actions.declare_output("mockingbird_srcs_" + ctx.attrs.name, dir = True)
+
+    ctx.actions.symlinked_dir(
+        mockingbird_srcs_folder,
+        {source.file.basename: source.file for source in swift_sources},
+    )
+
+    mockingbird_record = MockingbirdLibraryRecord(
+        name = ctx.attrs.name,
+        srcs = [src.file for src in swift_sources],
+        dep_names = dep_names,
+        exported_dep_names = exported_dep_names,
+        type = MockingbirdTargetType("library"),
+        src_dir = mockingbird_srcs_folder,
+    )
+
+    mockingbird_tset = ctx.actions.tset(MockingbirdLibraryInfoTSet, value = mockingbird_record, children = children)
+
+    return [MockingbirdLibraryInfo(
+        name = ctx.attrs.name,
+        tset = mockingbird_tset,
+    )]
+
+def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisContext, params: AppleLibraryAdditionalParams, deps_providers: list = [], is_test_target: bool = False) -> (CxxRuleConstructorParams, SwiftLibraryForDistributionOutput | None):
+    mockingbird_gen_sources = []
+    if not "dummy_library" in ctx.attrs.labels:
+        for dep in cxx_attr_deps(ctx) + cxx_attr_exported_deps(ctx):
+            if MockingbirdSourcesInfo in dep:
+                for src in dep[MockingbirdSourcesInfo].srcs:
+                    mockingbird_gen_sources.append(src)
+
+    cxx_srcs, swift_srcs = _filter_swift_srcs(ctx, mockingbird_gen_sources)
 
     # First create a modulemap if necessary. This is required for importing
     # ObjC code in Swift so must be done before Swift compilation.
@@ -145,7 +258,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         modulemap_pre = None
 
     framework_search_paths_flags = get_framework_search_path_flags(ctx)
-    swift_compile = compile_swift(
+    swift_compile, swift_interface = compile_swift(
         ctx,
         swift_srcs,
         True,  # parse_as_library
@@ -173,7 +286,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
     else:
         exported_pre = None
 
-    swift_dependency_info = swift_compile.dependency_info if swift_compile else get_swift_dependency_info(ctx, None, None, deps_providers)
+    swift_dependency_info = swift_compile.dependency_info if swift_compile else get_swift_dependency_info(ctx, None, deps_providers)
     swift_debug_info = get_swift_debug_infos(
         ctx,
         swift_dependency_info,
@@ -218,19 +331,23 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         return providers
 
     framework_search_path_pre = CPreprocessor(
-        relative_args = CPreprocessorArgs(args = [framework_search_paths_flags]),
+        args = CPreprocessorArgs(args = [framework_search_paths_flags]),
     )
 
-    genrule_deps_outputs = []
-    if get_apple_build_genrule_deps_attr_value(ctx):
-        genrule_deps_outputs = get_apple_genrule_deps_outputs(cxx_attr_deps(ctx) + cxx_attr_exported_deps(ctx))
+    validation_deps_outputs = get_validation_deps_outputs(ctx)
+    if swift_compile:
+        swift_objc_header = swift_compile.exported_swift_header
+        swift_library_for_distribution_output = swift_compile.swift_library_for_distribution_output
+    else:
+        swift_objc_header = None
+        swift_library_for_distribution_output = None
 
     return CxxRuleConstructorParams(
         rule_type = params.rule_type,
         is_test = (params.rule_type == "apple_test"),
         headers_layout = get_apple_cxx_headers_layout(ctx),
         extra_exported_link_flags = params.extra_exported_link_flags,
-        extra_hidden = genrule_deps_outputs,
+        extra_hidden = validation_deps_outputs,
         extra_link_flags = [_get_linker_flags(ctx)],
         extra_link_input = swift_object_files,
         extra_link_input_has_external_debug_info = True,
@@ -257,6 +374,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
                         default_outputs = swift_compile.object_files if swift_compile else None,
                     ),
                 ],
+                "swift-interface": [swift_interface],
                 "swift-output-file-map": [
                     DefaultInfo(
                         default_output = swift_compile.output_map_artifact if swift_compile else None,
@@ -272,19 +390,30 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: AnalysisConte
         ),
         output_style_sub_targets_and_providers_factory = _get_link_style_sub_targets_and_providers,
         shared_library_flags = params.shared_library_flags,
+        shared_library_interface_target = get_versioned_target_triple(ctx),
         # apple_library's 'stripped' arg only applies to shared subtargets, or,
         # targets with 'preferred_linkage = "shared"'
         strip_executable = get_apple_stripped_attr_value_with_default_fallback(ctx),
         strip_args_factory = apple_strip_args,
         force_link_group_linking = params.force_link_group_linking,
-        cxx_populate_xcode_attributes_func = lambda local_ctx, **kwargs: _xcode_populate_attributes(ctx = local_ctx, populate_xcode_attributes_func = params.populate_xcode_attributes_func, **kwargs),
+        cxx_populate_xcode_attributes_func = lambda local_ctx, **kwargs: _xcode_populate_attributes(ctx = local_ctx, populate_xcode_attributes_func = params.populate_xcode_attributes_func, contains_swift_sources = contains_swift_sources, **kwargs),
         generate_sub_targets = params.generate_sub_targets,
         generate_providers = params.generate_providers,
         # Some apple rules rely on `static` libs *not* following dependents.
         link_groups_force_static_follows_dependents = False,
         extra_linker_outputs_factory = _get_extra_linker_flags_and_outputs,
         swiftmodule_linkable = get_swiftmodule_linkable(swift_compile),
-    )
+        extra_shared_library_interfaces = [swift_compile.exported_symbols] if (swift_compile and swift_compile.exported_symbols) else None,
+        compiler_flags = ctx.attrs.compiler_flags,
+        lang_compiler_flags = ctx.attrs.lang_compiler_flags,
+        platform_compiler_flags = ctx.attrs.platform_compiler_flags,
+        lang_platform_compiler_flags = ctx.attrs.lang_platform_compiler_flags,
+        preprocessor_flags = ctx.attrs.preprocessor_flags,
+        lang_preprocessor_flags = ctx.attrs.lang_preprocessor_flags,
+        platform_preprocessor_flags = ctx.attrs.platform_preprocessor_flags,
+        lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
+        swift_objc_header = swift_objc_header,
+    ), swift_library_for_distribution_output
 
 def _get_extra_linker_flags_and_outputs(
         ctx: AnalysisContext) -> (list[ArgLike], dict[str, list[DefaultInfo]]):
@@ -292,10 +421,10 @@ def _get_extra_linker_flags_and_outputs(
     # @oss-disable: return add_extra_linker_outputs(ctx) 
     return [], {} # @oss-enable
 
-def _filter_swift_srcs(ctx: AnalysisContext) -> (list[CxxSrcWithFlags], list[CxxSrcWithFlags]):
+def _filter_swift_srcs(ctx: AnalysisContext, additional_srcs: list = []) -> (list[CxxSrcWithFlags], list[CxxSrcWithFlags]):
     cxx_srcs = []
     swift_srcs = []
-    for s in get_srcs_with_flags(ctx):
+    for s in get_srcs_with_flags(ctx, additional_srcs):
         if s.file.extension == SWIFT_EXTENSION:
             swift_srcs.append(s)
         else:
@@ -373,7 +502,8 @@ def _xcode_populate_attributes(
         srcs: list[CxxSrcWithFlags],
         argsfiles: dict[str, CompileArgsfile],
         populate_xcode_attributes_func: typing.Callable,
+        contains_swift_sources: bool,
         **_kwargs) -> dict[str, typing.Any]:
     # Overwrite the product name
-    data = populate_xcode_attributes_func(ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name)
+    data = populate_xcode_attributes_func(ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name, contains_swift_sources = contains_swift_sources)
     return data

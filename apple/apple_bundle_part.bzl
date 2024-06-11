@@ -7,10 +7,12 @@
 
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//utils:expect.bzl", "expect")
+load("@prelude//utils:utils.bzl", "value_or")
 load(":apple_bundle_destination.bzl", "AppleBundleDestination", "bundle_relative_path_for_destination")
+load(":apple_bundle_types.bzl", "AppleBundleManifest", "AppleBundleManifestInfo", "AppleBundleManifestLogFiles")
 load(":apple_bundle_utility.bzl", "get_extension_attr", "get_product_name")
-load(":apple_code_signing_types.bzl", "CodeSignType")
-load(":apple_entitlements.bzl", "get_entitlements_codesign_args")
+load(":apple_code_signing_types.bzl", "CodeSignConfiguration", "CodeSignType")
+load(":apple_entitlements.bzl", "get_entitlements_codesign_args", "should_include_entitlements")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(":apple_sdk_metadata.bzl", "get_apple_sdk_metadata_for_sdk_name")
 load(":apple_swift_stdlib.bzl", "should_copy_swift_stdlib")
@@ -30,10 +32,19 @@ AppleBundlePart = record(
     new_name = field([str, None], None),
     # Marks parts which should be code signed separately from the whole bundle.
     codesign_on_copy = field(bool, False),
+    # Entitlements to use when this part is code signed separately.
+    codesign_entitlements = field(Artifact | None, None),
+    # If present, override the codesign flags with these flags, when this part is code signed separately.
+    codesign_flags_override = field([list[str], None], None),
 )
 
 SwiftStdlibArguments = record(
     primary_binary_rel_path = field(str),
+)
+
+AppleBundleConstructionResult = record(
+    providers = field(list[Provider]),
+    sub_targets = field(dict[str, list[Provider]]),
 )
 
 def bundle_output(ctx: AnalysisContext) -> Artifact:
@@ -48,27 +59,30 @@ def assemble_bundle(
         info_plist_part: [AppleBundlePart, None],
         swift_stdlib_args: [SwiftStdlibArguments, None],
         extra_hidden: list[Artifact] = [],
-        skip_adhoc_signing: bool = False) -> dict[str, list[Provider]]:
+        skip_adhoc_signing: bool = False) -> AppleBundleConstructionResult:
     """
     Returns extra subtargets related to bundling.
     """
     all_parts = parts + [info_plist_part] if info_plist_part else []
-    spec_file = _bundle_spec_json(ctx, all_parts)
+    codesign_type = _detect_codesign_type(ctx, skip_adhoc_signing)
+    spec_file = _bundle_spec_json(ctx, all_parts, codesign_type)
 
     tools = ctx.attrs._apple_tools[AppleToolsInfo]
     tool = tools.assemble_bundle
 
     codesign_args = []
-    codesign_type = _detect_codesign_type(ctx, skip_adhoc_signing)
 
     codesign_tool = ctx.attrs._apple_toolchain[AppleToolchainInfo].codesign
-    if ctx.attrs._dry_run_code_signing:
+    code_signing_configuration = CodeSignConfiguration(ctx.attrs._code_signing_configuration)
+    if code_signing_configuration == CodeSignConfiguration("dry-run"):
         codesign_configuration_args = ["--codesign-configuration", "dry-run"]
         codesign_tool = tools.dry_codesign_tool
-    elif ctx.attrs._fast_adhoc_signing_enabled:
+    elif code_signing_configuration == CodeSignConfiguration("fast-adhoc"):
         codesign_configuration_args = ["--codesign-configuration", "fast-adhoc"]
-    else:
+    elif code_signing_configuration == CodeSignConfiguration("none"):
         codesign_configuration_args = []
+    else:
+        fail("Code signing configuration `{}` not supported".format(code_signing_configuration))
 
     codesign_required = codesign_type.value in ["distribution", "adhoc"]
     swift_support_required = swift_stdlib_args and (not ctx.attrs.skip_copying_swift_stdlib) and should_copy_swift_stdlib(bundle.extension)
@@ -84,11 +98,11 @@ def assemble_bundle(
             "--binary-destination",
             swift_stdlib_args.primary_binary_rel_path,
             "--frameworks-destination",
-            bundle_relative_path_for_destination(AppleBundleDestination("frameworks"), sdk_name, ctx.attrs.extension),
+            bundle_relative_path_for_destination(AppleBundleDestination("frameworks"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--plugins-destination",
-            bundle_relative_path_for_destination(AppleBundleDestination("plugins"), sdk_name, ctx.attrs.extension),
+            bundle_relative_path_for_destination(AppleBundleDestination("plugins"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--appclips-destination",
-            bundle_relative_path_for_destination(AppleBundleDestination("appclips"), sdk_name, ctx.attrs.extension),
+            bundle_relative_path_for_destination(AppleBundleDestination("appclips"), sdk_name, ctx.attrs.extension, ctx.attrs.versioned_macos_bundle),
             "--swift-stdlib-command",
             cmd_args(ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info.swift_stdlib_tool, delimiter = " ", quote = "shell"),
             "--sdk-root",
@@ -104,7 +118,8 @@ def assemble_bundle(
             codesign_tool,
         ]
 
-        if codesign_type.value != "adhoc":
+        profile_selection_required = _should_embed_provisioning_profile(ctx, codesign_type)
+        if profile_selection_required:
             provisioning_profiles = ctx.attrs._provisioning_profiles[DefaultInfo]
             expect(
                 len(provisioning_profiles.default_outputs) == 1,
@@ -114,14 +129,20 @@ def assemble_bundle(
             codesign_args.extend(provisioning_profiles_args)
 
             identities_command = ctx.attrs._apple_toolchain[AppleToolchainInfo].codesign_identities_command
+            if ctx.attrs._codesign_identities_command_override:
+                identities_command = ctx.attrs._codesign_identities_command_override[RunInfo]
             identities_command_args = ["--codesign-identities-command", cmd_args(identities_command)] if identities_command else []
             codesign_args.extend(identities_command_args)
-        else:
+
+        if codesign_type.value == "adhoc":
             codesign_args.append("--ad-hoc")
             if ctx.attrs.codesign_identity:
                 codesign_args.extend(["--ad-hoc-codesign-identity", ctx.attrs.codesign_identity])
+            if profile_selection_required:
+                codesign_args.append("--embed-provisioning-profile-when-signing-ad-hoc")
 
         codesign_args += get_entitlements_codesign_args(ctx, codesign_type)
+        codesign_args += _get_extra_codesign_args(ctx)
 
         info_plist_args = [
             "--info-plist-source",
@@ -130,19 +151,29 @@ def assemble_bundle(
             get_apple_bundle_part_relative_destination_path(ctx, info_plist_part),
         ] if info_plist_part else []
         codesign_args.extend(info_plist_args)
+
+        strict_provisioning_profile_search = value_or(ctx.attrs.strict_provisioning_profile_search, ctx.attrs._strict_provisioning_profile_search_default)
+        if strict_provisioning_profile_search:
+            codesign_args.append("--strict-provisioning-profile-search")
     elif codesign_type.value == "skip":
         pass
     else:
         fail("Code sign type `{}` not supported".format(codesign_type))
 
-    command = cmd_args([
-        tool,
-        "--output",
-        bundle.as_output(),
-        "--spec",
-        spec_file,
-    ] + codesign_args + platform_args + swift_args)
-    command.hidden([part.source for part in all_parts])
+    command = cmd_args(
+        [
+            tool,
+            "--output",
+            bundle.as_output(),
+            "--spec",
+            spec_file,
+        ] + codesign_args + platform_args + swift_args,
+        hidden =
+            [part.source for part in all_parts] +
+            [part.codesign_entitlements for part in all_parts if part.codesign_entitlements] +
+            # Ensures any genrule deps get built, such targets are used for validation
+            extra_hidden,
+    )
     run_incremental_args = {}
     incremental_state = ctx.actions.declare_output("incremental_state.json").as_output()
 
@@ -161,14 +192,18 @@ def assemble_bundle(
         # overwrite file with incremental state so if previous and next builds are incremental
         # (as opposed to the current non-incremental one), next one won't assume there is a
         # valid incremental state.
-        command.hidden(ctx.actions.write_json(incremental_state, {}))
+        command.add(cmd_args(hidden = ctx.actions.write_json(incremental_state, {})))
         category = "apple_assemble_bundle"
 
     if ctx.attrs._profile_bundling_enabled:
         profile_output = ctx.actions.declare_output("bundling_profile.txt").as_output()
         command.add("--profile-output", profile_output)
 
+    if ctx.attrs._fast_provisioning_profile_parsing_enabled:
+        command.add("--fast-provisioning-profile-parsing")
+
     subtargets = {}
+    bundling_log_output = None
     if ctx.attrs._bundling_log_file_enabled:
         bundling_log_output = ctx.actions.declare_output("bundling_log.txt")
         command.add("--log-file", bundling_log_output.as_output())
@@ -176,13 +211,37 @@ def assemble_bundle(
             command.add("--log-level-file", ctx.attrs._bundling_log_file_level)
         subtargets["bundling-log"] = [DefaultInfo(default_output = bundling_log_output)]
 
-    if ctx.attrs._bundling_path_conflicts_check_enabled:
-        command.add("--check-conflicts")
-
+    command.add("--check-conflicts")
+    if ctx.attrs.versioned_macos_bundle:
+        command.add("--versioned-if-macos")
     command.add(codesign_configuration_args)
 
-    # Ensures any genrule deps get built, such targets are used for validation
-    command.hidden(extra_hidden)
+    command_json = ctx.actions.declare_output("bundling_command.json")
+    command_json_cmd_args = ctx.actions.write_json(command_json, command, with_inputs = True, pretty = True)
+    subtargets["command"] = [DefaultInfo(default_output = command_json, other_outputs = [command_json_cmd_args])]
+
+    bundle_manifest_log_file_map = {
+        ctx.label: AppleBundleManifestLogFiles(
+            command_file = command_json,
+            spec_file = spec_file,
+            log_file = bundling_log_output,
+        ),
+    }
+
+    if hasattr(ctx.attrs, "deps"):
+        for dep in ctx.attrs.deps:
+            dep_manifest_info = dep.get(AppleBundleManifestInfo)
+            if dep_manifest_info:
+                bundle_manifest_log_file_map.update(dep_manifest_info.manifest.log_file_map)
+
+    bundle_manifest = AppleBundleManifest(log_file_map = bundle_manifest_log_file_map)
+    bundle_manifest_json_object = _convert_bundle_manifest_to_json_object(bundle_manifest)
+
+    bundle_manifest_json_file = ctx.actions.declare_output("bundle_manifest.json")
+    bundle_manifest_cmd_args = ctx.actions.write_json(bundle_manifest_json_file, bundle_manifest_json_object, with_inputs = True, pretty = True)
+    subtargets["manifest"] = [DefaultInfo(default_output = bundle_manifest_json_file, other_outputs = [bundle_manifest_cmd_args])]
+
+    providers = [AppleBundleManifestInfo(manifest = bundle_manifest)]
 
     env = {}
     cache_buster = ctx.attrs._bundling_cache_buster
@@ -196,21 +255,23 @@ def assemble_bundle(
         prefer_local = not force_local_bundling,
         category = category,
         env = env,
+        error_handler = _apple_bundle_error_handler,
         **run_incremental_args
     )
-    return subtargets
+    return AppleBundleConstructionResult(sub_targets = subtargets, providers = providers)
 
 def get_bundle_dir_name(ctx: AnalysisContext) -> str:
     return paths.replace_extension(get_product_name(ctx), "." + get_extension_attr(ctx))
 
 def get_apple_bundle_part_relative_destination_path(ctx: AnalysisContext, part: AppleBundlePart) -> str:
-    bundle_relative_path = bundle_relative_path_for_destination(part.destination, get_apple_sdk_name(ctx), ctx.attrs.extension)
+    bundle_relative_path = bundle_relative_path_for_destination(part.destination, get_apple_sdk_name(ctx), ctx.attrs.extension, ctx.attrs.versioned_macos_bundle)
     destination_file_or_directory_name = part.new_name if part.new_name != None else paths.basename(part.source.short_path)
     return paths.join(bundle_relative_path, destination_file_or_directory_name)
 
 # Returns JSON to be passed into bundle assembling tool. It should contain a dictionary which maps bundle relative destination paths to source paths."
-def _bundle_spec_json(ctx: AnalysisContext, parts: list[AppleBundlePart]) -> Artifact:
+def _bundle_spec_json(ctx: AnalysisContext, parts: list[AppleBundlePart], codesign_type: CodeSignType) -> Artifact:
     specs = []
+    include_entitlements = should_include_entitlements(ctx, codesign_type)
 
     for part in parts:
         part_spec = {
@@ -219,9 +280,13 @@ def _bundle_spec_json(ctx: AnalysisContext, parts: list[AppleBundlePart]) -> Art
         }
         if part.codesign_on_copy:
             part_spec["codesign_on_copy"] = True
+            if include_entitlements and part.codesign_entitlements:
+                part_spec["codesign_entitlements"] = part.codesign_entitlements
+            if part.codesign_flags_override:
+                part_spec["codesign_flags_override"] = part.codesign_flags_override
         specs.append(part_spec)
 
-    return ctx.actions.write_json("bundle_spec.json", specs)
+    return ctx.actions.write_json("bundle_spec.json", specs, pretty = True)
 
 def _get_codesign_type_from_attribs(ctx: AnalysisContext) -> [CodeSignType, None]:
     # Target-level attribute takes highest priority
@@ -235,7 +300,7 @@ def _get_codesign_type_from_attribs(ctx: AnalysisContext) -> [CodeSignType, None
 
 def _detect_codesign_type(ctx: AnalysisContext, skip_adhoc_signing: bool) -> CodeSignType:
     def compute_codesign_type():
-        if ctx.attrs.extension not in ["app", "appex", "xctest"]:
+        if ctx.attrs.extension not in ["app", "appex", "xctest", "driver"]:
             # Only code sign application bundles, extensions and test bundles
             return CodeSignType("skip")
 
@@ -252,3 +317,39 @@ def _detect_codesign_type(ctx: AnalysisContext, skip_adhoc_signing: bool) -> Cod
         codesign_type = CodeSignType("skip")
 
     return codesign_type
+
+def _get_extra_codesign_args(ctx: AnalysisContext) -> list[str]:
+    codesign_args = ctx.attrs.codesign_flags if hasattr(ctx.attrs, "codesign_flags") else []
+    return ["--codesign-args={}".format(flag) for flag in codesign_args]
+
+def _should_embed_provisioning_profile(ctx: AnalysisContext, codesign_type: CodeSignType) -> bool:
+    if codesign_type.value == "distribution":
+        return True
+
+    if codesign_type.value == "adhoc":
+        # The config-based override value takes priority over target value
+        if ctx.attrs._embed_provisioning_profile_when_adhoc_code_signing != None:
+            return ctx.attrs._embed_provisioning_profile_when_adhoc_code_signing
+        return ctx.attrs.embed_provisioning_profile_when_adhoc_code_signing
+
+    return False
+
+def _convert_bundle_manifest_to_json_object(manifest: AppleBundleManifest) -> dict[Label, typing.Any]:
+    manifest_dict = {}
+    for target_label, logs in manifest.log_file_map.items():
+        manifest_dict[target_label] = {
+            "command": logs.command_file,
+            "log": logs.log_file,
+            "spec": logs.spec_file,
+        }
+    return manifest_dict
+
+def _apple_bundle_error_handler(ctx: ActionErrorCtx) -> list[ActionSubError]:
+    categories = []
+
+    if "CodeSignProvisioningError" in ctx.stderr:
+        categories.append(ctx.new_sub_error(
+            category = "code_sign_provisioning_error",
+        ))
+
+    return categories

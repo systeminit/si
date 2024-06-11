@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:validation_deps.bzl", "get_validation_deps_outputs")
 load(
     "@prelude//android:android_providers.bzl",
     "AndroidLibraryIntellijInfo",
@@ -39,7 +40,10 @@ def android_library_impl(ctx: AnalysisContext) -> list[Provider]:
             }),
         ]
 
-    java_providers, android_library_intellij_info = build_android_library(ctx)
+    java_providers, android_library_intellij_info = build_android_library(
+        ctx = ctx,
+        validation_deps_outputs = get_validation_deps_outputs(ctx),
+    )
     android_providers = [android_library_intellij_info] if android_library_intellij_info else []
 
     return to_list(java_providers) + [
@@ -52,14 +56,19 @@ def android_library_impl(ctx: AnalysisContext) -> list[Provider]:
         merge_exported_android_resource_info(ctx.attrs.exported_deps),
     ] + android_providers
 
+def optional_jars(ctx: AnalysisContext) -> list[Artifact]:
+    return ctx.attrs.android_optional_jars or []
+
 def build_android_library(
         ctx: AnalysisContext,
-        r_dot_java: [Artifact, None] = None) -> (JavaProviders, [AndroidLibraryIntellijInfo, None]):
-    bootclasspath_entries = [] + ctx.attrs._android_toolchain[AndroidToolchainInfo].android_bootclasspath
+        r_dot_java: Artifact | None = None,
+        extra_sub_targets = {},
+        validation_deps_outputs: [list[Artifact], None] = None) -> (JavaProviders, [AndroidLibraryIntellijInfo, None]):
+    bootclasspath_entries = [] + ctx.attrs._android_toolchain[AndroidToolchainInfo].android_bootclasspath + optional_jars(ctx)
     additional_classpath_entries = []
 
     dummy_r_dot_java, android_library_intellij_info = _get_dummy_r_dot_java(ctx)
-    extra_sub_targets = {}
+    extra_sub_targets = dict(extra_sub_targets)
 
     if r_dot_java:
         additional_classpath_entries.append(r_dot_java)
@@ -73,6 +82,7 @@ def build_android_library(
             additional_classpath_entries = additional_classpath_entries,
             bootclasspath_entries = bootclasspath_entries,
             extra_sub_targets = extra_sub_targets,
+            validation_deps_outputs = validation_deps_outputs,
         ), android_library_intellij_info
     else:
         return build_java_library(
@@ -81,10 +91,11 @@ def build_android_library(
             additional_classpath_entries = additional_classpath_entries,
             bootclasspath_entries = bootclasspath_entries,
             extra_sub_targets = extra_sub_targets,
+            validation_deps_outputs = validation_deps_outputs,
         ), android_library_intellij_info
 
 def _get_dummy_r_dot_java(
-        ctx: AnalysisContext) -> ([Artifact, None], [AndroidLibraryIntellijInfo, None]):
+        ctx: AnalysisContext) -> (Artifact | None, [AndroidLibraryIntellijInfo, None]):
     android_resources = dedupe([resource for resource in filter(None, [
         x.get(AndroidResourceInfo)
         for x in ctx.attrs.deps + ctx.attrs.provided_deps + (getattr(ctx.attrs, "provided_deps_query", []) or [])

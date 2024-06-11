@@ -7,13 +7,13 @@
 
 load("@prelude//apple:apple_sdk.bzl", "get_apple_sdk_name")
 load("@prelude//apple:apple_target_sdk_version.bzl", "get_min_deployment_version_for_node")
-load("@prelude//apple:apple_utility.bzl", "has_apple_toolchain")
+load("@prelude//apple:apple_utility.bzl", "get_apple_architecture", "has_apple_toolchain")
 load(
     "@prelude//cxx:argsfiles.bzl",
     "CompileArgsfile",  # @unused Used as a type
 )
 load(
-    "@prelude//cxx:compile.bzl",
+    "@prelude//cxx:cxx_sources.bzl",
     "CxxSrcWithFlags",  # @unused Used as a type
 )
 load("@prelude//cxx:xcode.bzl", "cxx_populate_xcode_attributes")
@@ -23,10 +23,14 @@ def apple_populate_xcode_attributes(
         ctx,
         srcs: list[CxxSrcWithFlags],
         argsfiles: dict[str, CompileArgsfile],
-        product_name: str) -> dict[str, typing.Any]:
+        product_name: str,
+        contains_swift_sources: bool = False) -> dict[str, typing.Any]:
     data = cxx_populate_xcode_attributes(ctx = ctx, srcs = srcs, argsfiles = argsfiles, product_name = product_name)
 
+    data["contains_swift_sources"] = contains_swift_sources
+
     if has_apple_toolchain(ctx):
+        data["arch"] = get_apple_architecture(ctx)
         data["sdk"] = get_apple_sdk_name(ctx)
         data["deployment_version"] = get_min_deployment_version_for_node(ctx)
 
@@ -64,7 +68,3 @@ def _get_attribute_with_output(ctx: AnalysisContext, attr_name: str) -> [Depende
             # So, an empty `DefaultInfo` basically signifies that there's no xctoolchain.
             return dep
     return None
-
-def get_project_root_file(ctx) -> Artifact:
-    content = cmd_args(ctx.label.project_root)
-    return ctx.actions.write("project_root", content, absolute = True)

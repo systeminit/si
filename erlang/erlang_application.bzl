@@ -37,7 +37,6 @@ load(
     "multidict_projection",
     "multidict_projection_key",
     "normalise_metadata",
-    "str_to_bool",
     "to_term_args",
 )
 
@@ -161,6 +160,14 @@ def _build_erlang_application(ctx: AnalysisContext, toolchain: Toolchain, depend
         is_private = True,
     )
 
+    # maybe peek private includes
+    build_environment = erlang_build.utils.peek_private_includes(
+        ctx,
+        toolchain,
+        build_environment,
+        dependencies,
+    )
+
     # beams
     build_environment = erlang_build.build_steps.generate_beam_artifacts(
         ctx,
@@ -252,11 +259,8 @@ def _generate_app_file(
             script,
             app_info_file,
         ],
+        hidden = [output.as_output(), srcs] + ([ctx.attrs.app_src] if ctx.attrs.app_src else []),
     )
-    app_build_cmd.hidden(output.as_output())
-    app_build_cmd.hidden(srcs)
-    if ctx.attrs.app_src:
-        app_build_cmd.hidden(ctx.attrs.app_src)
     erlang_build.utils.run_with_env(
         ctx,
         toolchain,
@@ -291,8 +295,7 @@ def _app_info_content(
         srcs: list[Artifact],
         output: Artifact) -> Artifact:
     """build an app_info.term file that contains the meta information for building the .app file"""
-    sources_args = convert(srcs)
-    sources_args.ignore_artifacts()
+    sources_args = convert(srcs, ignore_artifacts = True)
     data = {
         "applications": [
             app[ErlangAppInfo].name
@@ -366,7 +369,7 @@ def link_output(
 
 def _link_srcs_folder(ctx: AnalysisContext) -> dict[str, Artifact]:
     """Build mapping for the src folder if erlang.include_src is set"""
-    if not str_to_bool(read_root_config("erlang", "include_src", "False")):
+    if not ctx.attrs.include_src:
         return {}
     srcs = {
         paths.join("src", src_file.basename): src_file

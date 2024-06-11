@@ -14,6 +14,8 @@
     providers :: [{atom(), [term()]}],
     ct_opts :: [term()],
     erl_cmd :: string(),
+    extra_flags :: [string()],
+    common_app_env :: #{string() => string()},
     artifact_annotation_mfa :: artifact_annotations:annotation_function()
 }).
 
@@ -28,7 +30,9 @@
     config_files :: [file:filename_all()],
     providers :: [{module(), [term()]}],
     ct_opts :: [term()],
+    common_app_env :: #{string() => string()},
     erl_cmd :: string(),
+    extra_flags :: [string()],
     artifact_annotation_mfa :: artifact_annotations:annotation_function()
 }).
 

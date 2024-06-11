@@ -11,15 +11,25 @@
 %% Notably allows us to call post/pre method on the node if needed, e.g for coverage.
 
 -module(ct_executor).
-
 -include_lib("kernel/include/logger.hrl").
 -include_lib("common/include/buck_ct_records.hrl").
+-compile(warn_missing_spec_all).
 
 -export([run/1]).
 
-% Time we give the beam to close off, in ms.
--define(INIT_STOP_TIMEOUT, 5000).
+%% `ct_run_arg()` represents an option accepted by ct:run_test/1, such as
+%% `multiply_timetraps` or `ct_hooks`.
+%% For all the options, see https://www.erlang.org/doc/man/ct#run_test-1
+-type ct_run_arg() :: {atom(), term()}.
+-type ct_exec_arg() :: {output_dir | suite | providers, term()}.
 
+% For testing
+-export([split_args/1]).
+
+-define(STDOUT_MAX_LINES, 1000).
+-define(STDOUT_MAX_LINE_LENGTH, 10000).
+
+-spec run([string()]) -> no_return().
 run(Args) when is_list(Args) ->
     ExitCode =
         try
@@ -37,6 +47,9 @@ run(Args) when is_list(Args) ->
             % Therefore we used io:format to forward information to the
             % process calling it (ct_runner).
             try
+                % We need to load the 'common' application to be able to configure
+                % it via the `common_app_env` arguments
+                application:load(common),
                 % We consult all the .app files to load the atoms.
                 % This solution is less than optimal and should be addressed
                 % T120903856
@@ -61,7 +74,9 @@ run(Args) when is_list(Args) ->
                 erlang:system_flag(backtrace_depth, 20),
                 ?LOG_DEBUG("ct_run called with arguments ~p ~n", [CtRunArgs]),
                 Providers1 = [buck_ct_provider:do_pre_running(Provider) || Provider <- Providers0],
-                {ok, IoBuffer} = io_buffer:start_link(),
+                {ok, IoBuffer} = io_buffer:start_link(#{
+                    passthrough => true, max_elements => ?STDOUT_MAX_LINES, max_length => ?STDOUT_MAX_LINE_LENGTH
+                }),
                 register(cth_tpx_io_buffer, IoBuffer),
                 %% set global timeout
                 Result = ct:run_test(CtRunArgs),
@@ -85,23 +100,9 @@ run(Args) when is_list(Args) ->
                 io:format("~ts\n", [erl_error:format_exception(Class1, Reason1, Stack1)]),
                 1
         end,
-    case ExitCode of
-        0 ->
-            init:stop(0),
-            receive
-            after ?INIT_STOP_TIMEOUT ->
-                ?LOG_ERROR(
-                    io_lib:format("~p failed to terminate within ~c millisecond", [
-                        ?MODULE, ?INIT_STOP_TIMEOUT
-                    ])
-                ),
-                erlang:halt(0)
-            end;
-        _ ->
-            erlang:halt(ExitCode)
-    end.
+    erlang:halt(ExitCode).
 
--spec parse_arguments([string()]) -> {proplists:proplist(), [term()]}.
+-spec parse_arguments([string()]) -> {[ct_exec_arg()], [ct_run_arg()]}.
 parse_arguments(Args) ->
     % The logger is not set up yet.
     % This will be sent to the program executing it (ct_runner),
@@ -120,14 +121,27 @@ parse_arguments(Args) ->
     split_args(ParsedArgs).
 
 % @doc Splits the argument before those that happens
-% before ct_args (the executor args) amd those after
-% (the args for ct_run).
-split_args(Args) -> split_args(Args, [], []).
+% before ct_args (the executor args) and those after
+% (the args for ct_run). ct_args will always be
+% present in the list
+-spec split_args([term()]) -> {[ct_exec_arg()], [ct_run_arg()]}.
+split_args(Args) ->
+    {CtExecutorArgs, [ct_args | CtRunArgs]} = lists:splitwith(fun(Arg) -> Arg =/= ct_args end, Args),
+    {parse_ct_exec_args(CtExecutorArgs), parse_ct_run_args(CtRunArgs)}.
 
-split_args([ct_args | Args], CtExecutorArgs, []) -> {lists:reverse(CtExecutorArgs), Args};
-split_args([Arg | Args], CtExecutorArgs, []) -> split_args(Args, [Arg | CtExecutorArgs], []);
-split_args([], CtExecutorArgs, []) -> {lists:reverse(CtExecutorArgs), []}.
+-spec parse_ct_run_args([term()]) -> [ct_run_arg()].
+parse_ct_run_args([]) ->
+    [];
+parse_ct_run_args([{Key, _Value} = Arg | Args]) when is_atom(Key) ->
+    [Arg | parse_ct_run_args(Args)].
 
+-spec parse_ct_exec_args([term()]) -> [ct_exec_arg()].
+parse_ct_exec_args([]) ->
+    [];
+parse_ct_exec_args([{Key, _Value} = Arg | Args]) when Key =:= output_dir; Key =:= suite; Key =:= providers ->
+    [Arg | parse_ct_exec_args(Args)].
+
+-spec debug_print(string(), [term()]) -> ok.
 debug_print(Fmt, Args) ->
     case os:getenv("ERLANG_BUCK_DEBUG_PRINT") of
         false -> io:format(Fmt, Args);

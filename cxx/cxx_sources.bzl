@@ -9,15 +9,22 @@ load(
     "@prelude//utils:utils.bzl",
     "flatten",
 )
-load(
-    ":compile.bzl",
-    "CxxSrcWithFlags",
-)
 load(":platform.bzl", "cxx_by_platform")
 
+# An input to cxx compilation, consisting of a file to compile and optional
+# file specific flags to compile with.
+CxxSrcWithFlags = record(
+    file = field(Artifact),
+    flags = field(list[ResolvedStringWithMacros], []),
+    # If we have multiple source entries with same files but different flags,
+    # specify an index so we can differentiate them. Otherwise, use None.
+    index = field([int, None], None),
+    is_header = field(bool, False),
+)
+
 # The source files
-def get_srcs_with_flags(ctx: AnalysisContext) -> list[CxxSrcWithFlags]:
-    all_srcs = ctx.attrs.srcs + flatten(cxx_by_platform(ctx, ctx.attrs.platform_srcs))
+def get_srcs_with_flags(ctx: AnalysisContext, additional_srcs: list = []) -> list[CxxSrcWithFlags]:
+    all_srcs = ctx.attrs.srcs + flatten(cxx_by_platform(ctx, ctx.attrs.platform_srcs)) + additional_srcs
 
     # src -> flags_hash -> flags
     flags_sets_by_src = {}

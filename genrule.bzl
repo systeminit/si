@@ -10,11 +10,9 @@
 load("@prelude//:cache_mode.bzl", "CacheModeInfo")
 load("@prelude//:genrule_local_labels.bzl", "genrule_labels_require_local")
 load("@prelude//:genrule_toolchain.bzl", "GenruleToolchainInfo")
-load("@prelude//:genrule_types.bzl", "GENRULE_MARKER_SUBTARGET_NAME", "GenruleMarkerInfo")
 load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
-load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
 
 GENRULE_OUT_DIR = "out"
@@ -41,6 +39,8 @@ _BUILD_ROOT_LABELS = {label: True for label in [
     "app_modules_genrule",  # produces JSON containing file paths that are read from the root dir.
     "android_langpack_strings",  # produces JSON containing file paths that are read from the root dir.
     "windows_long_path_issue",  # Windows: relative path length exceeds PATH_MAX, program cannot access file
+    "flowtype_ota_safety_target",  # produces JSON containing file paths that are project-relative
+    "ctrlr_setting_paths",
 ]}
 
 # In Buck1 the SRCS environment variable is only set if the substring SRCS is on the command line.
@@ -82,6 +82,7 @@ def genrule_attributes() -> dict[str, Attr]:
         "metadata_env_var": attrs.option(attrs.string(), default = None),
         "metadata_path": attrs.option(attrs.string(), default = None),
         "no_outputs_cleanup": attrs.bool(default = False),
+        "remote_execution_dependencies": attrs.list(attrs.dict(key = attrs.string(), value = attrs.string()), default = []),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
         "_genrule_toolchain": attrs.default_only(attrs.toolchain_dep(default = "toolchains//:genrule", providers = [GenruleToolchainInfo])),
     }
@@ -128,7 +129,8 @@ def process_genrule(
         out_attr: [str, None],
         outs_attr: [dict, None],
         extra_env_vars: dict = {},
-        identifier: [str, None] = None) -> list[Provider]:
+        identifier: [str, None] = None,
+        other_outputs: list[Artifact] = []) -> list[Provider]:
     if (out_attr != None) and (outs_attr != None):
         fail("Only one of `out` and `outs` should be set. Got out=`%s`, outs=`%s`" % (repr(out_attr), repr(outs_attr)))
 
@@ -174,18 +176,20 @@ def process_genrule(
         cmd = ctx.attrs.bash if ctx.attrs.bash != None else ctx.attrs.cmd
         if cmd == None:
             fail("One of `cmd` or `bash` should be set.")
-    cmd = cmd_args(cmd)
+
+    replace_regex = []
 
     # For backwards compatibility with Buck1.
     if is_windows:
         for re, sub in _WINDOWS_ENV_SUBSTITUTIONS:
-            cmd.replace_regex(re, sub)
+            replace_regex.append((re, sub))
 
         for extra_env_var in extra_env_vars:
-            cmd.replace_regex(regex("\\$(%s\\b|\\{%s\\})" % (extra_env_var, extra_env_var)), "%%%s%%" % extra_env_var)
+            replace_regex.append(
+                (regex("\\$(%s\\b|\\{%s\\})" % (extra_env_var, extra_env_var)), "%%%s%%" % extra_env_var),
+            )
 
-    if _ignore_artifacts(ctx):
-        cmd = cmd.ignore_artifacts()
+    cmd = cmd_args(cmd, ignore_artifacts = _ignore_artifacts(ctx), replace_regex = replace_regex)
 
     if type(ctx.attrs.srcs) == type([]):
         # FIXME: We should always use the short_path, but currently that is sometimes blank.
@@ -329,13 +333,15 @@ def process_genrule(
         metadata_args["metadata_env_var"] = ctx.attrs.metadata_env_var
     if ctx.attrs.metadata_path:
         metadata_args["metadata_path"] = ctx.attrs.metadata_path
+    if ctx.attrs.remote_execution_dependencies:
+        metadata_args["remote_execution_dependencies"] = ctx.attrs.remote_execution_dependencies
 
     category = "genrule"
     if ctx.attrs.type != None:
         # As of 09/2021, all genrule types were legal snake case if their dashes and periods were replaced with underscores.
         category += "_" + ctx.attrs.type.replace("-", "_").replace(".", "_")
     ctx.actions.run(
-        cmd_args(script_args).hidden([cmd, srcs_artifact, out_artifact.as_output()] + hidden),
+        cmd_args(script_args, hidden = [cmd, srcs_artifact, out_artifact.as_output()] + hidden),
         env = env_vars,
         local_only = local_only,
         allow_cache_upload = cacheable,
@@ -346,17 +352,11 @@ def process_genrule(
         **metadata_args
     )
 
-    # Use a subtarget to insert a marker, as callsites make assumptions about
-    # the providers of `process_genrule()`. We want to have the marker in
-    # `DefaultInfo` rather than in `genrule_impl()` because we want to identify
-    # all classes of genrule-like rules.
     sub_targets = {k: [DefaultInfo(default_outputs = v)] for (k, v) in named_outputs.items()}
-    expect(GENRULE_MARKER_SUBTARGET_NAME not in sub_targets, "Conflicting private `{}` subtarget and named output".format(GENRULE_MARKER_SUBTARGET_NAME))
-    sub_targets[GENRULE_MARKER_SUBTARGET_NAME] = [GenruleMarkerInfo()]
-
     providers = [DefaultInfo(
         default_outputs = default_outputs,
         sub_targets = sub_targets,
+        other_outputs = other_outputs,
     )]
 
     # The cxx_genrule also forwards here, and that doesn't have .executable, so use getattr

@@ -7,6 +7,10 @@
 
 load("@prelude//:artifact_tset.bzl", "ArtifactTSet")  # @unused Used as a type
 load(
+    "@prelude//cxx:link_groups_types.bzl",
+    "LinkGroupInfo",  # @unused Used as a type
+)
+load(
     "@prelude//linking:link_info.bzl",
     "LinkArgs",
     "SwiftmoduleLinkable",
@@ -21,7 +25,7 @@ load(
 )
 load(":argsfiles.bzl", "CompileArgsfiles")
 load(
-    ":compile.bzl",
+    ":cxx_sources.bzl",
     "CxxSrcWithFlags",  # @unused Used as a type
 )
 load(
@@ -30,7 +34,6 @@ load(
 )
 load(
     ":link_groups.bzl",
-    "LinkGroupInfo",  # @unused Used as a type
     "LinkGroupLibSpec",  # @unused Used as a type
 )
 load(
@@ -175,7 +178,7 @@ CxxRuleConstructorParams = record(
     # shared libs to include in the symlink tree).
     extra_link_roots = field(list[LinkableProviders], []),
     # Additional shared libs to "package".
-    extra_shared_libs = field(dict[str, SharedLibrary], {}),
+    extra_shared_libs = field(list[SharedLibrary], []),
     auto_link_group_specs = field([list[LinkGroupLibSpec], None], None),
     link_group_info = field([LinkGroupInfo, None], None),
     # Whether to use pre-stripped objects when linking.
@@ -189,4 +192,22 @@ CxxRuleConstructorParams = record(
     extra_linker_outputs_factory = field(typing.Callable, lambda _context: ([], {})),
     # Whether to allow cache uploads for locally-linked executables.
     exe_allow_cache_upload = field(bool, False),
+    # The target triple to use when generating shared library interfaces
+    shared_library_interface_target = field([str, None], None),
+    # Extra shared library interfaces to propagate, eg from mixed Swift libraries.
+    extra_shared_library_interfaces = field([list[Artifact], None], None),
+    # Compiler flags
+    compiler_flags = field(list[typing.Any], []),
+    lang_compiler_flags = field(dict[typing.Any, typing.Any], {}),
+    # Platform compiler flags
+    platform_compiler_flags = field(list[(str, typing.Any)], []),
+    lang_platform_compiler_flags = field(dict[typing.Any, typing.Any], {}),
+    # Preprocessor flags
+    preprocessor_flags = field(list[typing.Any], []),
+    lang_preprocessor_flags = field(dict[typing.Any, typing.Any], {}),
+    # Platform preprocessor flags
+    platform_preprocessor_flags = field(list[(str, typing.Any)], []),
+    lang_platform_preprocessor_flags = field(dict[typing.Any, typing.Any], {}),
+    # modulename-Swift.h header for building objc targets that rely on this swift dep
+    swift_objc_header = field([Artifact, None], None),
 )

@@ -7,8 +7,16 @@
 
 # General utilities shared between multiple rules.
 
+load("@prelude//utils:expect.bzl", "expect")
+
 def value_or(x: [None, typing.Any], default: typing.Any) -> typing.Any:
     return default if x == None else x
+
+def values_or(*xs: typing.Any | None) -> typing.Any | None:
+    for x in xs:
+        if x != None:
+            return x
+    return None
 
 # Flatten a list of lists into a list
 def flatten(xss: list[list[typing.Any]]) -> list[typing.Any]:
@@ -17,20 +25,6 @@ def flatten(xss: list[list[typing.Any]]) -> list[typing.Any]:
 # Flatten a list of dicts into a dict
 def flatten_dict(xss: list[dict[typing.Any, typing.Any]]) -> dict[typing.Any, typing.Any]:
     return {k: v for xs in xss for k, v in xs.items()}
-
-# Fail if given condition is not met.
-def expect(x: bool, msg: str = "condition not expected", *fmt):
-    if not x:
-        fmt_msg = msg.format(*fmt)
-        fail(fmt_msg)
-
-def expect_non_none(val, msg: str = "unexpected none", *fmt_args, **fmt_kwargs):
-    """
-    Require the given value not be `None`.
-    """
-    if val == None:
-        fail(msg.format(*fmt_args, **fmt_kwargs))
-    return val
 
 def from_named_set(srcs: [dict[str, Artifact | Dependency], list[Artifact | Dependency]]) -> dict[str, Artifact | Dependency]:
     """
@@ -62,9 +56,6 @@ def from_named_set(srcs: [dict[str, Artifact | Dependency], list[Artifact | Depe
 def map_idx(key: typing.Any, vals: list[typing.Any]) -> list[typing.Any]:
     return [x[key] for x in vals]
 
-def filter_idx(key: typing.Any, vals: list[typing.Any]) -> list[typing.Any]:
-    return [x for x in vals if key in x]
-
 def filter_and_map_idx(key: typing.Any, vals: list[typing.Any]) -> list[typing.Any]:
     return [x[key] for x in vals if key in x]
 
@@ -75,7 +66,7 @@ def idx(x: [typing.Any, None], key: typing.Any) -> [typing.Any, None]:
 def dedupe_by_value(vals: list[typing.Any]) -> list[typing.Any]:
     return {val: None for val in vals}.keys()
 
-def map_val(func: typing.Callable, val: [typing.Any, None]) -> [typing.Any, None]:
+def map_val(func: typing.Callable[[typing.Any], typing.Any], val: [typing.Any, None]) -> [typing.Any, None]:
     """
     If `val` if `None`, return `None`, else apply `func` to `val` and return the
     result.
