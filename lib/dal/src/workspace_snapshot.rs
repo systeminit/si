@@ -606,20 +606,22 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(
-        name = "workspace_snapshot.import_subgraph",
+        name = "workspace_snapshot.import_component_subgraph",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
-    pub async fn import_subgraph(
+    pub async fn import_component_subgraph(
         &self,
-        other: &mut Self,
-        root_index: NodeIndex,
+        vector_clock_id: VectorClockId,
+        other: &Self,
+        component_id: ComponentId,
     ) -> WorkspaceSnapshotResult<()> {
-        Ok(self
-            .working_copy_mut()
-            .await
-            .import_subgraph(&*other.working_copy().await, root_index)?)
+        let component_node_index = other.read_only_graph.get_node_index_by_id(component_id)?;
+        Ok(self.working_copy_mut().await.import_component_subgraph(
+            vector_clock_id,
+            &*other.read_only_graph,
+            component_node_index,
+        )?)
     }
 
     /// Calls [`WorkspaceSnapshotGraph::replace_references()`]

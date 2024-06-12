@@ -1237,6 +1237,7 @@ impl Component {
 
         Ok(incoming_edges)
     }
+
     pub async fn get_children_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -1261,6 +1262,7 @@ impl Component {
 
         Ok(children)
     }
+
     #[instrument(level = "debug" skip(ctx))]
     pub async fn get_parent_by_id(
         ctx: &DalContext,
@@ -1290,6 +1292,7 @@ impl Component {
         };
         Ok(maybe_parent)
     }
+
     pub async fn parent(&self, ctx: &DalContext) -> ComponentResult<Option<ComponentId>> {
         Self::get_parent_by_id(ctx, self.id).await
     }
@@ -1587,6 +1590,7 @@ impl Component {
             None => None,
         })
     }
+
     #[instrument(level="debug" skip(ctx))]
     pub async fn get_type_by_id(
         ctx: &DalContext,
@@ -1773,6 +1777,7 @@ impl Component {
 
         Ok(socket_values)
     }
+
     #[instrument(level="debug" skip_all)]
     pub async fn input_socket_match(
         ctx: &DalContext,
@@ -1783,6 +1788,7 @@ impl Component {
             Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
         Ok(all_input_sockets.get(&input_socket_id).cloned())
     }
+
     pub async fn output_socket_match(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -1832,6 +1838,7 @@ impl Component {
     ) -> ComponentResult<HashMap<InputSocketId, InputSocketMatch>> {
         Self::input_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
+
     #[instrument(level = "info", skip(ctx))]
     async fn connect_inner(
         ctx: &DalContext,
@@ -1931,6 +1938,7 @@ impl Component {
             attribute_prototype_argument.id(),
         )))
     }
+
     pub async fn remove_edge_from_frame(
         ctx: &DalContext,
         parent_id: ComponentId,
@@ -2101,6 +2109,7 @@ impl Component {
 
         Ok(result)
     }
+
     /// Checks the destination and source component to determine if data flow between them
     /// Both "deleted" and not deleted Components can feed data into
     /// "deleted" Components. **ONLY** not deleted Components can feed
@@ -2122,6 +2131,7 @@ impl Component {
             },
         )
     }
+
     /// Simply gets the to_delete status for a component via the Node Weight
     async fn is_set_to_delete(
         ctx: &DalContext,
@@ -2143,6 +2153,7 @@ impl Component {
             None => Ok(None),
         }
     }
+
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>
     where
         L: FnOnce(&mut Self) -> ComponentResult<()>,
@@ -2575,6 +2586,7 @@ impl Component {
         pasted_comp.clone_attributes_from(ctx, self.id()).await?;
         Ok(pasted_comp)
     }
+
     /// For a given [`ComponentId`], map each input socket to the inferred output sockets
     /// it is connected to. Inferred socket connections are determined by following
     /// the ancestry line of FrameContains edges and matching the relevant input to output sockets.
@@ -3558,6 +3570,7 @@ impl Component {
             format!("{} - Copy", name)
         }
     }
+
     /// This method finds the [`AttributeValueId`](crate::AttributeValue) corresponding to either  "/root/code" or
     /// "/root/qualification" for the given [`ComponentId`](Component) and ['LeafKind'](LeafKind).
     pub async fn find_map_attribute_value_for_leaf_kind(
@@ -3574,6 +3587,23 @@ impl Component {
             }
         };
         Ok(attribute_value_id)
+    }
+
+    pub async fn restore_from_base_change_set(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+
+        ctx.workspace_snapshot()?
+            .import_component_subgraph(
+                ctx.change_set()?.vector_clock_id(),
+                &*base_change_set_ctx.workspace_snapshot()?,
+                component_id,
+            )
+            .await?;
+
+        Ok(())
     }
 }
 
