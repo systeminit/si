@@ -1081,5 +1081,5 @@ pub async fn get_component_type(
             return Ok(component_type.into());
         }
     }
-    Ok(SchemaVariantSpecComponentType::default())
+    Ok(variant.component_type().into())
 }
