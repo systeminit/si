@@ -16,7 +16,7 @@ load(
 )
 load(
     "@prelude//tests:re_utils.bzl",
-    "get_re_executor_from_props",
+    "get_re_executors_from_props",
 )
 load(
     "@prelude-si//:test.bzl",
@@ -41,7 +41,7 @@ def clippy_check_impl(ctx: AnalysisContext) -> list[[
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx)
+    re_executor, executor_overrides = get_re_executors_from_props(ctx)
 
     # We implicitly make the target run from the project root if remote
     # excution options were specified
@@ -58,6 +58,7 @@ def clippy_check_impl(ctx: AnalysisContext) -> list[[
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
+            executor_overrides = executor_overrides,
             run_from_project_root = run_from_project_root,
             use_project_relative_paths = run_from_project_root,
         ),
@@ -105,7 +106,7 @@ def rustfmt_check_impl(ctx: AnalysisContext) -> list[[
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx)
+    re_executor, executor_overrides = get_re_executors_from_props(ctx)
 
     # We implicitly make the target run from the project root if remote
     # excution options were specified
@@ -122,6 +123,7 @@ def rustfmt_check_impl(ctx: AnalysisContext) -> list[[
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
+            executor_overrides = executor_overrides,
             run_from_project_root = run_from_project_root,
             use_project_relative_paths = run_from_project_root,
         ),

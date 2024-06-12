@@ -20,7 +20,7 @@ load(
 )
 load(
     "@prelude//tests:re_utils.bzl",
-    "get_re_executor_from_props",
+    "get_re_executors_from_props",
 )
 load(
     "@prelude-si//:test.bzl",
@@ -74,7 +74,7 @@ def _npm_test_impl(
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx)
+    re_executor, executor_overrides = get_re_executors_from_props(ctx)
 
     # We implicitly make the target run from the project root if remote
     # excution options were specified
@@ -91,6 +91,7 @@ def _npm_test_impl(
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
+            executor_overrides = executor_overrides,
             run_from_project_root = run_from_project_root,
             use_project_relative_paths = run_from_project_root,
         ),
@@ -504,11 +505,11 @@ package_node_modules = rule(
     attrs = {
         "turbo": attrs.dep(
             providers = [RunInfo],
-            default = "//third-party/node/turbo:turbo",
+            default = "root//third-party/node/turbo:turbo",
             doc = """Turbo dependency.""",
         ),
         "pnpm_lock": attrs.source(
-            default = "//:pnpm-lock.yaml",
+            default = "root//:pnpm-lock.yaml",
             doc = """Workspace Pnpm lock file""",
         ),
         "package_name": attrs.option(
@@ -548,7 +549,7 @@ pnpm_lock = rule(
             doc = """pnpm-lock.yaml source.""",
         ),
         "pnpm_workspace": attrs.dep(
-            default = "//:pnpm-workspace.yaml",
+            default = "root//:pnpm-workspace.yaml",
             doc = """Pnpm Workspace dependency.""",
         ),
     },
@@ -880,7 +881,7 @@ workspace_node_modules = rule(
     impl = workspace_node_modules_impl,
     attrs = {
         "pnpm_lock": attrs.source(
-            default = "//:pnpm-lock.yaml",
+            default = "root//:pnpm-lock.yaml",
             doc = """Workspace Pnpm lock file""",
         ),
         "root_workspace": attrs.bool(
