@@ -64,7 +64,7 @@ pub struct InputSources {
 impl InputSources {
     /// Assemble [`InputSources`] for all [`SchemaVariants`](SchemaVariant) in the workspace.
     pub async fn assemble_for_all_schema_variants(ctx: &DalContext) -> InputSourcesResult<Self> {
-        let all_schema_variant_ids = SchemaVariant::list_ids(ctx).await?;
+        let all_schema_variant_ids = SchemaVariant::list_default_ids(ctx).await?;
 
         let mut input_socket_views = Vec::new();
         let mut output_socket_views = Vec::new();

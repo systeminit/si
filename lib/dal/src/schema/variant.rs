@@ -518,27 +518,11 @@ impl SchemaVariant {
     }
 
     /// Lists all default [`SchemaVariants`](SchemaVariant) by ID in the workspace.
-    pub async fn list_ids(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariantId>> {
-        let schema_ids = Schema::list_ids(ctx).await?;
-
+    pub async fn list_default_ids(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariantId>> {
         let mut schema_variant_ids = Vec::new();
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for schema_id in schema_ids {
-            let schema_variant_node_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(
-                    schema_id,
-                    EdgeWeightKind::new_use_default().into(),
-                )
-                .await?;
-
-            for schema_variant_node_index in schema_variant_node_indices {
-                let raw_id = workspace_snapshot
-                    .get_node_weight(schema_variant_node_index)
-                    .await?
-                    .id();
-                schema_variant_ids.push(raw_id.into());
-            }
+        for schema_id in Schema::list_ids(ctx).await? {
+            schema_variant_ids.push(Self::get_default_id_for_schema(ctx, schema_id).await?);
         }
 
         Ok(schema_variant_ids)
@@ -1510,7 +1494,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
         let mut results = vec![];
 
-        for schema_variant_id in Self::list_ids(ctx).await? {
+        for schema_variant_id in Self::list_default_ids(ctx).await? {
             let workspace_snapshot = ctx.workspace_snapshot()?;
 
             let targets = workspace_snapshot
