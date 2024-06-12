@@ -37,21 +37,8 @@ jobs:
       environment: shared
     secrets: inherit
 
-  secrets:
-    needs: invalidate-cache
-    runs-on: ubuntu-latest
-    outputs:
-      aws_access_key: ${{ steps.prepare.outputs.aws_access_key }}
-      aws_secret_key: ${{ steps.prepare.outputs.aws_secret_key }}
-    steps:
-      - name: prepare
-        id: prepare
-        run: |
-          echo "aws_access_key=aws_${{ github.event.inputs.environment }}_access_key" >> "$GITHUB_OUTPUT"
-          echo "aws_secret_key=aws_${{ github.event.inputs.environment }}_secret_key" >> "$GITHUB_OUTPUT"
-
   deploy-service:
-    needs: secrets
+    needs: invalidate-cache
     if: ${{ github.event.inputs.service != 'all' }}
     uses: ./.github/workflows/deploy-service.yml
     with:
@@ -61,7 +48,7 @@ jobs:
     secrets: inherit
 
   deploy-services:
-    needs: secrets
+    needs: invalidate-cache
     if: ${{ github.event.inputs.service == 'all' }}
     strategy:
      fail-fast: false
@@ -75,7 +62,7 @@ jobs:
     secrets: inherit
 
   set-init:
-    needs: secrets
+    needs: invalidate-cache
     uses: ./.github/workflows/set-init-version.yml
     with:
       environment: ${{ github.event.inputs.environment }}
