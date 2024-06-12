@@ -39,7 +39,7 @@ impl SecretDefinitionView {
     /// Assembles [`views`](SecretDefinitionView) for all secret definitions in the
     /// [`snapshot`](crate::WorkspaceSnapshot).
     pub async fn list(ctx: &DalContext) -> SecretDefinitionViewResult<Vec<Self>> {
-        let schema_variant_ids = SchemaVariant::list_ids(ctx).await?;
+        let schema_variant_ids = SchemaVariant::list_default_ids(ctx).await?;
 
         let secret_definition_path = PropPath::new(["root", "secret_definition"]);
         let mut views = Vec::new();

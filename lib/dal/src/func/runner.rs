@@ -1138,7 +1138,7 @@ impl FuncRunner {
             .value;
 
         let mut auth_funcs = vec![];
-        for secret_defining_sv_id in SchemaVariant::list_ids(ctx).await? {
+        for secret_defining_sv_id in SchemaVariant::list_default_ids(ctx).await? {
             if Prop::find_prop_id_by_path_opt(ctx, secret_defining_sv_id, secret_definition_path)
                 .await?
                 .is_none()

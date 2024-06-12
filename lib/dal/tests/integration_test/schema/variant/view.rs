@@ -6,7 +6,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn list_schema_variant_definition_views(ctx: &DalContext) {
-    let schema_variant_ids = SchemaVariant::list_ids(ctx)
+    let schema_variant_ids = SchemaVariant::list_default_ids(ctx)
         .await
         .expect("could not list schema variants");
 
