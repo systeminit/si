@@ -1,4 +1,9 @@
 load("@prelude//erlang:erlang_toolchain.bzl", "erlang_parse_transform", "toolchain_resources_internal", "toolchain_utilities")
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
 
 erlang_parse_transform(
     name = "transform_project_root",
@@ -27,11 +32,13 @@ toolchain_utilities(
     edoc = "edoc_cli.escript",
     erlc_trampoline = "erlc_trampoline.sh",
     escript_builder = "escript_builder.escript",
+    escript_trampoline = "escript_trampoline.sh",
     include_erts = "include_erts.escript",
     release_variables_builder = "release_variables_builder.escript",
     utility_modules = [
         "edoc_doclet_chunks.erl",
         "edoc_report.erl",
+        "epp_dodger.erl",
     ],
     visibility = ["PUBLIC"],
 )

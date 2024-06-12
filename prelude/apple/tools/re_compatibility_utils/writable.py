@@ -5,12 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import os
 import platform
 import stat
 
 
-def make_path_user_writable(path: str):
+def make_path_user_writable(path: str) -> None:
     # On Linux, `os.chmod()` does not support setting the permissions on a symlink.
     # `chmod` manpage says:
     #   > AT_SYMLINK_NOFOLLOW     If pathname is a symbolic link, do not
@@ -22,11 +24,11 @@ def make_path_user_writable(path: str):
     #
     # Darwin supports permission setting on symlinks.
     follow_symlinks = platform.system() != "Darwin"
-    st = os.stat(path)
+    st = os.stat(path, follow_symlinks=False)
     os.chmod(path, st.st_mode | stat.S_IWUSR, follow_symlinks=follow_symlinks)
 
 
-def make_dir_recursively_writable(dir: str):
+def make_dir_recursively_writable(dir: str) -> None:
     for dirpath, _, filenames in os.walk(dir):
         make_path_user_writable(dirpath)
         for filename in filenames:

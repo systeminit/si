@@ -18,8 +18,7 @@ def inspect_dbg_exec(ctx: bxl.Context, actions: AnalysisActions, target: bxl.Con
     providers = ctx.analysis(fbsource_alias_target).providers()
     fdb_helper = providers[RunInfo]
     fdb_helper_out = actions.declare_output("fdb_helper.json")
-    cmd = cmd_args(fdb_helper)
-    cmd.add(settings.args)
+    cmd = cmd_args(fdb_helper, settings.args)
     actions.run(cmd, category = "fdb_helper", env = {"FDB_OUTPUT_FILE": fdb_helper_out.as_output()}, local_only = True)
     result = actions.declare_output("final_out.json")
 
@@ -47,7 +46,7 @@ def inspect_dbg_exec(ctx: bxl.Context, actions: AnalysisActions, target: bxl.Con
     actions.dynamic_output(
         dynamic = [fdb_helper_out],
         inputs = [],
-        outputs = [result],
+        outputs = [result.as_output()],
         f = build_exec_info,
     )
     return result

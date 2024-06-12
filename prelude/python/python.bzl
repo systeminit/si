@@ -5,14 +5,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo")
 load("@prelude//linking:shared_libraries.bzl", "traverse_shared_library_info")
 load("@prelude//utils:arglike.bzl", "ArgLike")
-load("@prelude//utils:utils.bzl", "flatten")
 load(":compile.bzl", "PycInvalidationMode")
 load(":interface.bzl", "PythonLibraryInterface", "PythonLibraryManifestsInterface")
 load(":manifest.bzl", "ManifestInfo")
-load(":toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
 
 PythonLibraryManifests = record(
     label = field(Label),
@@ -95,24 +92,28 @@ _BYTECODE_PROJ_PREFIX = {
     PycInvalidationMode("UNCHECKED_HASH"): "bytecode",
 }
 
+args_projections = {
+    "dep_artifacts": _dep_artifacts,
+    "dep_manifests": _dep_manifests,
+    "hidden_resources": _hidden_resources,
+    "resource_artifacts": _resource_artifacts,
+    "resource_manifests": _resource_manifests,
+    "source_artifacts": _source_artifacts,
+    "source_manifests": _source_manifests,
+    "source_type_artifacts": _source_type_artifacts,
+    "source_type_manifests": _source_type_manifests,
+}
+args_projections.update({
+    "{}_artifacts".format(prefix): _bytecode_artifacts(mode)
+    for mode, prefix in _BYTECODE_PROJ_PREFIX.items()
+})
+args_projections.update({
+    "{}_manifests".format(prefix): _bytecode_manifests(mode)
+    for mode, prefix in _BYTECODE_PROJ_PREFIX.items()
+})
+
 PythonLibraryManifestsTSet = transitive_set(
-    args_projections = dict({
-        "dep_artifacts": _dep_artifacts,
-        "dep_manifests": _dep_manifests,
-        "hidden_resources": _hidden_resources,
-        "resource_artifacts": _resource_artifacts,
-        "resource_manifests": _resource_manifests,
-        "source_artifacts": _source_artifacts,
-        "source_manifests": _source_manifests,
-        "source_type_artifacts": _source_type_artifacts,
-        "source_type_manifests": _source_type_manifests,
-    }.items() + {
-        "{}_artifacts".format(prefix): _bytecode_artifacts(mode)
-        for mode, prefix in _BYTECODE_PROJ_PREFIX.items()
-    }.items() + {
-        "{}_manifests".format(prefix): _bytecode_manifests(mode)
-        for mode, prefix in _BYTECODE_PROJ_PREFIX.items()
-    }.items()),
+    args_projections = args_projections,
     json_projections = {
         "source_type_manifests_json": _source_type_manifest_jsons,
     },
@@ -151,12 +152,4 @@ def manifests_to_interface(manifests: PythonLibraryManifestsTSet) -> PythonLibra
         resource_manifests = lambda: [manifests.project_as_args("resource_manifests")],
         resource_artifacts = lambda: [manifests.project_as_args("resource_artifacts")],
         resource_artifacts_with_paths = lambda: [(a, p) for m in manifests.traverse() if m != None and m.resources != None for a, p in m.resources[0].artifacts],
-    )
-
-def get_python_deps(ctx: AnalysisContext):
-    python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
-    cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
-    return flatten(
-        [ctx.attrs.deps] +
-        get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_deps),
     )

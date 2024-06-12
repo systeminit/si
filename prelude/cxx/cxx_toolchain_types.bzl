@@ -7,15 +7,9 @@
 
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 
-# For cases where our `ld` dependency provides more than an executable and
-# would like to give us flags too. We use this to place the flags in the proper
-# field (linker_flags), so that things that want ldflags without the linker
-# executable can access those.
-RichLinkerRunInfo = provider(fields = {"exe": provider_field(typing.Any, default = None), "flags": provider_field(typing.Any, default = None)})
-
 LinkerType = ["gnu", "darwin", "windows", "wasm"]
 
-ShlibInterfacesMode = enum("disabled", "enabled", "defined_only")
+ShlibInterfacesMode = enum("disabled", "enabled", "defined_only", "stub_from_library", "stub_from_headers")
 
 # TODO(T110378149): Consider whether it makes sense to move these things to
 # configurations/constraints rather than part of the toolchain.
@@ -41,14 +35,17 @@ LinkerInfo = provider(
         # GiBs of object files (which can also lead to RE errors/timesouts etc).
         "link_libraries_locally": provider_field(typing.Any, default = None),
         "link_style": provider_field(typing.Any, default = None),  # LinkStyle
-        "link_weight": provider_field(typing.Any, default = None),  # int
+        "link_weight": provider_field(int, default = 1),  # int
         "link_ordering": provider_field(typing.Any, default = None),  # LinkOrdering
         "linker": provider_field(typing.Any, default = None),
         "linker_flags": provider_field(typing.Any, default = None),
+        "post_linker_flags": provider_field(typing.Any, default = None),
         "lto_mode": provider_field(typing.Any, default = None),
         "mk_shlib_intf": provider_field(typing.Any, default = None),
         # "o" on Unix, "obj" on Windows
         "object_file_extension": provider_field(typing.Any, default = None),  # str
+        "sanitizer_runtime_enabled": provider_field(bool, default = False),
+        "sanitizer_runtime_files": provider_field(list[Artifact], default = []),
         "shlib_interfaces": provider_field(ShlibInterfacesMode),
         "shared_dep_runtime_ld_flags": provider_field(typing.Any, default = None),
         # "lib" on Linux/Mac/Android, "" on Windows.
@@ -68,7 +65,6 @@ LinkerInfo = provider(
         "use_archiver_flags": provider_field(typing.Any, default = None),
         "force_full_hybrid_if_capable": provider_field(typing.Any, default = None),
         "is_pdb_generated": provider_field(typing.Any, default = None),  # bool
-        "produce_interface_from_stub_shared_library": provider_field(typing.Any, default = None),  # bool
     },
 )
 
@@ -77,6 +73,7 @@ BinaryUtilitiesInfo = provider(fields = {
     "dwp": provider_field(typing.Any, default = None),
     "nm": provider_field(typing.Any, default = None),
     "objcopy": provider_field(typing.Any, default = None),
+    "objdump": provider_field(typing.Any, default = None),
     "ranlib": provider_field(typing.Any, default = None),
     "strip": provider_field(typing.Any, default = None),
 })
@@ -122,10 +119,14 @@ _compiler_fields = [
     "preprocessor_type",
     "preprocessor_flags",
     "dep_files_processor",
+    # Controls cache upload for object files
+    "allow_cache_upload",
 ]
 
 HipCompilerInfo = provider(fields = _compiler_fields)
 CudaCompilerInfo = provider(fields = _compiler_fields)
+CvtresCompilerInfo = provider(fields = _compiler_fields)
+RcCompilerInfo = provider(fields = _compiler_fields)
 CCompilerInfo = provider(fields = _compiler_fields)
 CxxCompilerInfo = provider(fields = _compiler_fields)
 AsmCompilerInfo = provider(fields = _compiler_fields)
@@ -184,12 +185,15 @@ CxxToolchainInfo = provider(
         "as_compiler_info": provider_field(typing.Any, default = None),
         "hip_compiler_info": provider_field(typing.Any, default = None),
         "cuda_compiler_info": provider_field(typing.Any, default = None),
+        "cvtres_compiler_info": provider_field(typing.Any, default = None),
+        "rc_compiler_info": provider_field(typing.Any, default = None),
         "mk_comp_db": provider_field(typing.Any, default = None),
         "mk_hmap": provider_field(typing.Any, default = None),
         "llvm_link": provider_field(typing.Any, default = None),
         "dist_lto_tools_info": provider_field(typing.Any, default = None),
         "use_dep_files": provider_field(typing.Any, default = None),
         "clang_remarks": provider_field(typing.Any, default = None),
+        "gcno_files": provider_field(typing.Any, default = None),
         "clang_trace": provider_field(typing.Any, default = None),
         "cpp_dep_tracking_mode": provider_field(typing.Any, default = None),
         "cuda_dep_tracking_mode": provider_field(typing.Any, default = None),
@@ -198,6 +202,7 @@ CxxToolchainInfo = provider(
         "bolt_enabled": provider_field(typing.Any, default = None),
         "pic_behavior": provider_field(typing.Any, default = None),
         "dumpbin_toolchain_path": provider_field(typing.Any, default = None),
+        "target_sdk_version": provider_field([str, None], default = None),
     },
 )
 
@@ -215,9 +220,6 @@ def _validate_linker_info(info: LinkerInfo):
     if info.requires_archives and info.requires_objects:
         fail("only one of `requires_archives` and `requires_objects` can be enabled")
 
-    if info.supports_distributed_thinlto and not info.requires_objects:
-        fail("distributed thinlto requires enabling `requires_objects`")
-
 def is_bitcode_format(format: CxxObjectFormat) -> bool:
     return format in [CxxObjectFormat("bitcode"), CxxObjectFormat("embedded-bitcode")]
 
@@ -234,12 +236,15 @@ def cxx_toolchain_infos(
         as_compiler_info = None,
         hip_compiler_info = None,
         cuda_compiler_info = None,
+        cvtres_compiler_info = None,
+        rc_compiler_info = None,
         object_format = CxxObjectFormat("native"),
         mk_comp_db = None,
         mk_hmap = None,
         use_distributed_thinlto = False,
         use_dep_files = False,
         clang_remarks = None,
+        gcno_files = None,
         clang_trace = False,
         cpp_dep_tracking_mode = DepTrackingMode("none"),
         cuda_dep_tracking_mode = DepTrackingMode("none"),
@@ -250,7 +255,8 @@ def cxx_toolchain_infos(
         llvm_link = None,
         platform_deps_aliases = [],
         pic_behavior = PicBehavior("supported"),
-        dumpbin_toolchain_path = None):
+        dumpbin_toolchain_path = None,
+        target_sdk_version = None):
     """
     Creates the collection of cxx-toolchain Infos for a cxx toolchain.
 
@@ -275,6 +281,8 @@ def cxx_toolchain_infos(
         as_compiler_info = as_compiler_info,
         hip_compiler_info = hip_compiler_info,
         cuda_compiler_info = cuda_compiler_info,
+        cvtres_compiler_info = cvtres_compiler_info,
+        rc_compiler_info = rc_compiler_info,
         mk_comp_db = mk_comp_db,
         mk_hmap = mk_hmap,
         object_format = object_format,
@@ -282,6 +290,7 @@ def cxx_toolchain_infos(
         use_distributed_thinlto = use_distributed_thinlto,
         use_dep_files = use_dep_files,
         clang_remarks = clang_remarks,
+        gcno_files = gcno_files,
         clang_trace = clang_trace,
         cpp_dep_tracking_mode = cpp_dep_tracking_mode,
         cuda_dep_tracking_mode = cuda_dep_tracking_mode,
@@ -290,6 +299,7 @@ def cxx_toolchain_infos(
         bolt_enabled = bolt_enabled,
         pic_behavior = pic_behavior,
         dumpbin_toolchain_path = dumpbin_toolchain_path,
+        target_sdk_version = target_sdk_version,
     )
 
     # Provide placeholder mappings, used primarily by cxx_genrule.
@@ -309,9 +319,10 @@ def cxx_toolchain_infos(
         # NOTE(agallagher): The arg-less variants of the ldflags macro are
         # identical, and are just separate to match v1's behavior (ideally,
         # we just have a single `ldflags` macro for this case).
-        "ldflags-shared": _shell_quote(linker_info.linker_flags),
-        "ldflags-static": _shell_quote(linker_info.linker_flags),
-        "ldflags-static-pic": _shell_quote(linker_info.linker_flags),
+        "ldflags-shared": _shell_quote(linker_info.linker_flags or []),
+        "ldflags-static": _shell_quote(linker_info.linker_flags or []),
+        "ldflags-static-pic": _shell_quote(linker_info.linker_flags or []),
+        "objcopy": binary_utilities_info.objcopy,
         # TODO(T110378148): $(platform-name) is almost unusued. Should we remove it?
         "platform-name": platform_name,
     }

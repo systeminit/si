@@ -13,19 +13,16 @@ load(
 load("@prelude//:paths.bzl", "paths")
 load(
     "@prelude//linking:link_info.bzl",
+    "LinkStrategy",
     "LinkStyle",
-    "Linkage",
     "LinkerFlags",
     "MergedLinkInfo",
 )
+load("@prelude//linking:types.bzl", "Linkage")
 load(
     "@prelude//utils:utils.bzl",
     "flatten",
     "from_named_set",
-)
-load(
-    ":compile.bzl",
-    "CxxCompileOutput",  # @unused Used as a type
 )
 load(":cxx_context.bzl", "get_cxx_platform_info", "get_cxx_toolchain_info")
 load(":cxx_toolchain_types.bzl", "ShlibInterfacesMode")
@@ -92,6 +89,23 @@ def cxx_attr_linker_flags(ctx: AnalysisContext) -> list[typing.Any]:
         (flatten(cxx_by_platform(ctx, ctx.attrs.platform_linker_flags)) if hasattr(ctx.attrs, "platform_linker_flags") else [])
     )
 
+# Even though we're returning the shared library links, we must still
+# respect the `link_style` attribute of the target which controls how
+# all deps get linked. For example, you could be building the shared
+# output of a library which has `link_style = "static"`.
+#
+# The fallback equivalent code in Buck v1 is in CxxLibraryFactor::createBuildRule()
+# where link style is determined using the `linkableDepType` variable.
+
+# Note if `static` link style is requested, we assume `static_pic`
+# instead, so that code in the shared library can be correctly
+# loaded in the address space of any process at any address.
+def cxx_attr_link_strategy(attrs: typing.Any) -> LinkStrategy:
+    value = attrs.link_style if attrs.link_style != None else "shared"
+    if value == "static":
+        value = "static_pic"
+    return LinkStrategy(value)
+
 def cxx_attr_link_style(ctx: AnalysisContext) -> LinkStyle:
     if ctx.attrs.link_style != None:
         return LinkStyle(ctx.attrs.link_style)
@@ -143,6 +157,12 @@ def cxx_use_shlib_intfs(ctx: AnalysisContext) -> bool:
     linker_info = get_cxx_toolchain_info(ctx).linker_info
     return linker_info.shlib_interfaces != ShlibInterfacesMode("disabled")
 
+def cxx_use_shlib_intfs_mode(ctx: AnalysisContext, mode: ShlibInterfacesMode) -> bool:
+    """
+    Verify we are using a specific shared library interface mode.
+    """
+    return cxx_use_shlib_intfs(ctx) and get_cxx_toolchain_info(ctx).linker_info.shlib_interfaces == mode
+
 def cxx_platform_supported(ctx: AnalysisContext) -> bool:
     """
     Return whether this rule's `supported_platforms_regex` matches the current
@@ -156,17 +176,3 @@ def cxx_platform_supported(ctx: AnalysisContext) -> bool:
         ctx.attrs.supported_platforms_regex,
         get_cxx_platform_info(ctx).name,
     )
-
-def cxx_objects_sub_targets(outs: list[CxxCompileOutput]) -> dict[str, list[Provider]]:
-    objects_sub_targets = {}
-    for obj in outs:
-        sub_targets = {}
-        if obj.clang_trace:
-            sub_targets["clang-trace"] = [DefaultInfo(obj.clang_trace)]
-        if obj.clang_remarks:
-            sub_targets["clang-remarks"] = [DefaultInfo(obj.clang_remarks)]
-        objects_sub_targets[obj.object.short_path] = [DefaultInfo(
-            obj.object,
-            sub_targets = sub_targets,
-        )]
-    return objects_sub_targets

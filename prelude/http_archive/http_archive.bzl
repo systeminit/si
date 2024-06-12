@@ -66,8 +66,9 @@ def _unarchive_cmd(
                 archive,
                 "--stdout",
                 "|",
-                "tar",
+                "%WINDIR%\\System32\\tar.exe",
                 "-x",
+                "-P",
                 "-f",
                 "-",
                 _tar_strip_prefix_flags(strip_prefix),
@@ -76,7 +77,7 @@ def _unarchive_cmd(
             # unzip and zip are not cli commands available on windows. however, the
             # bsdtar that ships with windows has builtin support for zip
             return cmd_args(
-                "tar",
+                "%WINDIR%\\System32\\tar.exe",
                 "-x",
                 "-P",
                 "-f",
@@ -200,7 +201,10 @@ def http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
     )
 
     ctx.actions.run(
-        cmd_args(interpreter + [script]).hidden(exclude_hidden + [archive, script_output.as_output()]),
+        cmd_args(
+            interpreter + [script],
+            hidden = exclude_hidden + [archive, script_output.as_output()],
+        ),
         category = "http_archive",
         prefer_local = prefer_local,
     )

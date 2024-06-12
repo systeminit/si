@@ -18,12 +18,27 @@
   ],
   "codesign_configuration": null,
   "codesigned": true,
-  "codesign_on_copy_paths": [
-    "Resources/bar.txt"
+  "codesigned_on_copy": [
+    {
+      "path": "Resources/bar.txt"
+    },
+    {
+      "path": "Resources/baz.txt",
+      "entitlements_digest": "abc"
+    },
+    {
+      "path": "Resources/qux.txt",
+      "codesign_flags_override": ["--deep", "--force"]
+    }
   ],
   "codesign_identity": "Johny Appleseed",
+  "codesign_arguments": [
+    "--force",
+    "--deep"
+  ],
+  "versioned_if_macos": true,
   "swift_stdlib_paths": [
     "Frameworks/libswiftCore.dylib"
   ],
-  "version": 3
+  "version": 7
 }

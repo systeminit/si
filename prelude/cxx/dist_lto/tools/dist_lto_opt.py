@@ -24,6 +24,7 @@ from typing import List
 
 EXIT_SUCCESS, EXIT_FAILURE = 0, 1
 
+
 # Filter opt related flags
 def _filter_flags(clang_flags: List[str]) -> List[str]:  # noqa: C901
     # List of llvm flags to be ignored.
@@ -46,8 +47,6 @@ def _filter_flags(clang_flags: List[str]) -> List[str]:  # noqa: C901
         # this setting matches current llvm implementation:
         # https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/LTO/Config.h#L57
         "-O2",
-        # TODO(T139459170): Remove after clang-15. NPM is the default.
-        "-fexperimental-new-pass-manager",
         "-ffunction-sections",
         "-fdata-sections",
     ]
@@ -238,7 +237,7 @@ def main(argv: List[str]) -> int:
     #   1. a spliter "--", it's not used anywhere;
     #   2. the fbcc wrapper script path
     #   3. the "-cc" arg pointing to the compiler we use
-    # EXAMPLE: ['--', 'buck-out/v2/gen/fbcode/8e3db19fe005003a/tools/build/buck/wrappers/__fbcc__/fbcc', '--cc=fbcode/third-party-buck/platform010/build/llvm-fb/12/bin/clang++', '--target=x86_64-redhat-linux-gnu', ...]
+    # EXAMPLE: ['--', 'buck-out/v2/gen/fbcode/8e3db19fe005003a/tools/build/buck/wrappers/__fbcc__/fbcc', '--cc=fbcode/third-party-buck/platform010/build/llvm-fb/<ver>/bin/clang++', '--target=x86_64-redhat-linux-gnu', ...]
     clang_cc1_flags = _cleanup_flags(args.opt_args[2:] + clang_opt_flags)
     if clang_cc1_flags is None:
         return EXIT_FAILURE

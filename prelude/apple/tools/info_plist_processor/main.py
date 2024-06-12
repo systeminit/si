@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import argparse
 from contextlib import ExitStack
 from enum import Enum
@@ -19,7 +21,9 @@ class _SubcommandName(str, Enum):
     process = "process"
 
 
-def _create_preprocess_subparser(subparsers):
+def _create_preprocess_subparser(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     parser = subparsers.add_parser(
         _SubcommandName.preprocess.value,
         description="Sub-command to expand macro variables in parametrized Info.plist files. It's the Buck v2 equivalent of what `FindAndReplaceStep` and `InfoPlistSubstitution` do.",
@@ -53,7 +57,9 @@ def _create_preprocess_subparser(subparsers):
     )
 
 
-def _create_process_subparser(subparsers):
+def _create_process_subparser(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     parser = subparsers.add_parser(
         _SubcommandName.process.value,
         description="Sub-command to do the final processing of the Info.plist before it's copied to the application bundle. It's the Buck v2 equivalent of what `PlistProcessStep` does in v1.",
@@ -92,7 +98,7 @@ def _create_process_subparser(subparsers):
     )
 
 
-def _parse_args():
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Tool to process Info.plist file before it is placed into the bundle. It's the Buck v2 equivalent of what `AppleInfoPlist` build rule from v1 does."
     )
@@ -102,7 +108,7 @@ def _parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = _parse_args()
     if args.subcommand_name == _SubcommandName.preprocess:
         with ExitStack() as stack:

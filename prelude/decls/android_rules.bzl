@@ -116,9 +116,9 @@ android_aar = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "enable_relinker": attrs.bool(default = False),
+            "excluded_java_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
             "extra_kotlinc_arguments": attrs.list(attrs.string(), default = []),
-            "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "friend_paths": attrs.list(attrs.dep(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
             "javac": attrs.option(attrs.source(), default = None),
@@ -129,7 +129,7 @@ android_aar = prelude_rule(
             "manifest": attrs.option(attrs.source(), default = None),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
-            "native_library_merge_code_generator": attrs.option(attrs.dep(), default = None),
+            "native_library_merge_code_generator": attrs.option(attrs.exec_dep(), default = None),
             "native_library_merge_glue": attrs.option(attrs.dep(), default = None),
             "native_library_merge_localized_symbols": attrs.option(attrs.set(attrs.string(), sorted = True), default = None),
             "native_library_merge_map": attrs.option(attrs.dict(key = attrs.string(), value = attrs.list(attrs.regex()), sorted = False), default = None),
@@ -151,6 +151,7 @@ android_aar = prelude_rule(
             "srcs": attrs.list(attrs.source(), default = []),
             "target": attrs.option(attrs.string(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
+            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
     ),
 )
@@ -215,6 +216,7 @@ android_binary = prelude_rule(
             "duplicate_resource_whitelist": attrs.option(attrs.source(), default = None),
             "enable_relinker": attrs.bool(default = False),
             "exopackage_modes": attrs.list(attrs.enum(ExopackageMode), default = []),
+            "extra_no_compress_asset_extensions": attrs.list(attrs.string(), default = []),
             "extra_filtered_resources": attrs.list(attrs.string(), default = []),
             "field_ref_count_buffer_space": attrs.int(default = 0),
             "ignore_aapt_proguard_config": attrs.bool(default = False),
@@ -246,6 +248,7 @@ android_binary = prelude_rule(
             "package_asset_libraries": attrs.bool(default = False),
             "package_type": attrs.enum(PackageType, default = "debug"),
             "packaged_locales": attrs.list(attrs.string(), default = []),
+            "packaging_options": attrs.dict(key = attrs.string(), value = attrs.list(attrs.string()), default = {}),
             "post_filter_resources_cmd": attrs.option(attrs.arg(), default = None),
             "preprocess_java_classes_bash": attrs.option(attrs.arg(), default = None),
             "preprocess_java_classes_cmd": attrs.option(attrs.arg(), default = None),
@@ -261,6 +264,7 @@ android_binary = prelude_rule(
             "secondary_dex_weight_limit": attrs.option(attrs.int(), default = None),
             "skip_crunch_pngs": attrs.option(attrs.bool(), default = None),
             "skip_proguard": attrs.bool(default = False),
+            "strip_libraries": attrs.bool(default = True),
             "trim_resource_ids": attrs.bool(default = False),
             "use_split_dex": attrs.bool(default = False),
             "xz_compression_level": attrs.int(default = 4),
@@ -446,6 +450,7 @@ android_bundle = prelude_rule(
             "duplicate_resource_whitelist": attrs.option(attrs.source(), default = None),
             "enable_relinker": attrs.bool(default = False),
             "exopackage_modes": attrs.list(attrs.enum(ExopackageMode), default = []),
+            "extra_no_compress_asset_extensions": attrs.list(attrs.string(), default = []),
             "extra_filtered_resources": attrs.list(attrs.string(), default = []),
             "field_ref_count_buffer_space": attrs.int(default = 0),
             "ignore_aapt_proguard_config": attrs.bool(default = False),
@@ -477,6 +482,7 @@ android_bundle = prelude_rule(
             "package_asset_libraries": attrs.bool(default = False),
             "package_type": attrs.enum(PackageType, default = "debug"),
             "packaged_locales": attrs.list(attrs.string(), default = []),
+            "packaging_options": attrs.dict(key = attrs.string(), value = attrs.list(attrs.string()), default = {}),
             "post_filter_resources_cmd": attrs.option(attrs.arg(), default = None),
             "preprocess_java_classes_bash": attrs.option(attrs.arg(), default = None),
             "preprocess_java_classes_cmd": attrs.option(attrs.arg(), default = None),
@@ -574,6 +580,9 @@ android_instrumentation_apk = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "use_split_dex": attrs.option(attrs.bool(), default = None),
             "primary_dex_patterns": attrs.list(attrs.string(), default = []),
+            "preprocess_java_classes_bash": attrs.option(attrs.arg(), default = None),
+            "preprocess_java_classes_cmd": attrs.option(attrs.arg(), default = None),
+            "preprocess_java_classes_deps": attrs.list(attrs.dep(), default = []),
         }
     ),
 )
@@ -745,9 +754,9 @@ android_library = prelude_rule(
             "annotation_processors": attrs.list(attrs.string(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "friend_paths": attrs.list(attrs.dep(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
+            "jar_postprocessor": attrs.option(attrs.exec_dep(), default = None),
             "kotlin_compiler_plugins": attrs.dict(key = attrs.source(), value = attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), sorted = False, default = {}),
             "labels": attrs.list(attrs.string(), default = []),
             "language": attrs.option(attrs.enum(JvmLanguage), default = None),
@@ -763,6 +772,7 @@ android_library = prelude_rule(
             "runtime_deps": attrs.list(attrs.dep(), default = []),
             "source_abi_verification_mode": attrs.option(attrs.enum(SourceAbiVerificationMode), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
+            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
     ),
 )
@@ -912,6 +922,8 @@ android_prebuilt_aar = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps": attrs.list(attrs.dep(), default = []),
+            "desugar_deps": attrs.list(attrs.dep(), default = []),
+            "for_primary_apk": attrs.bool(default = False),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "maven_coords": attrs.option(attrs.string(), default = None),
@@ -1051,8 +1063,10 @@ apk_genrule = prelude_rule(
         {
             "apk": attrs.option(attrs.dep(), default = None, doc = """
                 The input `android_binary()` rule. The path to the APK can be
-                 accessed with the `$APK` shell variable.
+                 accessed with the `$APK` shell variable. Only one of `apk` or
+                 `aab` can be provided.
             """),
+            "keystore": attrs.option(attrs.dep(), default = None),
         } |
         genrule_common.srcs_arg() |
         genrule_common.cmd_arg() |
@@ -1061,13 +1075,21 @@ apk_genrule = prelude_rule(
         genrule_common.type_arg() |
         {
             "out": attrs.option(attrs.string(), default = None, doc = """
-                This argument only exists for historical reasons and it does not have any
-                 effect. It will be deprecated and removed in the future.
+                The name of the output file or directory. The complete path to this
+                 argument is provided to the shell command through
+                 the `OUT` environment variable. Only one of`out`
+                 or `outs` may be present.
+
+                For an apk_genrule the output should be a '.apk' or '.aab' file.
             """),
         } |
         genrule_common.environment_expansion_separator() |
         {
-            "aab": attrs.option(attrs.dep(), default = None),
+            "aab": attrs.option(attrs.dep(), default = None, doc = """
+                The input `android_binary()` rule. The path to the AAB can be
+                 accessed with the `$AAB` shell variable. Only one of `apk` or
+                 `aab` can be provided.
+            """),
             "cacheable": attrs.option(attrs.bool(), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -1290,6 +1312,7 @@ prebuilt_jar = prelude_rule(
                  `binary_jar` is already built, there should be nothing to
                  build, so this should be empty.
             """),
+            "desugar_deps": attrs.list(attrs.dep(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "generate_abi": attrs.bool(default = False),
@@ -1399,9 +1422,9 @@ robolectric_test = prelude_rule(
             "exported_deps": attrs.list(attrs.dep(), default = []),
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
-            "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "fork_mode": attrs.enum(ForkMode, default = "none"),
             "friend_paths": attrs.list(attrs.dep(), default = []),
+            "jar_postprocessor": attrs.option(attrs.exec_dep(), default = None),
             "java_version": attrs.option(attrs.string(), default = None),
             "java": attrs.option(attrs.dep(), default = None),
             "javac": attrs.option(attrs.source(), default = None),
@@ -1443,8 +1466,10 @@ robolectric_test = prelude_rule(
             "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
+            "used_as_dependency_deprecated_do_not_use": attrs.bool(default = False),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
+            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         } | jvm_common.k2() |
         re_test_common.test_args()
     ),

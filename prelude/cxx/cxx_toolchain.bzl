@@ -6,13 +6,15 @@
 # of this source tree.
 
 load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
-load("@prelude//cxx:cxx_toolchain_types.bzl", "AsCompilerInfo", "AsmCompilerInfo", "BinaryUtilitiesInfo", "CCompilerInfo", "CudaCompilerInfo", "CxxCompilerInfo", "CxxObjectFormat", "DepTrackingMode", "DistLtoToolsInfo", "HipCompilerInfo", "LinkerInfo", "PicBehavior", "ShlibInterfacesMode", "StripFlagsInfo", "cxx_toolchain_infos")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "AsCompilerInfo", "AsmCompilerInfo", "BinaryUtilitiesInfo", "CCompilerInfo", "CudaCompilerInfo", "CvtresCompilerInfo", "CxxCompilerInfo", "CxxObjectFormat", "DepTrackingMode", "DistLtoToolsInfo", "HipCompilerInfo", "LinkerInfo", "PicBehavior", "RcCompilerInfo", "ShlibInterfacesMode", "StripFlagsInfo", "cxx_toolchain_infos")
+load("@prelude//cxx:cxx_utility.bzl", "cxx_toolchain_allow_cache_upload_args")
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 load("@prelude//cxx:headers.bzl", "HeaderMode", "HeadersAsRawHeadersMode")
 load("@prelude//cxx:linker.bzl", "LINKERS", "is_pdb_generated")
+load("@prelude//cxx:target_sdk_version.bzl", "get_target_sdk_version")
 load("@prelude//linking:link_info.bzl", "LinkOrdering", "LinkStyle")
 load("@prelude//linking:lto.bzl", "LtoMode", "lto_compiler_flags")
-load("@prelude//utils:utils.bzl", "value_or")
+load("@prelude//utils:utils.bzl", "flatten", "value_or")
 load("@prelude//decls/cxx_rules.bzl", "cxx_rules")
 
 def cxx_toolchain_impl(ctx):
@@ -29,19 +31,21 @@ def cxx_toolchain_impl(ctx):
     c_info = CCompilerInfo(
         compiler = c_compiler,
         compiler_type = ctx.attrs.c_compiler_type or ctx.attrs.compiler_type,
-        compiler_flags = cmd_args(ctx.attrs.c_compiler_flags).add(c_lto_flags),
+        compiler_flags = cmd_args(ctx.attrs.c_compiler_flags, c_lto_flags),
         preprocessor = c_compiler,
         preprocessor_flags = cmd_args(ctx.attrs.c_preprocessor_flags),
         dep_files_processor = ctx.attrs._dep_files_processor[RunInfo],
+        allow_cache_upload = ctx.attrs.c_compiler_allow_cache_upload,
     )
     cxx_compiler = _get_maybe_wrapped_msvc(ctx.attrs.cxx_compiler[RunInfo], ctx.attrs.cxx_compiler_type or ctx.attrs.compiler_type, ctx.attrs._msvc_hermetic_exec[RunInfo])
     cxx_info = CxxCompilerInfo(
         compiler = cxx_compiler,
         compiler_type = ctx.attrs.cxx_compiler_type or ctx.attrs.compiler_type,
-        compiler_flags = cmd_args(ctx.attrs.cxx_compiler_flags).add(c_lto_flags),
+        compiler_flags = cmd_args(ctx.attrs.cxx_compiler_flags, c_lto_flags),
         preprocessor = cxx_compiler,
         preprocessor_flags = cmd_args(ctx.attrs.cxx_preprocessor_flags),
         dep_files_processor = ctx.attrs._dep_files_processor[RunInfo],
+        allow_cache_upload = ctx.attrs.cxx_compiler_allow_cache_upload,
     )
     asm_info = AsmCompilerInfo(
         compiler = ctx.attrs.asm_compiler[RunInfo],
@@ -70,6 +74,18 @@ def cxx_toolchain_impl(ctx):
         compiler_flags = cmd_args(ctx.attrs.hip_compiler_flags),
         preprocessor_flags = cmd_args(ctx.attrs.hip_preprocessor_flags),
     ) if ctx.attrs.hip_compiler else None
+    cvtres_info = CvtresCompilerInfo(
+        compiler = ctx.attrs.cvtres_compiler[RunInfo],
+        compiler_type = ctx.attrs.cvtres_compiler_type or ctx.attrs.compiler_type,
+        compiler_flags = cmd_args(ctx.attrs.cvtres_compiler_flags),
+        preprocessor_flags = cmd_args(ctx.attrs.cvtres_preprocessor_flags),
+    ) if ctx.attrs.cvtres_compiler else None
+    rc_info = RcCompilerInfo(
+        compiler = ctx.attrs.rc_compiler[RunInfo],
+        compiler_type = ctx.attrs.rc_compiler_type or ctx.attrs.compiler_type,
+        compiler_flags = cmd_args(ctx.attrs.rc_compiler_flags),
+        preprocessor_flags = cmd_args(ctx.attrs.rc_preprocessor_flags),
+    ) if ctx.attrs.rc_compiler else None
 
     linker_info = LinkerInfo(
         archiver = ctx.attrs.archiver[RunInfo],
@@ -83,11 +99,12 @@ def cxx_toolchain_impl(ctx):
         is_pdb_generated = is_pdb_generated(ctx.attrs.linker_type, ctx.attrs.linker_flags),
         link_binaries_locally = not value_or(ctx.attrs.cache_links, True),
         link_libraries_locally = False,
-        link_style = LinkStyle("static"),
-        link_weight = 1,
+        link_style = LinkStyle(ctx.attrs.link_style),
+        link_weight = ctx.attrs.link_weight,
         link_ordering = ctx.attrs.link_ordering,
         linker = ctx.attrs.linker[RunInfo],
-        linker_flags = cmd_args(ctx.attrs.linker_flags).add(c_lto_flags),
+        linker_flags = cmd_args(ctx.attrs.linker_flags, c_lto_flags),
+        post_linker_flags = cmd_args(ctx.attrs.post_linker_flags),
         lto_mode = lto_mode,
         mk_shlib_intf = ctx.attrs.shared_library_interface_producer,
         object_file_extension = ctx.attrs.object_file_extension or "o",
@@ -95,6 +112,8 @@ def cxx_toolchain_impl(ctx):
         independent_shlib_interface_linker_flags = ctx.attrs.shared_library_interface_flags,
         requires_archives = value_or(ctx.attrs.requires_archives, True),
         requires_objects = value_or(ctx.attrs.requires_objects, False),
+        sanitizer_runtime_enabled = ctx.attrs.sanitizer_runtime_enabled,
+        sanitizer_runtime_files = flatten([runtime_file[DefaultInfo].default_outputs for runtime_file in ctx.attrs.sanitizer_runtime_files]),
         supports_distributed_thinlto = ctx.attrs.supports_distributed_thinlto,
         shared_dep_runtime_ld_flags = ctx.attrs.shared_dep_runtime_ld_flags,
         shared_library_name_default_prefix = _get_shared_library_name_default_prefix(ctx),
@@ -105,12 +124,12 @@ def cxx_toolchain_impl(ctx):
         static_pic_dep_runtime_ld_flags = ctx.attrs.static_pic_dep_runtime_ld_flags,
         type = ctx.attrs.linker_type,
         use_archiver_flags = ctx.attrs.use_archiver_flags,
-        produce_interface_from_stub_shared_library = ctx.attrs.produce_interface_from_stub_shared_library,
     )
 
     utilities_info = BinaryUtilitiesInfo(
         nm = ctx.attrs.nm[RunInfo],
         objcopy = ctx.attrs.objcopy_for_shared_library_interface[RunInfo],
+        objdump = ctx.attrs.objdump[RunInfo] if ctx.attrs.objdump else None,
         ranlib = ctx.attrs.ranlib[RunInfo] if ctx.attrs.ranlib else None,
         strip = ctx.attrs.strip[RunInfo],
         dwp = None,
@@ -137,6 +156,8 @@ def cxx_toolchain_impl(ctx):
         as_compiler_info = as_info,
         cuda_compiler_info = cuda_info,
         hip_compiler_info = hip_info,
+        cvtres_compiler_info = cvtres_info,
+        rc_compiler_info = rc_info,
         header_mode = _get_header_mode(ctx),
         llvm_link = ctx.attrs.llvm_link[RunInfo] if ctx.attrs.llvm_link else None,
         object_format = CxxObjectFormat(object_format),
@@ -150,10 +171,13 @@ def cxx_toolchain_impl(ctx):
         # TODO(T138705365): Turn on dep files by default
         use_dep_files = value_or(ctx.attrs.use_dep_files, _get_default_use_dep_files(platform_name)),
         clang_remarks = ctx.attrs.clang_remarks,
+        gcno_files = value_or(ctx.attrs.gcno_files, False),
         clang_trace = value_or(ctx.attrs.clang_trace, False),
         cpp_dep_tracking_mode = DepTrackingMode(ctx.attrs.cpp_dep_tracking_mode),
         cuda_dep_tracking_mode = DepTrackingMode(ctx.attrs.cuda_dep_tracking_mode),
         dumpbin_toolchain_path = ctx.attrs._dumpbin_toolchain_path[DefaultInfo].default_outputs[0] if ctx.attrs._dumpbin_toolchain_path else None,
+        target_sdk_version = get_target_sdk_version(ctx),
+        dist_lto_tools_info = ctx.attrs.dist_lto_tools[DistLtoToolsInfo],
     )
 
 def cxx_toolchain_extra_attributes(is_toolchain_rule):
@@ -172,15 +196,22 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
         "cpp_dep_tracking_mode": attrs.enum(DepTrackingMode.values(), default = "makefile"),
         "cuda_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "cuda_dep_tracking_mode": attrs.enum(DepTrackingMode.values(), default = "makefile"),
+        "cvtres_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "cxx_compiler": dep_type(providers = [RunInfo]),
+        "dist_lto_tools": dep_type(providers = [DistLtoToolsInfo], default = "prelude//cxx/dist_lto/tools:dist_lto_tools"),
+        "gcno_files": attrs.bool(default = False),
         "generate_linker_maps": attrs.bool(default = False),
         "hip_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "link_ordering": attrs.enum(LinkOrdering.values(), default = "preorder"),
+        "link_weight": attrs.int(default = 1),
         "linker": dep_type(providers = [RunInfo]),
         "llvm_link": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "lto_mode": attrs.enum(LtoMode.values(), default = "none"),
+        # Darwin only: the minimum deployment target supported
+        "min_sdk_version": attrs.option(attrs.string(), default = None),
         "nm": dep_type(providers = [RunInfo]),
         "objcopy_for_shared_library_interface": dep_type(providers = [RunInfo]),
+        "objdump": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "object_format": attrs.enum(CxxObjectFormat.values(), default = "native"),
         "pic_behavior": attrs.enum(PicBehavior.values(), default = "supported"),
         # A placeholder tool that can be used to set up toolchain constraints.
@@ -190,19 +221,22 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
         # Used for resolving any 'platform_*' attributes.
         "platform_name": attrs.option(attrs.string(), default = None),
         "private_headers_symlinks_enabled": attrs.bool(default = True),
-        "produce_interface_from_stub_shared_library": attrs.bool(default = True),
         "public_headers_symlinks_enabled": attrs.bool(default = True),
         "ranlib": attrs.option(dep_type(providers = [RunInfo]), default = None),
+        "rc_compiler": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "requires_objects": attrs.bool(default = False),
+        "sanitizer_runtime_enabled": attrs.bool(default = False),
+        "sanitizer_runtime_files": attrs.set(attrs.dep(), sorted = True, default = []),  # Use `attrs.dep()` as it's not a tool, always propagate target platform
         "shared_library_interface_mode": attrs.enum(ShlibInterfacesMode.values(), default = "disabled"),
         "shared_library_interface_producer": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "split_debug_mode": attrs.enum(SplitDebugMode.values(), default = "none"),
         "strip": dep_type(providers = [RunInfo]),
         "supports_distributed_thinlto": attrs.bool(default = False),
+        # Darwin only: the deployment target to use for this build
+        "target_sdk_version": attrs.option(attrs.string(), default = None),
         "use_archiver_flags": attrs.bool(default = True),
         "use_dep_files": attrs.option(attrs.bool(), default = None),
         "_dep_files_processor": dep_type(providers = [RunInfo], default = "prelude//cxx/tools:dep_file_processor"),
-        "_dist_lto_tools": attrs.default_only(dep_type(providers = [DistLtoToolsInfo], default = "prelude//cxx/dist_lto/tools:dist_lto_tools")),
         # TODO(scottcao): Figure out a slightly better way to integrate this. In theory, this is only needed for clang toolchain.
         # If we were using msvc, we should be able to use dumpbin directly.
         "_dumpbin_toolchain_path": attrs.default_only(attrs.option(dep_type(providers = [DefaultInfo]), default = select({
@@ -220,7 +254,7 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
         # FIXME: prelude// should be standalone (not refer to fbsource//)
         "_mk_hmap": attrs.default_only(dep_type(providers = [RunInfo], default = "prelude//cxx/tools:hmap_wrapper")),
         "_msvc_hermetic_exec": attrs.default_only(dep_type(providers = [RunInfo], default = "prelude//windows/tools:msvc_hermetic_exec")),
-    }
+    } | cxx_toolchain_allow_cache_upload_args()
 
 def _cxx_toolchain_inheriting_target_platform_attrs():
     attrs = dict(cxx_rules.cxx_toolchain.attrs)

@@ -5,7 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//linking:link_info.bzl", "LinkStyle")
+load("@prelude//linking:link_info.bzl", "LinkStrategy")
+load("@prelude//rust:build_params.bzl", "MetadataKind")
 load("@prelude//rust:link_info.bzl", "RustLinkInfo")
 
 def materialize(ctx, target):
@@ -15,7 +16,7 @@ def materialize(ctx, target):
     # Ensures the srcs folder will be present
     return ctx.output.ensure(sources).abs_path()
 
-def _process_target_config(ctx, target, in_workspace):
+def _process_target_config(ctx, target, in_workspace, out_dir = None):
     # convert all source paths to absolute paths
     resolved_attrs = target.resolved_attrs_eager(ctx)
 
@@ -47,6 +48,12 @@ def _process_target_config(ctx, target, in_workspace):
     for test in resolved_attrs.tests:
         tests.append(test.raw_target())
 
+    # materialize a file containing the dynamic crate name
+    crate_dynamic = getattr(resolved_attrs, "crate_dynamic", None)
+    if crate_dynamic:
+        cratename_artifact = crate_dynamic.get(DefaultInfo).default_outputs[0]
+        crate_dynamic = ctx.output.ensure(cratename_artifact).abs_path()
+
     # copy over the absolute paths and raw targets into the output
     copy = {}
     attrs = target.attrs_eager()
@@ -61,6 +68,8 @@ def _process_target_config(ctx, target, in_workspace):
             copy["named_deps"] = named_deps
         elif k == "tests":
             copy["tests"] = tests
+        elif k == "crate_dynamic":
+            copy["crate_dynamic"] = crate_dynamic
         else:
             copy[k] = getattr(attrs, k)
 
@@ -70,6 +79,9 @@ def _process_target_config(ctx, target, in_workspace):
     copy["project_relative_buildfile"] = ctx.fs.project_rel_path(target.buildfile_path)
     copy["kind"] = target.rule_type
     copy["in_workspace"] = in_workspace
+    if out_dir:
+        copy["out_dir"] = out_dir
+
     return copy
 
 def cquery_deps(ctx, top_targets, workspaces, actions):
@@ -96,9 +108,29 @@ def cquery_deps(ctx, top_targets, workspaces, actions):
                 if thrift["mapped_src"] == "lib.rs":
                     cfg["crate_root"] = thrift["artifact"]
             out[target.label.raw_target()] = cfg
+        elif "generated_protobuf_library_rust" in labels.value():
+            protobuf_out_dir = materialize_generated_protobufs(ctx, target, actions, seen)
+            out[target.label.raw_target()] = _process_target_config(ctx, target, in_workspace, protobuf_out_dir)
         else:
             out[target.label.raw_target()] = _process_target_config(ctx, target, in_workspace)
     return out
+
+def materialize_generated_protobufs(ctx, target, actions, seen):
+    """If `target` has a dependency that generates code from protobufs,
+    materialize the generated code and return the path to the output directory.
+    """
+    prost_target = target.attrs_lazy().get("named_deps").value().get("generated_prost_target")
+    t = prost_target.raw_target()
+    analysis = ctx.analysis(t)
+    output = analysis.providers()[DefaultInfo].default_outputs[0]
+    outfile = "{}/{}/{}".format(t.cell, t.package, t.name)
+
+    if outfile in seen:
+        return None
+    seen[outfile] = ()
+
+    copied = ctx.output.ensure(actions.copy_file(outfile, output))
+    return copied.abs_path()
 
 def materialize_generated_thrift(ctx, target, actions, seen):
     mapped_srcs = target.attrs_lazy().get("mapped_srcs").value()
@@ -116,14 +148,16 @@ def materialize_generated_thrift(ctx, target, actions, seen):
         else:
             label = label.raw_target()
 
-        copied = actions.copy_file(outfile, artifacts.artifacts()[0])
-        copied = ctx.output.ensure(copied)
-        artifact = {
-            "artifact": copied.abs_path(),
-            "label": label,
-            "mapped_src": mapped_src,
-        }
-        out.append(artifact)
+        if len(artifacts.artifacts()) > 0:
+            copied = actions.copy_file(outfile, artifacts.artifacts()[0])
+            copied = ctx.output.ensure(copied)
+            artifact = {
+                "artifact": copied.abs_path(),
+                "label": label,
+                "mapped_src": mapped_src,
+            }
+            out.append(artifact)
+
         seen[outfile] = ()
     return out
 
@@ -138,7 +172,7 @@ def expand_proc_macros(ctx, targets):
         proc_macro = getattr(attrs, "proc_macro", False)
         if proc_macro:
             analysis = ctx.analysis(target)
-            rlib = analysis.providers()[RustLinkInfo].styles[LinkStyle("shared")].rlib
+            rlib = analysis.providers()[RustLinkInfo].strategies[LinkStrategy("shared")].outputs[MetadataKind("link")]
             label = target.label.raw_target()
             out[label] = {"actual": label, "dylib": ctx.output.ensure(rlib).abs_path()}
     return out
@@ -159,6 +193,9 @@ def expand_targets(ctx, targets):
         workspaces = t.attrs_lazy().get("_workspaces")
         if workspaces:
             for workspace in workspaces.value():
+                if not ctx.target_exists(str(workspace.raw_target())):
+                    continue
+
                 possible_workspaces.setdefault(workspace.raw_target(), []).append(label)
 
     active_workspaces = {}
@@ -197,9 +234,30 @@ def expand_and_resolve_impl(ctx):
         "resolved_deps": resolved_deps,
     })
 
+def resolve_owning_buildfile_impl(ctx):
+    owners = ctx.uquery().owner(ctx.cli_args.files)
+    out = {}
+    for owner in owners:
+        buildfile = "{}".format(owner.buildfile_path)
+        targets_in_buildfile = ctx.uquery().targets_in_buildfile(buildfile)
+        rust_targets = ctx.uquery().kind("^(rust_binary|rust_library|rust_test)$", targets_in_buildfile)
+        targets = []
+        for target in rust_targets:
+            targets.append(target.label)
+        out[buildfile] = targets
+
+    ctx.output.print_json(out)
+
 expand_and_resolve = bxl_main(
     impl = expand_and_resolve_impl,
     cli_args = {
         "targets": cli_args.list(cli_args.target_expr()),
+    },
+)
+
+resolve_owning_buildfile = bxl_main(
+    impl = resolve_owning_buildfile_impl,
+    cli_args = {
+        "files": cli_args.list(cli_args.string()),
     },
 )

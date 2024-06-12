@@ -264,8 +264,6 @@ def _generate_beam_artifacts(
         for src in src_artifacts
     }
 
-    _check_beam_uniqueness(beam_mapping, build_environment.beams)
-
     # dep files
     beam_deps = _get_deps_files(ctx, toolchain, anchor, src_artifacts, output_mapping)
 
@@ -287,7 +285,7 @@ def _generate_beam_artifacts(
         input_mapping = build_environment.input_mapping,
     )
 
-    dep_info_content = to_term_args({paths.basename(artifact): {"dep_file": dep_file, "path": artifact} for artifact, dep_file in updated_build_environment.deps_files.items()})
+    dep_info_content = to_term_args(_build_dep_info_data(updated_build_environment))
     dep_info_file = ctx.actions.write(_dep_info_name(toolchain), dep_info_content)
 
     for erl in src_artifacts:
@@ -295,13 +293,17 @@ def _generate_beam_artifacts(
 
     return updated_build_environment
 
-def _check_beam_uniqueness(
-        local_beams: ModuleArtifactMapping,
-        global_beams: ModuleArtifactMapping) -> None:
-    for module in local_beams:
-        if module in global_beams:
-            fail("duplicated modules found in build: {}".format([module]))
-    return None
+def _build_dep_info_data(build_environment: BuildEnvironment) -> dict[str, dict[str, Artifact | str]]:
+    """build input for dependency finalizer, this implements uniqueness checks for headers and beams"""
+    seen = {}
+    data = {}
+    for artifact, dep_file in build_environment.deps_files.items():
+        if paths.basename(artifact) in seen:
+            fail("conflicting artifacts found in build: {} and {}".format(seen[paths.basename(artifact)], artifact))
+        else:
+            seen[paths.basename(artifact)] = artifact
+            data[paths.basename(artifact)] = {"dep_file": dep_file, "path": artifact}
+    return data
 
 def _generate_chunk_artifacts(
         ctx: AnalysisContext,
@@ -334,7 +336,7 @@ def _generate_chunk_artifacts(
         input_mapping = build_environment.input_mapping,
     )
 
-    preprocess_modules = read_root_config("erlang", "edoc_preprocess", "").split()
+    preprocess_modules = toolchain.edoc_preprocess
     preprocess_all = "__all__" in preprocess_modules
 
     for erl in src_artifacts:
@@ -374,11 +376,22 @@ def _deps_key(anchor: Artifact, src: Artifact) -> str:
 def _get_deps_file(ctx: AnalysisContext, toolchain: Toolchain, src: Artifact) -> Artifact:
     dependency_analyzer = toolchain.dependency_analyzer
     dependency_json = ctx.actions.declare_output(_dep_file_name(toolchain, src))
-    escript = toolchain.otp_binaries.escript
+    erl = toolchain.otp_binaries.erl
 
     dependency_analyzer_cmd = cmd_args(
         [
-            escript,
+            erl,
+            "+A0",
+            "+S1:1",
+            "+sbtu",
+            "-mode",
+            "minimal",
+            "-noinput",
+            "-noshell",
+            "-run",
+            "escript",
+            "start",
+            "--",
             dependency_analyzer,
             src,
             dependency_json.as_output(),
@@ -412,7 +425,7 @@ def _build_xyrl(
         [
             erlc,
             "-o",
-            cmd_args(output.as_output()).parent(),
+            cmd_args(output.as_output(), parent = 1),
             xyrl,
         ],
     )
@@ -439,13 +452,24 @@ def _build_erl(
 
     final_dep_file = ctx.actions.declare_output(_dep_final_name(toolchain, src))
     finalize_deps_cmd = cmd_args(
-        toolchain.otp_binaries.escript,
+        toolchain.otp_binaries.erl,
+        "+A0",
+        "+S1:1",
+        "+sbtu",
+        "-mode",
+        "minimal",
+        "-noinput",
+        "-noshell",
+        "-run",
+        "escript",
+        "start",
+        "--",
         toolchain.dependency_finalizer,
         src,
         dep_info_file,
         final_dep_file.as_output(),
+        hidden = build_environment.deps_files.values(),
     )
-    finalize_deps_cmd.hidden(build_environment.deps_files.values())
     ctx.actions.run(
         finalize_deps_cmd,
         category = "dependency_finalizer",
@@ -464,12 +488,14 @@ def _build_erl(
                     _dependency_code_paths(build_environment),
                 ),
                 "-o",
-                cmd_args(outputs[output].as_output()).parent(),
+                cmd_args(outputs[output].as_output(), parent = 1),
                 src,
             ],
         )
-        erlc_cmd, mapping = _add_dependencies_to_args(artifacts, final_dep_file, erlc_cmd, build_environment)
-        erlc_cmd = _add_full_dependencies(erlc_cmd, build_environment)
+        deps_args, mapping = _dependencies_to_args(artifacts, final_dep_file, build_environment)
+        erlc_cmd.add(deps_args)
+        full_deps_args = _full_dependencies(build_environment)
+        erlc_cmd.add(full_deps_args)
         _run_with_env(
             ctx,
             toolchain,
@@ -480,7 +506,7 @@ def _build_erl(
             always_print_stderr = True,
         )
 
-    ctx.actions.dynamic_output(dynamic = [final_dep_file], inputs = [src], outputs = [output], f = dynamic_lambda)
+    ctx.actions.dynamic_output(dynamic = [final_dep_file], inputs = [src], outputs = [output.as_output()], f = dynamic_lambda)
     return None
 
 def _build_edoc(
@@ -504,7 +530,7 @@ def _build_edoc(
             "-pa",
             toolchain.utility_modules,
             "-o",
-            cmd_args(output.as_output()).parent(2),
+            cmd_args(output.as_output(), parent = 2),
         ],
     )
 
@@ -514,11 +540,14 @@ def _build_edoc(
     args = _erlc_dependency_args(_dependency_include_dirs(build_environment), [], False)
     eval_cmd.add(args)
 
+    eval_cmd_hidden = []
     for include in build_environment.includes.values():
-        eval_cmd.hidden(include)
+        eval_cmd_hidden.append(include)
 
     for include in build_environment.private_includes.values():
-        eval_cmd.hidden(include)
+        eval_cmd_hidden.append(include)
+
+    eval_cmd.add(cmd_args(hidden = eval_cmd_hidden))
 
     _run_with_env(
         ctx,
@@ -530,13 +559,14 @@ def _build_edoc(
     )
     return None
 
-def _add_dependencies_to_args(
+def _dependencies_to_args(
         artifacts,
         final_dep_file: Artifact,
-        args: cmd_args,
         build_environment: BuildEnvironment) -> (cmd_args, dict[str, (bool, [str, Artifact])]):
     """Add the transitive closure of all per-file Erlang dependencies as specified in the deps files to the `args` with .hidden.
     """
+    args_hidden = []
+
     input_mapping = {}
     deps = artifacts[final_dep_file].read_json()
 
@@ -588,30 +618,31 @@ def _add_dependencies_to_args(
         else:
             fail("unrecognized dependency type %s", (dep["type"]))
 
-        args.hidden(artifact)
+        args_hidden.append(artifact)
 
-    return args, input_mapping
+    return cmd_args(hidden = args_hidden), input_mapping
 
-def _add_full_dependencies(erlc_cmd: cmd_args, build_environment: BuildEnvironment) -> cmd_args:
+def _full_dependencies(build_environment: BuildEnvironment) -> cmd_args:
+    erlc_cmd_hidden = []
     for artifact in build_environment.full_dependencies:
-        erlc_cmd.hidden(artifact)
-    return erlc_cmd
+        erlc_cmd_hidden.append(artifact)
+    return cmd_args(hidden = erlc_cmd_hidden)
 
 def _dependency_include_dirs(build_environment: BuildEnvironment) -> list[cmd_args]:
     includes = [
-        cmd_args(include_dir_anchor).parent()
+        cmd_args(include_dir_anchor, parent = 1)
         for include_dir_anchor in build_environment.private_include_dir
     ]
 
     for include_dir_anchor in build_environment.include_dirs.values():
-        includes.append(cmd_args(include_dir_anchor).parent(3))
-        includes.append(cmd_args(include_dir_anchor).parent())
+        includes.append(cmd_args(include_dir_anchor, parent = 3))
+        includes.append(cmd_args(include_dir_anchor, parent = 1))
 
     return includes
 
 def _dependency_code_paths(build_environment: BuildEnvironment) -> list[cmd_args]:
     return [
-        cmd_args(ebin_dir_anchor).parent()
+        cmd_args(ebin_dir_anchor, parent = 1)
         for ebin_dir_anchor in build_environment.ebin_dirs.values()
     ]
 
@@ -624,7 +655,7 @@ def _erlc_dependency_args(
     # A: the whole string would get passed as a single argument, as if it was quoted in CLI e.g. '-I include_path'
     # ...which the escript cannot parse, as it expects two separate arguments, e.g. '-I' 'include_path'
 
-    args = cmd_args([])
+    args = cmd_args([], ignore_artifacts = True)
 
     # build -I options
     if path_in_arg:
@@ -643,8 +674,6 @@ def _erlc_dependency_args(
         for code_path in code_paths:
             args.add("-pa")
             args.add(code_path)
-
-    args.ignore_artifacts()
 
     return args
 
@@ -681,9 +710,9 @@ def _get_erl_opts(
     for parse_transform, (beam, resource_folder) in parse_transforms.items():
         args.add(
             "+{parse_transform, %s}" % (parse_transform,),
-            cmd_args(beam, format = "-pa{}").parent(),
+            cmd_args(beam, format = "-pa{}", parent = 1),
         )
-        args.hidden(resource_folder)
+        args.add(cmd_args(hidden = resource_folder))
 
     # add relevant compile_info manually
     args.add(cmd_args(
@@ -802,6 +831,43 @@ def _run_with_env(ctx: AnalysisContext, toolchain: Toolchain, *args, **kwargs):
     kwargs["env"] = env
     ctx.actions.run(*args, **kwargs)
 
+def _peek_private_includes(
+        ctx: AnalysisContext,
+        toolchain: Toolchain,
+        build_environment: BuildEnvironment,
+        dependencies: ErlAppDependencies,
+        force_peek: bool = False) -> BuildEnvironment:
+    # get mutable dict for private includes
+    new_private_includes = dict(build_environment.private_includes)
+    new_private_include_dir = list(build_environment.private_include_dir)
+
+    # get private deps from dependencies
+    for dep in dependencies.values():
+        if ErlangAppInfo in dep:
+            if dep[ErlangAppInfo].private_include_dir:
+                new_private_include_dir = new_private_include_dir + dep[ErlangAppInfo].private_include_dir[toolchain.name]
+                new_private_includes.update(dep[ErlangAppInfo].private_includes[toolchain.name])
+    if force_peek or ctx.attrs.peek_private_includes:
+        return BuildEnvironment(
+            private_includes = new_private_includes,
+            private_include_dir = new_private_include_dir,
+            # copied fields
+            includes = build_environment.includes,
+            beams = build_environment.beams,
+            priv_dirs = build_environment.priv_dirs,
+            include_dirs = build_environment.include_dirs,
+            ebin_dirs = build_environment.ebin_dirs,
+            deps_files = build_environment.deps_files,
+            app_files = build_environment.app_files,
+            full_dependencies = build_environment.full_dependencies,
+            app_includes = build_environment.app_includes,
+            app_beams = build_environment.app_beams,
+            app_chunks = build_environment.app_chunks,
+            input_mapping = build_environment.input_mapping,
+        )
+    else:
+        return build_environment
+
 # export
 
 erlang_build = struct(
@@ -822,5 +888,6 @@ erlang_build = struct(
         make_dir_anchor = _make_dir_anchor,
         build_dir = _build_dir,
         run_with_env = _run_with_env,
+        peek_private_includes = _peek_private_includes,
     ),
 )

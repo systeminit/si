@@ -12,7 +12,7 @@ main_module = "<MAIN_MODULE>"
 main_function = "<MAIN_FUNCTION>"
 modules_dir = "<MODULES_DIR>"
 native_libs_env_var = "<NATIVE_LIBS_ENV_VAR>"
-native_libs_dir = <NATIVE_LIBS_DIR>
+native_libs_dirs = <NATIVE_LIBS_DIRS>
 native_libs_preload_env_var = "<NATIVE_LIBS_PRELOAD_ENV_VAR>"
 native_libs_preload = <NATIVE_LIBS_PRELOAD>
 interpreter_flags = "<PYTHON_INTERPRETER_FLAGS>"
@@ -36,10 +36,19 @@ if platform.system() == "Windows" and not dirpath.startswith(unc_prefix):
 env_vals_to_restore = {}
 # Update the environment variable for the dynamic loader to the native
 # libraries location.
-if native_libs_dir is not None:
-    old_native_libs_dir = os.environ.get(native_libs_env_var)
-    os.environ[native_libs_env_var] = os.path.join(dirpath, native_libs_dir)
-    env_vals_to_restore[native_libs_env_var] = old_native_libs_dir
+if native_libs_dirs is not None:
+    old_native_libs_dirs = os.environ.get(native_libs_env_var)
+    os.environ[native_libs_env_var] = os.pathsep.join([
+        os.path.join(dirpath, native_libs_dir)
+        for native_libs_dir in native_libs_dirs
+    ])
+    env_vals_to_restore[native_libs_env_var] = old_native_libs_dirs
+if os.environ.get("PAR_APPEND_LD_LIBRARY_PATH") is not None:
+   os.environ[native_libs_env_var] = (
+      (os.environ[native_libs_env_var] + ":" + os.environ["PAR_APPEND_LD_LIBRARY_PATH"])
+      if os.environ.get(native_libs_env_var) is not None
+      else os.environ["PAR_APPEND_LD_LIBRARY_PATH"]
+   )
 
 # Update the environment variable for the dynamic loader to find libraries
 # to preload.
@@ -48,10 +57,24 @@ if native_libs_preload is not None:
     env_vals_to_restore[native_libs_preload_env_var] = old_native_libs_preload
 
     # On macos, preloaded libs are found via paths.
-    os.environ[native_libs_preload_env_var] = ":".join(
-        os.path.join(dirpath, native_libs_dir, l)
-        for l in native_libs_preload.split(":")
-    )
+    if platform.system() == "Darwin":
+        full_path_preloads = []
+        for lib in native_libs_preload:
+            for native_libs_dir in native_libs_dirs:
+                fpath = os.path.join(dirpath, native_libs_dir, lib)
+                if os.path.exists(fpath):
+                    full_path_preloads.append(fpath)
+                    break
+            else:
+                raise Exception(
+                    "cannot find preload lib {!r} in paths {!r}".format(
+                        lib,
+                        native_libs_dirs,
+                    ),
+                )
+        native_libs_preload = full_path_preloads
+
+    os.environ[native_libs_preload_env_var] = os.pathsep.join(native_libs_preload)
 
 <ENV>
 
@@ -98,6 +121,18 @@ def __run():
 
     restoreenv({env_vals_to_restore!r})
 
+    # On windows, adjust os.add_dll_directory and PATH (for `ctypes.util.find_library`)
+    # so that native libraries can be found by the dynamic linker or ctypes
+    if sys.platform.startswith("win"):
+        path = os.environ.get("PATH", "")
+        for native_libs_dir in {native_libs_dirs!r}:
+            d = os.path.join({dirpath!r}, native_libs_dir)
+            os.add_dll_directory(d)
+            if path and not path.endswith(os.pathsep):
+                path += os.pathsep
+            path += d
+        setenv("PATH", path)
+
     from <MAIN_RUNNER_MODULE> import <MAIN_RUNNER_FUNCTION> as run_as_main
     run_as_main({main_module!r}, {main_function!r})
 
@@ -142,6 +177,13 @@ for env in ("PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD",
 
 path = os.path.join(dirpath, modules_dir)
 os.environ["PYTHONPATH"] = path
+if "PAR_APPEND_PYTHONPATH" in os.environ:
+   os.environ["PYTHONPATH"] += ":" + os.environ["PAR_APPEND_PYTHONPATH"]
+
+# This environment variable is immediately unset on startup but will also appear
+# in e.g. `multiprocessing` workers, and so serves as an audit trail back to
+# the originating PAR (and can be read via e.g. `/proc/<pid>/environ`).
+os.environ["PAR_INVOKED_NAME_TAG"] = sys.argv[0]
 
 if platform.system() == "Windows":
     # exec on Windows is not true exec - there is only 'spawn' ('CreateProcess').

@@ -5,11 +5,13 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import cast, Dict, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
 from .assemble_bundle_types import BundleSpecItem, IncrementalContext
 from .incremental_state import IncrementalState, IncrementalStateItem
@@ -18,7 +20,7 @@ from .incremental_utils import (
     should_assemble_incrementally,
 )
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def assemble_bundle(
@@ -26,37 +28,30 @@ def assemble_bundle(
     bundle_path: Path,
     incremental_context: Optional[IncrementalContext],
     check_conflicts: bool,
+    versioned_if_macos: bool,
 ) -> Optional[List[IncrementalStateItem]]:
-    # It's possible to have the same spec multiple times as different
-    # apple_resource() targets can refer to the _same_ resource file.
-    #
-    # On RE, we're not allowed to overwrite files, so prevent doing
-    # identical file copies.
-    #
-    # Do not reorder spec items to achieve determinism.
-    # Rely on the fact that `dict` preserves key order.
-    deduplicated_spec = list(dict.fromkeys(spec))
-    # Force same sorting as in Buck1 for `SourcePathWithAppleBundleDestination`
-    # WARNING: This logic is tightly coupled with how spec filtering is done in `_filter_conflicting_paths` method during incremental bundling. Don't change unless you fully understand what is going on here.
-    deduplicated_spec.sort()
-
     incremental_result = None
     if incremental_context:
-        if should_assemble_incrementally(deduplicated_spec, incremental_context):
+        if should_assemble_incrementally(spec, incremental_context):
             incremental_result = _assemble_incrementally(
                 bundle_path,
-                deduplicated_spec,
+                spec,
                 incremental_context.metadata,
                 cast(IncrementalState, incremental_context.state),
                 check_conflicts,
+                versioned_if_macos,
             )
         else:
-            _assemble_non_incrementally(bundle_path, deduplicated_spec, check_conflicts)
+            _assemble_non_incrementally(
+                bundle_path, spec, check_conflicts, versioned_if_macos
+            )
             incremental_result = calculate_incremental_state(
-                deduplicated_spec, incremental_context.metadata
+                spec, incremental_context.metadata
             )
     else:
-        _assemble_non_incrementally(bundle_path, deduplicated_spec, check_conflicts)
+        _assemble_non_incrementally(
+            bundle_path, spec, check_conflicts, versioned_if_macos
+        )
 
     # External tooling (e.g., Xcode) might depend on the timestamp of the bundle
     bundle_path.touch()
@@ -71,14 +66,17 @@ def _cleanup_output(incremental: bool, path: Path) -> None:
 
 
 def _assemble_non_incrementally(
-    bundle_path: Path, spec: List[BundleSpecItem], check_conflicts: bool
+    bundle_path: Path,
+    spec: List[BundleSpecItem],
+    check_conflicts: bool,
+    versioned_if_macos: bool,
 ) -> None:
     logging.getLogger(__name__).info("Assembling bundle non-incrementally.")
     _cleanup_output(incremental=False, path=bundle_path)
 
-    copied_contents = {}
+    copied_contents: Dict[Path, str] = {}
 
-    def _copy(src, dst, **kwargs) -> None:
+    def _copy(src: str, dst: Path, **kwargs: Any) -> None:
         if check_conflicts:
             if dst in copied_contents:
                 raise RuntimeError(
@@ -88,11 +86,21 @@ def _assemble_non_incrementally(
         if check_conflicts:
             copied_contents[dst] = src
 
+    symlinks = set()
+
     for spec_item in spec:
         source_path = spec_item.src
         destination_path = bundle_path / spec_item.dst
 
         destination_path.parent.mkdir(parents=True, exist_ok=True)
+        if spec_item.dst.startswith("Versions/A") and versioned_if_macos:
+            parts = Path(spec_item.dst).parts
+            if len(parts) <= 2:
+                raise RuntimeError(
+                    "Versioned bundles cannot be created from a single copy directly to Versions/A"
+                )
+            symlinks.add(parts[2])
+
         if os.path.isdir(source_path):
             shutil.copytree(
                 source_path,
@@ -104,6 +112,16 @@ def _assemble_non_incrementally(
         else:
             _copy(source_path, destination_path)
 
+    _create_symlinks(symlinks, bundle_path)
+
+
+def _create_symlinks(symlinks: set[str], bundle_path: Path) -> None:
+    if symlinks and not Path.exists(bundle_path / "Versions/Current"):
+        os.symlink("A", bundle_path / "Versions/Current")
+    for dir_to_link in symlinks:
+        if not Path.exists(bundle_path / dir_to_link):
+            os.symlink("Versions/Current/" + dir_to_link, bundle_path / dir_to_link)
+
 
 def _assemble_incrementally(
     bundle_path: Path,
@@ -111,6 +129,7 @@ def _assemble_incrementally(
     action_metadata: Dict[Path, str],
     incremental_state: IncrementalState,
     check_conflicts: bool,
+    versioned_if_macos: bool,
 ) -> List[IncrementalStateItem]:
     logging.getLogger(__name__).info("Assembling bundle incrementally.")
     _cleanup_output(incremental=True, path=bundle_path)
@@ -135,6 +154,9 @@ def _assemble_incrementally(
         _check_path_conflicts(new_incremental_state)
     else:
         new_incremental_state = _filter_conflicting_paths(new_incremental_state)
+
+    new_symlinks = set()
+    versioned_subdir = Path("Versions/A")
 
     for item in new_incremental_state:
         # Added file might not be present in old result, need to check first.
@@ -161,6 +183,12 @@ def _assemble_incrementally(
             )
             project_relative_dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item.source, project_relative_dst, follow_symlinks=False)
+            if Path(dst).is_relative_to(versioned_subdir):
+                symlink = Path(dst).relative_to(versioned_subdir).parts[0]
+                new_symlinks.add(symlink)
+
+    if versioned_if_macos:
+        _create_symlinks(new_symlinks, bundle_path)
 
     for path in paths_to_delete:
         (bundle_path / path).unlink()
@@ -225,5 +253,8 @@ def _cleanup_empty_redundant_directories(
     new_directories = {
         p for item in new_state for p in item.destination_relative_to_bundle.parents
     }
+    versioned_subdir = Path("Versions/A")
     for redundant_directory in old_directories - new_directories:
         shutil.rmtree(bundle_path / redundant_directory, ignore_errors=True)
+        if redundant_directory.parent == versioned_subdir:
+            Path.unlink(bundle_path / redundant_directory.name)

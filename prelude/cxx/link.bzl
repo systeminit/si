@@ -34,6 +34,7 @@ load(
 )
 load(
     "@prelude//linking:lto.bzl",
+    "LtoMode",
     "get_split_debug_lto_info",
 )
 load("@prelude//linking:strip.bzl", "strip_object")
@@ -50,6 +51,7 @@ load(":cxx_context.bzl", "get_cxx_toolchain_info")
 load(
     ":cxx_link_utility.bzl",
     "cxx_link_cmd_parts",
+    "cxx_sanitizer_runtime_arguments",
     "generates_split_debug",
     "linker_map_args",
     "make_link_args",
@@ -75,13 +77,15 @@ CxxLinkResult = record(
     linked_object = LinkedObject,
     linker_map_data = [CxxLinkerMapData, None],
     link_execution_preference_info = LinkExecutionPreferenceInfo,
+    # A list of runtime shared libraries
+    sanitizer_runtime_files = field(list[Artifact]),
 )
 
 def link_external_debug_info(
         ctx: AnalysisContext,
         links: list[LinkArgs],
-        split_debug_output: [Artifact, None] = None,
-        pdb: [Artifact, None] = None) -> ArtifactTSet:
+        split_debug_output: Artifact | None = None,
+        pdb: Artifact | None = None) -> ArtifactTSet:
     external_debug_artifacts = []
 
     # When using LTO+split-dwarf, the link step will generate externally
@@ -130,8 +134,11 @@ def cxx_link_into(
         linker_map_data = None
 
     if linker_info.supports_distributed_thinlto and opts.enable_distributed_thinlto:
-        if not linker_info.requires_objects:
-            fail("Cannot use distributed thinlto if the cxx toolchain doesn't require_objects")
+        if not linker_info.lto_mode == LtoMode("thin"):
+            fail("Cannot use distributed thinlto if the cxx toolchain doesn't use thin-lto lto_mode")
+        sanitizer_runtime_args = cxx_sanitizer_runtime_arguments(ctx, cxx_toolchain_info, output)
+        if sanitizer_runtime_args.extra_link_args or sanitizer_runtime_args.sanitizer_runtime_files:
+            fail("Cannot use distributed thinlto with sanitizer runtime")
         exe = cxx_dist_link(
             ctx,
             opts.links,
@@ -148,6 +155,7 @@ def cxx_link_into(
             link_execution_preference_info = LinkExecutionPreferenceInfo(
                 preference = opts.link_execution_preference,
             ),
+            sanitizer_runtime_files = [],
         )
 
     if linker_info.generate_linker_maps:
@@ -155,8 +163,8 @@ def cxx_link_into(
     else:
         links_with_linker_map = opts.links
 
-    linker, toolchain_linker_flags = cxx_link_cmd_parts(cxx_toolchain_info)
-    all_link_args = cmd_args(toolchain_linker_flags)
+    link_cmd_parts = cxx_link_cmd_parts(cxx_toolchain_info)
+    all_link_args = cmd_args(link_cmd_parts.linker_flags)
     all_link_args.add(get_output_flags(linker_info.type, output))
 
     # Darwin LTO requires extra link outputs to preserve debug info
@@ -181,7 +189,6 @@ def cxx_link_into(
         links_with_linker_map,
         suffix = link_args_suffix,
         output_short_path = output.short_path,
-        is_shared = result_type.value == "shared_library",
         link_ordering = value_or(
             opts.link_ordering,
             # Fallback to toolchain default.
@@ -189,6 +196,12 @@ def cxx_link_into(
         ),
     )
     all_link_args.add(link_args_output.link_args)
+
+    # Sanitizer runtime args must appear at the end because it can affect
+    # behavior of Swift runtime loading when the app also has an embedded
+    # Swift runtime.
+    sanitizer_runtime_args = cxx_sanitizer_runtime_arguments(ctx, cxx_toolchain_info, output)
+    all_link_args.add(sanitizer_runtime_args.extra_link_args)
 
     bitcode_linkables = []
     for link_item in opts.links:
@@ -212,6 +225,8 @@ def cxx_link_into(
         pdb = link_args_output.pdb_artifact,
     )
 
+    all_link_args.add(link_cmd_parts.post_linker_flags)
+
     if linker_info.type == "windows":
         shell_quoted_args = cmd_args(all_link_args)
     else:
@@ -223,10 +238,14 @@ def cxx_link_into(
         allow_args = True,
     )
 
-    command = cmd_args(linker)
-    command.add(cmd_args(argfile, format = "@{}"))
-    command.hidden(link_args_output.hidden)
-    command.hidden(shell_quoted_args)
+    command = cmd_args(
+        link_cmd_parts.linker,
+        cmd_args(argfile, format = "@{}"),
+        hidden = [
+            link_args_output.hidden,
+            shell_quoted_args,
+        ],
+    )
     category = "cxx_link"
     if opts.category_suffix != None:
         category += "_" + opts.category_suffix
@@ -235,11 +254,13 @@ def cxx_link_into(
     # generate a DWO directory, so make sure we at least `mkdir` and empty
     # one to make v2/RE happy.
     if split_debug_output != None:
-        cmd = cmd_args(["/bin/sh", "-c"])
-        cmd.add(cmd_args(split_debug_output.as_output(), format = 'mkdir -p {}; "$@"'))
-        cmd.add('""').add(command)
-        cmd.hidden(command)
-        command = cmd
+        command = cmd_args(
+            "/bin/sh",
+            "-c",
+            cmd_args(split_debug_output.as_output(), format = 'mkdir -p {}; "$@"'),
+            '""',
+            command,
+        )
 
     link_execution_preference_info = LinkExecutionPreferenceInfo(
         preference = opts.link_execution_preference,
@@ -264,7 +285,7 @@ def cxx_link_into(
         strip_args = opts.strip_args_factory(ctx) if opts.strip_args_factory else cmd_args()
         output = strip_object(ctx, cxx_toolchain_info, output, strip_args, opts.category_suffix)
 
-    final_output = output if not (is_result_executable and cxx_use_bolt(ctx)) else bolt(ctx, output, opts.identifier)
+    final_output = output if not (is_result_executable and cxx_use_bolt(ctx)) else bolt(ctx, output, external_debug_info, opts.identifier)
     dwp_artifact = None
     if should_generate_dwp:
         # TODO(T110378144): Once we track split dwarf from compiles, we should
@@ -290,6 +311,7 @@ def cxx_link_into(
 
     linked_object = LinkedObject(
         output = final_output,
+        link_args = opts.links,
         bitcode_bundle = bitcode_artifact.artifact if bitcode_artifact else None,
         prebolt_output = output,
         unstripped_output = unstripped_output,
@@ -307,6 +329,7 @@ def cxx_link_into(
         linked_object = linked_object,
         linker_map_data = linker_map_data,
         link_execution_preference_info = link_execution_preference_info,
+        sanitizer_runtime_files = sanitizer_runtime_args.sanitizer_runtime_files,
     )
 
 _AnonLinkInfo = provider(fields = {
@@ -393,6 +416,10 @@ def _anon_cxx_link(
         split_debug_output = split_debug_output,
     )
 
+    # The anon target API doesn't allow us to return the list of artifacts for
+    # sanitizer runtime, so it has be computed here
+    sanitizer_runtime_args = cxx_sanitizer_runtime_arguments(ctx, cxx_toolchain, output)
+
     return CxxLinkResult(
         linked_object = LinkedObject(
             output = output,
@@ -404,6 +431,7 @@ def _anon_cxx_link(
         link_execution_preference_info = LinkExecutionPreferenceInfo(
             preference = LinkExecutionPreference("any"),
         ),
+        sanitizer_runtime_files = sanitizer_runtime_args.sanitizer_runtime_files,
     )
 
 def cxx_link(

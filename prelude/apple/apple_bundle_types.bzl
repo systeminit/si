@@ -15,6 +15,22 @@ AppleBundleType = enum(
     "appclip",
 )
 
+AppleBundleManifestLogFiles = record(
+    command_file = field(Artifact),
+    spec_file = field(Artifact),
+    log_file = field([Artifact, None], None),
+)
+
+AppleBundleManifest = record(
+    log_file_map = dict[Label, AppleBundleManifestLogFiles],
+)
+
+AppleBundleManifestInfo = provider(
+    fields = {
+        "manifest": provider_field(AppleBundleManifest),
+    },
+)
+
 # Provider flagging that result of the rule contains Apple bundle.
 # It might be copied into main bundle to appropriate place if rule
 # with this provider is a dependency of `apple_bundle`.
@@ -26,7 +42,7 @@ AppleBundleInfo = provider(
         "bundle_type": provider_field(AppleBundleType),
         # The name of the executable within the bundle.
         "binary_name": provider_field([str, None], default = None),
-        # If the bundle contains a Watch Extension executable, we have to update the packaging.
+        # If the bundle contains a Watch bundle, we have to update the packaging.
         # Similar to `is_watchos`, this might be omitted for certain types of bundles which don't depend on it.
         "contains_watchapp": provider_field([bool, None]),
         # By default, non-framework, non-appex binaries copy Swift libraries into the final
@@ -63,8 +79,6 @@ AppleBundleExtraOutputsInfo = provider(fields = {
 AppleBundleBinaryOutput = record(
     binary = field(Artifact),
     debuggable_info = field([AppleDebuggableInfo, None], None),
-    # In the case of watchkit, the `ctx.attrs.binary`'s not set, and we need to create a stub binary.
-    is_watchkit_stub_binary = field(bool, False),
 )
 
 AppleBundleTypeDefault = AppleBundleType("default")
@@ -74,4 +88,5 @@ AppleBundleTypeAppClip = AppleBundleType("appclip")
 # Represents the user-visible type which is distinct from the internal one (`AppleBundleType`)
 AppleBundleTypeAttributeType = enum(
     "appclip",
+    "watchapp",
 )

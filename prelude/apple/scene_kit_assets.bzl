@@ -24,7 +24,7 @@ def scene_kit_assets_impl(ctx: AnalysisContext) -> list[Provider]:
     )
     return [DefaultInfo(), graph]
 
-def compile_scene_kit_assets(ctx: AnalysisContext, specs: list[SceneKitAssetsSpec]) -> [Artifact, None]:
+def compile_scene_kit_assets(ctx: AnalysisContext, specs: list[SceneKitAssetsSpec]) -> Artifact | None:
     if len(specs) == 0:
         return None
 
@@ -50,7 +50,7 @@ def compile_scene_kit_assets(ctx: AnalysisContext, specs: list[SceneKitAssetsSpe
         ],
         allow_args = True,
     )
-    combined_command = cmd_args(["/bin/sh", wrapper_script]).hidden(copy_scene_kit_assets_cmds + [output.as_output()])
+    combined_command = cmd_args(["/bin/sh", wrapper_script], hidden = copy_scene_kit_assets_cmds + [output.as_output()])
     processing_options = get_bundle_resource_processing_options(ctx)
     ctx.actions.run(combined_command, prefer_local = processing_options.prefer_local, allow_cache_upload = processing_options.allow_cache_upload, category = "scene_kit_assets")
     return output

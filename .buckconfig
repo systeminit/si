@@ -1,4 +1,4 @@
-[repositories]
+[cells]
 root = .
 bxl = bxl
 prelude = prelude
@@ -6,7 +6,7 @@ prelude-si = prelude-si
 toolchains = toolchains
 none = none
 
-[repository_aliases]
+[cell_aliases]
 buck = none
 config = prelude
 fbcode = none

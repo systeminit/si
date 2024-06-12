@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import List, Optional, Union
@@ -23,9 +25,10 @@ class ICodesignCommandFactory(metaclass=ABCMeta):
 
 
 class DefaultCodesignCommandFactory(ICodesignCommandFactory):
-    _command_args = ["--force", "--sign"]
+    codesign_tool: Path
+    _command_args: List[str] = ["--force", "--sign"]
 
-    def __init__(self, codesign_tool: Optional[Path]):
+    def __init__(self, codesign_tool: Optional[Path]) -> None:
         self.codesign_tool = codesign_tool or Path("codesign")
 
     def codesign_command(
@@ -39,15 +42,18 @@ class DefaultCodesignCommandFactory(ICodesignCommandFactory):
         return (
             [self.codesign_tool]
             + DefaultCodesignCommandFactory._command_args
-            + codesign_args
             + [identity_fingerprint]
+            + codesign_args
             + entitlements_args
             + [path]
         )
 
 
 class DryRunCodesignCommandFactory(ICodesignCommandFactory):
-    def __init__(self, codesign_tool: Path):
+    codesign_tool: Path
+    codesign_on_copy_file_paths: Optional[List[Path]]
+
+    def __init__(self, codesign_tool: Path) -> None:
         self.codesign_tool = codesign_tool
         self.codesign_on_copy_file_paths = None
 
@@ -64,7 +70,8 @@ class DryRunCodesignCommandFactory(ICodesignCommandFactory):
         args = [path, "--identity", identity_fingerprint]
         if entitlements:
             args += ["--entitlements", entitlements] if entitlements else []
-        if self.codesign_on_copy_file_paths:
+        codesign_on_copy_file_paths = self.codesign_on_copy_file_paths
+        if codesign_on_copy_file_paths:
             args += ["--extra-paths-to-sign"]
-            args += self.codesign_on_copy_file_paths
+            args += codesign_on_copy_file_paths
         return [self.codesign_tool] + args

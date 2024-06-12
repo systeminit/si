@@ -41,7 +41,6 @@ load(
     "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "Linkage",
     "create_merged_link_info",
     "wrap_link_infos",
 )
@@ -60,6 +59,7 @@ load(
     "@prelude//linking:shared_libraries.bzl",
     "merge_shared_libraries",
 )
+load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
 load("@prelude//utils:expect.bzl", "expect")
@@ -119,6 +119,14 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
         use_soname = False,
         generate_providers = cxx_providers,
         generate_sub_targets = sub_targets,
+        compiler_flags = ctx.attrs.compiler_flags,
+        lang_compiler_flags = ctx.attrs.lang_compiler_flags,
+        platform_compiler_flags = ctx.attrs.platform_compiler_flags,
+        lang_platform_compiler_flags = ctx.attrs.lang_platform_compiler_flags,
+        preprocessor_flags = ctx.attrs.preprocessor_flags,
+        lang_preprocessor_flags = ctx.attrs.lang_preprocessor_flags,
+        platform_preprocessor_flags = ctx.attrs.platform_preprocessor_flags,
+        lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
     )
 
     cxx_library_info = cxx_library_parameterized(ctx, impl_params)
@@ -214,6 +222,7 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
             deps = [d.shared_library_info for d in link_deps],
         ),
         linkable_root_info = create_linkable_root(
+            label = ctx.label,
             link_infos = wrap_link_infos(
                 link_infos[LibOutputStyle("pic_archive")],
                 pre_flags = ctx.attrs.linker_flags,

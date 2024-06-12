@@ -1,10 +1,18 @@
-native.export_file(
+load("@prelude//utils:source_listing.bzl", "source_listing")
+
+oncall("build_infra")
+
+source_listing()
+
+prelude = native  # Avoid warnings and auto-formatters
+
+prelude.export_file(
     name = "_hmaptool",
     src = "hmaptool",
     mode = "reference",
 )
 
-native.command_alias(
+prelude.command_alias(
     name = "hmaptool",
     exe = ":_hmaptool",
     visibility = ["PUBLIC"],

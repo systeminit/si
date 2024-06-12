@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 from dataclasses import dataclass
 
 MH_MAGIC = 0xFEEDFACE
@@ -20,7 +22,7 @@ N_OSO = 0x66
 
 
 class MachO:
-    def __str__(self):
+    def __str__(self) -> str:
         props = {}
         for k, v in self.__dict__.items():
             props[k] = hex(v)
@@ -39,7 +41,7 @@ class MachOHeader(MachO):
     reserved: int
 
     @property
-    def is_valid(self):
+    def is_valid(self) -> bool:
         return self.magic in (MH_CIGAM_64, MH_MAGIC_64)
 
 

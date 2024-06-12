@@ -28,8 +28,8 @@
 ]).
 
 -export([
-    start_test_node/5,
     start_test_node/6,
+    start_test_node/7,
     cookie/0,
     generate_arg_tuple/2,
     project_root/0
@@ -143,7 +143,9 @@ run_test(
         suite_path = SuitePath,
         providers = Providers,
         suite = Suite,
-        erl_cmd = ErlCmd
+        erl_cmd = ErlCmd,
+        extra_flags = ExtraFlags,
+        common_app_env = CommonAppEnv
     } = _TestEnv,
     PortEpmd
 ) ->
@@ -152,12 +154,13 @@ run_test(
     SuiteFolder = filename:dirname(filename:absname(SuitePath)),
     CodePath = [SuiteFolder | Dependencies],
 
-    Args = build_run_args(OutputDir, Providers, Suite, TestSpecFile),
+    Args = build_run_args(OutputDir, Providers, Suite, TestSpecFile, CommonAppEnv),
 
     {ok, ProjectRoot} = file:get_cwd(),
 
     start_test_node(
         ErlCmd,
+        ExtraFlags,
         CodePath,
         ConfigFiles,
         OutputDir,
@@ -186,39 +189,72 @@ build_common_args(CodePath, ConfigFiles) ->
     OutputDir :: file:filename_all(),
     Providers :: [{module(), [term()]}],
     Suite :: module(),
-    TestSpecFile :: file:filename_all()
+    TestSpecFile :: file:filename_all(),
+    CommonAppEnv :: #{string() => string()}
 ) -> [string()].
-build_run_args(OutputDir, Providers, Suite, TestSpecFile) ->
-    lists:concat([
-        ["-run", "ct_executor", "run"],
-        generate_arg_tuple(output_dir, OutputDir),
-        generate_arg_tuple(providers, Providers),
-        generate_arg_tuple(suite, Suite),
-        ["ct_args"],
-        generate_arg_tuple(spec, TestSpecFile)
-    ]).
+build_run_args(OutputDir, Providers, Suite, TestSpecFile, CommonAppEnv) ->
+    lists:append(
+        [
+            ["-run", "ct_executor", "run"],
+            generate_arg_tuple(output_dir, OutputDir),
+            generate_arg_tuple(providers, Providers),
+            generate_arg_tuple(suite, Suite),
+            ["ct_args"],
+            generate_arg_tuple(spec, TestSpecFile),
+            common_app_env_args(CommonAppEnv)
+        ]
+    ).
+
+-spec common_app_env_args(Env :: #{string() => string()}) -> [string()].
+common_app_env_args(Env) ->
+    lists:append([["-common", Key, Value] || {Key, Value} <- maps:to_list(Env)]).
 
 -spec start_test_node(
     Erl :: string(),
+    ExtraFlags :: [string()],
     CodePath :: [file:filename_all()],
     ConfigFiles :: [file:filename_all()],
     OutputDir :: file:filename_all(),
     PortSettings :: port_settings()
 ) -> port().
-start_test_node(ErlCmd, CodePath, ConfigFiles, OutputDir, PortSettings0) ->
-    start_test_node(ErlCmd, CodePath, ConfigFiles, OutputDir, PortSettings0, false).
+start_test_node(
+    ErlCmd,
+    ExtraFlags,
+    CodePath,
+    ConfigFiles,
+    OutputDir,
+    PortSettings0
+) ->
+    start_test_node(
+        ErlCmd,
+        ExtraFlags,
+        CodePath,
+        ConfigFiles,
+        OutputDir,
+        PortSettings0,
+        false
+    ).
 
 -spec start_test_node(
     Erl :: string(),
+    ExtraFlags :: [string()],
     CodePath :: [file:filename_all()],
     ConfigFiles :: [file:filename_all()],
     OutputDir :: file:filename_all(),
     PortSettings :: port_settings(),
     ReplayIo :: boolean()
 ) -> port().
-start_test_node(ErlCmd, CodePath, ConfigFiles, OutputDir, PortSettings0, ReplayIo) ->
+start_test_node(
+    ErlCmd,
+    ExtraFlags,
+    CodePath,
+    ConfigFiles,
+    OutputDir,
+    PortSettings0,
+    ReplayIo
+) ->
     % split of args from Erl which can contain emulator flags
-    [_Executable | ExtraFlags] = string:split(ErlCmd, " ", all),
+    [_Executable | Flags] = string:split(ErlCmd, " ", all),
     % we ignore the executable we got, and use the erl command from the
     % toolchain that executes this code
     ErlExecutable = os:find_executable("erl"),
@@ -228,7 +264,7 @@ start_test_node(ErlCmd, CodePath, ConfigFiles, OutputDir, PortSettings0, ReplayI
 
     %% merge args, enc, cd settings
     LaunchArgs =
-        ExtraFlags ++
+        Flags ++ ExtraFlags ++
             build_common_args(CodePath, ConfigFiles) ++
             proplists:get_value(args, PortSettings0, []),
 

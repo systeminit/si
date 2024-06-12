@@ -5,13 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from .assemble_bundle_types import BundleSpecItem, IncrementalContext
-from .incremental_state import IncrementalStateItem
+from .incremental_state import CodesignedOnCopy, IncrementalStateItem
 
 FILES_TO_BE_IGNORED: Set[str] = {
     # Storage of Finder settings, which shouldn't be added when enumerating files from sources
@@ -28,6 +30,12 @@ def should_assemble_incrementally(
             "Decided not to assemble incrementally — no incremental state for previous build."
         )
         return False
+    if previous_run_state.versioned_if_macos != incremental_context.versioned_if_macos:
+        logging.getLogger(__name__).info(
+            "Decided not to assemble incrementally — current build and previous build have different versioned_if_macos settings."
+        )
+        return False
+
     previously_codesigned = previous_run_state.codesigned
     # If previously bundle was not code signed there should be no problems with code signing
     # currently in incremental mode. Existing binaries could be code signed "on
@@ -50,6 +58,12 @@ def should_assemble_incrementally(
             "Decided not to assemble incrementally — previous vs current builds have mismatching codesigning identities."
         )
         return False
+    # If previous codesign arguments are different from the current ones also perform non-incremental run.
+    if previous_run_state.codesign_arguments != incremental_context.codesign_arguments:
+        logging.getLogger(__name__).info(
+            "Decided not to assemble incrementally — previous vs current builds have mismatching codesigning arguments."
+        )
+        return False
     # If bundle from previous run was signed in a different configuration vs the current run (e.g. dry code signed while now regular code signing is required) perform non-incremental run.
     if (
         previous_run_state.codesign_configuration
@@ -62,29 +76,45 @@ def should_assemble_incrementally(
     # If there is an artifact that was code signed on copy in previous run which is
     # present in current run and not code signed on copy, we should perform
     # non-incremental run for simplicity and correctness reasons.
-    current_codesigned_on_copy_paths = {Path(i.dst) for i in spec if i.codesign_on_copy}
+    current_codesigned_on_copy_items = {
+        codesigned_on_copy_item(
+            path=Path(i.dst),
+            entitlements=(
+                Path(i.codesign_entitlements) if i.codesign_entitlements else None
+            ),
+            incremental_context=incremental_context,
+            codesign_flags_override=i.codesign_flags_override,
+        )
+        for i in spec
+        if i.codesign_on_copy
+    }
+
     codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build = _codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build(
-        set(previous_run_state.codesign_on_copy_paths),
+        previous_run_state.codesigned_on_copy,
         {Path(i.dst) for i in spec},
     )
     codesign_on_copy_paths_are_compatible = codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build.issubset(
-        current_codesigned_on_copy_paths
+        current_codesigned_on_copy_items
     )
     if not codesign_on_copy_paths_are_compatible:
         logging.getLogger(__name__).info(
-            f"Decided not to assemble incrementally — there is at least one artifact `{list(codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build - current_codesigned_on_copy_paths)[0]}` that was code signed on copy in previous build which is present in current run and not code signed on copy."
+            f"Decided not to assemble incrementally — there is at least one artifact `{list(codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build - current_codesigned_on_copy_items)[0]}` that was code signed on copy in previous build which is present in current run and not code signed on copy (or codesigned but with a different set of entitlements and flags)."
         )
     return codesign_on_copy_paths_are_compatible
 
 
 def _codesigned_on_copy_paths_from_previous_build_which_are_present_in_current_build(
-    previously_codesigned_on_copy_paths: Set[Path],
+    previously_codesigned_on_copy: List[CodesignedOnCopy],
     all_input_files: Set[Path],
-):
+) -> Set[CodesignedOnCopy]:
     all_input_files_and_directories = all_input_files | {
         i for file in all_input_files for i in file.parents
     }
-    return previously_codesigned_on_copy_paths & all_input_files_and_directories
+    return {
+        i
+        for i in previously_codesigned_on_copy
+        if i.path in all_input_files_and_directories
+    }
 
 
 def _get_new_digest(action_metadata: Dict[Path, str], path: Path) -> str:
@@ -111,7 +141,7 @@ def calculate_incremental_state(
     """
     result = []
     source_with_destination_files = _source_with_destination_files(spec)
-    for (src, dst) in source_with_destination_files:
+    for src, dst in source_with_destination_files:
         is_symlink = src.is_symlink()
         new_digest = _get_new_digest(action_metadata, src) if not is_symlink else None
         resolved_symlink = Path(os.readlink(src)) if is_symlink else None
@@ -165,3 +195,24 @@ def _list_directory_deterministically(directory: Path) -> List[Path]:
         # Sort in order for walk to be deterministic.
         dir_names.sort()
     return result
+
+
+def codesigned_on_copy_item(
+    path: Path,
+    entitlements: Optional[Path],
+    incremental_context: IncrementalContext,
+    codesign_flags_override: Optional[List[str]],
+) -> CodesignedOnCopy:
+    if entitlements is not None:
+        digest = incremental_context.metadata.get(entitlements)
+        if digest is None:
+            raise RuntimeError(
+                f"Expected digest for entitlements file path `{entitlements}` to be present in action metadata."
+            )
+    else:
+        digest = None
+    return CodesignedOnCopy(
+        path=path,
+        entitlements_digest=digest,
+        codesign_flags_override=codesign_flags_override,
+    )

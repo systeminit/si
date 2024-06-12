@@ -27,7 +27,10 @@ def get_product_name(ctx: AnalysisContext) -> str:
 def get_extension_attr(ctx: AnalysisContext) -> typing.Any:
     return ctx.attrs.extension
 
-def get_default_binary_dep(binary_deps: dict[str, Dependency]) -> [Dependency, None]:
+def get_default_binary_dep(binary_deps: [dict[str, Dependency], Dependency, None]) -> [Dependency, None]:
+    if not type(binary_deps) == "dict":
+        return binary_deps
+
     if len(binary_deps.items()) == 1:
         return binary_deps.values()[0]
 
@@ -39,20 +42,12 @@ def get_flattened_binary_deps(binary_deps: dict[str, Dependency]) -> list[Depend
 # Derives the effective deployment target for the bundle. It's
 # usually the deployment target of the binary if present,
 # otherwise it falls back to other values (see implementation).
-def get_bundle_min_target_version(ctx: AnalysisContext, binary: [Dependency, None]) -> str:
+def get_bundle_min_target_version(ctx: AnalysisContext, binary_or_binaries: [dict[str, Dependency], Dependency, None]) -> str:
+    binary = get_default_binary_dep(binary_or_binaries)
+
     binary_min_version = None
 
-    # Could be not set for e.g. watchOS bundles which have a stub
-    # binary that comes from the apple_toolchain(), not from the
-    # apple_bundle() itself (i.e., binary field will be None).
-    #
-    # TODO(T114147746): The top-level stub bundle for a watchOS app
-    # does not have the ability to set its deployment target via
-    # a binary (as that field is empty). If it contains asset
-    # catalogs (can it?), we need to use correct target version.
-    #
-    # The solution might to be support SDK version from
-    # Info.plist (T110378109).
+    # apple_xcuitest bundles do not have a binary
     if binary != None:
         min_version_info = binary[AppleMinDeploymentVersionInfo] if AppleMinDeploymentVersionInfo in binary else None
         if min_version_info != None:

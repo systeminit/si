@@ -91,6 +91,7 @@ ErlangToolchainInfo = provider(
         "dependency_finalizer": provider_field(typing.Any, default = None),
         # trampoline rerouting stdout to stderr
         "erlc_trampoline": provider_field(typing.Any, default = None),
+        "escript_trampoline": provider_field(typing.Any, default = None),
         # name to parse_transform artifacts mapping for core parse_transforms (that are always used) and
         # user defines ones
         "core_parse_transforms": provider_field(typing.Any, default = None),
@@ -106,6 +107,7 @@ ErlangToolchainInfo = provider(
         # edoc-generating escript
         "edoc": provider_field(typing.Any, default = None),
         "edoc_options": provider_field(typing.Any, default = None),
+        "edoc_preprocess": provider_field(list[str], default = []),
         # beams we need for various reasons
         "utility_modules": provider_field(typing.Any, default = None),
         # env to be set for toolchain invocations

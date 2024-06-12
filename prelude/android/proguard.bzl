@@ -12,11 +12,12 @@ load(
 )
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
 load("@prelude//java/utils:java_more_utils.bzl", "get_path_separator_for_exec_os")
+load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//utils:expect.bzl", "expect")
 
 ProguardOutput = record(
     jars_to_owners = dict[Artifact, TargetLabel],
-    proguard_configuration_output_file = [Artifact, None],
+    proguard_configuration_output_file = Artifact | None,
     proguard_mapping_output_file = Artifact,
     proguard_artifacts = list[Artifact],
     proguard_hidden_artifacts = list[Artifact],
@@ -28,9 +29,9 @@ def _get_proguard_command_line_args(
         proguard_configs: list[Artifact],
         additional_library_jars: list[Artifact],
         mapping: Artifact,
-        configuration: [Artifact, None],
-        seeds: [Artifact, None],
-        usage: [Artifact, None],
+        configuration: Artifact | None,
+        seeds: Artifact | None,
+        usage: Artifact | None,
         android_toolchain: AndroidToolchainInfo) -> (cmd_args, list[Artifact]):
     cmd = cmd_args()
     hidden = []
@@ -55,7 +56,7 @@ def _get_proguard_command_line_args(
     for jar_input, jar_output in input_jars_to_output_jars.items():
         cmd.add("-injars", jar_input, "-outjars", jar_output if jar_output == jar_input else jar_output.as_output())
 
-    library_jars = android_toolchain.android_bootclasspath + additional_library_jars
+    library_jars = android_toolchain.android_bootclasspath + android_toolchain.android_optional_jars + additional_library_jars
     cmd.add("-libraryjars")
     cmd.add(cmd_args(library_jars, delimiter = get_path_separator_for_exec_os(ctx)))
     hidden.extend(library_jars)
@@ -88,25 +89,40 @@ def run_proguard(
         "-jar",
         android_toolchain.proguard_jar,
     )
-    run_proguard_cmd.add(cmd_args(command_line_args_file, format = "@{}"))
-    run_proguard_cmd.hidden(command_line_args)
+    run_proguard_cmd.add(
+        cmd_args(command_line_args_file, format = "@{}", hidden = command_line_args),
+    )
 
     output_jars_file = ctx.actions.write("proguard/output_jars.txt", output_jars)
+
+    is_windows = hasattr(ctx.attrs, "_exec_os_type") and ctx.attrs._exec_os_type[OsLookup].platform == "windows"
 
     # Some proguard configs can propagate the "-dontobfuscate" flag which disables
     # obfuscation and prevents the mapping.txt and usage.txt file from being generated.
     # Scrub all jars emitted from proguard to make them deterministic.
-    sh_cmd = cmd_args([
-        "sh",
-        "-c",
-        "touch $1 && touch $2 && $3 && $4 --paths-to-scrub $5 --create-if-not-present",
-        "--",
-        mapping_file.as_output(),
-        usage_file.as_output(),
-        cmd_args(run_proguard_cmd, delimiter = " "),
-        cmd_args(ctx.attrs._java_toolchain[JavaToolchainInfo].zip_scrubber, delimiter = " "),
-        output_jars_file,
-    ])
+    if not is_windows:
+        sh_cmd = cmd_args([
+            "sh",
+            "-c",
+            "touch $1 && touch $2 && $3 && $4 --paths-to-scrub $5 --create-if-not-present",
+            "--",
+            mapping_file.as_output(),
+            usage_file.as_output(),
+            cmd_args(run_proguard_cmd, delimiter = " "),
+            cmd_args(ctx.attrs._java_toolchain[JavaToolchainInfo].zip_scrubber, delimiter = " "),
+            output_jars_file,
+        ])
+    else:
+        sh_cmd = cmd_args([
+            "cmd.exe",
+            "/c",
+            cmd_args([
+                cmd_args([mapping_file.as_output()], format = "echo. > {}"),
+                cmd_args([usage_file.as_output()], format = "echo. > {}"),
+                cmd_args(run_proguard_cmd, delimiter = " "),
+                cmd_args(ctx.attrs._java_toolchain[JavaToolchainInfo].zip_scrubber, "--paths-to-scrub", output_jars_file, "--create-if-not-present", delimiter = " "),
+            ], delimiter = " && "),
+        ])
 
     ctx.actions.run(sh_cmd, category = "run_proguard")
 
@@ -116,7 +132,7 @@ def get_proguard_output(
         ctx: AnalysisContext,
         input_jars: dict[Artifact, TargetLabel],
         java_packaging_deps: list[JavaPackagingDep],
-        aapt_generated_proguard_config: [Artifact, None],
+        aapt_generated_proguard_config: Artifact | None,
         additional_library_jars: list[Artifact]) -> ProguardOutput:
     proguard_configs = [packaging_dep.proguard_config for packaging_dep in java_packaging_deps if packaging_dep.proguard_config]
     if ctx.attrs.proguard_config:

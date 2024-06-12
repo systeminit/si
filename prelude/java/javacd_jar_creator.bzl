@@ -31,7 +31,6 @@ load(
     "OutputPaths",
     "TargetType",
     "add_java_7_8_bootclasspath",
-    "add_output_paths_to_cmd_args",
     "base_qualified_name",
     "declare_prefixed_output",
     "define_output_paths",
@@ -40,13 +39,14 @@ load(
     "generate_abi_jars",
     "get_abi_generation_mode",
     "get_compiling_deps_tset",
+    "output_paths_to_hidden_cmd_args",
     "prepare_cd_exe",
     "prepare_final_jar",
     "setup_dep_files",
 )
 load("@prelude//utils:expect.bzl", "expect")
 
-base_command_params = struct(
+_base_command_params = struct(
     withDownwardApi = True,
     spoolMode = "DIRECT_TO_JAR",
 )
@@ -57,13 +57,13 @@ def create_jar_artifact_javacd(
         abi_generation_mode: [AbiGenerationMode, None],
         java_toolchain: JavaToolchainInfo,
         label,
-        output: [Artifact, None],
+        output: Artifact | None,
         javac_tool: [typing.Any, None],
         srcs: list[Artifact],
         remove_classes: list[str],
         resources: list[Artifact],
         resources_root: [str, None],
-        manifest_file: [Artifact, None],
+        manifest_file: Artifact | None,
         annotation_processor_properties: AnnotationProcessorProperties,
         plugin_params: [PluginParams, None],
         source_level: int,
@@ -73,19 +73,17 @@ def create_jar_artifact_javacd(
         source_only_abi_deps: list[Dependency],
         extra_arguments: cmd_args,
         additional_classpath_entries: list[Artifact],
-        additional_compiled_srcs: [Artifact, None],
+        additional_compiled_srcs: Artifact | None,
         bootclasspath_entries: list[Artifact],
         is_building_android_binary: bool,
-        is_creating_subtarget: bool = False) -> JavaCompileOutputs:
+        is_creating_subtarget: bool = False,
+        debug_port: [int, None] = None) -> JavaCompileOutputs:
     if javac_tool != None:
         # TODO(cjhopman): We can probably handle this better. I think we should be able to just use the non-javacd path.
         fail("cannot set explicit javac on library when using javacd")
 
     actions = ctx.actions
     resources_map = get_resources_map(java_toolchain, label.package, resources, resources_root)
-
-    # TODO(cjhopman): Handle manifest file.
-    _ = manifest_file  # buildifier: disable=unused-variable
 
     bootclasspath_entries = add_java_7_8_bootclasspath(target_level, bootclasspath_entries, java_toolchain)
     abi_generation_mode = get_abi_generation_mode(abi_generation_mode, java_toolchain, srcs, annotation_processor_properties)
@@ -132,13 +130,14 @@ def create_jar_artifact_javacd(
             resources_map,
             annotation_processor_properties,
             plugin_params,
+            manifest_file,
             extra_arguments,
             source_only_abi_compiling_deps = [],
             track_class_usage = track_class_usage,
         )
 
         return struct(
-            baseCommandParams = base_command_params,
+            _baseCommandParams = _base_command_params,
             libraryJarCommand = struct(
                 baseJarCommand = base_jar_command,
                 libraryJarBaseCommand = struct(
@@ -171,11 +170,12 @@ def create_jar_artifact_javacd(
             resources_map,
             annotation_processor_properties,
             plugin_params,
+            manifest_file,
             extra_arguments,
             source_only_abi_compiling_deps = source_only_abi_compiling_deps,
             track_class_usage = track_class_usage,
         )
-        abi_params = encode_jar_params(remove_classes, output_paths)
+        abi_params = encode_jar_params(remove_classes, output_paths, manifest_file)
 
         abi_command = struct(
             baseJarCommand = base_jar_command,
@@ -183,7 +183,7 @@ def create_jar_artifact_javacd(
         )
 
         return struct(
-            baseCommandParams = base_command_params,
+            _baseCommandParams = _base_command_params,
             abiJarCommand = abi_command,
         )
 
@@ -195,9 +195,9 @@ def create_jar_artifact_javacd(
             qualified_name: str,
             output_paths: OutputPaths,
             classpath_jars_tag: ArtifactTag,
-            abi_dir: [Artifact, None],
+            abi_dir: Artifact | None,
             target_type: TargetType,
-            path_to_class_hashes: [Artifact, None],
+            path_to_class_hashes: Artifact | None,
             is_creating_subtarget: bool = False,
             source_only_abi_compiling_deps: list[JavaClasspathEntry] = []):
         proto = declare_prefixed_output(actions, actions_identifier, "jar_command.proto.json")
@@ -209,13 +209,14 @@ def create_jar_artifact_javacd(
         compiler = java_toolchain.javac[DefaultInfo].default_outputs[0]
         exe, local_only = prepare_cd_exe(
             qualified_name,
-            java = java_toolchain.java[RunInfo],
+            java = java_toolchain.graalvm_java[RunInfo] if java_toolchain.use_graalvm_java_for_javacd else java_toolchain.java[RunInfo],
             class_loader_bootstrapper = java_toolchain.class_loader_bootstrapper,
             compiler = compiler,
             main_class = java_toolchain.javacd_main_class,
             worker = java_toolchain.javacd_worker[WorkerInfo],
-            debug_port = java_toolchain.javacd_debug_port,
-            debug_target = java_toolchain.javacd_debug_target,
+            target_specified_debug_port = debug_port,
+            toolchain_specified_debug_port = java_toolchain.javacd_debug_port,
+            toolchain_specified_debug_target = java_toolchain.javacd_debug_target,
             extra_jvm_args = java_toolchain.javacd_jvm_args,
             extra_jvm_args_target = java_toolchain.javacd_jvm_args_target,
         )
@@ -245,7 +246,7 @@ def create_jar_artifact_javacd(
                 abi_dir.as_output(),
             )
 
-        args = add_output_paths_to_cmd_args(args, output_paths, path_to_class_hashes)
+        args.add(output_paths_to_hidden_cmd_args(output_paths, path_to_class_hashes))
 
         # TODO(cjhopman): make sure this works both locally and remote.
         event_pipe_out = declare_prefixed_output(actions, actions_identifier, "events.data")
@@ -284,10 +285,12 @@ def create_jar_artifact_javacd(
             category = "{}javacd_jar".format(category_prefix),
             identifier = actions_identifier or "",
             dep_files = dep_files,
+            allow_dep_file_cache_upload = False,
             exe = exe,
             local_only = local_only,
             low_pass_filter = False,
             weight = 2,
+            error_handler = java_toolchain.java_error_handler,
         )
 
     library_classpath_jars_tag = actions.artifact_tag()
@@ -304,7 +307,17 @@ def create_jar_artifact_javacd(
         path_to_class_hashes_out,
         is_creating_subtarget,
     )
-    final_jar = prepare_final_jar(actions, actions_identifier, output, output_paths, additional_compiled_srcs, java_toolchain.jar_builder)
+    jar_postprocessor = ctx.attrs.jar_postprocessor[RunInfo] if hasattr(ctx.attrs, "jar_postprocessor") and ctx.attrs.jar_postprocessor else None
+    final_jar_output = prepare_final_jar(
+        actions = actions,
+        actions_identifier = actions_identifier,
+        output = output,
+        output_paths = output_paths,
+        additional_compiled_srcs = additional_compiled_srcs,
+        jar_builder = java_toolchain.jar_builder,
+        jar_postprocessor = jar_postprocessor,
+    )
+
     if not is_creating_subtarget:
         class_abi, source_abi, source_only_abi, classpath_abi, classpath_abi_dir = generate_abi_jars(
             actions,
@@ -314,7 +327,7 @@ def create_jar_artifact_javacd(
             additional_compiled_srcs,
             is_building_android_binary,
             java_toolchain.class_abi_generator,
-            final_jar,
+            final_jar_output.final_jar,
             compiling_deps_tset,
             source_only_abi_deps,
             class_abi_jar = class_abi_jar,
@@ -324,7 +337,8 @@ def create_jar_artifact_javacd(
         )
 
         result = make_compile_outputs(
-            full_library = final_jar,
+            full_library = final_jar_output.final_jar,
+            preprocessed_library = final_jar_output.preprocessed_jar,
             class_abi = class_abi,
             source_abi = source_abi,
             source_only_abi = source_only_abi,
@@ -335,7 +349,8 @@ def create_jar_artifact_javacd(
         )
     else:
         result = make_compile_outputs(
-            full_library = final_jar,
+            full_library = final_jar_output.final_jar,
+            preprocessed_library = final_jar_output.preprocessed_jar,
             required_for_source_only_abi = required_for_source_only_abi,
             annotation_processor_output = output_paths.annotations,
         )

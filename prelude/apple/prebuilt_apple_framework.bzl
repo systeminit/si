@@ -9,6 +9,7 @@ load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 load(
     "@prelude//cxx:cxx_library_utility.bzl",
     "cxx_attr_exported_linker_flags",
+    "cxx_attr_preferred_linkage",
     "cxx_platform_supported",
 )
 load(
@@ -27,7 +28,6 @@ load(
     "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "Linkage",
     "create_merged_link_info",
 )
 load(
@@ -63,7 +63,7 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
         inherited_pp_info = cxx_inherited_preprocessor_infos(ctx.attrs.deps)
         providers.append(cxx_merge_cpreprocessors(
             ctx,
-            [CPreprocessor(relative_args = CPreprocessorArgs(args = ["-F", framework_dir]))],
+            [CPreprocessor(args = CPreprocessorArgs(args = ["-F", framework_dir]))],
             inherited_pp_info,
         ))
 
@@ -78,10 +78,12 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
             name = framework_name,
             pre_flags = args,
         )
+        link_info = LinkInfos(default = link)
+
         providers.append(create_merged_link_info(
             ctx,
             get_cxx_toolchain_info(ctx).pic_behavior,
-            {output_style: LinkInfos(default = link) for output_style in LibOutputStyle},
+            {output_style: link_info for output_style in LibOutputStyle},
         ))
 
         # Create, augment and provide the linkable graph.
@@ -91,8 +93,8 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
                 ctx,
                 linkable_node = create_linkable_node(
                     ctx,
-                    preferred_linkage = Linkage("shared"),
-                    link_infos = {LibOutputStyle("shared_lib"): LinkInfos(default = link)},
+                    preferred_linkage = cxx_attr_preferred_linkage(ctx),
+                    link_infos = {output_style: link_info for output_style in LibOutputStyle},
                     # TODO(cjhopman): this should be set to non-None
                     default_soname = None,
                 ),

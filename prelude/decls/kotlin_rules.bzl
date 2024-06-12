@@ -178,9 +178,9 @@ kotlin_library = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "extra_arguments": attrs.list(attrs.string(), default = []),
-            "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
             "javac": attrs.option(attrs.source(), default = None),
+            "jar_postprocessor": attrs.option(attrs.exec_dep(), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
             "manifest_file": attrs.option(attrs.source(), default = None),
             "maven_coords": attrs.option(attrs.string(), default = None),
@@ -195,6 +195,7 @@ kotlin_library = prelude_rule(
             "source_only_abi_deps": attrs.list(attrs.dep(), default = []),
             "target": attrs.option(attrs.string(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
+            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
     ),
 )
@@ -273,7 +274,6 @@ kotlin_test = prelude_rule(
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
             "extra_kotlinc_arguments": attrs.list(attrs.string(), default = []),
-            "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "friend_paths": attrs.list(attrs.dep(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
             "java": attrs.option(attrs.dep(), default = None),
@@ -300,6 +300,7 @@ kotlin_test = prelude_rule(
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None),
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
+            "_wip_java_plugin_arguments": attrs.dict(attrs.label(), attrs.list(attrs.string()), default = {}),
         }
     ),
 )

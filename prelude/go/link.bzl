@@ -32,11 +32,11 @@ load(
 load(
     ":packages.bzl",
     "GoPkg",  # @Unused used as type
+    "make_importcfg",
     "merge_pkgs",
     "pkg_artifacts",
-    "stdlib_pkg_artifacts",
 )
-load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_cmd_args")
+load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_env_vars")
 
 # Provider wrapping packages used for linking.
 GoPkgLinkInfo = provider(fields = {
@@ -57,14 +57,6 @@ def _build_mode_param(mode: GoBuildMode) -> str:
 
 def get_inherited_link_pkgs(deps: list[Dependency]) -> dict[str, GoPkg]:
     return merge_pkgs([d[GoPkgLinkInfo].pkgs for d in deps if GoPkgLinkInfo in d])
-
-def is_any_dep_cgo(deps: list[Dependency]) -> bool:
-    for d in deps:
-        if GoPkgLinkInfo in d:
-            for pkg in d[GoPkgLinkInfo].pkgs.values():
-                if pkg.cgo:
-                    return True
-    return False
 
 # TODO(cjhopman): Is link_style a LibOutputStyle or a LinkStrategy here? Based
 # on returning an empty thing for link_style != shared, it seems likely its
@@ -87,12 +79,10 @@ def _process_shared_dependencies(
         ctx.actions,
         deps = filter(None, map_idx(SharedLibraryInfo, deps)),
     )
-    shared_libs = {}
-    for name, shared_lib in traverse_shared_library_info(shlib_info).items():
-        shared_libs[name] = shared_lib.lib
+    shared_libs = traverse_shared_library_info(shlib_info)
 
     return executable_shared_lib_arguments(
-        ctx.actions,
+        ctx,
         ctx.attrs._go_toolchain[GoToolchainInfo].cxx_toolchain_for_linking,
         artifact,
         shared_libs,
@@ -108,7 +98,9 @@ def link(
         link_style: LinkStyle = LinkStyle("static"),
         linker_flags: list[typing.Any] = [],
         external_linker_flags: list[typing.Any] = [],
-        shared: bool = False):
+        shared: bool = False,
+        race: bool = False,
+        asan: bool = False):
     go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
     if go_toolchain.env_go_os == "windows":
         executable_extension = ".exe"
@@ -119,35 +111,30 @@ def link(
     file_extension = shared_extension if build_mode == GoBuildMode("c_shared") else executable_extension
     output = ctx.actions.declare_output(ctx.label.name + file_extension)
 
-    cmd = get_toolchain_cmd_args(go_toolchain)
+    cmd = cmd_args()
 
     cmd.add(go_toolchain.linker)
-    if shared:
-        cmd.add(go_toolchain.linker_flags_shared)
-    else:
-        cmd.add(go_toolchain.linker_flags_static)
+    cmd.add(go_toolchain.linker_flags)
 
     cmd.add("-o", output.as_output())
     cmd.add("-buildmode=" + _build_mode_param(build_mode))
     cmd.add("-buildid=")  # Setting to a static buildid helps make the binary reproducible.
 
+    if race:
+        cmd.add("-race")
+
+    if asan:
+        cmd.add("-asan")
+
     # Add inherited Go pkgs to library search path.
     all_pkgs = merge_pkgs([
         pkgs,
-        pkg_artifacts(get_inherited_link_pkgs(deps), shared = shared),
-        stdlib_pkg_artifacts(go_toolchain, shared = shared),
+        pkg_artifacts(get_inherited_link_pkgs(deps)),
     ])
 
-    importcfg_content = []
-    for name_, pkg_ in all_pkgs.items():
-        # Hack: we use cmd_args get "artifact" valid path and write it to a file.
-        importcfg_content.append(cmd_args("packagefile ", name_, "=", pkg_, delimiter = ""))
-
-    importcfg = ctx.actions.declare_output("importcfg")
-    ctx.actions.write(importcfg.as_output(), importcfg_content)
+    importcfg = make_importcfg(ctx, "", all_pkgs, with_importmap = False)
 
     cmd.add("-importcfg", importcfg)
-    cmd.hidden(all_pkgs.values())
 
     executable_args = _process_shared_dependencies(ctx, output, deps, link_style)
 
@@ -156,15 +143,15 @@ def link(
             link_mode = "external"
         elif shared:
             link_mode = "external"
-        elif is_any_dep_cgo(deps):
-            link_mode = "external"
-        else:
-            link_mode = "internal"
-    cmd.add("-linkmode", link_mode)
 
-    if link_mode == "external":
+    if link_mode != None:
+        cmd.add("-linkmode", link_mode)
+
+    cxx_toolchain = go_toolchain.cxx_toolchain_for_linking
+    if cxx_toolchain == None and link_mode == "external":
+        fail("cxx_toolchain required for link_mode='external'")
+    if cxx_toolchain != None:
         is_win = ctx.attrs._exec_os_type[OsLookup].platform == "windows"
-        cxx_toolchain = go_toolchain.cxx_toolchain_for_linking
 
         # Gather external link args from deps.
         ext_links = get_link_args_for_strategy(ctx, cxx_inherited_link_info(deps), to_link_strategy(link_style))
@@ -173,21 +160,18 @@ def link(
             cxx_toolchain,
             [ext_links],
         )
-        ext_link_args = cmd_args()
+        ext_link_args = cmd_args(hidden = ext_link_args_output.hidden)
         ext_link_args.add(cmd_args(executable_args.extra_link_args, quote = "shell"))
         ext_link_args.add(external_linker_flags)
         ext_link_args.add(ext_link_args_output.link_args)
-        ext_link_args.hidden(ext_link_args_output.hidden)
 
         # Delegate to C++ linker...
         # TODO: It feels a bit inefficient to generate a wrapper file for every
         # link.  Is there some way to etract the first arg of `RunInfo`?  Or maybe
-        # we can generate te platform-specific stuff once and re-use?
+        # we can generate the platform-specific stuff once and re-use?
         cxx_link_cmd = cmd_args(
             [
                 cxx_toolchain.linker_info.linker,
-                cxx_toolchain.linker_info.linker_flags,
-                go_toolchain.external_linker_flags,
                 ext_link_args,
                 "%*" if is_win else "\"$@\"",
             ],
@@ -199,12 +183,20 @@ def link(
             allow_args = True,
             is_executable = True,
         )
-        cmd.add("-extld", linker_wrapper).hidden(cxx_link_cmd)
+        cmd.add("-extld", linker_wrapper, cmd_args(hidden = cxx_link_cmd))
+        cmd.add("-extldflags", cmd_args(
+            cxx_toolchain.linker_info.linker_flags,
+            go_toolchain.external_linker_flags,
+            delimiter = " ",
+            quote = "shell",
+        ))
 
     cmd.add(linker_flags)
 
     cmd.add(main)
 
-    ctx.actions.run(cmd, category = "go_link")
+    env = get_toolchain_env_vars(go_toolchain)
+
+    ctx.actions.run(cmd, env = env, category = "go_link")
 
     return (output, executable_args.runtime_files, executable_args.external_debug_info)

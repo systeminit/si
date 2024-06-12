@@ -5,8 +5,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import datetime
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, cast, Dict, List, Optional, Tuple
 
@@ -25,7 +28,7 @@ from .provisioning_profile_diagnostics import (
 )
 from .provisioning_profile_metadata import ProvisioningProfileMetadata
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CodeSignProvisioningError(Exception):
@@ -45,8 +48,8 @@ def _parse_team_id_from_entitlements(
 
 def _matches_or_array_is_subset_of(
     entitlement_name: str,
-    expected_value: Any,
-    actual_value: Any,
+    expected_value: object,
+    actual_value: object,
     platform: ApplePlatform,
 ) -> bool:
     if expected_value is None:
@@ -98,7 +101,7 @@ def _check_entitlements_match(
 ) -> Tuple[bool, Optional[EntitlementsMismatch]]:
     if expected_entitlements is None:
         return (True, None)
-    for (key, value) in expected_entitlements.items():
+    for key, value in expected_entitlements.items():
         profile_entitlement = profile.entitlements.get(key)
         if (key not in _IGNORE_MISMATCH_ENTITLEMENTS_KEYS) and (
             not _matches_or_array_is_subset_of(
@@ -133,6 +136,33 @@ def _check_developer_certificates_match(
     )
 
 
+def _make_multiple_matching_profiles_message(
+    profiles: list[ProvisioningProfileMetadata],
+    strict_search: bool,
+) -> str:
+    messages = [f"Found MULTIPLE matching profiles: {len(profiles)}"]
+    messages += [
+        f"    Matching Profile = UUID:{profile.uuid}, file path: {profile.file_path}"
+        for profile in profiles
+    ]
+
+    if strict_search:
+        messages += [
+            "Strict provisioning profile search is ENABLED, build will FAIL due to ambiguous provisioning profile search results.",
+            "To resolve the problem, ensure only a single profile matches.",
+            "To unblock, you have two options:",
+            "Option 1: Disable strict provisioning profile search for the targets failing to build.",
+            "    If the target failing to build is an `apple_bundle()`, set the `strict_provisioning_profile_search` attribute to `False`.",
+            "    If the target failing to build is produced by `ios_binary()`, set the `bundle_strict_provisioning_profile_search` attribute to `False`.",
+            "    You can commit such a change, so that the issue can be investigated without blocking other developers.",
+            "    NB: This is a TEMPORARY WORKAROUND, as it only disables the strict checking, it does not resolve the ambiguity.",
+            "Option 2: Pass `--config apple.strict_provisioning_profile_search=false` as part of your build command.",
+            "    DO NOT COMMIT such a change by adding this to any CI configs.",
+        ]
+
+    return "\n".join(messages)
+
+
 @dataclass
 class SelectedProvisioningProfileInfo:
     profile: ProvisioningProfileMetadata
@@ -146,6 +176,7 @@ def select_best_provisioning_profile(
     provisioning_profiles: List[ProvisioningProfileMetadata],
     entitlements: Optional[Dict[str, Any]],
     platform: ApplePlatform,
+    strict_search: bool,
 ) -> Tuple[
     Optional[SelectedProvisioningProfileInfo], List[IProvisioningProfileDiagnostics]
 ]:
@@ -170,13 +201,15 @@ def select_best_provisioning_profile(
     result = None
 
     # Used for error messages
-    diagnostics = []
+    diagnostics: List[IProvisioningProfileDiagnostics] = []
 
     def log_mismatched_profile(mismatch: IProvisioningProfileDiagnostics) -> None:
         diagnostics.append(mismatch)
         _LOGGER.info(
             f"Skipping provisioning profile `{mismatch.profile.file_path.name}`: {mismatch.log_message()}"
         )
+
+    profiles_for_match_length = defaultdict(list)
 
     for profile in provisioning_profiles:
         app_id = profile.get_app_id()
@@ -245,8 +278,41 @@ def select_best_provisioning_profile(
             log_mismatched_profile(cast(DeveloperCertificateMismatch, mismatch))
             continue
 
+        _LOGGER.info(
+            f"Matching provisioning profile `{profile.file_path.name}` with score {current_match_length}"
+        )
+
+        profiles_for_match_length[current_match_length] += [profile]
+
         if current_match_length > best_match_length:
             best_match_length = current_match_length
             result = SelectedProvisioningProfileInfo(profile, certificate)
+
+    all_matching_profiles = (
+        profiles_for_match_length[best_match_length] if result else []
+    )
+    if len(all_matching_profiles) > 1:
+        multiple_profiles_message = _make_multiple_matching_profiles_message(
+            all_matching_profiles,
+            strict_search,
+        )
+        _LOGGER.info(multiple_profiles_message)
+        if strict_search:
+            raise CodeSignProvisioningError(multiple_profiles_message)
+
+    if result:
+        _LOGGER.info(
+            (
+                f"Found matching provisioning profile and identity\n"
+                f"  Selected Identity: {result.identity}\n"
+                f"  Provisioning Profile: `{result.profile.file_path.name}`\n"
+                f"    UUID: {result.profile.uuid}\n"
+                f"    File: {result.profile.file_path}\n"
+                f"    Expiration: {result.profile.expiration_date}\n"
+                f"    Platforms: {result.profile.platforms}\n"
+                f"    Fingerprints: {result.profile.developer_certificate_fingerprints}\n"
+                f"    Entitlements: {result.profile.entitlements}"
+            )
+        )
 
     return result, diagnostics

@@ -9,8 +9,8 @@
 
 load(
     "@prelude//linking:link_info.bzl",
-    "LinkStyle",
-    "Linkage",  # @unused Used as a type
+    "LibOutputStyle",
+    "LinkStrategy",
 )
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//utils:expect.bzl", "expect")
@@ -29,10 +29,6 @@ CrateType = enum(
     "staticlib",
 )
 
-# Crate type is intended for consumption by Rust code
-def crate_type_rust_linkage(crate_type: CrateType) -> bool:
-    return crate_type.value in ("rlib", "dylib", "proc-macro")
-
 # Crate type is intended for native linkage (eg C++)
 def crate_type_native_linkage(crate_type: CrateType) -> bool:
     return crate_type.value in ("cdylib", "staticlib")
@@ -40,10 +36,6 @@ def crate_type_native_linkage(crate_type: CrateType) -> bool:
 # Crate type which invokes the linker
 def crate_type_linked(crate_type: CrateType) -> bool:
     return crate_type.value in ("bin", "dylib", "proc-macro", "cdylib")
-
-# Crate type which should include transitive deps
-def crate_type_transitive_deps(crate_type: CrateType) -> bool:
-    return crate_type.value in ("rlib", "dylib", "staticlib")  # not sure about staticlib
 
 # Crate type which should always need codegen
 def crate_type_codegen(crate_type: CrateType) -> bool:
@@ -68,24 +60,43 @@ Emit = enum(
     "llvm-bc",
     "llvm-ir",
     "obj",
-    "metadata",
     "link",
     "dep-info",
     "mir",
     "expand",  # pseudo emit alias for -Zunpretty=expanded
+    # Rustc actually has two different forms of metadata:
+    #  - The full flavor, which is what's outputted when passing
+    #    `--emit link,metadata` and can be used as a part of pipelined builds
+    #  - The fast flavor, which is emitted from `--emit metadata`, is faster to
+    #    build, but cannot be used in pipelined builds.
+    "metadata-full",
+    "metadata-fast",
+)
+
+# The different quantities of Rust metadata that can be requested from
+# dependencies. Each one corresponds to an `Emit` variant, but not all `Emit`
+# variants output metadata
+MetadataKind = enum(
+    "fast",
+    "full",
+    "link",
 )
 
 # Emitting this artifact generates code
-def emit_needs_codegen(emit: Emit) -> bool:
-    return emit.value in ("asm", "llvm-bc", "llvm-ir", "obj", "link", "mir")
+def dep_metadata_of_emit(emit: Emit) -> MetadataKind:
+    if emit.value in ("asm", "llvm-bc", "llvm-ir", "obj", "link", "mir"):
+        return MetadataKind("link")
+    elif emit.value == "metadata-fast":
+        return MetadataKind("fast")
+    else:
+        return MetadataKind("full")
 
 # Represents a way of invoking rustc to produce an artifact. These values are computed from
 # information such as the rule type, linkstyle, crate type, etc.
 BuildParams = record(
     crate_type = field(CrateType),
     reloc_model = field(RelocModel),
-    # TODO(cjhopman): Is this a LibOutputStyle or a LinkStrategy?
-    dep_link_style = field(LinkStyle),  # what link_style to use for dependencies
+    dep_link_strategy = field(LinkStrategy),
     # A prefix and suffix to use for the name of the produced artifact. Note that although we store
     # these in this type, they are in principle computable from the remaining fields and the OS.
     # Keeping them here just turns out to be a little more convenient.
@@ -95,9 +106,8 @@ BuildParams = record(
 
 RustcFlags = record(
     crate_type = field(CrateType),
-    reloc_model = field(RelocModel),
-    dep_link_style = field(LinkStyle),
     platform_to_affix = field(typing.Callable),
+    link_strategy = field(LinkStrategy | None),
 )
 
 # Filenames used for various emitted forms
@@ -107,7 +117,8 @@ _EMIT_PREFIX_SUFFIX = {
     Emit("llvm-bc"): ("", ".bc"),
     Emit("llvm-ir"): ("", ".ll"),
     Emit("obj"): ("", ".o"),
-    Emit("metadata"): ("lib", ".rmeta"),  # even binaries get called 'libfoo.rmeta'
+    Emit("metadata-fast"): ("lib", ".rmeta"),  # even binaries get called 'libfoo.rmeta'
+    Emit("metadata-full"): (None, None),  # Hollow rlibs, so they get the same name
     Emit("link"): (None, None),  # crate type and reloc model dependent
     Emit("dep-info"): ("", ".d"),
     Emit("mir"): (None, ".mir"),
@@ -156,9 +167,8 @@ LinkageLang = enum(
     "native-unbundled",
 )
 
-_BINARY_SHARED = 0
-_BINARY_PIE = 1
-_BINARY_NON_PIE = 2
+_BINARY = 0
+_RUST_PROC_MACRO_RUSTDOC_TEST = 1
 _NATIVE_LINKABLE_SHARED_OBJECT = 3
 _RUST_DYLIB_SHARED = 4
 _RUST_PROC_MACRO = 5
@@ -184,182 +194,176 @@ def _library_prefix_suffix(linker_type: str, target_os_type: OsLookup) -> (str, 
     }[linker_type]
 
 _BUILD_PARAMS = {
-    _BINARY_SHARED: RustcFlags(
+    _BINARY: RustcFlags(
         crate_type = CrateType("bin"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("shared"),
         platform_to_affix = _executable_prefix_suffix,
+        # link_strategy is provided by the rust_binary attribute
+        link_strategy = None,
     ),
-    _BINARY_PIE: RustcFlags(
-        crate_type = CrateType("bin"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("static_pic"),
+    # It's complicated: this is a rustdoc test for a procedural macro crate.
+    # We need deps built as if this were a binary, while passing crate-type
+    # proc_macro to the rustdoc invocation.
+    _RUST_PROC_MACRO_RUSTDOC_TEST: RustcFlags(
+        crate_type = CrateType("proc-macro"),
         platform_to_affix = _executable_prefix_suffix,
-    ),
-    _BINARY_NON_PIE: RustcFlags(
-        crate_type = CrateType("bin"),
-        reloc_model = RelocModel("static"),
-        dep_link_style = LinkStyle("static"),
-        platform_to_affix = _executable_prefix_suffix,
+        link_strategy = LinkStrategy("static_pic"),
     ),
     _NATIVE_LINKABLE_SHARED_OBJECT: RustcFlags(
         crate_type = CrateType("cdylib"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("shared"),
         platform_to_affix = _library_prefix_suffix,
+        # cdylibs statically link all rust code and export a single C-style dylib
+        # for consumption by other languages
+        link_strategy = LinkStrategy("shared"),
     ),
     _RUST_DYLIB_SHARED: RustcFlags(
         crate_type = CrateType("dylib"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("shared"),
         platform_to_affix = _library_prefix_suffix,
+        link_strategy = LinkStrategy("shared"),
     ),
     _RUST_PROC_MACRO: RustcFlags(
         crate_type = CrateType("proc-macro"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("static_pic"),
         platform_to_affix = _library_prefix_suffix,
+        # FIXME(JakobDegen): It's not really clear what we should do about
+        # proc macros. The principled thing is probably to treat them sort
+        # of like a normal library, except that they always have preferred
+        # linkage shared? Preserve existing behavior for now
+        link_strategy = LinkStrategy("static_pic"),
     ),
+    # FIXME(JakobDegen): Add a comment explaining why `.a`s need reloc-strategy
+    # dependent names while `.rlib`s don't.
     _RUST_STATIC_PIC_LIBRARY: RustcFlags(
         crate_type = CrateType("rlib"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("static_pic"),
         platform_to_affix = lambda _l, _t: ("lib", ".rlib"),
+        link_strategy = LinkStrategy("static_pic"),
     ),
     _RUST_STATIC_NON_PIC_LIBRARY: RustcFlags(
         crate_type = CrateType("rlib"),
-        reloc_model = RelocModel("static"),
-        dep_link_style = LinkStyle("static"),
         platform_to_affix = lambda _l, _t: ("lib", ".rlib"),
+        link_strategy = LinkStrategy("static"),
     ),
     _NATIVE_LINKABLE_STATIC_PIC: RustcFlags(
         crate_type = CrateType("staticlib"),
-        reloc_model = RelocModel("pic"),
-        dep_link_style = LinkStyle("static_pic"),
         platform_to_affix = lambda _l, _t: ("lib", "_pic.a"),
+        link_strategy = LinkStrategy("static_pic"),
     ),
     _NATIVE_LINKABLE_STATIC_NON_PIC: RustcFlags(
         crate_type = CrateType("staticlib"),
-        reloc_model = RelocModel("static"),
-        dep_link_style = LinkStyle("static"),
         platform_to_affix = lambda _l, _t: ("lib", ".a"),
+        link_strategy = LinkStrategy("static"),
     ),
 }
 
 _INPUTS = {
-    # Binary, shared
-    ("binary", False, "shared", "any", "rust"): _BINARY_SHARED,
-    ("binary", False, "shared", "shared", "rust"): _BINARY_SHARED,
-    ("binary", False, "shared", "static", "rust"): _BINARY_SHARED,
-    # Binary, PIE
-    ("binary", False, "static_pic", "any", "rust"): _BINARY_PIE,
-    ("binary", False, "static_pic", "shared", "rust"): _BINARY_PIE,
-    ("binary", False, "static_pic", "static", "rust"): _BINARY_PIE,
-    # Binary, non-PIE
-    ("binary", False, "static", "any", "rust"): _BINARY_NON_PIE,
-    ("binary", False, "static", "shared", "rust"): _BINARY_NON_PIE,
-    ("binary", False, "static", "static", "rust"): _BINARY_NON_PIE,
+    # Binary
+    ("binary", False, None, "rust"): _BINARY,
+    ("binary", True, None, "rust"): _RUST_PROC_MACRO_RUSTDOC_TEST,
     # Native linkable shared object
-    ("library", False, "shared", "any", "native"): _NATIVE_LINKABLE_SHARED_OBJECT,
-    ("library", False, "shared", "shared", "native"): _NATIVE_LINKABLE_SHARED_OBJECT,
-    ("library", False, "static", "shared", "native"): _NATIVE_LINKABLE_SHARED_OBJECT,
-    ("library", False, "static_pic", "shared", "native"): _NATIVE_LINKABLE_SHARED_OBJECT,
+    ("library", False, "shared_lib", "native"): _NATIVE_LINKABLE_SHARED_OBJECT,
     # Native unbundled linkable shared object
-    ("library", False, "shared", "any", "native-unbundled"): _RUST_DYLIB_SHARED,
-    ("library", False, "shared", "shared", "native-unbundled"): _RUST_DYLIB_SHARED,
-    ("library", False, "static", "shared", "native-unbundled"): _RUST_DYLIB_SHARED,
-    ("library", False, "static_pic", "shared", "native-unbundled"): _RUST_DYLIB_SHARED,
+    ("library", False, "shared_lib", "native-unbundled"): _RUST_DYLIB_SHARED,
     # Rust dylib shared object
-    ("library", False, "shared", "any", "rust"): _RUST_DYLIB_SHARED,
-    ("library", False, "shared", "shared", "rust"): _RUST_DYLIB_SHARED,
-    ("library", False, "static", "shared", "rust"): _RUST_DYLIB_SHARED,
-    ("library", False, "static_pic", "shared", "rust"): _RUST_DYLIB_SHARED,
+    ("library", False, "shared_lib", "rust"): _RUST_DYLIB_SHARED,
     # Rust proc-macro
-    ("library", True, "shared", "any", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "shared", "shared", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "shared", "static", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static", "any", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static", "shared", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static", "static", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static_pic", "any", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static_pic", "shared", "rust"): _RUST_PROC_MACRO,
-    ("library", True, "static_pic", "static", "rust"): _RUST_PROC_MACRO,
+    ("library", True, "archive", "rust"): _RUST_PROC_MACRO,
+    ("library", True, "pic_archive", "rust"): _RUST_PROC_MACRO,
+    ("library", True, "shared_lib", "rust"): _RUST_PROC_MACRO,
     # Rust static_pic library
-    ("library", False, "shared", "static", "rust"): _RUST_STATIC_PIC_LIBRARY,
-    ("library", False, "static_pic", "any", "rust"): _RUST_STATIC_PIC_LIBRARY,
-    ("library", False, "static_pic", "static", "rust"): _RUST_STATIC_PIC_LIBRARY,
+    ("library", False, "pic_archive", "rust"): _RUST_STATIC_PIC_LIBRARY,
     # Rust static (non-pic) library
-    ("library", False, "static", "any", "rust"): _RUST_STATIC_NON_PIC_LIBRARY,
-    ("library", False, "static", "static", "rust"): _RUST_STATIC_NON_PIC_LIBRARY,
+    ("library", False, "archive", "rust"): _RUST_STATIC_NON_PIC_LIBRARY,
     # Native linkable static_pic
-    ("library", False, "shared", "static", "native"): _NATIVE_LINKABLE_STATIC_PIC,
-    ("library", False, "static_pic", "any", "native"): _NATIVE_LINKABLE_STATIC_PIC,
-    ("library", False, "static_pic", "static", "native"): _NATIVE_LINKABLE_STATIC_PIC,
+    ("library", False, "pic_archive", "native"): _NATIVE_LINKABLE_STATIC_PIC,
     # Native linkable static non-pic
-    ("library", False, "static", "any", "native"): _NATIVE_LINKABLE_STATIC_NON_PIC,
-    ("library", False, "static", "static", "native"): _NATIVE_LINKABLE_STATIC_NON_PIC,
+    ("library", False, "archive", "native"): _NATIVE_LINKABLE_STATIC_NON_PIC,
     # Native Unbundled static_pic library
-    ("library", False, "shared", "static", "native-unbundled"): _RUST_STATIC_PIC_LIBRARY,
-    ("library", False, "static_pic", "any", "native-unbundled"): _RUST_STATIC_PIC_LIBRARY,
-    ("library", False, "static_pic", "static", "native-unbundled"): _RUST_STATIC_PIC_LIBRARY,
+    ("library", False, "pic_archive", "native-unbundled"): _RUST_STATIC_PIC_LIBRARY,
     # Native Unbundled static (non-pic) library
-    ("library", False, "static", "any", "native-unbundled"): _RUST_STATIC_NON_PIC_LIBRARY,
-    ("library", False, "static", "static", "native-unbundled"): _RUST_STATIC_NON_PIC_LIBRARY,
+    ("library", False, "archive", "native-unbundled"): _RUST_STATIC_NON_PIC_LIBRARY,
 }
 
 # Check types of _INPUTS, writing these out as types is too verbose, but let's make sure we don't have any typos.
 [
-    (RuleType(rule_type), LinkStyle(link_style), Linkage(preferred_linkage), LinkageLang(linkage_lang))
-    for (rule_type, _, link_style, preferred_linkage, linkage_lang), _ in _INPUTS.items()
+    (RuleType(rule_type), LibOutputStyle(lib_output_style) if lib_output_style else None, LinkageLang(linkage_lang))
+    for (rule_type, _, lib_output_style, linkage_lang), _ in _INPUTS.items()
 ]
 
-def _get_flags(build_kind_key: int, target_os_type: OsLookup) -> (RustcFlags, RelocModel):
-    flags = _BUILD_PARAMS[build_kind_key]
-
-    # On Windows we should always use pic reloc model.
+def _get_reloc_model(link_strategy: LinkStrategy, target_os_type: OsLookup) -> RelocModel:
     if target_os_type.platform == "windows":
-        return flags, RelocModel("pic")
-    return flags, flags.reloc_model
+        return RelocModel("pic")
+    if link_strategy == LinkStrategy("static"):
+        return RelocModel("static")
+    return RelocModel("pic")
 
-# Compute crate type, relocation model and name mapping given what rule we're building,
-# whether its a proc-macro, linkage information and language.
+# Compute crate type, relocation model and name mapping given what rule we're building, whether its
+# a proc-macro, linkage information and language.
+#
+# Binaries should pass the link strategy and not the lib output style, while libraries should do the
+# opposite.
+#
+# The linking information that's passed here is different from what one might expect in the C++
+# rules. There's a good reason for that, so let's go over it. First, let's recap how C++ handles
+# this, as of December 2023 (I say "recap" but I don't think this is actually documented anywhere):
+#
+#  1. C++ libraries can be built in three different ways: Archives, pic archives, and shared
+#     libraries. Which one of these is used for a given link strategy is determined by the preferred
+#     linkage using `linking/link_info.bzl:get_lib_output_style`.
+#  2. When a C++ library is built as a shared library, the link strategy used for its dependencies
+#     is determined by the link style attribute on the C++ library.
+#  3. When a C++ library is built as an archive (either kind), there's no need to know a link
+#     strategy for the dependencies. None of the per-link-strategy providers of the dependencies
+#     need to be accessed.
+#
+# There are two relevant ways in which Rust differs:
+#
+#  1. There are more ways of building Rust libraries than are represented by `LibOutputStyle`. The
+#     Rust analogue is the `BuildParams` type, which implicitly holds a `LibOutputStyle` as well as
+#     a bunch of additional information - this is why `LibOutputStyle` is relatively rarely used
+#     directly in the Rust rules.
+#  2. Rust does not have the property in point three above, ie building a Rust library into an
+#     archive does require knowing per-link-strategy properties of the dependencies. This is
+#     fundamental in cases without native unbundled deps - with native unbundled deps it may be
+#     fixable, but that's not super clear.
 def build_params(
         rule: RuleType,
         proc_macro: bool,
-        link_style: LinkStyle,
-        preferred_linkage: Linkage,
+        link_strategy: LinkStrategy | None,
+        lib_output_style: LibOutputStyle | None,
         lang: LinkageLang,
         linker_type: str,
         target_os_type: OsLookup) -> BuildParams:
-    if rule == RuleType("binary") and proc_macro:
-        # It's complicated: this is a rustdoc test for a procedural macro crate.
-        # We need deps built as if this were a binary, while passing crate-type
-        # proc_macro to the rustdoc invocation.
-        crate_type = CrateType("proc-macro")
-        proc_macro = False
+    if rule == RuleType("binary"):
+        expect(link_strategy != None)
+        expect(lib_output_style == None)
     else:
-        crate_type = None
+        expect(lib_output_style != None)
 
-    input = (rule.value, proc_macro, link_style.value, preferred_linkage.value, lang.value)
+    input = (rule.value, proc_macro, lib_output_style.value if lib_output_style else None, lang.value)
 
     expect(
         input in _INPUTS,
-        "missing case for rule_type={} proc_macro={} link_style={} preferred_linkage={} lang={}",
+        "missing case for rule_type={} proc_macro={} lib_output_style={} lang={}",
         rule,
         proc_macro,
-        link_style,
-        preferred_linkage,
+        lib_output_style,
         lang,
     )
 
-    build_kind_key = _INPUTS[input]
-    flags, reloc_model = _get_flags(build_kind_key, target_os_type)
+    flags = _BUILD_PARAMS[_INPUTS[input]]
+
+    # FIXME(JakobDegen): We deal with Rust needing to know the link strategy
+    # even for building archives by using a default link strategy specifically
+    # for those cases. I've gone through the code and checked all the places
+    # where the link strategy is used to determine that this won't do anything
+    # too bad, but it would be nice to enforce that more strictly or not have
+    # this at all.
+    link_strategy = link_strategy or flags.link_strategy
+    reloc_model = _get_reloc_model(link_strategy, target_os_type)
     prefix, suffix = flags.platform_to_affix(linker_type, target_os_type)
 
     return BuildParams(
-        crate_type = crate_type or flags.crate_type,
+        crate_type = flags.crate_type,
         reloc_model = reloc_model,
-        dep_link_style = flags.dep_link_style,
+        dep_link_strategy = link_strategy,
         prefix = prefix,
         suffix = suffix,
     )

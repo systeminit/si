@@ -10,10 +10,12 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
-load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "Traversal", "buck", "prelude_rule")
+load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
+load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":go_common.bzl", "go_common")
 load(":native_common.bzl", "native_common")
+load(":re_test_common.bzl", "re_test_common")
 
 BuildMode = ["executable", "c_shared", "c_archive"]
 
@@ -74,6 +76,7 @@ cgo_library = prelude_rule(
         cxx_common.platform_preprocessor_flags_arg() |
         go_common.cgo_compiler_flags_arg() |
         go_common.embedcfg_arg() |
+        go_common.package_root_arg() |
         cxx_common.compiler_flags_arg() |
         cxx_common.platform_compiler_flags_arg() |
         cxx_common.linker_extra_outputs_arg() |
@@ -113,7 +116,7 @@ cgo_library = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "link_deps_query_whole": attrs.bool(default = False),
             "link_group": attrs.option(attrs.string(), default = None),
-            "link_group_map": attrs.option(attrs.list(attrs.tuple(attrs.string(), attrs.list(attrs.tuple(attrs.dep(), attrs.enum(Traversal), attrs.option(attrs.string()))))), default = None),
+            "link_group_map": LINK_GROUP_MAP_ATTR,
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_headers": attrs.list(attrs.tuple(attrs.regex(), attrs.named_set(attrs.source(), sorted = True)), default = []),
             "platform_srcs": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.one_of(attrs.source(), attrs.tuple(attrs.source(), attrs.list(attrs.arg()))), sorted = True)), default = []),
@@ -125,7 +128,8 @@ cgo_library = prelude_rule(
             "thin_lto": attrs.bool(default = False),
             "version_universe": attrs.option(attrs.string(), default = None),
             "weak_framework_names": attrs.list(attrs.string(), default = []),
-        }
+        } |
+        buck.allow_cache_upload_arg()
     ),
 )
 
@@ -182,6 +186,11 @@ go_binary = prelude_rule(
         go_common.linker_flags_arg() |
         go_common.external_linker_flags_arg() |
         go_common.embedcfg_arg() |
+        go_common.package_root_arg() |
+        go_common.cgo_enabled_arg() |
+        go_common.race_arg() |
+        go_common.asan_arg() |
+        go_common.tags_arg() |
         {
             "resources": attrs.list(attrs.source(), default = [], doc = """
                 Static files to be symlinked into the working directory of the test. You can access these in your
@@ -266,6 +275,11 @@ go_exported_library = prelude_rule(
         go_common.assembler_flags_arg() |
         go_common.linker_flags_arg() |
         go_common.external_linker_flags_arg() |
+        go_common.package_root_arg() |
+        go_common.cgo_enabled_arg() |
+        go_common.race_arg() |
+        go_common.asan_arg() |
+        go_common.tags_arg() |
         {
             "resources": attrs.list(attrs.source(), default = [], doc = """
                 Static files to be symlinked into the working directory of the test. You can access these in your
@@ -315,6 +329,7 @@ go_library = prelude_rule(
         go_common.compiler_flags_arg() |
         go_common.assembler_flags_arg() |
         go_common.embedcfg_arg() |
+        go_common.package_root_arg() |
         {
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -415,6 +430,11 @@ go_test = prelude_rule(
         go_common.linker_flags_arg() |
         go_common.external_linker_flags_arg() |
         go_common.embedcfg_arg() |
+        go_common.package_root_arg() |
+        go_common.cgo_enabled_arg() |
+        go_common.race_arg() |
+        go_common.asan_arg() |
+        go_common.tags_arg() |
         {
             "resources": attrs.list(attrs.source(), default = [], doc = """
                 Static files that are symlinked into the working directory of the
@@ -437,7 +457,8 @@ go_test = prelude_rule(
             "platform": attrs.option(attrs.string(), default = None),
             "runner": attrs.option(attrs.dep(), default = None),
             "specs": attrs.option(attrs.arg(json = True), default = None),
-        }
+        } |
+        re_test_common.test_args()
     ),
 )
 

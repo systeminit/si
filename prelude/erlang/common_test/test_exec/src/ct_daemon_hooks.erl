@@ -7,12 +7,13 @@
 
 %%%-------------------------------------------------------------------
 %%% @doc
-%%% Implementation of hooks functionality
+%%% Implementation of hooks functionality. We mimic the behaviour of
+%%% common test hooks so that they can run in test shell
 %%% @end
 %%% % @format
 
 -module(ct_daemon_hooks).
--compile(warn_missing_spec).
+-compile(warn_missing_spec_all).
 
 -behaviour(gen_server).
 
@@ -63,16 +64,50 @@
     | on_tc_fail
     | on_tc_skip.
 
+-type post_hook_call() ::
+    post_init_per_suite
+    | post_init_per_group
+    | post_init_per_testcase
+    | post_end_per_suite
+    | post_end_per_group
+    | post_end_per_testcase.
+
+-type pre_hook_call() ::
+    pre_init_per_suite
+    | pre_init_per_group
+    | pre_init_per_testcase
+    | pre_end_per_suite
+    | pre_end_per_group
+    | pre_end_per_testcase.
+
+-type hook_level() ::
+    suite
+    | group
+    | testcase.
+
+-type hook_response() ::
+    [config()]
+    | {skip, term()}
+    | {fail, term()}.
+
+-type hook_config() ::
+    module()
+    | {module(), Options :: [term()]}
+    | {module(), Options :: [term()], Priority :: integer()}.
+
 %%--------------------------------------------------------------------
 %%% API
 
 -spec set_state(id(), hook_state()) -> ok.
 set_state(Id, State) ->
-    gen_server:call(?MODULE, {set_state, Id, State}).
+    ok = gen_server:call(?MODULE, {set_state, Id, State}).
 
--spec get_state(id()) -> {ok, hook_state()} | {error, not_found}.
+-spec get_state(id()) -> {ok, hook_state()} | {error, {not_found, list()}}.
 get_state(Id) ->
-    gen_server:call(?MODULE, {get_state, Id}).
+    case gen_server:call(?MODULE, {get_state, Id}) of
+        {ok, State} -> {ok, State};
+        Error = {error, {not_found, Details}} when is_list(Details) -> Error
+    end.
 
 -spec wrap(part(), [atom()], fun()) -> fun().
 wrap(Part, Path, Fun) ->
@@ -86,7 +121,7 @@ get_hooks() ->
 
 %% @doc
 %% Starts the server within supervision tree
--spec start_monitor() -> gen_server:start_ret().
+-spec start_monitor() -> gen_server:start_mon_ret().
 start_monitor() ->
     gen_server:start_monitor({local, ?MODULE}, ?MODULE, [], []).
 
@@ -97,12 +132,13 @@ start_monitor() ->
 init([]) ->
     {ok, initialize_hooks()}.
 
--spec handle_call(Request :: term(), From :: gen_server:from(), State :: state()) ->
-    no_return().
+-spec handle_call({get_state, id()}, gen_server:from(), state()) -> {reply, {ok, hook_state()}, state()} | {error, {not_found, list()}};
+                 ({set_state, id(), hook_state()}, gen_server:from(), state()) -> {reply, ok, state()};
+                 ({wrap, part(), fun()}, gen_server:from(), state()) -> {reply, fun(([atom() | config()]) -> term()), state()}.
 handle_call({get_state, Id}, _From, State = #{states := HookStates}) ->
     case HookStates of
         #{Id := HookState} -> {reply, {ok, HookState}, State};
-        _ -> {error, not_found, [{state, State}, {id, Id}]}
+        _ -> {error, {not_found, [{state, State}, {id, Id}]}}
     end;
 handle_call({set_state, Id, HookState}, _From, State = #{states := HookStates}) ->
     {reply, ok, State#{states => HookStates#{Id => HookState}}};
@@ -131,7 +167,7 @@ initialize_hooks() ->
         end
      || {Mod, Opts, Prio} <- NormalizedConfiguredHooks
     ],
-    %% according to documentation, if two hooks have the same ID, the latter one get's dropped
+    %% according to documentation, if two hooks have the same ID, the latter one gets dropped
     PreInitHooks0 = lists:ukeysort(2, HooksWithId),
     %% now sort with configured prio the inits (default prio being 0)
     PreInitHooks1 = lists:keysort(1, PreInitHooks0),
@@ -156,6 +192,7 @@ initialize_hooks() ->
         hooks => [Hook || {_Priority, Hook} <- SortedHooks]
     }.
 
+-spec get_hooks_config() -> [hook_config()].
 get_hooks_config() ->
     application:get_env(test_exec, ct_daemon_hooks, []) ++
         proplists:get_value(ct_hooks, application:get_env(test_exec, daemon_options, []), []).
@@ -164,6 +201,7 @@ get_hooks_config() ->
 wrap_part(Part, Fun, State) ->
     wrap_init_end(Part, Fun, State).
 
+-spec wrap_init_end(part(), fun(), state()) -> fun(([atom() | config()]) -> term()).
 wrap_init_end(Part, Fun, #{hooks := HooksInInstallationOrder}) ->
     %% NOTE ON EXECUTION ORDER:
     %%
@@ -198,9 +236,9 @@ wrap_init_end(Part, Fun, #{hooks := HooksInInstallationOrder}) ->
                     end,
                 case call_if_exists_with_fallback_store_state(Hook, pre(Part), PathArg ++ [ConfigArg0], ok) of
                     {skip, SkipReason} ->
-                        {skipped, SkipReason};
+                        {skip, SkipReason};
                     {fail, FailReason} ->
-                        {failed, FailReason};
+                        {fail, FailReason};
                     HookCallbackResult ->
                         ConfigArg1 =
                             case is_list(HookCallbackResult) of
@@ -219,12 +257,12 @@ wrap_init_end(Part, Fun, #{hooks := HooksInInstallationOrder}) ->
                                             {tc_status, {skipped, SkipReason}}
                                             | lists:keydelete(tc_status, 1, ConfigArg1)
                                         ],
-                                        {skipped, SkipReason}
+                                        {skip, SkipReason}
                                     };
                                 {fail, FailReason} ->
                                     {
                                         [{tc_status, {failed, FailReason}} | lists:keydelete(tc_status, 1, ConfigArg1)],
-                                        {failed, FailReason}
+                                        {fail, FailReason}
                                     };
                                 OkResult ->
                                     ConfigArg2 =
@@ -256,15 +294,10 @@ wrap_init_end(Part, Fun, #{hooks := HooksInInstallationOrder}) ->
         [Suite | _] = PathArg,
         Result =
             try WrappedWithPreAndPost(PathArg, ConfigArg) of
-                Skip = {skipped, _Reason} ->
-                    Skip;
-                Fail = {failed, _Reason} ->
-                    Fail;
-                %% if we don't have a hook setup, we still need to do the conversion from skip/fail to skipped/failed
                 {skip, SkipReason} ->
-                    {skipped, SkipReason};
+                    {skip, SkipReason};
                 {fail, FailReason} ->
-                    {failed, FailReason};
+                    {fail, FailReason};
                 MaybeConfig ->
                     case init_or_end(Part) of
                         'end' ->
@@ -279,50 +312,51 @@ wrap_init_end(Part, Fun, #{hooks := HooksInInstallationOrder}) ->
                             end
                     end
             catch
-                Class:Reason:Stacktrace -> {failed, {'EXIT', {{Class, Reason}, Stacktrace}}}
+                Class:Reason:Stacktrace -> {fail, {'EXIT', {{Class, Reason}, Stacktrace}}}
             end,
         handle_post_result(HooksInInstallationOrder, build_test_name(Part, PathArg), Suite, Result)
     end.
 
+-spec handle_post_result([hook()], test_name(), module(), {ok, [config()]} | {skip, term()} | {fail, term()}) -> hook_response().
 handle_post_result(Hooks, TestName, Suite, Result) ->
     ReverseHooks = lists:reverse(Hooks),
     case Result of
-        SkipResult = {skipped, _} ->
+        {skip, SkipReason} ->
             [
                 call_if_exists_with_fallback_store_state(
-                    Hook, on_tc_skip, [Suite, TestName, SkipResult], ok
+                    Hook, on_tc_skip, [Suite, TestName, {tc_user_skip, SkipReason}], ok
                 )
              || Hook <- ReverseHooks
             ],
-            SkipResult;
-        FailResult = {failed, _} ->
+            {skip, SkipReason};
+        {fail, FailReason} ->
             [
                 call_if_exists_with_fallback_store_state(
-                    Hook, on_tc_fail, [Suite, TestName, FailResult], ok
+                    Hook, on_tc_fail, [Suite, TestName, FailReason], ok
                 )
              || Hook <- ReverseHooks
             ],
-            FailResult;
+            {fail, FailReason};
         {ok, Config} ->
             case lists:keyfind(tc_status, 1, Config) of
                 false ->
                     Config;
-                {tc_status, SkipResult = {skipped, _}} ->
+                {tc_status, {skipped, SkipReason}} ->
                     [
                         call_if_exists_with_fallback_store_state(
-                            Hook, on_tc_skip, [Suite, TestName, SkipResult], ok
+                            Hook, on_tc_skip, [Suite, TestName, {tc_user_skip, SkipReason}], ok
                         )
                      || Hook <- ReverseHooks
                     ],
-                    SkipResult;
-                {tc_status, FailResult = {failed, _}} ->
+                    {skip, SkipReason};
+                {tc_status, {failed, FailReason}} ->
                     [
                         call_if_exists_with_fallback_store_state(
-                            Hook, on_tc_fail, [Suite, TestName, FailResult], ok
+                            Hook, on_tc_fail, [Suite, TestName, FailReason], ok
                         )
                      || Hook <- ReverseHooks
                     ],
-                    FailResult
+                    {fail, FailReason}
             end
     end.
 
@@ -359,22 +393,21 @@ build_test_name(end_per_testcase, Path) ->
     [Test, Group | _] = lists:reverse(Path),
     {Group, Test}.
 
--spec get_hook_module(module() | {module(), Options} | {module(), Options, Priority}) -> module() when
-    Options :: list(), Priority :: integer().
+-spec get_hook_module(hook_config()) -> module().
 get_hook_module({Mod, _, _}) -> Mod;
 get_hook_module({Mod, _}) -> Mod;
 get_hook_module(Mod) -> Mod.
--spec get_hook_opts(module() | {module(), Options} | {module(), Options, Priority}) -> Options when
-    Options :: list(), Priority :: integer().
+
+-spec get_hook_opts(hook_config()) -> [term()].
 get_hook_opts({_, Opts, _}) -> Opts;
 get_hook_opts({_, Opts}) -> Opts;
 get_hook_opts(_) -> [].
 
--spec get_hook_priority(module() | {module(), Options} | {module(), Options, Priority}) -> Priority when
-    Options :: list(), Priority :: integer().
+-spec get_hook_priority(hook_config()) -> integer() | undefined.
 get_hook_priority({_, _, Prio}) -> Prio;
 get_hook_priority(_) -> undefined.
 
+-spec normalize_part(part(), fun()) -> fun().
 normalize_part(Part, Fun) ->
     SafeFun = get_safe_part(Part, Fun),
     case level(Part) of
@@ -384,21 +417,24 @@ normalize_part(Part, Fun) ->
     end.
 
 %% wrappers because most calls are optional
+-spec call_if_exists(module(), atom(), [term()], Default :: {'$lazy', LazyFun :: fun(() -> term())} | term()) -> term().
 call_if_exists(Mod, Fun, Args, Default) ->
     case erlang:function_exported(Mod, Fun, erlang:length(Args)) of
         true ->
             erlang:apply(Mod, Fun, Args);
         false ->
             case Default of
-                {'$lazy', LazyFun} -> LazyFun();
+                {'$lazy', LazyFun} when is_function(LazyFun, 0) -> LazyFun();
                 _ -> Default
             end
     end.
 
+-spec call_if_exists_with_fallback(module(), atom(), [term()], term()) -> term().
 call_if_exists_with_fallback(Mod, Fun, Args, ReturnDefault) ->
     [_ | FallbackArgs] = Args,
     call_if_exists(Mod, Fun, Args, {'$lazy', fun() -> call_if_exists(Mod, Fun, FallbackArgs, ReturnDefault) end}).
 
+-spec call_if_exists_with_fallback_store_state({module(), term()}, atom(), [term()], term()) -> term().
 call_if_exists_with_fallback_store_state({Mod, Id}, Fun, Args, ReturnDefault) ->
     {ok, State} = get_state(Id),
     Default =
@@ -436,6 +472,7 @@ wrapped_init({Mod, Id}, Opts, ConfiguredPriority) ->
         _ -> {ConfiguredPriority, InitState}
     end.
 
+-spec pre(part()) -> pre_hook_call().
 pre(init_per_suite) -> pre_init_per_suite;
 pre(init_per_group) -> pre_init_per_group;
 pre(init_per_testcase) -> pre_init_per_testcase;
@@ -443,6 +480,7 @@ pre(end_per_suite) -> pre_end_per_suite;
 pre(end_per_group) -> pre_end_per_group;
 pre(end_per_testcase) -> pre_end_per_testcase.
 
+-spec post(part()) -> post_hook_call().
 post(init_per_suite) -> post_init_per_suite;
 post(init_per_group) -> post_init_per_group;
 post(init_per_testcase) -> post_init_per_testcase;
@@ -450,6 +488,7 @@ post(end_per_suite) -> post_end_per_suite;
 post(end_per_group) -> post_end_per_group;
 post(end_per_testcase) -> post_end_per_testcase.
 
+-spec level(part()) -> hook_level().
 level(init_per_suite) -> suite;
 level(init_per_group) -> group;
 level(init_per_testcase) -> testcase;
@@ -457,6 +496,7 @@ level(end_per_suite) -> suite;
 level(end_per_group) -> group;
 level(end_per_testcase) -> testcase.
 
+-spec init_or_end(part()) -> init | 'end'.
 init_or_end(init_per_suite) -> init;
 init_or_end(init_per_group) -> init;
 init_or_end(init_per_testcase) -> init;
@@ -464,12 +504,14 @@ init_or_end(end_per_suite) -> 'end';
 init_or_end(end_per_group) -> 'end';
 init_or_end(end_per_testcase) -> 'end'.
 
+-spec get_safe_part(part(), fun()) -> fun().
 get_safe_part(Part, Fun) ->
     case is_exported(Fun) of
         true -> Fun;
         false -> dummy(Part)
     end.
 
+-spec dummy(part()) -> fun().
 dummy(init_per_suite) -> fun(Config) -> Config end;
 dummy(init_per_group) -> fun(_, Config) -> Config end;
 dummy(init_per_testcase) -> fun(_, Config) -> Config end;
@@ -477,6 +519,7 @@ dummy(end_per_suite) -> fun(_) -> ok end;
 dummy(end_per_group) -> fun(_, _) -> ok end;
 dummy(end_per_testcase) -> fun(_, _) -> ok end.
 
+-spec is_exported(fun()) -> boolean().
 is_exported(Fun) ->
     case maps:from_list(erlang:fun_info(Fun)) of
         #{

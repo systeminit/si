@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# pyre-strict
+
 import json
 
 import os
@@ -55,7 +57,7 @@ def load_focused_targets_output_paths(json_file_path: str) -> Set[str]:
 # Visible for testing
 def _get_target_output_path_from_debug_file_path(
     debug_target_path: str,
-):
+) -> str:
     # This function assumes the debug file path created by buck2 is in the following format:
     # buck-out/isolation_dir/gen/project_cell/{hash}/.../__name__/libFoo.a
     parts = debug_target_path.split("/")

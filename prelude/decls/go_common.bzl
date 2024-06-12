@@ -30,6 +30,16 @@ def _srcs_arg():
 """),
     }
 
+def _package_root_arg():
+    return {
+        "package_root": attrs.option(attrs.string(), default = None, doc = """
+    Sets Go package direactory (relative to BUCK file).
+    By default (or if None passes) package_root is being detected automatically.
+    Empty string of Go package is on the same level as BUCK file otherwise the subdirectory name.
+    Example for srcs = ["foo/bar.go"], package_root = "foo"
+"""),
+    }
+
 def _link_style_arg():
     return {
         "link_style": attrs.option(attrs.enum(LinkableDepType), default = None, doc = """
@@ -124,9 +134,39 @@ def _embedcfg_arg():
 """),
     }
 
+def _cgo_enabled_arg():
+    return {
+        "cgo_enabled": attrs.option(attrs.bool(), default = None, doc = """
+    Experimental: Analog of CGO_ENABLED environment-variable.
+    None will be converted to True if cxx_toolchain available for current configuration, otherwise False.
+"""),
+    }
+
+def _race_arg():
+    return {
+        "race": attrs.bool(default = False, doc = """
+    If true, enable data race detection.
+"""),
+    }
+
+def _asan_arg():
+    return {
+        "asan": attrs.bool(default = False, doc = """
+    If true, enable ASAN.
+"""),
+    }
+
+def _tags_arg():
+    return {
+        "tags": attrs.list(attrs.string(), default = [], doc = """
+    Build tags to apply to this target and its dependencies.
+"""),
+    }
+
 go_common = struct(
     deps_arg = _deps_arg,
     srcs_arg = _srcs_arg,
+    package_root_arg = _package_root_arg,
     link_style_arg = _link_style_arg,
     link_mode_arg = _link_mode_arg,
     cgo_compiler_flags_arg = _cgo_compiler_flags_arg,
@@ -136,4 +176,8 @@ go_common = struct(
     linker_flags_arg = _linker_flags_arg,
     external_linker_flags_arg = _external_linker_flags_arg,
     embedcfg_arg = _embedcfg_arg,
+    cgo_enabled_arg = _cgo_enabled_arg,
+    race_arg = _race_arg,
+    asan_arg = _asan_arg,
+    tags_arg = _tags_arg,
 )
