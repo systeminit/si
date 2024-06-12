@@ -135,7 +135,7 @@ export const useModuleStore = () => {
             ModuleName,
             LocalModuleDetails
           >,
-          remoteModuleSearchResults: [] as RemoteModuleSummary[],
+          remoteModuleList: [] as RemoteModuleSummary[],
           builtinsSearchResults: [] as RemoteModuleSummary[],
           remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
           remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
@@ -165,7 +165,7 @@ export const useModuleStore = () => {
           },
 
           remoteModuleSummaryByHash: (state) => {
-            return _.keyBy(state.remoteModuleSearchResults, (m) => m.hash);
+            return _.keyBy(state.remoteModuleList, (m) => m.hash);
           },
           remoteModuleDetailsByHash: (state) => {
             return _.keyBy(
@@ -269,8 +269,7 @@ export const useModuleStore = () => {
             });
           },
 
-          async SEARCH_REMOTE_MODULES(params?: {
-            name?: string;
+          async GET_REMOTE_MODULES_LIST(params?: {
             kind?: string;
             su?: boolean;
           }) {
@@ -284,14 +283,11 @@ export const useModuleStore = () => {
               url: "/modules",
               params,
               onSuccess: (response) => {
-                this.remoteModuleSearchResults = _.map(
-                  response.modules,
-                  (m) => ({
-                    ...m,
-                    hash: m.latestHash,
-                    hashCreatedAt: m.latestHashCreatedAt,
-                  }),
-                );
+                this.remoteModuleList = _.map(response.modules, (m) => ({
+                  ...m,
+                  hash: m.latestHash,
+                  hashCreatedAt: m.latestHashCreatedAt,
+                }));
               },
             });
           },
@@ -360,7 +356,7 @@ export const useModuleStore = () => {
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
-                this.SEARCH_REMOTE_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
               },
             });
           },
@@ -372,7 +368,8 @@ export const useModuleStore = () => {
               params: { id: moduleId, ...getVisibilityParams() },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
-                this.SEARCH_REMOTE_MODULES();
+                this.LOAD_LOCAL_MODULES();
+                this.GET_REMOTE_MODULES_LIST({ su: true });
               },
             });
           },
