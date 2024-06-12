@@ -4,7 +4,6 @@
       v-model="textSearch"
       class="flex-none"
       placeholder="search modules"
-      @search="triggerSearch"
     />
 
     <ModuleList
@@ -18,7 +17,7 @@
 
     <ModuleList
       label="Remote"
-      :modules="moduleStore.remoteModuleSearchResults"
+      :modules="filteredRemoteList"
       :loading="searchRemoteModulesReqStatus"
       loadingMessage="Loading remote modules..."
       :textSearch="textSearch"
@@ -37,8 +36,10 @@ const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
   moduleStore.getRequestStatus("LOAD_LOCAL_MODULES");
 const searchRemoteModulesReqStatus = moduleStore.getRequestStatus(
-  "SEARCH_REMOTE_MODULES",
+  "GET_REMOTE_MODULES_LIST",
 );
+
+const textSearch = ref("");
 
 const filteredLocalModules = computed(() => {
   if (!textSearch.value) return moduleStore.localModules;
@@ -48,11 +49,13 @@ const filteredLocalModules = computed(() => {
   );
 });
 
-const textSearch = ref("");
+const filteredRemoteList = computed(() => {
+  return _.filter(moduleStore.remoteModuleList, (m) =>
+    m.name.toLowerCase().includes(textSearch.value.toLowerCase()),
+  );
+});
 
-async function triggerSearch() {
-  await moduleStore.SEARCH_REMOTE_MODULES({ name: textSearch.value, su: true });
-}
-
-onMounted(triggerSearch);
+onMounted(() => {
+  moduleStore.GET_REMOTE_MODULES_LIST({ su: true });
+});
 </script>

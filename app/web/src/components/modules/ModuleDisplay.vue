@@ -222,7 +222,7 @@ const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
   moduleStore.getRequestStatus("LOAD_LOCAL_MODULES");
 const loadRemoteModulesReqStatus = moduleStore.getRequestStatus(
-  "SEARCH_REMOTE_MODULES",
+  "GET_REMOTE_MODULES_LIST",
 );
 
 const _localDetailsReq = moduleStore.getRequestStatus(
