@@ -98,6 +98,7 @@ exporters:
 
 extensions:
   zpages:
+  health_check:
 
 service:
   pipelines:
@@ -113,4 +114,4 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [logging, otlp]
-  extensions: [zpages]
+  extensions: [zpages, health_check]
