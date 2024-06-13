@@ -296,7 +296,7 @@ async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
         .get_workspace_default_change_set_id()
         .await
         .expect("Unable to find HEAD changeset id");
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(head_change_set)
+    ctx.update_visibility_and_snapshot_to_visibility(head_change_set)
         .await
         .expect("Unable to go back to HEAD");
     let head_func = Func::find_id_by_name(ctx, func_name)
@@ -366,7 +366,7 @@ async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalC
         .get_workspace_default_change_set_id()
         .await
         .expect("Unable to find HEAD changeset id");
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(head_change_set)
+    ctx.update_visibility_and_snapshot_to_visibility(head_change_set)
         .await
         .expect("Unable to go back to HEAD");
     let head_func = Func::find_id_by_name(ctx, func_name)

@@ -64,7 +64,7 @@ impl ChangeSetTestHelpers {
 
         Self::blocking_commit(ctx).await?;
 
-        ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
+        ctx.update_visibility_and_snapshot_to_visibility(
             applied_change_set.base_change_set_id.ok_or(eyre!(
                 "base change set not found for change set: {}",
                 applied_change_set.id

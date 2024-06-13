@@ -138,7 +138,7 @@ impl DependentValuesUpdate {
         let span = Span::current();
         let node_ids = ctx
             .workspace_snapshot()?
-            .take_dependent_values(ctx.change_set()?)
+            .take_dependent_values(ctx.vector_clock_id()?)
             .await?;
 
         let mut dependency_graph = DependentValueGraph::new(ctx, node_ids).await?;

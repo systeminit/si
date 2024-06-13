@@ -36,7 +36,7 @@ pub async fn abandon_change_set(
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
+    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await?;
     change_set.abandon(&ctx).await?;
 

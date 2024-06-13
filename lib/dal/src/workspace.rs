@@ -3,7 +3,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
-use si_events::ContentHash;
+use si_events::{ContentHash, VectorClockId};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -192,8 +192,11 @@ impl Workspace {
             return Ok(());
         }
 
-        let initial_change_set = ChangeSet::new_local()?;
-        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &initial_change_set).await?;
+        let initial_vector_clock_id = VectorClockId::new(
+            WorkspaceId::NONE.into_inner(),
+            WorkspaceId::NONE.into_inner(),
+        );
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, initial_vector_clock_id).await?;
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
@@ -541,10 +544,9 @@ impl Workspace {
                         )?)
                     };
 
-                let local_change_set = ChangeSet::new_local()?;
-                let new_snap_address = imported_snapshot
-                    .write(ctx, local_change_set.vector_clock_id())
-                    .await?;
+                // XXX: fake vector clock here. Figure out the right one
+                let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
+                let new_snap_address = imported_snapshot.write(ctx, vector_clock_id).await?;
 
                 let new_change_set = ChangeSet::new(
                     ctx,
