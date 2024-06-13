@@ -18,9 +18,8 @@ We are working on and investigating more way(s) to try out System Initiative in 
 
 ## Local Development Setup
 
-Running the System Initiative software locally can be done in a variety of ways, but this abbreviated section will focus on a single method for
-getting your environment ready to run the stack.
-For more information and options on running SI locally, see the [development environment documentation](./docs/DEVELOPMENT_ENVIRONMENT.md).
+Running the System Initiative software locally can be done in a variety of ways, but this abbreviated section will focus on a single method for getting your environment ready to run the stack.
+For more information and options on running SI locally, see the [development environment section of the docs](DOCS.md).
 
 ### (1) Choose a Supported Platform
 
@@ -51,11 +50,10 @@ For `docker`, the Docker Desktop version corresponding to your native architectu
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
 
 For `direnv`, you can install it with [your package manager of choice](https://direnv.net/docs/installation.html).
-However, if you're unsure which installation method to use or your package manager does not provide a compatible version,
-you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
+However, if you're unsure which installation method to use or your package manager does not provide a compatible version, you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 
-> We recommend using [the upstream docs for hooking `direnv` into your shell](https://direnv.net/docs/hook.html), but here is an example on how to do it
-> on a system where `zsh` is the default shell.
+> [!TIP]
+> We recommend using [the upstream docs for hooking `direnv` into your shell](https://direnv.net/docs/hook.html), but here is an example on how to do it on a system where `zsh` is the default shell.
 > In this example, the following is added to the end of `~/.zshrc`.
 >
 > ```zsh
@@ -67,10 +65,10 @@ you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 ### (3) Enter the Repository Directory
 
 All commands need to be run from the `nix` environment.
-Since `direnv` is installed _and_ hooked into your shell, you can `cd` into
-the repository and `nix` will bootstrap the environment for you using the flake.
+Since `direnv` is installed _and_ hooked into your shell, you can `cd` into the repository and `nix` will bootstrap the environment for you using the flake.
 
-_Please note: you may notice a large download of dependencies when entering the repository for the first time._
+> [!WARNING]
+> You may notice a large download of dependencies when entering the repository for the first time.
 
 ### (4) (Optional) Configure Docker
 
@@ -82,7 +80,7 @@ docker login
 
 ### (5) Running the Stack
 
-We use [**buck2**](https://github.com/facebook/buck2) to run the stack, run and build individual services and libraries, perform lints and tests, etc.
+We use [`buck2`](https://github.com/facebook/buck2) to run the stack, run and build individual services and libraries, perform lints and tests, etc.
 
 _Before continuing, you should stop any locally running services to avoid conflicting ports with the stack.
 Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Jaeger and OpenTelemetry._
@@ -95,6 +93,7 @@ buck2 run dev:healthcheck
 
 You may notice some checks related to resource limits.
 On macOS and in WSL2 in particular, we recommend significantly increasing the file descriptor limit for `buck2` to work as intended (e.g. `ulimit -n 10240`).
+
 _Please note: the new file descriptor limit may not persist to future sessions._
 
 Once ready, we can build relevant services and run the entire stack locally.
@@ -109,10 +108,11 @@ buck2 run dev:up
 Once Tilt starts, you can check on the status of all services by accessing the UI through the given port on your local host (e.g. [http://localhost:10350/](http://localhost:10350/)).
 Every service should eventually have a green checkmark next to them, which ensures that they are in "ready" states.
 
-_Please note: database migrations may take some time to complete._
+> [!WARNING]
+> _Database migrations may take some time to complete._
 
-If you would like to learn more on what's running, check out the [services](./docs/SERVICES.md) documentation.
-If you would like to learn more about running the stack locally, check out the [development environment documentation](./docs/DEVELOPMENT_ENVIRONMENT.md) and the [documentation for running the stack locally](./docs/RUNNING_THE_STACK_LOCALLY.md).
+If you would like to learn more on what's running, check out the [docs](DOCS.md).
+In our documentation, you can also learn more about running the stack locally and a deeper dive into system requirements.
 
 ### (6) Troubleshooting in Tilt
 
@@ -140,7 +140,7 @@ buck2 run dev:stop
 ## Where Do I Learn More?
 
 For more information on how to use and develop the System Initiative software, talk to us on
-[our Discord](https://discord.com/invite/system-init) and see the [docs](./docs) directory.
+[our Discord](https://discord.com/invite/system-init) and see the [DOCS](DOCS.md).
 
 ## How Can I Contribute?
 
