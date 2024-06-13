@@ -19,19 +19,24 @@ import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
 
 import App from "@/App.vue";
+import { getProjectEnvVariables } from "./shared/dynamicEnvVars";
 import "./utils/posthog";
 import router from "./router";
 import store from "./store";
+
+const { envVariables } = getProjectEnvVariables();
 
 const backendHosts = import.meta.env.VITE_BACKEND_HOSTS
   ? JSON.parse(import.meta.env.VITE_BACKEND_HOSTS).map(
       (r: string) => new RegExp(r),
     )
   : [];
+
+const otelEndpoint =
+  envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
+  import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 const sdk = new HoneycombWebSDK({
-  endpoint: `${
-    import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT
-  }:4318/v1/traces`,
+  endpoint: `${otelEndpoint}:4318/v1/traces`,
   serviceName: "si-vue",
   skipOptionsValidation: true,
   instrumentations: [
