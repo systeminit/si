@@ -106,6 +106,20 @@ export default (opts: { mode: string }) => {
     },
     build: {
       manifest: true,
+      rollupOptions: {
+           output: {
+               format: 'es',
+               globals: {
+                   react: 'React',
+                   'react-dom': 'ReactDOM',
+               },
+               manualChunks(id) {
+                   if (/dynamicEnvVars.ts/.test(id)) {
+                       return 'projectEnvVariables'
+                   }
+               },
+           },
+       }
     },
   });
 };

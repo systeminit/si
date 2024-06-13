@@ -23,7 +23,7 @@ ARG APP=web
 
 # hadolint ignore=DL3018
 RUN set -eux; \
-    apk add --no-cache runuser; \
+    apk add --no-cache runuser moreutils envsubst; \
     for dir in /run /etc /usr/local/etc; do \
         mkdir -pv "$dir/$APP"; \
     done; \
