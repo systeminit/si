@@ -161,10 +161,17 @@ impl ActionPrototype {
         schema_variant_id: SchemaVariantId,
         func_id: FuncId,
     ) -> ActionPrototypeResult<Self> {
-        let change_set = ctx.change_set()?;
-        let new_id: ActionPrototypeId = change_set.generate_ulid()?.into();
-        let node_weight =
-            NodeWeight::new_action_prototype(change_set, new_id.into(), kind, name, description)?;
+        let vector_clock_id = ctx.vector_clock_id()?;
+        let new_id: ActionPrototypeId = ctx.workspace_snapshot()?.generate_ulid().await?.into();
+        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let node_weight = NodeWeight::new_action_prototype(
+            vector_clock_id,
+            new_id.into(),
+            lineage_id,
+            kind,
+            name,
+            description,
+        )?;
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 
         Self::add_edge_to_func(ctx, new_id, func_id, EdgeWeightKind::new_use()).await?;
@@ -458,13 +465,13 @@ impl ActionPrototype {
     }
 
     pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<()> {
-        let change_set = ctx.change_set()?;
+        let vector_clock_id = ctx.vector_clock_id()?;
         // check if there are existing actions queued for this prototype and remove them
         let enqueued_actions = Self::find_enqueued_actions(ctx, id).await?;
 
         for action in enqueued_actions {
             ctx.workspace_snapshot()?
-                .remove_node_by_id(change_set, action)
+                .remove_node_by_id(vector_clock_id, action)
                 .await?;
             WsEvent::action_list_updated(ctx)
                 .await?
@@ -472,7 +479,7 @@ impl ActionPrototype {
                 .await?;
         }
         ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, id)
+            .remove_node_by_id(vector_clock_id, id)
             .await?;
 
         Ok(())

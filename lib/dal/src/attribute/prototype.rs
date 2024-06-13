@@ -160,11 +160,15 @@ impl AttributePrototype {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight =
-            NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::AttributePrototype(hash),
+        )?;
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
         let prototype = AttributePrototype::assemble(id.into(), &content);
@@ -344,10 +348,9 @@ impl AttributePrototype {
                 attribute_prototype_id,
             ))?;
 
-        let change_set = ctx.change_set()?;
         workspace_snapshot
             .remove_edge(
-                change_set,
+                ctx.vector_clock_id()?,
                 attribute_prototype_idx,
                 current_func_node_idx,
                 EdgeWeightKindDiscriminants::Use,
@@ -478,10 +481,8 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let change_set = ctx.change_set()?;
-
         ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, prototype_id)
+            .remove_node_by_id(ctx.vector_clock_id()?, prototype_id)
             .await?;
 
         Ok(())

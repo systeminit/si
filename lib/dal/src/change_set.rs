@@ -1,12 +1,10 @@
 //! The sequel to [`ChangeSets`](crate::ChangeSet). Coming to an SI instance near you!
 
-use std::sync::{Arc, Mutex};
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockChangeSetId;
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
-use ulid::Generator;
 
 use si_data_pg::{PgError, PgRow};
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
@@ -134,9 +132,6 @@ pub struct ChangeSet {
     pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
     pub workspace_id: Option<WorkspacePk>,
     pub merge_requested_by_user_id: Option<UserPk>,
-
-    #[serde(skip)]
-    pub generator: Arc<Mutex<Generator>>,
 }
 
 impl TryFrom<PgRow> for ChangeSet {
@@ -155,47 +150,23 @@ impl TryFrom<PgRow> for ChangeSet {
             workspace_snapshot_address: value.try_get("workspace_snapshot_address")?,
             workspace_id: value.try_get("workspace_id")?,
             merge_requested_by_user_id: value.try_get("merge_requested_by_user_id")?,
-            generator: Arc::new(Mutex::new(Default::default())),
         })
     }
 }
 
 impl ChangeSet {
-    pub fn new_local() -> ChangeSetResult<Self> {
-        let mut generator = Generator::new();
-        let id: Ulid = generator.generate()?.into();
-
-        Ok(Self {
-            id: id.into(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-            generator: Arc::new(Mutex::new(generator)),
-            base_change_set_id: None,
-            workspace_snapshot_address: None,
-            workspace_id: None,
-            name: "".to_string(),
-            status: ChangeSetStatus::Open,
-            merge_requested_by_user_id: None,
-        })
-    }
-
-    pub fn editing_changeset(&self) -> ChangeSetResult<Self> {
-        let mut new_local = Self::new_local()?;
-        new_local.base_change_set_id = self.base_change_set_id;
-        new_local.workspace_snapshot_address = self.workspace_snapshot_address;
-        new_local.workspace_id = self.workspace_id;
-        self.name.clone_into(&mut new_local.name);
-        self.status.clone_into(&mut new_local.status);
-        Ok(new_local)
-    }
-
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<Self> {
-        let id: ChangeSetId = Ulid::new().into();
+        let id: Ulid = Ulid::new();
+        let vector_clock_id = VectorClockId::new(
+            VectorClockChangeSetId::new(id),
+            ctx.vector_clock_id()?.actor_id(),
+        );
+        let change_set_id: ChangeSetId = id.into();
 
         let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
             .await
@@ -206,7 +177,7 @@ impl ChangeSet {
         // changeset needs to have seen the "to_rebase" or we will treat them as
         // completely disjoint changesets.
         let workspace_snapshot_address = workspace_snapshot
-            .write(ctx, id.into_inner().into())
+            .write(ctx, vector_clock_id)
             .await
             .map_err(Box::new)?;
 
@@ -218,7 +189,7 @@ impl ChangeSet {
             .pg()
             .query_one(
                 "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id, workspace_snapshot_address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id, &workspace_snapshot_address],
+                &[&change_set_id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id, &workspace_snapshot_address],
             )
             .await?;
         let change_set = Self::try_from(row)?;
@@ -265,19 +236,14 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    /// Create a [`VectorClockId`] from the [`ChangeSet`].
-    pub fn vector_clock_id(&self) -> VectorClockId {
-        VectorClockId::from(Ulid::from(self.id))
-    }
-
-    pub fn generate_ulid(&self) -> ChangeSetResult<Ulid> {
-        self.generator
-            .lock()
-            .map_err(|e| ChangeSetError::Mutex(e.to_string()))?
-            .generate()
-            .map(Into::into)
-            .map_err(Into::into)
-    }
+    // pub fn generate_ulid(&self) -> ChangeSetResult<Ulid> {
+    //     self.generator
+    //         .lock()
+    //         .map_err(|e| ChangeSetError::Mutex(e.to_string()))?
+    //         .generate()
+    //         .map(Into::into)
+    //         .map_err(Into::into)
+    // }
 
     pub async fn update_workspace_id(
         &mut self,
@@ -472,7 +438,7 @@ impl ChangeSet {
         let mut change_set_to_be_applied = Self::find(ctx, ctx.change_set_id())
             .await?
             .ok_or(ChangeSetApplyError::ChangeSetNotFound(ctx.change_set_id()))?;
-        ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(ctx.change_set_id())
+        ctx.update_visibility_and_snapshot_to_visibility(ctx.change_set_id())
             .await?;
         change_set_to_be_applied
             .apply_to_base_change_set_inner(ctx)
@@ -505,7 +471,7 @@ impl ChangeSet {
             .ok_or(ChangeSetError::NoWorkspaceSnapshot(self.id))?;
         let rebase_request = RebaseRequest {
             onto_workspace_snapshot_address,
-            onto_vector_clock_id: self.vector_clock_id(),
+            onto_vector_clock_id: ctx.vector_clock_id()?,
             to_rebase_change_set_id,
         };
         ctx.do_rebase_request(rebase_request).await?;

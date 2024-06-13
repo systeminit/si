@@ -6,8 +6,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::pk;
 use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
+use crate::{pk, ChangeSetId};
+
+pub use si_events::{VectorClockActorId, VectorClockChangeSetId, VectorClockId};
 
 #[derive(Debug, Error)]
 pub enum VectorClockError {
@@ -17,7 +19,7 @@ pub enum VectorClockError {
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
-pk!(VectorClockId);
+pk!(DeprecatedVectorClockId);
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
@@ -46,6 +48,23 @@ impl VectorClock {
         Self {
             entries: HashMap::new(),
         }
+    }
+
+    pub fn max(
+        &self,
+        change_set_id_filter: Option<ChangeSetId>,
+    ) -> Option<(VectorClockId, LamportClock)> {
+        let maybe_change_set_id = change_set_id_filter
+            .map(|change_set_id| VectorClockChangeSetId::new(change_set_id.into_inner().into()));
+        self.entries
+            .iter()
+            .filter(|(clock_id, _)| {
+                maybe_change_set_id
+                    .map(|vc_cs_id| clock_id.change_set_id() == vc_cs_id)
+                    .unwrap_or(true)
+            })
+            .max_by(|(_, clock_a), (_, clock_b)| (**clock_a).cmp(*clock_b))
+            .map(|(clock_id, clock)| (*clock_id, *clock))
     }
 
     pub fn entry_for(&self, vector_clock_id: VectorClockId) -> Option<LamportClock> {

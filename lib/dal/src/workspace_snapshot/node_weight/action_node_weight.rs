@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
     action::ActionState,
@@ -8,7 +8,7 @@ use crate::{
         graph::LineageId,
         vector_clock::{HasVectorClocks, VectorClock},
     },
-    ChangeSet, ChangeSetId, EdgeWeightKindDiscriminants,
+    ChangeSetId, EdgeWeightKindDiscriminants,
 };
 
 use super::NodeWeightResult;
@@ -29,18 +29,19 @@ pub struct ActionNodeWeight {
 
 impl ActionNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         originating_change_set_id: ChangeSetId,
         id: Ulid,
+        lineage_id: Ulid,
     ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(change_set.vector_clock_id());
+        let new_vector_clock = VectorClock::new(vector_clock_id);
 
         Ok(Self {
             id,
             state: ActionState::Queued,
             func_execution_pk: None,
             originating_changeset_id: originating_change_set_id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: new_vector_clock.clone(),
             vector_clock_recently_seen: new_vector_clock.clone(),

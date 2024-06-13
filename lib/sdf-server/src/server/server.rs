@@ -269,24 +269,6 @@ impl Server<(), ()> {
         Ok(())
     }
 
-    // /// Start the basic resource refresh scheduler
-    // pub async fn start_resource_refresh_scheduler(
-    //     services_context: ServicesContext,
-    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
-    // ) {
-    //     ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
-    // }
-
-    // pub async fn start_status_updater(
-    //     services_context: ServicesContext,
-    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
-    // ) -> Result<()> {
-    //     StatusReceiver::new(services_context)
-    //         .await?
-    //         .start(shutdown_broadcast_rx);
-    //     Ok(())
-    // }
-
     #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
@@ -352,10 +334,13 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     let instant = Instant::now();
 
     let mut dal_context = services_context.clone().into_builder(true);
+    info!("a");
     dal_context.set_no_dependent_values();
+    info!("b");
     dal_context.set_no_auto_migrate_snapshots();
+    info!("c");
     let mut ctx = dal_context.build_default().await?;
-
+    info!("setup builtin workspace");
     Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");

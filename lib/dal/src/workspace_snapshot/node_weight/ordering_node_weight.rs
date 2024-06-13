@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::NodeWeightError;
-use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 use crate::EdgeWeightKindDiscriminants;
@@ -41,12 +40,17 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new(change_set: &ChangeSet) -> NodeWeightResult<Self> {
+    pub fn new(
+        id: Ulid,
+        lineage_id: Ulid,
+        vector_clock_id: VectorClockId,
+    ) -> NodeWeightResult<Self> {
         Ok(Self {
-            id: change_set.generate_ulid()?,
-            lineage_id: change_set.generate_ulid()?,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
+            id,
+            lineage_id,
+            vector_clock_write: VectorClock::new(vector_clock_id),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
             ..Default::default()
         })
     }

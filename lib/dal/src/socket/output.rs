@@ -191,12 +191,17 @@ impl OutputSocket {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight =
-            NodeWeight::new_content(change_set, id, ContentAddress::OutputSocket(hash))?;
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::OutputSocket(hash),
+        )?;
+
         workspace_snapshot.add_node(node_weight).await?;
 
         SchemaVariant::add_edge_to_output_socket(

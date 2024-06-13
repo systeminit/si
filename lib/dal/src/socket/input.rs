@@ -272,23 +272,25 @@ impl InputSocket {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
 
-        {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-            let node_weight =
-                NodeWeight::new_content(change_set, id, ContentAddress::InputSocket(hash))?;
-            workspace_snapshot.add_node(node_weight).await?;
-            SchemaVariant::add_edge_to_input_socket(
-                ctx,
-                schema_variant_id,
-                id.into(),
-                EdgeWeightKind::Socket,
-            )
-            .await
-            .map_err(Box::new)?;
-        }
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::InputSocket(hash),
+        )?;
+        workspace_snapshot.add_node(node_weight).await?;
+        SchemaVariant::add_edge_to_input_socket(
+            ctx,
+            schema_variant_id,
+            id.into(),
+            EdgeWeightKind::Socket,
+        )
+        .await
+        .map_err(Box::new)?;
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 

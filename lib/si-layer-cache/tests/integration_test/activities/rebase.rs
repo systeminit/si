@@ -3,7 +3,10 @@ use std::sync::{
     Arc,
 };
 
-use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk, WorkspaceSnapshotAddress};
+use si_events::{
+    Actor, ChangeSetId, Tenancy, VectorClockActorId, VectorClockChangeSetId, VectorClockId,
+    WorkspacePk, WorkspaceSnapshotAddress,
+};
 use si_layer_cache::{
     activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
 };
@@ -78,6 +81,8 @@ async fn subscribe_rebaser_requests_work_queue() {
     let tenancy = Tenancy::new(WorkspacePk::new(), ChangeSetId::new());
     let actor = Actor::System;
     let metadata = LayeredEventMetadata::new(tenancy, actor);
+    let actor_id: Ulid = tenancy.workspace_pk.into();
+    let vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
 
     let rebase_request_activity = ldb_duff
         .activity()
@@ -85,7 +90,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         .rebase(
             Ulid::new(),
             WorkspaceSnapshotAddress::new(b"poop"),
-            Ulid::new(),
+            vector_clock_id,
             metadata.clone(),
         )
         .await
@@ -193,6 +198,11 @@ async fn rebase_and_wait() {
     let metadata = LayeredEventMetadata::new(tenancy, actor);
     let metadata_for_task = metadata.clone();
 
+    let onto_vector_clock_id = VectorClockId::new(
+        VectorClockChangeSetId::new(Ulid::new().into()),
+        VectorClockActorId::new(Ulid::new().into()),
+    );
+
     let rebase_request_task = tokio::spawn(async move {
         ldb_slash
             .activity()
@@ -200,7 +210,7 @@ async fn rebase_and_wait() {
             .rebase_and_wait(
                 Ulid::new(),
                 WorkspaceSnapshotAddress::new(b"poop"),
-                Ulid::new(),
+                onto_vector_clock_id,
                 metadata_for_task,
             )
             .await
@@ -330,13 +340,17 @@ async fn rebase_requests_work_queue_stress() {
     tracker.spawn(async move {
         let mut count = 0;
         while count < rebase_activities {
+            let vector_clock_id = VectorClockId::new(
+                VectorClockChangeSetId::new(Ulid::new().into()),
+                VectorClockActorId::new(Ulid::new().into()),
+            );
             let _rebase_request_activity = ldb_duff
                 .activity()
                 .rebase()
                 .rebase(
                     Ulid::new(),
                     WorkspaceSnapshotAddress::new(b"poop"),
-                    Ulid::new(),
+                    vector_clock_id,
                     send_meta.clone(),
                 )
                 .await
@@ -485,13 +499,17 @@ async fn rebase_and_wait_stress() {
             loop {
                 SENT_REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let mp = metadata_for_sender.clone();
+                let onto_vector_clock_id = VectorClockId::new(
+                    VectorClockChangeSetId::new(Ulid::new().into()),
+                    VectorClockActorId::new(Ulid::new().into()),
+                );
                 let _response = ldb_slash_clone
                     .activity()
                     .rebase()
                     .rebase_and_wait(
                         Ulid::new(),
                         WorkspaceSnapshotAddress::new(b"poop"),
-                        Ulid::new(),
+                        onto_vector_clock_id,
                         mp,
                     )
                     .await;

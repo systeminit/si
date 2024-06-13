@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use strum::{Display, EnumIter};
 
-use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
@@ -68,16 +68,21 @@ impl CategoryNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn new(change_set: &ChangeSet, kind: CategoryNodeKind) -> NodeWeightResult<Self> {
+    pub fn new(
+        id: Ulid,
+        lineage_id: Ulid,
+        vector_clock_id: VectorClockId,
+        kind: CategoryNodeKind,
+    ) -> NodeWeightResult<Self> {
         Ok(Self {
-            id: change_set.generate_ulid()?,
-            lineage_id: change_set.generate_ulid()?,
+            id,
+            lineage_id,
             kind,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_write: VectorClock::new(vector_clock_id),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
             content_hash: ContentHash::from(&serde_json::json![kind]),
             merkle_tree_hash: Default::default(),
-            vector_clock_recently_seen: Default::default(),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
         })
     }
 

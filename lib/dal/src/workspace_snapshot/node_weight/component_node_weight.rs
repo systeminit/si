@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
-    change_set::ChangeSet,
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::LineageId,
@@ -27,15 +26,16 @@ pub struct ComponentNodeWeight {
 
 impl ComponentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(change_set.vector_clock_id());
+        let new_vector_clock = VectorClock::new(vector_clock_id);
 
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
             to_delete: false,

@@ -295,9 +295,11 @@ impl AttributeValue {
         maybe_parent_attribute_value: Option<AttributeValueId>,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None)?;
+        let vector_clock_id = ctx.vector_clock_id()?;
+        let id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let node_weight =
+            NodeWeight::new_attribute_value(vector_clock_id, id, lineage_id, None, None)?;
         let is_for = is_for.into();
 
         let ordered = if let Some(prop_id) = is_for.prop_id() {
@@ -313,7 +315,7 @@ impl AttributeValue {
 
         if ordered {
             ctx.workspace_snapshot()?
-                .add_ordered_node(change_set, node_weight.clone())
+                .add_ordered_node(vector_clock_id, node_weight.clone())
                 .await?;
         } else {
             ctx.workspace_snapshot()?
@@ -1133,7 +1135,7 @@ impl AttributeValue {
                 .id();
 
             workspace_snapshot
-                .remove_node_by_id(ctx.change_set()?, current_target_id)
+                .remove_node_by_id(ctx.vector_clock_id()?, current_target_id)
                 .await?;
         }
 
@@ -1777,7 +1779,7 @@ impl AttributeValue {
 
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.change_set()?,
+                ctx.vector_clock_id()?,
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,
@@ -1951,7 +1953,7 @@ impl AttributeValue {
             .await?;
 
         let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
+            av_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
 
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight
@@ -2200,10 +2202,10 @@ impl AttributeValue {
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set()?, id)
+            .remove_node_by_id(ctx.vector_clock_id()?, id)
             .await?;
         ctx.workspace_snapshot()?
-            .remove_dependent_value_root(ctx.change_set()?, id)
+            .remove_dependent_value_root(ctx.vector_clock_id()?, id)
             .await?;
 
         ctx.add_dependent_values_and_enqueue(vec![parent_av_id])

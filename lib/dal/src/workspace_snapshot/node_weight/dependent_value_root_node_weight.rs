@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClock};
-use crate::{ChangeSet, EdgeWeightKindDiscriminants};
+use crate::EdgeWeightKindDiscriminants;
 
 use super::NodeWeightResult;
 
@@ -39,29 +40,34 @@ impl DependentValueRootNodeWeight {
         self.lineage_id
     }
 
-    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &Self) {
+    pub fn merge_clocks(&mut self, vector_clock_id: VectorClockId, other: &Self) {
         self.vector_clock_write
-            .merge(change_set.vector_clock_id(), other.vector_clock_write());
-        self.vector_clock_first_seen.merge(
-            change_set.vector_clock_id(),
-            other.vector_clock_first_seen(),
-        );
+            .merge(vector_clock_id, other.vector_clock_write());
+        self.vector_clock_first_seen
+            .merge(vector_clock_id, other.vector_clock_first_seen());
+        self.vector_clock_recently_seen
+            .merge(vector_clock_id, other.vector_clock_recently_seen());
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
-    pub fn new(change_set: &ChangeSet, value_id: Ulid) -> NodeWeightResult<Self> {
+    pub fn new(
+        vector_clock_id: VectorClockId,
+        id: Ulid,
+        lineage_id: Ulid,
+        value_id: Ulid,
+    ) -> NodeWeightResult<Self> {
         Ok(Self {
-            id: change_set.generate_ulid()?,
-            lineage_id: change_set.generate_ulid()?,
+            id,
+            lineage_id,
             value_id,
             touch_count: 0,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_write: VectorClock::new(vector_clock_id),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
             merkle_tree_hash: Default::default(),
-            vector_clock_recently_seen: Default::default(),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
         })
     }
 
