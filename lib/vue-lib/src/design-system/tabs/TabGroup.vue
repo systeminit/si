@@ -459,6 +459,7 @@ function autoSelectTab(isInitialSelection = false) {
   // fallback to just autoselecting the tab next the last one selected
   let newIndex = (lastSelectedTabIndex.value || 0) - 1;
   if (newIndex < 0) newIndex = 0;
+  if (newIndex > orderedTabSlugs.value.length) newIndex = 0;
   const slug = orderedTabSlugs.value[newIndex];
   if (slug === "closeButton") {
     if (orderedTabSlugs.value.length > 1) {
@@ -535,5 +536,5 @@ const context = {
 };
 provide(TabGroupContextInjectionKey, context);
 
-defineExpose({ selectTab, tabExists, closeTabBySlug });
+defineExpose({ selectTab, tabExists, closeTabBySlug, selectedTabSlug });
 </script>

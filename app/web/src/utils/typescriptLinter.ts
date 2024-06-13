@@ -274,3 +274,7 @@ export function GetTooltipFromPos(pos: number): Tooltip | null {
     above: false,
   };
 }
+
+export function nonNullable<T>(value: T): value is NonNullable<T> {
+  return value !== null && value !== undefined;
+}

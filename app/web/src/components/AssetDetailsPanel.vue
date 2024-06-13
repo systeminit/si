@@ -246,7 +246,7 @@ const cloneAsset = async () => {
   if (editingAsset.value?.id) {
     const result = await assetStore.CLONE_ASSET(editingAsset.value.id);
     if (result.result.success) {
-      await assetStore.selectAsset(result.result.data.id);
+      await assetStore.setAssetSelection(result.result.data.id);
     }
   }
 };

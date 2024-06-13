@@ -167,6 +167,7 @@ import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
 import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
 import TildeHexOutline from "./custom-icons/tilde-hex-outline.svg?raw";
 
+import CodeDeployed from "./custom-icons/code-deployed.svg?raw";
 import CodePop from "./custom-icons/code-pop.svg?raw";
 import LogsPop from "./custom-icons/logs-pop.svg?raw";
 import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
@@ -205,6 +206,7 @@ export const ICONS = Object.freeze({
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   "code-circle": StreamlineBracesCircleSolid,
+  "code-deployed": CodeDeployed,
   "code-pop": CodePop,
   "code-pop-square": CodePopSquare,
   "collapse-row": CollapseAll,

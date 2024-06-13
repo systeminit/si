@@ -63,11 +63,12 @@ const routes: RouteRecordRaw[] = [
           return {
             name: "workspace-lab-assets",
             params: to.params,
+            query: to.query,
           };
         },
         children: [
           {
-            path: "a/:assetId?/:funcId?",
+            path: "a/",
             name: "workspace-lab-assets",
             component: () =>
               import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),

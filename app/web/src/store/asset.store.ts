@@ -1,3 +1,4 @@
+import { watch } from "vue";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
@@ -10,7 +11,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { ComponentType } from "@/api/sdf/dal/diagram";
-import { useComponentsStore } from "@/store/components.store";
+import { nonNullable } from "@/utils/typescriptLinter";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -19,8 +20,8 @@ import {
   FuncWithDetails,
   useFuncStore,
 } from "./func/funcs.store";
-import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
+import { useComponentsStore } from "./components.store";
 
 export type AssetId = string;
 
@@ -93,7 +94,10 @@ export interface Variant extends ListedVariant {
 }
 
 export type Asset = Variant;
-export type AssetListEntry = ListedVariant;
+export type AssetListEntry = ListedVariant & {
+  canUpdate: boolean;
+  canContribute: boolean;
+};
 export type AssetSaveRequest = Visibility &
   Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
@@ -134,6 +138,10 @@ export const useAssetStore = () => {
         executeAssetTaskRunning: false as boolean,
         executeAssetTaskError: undefined as string | undefined,
 
+        // represents state of the left rail lists and all open editor tabs
+        selectedAssets: [] as AssetId[],
+        selectedFuncs: [] as FuncId[],
+
         detachmentWarnings: [] as {
           message: string;
           funcId: FuncId;
@@ -141,33 +149,30 @@ export const useAssetStore = () => {
         }[],
       }),
       getters: {
+        assetFromListById: (state) => _.keyBy(state.assetList, (a) => a.id),
         assets: (state) => _.values(state.assetsById),
+        selectedAssetId(state): AssetId | undefined {
+          if (state.selectedAssets.length === 1) return state.selectedAssets[0];
+          else return undefined;
+        },
         selectedAsset(): Asset | undefined {
-          return this.assetsById[this.urlSelectedAssetId ?? ""];
+          if (this.selectedAssetId)
+            return this.assetsById[this.selectedAssetId];
         },
-        urlSelectedAssetId(): AssetId | undefined {
-          const route = useRouterStore().currentRoute;
-          const id = route?.params?.assetId as string;
-          if (id) {
-            storage.setItem(LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY, id);
-          }
-          return id as AssetId | undefined;
+        selectedAssetRecords(): AssetListEntry[] {
+          return this.selectedAssets
+            .map((id) => this.assetFromListById[id])
+            .filter(nonNullable);
         },
-        selectedAssetId(): AssetId | undefined {
-          return this.selectedAsset?.id;
+        selectedFuncId(state): FuncId | undefined {
+          if (state.selectedFuncs.length === 1) return state.selectedFuncs[0];
+          else return undefined;
         },
         selectedFunc(): FuncWithDetails | undefined {
-          return funcsStore.funcDetailsById[this.urlSelectedFuncId ?? ""];
+          if (this.selectedFuncId)
+            return funcsStore.funcDetailsById[this.selectedFuncId];
+          else return undefined;
         },
-        urlSelectedFuncId(): FuncId | undefined {
-          const route = useRouterStore().currentRoute;
-          return route?.params?.funcId as FuncId | undefined;
-        },
-        selectedFuncId(): FuncId | undefined {
-          return this.selectedFunc?.id;
-        },
-        assetListEntryById: (state) => (assetId: AssetId) =>
-          state.assetList.find((asset) => asset.id === assetId),
         assetBySchemaVariantId(): Record<string, Asset> {
           const assetsWithSchemaVariantId = _.filter(
             this.assets,
@@ -180,6 +185,83 @@ export const useAssetStore = () => {
         },
       },
       actions: {
+        addAssetSelection(id: AssetId) {
+          this.selectedAssets.push(id);
+          this.LOAD_ASSET(id);
+          this.syncSelectionIntoUrl();
+          this.selectedFuncs = [];
+        },
+        setAssetSelection(id: AssetId) {
+          if (!this.selectedAssets.includes(id)) {
+            this.selectedFuncs = [];
+          }
+          this.selectedAssets = [id];
+          this.LOAD_ASSET(id);
+          this.syncSelectionIntoUrl();
+          // no last selected func
+          funcsStore.selectedFuncId = undefined;
+        },
+        async addFuncSelection(id: FuncId) {
+          if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
+          await funcsStore.FETCH_FUNC(id);
+          if (this.selectedAsset) this.openFunc(this.selectedAsset?.id, id);
+          funcsStore.selectedFuncId = id;
+          this.syncSelectionIntoUrl();
+        },
+        removeFuncSelection(id: FuncId) {
+          const idx = this.selectedFuncs.indexOf(id);
+          if (idx !== -1) this.selectedFuncs.splice(idx, 1);
+        },
+        syncSelectionIntoUrl(returnQuery?: boolean) {
+          let selectedIds: string[] = [];
+          selectedIds = _.map(this.selectedAssets, (id) => `a_${id}`);
+          selectedIds = selectedIds.concat(
+            _.map(this.selectedFuncs, (id) => `f_${id}`),
+          );
+
+          const newQueryObj = {
+            ...(selectedIds.length && { s: selectedIds.join("|") }),
+          };
+          if (returnQuery) return newQueryObj;
+
+          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
+            router.replace({
+              query: newQueryObj,
+            });
+          }
+        },
+        async syncUrlIntoSelection() {
+          this.selectedAssets = [];
+          this.selectedFuncs = [];
+          funcsStore.selectedFuncId = undefined;
+          const ids = ((router.currentRoute.value.query?.s as string) || "")
+            .split("|")
+            .filter(Boolean);
+          if (ids.length > 0) {
+            /* eslint-disable @typescript-eslint/no-explicit-any */
+            const promises: Promise<any>[] = [];
+            const fnIds = [] as FuncId[];
+            ids.sort().forEach((id) => {
+              if (id.startsWith("a_")) {
+                id = id.substring(2);
+                this.selectedAssets.push(id);
+                promises.push(this.LOAD_ASSET(id));
+              } else if (id.startsWith("f_")) {
+                id = id.substring(2);
+                this.selectedFuncs.push(id);
+                promises.push(funcsStore.FETCH_FUNC(id));
+                fnIds.push(id);
+              }
+            });
+            await Promise.all(promises);
+            for (const id of fnIds)
+              if (this.selectedAssets[0])
+                this.openFunc(this.selectedAssets[0], id);
+
+            funcsStore.selectedFuncId = fnIds[fnIds.length - 1];
+          }
+        },
+
         getLastSelectedAssetId(): AssetId | undefined {
           return storage.getItem(
             LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
@@ -200,20 +282,7 @@ export const useAssetStore = () => {
           this.openAssetFuncIds[assetId] = funcs.filter(
             (fId) => fId !== funcId,
           );
-          this.selectAsset(assetId, (this.openAssetFuncIds[assetId] ?? [])[0]);
-        },
-
-        async selectAsset(assetId: AssetId | undefined, funcId?: FuncId) {
-          if (assetId === undefined) funcId = undefined;
-          const route = router.currentRoute.value;
-          await router.push({
-            name: route.name ?? undefined,
-            params: {
-              ...route.params,
-              assetId,
-              funcId,
-            },
-          });
+          this.removeFuncSelection(funcId);
         },
 
         // MOCK DATA GENERATION
@@ -364,7 +433,12 @@ export const useAssetStore = () => {
             url: "/variant/list_variants",
             params: { ...visibility },
             onSuccess: (response) => {
-              this.assetList = response.variants;
+              this.assetList = response.variants.map((v) => {
+                const a = v as AssetListEntry;
+                a.canContribute = false;
+                a.canUpdate = false;
+                return a;
+              });
             },
           });
         },
@@ -388,8 +462,25 @@ export const useAssetStore = () => {
           });
         },
       },
-      onActivated() {
-        this.LOAD_ASSET_LIST();
+      async onActivated() {
+        await this.LOAD_ASSET_LIST();
+        const stopWatchingUrl = watch(
+          () => {
+            return router.currentRoute.value.name;
+          },
+          () => {
+            if (
+              router.currentRoute.value.name === "workspace-lab-assets" &&
+              Object.values(router.currentRoute.value.query).length > 0
+            ) {
+              this.syncUrlIntoSelection(); // handles PAGE LOAD
+            }
+          },
+          {
+            immediate: true,
+          },
+        );
+
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
@@ -473,6 +564,7 @@ export const useAssetStore = () => {
 
         const actionUnsub = this.$onAction(handleStoreError);
         return () => {
+          stopWatchingUrl();
           actionUnsub();
           realtimeStore.unsubscribe(this.$id);
         };

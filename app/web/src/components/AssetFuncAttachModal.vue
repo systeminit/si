@@ -145,7 +145,6 @@ import {
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
-import { useRouter } from "vue-router";
 import clsx from "clsx";
 import * as _ from "lodash-es";
 import { ActionKind } from "@/store/actions.store";
@@ -172,7 +171,6 @@ const props = defineProps<{
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const router = useRouter();
 
 const createFuncStarted = ref(false);
 
@@ -425,16 +423,8 @@ const attachToAttributeFunction = async (
   );
 };
 
-const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
+const reloadAssetAndRoute = async (assetId: string) => {
   await assetStore.LOAD_ASSET(assetId);
-  router.push({
-    name: "workspace-lab-assets",
-    params: {
-      ...router.currentRoute.value.params,
-      funcId,
-      assetId,
-    },
-  });
   close();
 };
 
@@ -492,8 +482,7 @@ const attachExistingFunc = async () => {
         case "attribute":
           if (attributeOutputLocationParsed.value) {
             attachToAttributeFunction(attributeOutputLocationParsed.value);
-            if (props.assetId)
-              await reloadAssetAndRoute(props.assetId, func.id);
+            if (props.assetId) await reloadAssetAndRoute(props.assetId);
           }
           break;
         default:
@@ -507,7 +496,7 @@ const attachExistingFunc = async () => {
         func.associations = updatedAssociations;
         const response = await funcStore.UPDATE_FUNC(func);
         if (response.result.success && props.assetId) {
-          await reloadAssetAndRoute(props.assetId, func.id);
+          await reloadAssetAndRoute(props.assetId);
         }
       }
     }
@@ -524,7 +513,7 @@ const attachNewFunc = async () => {
       options,
     });
     if (result.result.success && props.assetId) {
-      await reloadAssetAndRoute(props.assetId, result.result.data.id);
+      await reloadAssetAndRoute(props.assetId);
     }
   }
 };

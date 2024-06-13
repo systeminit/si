@@ -8,7 +8,7 @@
       )
     "
     noIndentationOrLeftBorder
-    :isSelected="storeSelectedFuncId === func.id"
+    :isSelected="assetStore.selectedFuncs.includes(func.id)"
     showSelection
     @mousedown.left.stop="onClick"
   >
@@ -28,11 +28,10 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute, useRouter } from "vue-router";
-import { storeToRefs } from "pinia";
 import { TreeNode } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
+import { FuncSummary } from "@/store/func/funcs.store";
+import { useAssetStore } from "@/store/asset.store";
 import { trackEvent } from "@/utils/tracking";
 
 const props = defineProps<{
@@ -41,10 +40,7 @@ const props = defineProps<{
   context: string;
 }>();
 
-const route = useRoute();
-const router = useRouter();
-const funcStore = useFuncStore();
-const { selectedFuncId: storeSelectedFuncId } = storeToRefs(funcStore);
+const assetStore = useAssetStore();
 
 const trackFunctionSelected = () => {
   trackEvent("function_selected_for_edit", {
@@ -55,9 +51,6 @@ const trackFunctionSelected = () => {
 
 const onClick = () => {
   trackFunctionSelected();
-  router.push({
-    name: props.context,
-    params: { ...route.params, funcId: props.func.id },
-  });
+  assetStore.addFuncSelection(props.func.id);
 };
 </script>
