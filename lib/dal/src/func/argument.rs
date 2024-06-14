@@ -332,6 +332,8 @@ impl FuncArgument {
         Ok(func_args)
     }
 
+    /// Find the [`FuncArgument`] by its name for a given [`Func`]. For a given [`Func`], all argument names must be
+    /// unique. This method returns `None` if no argument was found.
     pub async fn find_by_name_for_func(
         ctx: &DalContext,
         name: impl AsRef<str>,

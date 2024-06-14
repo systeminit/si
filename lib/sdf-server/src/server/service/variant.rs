@@ -6,7 +6,7 @@ use dal::func::summary::FuncSummaryError;
 use dal::pkg::PkgError;
 use dal::schema::variant::authoring::VariantAuthoringError;
 use dal::{
-    ChangeSetError, FuncError, FuncId, SchemaError, SchemaVariantId, TransactionsError,
+    ChangeSetError, FuncError, FuncId, SchemaError, SchemaId, SchemaVariantId, TransactionsError,
     WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
@@ -44,8 +44,8 @@ pub enum SchemaVariantError {
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]
     NoAssetCreated,
-    #[error("no default schema variant found for schema")]
-    NoDefaultSchemaVariantFoundForSchema,
+    #[error("no default schema variant found for schema: {0}")]
+    NoDefaultSchemaVariantFoundForSchema(SchemaId),
     #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
     #[error("schema error: {0}")]

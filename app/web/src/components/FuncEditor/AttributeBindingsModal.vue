@@ -10,7 +10,7 @@
     <div class="p-4 flex flex-col place-content-center">
       <template v-if="!schemaVariantId">
         <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Schema Variant:
+          Asset:
         </h1>
         <SelectMenu
           v-model="selectedVariant"

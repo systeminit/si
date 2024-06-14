@@ -49,64 +49,64 @@ pub async fn get_variant(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;
-    if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(&ctx).await? {
-        let variant = SchemaVariant::get_by_id(&ctx, default_schema_variant_id).await?;
+    let default_schema_variant_id = schema.get_default_schema_variant_id(&ctx).await?.ok_or(
+        SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
+    )?;
+    let variant = SchemaVariant::get_by_id(&ctx, default_schema_variant_id).await?;
 
-        let mut response: GetVariantResponse = GetVariantResponse {
-            id: request.id,
-            default_schema_variant_id,
-            name: schema.name().into(),
-            menu_name: variant.display_name(),
-            category: variant.category().into(),
-            color: variant.get_color(&ctx).await?,
-            link: variant.link(),
-            description: variant.description(),
-            component_type: variant.component_type(),
-            timestamp: variant.timestamp(),
-            // Will be set elsewhere
-            code: "".to_string(),
-            funcs: vec![],
-            types: "".to_string(),
-            has_components: false,
-        };
+    // Collect the funcs for all schema variants corresponding to the schema. We want this because
+    // while asset editing generally corresponds to the current default schema variant id, you are
+    // unable to access functions that belong to components using older schema variants on the
+    // diagram unless you collect all functions for all schema variants. Function access is
+    // important because it provides not only the ability to edit a function, but also its bindings.
+    let funcs = FuncSummary::list_for_schema_id(&ctx, schema.id()).await?;
 
-        if let Some(authoring_func) = variant.asset_func_id() {
-            let asset_func = Func::get_by_id_or_error(&ctx, authoring_func).await?;
+    let mut response: GetVariantResponse = GetVariantResponse {
+        id: request.id,
+        default_schema_variant_id,
+        name: schema.name().into(),
+        menu_name: variant.display_name(),
+        category: variant.category().into(),
+        color: variant.get_color(&ctx).await?,
+        link: variant.link(),
+        description: variant.description(),
+        component_type: variant.component_type(),
+        timestamp: variant.timestamp(),
+        // Will be set elsewhere
+        code: "".to_string(),
+        funcs,
+        types: "".to_string(),
+        has_components: false,
+    };
 
-            response.code = asset_func
-                .code_plaintext()?
-                .ok_or(SchemaVariantError::FuncIsEmpty(asset_func.id))?;
+    if let Some(authoring_func) = variant.asset_func_id() {
+        let asset_func = Func::get_by_id_or_error(&ctx, authoring_func).await?;
 
-            response.types = FuncAuthoringClient::compile_return_types(
-                asset_func.backend_response_type,
-                asset_func.backend_kind,
-            )
-            .to_string();
-        }
+        response.code = asset_func
+            .code_plaintext()?
+            .ok_or(SchemaVariantError::FuncIsEmpty(asset_func.id))?;
 
-        // let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
-        // response.has_components = has_components;
-
-        response.funcs =
-            FuncSummary::list_for_schema_variant_id(&ctx, default_schema_variant_id).await?;
-
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            "get_variant",
-            serde_json::json!({
-                        "variant_name": variant.name(),
-                        "variant_category": variant.category(),
-                        "variant_menu_name": variant.display_name(),
-                        "variant_id": variant.id(),
-                        "schema_id": schema.id(),
-                        "variant_component_type": variant.component_type(),
-            }),
-        );
-
-        Ok(Json(response))
-    } else {
-        Err(SchemaVariantError::NoDefaultSchemaVariantFoundForSchema)
+        response.types = FuncAuthoringClient::compile_return_types(
+            asset_func.backend_response_type,
+            asset_func.backend_kind,
+        )
+        .to_string();
     }
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "get_variant",
+        serde_json::json!({
+                    "variant_name": variant.name(),
+                    "variant_category": variant.category(),
+                    "variant_menu_name": variant.display_name(),
+                    "variant_id": variant.id(),
+                    "schema_id": schema.id(),
+                    "variant_component_type": variant.component_type(),
+        }),
+    );
+
+    Ok(Json(response))
 }

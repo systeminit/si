@@ -16,7 +16,7 @@
     <ul class="flex flex-col p-3 gap-2xs break-words">
       <li v-for="proto in prototypeViews" :key="proto.id">
         <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Schema Variant:
+          Asset:
         </h1>
         <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
 

@@ -34,42 +34,42 @@ pub async fn clone_variant(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;
-    if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(&ctx).await? {
-        let (cloned_schema_variant, schema) =
-            VariantAuthoringClient::clone_variant(&ctx, default_schema_variant_id).await?;
+    let default_schema_variant_id = schema.get_default_schema_variant_id(&ctx).await?.ok_or(
+        SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
+    )?;
 
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            "clone_variant",
-            serde_json::json!({
-                "variant_name": schema.name(),
-                "variant_category": cloned_schema_variant.category(),
-                "variant_menu_name": cloned_schema_variant.display_name(),
-                "variant_id": cloned_schema_variant.id(),
-                "variant_component_type": cloned_schema_variant.component_type(),
-            }),
-        );
+    let (cloned_schema_variant, schema) =
+        VariantAuthoringClient::clone_variant(&ctx, default_schema_variant_id).await?;
 
-        WsEvent::schema_variant_cloned(&ctx, cloned_schema_variant.id())
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "clone_variant",
+        serde_json::json!({
+            "variant_name": schema.name(),
+            "variant_category": cloned_schema_variant.category(),
+            "variant_menu_name": cloned_schema_variant.display_name(),
+            "variant_id": cloned_schema_variant.id(),
+            "variant_component_type": cloned_schema_variant.component_type(),
+        }),
+    );
 
-        ctx.commit().await?;
+    WsEvent::schema_variant_cloned(&ctx, cloned_schema_variant.id())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
-        let mut response = axum::response::Response::builder();
-        response = response.header("Content-Type", "application/json");
-        if let Some(force_change_set_id) = force_change_set_id {
-            response = response.header("force_change_set_id", force_change_set_id.to_string());
-        }
+    ctx.commit().await?;
 
-        Ok(response.body(serde_json::to_string(&CloneVariantResponse {
-            id: schema.id(),
-            success: true,
-        })?)?)
-    } else {
-        Err(SchemaVariantError::NoDefaultSchemaVariantFoundForSchema)
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_change_set_id) = force_change_set_id {
+        response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
+
+    Ok(response.body(serde_json::to_string(&CloneVariantResponse {
+        id: schema.id(),
+        success: true,
+    })?)?)
 }

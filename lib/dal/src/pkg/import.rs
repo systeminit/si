@@ -586,6 +586,7 @@ async fn import_leaf_function(
         _ => {
             return Err(PkgError::MissingFuncUniqueId(
                 leaf_func.func_unique_id().to_string(),
+                "error found while importing leaf function",
             ));
         }
     }
@@ -775,6 +776,7 @@ async fn import_action_func(
         _ => {
             return Err(PkgError::MissingFuncUniqueId(
                 action_func_spec.func_unique_id().into(),
+                "error found while importing action func",
             ));
         }
     };
@@ -829,6 +831,7 @@ async fn import_auth_func(
         _ => {
             return Err(PkgError::MissingFuncUniqueId(
                 func_spec.func_unique_id().into(),
+                "error found while importing auth func",
             ));
         }
     };
@@ -891,14 +894,16 @@ async fn create_props(
     })
 }
 
-/// Duplicate all the functions, and return a thing_map with them included, so
-/// that we can import a standalone schema variant.
-pub async fn clone_and_import_funcs(
+/// Import only new [`Funcs`](Func) and return a [`ThingMap`] with all [`Funcs`](Func) included. This is used for
+/// importing a standalone [`SchemaVariant`].
+pub async fn import_only_new_funcs(
     ctx: &DalContext,
     funcs: Vec<SiPkgFunc<'_>>,
 ) -> PkgResult<ThingMap> {
     let mut thing_map = ThingMap::new();
 
+    // Iterate through all func specs. If the func is an intrinsic or special case, we assume it must already exist. If
+    // it is any other kind of func, we find or create the func and find or create its arguments.
     for func_spec in funcs {
         let func = if func::is_intrinsic(func_spec.name())
             || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
@@ -909,11 +914,21 @@ pub async fn clone_and_import_funcs(
 
             Func::get_by_id_or_error(ctx, func_id).await?
         } else {
-            let func = create_func(ctx, &func_spec, false).await?;
+            // Find or create the func for the provided spec.
+            let func = if let Some(func_id) = Func::find_id_by_name(ctx, &func_spec.name()).await? {
+                Func::get_by_id_or_error(ctx, func_id).await?
+            } else {
+                create_func(ctx, &func_spec, false).await?
+            };
 
-            if !func_spec.arguments()?.is_empty() {
-                import_func_arguments(ctx, func.id, &func_spec.arguments()?, &mut thing_map)
-                    .await?;
+            // Find or create the func arguments for the provided spec.
+            for argument in func_spec.arguments()? {
+                if FuncArgument::find_by_name_for_func(ctx, argument.name(), func.id)
+                    .await?
+                    .is_none()
+                {
+                    create_func_argument(ctx, func.id, &argument).await?;
+                }
             }
 
             func
@@ -961,9 +976,13 @@ pub(crate) async fn import_schema_variant(
                 let mut asset_func_id: Option<FuncId> = None;
                 if let Some(variant_spec_data) = variant_spec.data() {
                     let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-                    if let Thing::Func(asset_func) = thing_map
-                        .get(&func_unique_id)
-                        .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                    if let Thing::Func(asset_func) =
+                        thing_map
+                            .get(&func_unique_id)
+                            .ok_or(PkgError::MissingFuncUniqueId(
+                                func_unique_id.to_string(),
+                                "error found while importing schema variant",
+                            ))?
                     {
                         asset_func_id = Some(asset_func.id)
                     }
@@ -1287,7 +1306,12 @@ async fn import_attr_func_for_prop(
             )
             .await?;
         }
-        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                func_unique_id.to_string(),
+                "error found while importing attribute func for prop",
+            ))
+        }
     }
 
     Ok(())
@@ -1314,7 +1338,12 @@ async fn import_attr_func_for_output_socket(
             )
             .await?;
         }
-        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                func_unique_id.to_string(),
+                "import attribute func for output socket",
+            ))
+        }
     }
 
     Ok(())

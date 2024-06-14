@@ -524,7 +524,6 @@ impl Func {
     pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut funcs = vec![];
         let func_category_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Func)
             .await?;
@@ -536,23 +535,50 @@ impl Func {
             )
             .await?;
 
-        let mut func_node_weights = vec![];
-        let mut func_content_hash = vec![];
+        let mut func_node_weights = Vec::new();
+        let mut func_content_hashes = Vec::new();
         for index in func_node_indexes {
             let node_weight = workspace_snapshot
                 .get_node_weight(index)
                 .await?
                 .get_func_node_weight()?;
-            func_content_hash.push(node_weight.content_hash());
+            func_content_hashes.push(node_weight.content_hash());
             func_node_weights.push(node_weight);
         }
 
+        Self::list_inner(ctx, func_node_weights, func_content_hashes).await
+    }
+
+    /// List all [`Funcs`](Func) corresponding to the provided [`FuncIds`](Func).
+    pub async fn list_from_ids(ctx: &DalContext, func_ids: &[FuncId]) -> FuncResult<Vec<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut func_node_weights = Vec::new();
+        let mut func_content_hashes = Vec::new();
+        for id in func_ids {
+            let node_weight = workspace_snapshot
+                .get_node_weight_by_id(id)
+                .await?
+                .get_func_node_weight()?;
+            func_content_hashes.push(node_weight.content_hash());
+            func_node_weights.push(node_weight);
+        }
+
+        Self::list_inner(ctx, func_node_weights, func_content_hashes).await
+    }
+
+    async fn list_inner(
+        ctx: &DalContext,
+        func_node_weights: Vec<FuncNodeWeight>,
+        func_content_hashes: Vec<ContentHash>,
+    ) -> FuncResult<Vec<Self>> {
         let func_contents: HashMap<ContentHash, FuncContent> = ctx
             .layer_db()
             .cas()
-            .try_read_many_as(func_content_hash.as_slice())
+            .try_read_many_as(func_content_hashes.as_slice())
             .await?;
 
+        let mut funcs = Vec::new();
         for node_weight in func_node_weights {
             match func_contents.get(&node_weight.content_hash()) {
                 Some(func_content) => {
