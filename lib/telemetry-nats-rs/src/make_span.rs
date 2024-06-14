@@ -1,4 +1,7 @@
-use si_data_nats::{header, Message, Subject};
+use std::sync::Arc;
+
+use naxum::{middleware::trace::MakeSpan, MessageHead};
+use si_data_nats::{header, ConnectionMetadata, Message};
 use telemetry::prelude::*;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -8,29 +11,48 @@ use crate::{headers::CORRELATION_ID, propagation::extract_opentelemetry_context}
 #[derive(Clone, Debug)]
 pub struct NatsMakeSpan {
     level: Level,
+    metadata: Arc<ConnectionMetadata>,
 }
 
-impl Default for NatsMakeSpan {
-    #[inline]
-    fn default() -> Self {
-        Self { level: Level::INFO }
-    }
+pub struct NatsMakeSpanBuilder {
+    level: Level,
+    connection_metadata: Arc<ConnectionMetadata>,
 }
 
-impl NatsMakeSpan {
-    /// Creates a new `NatsMakeSpan`.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl NatsMakeSpanBuilder {
     /// Sets the [`Level`] used for the tracing [`Span`].
     pub fn level(mut self, level: Level) -> Self {
         self.level = level;
         self
     }
 
+    /// Builds and returns a new [`NatsMakeSpan`].
+    pub fn build(self) -> NatsMakeSpan {
+        NatsMakeSpan {
+            level: self.level,
+            metadata: self.connection_metadata,
+        }
+    }
+}
+
+impl NatsMakeSpan {
+    /// Creates a new `NatsMakeSpan` builder.
+    pub fn builder(connection_metadata: Arc<ConnectionMetadata>) -> NatsMakeSpanBuilder {
+        NatsMakeSpanBuilder {
+            level: Level::INFO,
+            connection_metadata,
+        }
+    }
+
     /// Generate a [`Span`] from a message.
-    pub fn make_span(&mut self, message: &Message, sub_subject: &Subject) -> Span {
+    //
+    // TODO(fnichol): Method is `pub` exclusively for `lib/nats-subscriber`. If and when that crate
+    // can be retired, this should be deleted
+    pub fn span_from_core_message(&mut self, message: &Message) -> Span {
+        self.span_from_request(message.as_inner())
+    }
+
+    fn span_from_request<R: MessageHead>(&mut self, message: &R) -> Span {
         enum InnerLevel {
             Error,
             Warn,
@@ -50,8 +72,6 @@ impl NatsMakeSpan {
             }
         }
 
-        let metadata = message.metadata();
-
         // This ugly macro is needed, unfortunately, because `tracing::span!` required the level
         // argument to be static. Meaning we can't just pass `self.level` and a dynamic name.
         macro_rules! inner {
@@ -64,23 +84,23 @@ impl NatsMakeSpan {
                     //
                     // See: https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#messaging-attributes
 
-                    messaging.client_id = metadata.messaging_client_id(),
-                    messaging.destination.name = sub_subject.as_str(),
-                    messaging.message.body.size = message.payload().len(),
+                    messaging.client_id = self.metadata.messaging_client_id(),
+                    messaging.destination.name = message.subject().as_str(),
+                    messaging.message.body.size = message.payload_length(),
                     messaging.message.conversation_id = Empty,
                     messaging.message.envelope.size = message.length(),
-                    messaging.nats.server.id = metadata.messaging_nats_server_id(),
-                    messaging.nats.server.name = metadata.messaging_nats_server_name(),
-                    messaging.nats.server.version = metadata.messaging_nats_server_version(),
+                    messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+                    messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+                    messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
                     messaging.operation = MessagingOperation::Receive.as_str(),
-                    messaging.system = metadata.messaging_system(),
-                    messaging.url = metadata.messaging_url(),
-                    network.peer.address = metadata.network_peer_address(),
-                    network.protocol.name = metadata.network_protocol_name(),
-                    network.protocol.version = metadata.network_protocol_version(),
-                    network.transport = metadata.network_transport(),
-                    server.address = metadata.server_address(),
-                    server.port = metadata.server_port(),
+                    messaging.system = self.metadata.messaging_system(),
+                    messaging.url = self.metadata.messaging_url(),
+                    network.peer.address = self.metadata.network_peer_address(),
+                    network.protocol.name = self.metadata.network_protocol_name(),
+                    network.protocol.version = self.metadata.network_protocol_version(),
+                    network.transport = self.metadata.network_transport(),
+                    server.address = self.metadata.server_address(),
+                    server.port = self.metadata.server_port(),
 
                     // Set special `otel.*` fields which tracing-opentelemetry will use when
                     // transmitting traces via OpenTelemetry protocol
@@ -112,7 +132,11 @@ impl NatsMakeSpan {
 
         span.record(
             "otel.name",
-            format!("{} {}", sub_subject, MessagingOperation::Receive.as_str()),
+            format!(
+                "{} {}",
+                message.subject().as_str(),
+                MessagingOperation::Receive.as_str()
+            ),
         );
         if let Some(headers) = message.headers() {
             if let Some(message_id) = headers.get(header::NATS_MESSAGE_ID) {
@@ -129,5 +153,14 @@ impl NatsMakeSpan {
         }
 
         span
+    }
+}
+
+impl<R> MakeSpan<R> for NatsMakeSpan
+where
+    R: MessageHead,
+{
+    fn make_span(&mut self, req: &R) -> Span {
+        self.span_from_request(req)
     }
 }

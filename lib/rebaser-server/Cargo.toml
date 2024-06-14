@@ -13,7 +13,6 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
-nats-subscriber = { path = "../../lib/nats-subscriber" }
 naxum = { path = "../../lib/naxum" }
 rebaser-core = { path = "../../lib/rebaser-core" }
 remain = { workspace = true }
@@ -29,6 +28,7 @@ si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 stream-cancel = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

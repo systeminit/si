@@ -1055,6 +1055,11 @@ impl Client {
     pub fn metadata(&self) -> &ConnectionMetadata {
         self.metadata.as_ref()
     }
+
+    /// Gets a cloned copy of the client's metadata.
+    pub fn metadata_clone(&self) -> Arc<ConnectionMetadata> {
+        self.metadata.clone()
+    }
 }
 
 #[derive(Clone, Debug)]

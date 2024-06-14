@@ -70,6 +70,10 @@ impl Message {
         (self.inner, self.metadata)
     }
 
+    pub fn as_inner(&self) -> &InnerMessage {
+        &self.inner
+    }
+
     /// Get a reference to the connection metadata.
     pub fn metadata(&self) -> Arc<ConnectionMetadata> {
         self.metadata.clone()

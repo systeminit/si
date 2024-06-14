@@ -42,6 +42,9 @@ pub trait MessageHead {
     /// Length of message in bytes.
     fn length(&self) -> usize;
 
+    /// Length of message's payload in bytes.
+    fn payload_length(&self) -> usize;
+
     fn from_parts(head: Head, payload: Bytes) -> Result<Self, FromPartsError>
     where
         Self: Sized;
@@ -68,6 +71,10 @@ impl MessageHead for async_nats::Message {
 
     fn length(&self) -> usize {
         self.length
+    }
+
+    fn payload_length(&self) -> usize {
+        self.payload.len()
     }
 
     fn from_parts(head: Head, payload: Bytes) -> Result<Self, FromPartsError> {
@@ -136,6 +143,10 @@ impl MessageHead for async_nats::jetstream::Message {
 
     fn length(&self) -> usize {
         self.message.length
+    }
+
+    fn payload_length(&self) -> usize {
+        self.message.payload.len()
     }
 
     fn from_parts(head: Head, payload: Bytes) -> Result<Self, FromPartsError> {

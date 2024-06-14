@@ -1289,7 +1289,6 @@ dependencies = [
  "itertools 0.12.1",
  "jwt-simple",
  "lazy_static",
- "nats-subscriber",
  "object-tree",
  "once_cell",
  "paste",
@@ -4079,7 +4078,6 @@ dependencies = [
  "dal",
  "derive_builder",
  "futures",
- "nats-subscriber",
  "naxum",
  "rebaser-core",
  "remain",
@@ -4095,6 +4093,7 @@ dependencies = [
  "si-test-macros",
  "stream-cancel",
  "telemetry",
+ "telemetry-nats",
  "thiserror",
  "tokio",
  "tokio-util",
@@ -5820,6 +5819,7 @@ dependencies = [
 name = "telemetry-nats"
 version = "0.1.0"
 dependencies = [
+ "naxum",
  "si-data-nats",
  "telemetry",
  "tracing-opentelemetry",

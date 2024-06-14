@@ -10,13 +10,18 @@ use std::{
 };
 
 use dal::DalContextBuilder;
-use naxum::handler::Handler;
-use naxum::middleware::ack::AckLayer;
-use naxum::middleware::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
-use naxum::ServiceExt;
-use si_data_nats::async_nats::jetstream;
+use naxum::{
+    handler::Handler,
+    middleware::{
+        ack::AckLayer,
+        trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    },
+    ServiceExt,
+};
+use si_data_nats::{async_nats::jetstream, ConnectionMetadata};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
+use telemetry_nats::{NatsMakeSpan, NatsOnResponse};
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
 
@@ -64,15 +69,21 @@ impl ChangeSetRequestsTask {
             ctx_builder.clone(),
             dvu_interval,
         );
+        let nats_connection_metadata = ctx_builder.nats_conn().metadata_clone();
+
         let state = AppState::new(workspace_id, change_set_id, ctx_builder, dvu_debouncer);
 
         let app = ServiceBuilder::new()
             .concurrency_limit(1)
             .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::TRACE))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(DefaultOnResponse::new().level(Level::TRACE)),
+                    .make_span_with(
+                        NatsMakeSpan::builder(nats_connection_metadata)
+                            .level(Level::WARN)
+                            .build(),
+                    )
+                    .on_request(DefaultOnRequest::new().level(Level::WARN))
+                    .on_response(NatsOnResponse::new().level(Level::WARN)),
             )
             .layer(AckLayer::new())
             .service(handlers::process_request.with_state(state));
