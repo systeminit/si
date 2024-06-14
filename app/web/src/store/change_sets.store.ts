@@ -133,6 +133,14 @@ export function useChangeSetsStore() {
               changeSetId: this.selectedChangeSet.id,
             },
             onSuccess: (response) => {
+              if (
+                router.currentRoute.value.name &&
+                ["workspace-lab-packages", "workspace-lab-assets"].includes(
+                  router.currentRoute.value.name.toString(),
+                )
+              ) {
+                router.push({ name: "workspace-lab" });
+              }
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });
