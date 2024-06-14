@@ -11,20 +11,6 @@ use ulid::Ulid;
 use super::app_state::AppState;
 use crate::jwt_key::{JwtKeyError, JwtPublicSigningKey};
 
-pub struct PosthogClient(pub super::app_state::PosthogClient);
-
-#[async_trait]
-impl FromRequestParts<AppState> for PosthogClient {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request_parts(
-        _parts: &mut Parts,
-        state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        Ok(Self(state.posthog_client().clone()))
-    }
-}
-
 pub struct ExtractedS3Bucket(pub S3Bucket);
 
 #[async_trait]
