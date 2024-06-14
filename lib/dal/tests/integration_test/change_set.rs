@@ -1,6 +1,9 @@
 use dal::change_set::view::OpenChangeSetsView;
-use dal::DalContext;
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal::{
+    context::TransactionsErrorDiscriminants, DalContext, DalContextBuilder, HistoryActor,
+    RequestContext, Workspace, WorkspacePk,
+};
+use dal_test::helpers::{create_user, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashSet;
@@ -138,4 +141,158 @@ async fn abandon_change_set_and_check_open_change_sets(ctx: &mut DalContext) {
 
     let change_set_names = Vec::from_iter(view.change_sets.iter().map(|c| c.name.clone()));
     assert!(!change_set_names.contains(&change_set_name))
+}
+
+#[test]
+async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
+    ctx: &mut DalContext,
+    ctx_builder: DalContextBuilder,
+) {
+    let user_1 = create_user(ctx).await.expect("Unable to create user");
+    let user_2 = create_user(ctx).await.expect("Unable to create user");
+    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
+        .await
+        .expect("Unable to create workspace");
+    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
+        .await
+        .expect("Unable to create workspace");
+    user_1
+        .associate_workspace(ctx, *user_1_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    user_2
+        .associate_workspace(ctx, *user_2_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to set up test data");
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_2_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_1.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    assert!(builder_result
+        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_1_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_2.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    assert!(builder_result
+        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+}
+
+#[test]
+async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
+    ctx: &mut DalContext,
+    ctx_builder: DalContextBuilder,
+) {
+    let user_1 = create_user(ctx).await.expect("Unable to create user");
+    let user_2 = create_user(ctx).await.expect("Unable to create user");
+    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
+        .await
+        .expect("Unable to create workspace");
+    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
+        .await
+        .expect("Unable to create workspace");
+    user_1
+        .associate_workspace(ctx, *user_1_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    user_2
+        .associate_workspace(ctx, *user_2_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to set up test data");
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_2_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_1.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    assert!(builder_result
+        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_1_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_2.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    assert!(builder_result
+        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+}
+
+#[test]
+async fn build_from_request_context_allows_change_set_from_workspace_with_access(
+    ctx: &mut DalContext,
+    ctx_builder: DalContextBuilder,
+) {
+    let user_1 = create_user(ctx).await.expect("Unable to create user");
+    let user_2 = create_user(ctx).await.expect("Unable to create user");
+    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
+        .await
+        .expect("Unable to create workspace");
+    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
+        .await
+        .expect("Unable to create workspace");
+    user_1
+        .associate_workspace(ctx, *user_1_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    user_2
+        .associate_workspace(ctx, *user_2_workspace.pk())
+        .await
+        .expect("Unable to associate user with workspace");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Unable to set up test data");
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_1_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_1.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    if let Err(e) = &builder_result {
+        dbg!(e);
+    }
+    assert!(builder_result.is_ok());
+
+    let request_context = RequestContext {
+        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
+        visibility: dal::Visibility {
+            change_set_id: user_2_workspace.default_change_set_id(),
+        },
+        history_actor: HistoryActor::User(user_2.pk()),
+    };
+
+    let builder_result = ctx_builder.build(request_context).await;
+    if let Err(e) = &builder_result {
+        dbg!(e);
+    }
+    assert!(builder_result.is_ok());
 }
