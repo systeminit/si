@@ -54,6 +54,7 @@
               clsx(
                 'focus:outline-none whitespace-nowrap',
                 'h-8 text-xs inline-flex items-center',
+                !growTabs && 'max-w-[40%]',
                 tab.props.closeButton ? 'flex-none' : 'px-xs',
                 growTabs &&
                   !tab.props.closeButton &&
@@ -64,10 +65,12 @@
             @click="clickedTab($event, tab.props.slug)"
             @auxclick.prevent.stop="closeTab(tab)"
           >
-            <template v-if="tab.slots.label">
-              <component :is="tab.slots.label" />
-            </template>
-            <template v-else>{{ tab.props.label }}</template>
+            <div class="max-w-full truncate">
+              <template v-if="tab.slots.label">
+                <component :is="tab.slots.label" />
+              </template>
+              <template v-else>{{ tab.props.label }}</template>
+            </div>
             <button
               v-if="closeable && !tab.props.uncloseable"
               class="inline-block rounded-full text-neutral-400 ml-1"

@@ -37,7 +37,7 @@
     ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
-    :minSize="200"
+    :minSize="300"
   >
     <div class="absolute w-full flex flex-col h-full">
       <SidebarSubpanelTitle
@@ -136,11 +136,9 @@ watch(
       if (assetStore.urlSelectedAssetId && !assetStore.selectedAsset) {
         await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
       }
-
       if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
         await funcStore.FETCH_FUNC(assetStore.urlSelectedFuncId);
       }
-
       if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
         assetStore.openFunc(
           assetStore.selectedAssetId,

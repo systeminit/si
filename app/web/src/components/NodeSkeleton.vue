@@ -6,7 +6,7 @@
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     :style="`color: ${color}`"
-    :class="classes"
+    :class="clsx(classes, 'flex-none')"
   >
     <path
       d="M0 3.99952C0 1.79038 1.79086 -0.000488281 4 -0.000488281H71C73.2091 -0.000488281 75 1.79037 75 3.99951V11.7018H0V3.99952Z"
@@ -38,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import clsx from "clsx";
 import { computed, PropType } from "vue";
 
 export type NodeSkeletonSizes = "mini" | "standard";

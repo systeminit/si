@@ -57,10 +57,7 @@
           <FilterPill
             v-for="(filter, index) in filters"
             :key="index"
-            :label="filter.name"
-            :number="filter.count"
-            :iconTone="filter.iconTone"
-            :iconName="filter.iconName"
+            :filter="filter"
             :selected="activeFilters[index]"
             @click="toggleFilter(index)"
           />
@@ -103,6 +100,7 @@ const clearHeight = () => {
 
 export type Filter = {
   name: string;
+  iconColor?: string;
   iconTone?: Tones;
   iconName?: IconNames;
   count?: number;

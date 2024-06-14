@@ -82,14 +82,15 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentId.value && selectedComponent.value) {
+    // single selected component
     items.push({
-      label: `Copy`,
+      label: `Copy ${typeDisplayName()} "${
+        selectedComponent.value.displayName
+      }"`,
       icon: "clipboard-copy",
       onSelect: triggerCopySelection,
       disabled,
     });
-
-    // single selected component
     if (selectedComponent.value.toDelete) {
       items.push({
         label: `Restore ${typeDisplayName()} "${
@@ -110,14 +111,13 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentIds.value.length) {
+    // multiple selected components
     items.push({
       label: `Copy ${selectedComponentIds.value.length} Components`,
       icon: "clipboard-copy",
       onSelect: triggerCopySelection,
       disabled,
     });
-
-    // Multiple selected components
     if (deletableSelectedComponents.value.length > 0) {
       items.push({
         label: `Delete ${deletableSelectedComponents.value.length} ${plur(

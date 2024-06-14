@@ -1,20 +1,31 @@
 <template>
-  <span class="flex">
-    <span
-      :id="id ?? 'color-picker'"
-      ref="pickerElement"
-      :aria-required="required ?? false"
-      :style="{ backgroundColor: modelValue }"
-      class="block w-10 h-6 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
-      :class="boxClasses"
-    />
-    <span class="p-1">{{ modelValue.toUpperCase() }}</span>
+  <span ref="pickerAnchorElement" class="h-7">
+    <Teleport to="body">
+      <span
+        :id="id ?? 'color-picker'"
+        ref="pickerElement"
+        :aria-required="required ?? false"
+        :class="
+          clsx(
+            'absolute z-80 h-7 px-2xs flex flex-row gap-xs items-center dark:hover:text-action-300 hover:text-action-500',
+            !disabled && 'cursor-pointer',
+          )
+        "
+      >
+        <span
+          class="block w-10 h-6 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
+          :style="{ backgroundColor: modelValue }"
+        ></span>
+        <span class="text-sm">{{ modelValue.toUpperCase() }}</span>
+      </span>
+    </Teleport>
   </span>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import Picker from "vanilla-picker";
+import clsx from "clsx";
 
 const props = defineProps<{
   id?: string;
@@ -34,23 +45,31 @@ const colorChanged = (color: { hex: string }) => {
   emit("change", colorHex);
 };
 
-const boxClasses = computed(() => {
-  const results: { [key: string]: boolean } = {};
-  if (!props.disabled) {
-    results["cursor-pointer"] = true;
-  }
-  return results;
-});
-
+const pickerAnchorElement = ref<HTMLElement | null>(null);
 const pickerElement = ref<HTMLElement | null>(null);
 const picker = ref<Picker | null>(null);
+const positionPickerElement = () => {
+  if (pickerElement.value && pickerAnchorElement.value) {
+    const rect = pickerAnchorElement.value.getBoundingClientRect();
+    pickerElement.value.style.top = `${rect.top}px`;
+    pickerElement.value.style.left = `${rect.left}px`;
+  }
+};
+const positionPickerInterval = ref(); // TODO - this is definitely not the best way to do this
+
 onMounted(() => {
   if (!props.disabled) {
     const p = new Picker(pickerElement.value as HTMLElement);
     p.onDone = colorChanged;
     picker.value = p;
-    p.setOptions({ alpha: false });
+    p.setOptions({ alpha: false, popup: "left" });
+    positionPickerElement();
+    positionPickerInterval.value = setInterval(positionPickerElement, 10);
   }
+});
+
+onBeforeUnmount(() => {
+  clearInterval(positionPickerInterval.value);
 });
 </script>
 

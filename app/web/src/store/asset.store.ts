@@ -204,7 +204,6 @@ export const useAssetStore = () => {
 
         async selectAsset(assetId: AssetId | undefined, funcId?: FuncId) {
           if (assetId === undefined) funcId = undefined;
-
           const route = router.currentRoute.value;
           await router.push({
             name: route.name ?? undefined,

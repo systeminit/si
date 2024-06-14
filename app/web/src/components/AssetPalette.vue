@@ -29,7 +29,12 @@
             </div>
           </SidebarSubpanelTitle>
 
-          <SiSearch placeholder="search assets" @search="onSearchUpdated" />
+          <SiSearch
+            ref="searchRef"
+            placeholder="search assets"
+            :filters="searchFiltersWithCounts"
+            @search="onSearchUpdated"
+          />
         </template>
 
         <TreeNode
@@ -95,7 +100,14 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
+import {
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  ref,
+  nextTick,
+  ComputedRef,
+} from "vue";
 import {
   Icon,
   PillCounter,
@@ -112,8 +124,10 @@ import {
 } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import SiSearch from "@/components/SiSearch.vue";
+import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import TruncateWithTooltip from "@/components/TruncateWithTooltip.vue";
+
+const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 const componentsStore = useComponentsStore();
 
@@ -123,27 +137,30 @@ const schemasReqStatus = componentsStore.getRequestStatus(
 
 const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
 
-const filterString = ref("");
-const filterStringCleaned = computed(() =>
-  filterString.value.trim().toLowerCase(),
+const searchString = ref("");
+const searchStringCleaned = computed(() =>
+  searchString.value.trim().toLowerCase(),
 );
-const filterModeActive = computed(() => !!filterStringCleaned.value);
+const filterModeActive = computed(
+  () => !!(searchStringCleaned.value || searchRef.value?.filteringActive),
+);
 
 function onSearchUpdated(newFilterString: string) {
-  filterString.value = newFilterString;
+  searchString.value = newFilterString;
   collapsibleRefs.value.forEach((c) => {
     c.toggleIsOpen(true);
   });
 }
 const categories = computed(() => componentsStore.categories);
 
-const filteredCategoriesAndSchemas = computed(() => {
-  if (!filterModeActive.value) return categories.value;
-
+const filteredCategoriesBySearchString = (
+  categories: Categories,
+  searchString = searchStringCleaned.value,
+) => {
   const inProgress = [] as Categories;
-  _.each(categories.value, (c) => {
+  _.each(categories, (c) => {
     // if the string matches the group, add the whole thing
-    if (c.displayName.toLowerCase().includes(filterStringCleaned.value)) {
+    if (c.displayName.toLowerCase().includes(searchString)) {
       inProgress.push(c);
       return;
     }
@@ -151,9 +168,7 @@ const filteredCategoriesAndSchemas = computed(() => {
     // otherwise, filter out the individual assets that don't match
     const matchingSchemas = _.filter(c.schemas, (s) => {
       const categoryAndSchemaName = `${c.displayName} ${s.name}`;
-      return categoryAndSchemaName
-        .toLowerCase()
-        .includes(filterStringCleaned.value);
+      return categoryAndSchemaName.toLowerCase().includes(searchString);
     });
 
     if (matchingSchemas.length > 0) {
@@ -164,17 +179,97 @@ const filteredCategoriesAndSchemas = computed(() => {
     }
   });
   return inProgress;
+};
+
+const filteredCategoriesBySearchStringAndFilters = (
+  categories: Categories,
+  searchString = searchStringCleaned.value,
+) => {
+  let filteredAssets = filteredCategoriesBySearchString(
+    categories,
+    searchString,
+  );
+
+  if (searchRef.value?.filteringActive) {
+    for (
+      let index = 0;
+      index < searchRef.value?.activeFilters.length;
+      index++
+    ) {
+      if (searchRef.value?.activeFilters[index]) {
+        const filterFunction = filterFunctions[index];
+        if (filterFunction) {
+          filteredAssets = filterFunction(filteredAssets);
+        }
+      }
+    }
+  }
+
+  return filteredAssets;
+};
+
+const filteredCategoriesAndSchemas = computed(() => {
+  if (!filterModeActive.value) return categories.value;
+  else return filteredCategoriesBySearchStringAndFilters(categories.value);
 });
 
-const assetCount = computed(() => {
+const searchFiltersWithCounts = computed(() => {
+  const searchFilters: Array<Filter> = [
+    {
+      name: "AWS",
+      iconColor: "#FF9900",
+      iconName: "logo-aws",
+      count: computed(() =>
+        getAssetCount(
+          filteredCategoriesBySearchStringAndFilters(
+            filteredCategoriesBySearchStringAndFilters(categories.value),
+            "aws",
+          ),
+        ),
+      ).value,
+    },
+    {
+      name: "Docker",
+      iconColor: "#4695e7",
+      iconName: "logo-docker",
+      count: computed(() =>
+        getAssetCount(
+          filteredCategoriesBySearchStringAndFilters(
+            filteredCategoriesBySearchStringAndFilters(categories.value),
+            "docker",
+          ),
+        ),
+      ).value,
+    },
+  ];
+
+  return searchFilters;
+});
+
+const filterFunctions = [
+  // AWS FILTER
+  (assets: Categories) => {
+    return filteredCategoriesBySearchString(assets, "aws");
+  },
+  // DOCKER FILTER
+  (assets: Categories) => {
+    return filteredCategoriesBySearchString(assets, "docker");
+  },
+];
+
+const getAssetCount = (categories: Categories) => {
   let count = 0;
 
-  filteredCategoriesAndSchemas.value.forEach((category) => {
+  categories.forEach((category) => {
     count += category.schemas.length;
   });
 
   return count;
-});
+};
+
+const assetCount = computed(() =>
+  getAssetCount(filteredCategoriesAndSchemas.value),
+);
 
 const schemasById = computed(() => {
   return categories.value.reduce((p, c) => {

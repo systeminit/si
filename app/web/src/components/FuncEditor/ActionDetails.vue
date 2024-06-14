@@ -1,7 +1,7 @@
 <template>
-  <div class="p-3 flex flex-col gap-xs">
+  <div class="p-xs flex flex-col gap-xs">
     <ErrorMessage :requestStatus="props.requestStatus" />
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+    <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox
         id="create"
         v-model="isCreate"
@@ -9,8 +9,8 @@
         :disabled="disabled"
         @update:model-value="setCreate"
       />
-    </h2>
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+    </div>
+    <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox
         id="refresh"
         v-model="isRefresh"
@@ -18,8 +18,8 @@
         :disabled="disabled"
         @update:model-value="setRefresh"
       />
-    </h2>
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+    </div>
+    <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox
         id="delete"
         v-model="isDelete"
@@ -27,11 +27,11 @@
         :disabled="disabled"
         @update:model-value="setDelete"
       />
-    </h2>
+    </div>
     <template v-if="!schemaVariantId">
-      <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
         Run on Assets of Type:
-      </h2>
+      </div>
       <RunOnSelector
         v-model="selectedVariants"
         thingLabel="assets of type"

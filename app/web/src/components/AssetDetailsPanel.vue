@@ -52,7 +52,7 @@
         <AssetFuncAttachModal ref="attachModalRef" :assetId="props.assetId" />
       </template>
 
-      <Stack class="p-xs py-sm">
+      <Stack class="p-xs" spacing="none">
         <div>
           <ErrorMessage :requestStatus="execAssetReqStatus" />
         </div>
@@ -62,6 +62,7 @@
           v-model="editingAsset.name"
           type="text"
           label="Name"
+          compact
           placeholder="(mandatory) Provide the asset a name"
           @blur="updateAsset"
         />
@@ -70,6 +71,7 @@
           v-model="editingAsset.displayName"
           type="text"
           label="Display name"
+          compact
           placeholder="(optional) Provide the asset a shorter display name"
           @blur="updateAsset"
         />
@@ -78,6 +80,7 @@
           v-model="editingAsset.category"
           type="text"
           label="Category"
+          compact
           placeholder="(mandatory) Provide a category for the asset"
           @blur="updateAsset"
         />
@@ -86,6 +89,7 @@
           v-model="editingAsset.componentType"
           type="dropdown"
           :options="componentTypeOptions"
+          compact
           label="Component Type"
           @change="updateAsset"
         />
@@ -94,10 +98,11 @@
           v-model="editingAsset.description"
           type="textarea"
           label="Description"
+          compact
           placeholder="(optional) Provide a brief description of the asset"
           @blur="updateAsset"
         />
-        <VormInput type="container" label="color" :disabled="disabled">
+        <VormInput type="container" compact label="color" :disabled="disabled">
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
@@ -110,6 +115,7 @@
           v-model="editingAsset.link"
           type="url"
           label="Documentation Link"
+          compact
           placeholder="(optional) Provide a documentation link for the asset"
           @blur="updateAsset"
         />

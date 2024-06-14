@@ -391,7 +391,7 @@
               (e) => (newValueBoolean = (e.target as HTMLInputElement)?.checked)
             "
           />
-          <div class="attributes-panel-item__input-value">
+          <div class="attributes-panel-item__input-value-checkbox">
             <Icon
               :name="newValueBoolean === true ? 'check-square' : 'empty-square'"
               class="attributes-panel-item__checkbox-icon"
@@ -414,7 +414,7 @@
               {{ o.label }}
             </option>
           </select>
-          <div class="attributes-panel-item__input-value">
+          <div class="attributes-panel-item__input-value-select">
             {{ currentValue }}
           </div>
           <Icon
@@ -1332,10 +1332,17 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
     pointer-events: none;
   }
 }
-.attributes-panel-item__input-value {
+.attributes-panel-item__input-value-checkbox {
   padding: 5px 8px;
   display: flex;
   align-items: center;
+}
+
+.attributes-panel-item__input-value-select {
+  padding: 5px 24px 5px 8px;
+  display: block;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .attributes-panel-item__action-icons {

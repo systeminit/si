@@ -9,16 +9,7 @@
     "
     :isSelected="selectedAssetId === a.id"
     showSelection
-    @mousedown.left.stop="
-      router.push({
-        name: 'workspace-lab-assets',
-        params: {
-          ...route.params,
-          assetId: a.id,
-          funcId: undefined,
-        },
-      })
-    "
+    @mousedown.left.stop="onClick"
     @click.right.prevent
   >
     <template #label>
@@ -62,5 +53,16 @@ const assetNameString = (a: AssetListEntry) => {
   if (duplicates.length > 1) {
     return `${name} (${duplicates.indexOf(a)})`;
   } else return name;
+};
+
+const onClick = () => {
+  router.push({
+    name: "workspace-lab-assets",
+    params: {
+      ...route.params,
+      assetId: props.a.id,
+      funcId: undefined,
+    },
+  });
 };
 </script>

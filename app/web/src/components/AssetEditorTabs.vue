@@ -42,7 +42,7 @@
 
 <script lang="ts" setup>
 import isEqual from "lodash-es/isEqual";
-import { watch, ref, computed } from "vue";
+import { watch, ref, computed, onMounted, nextTick } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -97,8 +97,30 @@ watch(
   },
 );
 
+const doneLoading = ref(false);
+
+onMounted(async () => {
+  if (assetStore.urlSelectedAssetId && !assetStore.selectedAsset) {
+    await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
+  }
+  if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
+    await funcStore.FETCH_FUNC(assetStore.urlSelectedFuncId);
+  }
+  if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
+    assetStore.openFunc(assetStore.selectedAssetId, assetStore.selectedFuncId);
+    if (tabGroupRef.value) {
+      tabGroupRef.value.selectTab(assetStore.selectedFuncId);
+    }
+  }
+  doneLoading.value = true;
+});
+
 const onTabChange = async (tabSlug: string | undefined) => {
   // tabSlugs are just func ids here, besides the asset tab, which is just "asset"
+  if (!doneLoading.value) {
+    return;
+  }
+
   if (tabSlug === "asset") {
     tabSlug = undefined;
   } else if (!tabSlug || tabSlug === selectedFuncId.value) {
@@ -131,9 +153,19 @@ watch([() => assetStore.selectedFuncId, loadFuncDetailsReqStatus], () => {
     !assetStore.selectedFuncId &&
     loadFuncDetailsReqStatus.value.isSuccess
   ) {
+    // TODO - This watcher seems to be the source of BUG-385
     tabGroupRef.value?.selectTab("asset");
   } else if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
     tabGroupRef.value?.selectTab(assetStore.selectedFuncId);
   }
 });
+
+watch(
+  [() => assetStore.selectedAssetId, () => funcStore.selectedFuncId],
+  () => {
+    if (assetStore.selectedAssetId && !funcStore.selectedFuncId) {
+      tabGroupRef.value?.selectTab("asset");
+    }
+  },
+);
 </script>
