@@ -630,9 +630,9 @@ export const useFuncStore = () => {
                 response.props,
                 "schemaVariantId",
               );
-              for (const schemaVariantId in inputSourcePropsFromResponse) {
-                inputSourceProps[schemaVariantId] =
-                  inputSourcePropsFromResponse[schemaVariantId] ?? [];
+              for (const _schemaVariantId in inputSourcePropsFromResponse) {
+                inputSourceProps[_schemaVariantId] =
+                  inputSourcePropsFromResponse[_schemaVariantId] ?? [];
               }
               this.inputSourceProps = inputSourceProps;
 
@@ -641,9 +641,9 @@ export const useFuncStore = () => {
                 response.outputSockets,
                 "schemaVariantId",
               );
-              for (const schemaVariantId in outputSocketsFromResponse) {
-                outputSockets[schemaVariantId] =
-                  outputSocketsFromResponse[schemaVariantId] ?? [];
+              for (const _schemaVariantId in outputSocketsFromResponse) {
+                outputSockets[_schemaVariantId] =
+                  outputSocketsFromResponse[_schemaVariantId] ?? [];
               }
               this.outputSockets = outputSockets;
             },
