@@ -5084,6 +5084,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-firecracker"
+version = "0.1.0"
+dependencies = [
+ "cyclone-core",
+ "futures",
+ "remain",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "si-hash"
 version = "0.1.0"
 dependencies = [
@@ -5167,6 +5178,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-firecracker",
  "si-std",
  "tempfile",
  "thiserror",

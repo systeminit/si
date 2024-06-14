@@ -1,0 +1,18 @@
+[package]
+name = "si-firecracker"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+cyclone-core = { path = "../cyclone-core" }
+futures = { workspace = true }
+remain = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]

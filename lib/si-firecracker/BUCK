@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-firecracker",
+    deps = [
+        "//lib/cyclone-core:cyclone-core",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs","src/firecracker-setup.sh"]),
+)
+
+export_file(
+    name = "firecracker-setup.sh",
+    src = "src/firecracker-setup.sh",
+    visibility = ["PUBLIC"],
+)
