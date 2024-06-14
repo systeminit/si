@@ -327,6 +327,8 @@ const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
   selectedExistingFuncId.value = funcId;
   attrToValidate.value = undefined;
 
+  // TODO the data we need for the new schema variant is not listed in inputSockets from this endpoint
+  funcStore.FETCH_INPUT_SOURCE_LIST();
   attributeOutputLocationOptions.value = schemaVariantId.value
     ? funcStore
         .outputLocationOptionsForSchemaVariant(schemaVariantId.value)
@@ -430,6 +432,7 @@ const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
       assetId,
     },
   });
+  close();
 };
 
 const func = computed(
