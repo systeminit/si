@@ -2,7 +2,7 @@
   <div>
     <div
       v-if="!schemaVariantId"
-      class="w-full flex p-xs gap-1 border-b dark:border-neutral-600"
+      class="w-full flex p-xs gap-2xs border-b dark:border-neutral-600"
     >
       <VButton
         :disabled="disabled"
@@ -13,37 +13,39 @@
         @click="openModal()"
       />
     </div>
-    <ul class="flex flex-col p-3 gap-1">
+    <ul class="flex flex-col p-3 gap-2xs break-words">
       <li v-for="proto in prototypeViews" :key="proto.id">
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
           Schema Variant:
         </h1>
-        <h2 class="pb-2 text-sm">{{ proto.schemaVariant }}</h2>
+        <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
 
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
           Component:
         </h1>
-        <h2 class="pb-2 text-sm">{{ proto.component }}</h2>
+        <h2 class="pb-xs text-sm">{{ proto.component }}</h2>
 
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
           Output location:
         </h1>
-        <h2 class="pb-2 text-sm">
+        <h2 class="pb-xs text-sm">
           {{ proto.outputLocation?.label ?? "no output location set" }}
         </h2>
 
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
           Expected Function Arguments:
         </h1>
-        <h2 class="pb-2 text-sm">
+        <h2 class="pb-xs text-sm">
           Below is the source of the data for each function argument listed.
         </h2>
         <ul>
           <li v-for="arg in proto.args" :key="arg.name">
-            <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            <h1
+              class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50"
+            >
               {{ arg.name }}
             </h1>
-            <h2 class="pb-2 text-sm">{{ arg.path }}</h2>
+            <h2 class="pb-xs text-sm">{{ arg.path }}</h2>
           </li>
         </ul>
         <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">

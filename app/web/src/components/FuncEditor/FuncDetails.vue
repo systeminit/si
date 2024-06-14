@@ -28,9 +28,11 @@
       @update:selected-tab="expandTestPanel"
     >
       <TabGroupItem label="Properties" slug="properties">
-        <ScrollArea>
+        <div
+          class="flex flex-col absolute inset-0 overflow-y-auto overflow-x-hidden"
+        >
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
-            <div class="flex gap-1 flex-wrap">
+            <div class="flex gap-2xs flex-wrap">
               <VButton
                 v-if="enableTestPanel"
                 class="--tone-action"
@@ -128,29 +130,25 @@
             labelClasses="border-b border-neutral-200 dark:border-neutral-600"
             childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
           >
-            <Stack class="p-3">
-              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-                Give this function a Name, Entrypoint and brief description
-                below.
-              </h1>
+            <Stack class="p-xs" spacing="none">
               <VormInput
                 v-model="editingFunc.name"
                 label="Name"
                 required
-                placeholder="Type the name of this function here..."
+                compact
                 @blur="updateFunc"
               />
               <VormInput
                 v-model="editingFunc.displayName"
                 label="Display Name"
                 required
-                placeholder="Type the display name of this function here..."
+                compact
                 @blur="updateFunc"
               />
               <VormInput
                 v-model="editingFunc.description"
                 type="textarea"
-                placeholder="Provide a brief description of this function here..."
+                compact
                 label="Description"
                 @blur="updateFunc"
               />
@@ -235,7 +233,7 @@
               @change="updateFunc"
             />
           </TreeNode>
-        </ScrollArea>
+        </div>
       </TabGroupItem>
 
       <TabGroupItem
@@ -274,7 +272,6 @@ import { storeToRefs } from "pinia";
 import {
   ErrorMessage,
   LoadingMessage,
-  ScrollArea,
   Stack,
   TabGroup,
   TabGroupItem,

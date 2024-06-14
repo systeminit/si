@@ -9,35 +9,36 @@
       )
     "
   >
-    <Icon v-if="iconName" :name="iconName" size="sm" :class="iconClasses" />
+    <Icon
+      v-if="filter.iconName"
+      :name="filter.iconName"
+      size="sm"
+      :class="clsx(iconClasses, filter.iconName.includes('logo') && 'mx-2xs')"
+      :style="filter.iconColor && !selected ? { color: filter.iconColor } : {}"
+    />
     <div class="pr-2xs">
-      <slot name="label">{{ label }}</slot>
+      <slot name="label">{{ filter.name }}</slot>
     </div>
-    <div v-if="number || number === 0" class="font-bold">{{ number }}</div>
+    <div v-if="filter.count || filter.count === 0" class="font-bold">
+      {{ filter.count }}
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {
-  Icon,
-  IconNames,
-  Tones,
-  getToneTextColorClass,
-} from "@si/vue-lib/design-system";
+import { Icon, getToneTextColorClass } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
+import { Filter } from "./SiSearch.vue";
 
 const props = defineProps({
-  label: { type: String },
-  number: { type: Number },
-  iconTone: { type: String as PropType<Tones> },
-  iconName: { type: String as PropType<IconNames> },
+  filter: { type: Object as PropType<Filter>, required: true },
   selected: { type: Boolean },
 });
 
 const iconClasses = computed(() => {
-  if (props.iconTone && !props.selected) {
-    return getToneTextColorClass(props.iconTone);
+  if (props.filter.iconTone && !props.selected) {
+    return getToneTextColorClass(props.filter.iconTone);
   } else return "";
 });
 </script>

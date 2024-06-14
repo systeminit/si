@@ -10,10 +10,10 @@
     <template #top>
       <div class="p-sm">
         <div class="flex flex-row items-center gap-xs pb-sm">
-          <NodeSkeleton :color="`#${selectedAsset.color}`" />
-          <div class="text-3xl font-bold truncate">
+          <NodeSkeleton :color="selectedAsset.color" />
+          <TruncateWithTooltip class="text-3xl font-bold">
             {{ assetDisplayName(selectedAsset) }}
-          </div>
+          </TruncateWithTooltip>
         </div>
         <div class="text-sm italic flex flex-row flex-wrap gap-x-lg">
           <div>
@@ -59,6 +59,7 @@ import SiChip from "@/components/SiChip.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
+import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 
 const changeSetsStore = useChangeSetsStore();
 

@@ -18,6 +18,7 @@ you can pass in options as props too */
       clsx(
         computedClasses,
         inlineLabel ? 'flex flex-row gap-xs items-center' : 'block',
+        compact ? 'vorm-input-compact' : 'vorm-input-standard',
       )
     "
   >
@@ -39,7 +40,18 @@ you can pass in options as props too */
       <div class="vorm-input__prompt pb-xs text-sm">{{ prompt }}</div>
     </slot>
     <div class="vorm-input__input-and-instructions-wrap">
-      <div class="vorm-input__input-wrap">
+      <div
+        v-tooltip="
+          compact
+            ? {
+                content: computedPlaceholder,
+                theme: 'instant-show',
+                placement: 'left',
+              }
+            : null
+        "
+        class="vorm-input__input-wrap"
+      >
         <template v-if="type === 'container'">
           <slot />
         </template>
@@ -48,11 +60,13 @@ you can pass in options as props too */
           <select
             :id="formInputId"
             ref="inputRef"
-            class="vorm-input__input"
             :class="[
               modelValue === null && !placeholderSelectable
                 ? '--placeholder-selected'
                 : '',
+              compact
+                ? 'vorm-input-compact__input vorm-input__hidden-input'
+                : 'vorm-input__input',
             ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"
@@ -78,6 +92,16 @@ you can pass in options as props too */
               >{{ o.label }}
             </VormInputOption>
           </select>
+          <template v-if="compact">
+            <div class="vorm-input__input-value">
+              {{ currentValue }}
+            </div>
+            <Icon
+              class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+              name="input-type-select"
+              size="sm"
+            />
+          </template>
         </template>
 
         <template v-else-if="type === 'radio' || type === 'multi-checkbox'">
@@ -95,7 +119,7 @@ you can pass in options as props too */
           <input
             :id="formInputId"
             ref="inputRef"
-            class="vorm-input__input"
+            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
             :checked="modelValue === checkedValue"
             type="checkbox"
             :disabled="disabledBySelfOrParent"
@@ -111,8 +135,8 @@ you can pass in options as props too */
             :id="formInputId"
             ref="inputRef"
             :value="modelValueForTextArea"
-            class="vorm-input__input"
-            :placeholder="computedPlaceholder"
+            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
+            :placeholder="compact ? undefined : computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :maxlength="maxLength"
             @focus="onFocus"
@@ -133,11 +157,11 @@ you can pass in options as props too */
             :id="formInputId"
             ref="inputRef"
             :value="modelValue"
-            class="vorm-input__input"
+            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
             :autocomplete="autocomplete"
             :name="name"
             :type="nativeInputTagTypeProp"
-            :placeholder="computedPlaceholder"
+            :placeholder="compact ? undefined : computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :step.prop="nativeInputNumberStepProp"
             :minlength="minLength"
@@ -284,6 +308,9 @@ const props = defineProps({
   // for password only
   allowShowPassword: Boolean,
   checkPasswordStrength: Boolean,
+
+  // new compact styling for VormInput
+  compact: Boolean,
 });
 
 const wrapperRef = ref<HTMLDivElement>(); // template ref
@@ -683,7 +710,7 @@ defineExpose({
 
 @vertical-gap: 8px;
 
-.vorm-input {
+.vorm-input-standard {
   --text-color: @colors-black;
   --text-color-error: @colors-destructive-600;
   --text-color-muted: @colors-neutral-500;
@@ -824,7 +851,7 @@ defineExpose({
   padding-right: 35px;
 }
 
-.vorm-input__label {
+.vorm-input-standard > .vorm-input__label {
   @apply capsize text-sm;
   align-items: center;
   color: currentColor;
@@ -955,5 +982,193 @@ defineExpose({
       text-decoration: underline;
     }
   }
+}
+
+// COMPACT STYLES
+
+.vorm-input-compact {
+  position: relative;
+  font-size: 14px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+
+  body.light & {
+    --header-bg-color: @colors-neutral-500;
+    --header-text-color: @colors-white;
+    &.--section-hover {
+      --header-bg-color: @colors-neutral-900;
+      --header-text-color: @colors-white;
+    }
+  }
+  body.dark & {
+    --header-bg-color: @colors-neutral-600;
+    --header-text-color: @colors-white;
+    &.--section-hover {
+      --header-bg-color: @colors-neutral-300;
+      --header-text-color: @colors-black;
+    }
+  }
+}
+
+.vorm-input-compact > .vorm-input__label {
+  cursor: default;
+  flex-shrink: 1;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 0; // fixes cut off descenders
+  i {
+    font-style: normal;
+    opacity: 0.5;
+  }
+}
+
+.vorm-input-compact > .vorm-input__input-and-instructions-wrap {
+  position: relative;
+  border: 1px solid var(--input-border-color);
+  min-height: 30px;
+  width: 45%;
+  flex-shrink: 0;
+  background: var(--input-bg-color);
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 18px;
+
+  .attributes-panel-item.--focus & {
+    background: var(--input-focus-bg-color);
+    z-index: 101;
+  }
+
+  input,
+  textarea {
+    @apply focus:ring-0 focus:ring-offset-0;
+    background: transparent;
+    font-family: inherit;
+    padding: 5px 8px;
+    width: 100%;
+    border: none;
+    font-size: inherit;
+    line-height: inherit;
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+
+    .attributes-panel-item.--input.--focus &,
+    .attributes-panel-item.--input.--hover & {
+      padding-right: 28px; // to give space for unset button
+    }
+  }
+  textarea {
+    min-height: 80px;
+    margin: 0;
+  }
+
+  // chrome + linux showing white on white text - this might fix it?
+  select {
+    option {
+      background: white;
+      color: black;
+    }
+  }
+
+  .attributes-panel-item__type-icon {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    z-index: 2;
+    pointer-events: none;
+  }
+}
+
+// inputs next to each other push together to overlap their input borders
+.vorm-input-compact + .vorm-input-compact {
+  margin-top: -1px;
+}
+
+.vorm-input-compact.--focused {
+  .vorm-input__input-and-instructions-wrap {
+    border-color: var(--input-focus-border-color);
+    background: var(--input-focus-bg-color);
+    z-index: 101;
+  }
+}
+
+.vorm-input-compact__input {
+  background-color: var(--bg-color);
+
+  select& {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 28px !important; // to make space for dropdown arrow
+
+    // dropdown arrow on right
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='%23666'><polygon points='10,15 30,15 20,25'/></svg>");
+    background-size: 25px 25px;
+    background-position: calc(100% - 4px) center;
+    background-repeat: no-repeat;
+
+    &.--placeholder-selected {
+      color: @colors-neutral-400;
+      font-style: italic;
+
+      &.--theme-dark {
+        color: @colors-neutral-500;
+      }
+    }
+
+    &:-moz-focusring {
+      color: transparent;
+      text-shadow: 0 0 0 #000;
+    }
+  }
+
+  // set font size for our inputs
+  // input[type='text']&,
+  // input[type='number']&,
+  // input[type='password']&,
+  input&,
+  select&,
+  textarea& {
+    line-height: 1rem;
+    font-size: 14px;
+
+    // if font-size is at least 16 on mobile, ios will not automatically zoom in
+    @media @mq-mobile-only {
+      font-size: 16px;
+    }
+  }
+
+  textarea& {
+    min-height: 80px;
+    display: block;
+  }
+}
+
+.vorm-input__hidden-input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 0;
+  height: 100%;
+  opacity: 0;
+  z-index: 1;
+  display: block;
+  cursor: pointer;
+}
+
+.vorm-input__input-value {
+  padding: 5px 24px 5px 8px;
+  display: block;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 </style>
