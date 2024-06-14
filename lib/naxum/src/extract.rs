@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use crate::{message::Head, response::IntoResponse, MessageHead};
 
-mod message_parts;
+pub mod message_parts;
 pub mod rejection;
 mod state;
 mod tuple;
