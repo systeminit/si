@@ -138,7 +138,7 @@ pub async fn schema_variant(
                 let rel_edges = workspace_snapshot
                     .get_edges_between_nodes(id, target.id())
                     .await?;
-                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                rel_edges.iter().for_each(|edge| {
                     edges.push(GraphVizEdge {
                         from: id,
                         to: target.id(),
@@ -185,7 +185,7 @@ pub async fn schema_variant(
                 let rel_edges = workspace_snapshot
                     .get_edges_between_nodes(source.id(), id)
                     .await?;
-                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                rel_edges.iter().for_each(|edge| {
                     edges.push(GraphVizEdge {
                         from: source.id(),
                         to: id,
@@ -232,7 +232,7 @@ pub async fn schema_variant(
                     let rel_edges = workspace_snapshot
                         .get_edges_between_nodes(cat_inner.id(), func_id)
                         .await?;
-                    rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                    rel_edges.iter().for_each(|edge| {
                         edges.push(GraphVizEdge {
                             from: cat_inner.id(),
                             to: func_id,
@@ -269,7 +269,7 @@ pub async fn schema_variant(
                                 let rel_edges = workspace_snapshot
                                     .get_edges_between_nodes(root_content.id(), cat_inner.id())
                                     .await?;
-                                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                                rel_edges.iter().for_each(|edge| {
                                     edges.push(GraphVizEdge {
                                         from: root_content.id(),
                                         to: cat_inner.id(),
@@ -340,7 +340,7 @@ pub async fn components(
                     let rel_edges = workspace_snapshot
                         .get_edges_between_nodes(id, target.id())
                         .await?;
-                    rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                    rel_edges.iter().for_each(|edge| {
                         edges.push(GraphVizEdge {
                             from: id,
                             to: target.id(),
