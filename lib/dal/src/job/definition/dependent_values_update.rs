@@ -27,7 +27,7 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
-    WorkspaceSnapshotError, WsEvent, WsEventError,
+    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 const MAX_RETRIES: u32 = 8;
@@ -106,8 +106,25 @@ impl JobConsumerMetadata for DependentValuesUpdate {
 
 #[async_trait]
 impl JobConsumer for DependentValuesUpdate {
-    #[instrument(name = "dependent_values_update.run", skip_all, level = "info")]
+    #[instrument(
+        level="info",
+        name = "dependent_values_update.run",
+        skip_all,
+        fields(
+                si.change_set.id = Empty,
+                si.workspace.pk = Empty,
+            ),
+        )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
+        let span = Span::current();
+        span.record("si.change_set.id", ctx.change_set_id().to_string());
+        span.record(
+            "si.workspace.pk",
+            ctx.tenancy()
+                .workspace_pk()
+                .unwrap_or(WorkspacePk::NONE)
+                .to_string(),
+        );
         Ok(self.inner_run(ctx).await?)
     }
 }
@@ -118,7 +135,7 @@ impl DependentValuesUpdate {
         ctx: &mut DalContext,
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
-
+        let span = Span::current();
         let node_ids = ctx
             .workspace_snapshot()?
             .take_dependent_values(ctx.change_set()?)
@@ -151,15 +168,20 @@ impl DependentValuesUpdate {
 
             for attribute_value_id in &independent_value_ids {
                 let attribute_value_id = attribute_value_id.to_owned(); // release our borrow
-
+                let parent_span = span.clone();
                 if !seen_ids.contains(&attribute_value_id) {
                     let id = Ulid::new();
-                    update_join_set.spawn(values_from_prototype_function_execution(
-                        id,
-                        ctx.clone(),
-                        attribute_value_id,
-                        self.set_value_lock.clone(),
-                    ));
+                    update_join_set.spawn(
+                        values_from_prototype_function_execution(
+                            id,
+                            ctx.clone(),
+                            attribute_value_id,
+                            self.set_value_lock.clone(),
+                        )
+                        .instrument(info_span!(parent: parent_span, "dependent_values_update.values_from_prototype_function_execution",
+                            attribute_value.id = %attribute_value_id,
+                        )),
+                    );
                     task_id_to_av_id.insert(id, attribute_value_id);
                     seen_ids.insert(attribute_value_id);
                 }
@@ -299,14 +321,6 @@ async fn execution_error_detail(
 
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
-#[instrument(
-    name = "dependent_values_update.values_from_prototype_function_execution",
-    skip_all,
-    level = "info",
-    fields(
-        attribute_value.id = %attribute_value_id,
-    )
-)]
 async fn values_from_prototype_function_execution(
     task_id: Ulid,
     ctx: DalContext,
@@ -323,9 +337,10 @@ async fn values_from_prototype_function_execution(
     {
         return (task_id, Err(err));
     }
-
+    let parent_span = Span::current();
     let result =
         AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
+            .instrument(info_span!(parent:parent_span, "value.execute_prototype_function", attribute_value.id= %attribute_value_id))
             .await
             .map_err(Into::into);
 

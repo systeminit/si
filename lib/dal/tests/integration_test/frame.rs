@@ -5,8 +5,8 @@ use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_schema_name,
-    get_component_input_socket_value, get_component_output_socket_value,
-    update_attribute_value_for_component, ChangeSetTestHelpers,
+    create_component_for_schema_name_with_type, get_component_input_socket_value,
+    get_component_output_socket_value, update_attribute_value_for_component, ChangeSetTestHelpers,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -577,6 +577,280 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .expect("got mat view")
         .expect("has value");
     assert_eq!(odd_component_2_mat_view, serde_json::json!("1"));
+}
+
+#[test]
+async fn up_frames_take_inputs_from_down_frames_too(ctx: &mut DalContext) {
+    // create an odd down frame
+    let level_one = create_component_for_schema_name_with_type(
+        ctx,
+        "medium even lego",
+        "level one",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+
+    // create an even up frame
+    let level_two = create_component_for_schema_name_with_type(
+        ctx,
+        "large odd lego",
+        "level two",
+        ComponentType::ConfigurationFrameUp,
+    )
+    .await
+    .expect("could not create component");
+
+    // upsert even frame into odd frame
+    Frame::upsert_parent(ctx, level_two.id(), level_one.id())
+        .await
+        .expect("could not upsert frame");
+
+    // create odd component to go inside even up frame
+    let level_three = create_component_for_schema_name_with_type(
+        ctx,
+        "small even lego",
+        "level three",
+        ComponentType::Component,
+    )
+    .await
+    .expect("could not create component");
+
+    // upsert component into up frame
+    Frame::upsert_parent(ctx, level_three.id(), level_two.id())
+        .await
+        .expect("could not upsert parent");
+
+    update_attribute_value_for_component(
+        ctx,
+        level_one.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["3"],
+    )
+    .await
+    .expect("could not update attribute value");
+
+    update_attribute_value_for_component(
+        ctx,
+        level_three.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["1"],
+    )
+    .await
+    .expect("could not update attribute value");
+    update_attribute_value_for_component(
+        ctx,
+        level_one.id(),
+        &["root", "domain", "one"],
+        serde_json::json!["2"],
+    )
+    .await
+    .expect("could not update attribute value");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // make sure everything looks as expected
+
+    let input_value = get_component_input_socket_value(ctx, level_two.id(), "one")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        serde_json::json![vec!["2", "1"]], // expected
+        input_value,                       // actual
+    );
+    let input_value = get_component_input_socket_value(ctx, level_two.id(), "three")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "3",         // expected
+        input_value, // actual
+    );
+}
+
+#[test]
+async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
+    // create a large up frame
+    let even_level_one = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "level one",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("created frame");
+    // put another medium frame inside
+    let even_level_two = create_component_for_schema_name_with_type(
+        ctx,
+        "medium even lego",
+        "level two",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+
+    Frame::upsert_parent(ctx, even_level_two.id(), even_level_one.id())
+        .await
+        .expect("could not upsert parent");
+
+    // create an odd frame inside level 2 (that we will later detach)
+    let odd_level_three = create_component_for_schema_name_with_type(
+        ctx,
+        "large odd lego",
+        "level three",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+
+    Frame::upsert_parent(ctx, odd_level_three.id(), even_level_two.id())
+        .await
+        .expect("could not create upsert frame");
+
+    // create an odd component inside level 3 (that will move when level 3 is detached)
+    let odd_level_four = create_component_for_schema_name_with_type(
+        ctx,
+        "large odd lego",
+        "level four",
+        ComponentType::Component,
+    )
+    .await
+    .expect("could not create component");
+
+    Frame::upsert_parent(ctx, odd_level_four.id(), odd_level_three.id())
+        .await
+        .expect("could not upsert parent");
+
+    // create an even component, also inside level 3 (that will move when level 3 is detached AND take a value from level 3)
+    let even_level_four = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "level four even",
+        ComponentType::Component,
+    )
+    .await
+    .expect("could not create component");
+    Frame::upsert_parent(ctx, even_level_four.id(), odd_level_three.id())
+        .await
+        .expect("could not upsert parent");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // now let's set some values
+    // level one sets output socket 5 which should pass to the level 3 and 4 items
+    update_attribute_value_for_component(
+        ctx,
+        even_level_one.id(),
+        &["root", "domain", "five"],
+        serde_json::json!["5"],
+    )
+    .await
+    .expect("could not update attribute value");
+    // level two sets output socket 3 which should pass to level 3 and 4 items
+    update_attribute_value_for_component(
+        ctx,
+        even_level_two.id(),
+        &["root", "domain", "three"],
+        serde_json::json!["3"],
+    )
+    .await
+    .expect("could not update attribute value");
+    // level 3 sets output socket 2 which should pass to level 4 even component
+    update_attribute_value_for_component(
+        ctx,
+        odd_level_three.id(),
+        &["root", "domain", "two"],
+        serde_json::json!["2"],
+    )
+    .await
+    .expect("could not update attribute value");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // let's make sure everything is as we expect
+    let input_value = get_component_input_socket_value(ctx, odd_level_three.id(), "five")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "5",         // expected
+        input_value, // actual
+    );
+    let input_value = get_component_input_socket_value(ctx, odd_level_four.id(), "five")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "5",         // expected
+        input_value, // actual
+    );
+    let input_value = get_component_input_socket_value(ctx, odd_level_three.id(), "three")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "3",         // expected
+        input_value, // actual
+    );
+    let input_value = get_component_input_socket_value(ctx, odd_level_four.id(), "three")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "3",         // expected
+        input_value, // actual
+    );
+    let input_value = get_component_input_socket_value(ctx, even_level_four.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "2",         // expected
+        input_value, // actual
+    );
+
+    // now let's orphan level 3
+    Frame::orphan_child(ctx, odd_level_three.id())
+        .await
+        .expect("could not orphan component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // let's make sure everything updated accordingly
+    let input_value = get_component_input_socket_value(ctx, odd_level_three.id(), "five")
+        .await
+        .expect("could not get input socket value");
+    assert!(input_value.is_none());
+    let input_value = get_component_input_socket_value(ctx, odd_level_four.id(), "five")
+        .await
+        .expect("could not get input socket value");
+    assert!(input_value.is_none());
+    let input_value = get_component_input_socket_value(ctx, odd_level_three.id(), "three")
+        .await
+        .expect("could not get input socket value");
+
+    assert!(input_value.is_none());
+    let input_value = get_component_input_socket_value(ctx, odd_level_four.id(), "three")
+        .await
+        .expect("could not get input socket value");
+
+    assert!(input_value.is_none());
+    let input_value = get_component_input_socket_value(ctx, even_level_four.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value");
+    assert_eq!(
+        "2",         // expected
+        input_value, // actual
+    );
 }
 
 #[test]
