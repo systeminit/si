@@ -78,10 +78,8 @@ impl SocketDebugView {
             .into_iter()
             .map(|f| f.to_string())
             .collect();
-        let path = match AttributeValue::get_path_for_id(ctx, attribute_value_id).await? {
-            Some(path) => path,
-            None => String::new(),
-        };
+        let path =
+            (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
 
         let view = attribute_value.view(ctx).await?;
         let inferred_connections: Vec<Ulid> =
@@ -126,10 +124,8 @@ impl SocketDebugView {
             .into_iter()
             .map(|f| f.to_string())
             .collect();
-        let path = match AttributeValue::get_path_for_id(ctx, attribute_value_id).await? {
-            Some(path) => path,
-            None => String::new(),
-        };
+        let path =
+            (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
         let value_view = attribute_value.view(ctx).await?;
         let inferred_connections =
             Component::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
