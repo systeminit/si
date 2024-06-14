@@ -272,7 +272,6 @@ import { storeToRefs } from "pinia";
 import {
   ErrorMessage,
   LoadingMessage,
-  ScrollArea,
   Stack,
   TabGroup,
   TabGroupItem,

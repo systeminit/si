@@ -100,14 +100,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  ref,
-  nextTick,
-  ComputedRef,
-} from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import {
   Icon,
   PillCounter,

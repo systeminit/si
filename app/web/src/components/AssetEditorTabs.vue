@@ -42,7 +42,7 @@
 
 <script lang="ts" setup>
 import isEqual from "lodash-es/isEqual";
-import { watch, ref, computed, onMounted, nextTick } from "vue";
+import { watch, ref, computed, onMounted } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
