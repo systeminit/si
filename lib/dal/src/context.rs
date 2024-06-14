@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
@@ -13,6 +14,7 @@ use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
 use si_layer_cache::event::LayeredEventMetadata;
 use si_layer_cache::LayerDbError;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
@@ -1054,6 +1056,28 @@ impl DalContextBuilder {
             no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         };
 
+        if ctx.history_actor() != &HistoryActor::SystemInit {
+            let user_workspaces: HashSet<WorkspacePk> = Workspace::list_for_user(&ctx)
+                .await
+                .map_err(|e| TransactionsError::Workspace(e.to_string()))?
+                .iter()
+                .map(Workspace::pk)
+                .copied()
+                .collect();
+            if let Some(workspace_pk) = request_context.tenancy.workspace_pk() {
+                let workspace_has_change_set =
+                    Workspace::has_change_set(&ctx, request_context.visibility.change_set_id)
+                        .await
+                        .map_err(|e| TransactionsError::Workspace(e.to_string()))?;
+                // We want to make sure that *BOTH* the Workspace requested is one that the user has
+                // access to, *AND* that the Change Set requested is one of the Change Sets for _that_
+                // workspace.
+                if !(user_workspaces.contains(&workspace_pk) && workspace_has_change_set) {
+                    return Err(TransactionsError::BadWorkspaceAndChangeSet);
+                }
+            }
+        }
+
         ctx.update_snapshot_to_visibility().await?;
 
         Ok(ctx)
@@ -1100,10 +1124,15 @@ impl DalContextBuilder {
 }
 
 #[remain::sorted]
-#[derive(Debug, Error)]
+#[derive(Debug, Error, EnumDiscriminants)]
 pub enum TransactionsError {
     #[error("expected a {0:?} activity, but received a {1:?}")]
     BadActivity(ActivityPayloadDiscriminants, ActivityPayloadDiscriminants),
+    /// Intentionally a bit vague as its used when either the user in question doesn't have access
+    /// to the requested Workspace, or the Change Set requested isn't part of the Workspace that
+    /// was specified.
+    #[error("Bad Workspace & Change Set")]
+    BadWorkspaceAndChangeSet,
     #[error("change set error: {0}")]
     ChangeSet(String),
     #[error("change set not found for change set id: {0}")]

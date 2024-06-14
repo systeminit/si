@@ -562,4 +562,22 @@ impl Workspace {
     }
 
     standard_model_accessor_ro!(name, String);
+
+    pub async fn has_change_set(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT count(*) > 0 AS has_change_set FROM change_set_pointers WHERE workspace_id = $1 AND id = $2",
+                &[&ctx.tenancy().workspace_pk(), &change_set_id],
+            )
+            .await?;
+        let has_change_set: bool = row.try_get("has_change_set")?;
+
+        Ok(has_change_set)
+    }
 }
