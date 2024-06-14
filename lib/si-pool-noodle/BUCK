@@ -6,6 +6,7 @@ rust_library(
         "//lib/buck2-resources:buck2-resources",
         "//lib/cyclone-client:cyclone-client",
         "//lib/cyclone-core:cyclone-core",
+        "//lib/si-firecracker:si-firecracker",
         "//lib/si-std:si-std",
         "//third-party/rust:async-trait",
         "//third-party/rust:bollard",
@@ -22,7 +23,7 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",
     ],
-    srcs = glob(["src/**/*.rs", "src/instance/cyclone/firecracker-setup.sh"]),
+    srcs = glob(["src/**/*.rs"]),
     test_unit_deps = [
         "//lib/veritech-server:veritech-server",
     ],
@@ -31,10 +32,4 @@ rust_library(
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
     },
-)
-
-export_file(
-    name = "firecracker-setup.sh",
-    src = "src/instance/cyclone/firecracker-setup.sh",
-    visibility = ["PUBLIC"],
 )

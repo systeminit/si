@@ -1,6 +1,6 @@
+use si_firecracker::{errors::FirecrackerJailError, firecracker::FirecrackerJail};
 use std::{
     io,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     result,
     sync::Arc,
@@ -71,7 +71,7 @@ pub enum LocalUdsInstanceError {
     DockerAPINotFound,
     /// Failed to firecracker jail.
     #[error("failed in working with a jail: {0}")]
-    Firecracker(String),
+    Firecracker(#[from] FirecrackerJailError),
     /// Failed to create firecracker-setup file.
     #[error("failed to create firecracker-setup file")]
     FirecrackerSetupCreate(#[source] io::Error),
@@ -740,38 +740,14 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 
 #[derive(Debug)]
 struct LocalFirecrackerRuntime {
-    cmd: Command,
-    child: Option<Child>,
+    jail: FirecrackerJail,
     vm_id: u32,
-    socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
     async fn build(_spec: LocalUdsInstanceSpec, id: u32) -> Result<Box<dyn LocalInstanceRuntime>> {
-        let mut cmd = Command::new("/usr/bin/jailer");
-        cmd.arg("--cgroup-version")
-            .arg("2")
-            .arg("--id")
-            .arg(id.to_string())
-            .arg("--exec-file")
-            .arg("/usr/bin/firecracker")
-            .arg("--uid")
-            .arg(format!("500{}", id))
-            .arg("--gid")
-            .arg("10000")
-            .arg("--netns")
-            .arg(format!("/var/run/netns/jailer-{}", id))
-            .arg("--")
-            .arg("--config-file")
-            .arg("./firecracker.conf");
-
-        let socket = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", id));
-        Ok(Box::new(LocalFirecrackerRuntime {
-            cmd,
-            child: None,
-            vm_id: id,
-            socket,
-        }))
+        let jail = FirecrackerJail::build(id).await?;
+        Ok(Box::new(LocalFirecrackerRuntime { jail, vm_id: id }))
     }
 }
 
@@ -781,101 +757,29 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
         self.vm_id
     }
     fn socket(&mut self) -> PathBuf {
-        self.socket.to_path_buf()
+        self.jail.socket()
     }
 
-    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        self.child = Some(
-            self.cmd
-                .spawn()
-                .map_err(LocalUdsInstanceError::ChildSpawn)?,
-        );
-        Ok(())
+    async fn spawn(&mut self) -> Result<()> {
+        Ok(self.jail.spawn().await?)
     }
 
-    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        match self.child.as_mut() {
-            Some(c) => {
-                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
-                Ok(())
-            }
-            None => Ok(()),
-        }
+    async fn terminate(&mut self) -> Result<()> {
+        Ok(self.jail.terminate().await?)
     }
 }
 
 impl LocalFirecrackerRuntime {
     async fn clean(id: u32) -> Result<()> {
-        let command = String::from("/firecracker-data/stop.sh");
-        let output = Command::new(command)
-            .arg(id.to_string())
-            .output()
-            .await
-            .map_err(LocalUdsInstanceError::ChildSpawn)?;
-
-        if !output.status.success() {
-            return Err(LocalUdsInstanceError::Firecracker(
-                String::from_utf8(output.stderr)
-                    .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
-            ));
-        }
-        Ok(())
+        Ok(FirecrackerJail::clean(id).await?)
     }
 
     async fn prepare(id: u32) -> Result<()> {
-        let command = String::from("/firecracker-data/prepare_jailer.sh");
-        let output = Command::new(command)
-            .arg(id.to_string())
-            .output()
-            .await
-            .map_err(LocalUdsInstanceError::ChildSpawn)?;
-
-        if !output.status.success() {
-            return Err(LocalUdsInstanceError::Firecracker(
-                String::from_utf8(output.stderr)
-                    .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
-            ));
-        }
-        Ok(())
+        Ok(FirecrackerJail::prepare(id).await?)
     }
 
     async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-        let script_bytes = include_bytes!("firecracker-setup.sh");
-        let command = Path::new("/firecracker-data/firecracker-setup.sh");
-
-        // we need to ensure the file is in the correct location with the correct permissions
-        std::fs::create_dir_all(
-            command
-                .parent()
-                .expect("This should never happen. Did you remove the path from the string above?"),
-        )
-        .map_err(LocalUdsInstanceError::FirecrackerSetupCreate)?;
-        std::fs::write(command, script_bytes)
-            .map_err(LocalUdsInstanceError::FirecrackerSetupWrite)?;
-        std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
-            .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
-
-        // Spawn the shell process
-        let output = Command::new("sudo")
-            .arg(command)
-            .arg("-j")
-            .arg(&spec.pool_size.to_string())
-            .arg("-rk")
-            .spawn()
-            .map_err(|e| LocalUdsInstanceError::FirecrackerSetupRun(e.to_string()))
-            .expect("Failed to start firecracker-setup")
-            .wait_with_output()
-            .await
-            .map_err(|e| LocalUdsInstanceError::FirecrackerSetupRun(e.to_string()))
-            .expect("Failed to run firecracker-setup");
-
-        if !output.status.success() {
-            return Err(LocalUdsInstanceError::FirecrackerSetupRun(
-                String::from_utf8(output.stderr).expect("This should not be empty"),
-            ));
-        }
-
-        Ok(())
+        Ok(FirecrackerJail::setup(spec.pool_size).await?)
     }
 }
 

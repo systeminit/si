@@ -37,6 +37,7 @@ members = [
     "lib/si-events-rs",
     "lib/si-hash",
     "lib/si-layer-cache",
+    "lib/si-firecracker",
     "lib/si-pkg",
     "lib/si-pool-noodle",
     "lib/si-posthog-rs",
