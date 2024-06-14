@@ -315,7 +315,11 @@ const attachEnabled = computed(() => {
   return nameIsSet && hasOutput && existingSelected && argsConfigured;
 });
 
-const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
+const open = async (
+  existing?: boolean,
+  variant?: FuncKind,
+  funcId?: FuncId,
+) => {
   attachExisting.value = existing ?? false;
 
   name.value = "";
@@ -327,6 +331,7 @@ const open = (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
   selectedExistingFuncId.value = funcId;
   attrToValidate.value = undefined;
 
+  await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId.value);
   attributeOutputLocationOptions.value = schemaVariantId.value
     ? funcStore
         .outputLocationOptionsForSchemaVariant(schemaVariantId.value)
@@ -430,6 +435,7 @@ const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
       assetId,
     },
   });
+  close();
 };
 
 const func = computed(
