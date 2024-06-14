@@ -9,9 +9,9 @@ use std::{
 use pin_project_lite::pin_project;
 use tracing::Span;
 
-use crate::response::Response;
+use crate::{body, response};
 
-use super::on_response::OnResponse;
+use super::{on_response::OnResponse, ResponseBody};
 
 pin_project! {
     pub struct ResponseFuture<F, OnResponse> {
@@ -23,13 +23,14 @@ pin_project! {
     }
 }
 
-impl<Fut, E, OnResponseT> Future for ResponseFuture<Fut, OnResponseT>
+impl<Fut, ResBody, E, OnResponseT> Future for ResponseFuture<Fut, OnResponseT>
 where
-    Fut: Future<Output = Result<Response, E>>,
+    Fut: Future<Output = Result<response::inner::Response<ResBody>, E>>,
+    ResBody: body::inner::Body,
     E: fmt::Display + 'static,
-    OnResponseT: OnResponse,
+    OnResponseT: OnResponse<ResBody>,
 {
-    type Output = Result<Response, E>;
+    type Output = Result<response::inner::Response<ResponseBody<ResBody>>, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -39,14 +40,19 @@ where
 
         match result {
             Ok(res) => {
+                let start = *this.start;
+
                 this.on_response
                     .take()
                     .unwrap()
                     .on_response(&res, latency, this.span);
 
-                // TODO(fnichol): we need to propagate the span, which seems to infer that we need
-                // some kind of response struct, even if it's used to extend to the lifetime of the
-                // processing
+                let span = this.span.clone();
+                let res = res.map(|body| ResponseBody {
+                    inner: body,
+                    _start: start,
+                    _span: span,
+                });
 
                 Poll::Ready(Ok(res))
             }

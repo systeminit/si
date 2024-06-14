@@ -797,19 +797,22 @@ impl DalContext {
     }
 
     #[instrument(
-    level="info",
-    skip_all,
-    fields(
+        name = "dal_context.enqueue_compute_validations",
+        level = "info",
+        skip_all,
+        fields(
             si.change_set.id = Empty,
-            si.attribute_value_id,
+            si.workspace.id = Empty,
         ),
     )]
     pub async fn enqueue_compute_validations(
         &self,
         attribute_value_id: AttributeValueId,
     ) -> TransactionsResult<()> {
-        let span = Span::current();
-        span.record("si.change_set.id", &self.change_set_id().to_string());
+        let span = current_span_for_instrument_at!("info");
+
+        span.record("si.change_set.id", self.change_set_id().to_string());
+        span.record("si.workspace.id", self.workspace_pk()?.to_string());
 
         self.txns()
             .await?
@@ -1390,7 +1393,7 @@ impl Transactions {
         self,
         maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<Connections> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
 
         let pg_conn = self.pg_txn.commit_into_conn().await?;
 
@@ -1476,6 +1479,12 @@ async fn rebase_with_reply(
     let (request_id, reply_fut) = rebaser
         .enqueue_updates_with_reply(workspace_pk.into(), change_set_id.into(), updates_address)
         .await?;
+
+    let reply_fut = reply_fut.instrument(info_span!(
+        "rebaser_client.await_response",
+        si.workspace.id = %workspace_pk,
+        si.change_set.id = %change_set_id,
+    ));
 
     // Wait on response from Rebaser after request has processed
     let reply = time::timeout(timeout, reply_fut)

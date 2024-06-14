@@ -45,6 +45,7 @@ macro_rules! event_dynamic_lvl {
     };
 }
 
+mod body;
 mod future;
 mod layer;
 mod make_span;
@@ -57,6 +58,7 @@ use std::{fmt, time::Duration};
 use tracing::Level;
 
 pub use self::{
+    body::ResponseBody,
     layer::TraceLayer,
     make_span::{DefaultMakeSpan, MakeSpan},
     on_request::{DefaultOnRequest, OnRequest},

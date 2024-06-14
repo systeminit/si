@@ -56,7 +56,7 @@ pub async fn perform_rebase(
     ctx: &mut DalContext,
     request: &EnqueueUpdatesRequest,
 ) -> RebaseResult<RebaseStatus> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;

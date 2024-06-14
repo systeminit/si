@@ -14,7 +14,10 @@ use futures::future::Map;
 use pin_project_lite::pin_project;
 use tower::{util::Oneshot, Service};
 
-use crate::{response::Response, MessageHead};
+use crate::{
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 pin_project! {
     pub struct IntoServiceFuture<F> {
@@ -53,21 +56,21 @@ where
 pin_project! {
     pub struct LayeredFuture<S, R>
     where
-        S: Service<R>,
+        S: Service<Message<R>>,
         R: MessageHead,
     {
         #[pin]
-        inner: Map<Oneshot<S, R>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Message<R>>, fn(Result<S::Response, S::Error>) -> Response>,
     }
 }
 
 impl<S, R> LayeredFuture<S, R>
 where
-    S: Service<R>,
+    S: Service<Message<R>>,
     R: MessageHead,
 {
     pub(super) fn new(
-        inner: Map<Oneshot<S, R>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Message<R>>, fn(Result<S::Response, S::Error>) -> Response>,
     ) -> Self {
         Self { inner }
     }
@@ -75,7 +78,7 @@ where
 
 impl<S, R> Future for LayeredFuture<S, R>
 where
-    S: Service<R>,
+    S: Service<Message<R>>,
     R: MessageHead,
 {
     type Output = Response;

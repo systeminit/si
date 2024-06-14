@@ -27,7 +27,9 @@ pub use tracing;
 use tracing::warn;
 
 pub mod prelude {
-    pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
+    pub use super::{
+        current_span_for_instrument_at, MessagingOperation, SpanExt, SpanKind, SpanKindExt,
+    };
     pub use tracing::{
         self, debug, debug_span, enabled, error, error_span, event, event_enabled, field::Empty,
         info, info_span, instrument, span, span_enabled, trace, trace_span, warn, warn_span,
@@ -521,4 +523,43 @@ impl IntoAppModules for &[&'static str] {
     fn into_app_modules(self) -> Vec<Cow<'static, str>> {
         self.iter().map(|e| Cow::Borrowed(*e)).collect()
     }
+}
+
+#[macro_export]
+macro_rules! current_span_for_instrument_at {
+    ("error") => {
+        if enabled!(Level::ERROR) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    };
+    ("warn") => {
+        if enabled!(Level::WARN) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    };
+    ("info") => {
+        if enabled!(Level::INFO) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    };
+    ("debug") => {
+        if enabled!(Level::DEBUG) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    };
+    ("trace") => {
+        if enabled!(Level::TRACE) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    };
 }

@@ -447,6 +447,8 @@ impl WorkspaceSnapshot {
         &self,
         ctx: &DalContext,
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+        let span = current_span_for_instrument_at!("debug");
+
         // Pull out the working copy and clean it up.
         let new_address = {
             // Everything needs to be pulled out here so we can throw it into
@@ -477,7 +479,7 @@ impl WorkspaceSnapshot {
             })?
             .await??;
 
-            Span::current().record("si.workspace_snapshot.address", new_address.to_string());
+            span.record("si.workspace_snapshot.address", new_address.to_string());
 
             new_address
         };

@@ -108,7 +108,7 @@ impl Client {
         (self.inner, self.metadata)
     }
 
-    #[instrument(name = "client.new", skip_all, level = "debug")]
+    #[instrument(name = "nats_client::new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
 
@@ -183,7 +183,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.publish",
+        name = "nats_client.publish",
         skip_all,
         level = "debug",
         fields(
@@ -210,7 +210,7 @@ impl Client {
         )
     )]
     pub async fn publish(&self, subject: impl ToSubject, payload: Bytes) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -250,7 +250,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.publish_with_headers",
+        name = "nats_client.publish_with_headers",
         skip_all,
         level = "debug",
         fields(
@@ -282,7 +282,7 @@ impl Client {
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -318,7 +318,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.publish_with_reply",
+        name = "nats_client.publish_with_reply",
         skip_all,
         level = "debug",
         fields(
@@ -350,7 +350,7 @@ impl Client {
         reply: impl ToSubject,
         payload: Bytes,
     ) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -395,7 +395,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.publish_with_reply_and_headers",
+        name = "nats_client.publish_with_reply_and_headers",
         skip_all,
         level = "debug",
         fields(
@@ -428,7 +428,7 @@ impl Client {
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -462,7 +462,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.request",
+        name = "nats_client.request",
         skip_all,
         level = "debug",
         fields(
@@ -490,7 +490,7 @@ impl Client {
         )
     )]
     pub async fn request(&self, subject: impl ToSubject, payload: Bytes) -> Result<Message> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -529,7 +529,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.request_with_headers",
+        name = "nats_client.request_with_headers",
         skip_all,
         level = "debug",
         fields(
@@ -562,7 +562,7 @@ impl Client {
         headers: HeaderMap,
         payload: Bytes,
     ) -> Result<Message> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -599,7 +599,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.send_request",
+        name = "nats_client.send_request",
         skip_all,
         level = "debug",
         fields(
@@ -627,7 +627,7 @@ impl Client {
         )
     )]
     pub async fn send_request(&self, subject: impl ToSubject, request: Request) -> Result<Message> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -691,7 +691,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.subscribe",
+        name = "nats_client.subscribe",
         skip_all,
         level = "debug",
         fields(
@@ -716,7 +716,7 @@ impl Client {
         )
     )]
     pub async fn subscribe(&self, subject: impl ToSubject) -> Result<Subscriber> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -760,7 +760,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.queue_subscribe",
+        name = "nats_client.queue_subscribe",
         skip_all,
         level = "debug",
         fields(
@@ -790,7 +790,7 @@ impl Client {
         subject: impl ToSubject,
         queue_group: String,
     ) -> Result<Subscriber> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -831,7 +831,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client.flush",
+        name = "nats_client.flush",
         skip_all,
         level = "debug",
         fields(
@@ -853,7 +853,7 @@ impl Client {
         )
     )]
     pub async fn flush(&self) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         self.inner
             .flush()
@@ -888,7 +888,7 @@ impl Client {
 // API extensions
 impl Client {
     #[instrument(
-        name = "client.transaction",
+        name = "nats_client.transaction",
         skip_all,
         level = "debug",
         fields(
@@ -955,7 +955,7 @@ impl Client {
     /// # }
     /// ```
     #[instrument(
-        name = "client::connect_with_options",
+        name = "nats_client::connect_with_options",
         skip_all,
         level = "debug",
         fields(
@@ -993,7 +993,7 @@ impl Client {
         let network_protocol_name = "nats";
         let network_transport = "ip_tcp";
 
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.record("messaging.system", messaging_system);
         span.record("messaging.url", messaging_url.as_str());
         span.record("network.protocol.name", network_protocol_name);
@@ -1058,6 +1058,11 @@ impl Client {
     /// Gets a reference to the client's metadata.
     pub fn metadata(&self) -> &ConnectionMetadata {
         self.metadata.as_ref()
+    }
+
+    /// Gets a cloned copy of the client's metadata.
+    pub fn metadata_clone(&self) -> Arc<ConnectionMetadata> {
+        self.metadata.clone()
     }
 }
 
@@ -1164,7 +1169,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.publish",
+        name = "nats_txn.publish",
         skip_all,
         level = "debug",
         fields(
@@ -1178,7 +1183,7 @@ impl NatsTxn {
     where
         T: Serialize + Debug,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.tx_span);
 
         let subject = subject.to_subject();
@@ -1192,7 +1197,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.publish_immediately",
+        name = "nats_txn.publish_immediately",
         skip_all,
         level = "debug",
         fields(
@@ -1206,7 +1211,7 @@ impl NatsTxn {
     where
         T: Serialize + Debug,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.tx_span);
 
         let subject = subject.to_subject();
@@ -1224,7 +1229,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.commit_into_conn",
+        name = "nats_txn.commit_into_conn",
         skip_all,
         level = "debug",
         fields(
@@ -1234,7 +1239,7 @@ impl NatsTxn {
         )
     )]
     pub async fn commit_into_conn(self) -> Result<Client> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.tx_span);
 
         let mut pending_publish = self.pending_publish.lock_owned().await;
@@ -1255,7 +1260,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.commit",
+        name = "nats_txn.commit",
         skip_all,
         level = "debug",
         fields(
@@ -1268,7 +1273,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.rollback_into_conn",
+        name = "nats_txn.rollback_into_conn",
         skip_all,
         level = "debug",
         fields(
@@ -1278,7 +1283,7 @@ impl NatsTxn {
         )
     )]
     pub async fn rollback_into_conn(self) -> Result<Client> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.tx_span);
 
         // Nothing much to do, we want to drop the pending publishes which happens when this
@@ -1292,7 +1297,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.rollback",
+        name = "nats_txn.rollback",
         skip_all,
         level = "debug",
         fields(

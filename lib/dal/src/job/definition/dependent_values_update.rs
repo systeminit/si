@@ -110,16 +110,17 @@ impl JobConsumerMetadata for DependentValuesUpdate {
 #[async_trait]
 impl JobConsumer for DependentValuesUpdate {
     #[instrument(
-        level="info",
         name = "dependent_values_update.run",
+        level = "info",
         skip_all,
         fields(
-                si.change_set.id = Empty,
-                si.workspace.id = Empty,
-            ),
-        )]
+            si.change_set.id = Empty,
+            si.workspace.id = Empty,
+        ),
+    )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
+
         span.record("si.change_set.id", ctx.change_set_id().to_string());
         span.record(
             "si.workspace.id",
@@ -128,6 +129,7 @@ impl JobConsumer for DependentValuesUpdate {
                 .unwrap_or(WorkspacePk::NONE)
                 .to_string(),
         );
+
         Ok(self.inner_run(ctx).await?)
     }
 }
@@ -321,18 +323,14 @@ impl DependentValuesUpdate {
                             attribute_value_id,
                         );
 
-                        update_join_set.spawn(
-                                values_from_prototype_function_execution(
-                                    id,
-                                    ctx.clone(),
-                                    attribute_value_id,
-                                    self.set_value_lock.clone(),
-                                    status_update,
-                                )
-                                .instrument(info_span!(parent: parent_span, "dependent_values_update.values_from_prototype_function_execution",
-                                    attribute_value.id = %attribute_value_id,
-                                )),
-                            );
+                        update_join_set.spawn(values_from_prototype_function_execution(
+                            id,
+                            parent_span,
+                            ctx.clone(),
+                            attribute_value_id,
+                            self.set_value_lock.clone(),
+                            status_update,
+                        ));
                         task_id_to_av_id.insert(id, attribute_value_id);
                         spawned_ids.insert(attribute_value_id);
                     }
@@ -495,8 +493,18 @@ async fn execution_error_detail(
 
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
+#[instrument(
+    name = "dependent_values_update.values_from_prototype_function_execution",
+    level = "info",
+    parent = &parent_span,
+    skip_all,
+    fields(
+        si.attribute_value.id = %attribute_value_id,
+    ),
+)]
 async fn values_from_prototype_function_execution(
     task_id: Ulid,
+    parent_span: Span,
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
@@ -510,10 +518,8 @@ async fn values_from_prototype_function_execution(
         }
     }
 
-    let parent_span = Span::current();
     let result =
         AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
-            .instrument(info_span!(parent:parent_span, "value.execute_prototype_function", attribute_value.id= %attribute_value_id))
             .await
             .map_err(Into::into);
 

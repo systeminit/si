@@ -8,7 +8,11 @@ use std::{
 use futures::FutureExt;
 use tower::Service;
 
-use crate::{make_service::IntoMakeService, response::Response, MessageHead};
+use crate::{
+    make_service::IntoMakeService,
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 use super::Handler;
 
@@ -59,7 +63,7 @@ where
     }
 }
 
-impl<H, T, S, R> Service<R> for HandlerService<H, T, S, R>
+impl<H, T, S, R> Service<Message<R>> for HandlerService<H, T, S, R>
 where
     H: Handler<T, S, R> + Clone + Send + 'static,
     S: Clone + Send + Sync,
@@ -76,7 +80,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: R) -> Self::Future {
+    fn call(&mut self, req: Message<R>) -> Self::Future {
         let handler = self.handler.clone();
         let future = Handler::call(handler, req, self.state.clone());
         let future = future.map(Ok as _);

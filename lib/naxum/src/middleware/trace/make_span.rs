@@ -1,15 +1,15 @@
 use tracing::{Level, Span};
 
-use crate::MessageHead;
+use crate::message::{Message, MessageHead};
 
 use super::DEFAULT_MESSAGE_LEVEL;
 
 pub trait MakeSpan<R> {
-    fn make_span(&mut self, req: &R) -> Span;
+    fn make_span(&mut self, req: &Message<R>) -> Span;
 }
 
 impl<R> MakeSpan<R> for Span {
-    fn make_span(&mut self, _req: &R) -> Span {
+    fn make_span(&mut self, _req: &Message<R>) -> Span {
         self.clone()
     }
 }
@@ -18,7 +18,7 @@ impl<F, R> MakeSpan<R> for F
 where
     F: FnMut(&R) -> Span,
 {
-    fn make_span(&mut self, req: &R) -> Span {
+    fn make_span(&mut self, req: &Message<R>) -> Span {
         self(req)
     }
 }
@@ -58,7 +58,7 @@ impl<R> MakeSpan<R> for DefaultMakeSpan
 where
     R: MessageHead,
 {
-    fn make_span(&mut self, req: &R) -> Span {
+    fn make_span(&mut self, req: &Message<R>) -> Span {
         let reply = req.reply().map(|r| r.as_str()).unwrap_or_default();
         let status = req.status().map(|s| s.as_u16()).unwrap_or_default();
 

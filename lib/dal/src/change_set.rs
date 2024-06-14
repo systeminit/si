@@ -370,6 +370,8 @@ impl ChangeSet {
         ctx: &DalContext,
         change_set_id: ChangeSetId,
     ) -> ChangeSetResult<Option<Self>> {
+        let span = current_span_for_instrument_at!("debug");
+
         let row = ctx
             .txns()
             .await?
@@ -382,8 +384,6 @@ impl ChangeSet {
 
         match row {
             Some(row) => {
-                let span = Span::current();
-
                 let change_set = Self::try_from(row)?;
 
                 if let Some(workspace_id) = change_set.workspace_id {
@@ -535,6 +535,12 @@ impl ChangeSet {
                     self.id,
                 )
                 .await?;
+
+            let reply_fut = reply_fut.instrument(info_span!(
+                "rebaser_client.await_response",
+                si.workspace.id = %workspace_id,
+                si.change_set.id = %base_change_set_id,
+            ));
 
             // Wait on response from Rebaser after request has processed
             let timeout = Duration::from_secs(60);

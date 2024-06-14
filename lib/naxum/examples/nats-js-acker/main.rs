@@ -12,7 +12,7 @@ use naxum::{
     handler::Handler,
     middleware::{ack::AckLayer, trace::TraceLayer},
     response::{IntoResponse, Response},
-    BoxError, ServiceExt,
+    BoxError, Message, ServiceExt,
 };
 use thiserror::Error;
 use tokio::{
@@ -51,11 +51,14 @@ enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         error!(error = ?self, "failed to process message");
-        Response::internal_server_error()
+        Response::default_internal_server_error()
     }
 }
 
-async fn default(State(state): State<AppState>, msg: async_nats::Message) -> Result<(), AppError> {
+async fn default(
+    State(state): State<AppState>,
+    msg: Message<async_nats::Message>,
+) -> Result<(), AppError> {
     info!(subject = msg.subject.as_str(), headers = ?msg.headers, "processing message");
 
     // Introduce some simulated "work" time

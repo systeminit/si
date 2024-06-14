@@ -7,7 +7,7 @@ use crate::{
         rejection::{JsonDataError, JsonRejection, JsonSyntaxError},
         FromMessage,
     },
-    MessageHead,
+    message::{Message, MessageHead},
 };
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -23,7 +23,7 @@ where
 {
     type Rejection = JsonRejection;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         let bytes = Bytes::from_message(req, state)
             .await
             .expect("from_message is infallible");

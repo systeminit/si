@@ -9,12 +9,12 @@ use futures::future::BoxFuture;
 use pin_project_lite::pin_project;
 use tower::Service;
 
-use crate::response::Response;
+use crate::{message::Message, response::Response};
 
 pin_project! {
     pub struct ResponseFuture<S>
     where
-        S: Service<jetstream::Message>,
+        S: Service<Message<jetstream::Message>>,
     {
         #[pin]
         pub(crate) inner: S::Future,
@@ -37,7 +37,7 @@ pub(crate) enum State<T, E> {
 
 impl<S> Future for ResponseFuture<S>
 where
-    S: Service<jetstream::Message, Response = Response>,
+    S: Service<Message<jetstream::Message>, Response = Response>,
 {
     type Output = Result<S::Response, S::Error>;
 

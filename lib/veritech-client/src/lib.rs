@@ -69,7 +69,15 @@ impl Client {
         self.nats.metadata().subject_prefix()
     }
 
-    #[instrument(name = "client.execute_action_run", level = "info", skip_all)]
+    #[instrument(
+        name = "veritech_client.execute_action_run",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
     pub async fn execute_action_run(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -91,7 +99,15 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_resolver_function", level = "info", skip_all)]
+    #[instrument(
+        name = "veritech_client.execute_resolver_function",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
     pub async fn execute_resolver_function(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -114,9 +130,13 @@ impl Client {
     }
 
     #[instrument(
-        name = "client.execute_schema_variant_definition",
+        name = "veritech_client.execute_schema_variant_definition",
         level = "info",
-        skip_all
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
     )]
     pub async fn execute_schema_variant_definition(
         &self,
@@ -139,7 +159,15 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_validation", level = "info", skip_all)]
+    #[instrument(
+        name = "veritech_client.execute_validation",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
     pub async fn execute_validation(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -161,7 +189,12 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.kill_execution", level = "info", skip_all)]
+    #[instrument(
+        name = "veritech_client.kill_execution",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     pub async fn kill_execution(
         &self,
         request: &KillExecutionRequest,

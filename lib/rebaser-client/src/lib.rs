@@ -18,6 +18,7 @@ use si_data_nats::{
 };
 use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
+use telemetry_nats::propagation;
 use thiserror::Error;
 
 pub use rebaser_core::{api_types, RequestId};
@@ -79,6 +80,15 @@ impl Client {
     }
 
     /// Asynchronously enqueues graph updates for processing by a Rebaser & return a [`RequestId`].
+    #[instrument(
+        name = "rebaser_client.enqueue_updates",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+        ),
+    )]
     pub async fn enqueue_updates(
         &self,
         workspace_id: WorkspacePk,
@@ -91,6 +101,15 @@ impl Client {
 
     /// Asynchronously enqueues graph updates that originate from a Change Set & return a
     /// [`RequestId`].
+    #[instrument(
+        name = "rebaser_client.enqueue_updates_from_change_set",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+        ),
+    )]
     pub async fn enqueue_updates_from_change_set(
         &self,
         workspace_id: WorkspacePk,
@@ -110,6 +129,15 @@ impl Client {
 
     /// Enqueues graph updates for processing by a Rebaser and return a [`Future`] that will await
     /// the Rebaser's response with status.
+    #[instrument(
+        name = "rebaser_client.enqueue_updates_with_reply",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+        ),
+    )]
     pub async fn enqueue_updates_with_reply(
         &self,
         workspace_id: WorkspacePk,
@@ -125,6 +153,15 @@ impl Client {
 
     /// Enqueues graph updates that originate from a Change Set and return a [`Future`] that will
     /// await the Rebaser's response with status.
+    #[instrument(
+        name = "rebaser_client.enqueue_updates_from_change_set_with_reply",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+        ),
+    )]
     pub async fn enqueue_updates_from_change_set_with_reply(
         &self,
         workspace_id: WorkspacePk,
@@ -175,6 +212,7 @@ impl Client {
         let info = ContentInfo::from(&request);
 
         let mut headers = HeaderMap::new();
+        propagation::inject_headers(&mut headers);
         info.inject_into_headers(&mut headers);
         headers.insert(header::NATS_MESSAGE_ID, id.to_string());
         if let Some(reply_inbox) = maybe_reply_inbox {
@@ -242,6 +280,9 @@ impl Client {
                 .next()
                 .await
                 .ok_or(Error::ReplySubscriptionClosed)?;
+
+            propagation::associate_current_span_from_headers(reply.headers());
+
             response_from_reply(reply)
         });
 

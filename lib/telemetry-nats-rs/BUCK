@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "telemetry-nats",
     deps = [
+        "//lib/naxum:naxum",
         "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:tracing-opentelemetry",

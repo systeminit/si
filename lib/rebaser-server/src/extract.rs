@@ -7,7 +7,7 @@
 use naxum::{
     async_trait, composite_rejection, define_rejection,
     extract::{FromMessage, FromMessageHead},
-    Head, MessageHead,
+    Head, Message, MessageHead,
 };
 use rebaser_core::{
     api_types::{ApiVersionsWrapper, ApiWrapper},
@@ -169,7 +169,7 @@ where
 {
     type Rejection = ApiTypesNegotiateRejection;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         let (mut head, payload) = req.into_parts();
         let ContentInfo(content_info) = ContentInfo::from_message_head(&mut head, state).await?;
 

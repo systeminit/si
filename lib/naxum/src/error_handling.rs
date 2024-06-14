@@ -10,8 +10,8 @@ use tower::{Layer, Service, ServiceExt};
 
 use crate::{
     extract::FromMessageHead,
+    message::{Message, MessageHead},
     response::{IntoResponse, Response},
-    MessageHead,
 };
 
 pub struct HandleErrorLayer<F, T> {
@@ -101,9 +101,9 @@ where
     }
 }
 
-impl<S, R, F, Fut, Res> Service<R> for HandleError<S, F, ()>
+impl<S, R, F, Fut, Res> Service<Message<R>> for HandleError<S, F, ()>
 where
-    S: Service<R> + Clone + Send + 'static,
+    S: Service<Message<R>> + Clone + Send + 'static,
     S::Response: Send,
     S::Error: Send,
     S::Future: Send,
@@ -120,7 +120,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: R) -> Self::Future {
+    fn call(&mut self, req: Message<R>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -145,10 +145,10 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, R, F, Res, Fut, $($ty,)*> Service<R>
+        impl<S, R, F, Res, Fut, $($ty,)*> Service<Message<R>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<R> + Clone + Send + 'static,
+            S: Service<Message<R>> + Clone + Send + 'static,
             S::Response: IntoResponse + Send,
             S::Error: Send,
             S::Future: Send,
@@ -168,23 +168,23 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: R) -> Self::Future {
+            fn call(&mut self, req: Message<R>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let (mut parts, body) = req.into_parts();
+                    let (mut head, payload) = req.into_parts();
 
                     $(
-                        let $ty = match $ty::from_message_head(&mut parts, &()).await {
+                        let $ty = match $ty::from_message_head(&mut head, &()).await {
                             Ok(value) => value,
                             Err(rejection) => return Ok(rejection.into_response()),
                         };
                     )*
 
-                    let req = match R::from_parts(parts, body) {
+                    let req = match Message::from_parts(head, payload) {
                         Ok(value) => value,
                         Err(rejection) => return Ok(rejection.into_response()),
                     };

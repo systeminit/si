@@ -171,7 +171,7 @@ where
                     }
                 };
 
-                let process_span = this.make_span.make_span(&msg, this.subject);
+                let process_span = this.make_span.span_from_core_message(&msg);
 
                 let (msg, _metadata) = msg.into_parts();
 

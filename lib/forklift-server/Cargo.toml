@@ -11,15 +11,15 @@ publish.workspace = true
 [dependencies]
 billing-events = { path = "../../lib/billing-events" }
 data-warehouse-stream-client = { path = "../../lib/data-warehouse-stream-client" }
-naxum = { path = "../../lib/naxum" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-settings = { path = "../../lib/si-settings" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
 derive_builder = { workspace = true }
+naxum = { path = "../../lib/naxum" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-settings = { path = "../../lib/si-settings" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio-util = { workspace = true }
 ulid = { workspace = true }

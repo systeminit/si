@@ -16,11 +16,13 @@ pub fn to_vec<T>(value: &T) -> LayerDbResult<Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
+    let span = current_span_for_instrument_at!("debug");
+
     let serialized = postcard::to_stdvec(value)?;
     // 1 is the best speed, 6 is default, 9 is best compression but may be too slow
     let compressed = miniz_oxide::deflate::compress_to_vec(&serialized, 1);
 
-    Span::current().record("bytes.size", compressed.len());
+    span.record("bytes.size", compressed.len());
 
     Ok(compressed)
 }

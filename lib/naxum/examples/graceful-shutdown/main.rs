@@ -1,7 +1,7 @@
 use std::{env, error, str, time::Duration};
 
 use async_nats::jetstream;
-use naxum::{handler::Handler, middleware::ack::AckLayer, ServiceExt};
+use naxum::{handler::Handler, middleware::ack::AckLayer, Message, ServiceExt};
 use tokio::{
     signal::unix::{self, SignalKind},
     time,
@@ -22,7 +22,7 @@ const DEFAULT_TRACING_DIRECTIVES: &str = "graceful_shutdown=trace,naxum=debug,in
 #[derive(Clone, Debug)]
 struct AppState {}
 
-async fn default(msg: async_nats::Message) -> naxum::response::Result<()> {
+async fn default(msg: Message<async_nats::Message>) -> naxum::response::Result<()> {
     info!(subject = msg.subject.as_str(), "processing message");
 
     let payload = str::from_utf8(&msg.payload).expect("TODO");

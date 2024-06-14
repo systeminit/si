@@ -9,20 +9,21 @@ use billing_events::{BillingEventsError, BillingEventsWorkQueue};
 use data_warehouse_stream_client::DataWarehouseStreamClient;
 use naxum::{
     handler::Handler as _,
-    middleware::{
-        ack::AckLayer,
-        trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer},
-    },
-    ServiceBuilder, ServiceExt as _,
-};
-use si_data_nats::async_nats::{
-    error::Error as AsyncNatsError,
-    jetstream::{
-        consumer::{pull::Stream, StreamErrorKind},
-        stream::ConsumerErrorKind,
-    },
+    middleware::{ack::AckLayer, trace::TraceLayer},
+    response::{IntoResponse, Response},
+    ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{async_nats, jetstream, NatsClient};
+use si_data_nats::{
+    async_nats::{
+        error::Error as AsyncNatsError,
+        jetstream::{
+            consumer::{pull::Stream, StreamErrorKind},
+            stream::ConsumerErrorKind,
+        },
+    },
+    ConnectionMetadata,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
@@ -101,6 +102,8 @@ impl Server {
 
         let nats = Self::connect_to_nats(&config).await?;
 
+        let connection_metadata = nats.metadata_clone();
+
         let incoming = {
             let queue = BillingEventsWorkQueue::get_or_create(jetstream::new(nats)).await?;
             let consumer_subject = queue.workspace_update_subject("*");
@@ -118,12 +121,24 @@ impl Server {
                 info!(%stream_name, "creating billing events app in data warehouse stream delivery mode...");
                 let client = DataWarehouseStreamClient::new(stream_name).await;
                 let state = AppState::new(client);
-                Self::build_app(state, incoming, config.concurrency_limit(), token.clone())?
+                Self::build_app(
+                    state,
+                    connection_metadata,
+                    incoming,
+                    config.concurrency_limit(),
+                    token.clone(),
+                )?
             }
             None => {
                 info!("creating billing events app in no-op mode...");
                 let state = NoopAppState::new();
-                Self::build_noop_app(state, incoming, config.concurrency_limit(), token.clone())?
+                Self::build_noop_app(
+                    state,
+                    connection_metadata,
+                    incoming,
+                    config.concurrency_limit(),
+                    token.clone(),
+                )?
             }
         };
 
@@ -136,6 +151,7 @@ impl Server {
 
     fn build_app(
         state: AppState,
+        connection_metadata: Arc<ConnectionMetadata>,
         incoming: Stream,
         concurrency_limit: usize,
         token: CancellationToken,
@@ -143,14 +159,14 @@ impl Server {
         let app = ServiceBuilder::new()
             .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(
-                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
-                    ),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(AckLayer::new())
-            .service(handlers::process_request.with_state(state));
+            .service(handlers::process_request.with_state(state))
+            .map_response(Response::into_response);
 
         let inner =
             naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
@@ -176,6 +192,7 @@ impl Server {
 
     fn build_noop_app(
         state: NoopAppState,
+        connection_metadata: Arc<ConnectionMetadata>,
         incoming: Stream,
         concurrency_limit: usize,
         token: CancellationToken,
@@ -183,14 +200,14 @@ impl Server {
         let app = ServiceBuilder::new()
             .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(
-                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
-                    ),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(AckLayer::new())
-            .service(handlers::process_request_noop.with_state(state));
+            .service(handlers::process_request_noop.with_state(state))
+            .map_response(Response::into_response);
 
         let inner =
             naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
