@@ -4,19 +4,19 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use chrono::Utc;
 use convert_case::{Case, Casing};
+use pkg::import::import_schema_variant;
 use si_layer_cache::LayerDbError;
-use thiserror::Error;
-
-use pkg::import::{clone_and_import_funcs, import_schema_variant};
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
     SchemaVariantSpec, SiPkg, SiPkgError, SpecError,
 };
 use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
+use crate::pkg::import::import_only_new_funcs;
 use crate::pkg::{import_pkg_from_pkg, PkgError};
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use crate::{
@@ -238,46 +238,45 @@ impl VariantAuthoringClient {
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
         let sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        let asset_func_id =
+            sv.asset_func_id()
+                .ok_or(VariantAuthoringError::SchemaVariantAssetNotFound(
+                    current_sv_id,
+                ))?;
+        let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+
         let components_in_use = sv.get_components_on_graph(ctx).await?;
-        let updated_sv_id: SchemaVariantId = if let Some(asset_func_id) = sv.asset_func_id() {
-            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
-            if !components_in_use.is_empty() {
-                Self::update_and_generate_variant_with_new_version(
-                    ctx,
-                    &asset_func,
-                    current_sv_id,
-                    name,
-                    menu_name.clone(),
-                    category,
-                    color,
-                    link.clone(),
-                    code,
-                    description.clone(),
-                    component_type,
-                )
-                .await?
-            } else {
-                Self::update_existing_variant_and_regenerate(
-                    ctx,
-                    current_sv_id,
-                    name,
-                    menu_name.clone(),
-                    category,
-                    color,
-                    link.clone(),
-                    code,
-                    description.clone(),
-                    component_type,
-                )
-                .await?;
-                current_sv_id
-            }
-        } else {
-            return Err(VariantAuthoringError::SchemaVariantAssetNotFound(
+        if components_in_use.is_empty() {
+            Self::update_existing_variant_and_regenerate(
+                ctx,
                 current_sv_id,
-            ));
-        };
-        Ok(updated_sv_id)
+                name,
+                menu_name.clone(),
+                category,
+                color,
+                link.clone(),
+                code,
+                description.clone(),
+                component_type,
+            )
+            .await?;
+            Ok(current_sv_id)
+        } else {
+            Self::update_and_generate_variant_with_new_version(
+                ctx,
+                &asset_func,
+                current_sv_id,
+                name,
+                menu_name.clone(),
+                category,
+                color,
+                link.clone(),
+                code,
+                description.clone(),
+                component_type,
+            )
+            .await
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -393,7 +392,7 @@ impl VariantAuthoringClient {
         schema_variant.rebuild_variant_root_prop(ctx).await?;
 
         // Now we can reimport all parts of the schema variant in place!
-        let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
+        let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
         if let Some(new_schema_variant) = import_schema_variant(
             ctx,
             &mut schema,
@@ -532,8 +531,8 @@ impl VariantAuthoringClient {
                 Ok(())
             })
             .await?;
-        let mut thing_map = clone_and_import_funcs(ctx, pkg.funcs()?).await?;
 
+        let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
         if let Some(new_schema_variant) = import_schema_variant(
             ctx,
             &mut schema,

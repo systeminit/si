@@ -72,8 +72,8 @@ pub enum PkgError {
     MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
-    #[error("Package asked for a function with the unique id {0} but none could be found")]
-    MissingFuncUniqueId(String),
+    #[error("Package asked for a function with the unique id {0} but none could be found ({1})")]
+    MissingFuncUniqueId(String, &'static str),
     #[error("Cannot find InputSocket for name: {0}")]
     MissingInputSocketName(String),
     #[error("Intrinsic function {0} not found")]

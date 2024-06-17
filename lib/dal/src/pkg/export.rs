@@ -187,7 +187,10 @@ impl PkgExporter {
             let asset_func_unique_id = self
                 .func_map
                 .get(&authoring_func_id)
-                .ok_or(PkgError::MissingFuncUniqueId(authoring_func_id.to_string()))?
+                .ok_or(PkgError::MissingFuncUniqueId(
+                    authoring_func_id.to_string(),
+                    "error found while exporting variant",
+                ))?
                 .unique_id
                 .to_owned();
             data_builder.func_unique_id(asset_func_unique_id);

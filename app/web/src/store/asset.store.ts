@@ -375,23 +375,14 @@ export const useAssetStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           this.detachmentWarnings = [];
-
           const asset = this.assetsById[assetId];
-          return new ApiRequest<
-            {
-              taskId: string;
-            },
-            AssetSaveRequest
-          >({
+
+          return new ApiRequest<null>({
             method: "post",
             url: "/variant/update_variant",
-            keyRequestStatusBy: assetId,
             params: {
               ...visibility,
               ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
-            },
-            onSuccess: (response) => {
-              this.executeAssetTaskId = response.taskId;
             },
           });
         },

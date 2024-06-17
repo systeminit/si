@@ -12,7 +12,7 @@ use crate::service::variant::SchemaVariantResult;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ExecVariantRequest {
+pub struct UpdateVariantRequest {
     pub id: SchemaId,
     pub default_schema_variant_id: SchemaVariantId,
     pub name: String,
@@ -27,23 +27,17 @@ pub struct ExecVariantRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExecVariantResponse {
-    pub success: bool,
-}
-
 pub async fn update_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<ExecVariantRequest>,
+    Json(request): Json<UpdateVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-    let updated_sv_id = VariantAuthoringClient::update_variant(
+    let updated_schema_variant_id = VariantAuthoringClient::update_variant(
         &ctx,
         request.default_schema_variant_id,
         request.name.clone(),
@@ -66,14 +60,18 @@ pub async fn update_variant(
             "variant_name": request.name.clone(),
             "variant_category": request.category.clone(),
             "variant_menu_name": request.menu_name.clone(),
-            "variant_id": updated_sv_id.clone(),
+            "variant_id": updated_schema_variant_id,
         }),
     );
 
-    WsEvent::schema_variant_update_finished(&ctx, request.default_schema_variant_id, updated_sv_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    WsEvent::schema_variant_update_finished(
+        &ctx,
+        request.default_schema_variant_id,
+        updated_schema_variant_id,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     ctx.commit().await?;
 
@@ -82,8 +80,5 @@ pub async fn update_variant(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-
-    Ok(response.body(serde_json::to_string(&ExecVariantResponse {
-        success: true,
-    })?)?)
+    Ok(response.body(axum::body::Empty::new())?)
 }

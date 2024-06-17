@@ -2,7 +2,7 @@ use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::Arc;
 use telemetry::prelude::*;
@@ -18,7 +18,10 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{implement_add_edge_to, pk, DalContext, HelperError, Timestamp, TransactionsError};
+use crate::{
+    implement_add_edge_to, pk, DalContext, Func, FuncError, FuncId, HelperError,
+    SchemaVariantError, Timestamp, TransactionsError,
+};
 
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -34,12 +37,16 @@ pub enum SchemaError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -176,6 +183,34 @@ impl Schema {
         }
 
         Ok(None)
+    }
+
+    /// This method returns all [`SchemaVariantIds`](SchemaVariant) that are used by the [`Schema`]
+    /// corresponding to the [`SchemaId`](Schema) passed in. This method will also include the
+    /// default [`SchemaVariantId`](SchemaVariantId), if one exists.
+    pub async fn list_schema_variant_ids(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<Vec<SchemaVariantId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut schema_variant_ids = Vec::new();
+        for (edge_weight, _, target_index) in workspace_snapshot
+            .edges_directed(schema_id, Outgoing)
+            .await?
+        {
+            if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() {
+                schema_variant_ids.push(
+                    workspace_snapshot
+                        .get_node_weight(target_index)
+                        .await?
+                        .id()
+                        .into(),
+                );
+            }
+        }
+
+        Ok(schema_variant_ids)
     }
 
     pub async fn set_default_schema_variant(
@@ -414,5 +449,28 @@ impl Schema {
             }
         }
         Ok(None)
+    }
+
+    /// Collect all [`FuncIds`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
+    /// Since [`SchemaVariants`](SchemaVariant) can use the same [`Funcs`](crate::Func) (and
+    /// often do), we use a [`HashSet`] to de-duplicate results.
+    pub async fn all_func_ids(ctx: &DalContext, id: SchemaId) -> SchemaResult<HashSet<FuncId>> {
+        let mut func_ids = HashSet::new();
+        for schema_variant_id in Self::list_schema_variant_ids(ctx, id).await? {
+            func_ids.extend(
+                SchemaVariant::all_func_ids(ctx, schema_variant_id)
+                    .await
+                    .map_err(Box::new)?,
+            );
+        }
+        Ok(func_ids)
+    }
+
+    /// Collect all [`Funcs`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
+    pub async fn all_funcs(ctx: &DalContext, id: SchemaId) -> SchemaResult<Vec<Func>> {
+        let func_id_set = Self::all_func_ids(ctx, id).await?;
+        let func_ids = Vec::from_iter(func_id_set.into_iter());
+        let funcs = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
+        Ok(funcs)
     }
 }
