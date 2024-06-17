@@ -4,8 +4,8 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::key_pair::KeyPairPk;
 use dal::{
-    AttributeValue, Component, ComponentId, DalContext, InputSocket, KeyPair, OutputSocket, Schema,
-    SchemaVariant, SchemaVariantId, User, UserPk,
+    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
+    OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
 };
 use names::{Generator, Name};
 
@@ -68,6 +68,23 @@ pub async fn create_component_for_schema_name(
         .ok_or(eyre!("schema not found"))?;
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
     Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?)
+}
+
+/// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
+/// [`Schema`] name.
+pub async fn create_component_for_schema_name_with_type(
+    ctx: &DalContext,
+    schema_name: impl AsRef<str>,
+    name: impl AsRef<str>,
+    component_type: ComponentType,
+) -> Result<Component> {
+    let schema = Schema::find_by_name(ctx, schema_name)
+        .await?
+        .ok_or(eyre!("schema not found"))?;
+    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+    let component = Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?;
+    component.set_type(ctx, component_type).await?;
+    Ok(component)
 }
 
 /// Creates a [`Component`] for a given [`SchemaVariantId`](SchemaVariant).

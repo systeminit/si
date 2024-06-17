@@ -2332,7 +2332,7 @@ impl Component {
     /// if the input socket has arity many and the matches are all siblings
     ///
     /// Note: this does not check for whether data should actually flow between components
-    #[instrument(level = "debug", skip(ctx))]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn find_available_inferred_connections_to_input_socket(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
@@ -2362,22 +2362,42 @@ impl Component {
                     }
                 }
                 ComponentType::ConfigurationFrameUp => {
-                    // An up frame's input sockets are sourced from its children's output sockets
-                    // For now, we won't let down frames send outputs to parents and children
-                    // This might need to change, but we can change it when we've got a use case.
-                    let mut matches = Self::find_available_output_socket_match_in_descendants(
-                        ctx,
-                        input_socket_match,
-                        vec![
-                            ComponentType::ConfigurationFrameUp,
-                            ComponentType::Component,
-                        ],
-                    )
-                    .await?;
-                    // if there is more than one match, sort by component Ulid so they're
-                    // consistently ordered
-                    matches.sort_by_key(|output_socket| output_socket.component_id);
-                    matches
+                    // An up frame's input sockets are sourced from either its children's output sockets
+                    // or an ancestor.  Based on the input socket's arity, we match many (sorted by component ulid)
+                    // or if the arity is single, we return none
+                    let mut matches = vec![];
+                    let descendant_matches =
+                        Self::find_available_output_socket_match_in_descendants(
+                            ctx,
+                            input_socket_match,
+                            vec![
+                                ComponentType::ConfigurationFrameUp,
+                                ComponentType::Component,
+                            ],
+                        )
+                        .await?;
+                    matches.extend(descendant_matches);
+                    if let Some(ascendant_match) =
+                        Self::find_first_output_socket_match_in_ancestors(
+                            ctx,
+                            input_socket_match,
+                            vec![ComponentType::ConfigurationFrameDown],
+                        )
+                        .await?
+                    {
+                        matches.push(ascendant_match);
+                    }
+
+                    let input_socket =
+                        InputSocket::get_by_id(ctx, input_socket_match.input_socket_id).await?;
+                    if input_socket.arity() == SocketArity::One && matches.len() > 1 {
+                        vec![]
+                    } else {
+                        // if there is more than one match, sort by component Ulid so they're
+                        // consistently ordered
+                        matches.sort_by_key(|output_socket| output_socket.component_id);
+                        matches
+                    }
                 }
                 ComponentType::AggregationFrame => vec![],
             };
@@ -2425,9 +2445,10 @@ impl Component {
                         }
                     }
                 }
-                for child in Self::get_children_for_id(ctx, component_id).await? {
-                    work_queue.push_back(child);
-                }
+            }
+            // regardless whether the component type matches, we need to continue to descend
+            for child in Self::get_children_for_id(ctx, component_id).await? {
+                work_queue.push_back(child);
             }
         }
 
@@ -2876,7 +2897,7 @@ impl Component {
     /// Up Frame.
     ///
     /// Down Frames can drive Input Sockets of their children if the child is a Down Frame
-    /// or a Component.
+    /// or a Component or an Up Frame.
     #[instrument(level = "debug", skip(ctx))]
     pub async fn find_inferred_values_using_this_output_socket(
         ctx: &DalContext,
@@ -2908,7 +2929,7 @@ impl Component {
             }
             ComponentType::ConfigurationFrameDown => {
                 // if the type is a down frame, find all descendants
-                // who have a matching input socket AND are a Down Frame or Component
+                // who have a matching input socket AND are a Down Frame, Component, or Up Frame
                 Component::find_all_potential_inferred_input_socket_matches_in_descendants(
                     ctx,
                     output_socket_id,
@@ -2916,13 +2937,13 @@ impl Component {
                     vec![
                         ComponentType::ConfigurationFrameDown,
                         ComponentType::Component,
+                        ComponentType::ConfigurationFrameUp,
                     ],
                 )
                 .await?
             }
-
             // we are not supporting aggregation frames right now
-            _ => vec![],
+            ComponentType::AggregationFrame => vec![],
         };
 
         Ok(maybe_target_sockets)
