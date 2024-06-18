@@ -2332,7 +2332,7 @@ impl Component {
     /// if the input socket has arity many and the matches are all siblings
     ///
     /// Note: this does not check for whether data should actually flow between components
-    #[instrument(level = "info", skip(ctx))]
+    #[instrument(level = "debug", skip(ctx))]
     pub async fn find_available_inferred_connections_to_input_socket(
         ctx: &DalContext,
         input_socket_match: InputSocketMatch,
