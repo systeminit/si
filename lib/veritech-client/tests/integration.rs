@@ -55,6 +55,7 @@ async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
         .nats(nats_config(subject_prefix.clone()))
         .cyclone_spec(cyclone_spec)
         .crypto(config_file.crypto)
+        .healthcheck_pool(false)
         .build()
         .expect("failed to build spec");
     Server::for_cyclone_uds(config)

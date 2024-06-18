@@ -67,7 +67,7 @@ rm -rf "$JAIL/{dev,run}"
 
 touch $JAIL/logs
 touch $JAIL/metrics
-cp $DATA_DIR/$SCRIPTS $JAIL
+[[ -e $DATA_DIR/$SCRIPTS ]] && cp $DATA_DIR/$SCRIPTS $JAIL
 
 function kernel_prep() {
   cp $KERNEL_IMG "$JAIL/$KERNEL"
@@ -174,13 +174,13 @@ cat << EOF
       "is_root_device": true,
       "is_read_only": false,
       "path_on_host": "./rootfs.ext4"
-    },
+    }
 EOF
 
 if [ -e $JAIL/$SCRIPTS ]; then
 
 cat << EOF
-    {
+    ,{
       "drive_id": "2",
       "is_root_device": false,
       "is_read_only": true,

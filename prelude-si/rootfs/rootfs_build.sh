@@ -146,7 +146,9 @@ pidfile="/cyclone/agent.pid"
 
 start(){
   export OTEL_EXPORTER_OTLP_ENDPOINT=http://1.0.0.1:4316
-  source /mnt/scripts/scripts
+  if [ -f /mnt/scripts/scripts ]; then
+      source /mnt/scripts/scripts
+  fi
   cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 &
 }
 

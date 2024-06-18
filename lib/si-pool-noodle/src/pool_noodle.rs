@@ -106,7 +106,12 @@ where
 
     /// Start PoolNoodle. It will spin up various threads to handle Cyclone Instance lifecycles.
     #[allow(clippy::let_underscore_future)] // These needs to just run in the background forever.
-    pub fn start(&mut self) {
+    pub fn start(&mut self, check_health: bool) -> Result<()> {
+        if check_health {
+            if let Some(err) = futures::executor::block_on(self.check_health()).err() {
+                return Err(err);
+            }
+        }
         let stop = Arc::new(AtomicBool::new(false));
         let me = Arc::clone(&self.0);
 
@@ -119,6 +124,7 @@ where
 
             let _ = tokio::spawn(Self::handle_drop(me.clone()));
         }
+        Ok(())
     }
 
     async fn handle_shutdown(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
@@ -281,6 +287,27 @@ where
                 sleep(Duration::from_millis(100)).await;
             }
         }
+    }
+
+    async fn check_health(&mut self) -> Result<()> {
+        info!("verifying instance lifecycle health");
+        let me = Arc::clone(&self.0);
+        let id = 0;
+        info!("cleaning...");
+        PoolNoodleInner::clean(id, &me.spec).await?;
+        info!("preparing...");
+        PoolNoodleInner::prepare(id, &me.spec).await?;
+        info!("spawning...");
+        let mut i = PoolNoodleInner::spawn(id, &me.spec).await?;
+        info!("checking...");
+        i.ensure_healthy()
+            .await
+            .map_err(|e| PoolNoodleError::Unhealthy(e.to_string()))?;
+        info!("terminating...");
+        PoolNoodleInner::terminate(i, &me.spec).await?;
+        PoolNoodleInner::clean(id, &me.spec).await?;
+        info!("instance lifecycle is good!");
+        Ok(())
     }
 }
 
@@ -512,7 +539,7 @@ mod tests {
 
         let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool = PoolNoodle::new(3, spec, shutdown_broadcast_tx.subscribe());
-        pool.start();
+        pool.start(false).expect("failed to start");
 
         // give the pool time to create some instances
         sleep(Duration::from_millis(500)).await;

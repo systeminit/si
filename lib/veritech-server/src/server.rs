@@ -135,7 +135,9 @@ impl Server {
                     .setup()
                     .await
                     .map_err(|e| ServerError::CycloneSetupError(Box::new(e)))?;
-                cyclone_pool.start();
+                cyclone_pool
+                    .start(config.healthcheck_pool())
+                    .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
 
                 let metadata = ServerMetadata {
                     job_instance: config.instance_id().into(),
