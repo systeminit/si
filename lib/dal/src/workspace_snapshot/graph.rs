@@ -501,7 +501,7 @@ impl WorkspaceSnapshotGraph {
 
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
-                new_container_ordering_node_weight.push_to_order(vector_clock_id, element_id)?;
+                new_container_ordering_node_weight.push_to_order(vector_clock_id, element_id);
                 self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
@@ -1792,7 +1792,7 @@ impl WorkspaceSnapshotGraph {
         Ok(prop_node_indexes.first().copied())
     }
 
-    pub(crate) fn remove_node(&mut self, node_index: NodeIndex) {
+    pub fn remove_node(&mut self, node_index: NodeIndex) {
         self.graph.remove_node(node_index);
     }
 
@@ -1800,12 +1800,32 @@ impl WorkspaceSnapshotGraph {
     /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
     /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
     /// [`Self::cleanup()`] has run should be considered invalid.
-    pub(crate) fn remove_edge(
+    pub fn remove_edge(
         &mut self,
         change_set: &ChangeSet,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        self.remove_edge_inner(
+            change_set,
+            source_node_index,
+            target_node_index,
+            edge_kind,
+            true,
+        )
+    }
+
+    /// Removes an edge from `source_node_index` to `target_node_index`, and
+    /// also handles removing an edge from the Ordering node if one exists for
+    /// the node at `source_node_index`.
+    fn remove_edge_inner(
+        &mut self,
+        change_set: &ChangeSet,
+        source_node_index: NodeIndex,
+        target_node_index: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+        increment_vector_clocks: bool,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let source_node_index = self.get_latest_node_idx(source_node_index)?;
         let target_node_index = self.get_latest_node_idx(target_node_index)?;
@@ -1815,7 +1835,7 @@ impl WorkspaceSnapshotGraph {
         // replace references may copy the node again to a new index
         let source_node_index = self.get_latest_node_idx(source_node_index)?;
 
-        self.inner_remove_edge(source_node_index, target_node_index, edge_kind);
+        self.remove_edge_of_kind(source_node_index, target_node_index, edge_kind);
 
         if let Some(previous_container_ordering_node_index) =
             self.ordering_node_index_for_container(source_node_index)?
@@ -1832,10 +1852,12 @@ impl WorkspaceSnapshotGraph {
 
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
-                if new_container_ordering_node_weight
-                    .remove_from_order(change_set.vector_clock_id(), element_id)?
-                {
-                    self.inner_remove_edge(
+                if new_container_ordering_node_weight.remove_from_order(
+                    change_set.vector_clock_id(),
+                    element_id,
+                    increment_vector_clocks,
+                ) {
+                    self.remove_edge_of_kind(
                         previous_container_ordering_node_index,
                         target_node_index,
                         EdgeWeightKindDiscriminants::Ordinal,
@@ -1866,7 +1888,7 @@ impl WorkspaceSnapshotGraph {
         Ok(())
     }
 
-    fn inner_remove_edge(
+    fn remove_edge_of_kind(
         &mut self,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
@@ -2128,11 +2150,15 @@ impl WorkspaceSnapshotGraph {
                 } => {
                     let updated_source = self.get_latest_node_idx(source.index)?;
                     let destination = self.get_latest_node_idx(destination.index)?;
-                    self.remove_edge(
+                    self.remove_edge_inner(
                         to_rebase_change_set,
                         updated_source,
                         destination,
                         *edge_kind,
+                        // Updating the vector clocks here may cause us to pick
+                        // the to_rebase node incorrectly in ReplaceSubgraph, if
+                        // ReplaceSubgraph comes after this RemoveEdge
+                        false,
                     )?;
                 }
                 Update::ReplaceSubgraph {

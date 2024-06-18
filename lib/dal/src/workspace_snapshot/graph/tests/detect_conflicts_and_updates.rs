@@ -13,6 +13,7 @@ mod test {
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
+    use crate::workspace_snapshot::graph::tests::add_prop_nodes_to_graph;
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind::DependentValueRoots;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
@@ -2508,6 +2509,171 @@ mod test {
                 .map(Into::<UpdateWithEdgeWeightKind>::into)
                 .collect::<Vec<_>>(),
         );
+    }
+
+    #[test]
+    fn simple_ordering_no_conflicts_same_vector_clocks() {
+        let change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let ordered_node = "ordered_container";
+        let initial_children = vec!["a", "b", "c"];
+        let onto_children = vec!["d", "e", "f"];
+
+        let mut node_id_map =
+            add_prop_nodes_to_graph(&mut to_rebase_graph, change_set, &[ordered_node], true);
+        node_id_map.extend(add_prop_nodes_to_graph(
+            &mut to_rebase_graph,
+            change_set,
+            &initial_children,
+            false,
+        ));
+        let ordered_id = *node_id_map.get(ordered_node).expect("should be there");
+        let ordered_idx = to_rebase_graph
+            .get_node_index_by_id(ordered_id)
+            .expect("should have a node index");
+        let root_idx = to_rebase_graph.root();
+        to_rebase_graph
+            .add_edge(
+                root_idx,
+                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
+                    .expect("failed to make edge weight"),
+                ordered_idx,
+            )
+            .expect("should be able to make an edge");
+
+        for child in &initial_children {
+            let ordered_idx = to_rebase_graph
+                .get_node_index_by_id(ordered_id)
+                .expect("should have a node index");
+            let child_id = node_id_map.get(*child).copied().expect("node should exist");
+            let child_idx = to_rebase_graph
+                .get_node_index_by_id(child_id)
+                .expect("should have a node index");
+            to_rebase_graph
+                .add_ordered_edge(
+                    change_set.vector_clock_id(),
+                    ordered_idx,
+                    EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
+                        .expect("failed to make edge weight"),
+                    child_idx,
+                )
+                .expect("should be able to make an edge");
+        }
+
+        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .mark_graph_seen(change_set.vector_clock_id())
+            .expect("mark twain");
+
+        let mut onto_graph = to_rebase_graph.clone();
+        for child in &initial_children {
+            let ordered_idx = onto_graph
+                .get_node_index_by_id(ordered_id)
+                .expect("should have a node index");
+            let child_id = node_id_map.get(*child).copied().expect("node should exist");
+            let child_idx = onto_graph
+                .get_node_index_by_id(child_id)
+                .expect("should have a node index");
+            onto_graph
+                .remove_edge(
+                    change_set,
+                    ordered_idx,
+                    child_idx,
+                    EdgeWeightKindDiscriminants::Use,
+                )
+                .expect("unable to remove edge");
+        }
+
+        node_id_map.extend(add_prop_nodes_to_graph(
+            &mut onto_graph,
+            change_set,
+            &onto_children,
+            false,
+        ));
+
+        for child in &onto_children {
+            let child_id = node_id_map.get(*child).copied().expect("node should exist");
+            let ordered_idx = onto_graph
+                .get_node_index_by_id(ordered_id)
+                .expect("should have a node index");
+            let child_idx = onto_graph
+                .get_node_index_by_id(child_id)
+                .expect("should have a node index");
+            onto_graph
+                .add_ordered_edge(
+                    change_set.vector_clock_id(),
+                    ordered_idx,
+                    EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())
+                        .expect("failed to make edge weight"),
+                    child_idx,
+                )
+                .expect("should be able to make an edge");
+        }
+
+        onto_graph.cleanup();
+        onto_graph
+            .mark_graph_seen(change_set.vector_clock_id())
+            .expect("call me mark, mr seen is my father");
+
+        let conflicts_and_updates = to_rebase_graph
+            .detect_conflicts_and_updates(
+                change_set.vector_clock_id(),
+                &onto_graph,
+                change_set.vector_clock_id(),
+            )
+            .expect("unable to detect conflicts and updates");
+
+        assert!(conflicts_and_updates.conflicts.is_empty());
+
+        to_rebase_graph
+            .perform_updates(change_set, &onto_graph, &conflicts_and_updates.updates)
+            .expect("unable to perform updates");
+        to_rebase_graph.cleanup();
+
+        let ordered_idx = to_rebase_graph
+            .get_node_index_by_id(ordered_id)
+            .expect("should have a node index");
+        let ordering_node = to_rebase_graph
+            .ordering_node_for_container(ordered_idx)
+            .expect("should not fail")
+            .expect("ordering node should exist");
+
+        let expected_order_ids: Vec<Ulid> = onto_children
+            .iter()
+            .map(|&name| node_id_map.get(name).copied().expect("get id for name"))
+            .collect();
+        assert_eq!(&expected_order_ids, ordering_node.order());
+
+        let container_children: Vec<Ulid> = to_rebase_graph
+            .edges_directed_for_edge_weight_kind(
+                ordered_idx,
+                Outgoing,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .iter()
+            .filter_map(|(_, _, target_idx)| to_rebase_graph.node_index_to_id(*target_idx))
+            .collect();
+
+        assert_eq!(expected_order_ids.len(), container_children.len());
+        for container_child in &container_children {
+            assert!(expected_order_ids.contains(container_child));
+        }
+
+        let ordering_node_idx = to_rebase_graph
+            .get_node_index_by_id(ordering_node.id())
+            .expect("should have an index for ordering node");
+
+        let ordering_node_children: Vec<Ulid> = to_rebase_graph
+            .edges_directed(ordering_node_idx, Outgoing)
+            .filter_map(|edge_ref| to_rebase_graph.node_index_to_id(edge_ref.target()))
+            .collect();
+
+        for child in &ordering_node_children {
+            assert!(expected_order_ids.contains(child));
+        }
     }
 
     #[test]

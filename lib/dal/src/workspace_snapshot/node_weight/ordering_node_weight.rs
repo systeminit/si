@@ -63,16 +63,14 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_order(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        order: Vec<Ulid>,
-    ) -> NodeWeightResult<()> {
+    pub fn set_order(&mut self, vector_clock_id: VectorClockId, order: Vec<Ulid>) {
+        self.set_order_without_inc_clocks(order);
+        self.increment_vector_clocks(vector_clock_id);
+    }
+
+    fn set_order_without_inc_clocks(&mut self, order: Vec<Ulid>) {
         self.order = order;
         self.update_content_hash();
-        self.increment_vector_clocks(vector_clock_id);
-
-        Ok(())
     }
 
     fn update_content_hash(&mut self) {
@@ -89,28 +87,31 @@ impl OrderingNodeWeight {
         self.content_hash = content_hasher.finalize();
     }
 
-    pub fn push_to_order(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-    ) -> NodeWeightResult<()> {
+    pub fn push_to_order(&mut self, vector_clock_id: VectorClockId, id: Ulid) {
         let mut order = self.order().to_owned();
         order.push(id);
-        self.set_order(vector_clock_id, order)
+        self.set_order(vector_clock_id, order);
     }
 
+    /// Returns `true` if the id passed was actually removed, `false` if not (because not in the order)
     pub fn remove_from_order(
         &mut self,
         vector_clock_id: VectorClockId,
         id: Ulid,
-    ) -> NodeWeightResult<bool> {
+        inc_clocks: bool,
+    ) -> bool {
         let mut order = self.order.to_owned();
         order.retain(|&item_id| item_id != id);
         if order.len() != self.order().len() {
-            self.set_order(vector_clock_id, order)?;
-            Ok(true)
+            if inc_clocks {
+                self.set_order(vector_clock_id, order);
+            } else {
+                self.set_order_without_inc_clocks(order);
+            }
+
+            true
         } else {
-            Ok(false)
+            false
         }
     }
     pub fn get_index_for_id(&self, id: Ulid) -> NodeWeightResult<i64> {
