@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Function to display usage message
+usage() {
+    echo "Usage: $0 [-p profile] [-r region]"
+    echo "  -p profile    AWS profile to use"
+    echo "  -r region     AWS region to use"
+    exit 1
+}
+
+# Function to list EC2 instances with their Name tag
+list_instances() {
+    aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text
+}
+
+# Function to start SSM session
+start_ssm_session() {
+    instance_id=$1
+    aws ssm start-session --target "$instance_id" --document-name AWS-StartInteractiveCommand --parameters command="bash -l"
+}
+
+# Parse flags
+while getopts ":p:r:" opt; do
+    case ${opt} in
+        p)
+            profile=$OPTARG
+            ;;
+        r)
+            region=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
+# Function to get input or use environment variable
+get_param_or_env() {
+    local param=$1
+    local env_var=$2
+    local prompt=$3
+
+    if [ -z "$param" ]; then
+        if [ -z "${!env_var}" ]; then
+            read -p "$prompt: " value
+            echo "$value"
+        else
+            echo "${!env_var}"
+        fi
+    else
+        echo "$param"
+    fi
+}
+
+# Main script
+profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
+
+export AWS_PROFILE="$profile"
+export AWS_REGION="$region"
+
+# List instances with fixed-width columns
+instances=$(list_instances)
+if [ -z "$instances" ]; then
+    echo "No running instances found."
+    exit 1
+fi
+
+echo "Running instances in region $region:"
+printf "%-5s %-20s %-20s %-20s %-20s\n" "Index" "Name" "InstanceId" "InstanceType" "PrivateIpAddress"
+i=1
+while read -r line; do
+    name=$(echo "$line" | awk '{print $1}')
+    instance_id=$(echo "$line" | awk '{print $2}')
+    instance_type=$(echo "$line" | awk '{print $3}')
+    private_ip=$(echo "$line" | awk '{print $4}')
+    printf "%-5s %-20s %-20s %-20s %-20s\n" "$i" "$name" "$instance_id" "$instance_type" "$private_ip"
+    ((i++))
+done <<< "$instances"
+
+read -p "Select an instance by number: " selection
+instance_id=$(echo "$instances" | sed -n "${selection}p" | awk '{print $2}')
+
+if [ -z "$instance_id" ]; then
+    echo "Invalid selection."
+    exit 1
+fi
+
+echo "Starting SSM session with instance $instance_id..."
+start_ssm_session "$instance_id"
+
