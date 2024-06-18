@@ -291,7 +291,8 @@ impl NodeWeight {
     ) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Ordering(ordering_weight) => {
-                ordering_weight.set_order(vector_clock_id, order)
+                ordering_weight.set_order(vector_clock_id, order);
+                Ok(())
             }
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)

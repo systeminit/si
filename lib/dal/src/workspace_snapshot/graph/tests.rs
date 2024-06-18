@@ -16,6 +16,7 @@ fn add_prop_nodes_to_graph<'a, 'b>(
     graph: &'a mut WorkspaceSnapshotGraph,
     change_set: &'a ChangeSet,
     nodes: &'a [&'b str],
+    ordered: bool,
 ) -> HashMap<&'b str, Ulid> {
     let mut node_id_map = HashMap::new();
     for node in nodes {
@@ -30,9 +31,15 @@ fn add_prop_nodes_to_graph<'a, 'b>(
             ContentHash::new(node.as_bytes()),
         )
         .expect("create prop node weight");
-        graph
-            .add_node(prop_node_weight)
-            .expect("Unable to add prop");
+        if ordered {
+            graph
+                .add_ordered_node(change_set, prop_node_weight)
+                .expect("Unable to add prop");
+        } else {
+            graph
+                .add_node(prop_node_weight)
+                .expect("Unable to add prop");
+        }
 
         node_id_map.insert(*node, node_id);
     }
@@ -185,7 +192,7 @@ mod test {
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let node_id_map = add_prop_nodes_to_graph(&mut graph, change_set, &nodes);
+        let node_id_map = add_prop_nodes_to_graph(&mut graph, change_set, &nodes, false);
         add_edges(&mut graph, &node_id_map, change_set, &edges);
 
         graph.cleanup();
