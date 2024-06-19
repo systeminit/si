@@ -13,3 +13,5 @@ export interface Schema extends StandardModel {
   ui_menu_category: string;
   ui_hidden: boolean;
 }
+
+export type SchemaVariantId = string;

@@ -9,13 +9,17 @@ export enum ComponentType {
 
 export type DiagramKind = "configuration";
 
+export type OutputSocketId = string;
+
 export interface DiagramOutputSocket {
-  id: string;
+  id: OutputSocketId;
   name: string;
 }
 
+export type InputSocketId = string;
+
 export interface DiagramInputSocket {
-  id: string;
+  id: InputSocketId;
   name: string;
 }
 
@@ -74,4 +78,5 @@ export interface DiagramNode {
   schemaVariantId: string;
   positions: DiagramNodePosition[];
 }
+
 export type DiagramNodes = Array<DiagramNode>;

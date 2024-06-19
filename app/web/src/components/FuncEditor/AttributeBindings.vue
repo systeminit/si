@@ -89,6 +89,7 @@ import {
 } from "@/store/func/types";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
+import { useComponentsStore } from "@/store/components.store";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
@@ -101,14 +102,14 @@ const props = defineProps<{
 
 const bindingsModalRef = ref<InstanceType<typeof AttributeBindingsModal>>();
 
+const funcArguments = computed(() => funcStore.funcArguments);
+const funcId = computed(() => funcStore.selectedFuncId);
+
 const associations = computed(
   () =>
     funcStore.funcDetailsById[funcId.value as string]
       ?.associations as AttributeAssociations,
 );
-
-const funcArguments = computed(() => funcStore.funcArguments);
-const funcId = computed(() => funcStore.selectedFuncId);
 
 const makeEmptyPrototype = (): AttributePrototypeBag => ({
   id: nilId(),
@@ -194,64 +195,72 @@ const openModal = (prototypeId?: string) => {
   }
 };
 
-const prototypeViews = computed(() =>
-  associations.value.prototypes
-    .filter((proto) => {
-      const schemaVariantId =
-        funcStore.schemaVariantIdForAttributePrototype(proto);
-      return (
-        !props.schemaVariantId || schemaVariantId === props.schemaVariantId
-      );
-    })
-    .map((proto) => {
-      const schemaVariantId =
-        funcStore.schemaVariantIdForAttributePrototype(proto);
-      const schemaVariant =
-        funcStore.schemaVariantOptions.find(
-          (sv) => sv.value === schemaVariantId,
-        )?.label ?? "none";
+const prototypeViews = computed(() => {
+  const validPrototypes = associations.value.prototypes.filter((proto) => {
+    // If no sv id on component, don't filter at all
+    if (props.schemaVariantId === undefined) {
+      return true;
+    }
 
-      const component =
-        funcStore.componentOptions.find((c) => c.value === proto.componentId)
-          ?.label ?? "all";
+    const schemaVariantId =
+      funcStore.schemaVariantIdForPrototypeTargetId[
+        proto.propId ?? proto.outputSocketId ?? ""
+      ];
 
-      const outputLocation =
-        funcStore.outputLocationForAttributePrototype(proto);
-      const args = funcStore.funcArguments?.map((funcArg) => ({
-        name: funcArg.name,
-        path: (() => {
-          const protoArg = proto.prototypeArguments.find(
-            (protoArg) => protoArg.funcArgumentId === funcArg.id,
+    return schemaVariantId === props.schemaVariantId;
+  });
+
+  return validPrototypes.map((proto) => {
+    const schemaVariantId =
+      funcStore.schemaVariantIdForPrototypeTargetId[
+        proto.propId ?? proto.outputSocketId ?? ""
+      ];
+
+    const schemaVariant =
+      useComponentsStore().schemaVariantsById[schemaVariantId ?? ""]
+        ?.schemaName ?? "none";
+
+    const component =
+      funcStore.componentOptions.find((c) => c.value === proto.componentId)
+        ?.label ?? "all";
+
+    const outputLocation = funcStore.outputLocationForAttributePrototype(proto);
+    const args = funcStore.funcArguments?.map((funcArg) => ({
+      name: funcArg.name,
+      path: (() => {
+        const protoArg = proto.prototypeArguments.find(
+          (protoArg) => protoArg.funcArgumentId === funcArg.id,
+        );
+        if (protoArg) {
+          return (
+            funcStore.propIdToSourceName(protoArg.propId ?? nilId()) ??
+            funcStore.inputSocketIdToSourceName(
+              protoArg.inputSocketId ?? nilId(),
+            ) ??
+            "none"
           );
-          if (protoArg) {
-            return (
-              funcStore.propIdToSourceName(protoArg.propId ?? nilId()) ??
-              funcStore.inputSocketIdToSourceName(
-                protoArg.inputSocketId ?? nilId(),
-              ) ??
-              "none"
-            );
-          }
-          return "none";
-        })(),
-      }));
+        }
+        return "none";
+      })(),
+    }));
 
-      return {
-        id: proto.id,
-        schemaVariant,
-        component,
-        outputLocation,
-        args,
-      };
-    }),
-);
+    return {
+      id: proto.id,
+      schemaVariant,
+      component,
+      outputLocation,
+      args,
+    };
+  });
+});
 
 const detachFunc = (): FuncAssociations | undefined => {
   if (props.schemaVariantId) {
     const prototype = associations.value.prototypes.find(
       (proto) =>
-        funcStore.schemaVariantIdForAttributePrototype(proto) ===
-        props.schemaVariantId,
+        funcStore.schemaVariantIdForPrototypeTargetId[
+          proto.propId ?? proto.outputSocketId ?? ""
+        ] === props.schemaVariantId,
     );
     // todo: remove the binding when the user hits the detach button
     removeBinding(prototype?.id as string);

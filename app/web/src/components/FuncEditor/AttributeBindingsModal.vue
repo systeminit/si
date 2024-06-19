@@ -207,20 +207,20 @@ watch(selectedVariant, (selectedVariant) => {
     selectedComponent.value = allComponentsOption;
   }
 
-  const currentSchemaVariantId = funcStore.schemaVariantIdForAttributePrototype(
-    {
-      id: nilId(),
-      prototypeArguments: [],
-      propId:
-        "propId" in selectedOutputLocation.value.value
-          ? selectedOutputLocation.value.value.propId
-          : undefined,
-      outputSocketId:
-        "outputSocketId" in selectedOutputLocation.value.value
-          ? selectedOutputLocation.value.value.outputSocketId
-          : undefined,
-    },
-  );
+  const propId =
+    "propId" in selectedOutputLocation.value.value
+      ? selectedOutputLocation.value.value.propId
+      : undefined;
+
+  const socketId =
+    "outputSocketId" in selectedOutputLocation.value.value
+      ? selectedOutputLocation.value.value.outputSocketId
+      : undefined;
+
+  const targetId = propId ?? socketId;
+
+  const currentSchemaVariantId =
+    funcStore.schemaVariantIdForPrototypeTargetId[targetId ?? ""];
 
   if ((selectedVariant.value as string) !== currentSchemaVariantId) {
     selectedOutputLocation.value = noneOutputLocation;
@@ -249,9 +249,11 @@ watch(
 
 // When prototype we're editing changes, set up defaults
 const open = (prototype: AttributePrototypeBag) => {
+  const targetId = prototype.propId ?? prototype.outputSocketId ?? "";
+
   const schemaVariantId =
     props.schemaVariantId ??
-    funcStore.schemaVariantIdForAttributePrototype(prototype);
+    funcStore.schemaVariantIdForPrototypeTargetId[targetId];
 
   prototypeId.value = prototype.id;
 
