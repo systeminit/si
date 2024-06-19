@@ -28,6 +28,14 @@
             size="md"
             @click="cloneAsset"
           />
+          <VButton
+            :requestStatus="exportModuleStatus"
+            icon="cloud-upload"
+            label="Contribute"
+            tone="action"
+            size="md"
+            @click="contributeAsset"
+          />
         </div>
 
         <ErrorMessage
@@ -148,7 +156,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   ErrorMessage,
   Modal,
@@ -163,6 +171,8 @@ import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/api/sdf/dal/diagram";
+import IconButton from "@/components/IconButton.vue";
+import { useModuleStore } from "@/store/module.store";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 
@@ -249,5 +259,21 @@ const cloneAsset = async () => {
       await assetStore.selectAsset(result.result.data.id);
     }
   }
+};
+
+const moduleStore = useModuleStore();
+const exportModuleStatus = moduleStore.getRequestStatus("EXPORT_MODULE");
+
+const contributeAsset = () => {
+  const asset = assetStore.selectedAsset;
+  if (!asset) return;
+
+  const prefix = _.isEmpty(asset.category) ? "NO_CATEGORY" : asset.category;
+
+  moduleStore.EXPORT_MODULE({
+    name: `${prefix}/${asset.name}`,
+    description: "Single Asset Export",
+    schemaVariants: [asset.defaultSchemaVariantId],
+  });
 };
 </script>

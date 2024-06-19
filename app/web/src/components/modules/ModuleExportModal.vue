@@ -184,14 +184,11 @@ const schemaVariantOptions = computed(() =>
     })),
 );
 
-const getVersionTimestamp = () => dateFormat(Date.now(), "yyyyMMddkkmmss");
-
 const enableExportButton = computed(() => {
   return packageExportReq.value?.name?.trim().length !== 0;
 });
 
 const exportPkg = async () => {
-  packageExportReq.value.version = getVersionTimestamp();
   const result = await moduleStore.EXPORT_MODULE({
     ...packageExportReq.value,
     schemaVariants: schemaVariantsForExport.value,

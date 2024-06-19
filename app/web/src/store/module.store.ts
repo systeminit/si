@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { format as dateFormat } from "date-fns";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
@@ -32,7 +33,7 @@ export interface ModuleFuncView {
 
 export interface ModuleExportRequest {
   name: string;
-  version: string;
+  version?: string;
   description?: string;
   schemaVariants: string[];
 }
@@ -399,6 +400,10 @@ export const useModuleStore = () => {
           },
 
           async EXPORT_MODULE(exportRequest: ModuleExportRequest) {
+            if (!exportRequest.version) {
+              exportRequest.version = dateFormat(Date.now(), "yyyyMMddkkmmss");
+            }
+
             return new ApiRequest({
               method: "post",
               url: "/module/export_module",

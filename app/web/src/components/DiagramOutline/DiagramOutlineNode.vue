@@ -3,8 +3,8 @@
     v-if="component"
     :id="htmlid"
     ref="nodeRef"
-    class="diagram-outline-node"
     :data-component-id="componentId"
+    class="diagram-outline-node"
   >
     <!-- component info -->
     <div
@@ -22,8 +22,8 @@
         // backgroundColor: bodyBg,
       }"
       @click="onClick"
-      @dblclick="onClick"
       @contextmenu="onClick"
+      @dblclick="onClick"
       @mouseenter="onHoverStart"
       @mouseleave="onHoverEnd"
     >
@@ -40,19 +40,19 @@
           )
         "
       >
-        <Icon name="tree-parents" size="xs" class="mr-2xs" />
+        <Icon class="mr-2xs" name="tree-parents" size="xs" />
         {{ parentBreadcrumbsText }}
       </div>
       <div class="flex flex-row items-center px-xs w-full gap-1">
         <Icon
-          :name="component.icon"
-          size="sm"
           :class="
             clsx(
               'mr-xs flex-none',
               enableGroupToggle && 'group-hover:scale-0 transition-all',
             )
           "
+          :name="component.icon"
+          size="sm"
         />
 
         <div class="flex flex-col select-none overflow-hidden py-xs">
@@ -73,8 +73,8 @@
         >
           <Icon
             :name="isOpen ? 'chevron--down' : 'chevron--right'"
-            size="lg"
             class="scale-[40%] translate-x-[-9px] translate-y-[13px] group-hover:scale-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all"
+            size="lg"
           />
         </div>
 
@@ -87,16 +87,17 @@
                 content: 'Refresh Resource',
                 theme: 'instant-show',
               }"
+              :requestStatus="refreshRequestStatus"
               icon="refresh"
               loadingIcon="refresh-active"
               size="xs"
-              :requestStatus="refreshRequestStatus"
               @click="componentsStore.REFRESH_RESOURCE_INFO(component!.id)"
             />
           </div>
 
           <!-- other status icons -->
           <div :class="clsx('flex items-center mr-xs')">
+            <!-- upgradeable -->
             <div v-if="component.canBeUpgraded">
               <StatusIndicatorIcon
                 v-tooltip="{
@@ -119,10 +120,10 @@
                     : '',
                 theme: 'instant-show',
               }"
+              :status="hasChanges"
               class="hover:scale-110"
               size="sm"
               type="change"
-              :status="hasChanges"
               @click.stop="onClick($event, 'diff')"
             />
 
@@ -135,10 +136,10 @@
                 content: 'Qualifications',
                 theme: 'instant-show',
               }"
-              class="hover:scale-110"
-              type="qualification"
-              size="sm"
               :status="qualificationStatus || 'notexists'"
+              class="hover:scale-110"
+              size="sm"
+              type="qualification"
               @click.stop="onClick($event, 'qualifications')"
             />
 
@@ -151,9 +152,9 @@
                 theme: 'instant-show',
               }"
               class="hover:scale-110"
-              type="resource"
-              status="exists"
               size="sm"
+              status="exists"
+              type="resource"
               @click.stop="onClick($event, 'resource')"
             />
             <Icon v-else name="none" size="sm" />

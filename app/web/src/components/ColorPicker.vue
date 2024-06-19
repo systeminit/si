@@ -1,5 +1,5 @@
 <template>
-  <span ref="pickerAnchorElement" class="h-7">
+  <span ref="pickerAnchorElement" class="block">
     <Teleport to="body">
       <span
         :id="id ?? 'color-picker'"
@@ -13,8 +13,8 @@
         "
       >
         <span
-          class="block w-10 h-6 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
           :style="{ backgroundColor: modelValue }"
+          class="block w-10 h-6 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
         ></span>
         <span class="text-sm">{{ modelValue.toUpperCase() }}</span>
       </span>
