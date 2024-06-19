@@ -59,9 +59,9 @@ use crate::func::FuncKind;
 use crate::prop::PropError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId,
-    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
+    AttributePrototypeId, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
+    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
 };
 
 use super::runner::{FuncRunner, FuncRunnerError};
@@ -283,11 +283,7 @@ impl FuncAuthoringClient {
             ));
         }
 
-        let func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
-
-        for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, id).await? {
-            AttributePrototypeArgument::new(ctx, attribute_prototype_id, func_argument.id).await?;
-        }
+        let _func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
 
         Ok(())
     }
