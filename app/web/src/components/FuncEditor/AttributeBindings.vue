@@ -127,7 +127,22 @@ const rehydratePrototype = (
   id: existing.id,
   componentId: existing.componentId,
   propId: existing.propId,
-  prototypeArguments: existing.prototypeArguments,
+  prototypeArguments: funcArguments.value
+    ? funcArguments.value.map(({ id }) => {
+        const foundArg = existing.prototypeArguments.find(
+          (protoArg) => protoArg.funcArgumentId === id,
+        );
+        if (foundArg) {
+          return {
+            id: foundArg.id ?? nilId(),
+            funcArgumentId: id,
+            propId: foundArg.propId,
+            inputSocketId: foundArg.inputSocketId,
+          };
+        }
+        return { funcArgumentId: id };
+      })
+    : [],
 });
 
 const removeBinding = async (prototypeId: string) => {
@@ -202,13 +217,23 @@ const prototypeViews = computed(() =>
 
       const outputLocation =
         funcStore.outputLocationForAttributePrototype(proto);
-
-      const args = proto.prototypeArguments.map((arg) => ({
-        name: funcStore.funcArgumentsById[arg.funcArgumentId]?.name ?? "none",
-        path:
-          funcStore.propIdToSourceName(arg.propId ?? nilId()) ??
-          funcStore.inputSocketIdToSourceName(arg.inputSocketId ?? nilId()) ??
-          "none",
+      const args = funcStore.funcArguments?.map((funcArg) => ({
+        name: funcArg.name,
+        path: (() => {
+          const protoArg = proto.prototypeArguments.find(
+            (protoArg) => protoArg.funcArgumentId === funcArg.id,
+          );
+          if (protoArg) {
+            return (
+              funcStore.propIdToSourceName(protoArg.propId ?? nilId()) ??
+              funcStore.inputSocketIdToSourceName(
+                protoArg.inputSocketId ?? nilId(),
+              ) ??
+              "none"
+            );
+          }
+          return "none";
+        })(),
       }));
 
       return {

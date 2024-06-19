@@ -191,28 +191,6 @@ async fn update_action_associations(
 }
 
 #[instrument(
-    name = "func.authoring.save_func.update_associations.attribute",
-    level = "debug",
-    skip(ctx)
-)]
-async fn update_attribute_associations(
-    ctx: &DalContext,
-    func: &Func,
-    prototypes: Vec<AttributePrototypeBag>,
-) -> FuncAuthoringResult<()> {
-    let backend_response_type =
-        save_attr_func_prototypes(ctx, func, prototypes, true, None).await?;
-
-    Func::modify_by_id(ctx, func.id, |func| {
-        func.backend_response_type = backend_response_type;
-        Ok(())
-    })
-    .await?;
-
-    Ok(())
-}
-
-#[instrument(
     name = "func.authoring.save_func.update_associations.authentication",
     level = "debug",
     skip(ctx)
@@ -366,11 +344,19 @@ pub(crate) async fn reset_attribute_prototype(
         }
     }
 
-    // NOTE(nick): I am genuinely confused at what this function is trying to do while keeping all
-    // its callers happy, but if it works how I think it does, this should probably be "unset"
-    // instead of "identity". Why didn't I change it? It's working... probably.
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id).await?;
+    // If we aren't trying to use the default prototype, or the default prototype is the same as the
+    // prototype we're trying to 'reset', then set this prototype to be identity and remove all existing arguments.
+    // By setting to identity, this ensures that IF the user regenerates the schema variant def in the future,
+    // we'll correctly reset the value sources based on what's in that code
+
+    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, unset_func_id).await?;
+    // loop through and delete all existing attribute prototype arguments
+    let current_attribute_prototype_arguments =
+        AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
+    for apa in current_attribute_prototype_arguments {
+        AttributePrototypeArgument::remove(ctx, apa).await?;
+    }
     Ok(())
 }
 
