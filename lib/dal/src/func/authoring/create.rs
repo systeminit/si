@@ -2,7 +2,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use telemetry::prelude::*;
 
-use crate::action::prototype::ActionPrototype;
+use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::func::authoring::{
     AttributeOutputLocation, CreateFuncOptions, FuncAuthoringError, FuncAuthoringResult,
@@ -68,7 +68,7 @@ async fn create_action_func(
     {
         let exising_actions = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
         for action in exising_actions {
-            if action.kind == action_kind {
+            if action.kind == action_kind && action_kind != ActionKind::Manual {
                 return Err(FuncAuthoringError::ActionKindAlreadyExists(
                     action_kind,
                     schema_variant_id,
