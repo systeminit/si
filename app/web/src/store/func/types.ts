@@ -79,6 +79,7 @@ export interface InputSourceProp {
   schemaVariantId: string;
   path: string;
   name: string;
+  eligibleForOutput: boolean;
 }
 
 export interface OutputLocationProp {

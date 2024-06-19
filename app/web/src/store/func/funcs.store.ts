@@ -280,16 +280,18 @@ export const useFuncStore = () => {
             (schemaVariantId === nilId()
               ? _.flatten(Object.values(this.inputSourceProps))
               : this.inputSourceProps[schemaVariantId]
-            )?.map((prop) => {
-              const label = this.propIdToSourceName(prop.propId) ?? "none";
-              return {
-                label,
-                value: {
+            )
+              ?.filter((p) => p.eligibleForOutput)
+              .map((prop) => {
+                const label = this.propIdToSourceName(prop.propId) ?? "none";
+                return {
                   label,
-                  propId: prop.propId,
-                },
-              };
-            }) ?? [];
+                  value: {
+                    label,
+                    propId: prop.propId,
+                  },
+                };
+              }) ?? [];
 
           const socketOptions =
             (schemaVariantId === nilId()
