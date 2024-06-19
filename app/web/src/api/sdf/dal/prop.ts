@@ -1,3 +1,5 @@
+export type PropId = string;
+
 export enum PropKind {
   Array = "array",
   Boolean = "boolean",

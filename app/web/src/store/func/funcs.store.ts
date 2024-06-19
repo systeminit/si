@@ -12,6 +12,9 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
+import { PropId } from "@/api/sdf/dal/prop";
+import { OutputSocketId } from "@/api/sdf/dal/diagram";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -144,19 +147,16 @@ export const useFuncStore = () => {
 
         funcList: (state) => _.values(state.funcsById),
 
-        propForId:
-          (state) =>
-          (propId: string): InputSourceProp | undefined => {
-            for (const props of Object.values(state.inputSourceProps)) {
-              const inputSourceProp = props.find(
-                (prop) => prop.propId === propId,
-              );
-              if (inputSourceProp) {
-                return inputSourceProp;
-              }
-            }
-            return undefined;
-          },
+        allProps: (state) =>
+          _.reduce(
+            state.inputSourceProps,
+            (acc, props) => [...acc, ...props],
+            [] as InputSourceProp[],
+          ),
+
+        propsForId(): Record<PropId, InputSourceProp> {
+          return _.keyBy(this.allProps, (s) => s.propId);
+        },
 
         inputSocketForId:
           (state) =>
@@ -172,19 +172,33 @@ export const useFuncStore = () => {
             return undefined;
           },
 
-        outputSocketForId:
-          (state) =>
-          (outputSocketId: string): OutputSocketView | undefined => {
-            for (const sockets of Object.values(state.outputSockets)) {
-              const outputSocket = sockets.find(
-                (socket) => socket.outputSocketId === outputSocketId,
-              );
-              if (outputSocket) {
-                return outputSocket;
-              }
-            }
-            return undefined;
-          },
+        allOutputSockets: (state) => {
+          return _.reduce(
+            state.outputSockets,
+            (acc, sockets) => [...acc, ...sockets],
+            [] as OutputSocketView[],
+          );
+        },
+
+        outputSocketsForId(): Record<OutputSocketId, OutputSocketView> {
+          return _.keyBy(this.allOutputSockets, (s) => s.outputSocketId);
+        },
+
+        schemaVariantIdForPrototypeTargetId(): Record<
+          OutputSocketId | PropId,
+          SchemaVariantId
+        > {
+          const propsBySvId = _.mapValues(
+            this.propsForId,
+            (p) => p.schemaVariantId,
+          );
+          const outputSocketBySvId = _.mapValues(
+            this.outputSocketsForId,
+            (s) => s.schemaVariantId,
+          );
+
+          return _.merge({}, propsBySvId, outputSocketBySvId);
+        },
 
         // Filter props by schema variant
         propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
@@ -217,7 +231,7 @@ export const useFuncStore = () => {
 
       actions: {
         propIdToSourceName(propId: string) {
-          const prop = this.propForId(propId);
+          const prop = this.propsForId[propId];
           if (prop) {
             return `Attribute: ${prop.path}`;
           }
@@ -230,22 +244,11 @@ export const useFuncStore = () => {
         },
 
         outputSocketIdToSourceName(outputSocketId: string) {
-          const outputSocket = this.outputSocketForId(outputSocketId);
+          const outputSocket = this.outputSocketsForId[outputSocketId];
           if (outputSocket) {
             return `Output Socket: ${outputSocket.name}`;
           }
           return undefined;
-        },
-
-        schemaVariantIdForAttributePrototype(prototype: AttributePrototypeBag) {
-          if (prototype.propId) {
-            return this.propForId(prototype.propId)?.schemaVariantId;
-          }
-
-          if (prototype.outputSocketId) {
-            return this.outputSocketForId(prototype.outputSocketId)
-              ?.schemaVariantId;
-          }
         },
 
         outputLocationForAttributePrototype(

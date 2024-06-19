@@ -338,6 +338,10 @@ watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
 watch(
   () => funcStore.selectedFuncId,
   () => {
+    if (funcStore.selectedFuncId) {
+      funcStore.FETCH_FUNC(funcStore.selectedFuncId);
+    }
+
     if (
       funcDetailsTabGroupRef.value &&
       funcDetailsTabGroupRef.value.tabExists("properties")
@@ -345,6 +349,7 @@ watch(
       funcDetailsTabGroupRef.value.selectTab("properties");
     }
   },
+  { immediate: true },
 );
 
 const updateFunc = () => {

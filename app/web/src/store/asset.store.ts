@@ -10,6 +10,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { ComponentType } from "@/api/sdf/dal/diagram";
+import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -414,7 +415,7 @@ export const useAssetStore = () => {
           },
           {
             eventType: "SchemaVariantUpdateFinished",
-            callback: (data) => {
+            callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
               for (const asset of Object.values(this.assetsById)) {
                 if (asset.defaultSchemaVariantId === data.oldSchemaVariantId) {
@@ -422,6 +423,13 @@ export const useAssetStore = () => {
                 }
               }
               this.LOAD_ASSET_LIST();
+
+              if (this.selectedAssetId) {
+                this.LOAD_ASSET(this.selectedAssetId);
+                await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
+              }
+
+              await funcsStore.FETCH_INPUT_SOURCE_LIST(data.newSchemaVariantId);
             },
           },
           {
