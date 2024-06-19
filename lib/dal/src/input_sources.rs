@@ -51,6 +51,7 @@ pub struct InputSourceProp {
     pub kind: PropKind,
     pub name: String,
     pub path: String,
+    pub eligible_for_output: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -151,12 +152,20 @@ impl InputSources {
                 work_queue.extend(Prop::direct_child_props_ordered(ctx, prop.id).await?);
             }
 
+            let path = prop.path(ctx).await?.with_replaced_sep_and_prefix("/");
+
+            let eligible_for_output = path == "/root/resource_value"
+                || path == "/root/si/color"
+                || path.starts_with("/root/domain/")
+                || path.starts_with("/root/resource_value/");
+
             input_socket_props.push(InputSourceProp {
                 schema_variant_id,
                 prop_id: prop.id,
                 kind: prop.kind,
                 name: prop.name.to_owned(),
-                path: prop.path(ctx).await?.with_replaced_sep_and_prefix("/"),
+                path,
+                eligible_for_output,
             })
         }
 
