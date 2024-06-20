@@ -25,6 +25,11 @@
         label="Visualizer"
         @click="gotoViz"
       />
+      <DropdownMenuItem
+        icon="clipboard-copy"
+        label="Copy Workspace Token"
+        @click="copyWorkspaceToken"
+      />
     </template>
   </NavbarButton>
 
@@ -69,5 +74,11 @@ const gotoViz = () => {
       changeSetId: changeSetStore.selectedChangeSetId,
     },
   });
+};
+
+const copyWorkspaceToken = () => {
+  const currentWorkspace = workspacesStore.selectedWorkspace;
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  navigator.clipboard.writeText(currentWorkspace?.token || "");
 };
 </script>

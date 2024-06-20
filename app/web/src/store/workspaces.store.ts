@@ -27,6 +27,7 @@ type AuthApiWorkspace = {
   // instanceEnvType: "LOCAL" // not used yet...
   instanceUrl: string;
   role: "OWNER" | "EDITOR";
+  token: string;
 };
 
 export type WorkspaceImportSummary = {

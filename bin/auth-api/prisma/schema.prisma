@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl      = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -71,6 +72,9 @@ model Workspace {
 
   // The time in which the workspace was deleted
   deletedAt DateTime? @map("deleted_at")
+
+  /// secret token for the workspace (ULID)
+  token String? @db.Char(26)
 
   @@index(fields: [creatorUserId])
   @@map("workspaces")
