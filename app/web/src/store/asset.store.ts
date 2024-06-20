@@ -499,13 +499,6 @@ export const useAssetStore = () => {
             },
           },
           {
-            eventType: "SchemaVariantSaved",
-            callback: (data) => {
-              if (data.changeSetId !== changeSetId) return;
-              this.LOAD_ASSET_LIST();
-            },
-          },
-          {
             eventType: "SchemaVariantUpdateFinished",
             callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
