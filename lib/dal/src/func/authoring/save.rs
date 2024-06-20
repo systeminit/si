@@ -258,15 +258,9 @@ async fn update_leaf_associations(
 
     let mut views = Vec::new();
     for schema_variant_id in id_set {
-        let attribute_prototype_id = SchemaVariant::upsert_leaf_function(
-            ctx,
-            schema_variant_id,
-            None,
-            leaf_kind,
-            inputs,
-            func,
-        )
-        .await?;
+        let attribute_prototype_id =
+            SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, leaf_kind, inputs, func)
+                .await?;
         views.push(AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?);
     }
 

@@ -5,7 +5,7 @@ use crate::component::ComponentResult;
 use crate::qualification::{QualificationSubCheckStatus, QualificationView};
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::ws_event::WsEvent;
-use crate::DalContext;
+use crate::{AttributeValueId, DalContext};
 use crate::{Component, ComponentError, ComponentId};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
@@ -22,22 +22,10 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Vec<QualificationView>> {
-        let component = Self::get_by_id(ctx, component_id).await?;
-
         let mut qualification_views = vec![];
 
-        let qualification_map_value_id = component
-            .attribute_values_for_prop(
-                ctx,
-                RootPropChild::Qualification
-                    .prop_path()
-                    .as_parts()
-                    .as_slice(),
-            )
-            .await?
-            .first()
-            .copied()
-            .ok_or(ComponentError::MissingQualificationsValue(component_id))?;
+        let qualification_map_value_id =
+            Self::find_qualification_map_attribute_value_id(ctx, component_id).await?;
 
         let qualification_attribute_value_ids = match ctx
             .workspace_snapshot()?
@@ -74,5 +62,27 @@ impl Component {
             .await?;
 
         Ok(qualification_views)
+    }
+
+    /// This method finds the [`AttributeValueId`](crate::AttributeValue) corresponding to "/root/qualifications" for
+    /// the given [`ComponentId`](Component).
+    pub async fn find_qualification_map_attribute_value_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValueId> {
+        match Self::attribute_values_for_prop_by_id(
+            ctx,
+            component_id,
+            RootPropChild::Qualification
+                .prop_path()
+                .as_parts()
+                .as_slice(),
+        )
+        .await?
+        .first()
+        {
+            Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
+            None => Err(ComponentError::MissingQualificationsValue(component_id)),
+        }
     }
 }

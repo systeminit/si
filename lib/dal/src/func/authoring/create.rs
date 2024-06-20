@@ -255,15 +255,8 @@ async fn create_leaf_prototype(
         LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
     };
 
-    SchemaVariant::upsert_leaf_function(
-        ctx,
-        schema_variant_id,
-        None,
-        leaf_kind,
-        &input_locations,
-        func,
-    )
-    .await?;
+    SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, leaf_kind, &input_locations, func)
+        .await?;
 
     Ok(())
 }

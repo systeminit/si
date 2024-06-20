@@ -15,6 +15,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::{AttributeValueError, ValueIsFor};
 use crate::change_set::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -42,7 +43,7 @@ use crate::{
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
     TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{FuncBackendResponseType, InputSocketId};
+use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
 
@@ -77,10 +78,12 @@ pub enum SchemaVariantError {
     AttributePrototypeNotFoundForInputSocket(InputSocketId),
     #[error("attribute prototype not found for output socket id: {0}")]
     AttributePrototypeNotFoundForOutputSocket(OutputSocketId),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("component context not supported for leaf functions")]
-    ComponentContextNotSupportedForLeafFunctions,
+    #[error("component error: {0}")]
+    Component(#[from] Box<ComponentError>),
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
@@ -460,24 +463,29 @@ impl SchemaVariant {
         Ok(Self::assemble(id, inner))
     }
 
-    pub async fn get_components_on_graph(
-        &self,
+    /// Lists all [`Components`](Component) that are using the provided [`SchemaVariantId`](SchemaVariant).
+    pub async fn list_component_ids(
         ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<ComponentId>> {
-        let mut comp_ids: Vec<ComponentId> = vec![];
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let incoming_nodes_indices = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .incoming_sources_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
             .await?;
+
+        let mut component_ids: Vec<ComponentId> = Vec::new();
         for incoming_node_idx in incoming_nodes_indices {
-            if let NodeWeight::Component(comp) = workspace_snapshot
+            if let NodeWeight::Component(component_node_weight) = workspace_snapshot
                 .get_node_weight(incoming_node_idx)
                 .await?
             {
-                comp_ids.push(comp.id().into());
+                component_ids.push(component_node_weight.id().into());
             }
         }
-        Ok(comp_ids)
+        Ok(component_ids)
     }
 
     pub async fn get_authoring_func(
@@ -1051,19 +1059,12 @@ impl SchemaVariant {
     pub async fn upsert_leaf_function(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-        component_id: Option<ComponentId>,
         leaf_kind: LeafKind,
         input_locations: &[LeafInputLocation],
         func: &Func,
     ) -> SchemaVariantResult<AttributePrototypeId> {
         let leaf_item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
-
-        if component_id.is_some() {
-            // NOTE(nick): replaced a "unimplemented" here with an error, but we will need to think
-            // about whether we want this in the future.
-            return Err(SchemaVariantError::ComponentContextNotSupportedForLeafFunctions);
-        }
 
         let key = Some(func.name.to_owned());
 
@@ -1100,75 +1101,104 @@ impl SchemaVariant {
         let attribute_prototype_id =
             match AttributePrototype::find_for_prop(ctx, leaf_item_prop_id, &key).await? {
                 Some(existing_proto_id) => {
-                    let apas =
-                        AttributePrototypeArgument::list_ids_for_prototype(ctx, existing_proto_id)
-                            .await?;
-
-                    let mut apa_func_arg_ids = HashMap::new();
-                    for input in &inputs {
-                        let mut exisiting_func_arg = None;
-                        for apa_id in &apas {
-                            let func_arg_id =
-                                AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id)
-                                    .await?;
-                            apa_func_arg_ids.insert(apa_id, func_arg_id);
-
-                            if func_arg_id == input.func_argument_id {
-                                exisiting_func_arg = Some(func_arg_id);
-                            }
-                        }
-
-                        if exisiting_func_arg.is_none() {
-                            let input_prop_id = Self::find_root_child_prop_id(
-                                ctx,
-                                schema_variant_id,
-                                input.location.into(),
-                            )
-                            .await?;
-
-                            info!(
-                                "adding root child func arg: {:?}, {:?}",
-                                input_prop_id, input.location
-                            );
-
-                            let new_apa = AttributePrototypeArgument::new(
-                                ctx,
-                                existing_proto_id,
-                                input.func_argument_id,
-                            )
-                            .await?;
-                            new_apa.set_value_from_prop_id(ctx, input_prop_id).await?;
-                        }
-                    }
-
-                    for (apa_id, func_arg_id) in apa_func_arg_ids {
-                        if !inputs.iter().any(
-                            |&LeafInput {
-                                 func_argument_id, ..
-                             }| { func_argument_id == func_arg_id },
-                        ) {
-                            AttributePrototypeArgument::remove(ctx, *apa_id).await?;
-                        }
-                    }
-
+                    Self::upsert_leaf_function_inputs(
+                        ctx,
+                        inputs.as_slice(),
+                        existing_proto_id,
+                        schema_variant_id,
+                    )
+                    .await?;
                     existing_proto_id
                 }
                 None => {
-                    let (_, new_proto) = SchemaVariant::add_leaf(
-                        ctx,
-                        func.id,
-                        schema_variant_id,
-                        component_id,
-                        leaf_kind,
-                        inputs,
-                    )
-                    .await?;
+                    let (_, new_proto) =
+                        SchemaVariant::add_leaf(ctx, func.id, schema_variant_id, leaf_kind, inputs)
+                            .await?;
+
+                    // Before returning the new prototype, we need to ensure all existing components use the new
+                    // qualification.
+                    let mut new_attribute_value_ids = Vec::new();
+                    for component_id in Self::list_component_ids(ctx, schema_variant_id).await? {
+                        let parent_attribute_value_id =
+                            Component::find_qualification_map_attribute_value_id(ctx, component_id)
+                                .await
+                                .map_err(Box::new)?;
+                        let new_attribute_value = AttributeValue::new(
+                            ctx,
+                            ValueIsFor::Prop(leaf_item_prop_id),
+                            Some(component_id),
+                            Some(parent_attribute_value_id),
+                            key.clone(),
+                        )
+                        .await
+                        .map_err(Box::new)?;
+                        new_attribute_value_ids.push(new_attribute_value.id);
+                    }
+                    if !new_attribute_value_ids.is_empty() {
+                        ctx.add_dependent_values_and_enqueue(new_attribute_value_ids)
+                            .await?;
+                    }
 
                     new_proto
                 }
             };
 
         Ok(attribute_prototype_id)
+    }
+
+    /// This _private_ method upserts [inputs](LeafInput) to an _existing_ leaf function.
+    async fn upsert_leaf_function_inputs(
+        ctx: &DalContext,
+        inputs: &[LeafInput],
+        attribute_prototype_id: AttributePrototypeId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let apas =
+            AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
+
+        let mut apa_func_arg_ids = HashMap::new();
+        for input in inputs {
+            let mut exisiting_func_arg = None;
+            for apa_id in &apas {
+                let func_arg_id =
+                    AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id).await?;
+                apa_func_arg_ids.insert(apa_id, func_arg_id);
+
+                if func_arg_id == input.func_argument_id {
+                    exisiting_func_arg = Some(func_arg_id);
+                }
+            }
+
+            if exisiting_func_arg.is_none() {
+                let input_prop_id =
+                    Self::find_root_child_prop_id(ctx, schema_variant_id, input.location.into())
+                        .await?;
+
+                debug!(
+                    %input_prop_id, ?input.location, "adding root child attribute prototype argument",
+                );
+
+                let new_apa = AttributePrototypeArgument::new(
+                    ctx,
+                    attribute_prototype_id,
+                    input.func_argument_id,
+                )
+                .await?;
+                new_apa.set_value_from_prop_id(ctx, input_prop_id).await?;
+            }
+        }
+
+        for (apa_id, func_arg_id) in apa_func_arg_ids {
+            if !inputs.iter().any(
+                |&LeafInput {
+                     func_argument_id, ..
+                 }| { func_argument_id == func_arg_id },
+            ) {
+                AttributePrototypeArgument::remove(ctx, *apa_id).await?;
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn list_all_sockets(

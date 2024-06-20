@@ -580,7 +580,7 @@ async fn import_leaf_function(
 
     match thing_map.get(&leaf_func.func_unique_id().to_owned()) {
         Some(Thing::Func(func)) => {
-            SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
+            SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, kind, &inputs, func)
                 .await?;
         }
         _ => {
