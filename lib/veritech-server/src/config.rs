@@ -61,6 +61,9 @@ pub struct Config {
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
+
+    #[builder(default = "healthcheck_pool_default()")]
+    healthcheck_pool: bool,
 }
 
 #[remain::sorted]
@@ -79,6 +82,7 @@ pub struct ConfigFile {
     pub nats: NatsConfig,
     pub cyclone: CycloneConfig,
     pub crypto: VeritechCryptoConfig,
+    pub healthcheck_pool: bool,
 }
 
 impl ConfigFile {
@@ -87,6 +91,7 @@ impl ConfigFile {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_http(),
             crypto: Default::default(),
+            healthcheck_pool: healthcheck_pool_default(),
         }
     }
 
@@ -95,6 +100,7 @@ impl ConfigFile {
             nats: Default::default(),
             cyclone: CycloneConfig::default_local_uds(),
             crypto: Default::default(),
+            healthcheck_pool: healthcheck_pool_default(),
         }
     }
 }
@@ -142,6 +148,11 @@ impl Config {
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
+    }
+
+    /// Gets the config's healtch pool bool.
+    pub fn healthcheck_pool(&self) -> bool {
+        self.healthcheck_pool
     }
 
     // Consumes into a [`CycloneSpec`].
@@ -460,6 +471,10 @@ fn default_connect_timeout() -> u64 {
 
 fn random_instance_id() -> String {
     Ulid::new().to_string()
+}
+
+fn healthcheck_pool_default() -> bool {
+    true
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

@@ -67,7 +67,7 @@ mod tests {
         let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
             PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
-        pool.start();
+        pool.start(false).expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
 
@@ -104,7 +104,7 @@ mod tests {
 
         let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
-        pool.start();
+        pool.start(false).expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
 
@@ -155,7 +155,7 @@ mod tests {
 
         let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
-        pool.start();
+        pool.start(false).expect("failed to start");
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");
     }

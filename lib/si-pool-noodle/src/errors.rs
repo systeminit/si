@@ -19,4 +19,7 @@ pub enum PoolNoodleError {
     /// Failed to terminate an instance.
     #[error("Failed to terminate the instance: {0}")]
     InstanceTerminate(String),
+    /// Failed to healthcheck instance creation.
+    #[error("Failed to check pool health: {0}")]
+    Unhealthy(String),
 }
