@@ -28,7 +28,7 @@
       </Switch>
 
       <div
-        v-if="inError || true"
+        v-if="inError"
         class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-destructive-500 dark:text-destructive-600"
       >
         <Icon name="exclamation-circle" size="sm" />
