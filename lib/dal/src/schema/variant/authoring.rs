@@ -562,25 +562,55 @@ impl VariantAuthoringClient {
     pub async fn save_variant_content(
         ctx: &DalContext,
         current_schema_variant_id: SchemaVariantId,
-        name: impl Into<String>,
+        content_name: impl Into<String>,
         menu_name: Option<String>,
         link: Option<String>,
         code: impl Into<String>,
         description: Option<String>,
+        category: impl Into<String>,
+        component_type: ComponentType,
+        color: impl Into<String>,
     ) -> VariantAuthoringResult<()> {
         let current_schema_variant =
             SchemaVariant::get_by_id(ctx, current_schema_variant_id).await?;
+
+        let current_schema = current_schema_variant.schema(ctx).await?;
 
         let asset_func_id = current_schema_variant.asset_func_id.ok_or(
             VariantAuthoringError::SchemaVariantAssetNotFound(current_schema_variant_id),
         )?;
 
-        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
+        let name: String = content_name.into();
+        let name = &name;
 
+        current_schema
+            .modify(ctx, |s| {
+                s.name = name.to_string();
+                Ok(())
+            })
+            .await?;
+
+        let variant_description = description.clone();
+        let variant_link = link.clone();
+        let variant_display_name = menu_name.clone();
+
+        current_schema_variant
+            .modify(ctx, |sv| {
+                sv.description = variant_description;
+                sv.link = variant_link;
+                sv.category.clone_from(&category.into());
+                sv.component_type = component_type;
+                sv.color.clone_from(&color.into());
+                sv.display_name = variant_display_name;
+                Ok(())
+            })
+            .await?;
+
+        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
         let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
         current_func
             .modify(ctx, |func| {
-                func.name = name.into();
+                func.name = name.to_string();
                 func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
                 func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
                 func.display_name = menu_name
