@@ -13,7 +13,6 @@
             :loading="execAssetReqStatus.isPending"
             loadingText="Regenerating Asset..."
             label="Regenerate Asset"
-            :disabled="disabled"
             successText="Successful"
             :requestStatus="execAssetReqStatus"
             tone="action"
@@ -102,7 +101,7 @@
           placeholder="(optional) Provide a brief description of the asset"
           @blur="updateAsset"
         />
-        <VormInput type="container" compact label="color" :disabled="disabled">
+        <VormInput type="container" compact label="color">
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
@@ -216,17 +215,6 @@ const updateAsset = async () => {
     await assetStore.SAVE_ASSET(editingAsset.value);
   }
 };
-
-const disabled = ref(true);
-watch(
-  () => editingAsset.value,
-  () => {
-    disabled.value = !_.isEqual(editingAsset.value, assetStore.selectedAsset);
-  },
-  {
-    deep: true,
-  },
-);
 
 const execAssetReqStatus = assetStore.getRequestStatus(
   "EXEC_ASSET",
