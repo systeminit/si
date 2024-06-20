@@ -320,6 +320,8 @@ const open = async (
 ) => {
   attachExisting.value = existing ?? false;
 
+  attributeOutputLocation.value = "";
+
   name.value = "";
   funcKind.value = variant ?? FuncKind.Action;
   isCreate.value = false;
