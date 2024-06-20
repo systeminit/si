@@ -351,8 +351,6 @@ impl FuncAuthoringClient {
         }
         let prototype_bag = AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?;
 
-        save::reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
-
         let new_prototype_bag = AttributePrototypeBag {
             id: attribute_prototype_id,
             component_id: prototype_bag.component_id,
