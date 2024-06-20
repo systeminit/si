@@ -30,7 +30,6 @@ import {
   OutputSocketView,
 } from "./types";
 
-import { useRouterStore } from "../router.store";
 import { FuncRunId } from "../func_runs.store";
 
 export type FuncId = string;
@@ -119,24 +118,19 @@ export const useFuncStore = () => {
         outputSockets: {} as OutputSocketViews,
         openFuncIds: [] as FuncId[],
         lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
+        // represents the last, or "focused" func clicked on/open by the editor
+        selectedFuncId: undefined as FuncId | undefined,
       }),
       getters: {
-        urlSelectedFuncId: () => {
-          const route = useRouterStore().currentRoute;
-          return route?.params?.funcId as FuncId | undefined;
+        selectedFuncSummary(state): FuncSummary | undefined {
+          return state.funcsById[this.selectedFuncId || ""];
         },
-        selectedFuncId(): FuncId | undefined {
-          return this.selectedFuncSummary?.id;
+        selectedFuncDetails(state): FuncWithDetails | undefined {
+          return state.funcDetailsById[this.selectedFuncId || ""];
         },
-        selectedFuncSummary(): FuncSummary | undefined {
-          return this.funcsById[this.urlSelectedFuncId || ""];
-        },
-        selectedFuncDetails(): FuncWithDetails | undefined {
-          return this.funcDetailsById[this.urlSelectedFuncId || ""];
-        },
-        funcArguments(): FuncArgument[] | undefined {
-          return this.selectedFuncId
-            ? this.funcArgumentsByFuncId[this.selectedFuncId]
+        funcArguments(state): FuncArgument[] | undefined {
+          return state.selectedFuncId
+            ? state.funcArgumentsByFuncId[state.selectedFuncId]
             : undefined;
         },
 
@@ -679,11 +673,6 @@ export const useFuncStore = () => {
           if (!_.isEqual(newOpenFuncIds, this.openFuncIds)) {
             this.openFuncIds = newOpenFuncIds;
           }
-
-          // if we have a url selected function, make sure it exists in the list of open funcs
-          if (this.urlSelectedFuncId) {
-            this.setOpenFuncId(this.urlSelectedFuncId, true, true);
-          }
         },
 
         setOpenFuncId(id: FuncId, isOpen: boolean, unshift?: boolean) {
@@ -780,8 +769,8 @@ export const useFuncStore = () => {
               const assetId = assetStore.getLastSelectedAssetId();
               if (
                 assetId &&
-                assetStore.selectedFuncId &&
-                assetStore.selectedFuncId === this.selectedFuncId
+                this.selectedFuncId &&
+                assetStore.selectedFuncs.includes(this.selectedFuncId)
               ) {
                 assetStore.closeFunc(assetId, this.selectedFuncId);
               }

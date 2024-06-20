@@ -19,14 +19,16 @@
 </template>
 
 <script lang="ts" setup>
-import { useRouter, useRoute } from "vue-router";
+import { useRouter, useRoute, RouteLocationNamedRaw } from "vue-router";
 import { PropType } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useAssetStore } from "@/store/asset.store";
 
 const router = useRouter();
 const route = useRoute();
 const featureFlagsStore = useFeatureFlagsStore();
+const assetStore = useAssetStore();
 
 defineProps({
   tabContentSlug: {
@@ -36,8 +38,15 @@ defineProps({
 });
 
 function onTabChange(tabSlug?: string) {
+  // keep selections in the URL bar as you move to asset tab
+  // NOT FOR PAGE LOAD
   if (tabSlug && route.name !== `workspace-lab-${tabSlug}`) {
-    router.push({ name: `workspace-lab-${tabSlug}` });
+    const params = {
+      name: `workspace-lab-${tabSlug}`,
+    } as RouteLocationNamedRaw;
+    if (tabSlug === "assets")
+      params.query = assetStore.syncSelectionIntoUrl(true);
+    router.push(params);
   }
 }
 </script>

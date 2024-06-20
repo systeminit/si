@@ -1611,6 +1611,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               const _id = this.selectedComponentIds[0];
               if (_id) window.localStorage.setItem(key, _id);
             }
+
             this.syncSelectionIntoUrl();
           },
           setHoveredComponentId(
@@ -1631,6 +1632,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             // would overwrite the child being selected
             if (["component", "actions"].includes(tabSlug || "")) return;
             this.selectedComponentDetailsTab = tabSlug;
+
             this.syncSelectionIntoUrl();
           },
 
@@ -1666,7 +1668,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(
             router.currentRoute,
-            this.syncUrlIntoSelection,
+            () => {
+              if (router.currentRoute.value.name === "workspace-compose")
+                this.syncUrlIntoSelection();
+            },
             {
               immediate: true,
             },

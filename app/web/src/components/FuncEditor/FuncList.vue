@@ -1,17 +1,14 @@
 <template>
   <div class="flex flex-col overflow-hidden h-full relative">
     <TreeNode
-      v-for="(label, kind, index) in CUSTOMIZABLE_FUNC_TYPES"
+      v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
       :key="kind"
       enableDefaultHoverClasses
       enableGroupToggle
       alwaysShowArrow
       indentationSize="none"
       leftBorderSize="none"
-      :defaultOpen="
-        (defaultOpen || (index === 0 && firstOpen)) &&
-        !(funcsForKind(kind).length <= 0)
-      "
+      defaultOpen
       internalScrolling
       class="min-h-[32px]"
       primaryIconClasses=""

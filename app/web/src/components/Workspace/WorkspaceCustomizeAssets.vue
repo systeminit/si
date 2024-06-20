@@ -11,7 +11,7 @@
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
           <CustomizeTabs tabContentSlug="assets">
-            <AssetListPanel :assetId="assetStore.selectedAssetId" />
+            <AssetListPanel />
           </CustomizeTabs>
         </div>
       </div>
@@ -25,10 +25,7 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
     <div class="left-2 right-2 top-0 bottom-2 absolute">
-      <AssetEditorTabs
-        :selectedAssetId="assetStore.selectedAssetId"
-        :selectedFuncId="assetStore.selectedFuncId"
-      />
+      <AssetEditorTabs />
     </div>
   </div>
 
@@ -40,15 +37,15 @@
     :minSize="300"
   >
     <div class="absolute w-full flex flex-col h-full">
-      <SidebarSubpanelTitle
-        :label="
-          assetStore.selectedFuncId ? 'Asset Function Details' : 'Asset Details'
-        "
+      <AssetCard
+        v-if="assetStore.selectedAssetId"
+        titleCard
+        :assetId="assetStore.selectedAssetId"
       />
       <template v-if="assetStore.selectedAssetId">
         <FuncDetails
-          v-if="assetStore.selectedFuncId"
-          :funcId="assetStore.selectedFuncId"
+          v-if="funcStore.selectedFuncId"
+          :funcId="funcStore.selectedFuncId"
           :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
           singleModelScreen
           allowTestPanel
@@ -63,6 +60,30 @@
           :assetId="assetStore.selectedAssetId"
         />
       </template>
+      <template v-if="assetStore.selectedAssets.length > 1">
+        <div class="flex flex-col h-full w-full overflow-hidden">
+          <ScrollArea>
+            <template #top>
+              <SidebarSubpanelTitle label="Multiple Assets" icon="multiselect">
+                <DetailsPanelMenuIcon @click="open" />
+              </SidebarSubpanelTitle>
+              <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
+            </template>
+
+            <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
+              {{ assetStore.selectedAssets.length }} assets selected:
+            </div>
+            <Stack spacing="xs" class="p-xs">
+              <AssetCard
+                v-for="assetId in assetStore.selectedAssets"
+                :key="assetId"
+                :titleCard="false"
+                :assetId="assetId"
+              />
+            </Stack>
+          </ScrollArea>
+        </div>
+      </template>
       <EmptyStateCard
         v-else
         iconName="no-assets"
@@ -74,11 +95,17 @@
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ResizablePanel } from "@si/vue-lib/design-system";
+import { onBeforeUnmount, onMounted, ref, computed } from "vue";
+import {
+  ResizablePanel,
+  ScrollArea,
+  Stack,
+  DropdownMenu,
+  DropdownMenuItemObjectDef,
+} from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
-import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -86,13 +113,47 @@ import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 import EmptyStateCard from "../EmptyStateCard.vue";
+import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
+import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
 
-const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const funcStore = useFuncStore();
 
 const leftResizablePanelRef = ref();
 const rightResizablePanelRef = ref();
+
+const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const open = (mouse: MouseEvent) => {
+  contextMenuRef.value?.open(mouse, false);
+};
+
+const rightClickMenuItems = computed(() => {
+  const canContribute = [];
+  const canUpdate = [];
+  assetStore.selectedAssetRecords.forEach((asset) => {
+    if (asset.canContribute) canContribute.push(asset);
+    if (asset.canUpdate) canUpdate.push(asset);
+  });
+
+  const items: DropdownMenuItemObjectDef[] = [
+    {
+      label: `Contribute ${
+        canContribute.length ? canContribute.length : ""
+      } Assets`,
+      icon: "cloud-upload",
+      onSelect: () => {}, // TODO
+      disabled: canContribute.length === 0,
+    },
+    {
+      label: `Update ${canUpdate.length ? canUpdate.length : ""} Assets`,
+      icon: "code-deployed",
+      onSelect: () => {}, // TODO
+      disabled: canUpdate.length === 0,
+    },
+  ];
+  return items;
+});
 
 const onKeyDown = async (e: KeyboardEvent) => {
   if (
@@ -125,34 +186,9 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
 });
 
-watch(
-  [
-    () => assetStore.urlSelectedAssetId,
-    () => assetStore.urlSelectedFuncId,
-    loadAssetsReqStatus,
-  ],
-  async () => {
-    if (loadAssetsReqStatus.value.isSuccess && assetStore.urlSelectedAssetId) {
-      if (assetStore.urlSelectedAssetId && !assetStore.selectedAsset) {
-        await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
-      }
-      if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
-        await funcStore.FETCH_FUNC(assetStore.urlSelectedFuncId);
-      }
-      if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
-        assetStore.openFunc(
-          assetStore.selectedAssetId,
-          assetStore.selectedFuncId,
-        );
-      }
-    }
-  },
-  { immediate: true },
-);
-
 const onDetach = async () => {
-  if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
-    assetStore.closeFunc(assetStore.selectedAssetId, assetStore.selectedFuncId);
+  if (assetStore.selectedAssetId && funcStore.selectedFuncId) {
+    assetStore.closeFunc(assetStore.selectedAssetId, funcStore.selectedFuncId);
   }
 };
 </script>

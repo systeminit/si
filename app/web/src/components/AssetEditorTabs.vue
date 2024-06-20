@@ -42,7 +42,7 @@
 
 <script lang="ts" setup>
 import isEqual from "lodash-es/isEqual";
-import { watch, ref, computed, onMounted } from "vue";
+import { watch, ref, computed } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -55,7 +55,6 @@ const funcStore = useFuncStore();
 
 const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
-const selectedFuncId = computed(() => assetStore.selectedFuncId);
 const selectedAssetId = computed(() => assetStore.selectedAssetId);
 
 const loadAssetsRequestStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
@@ -78,7 +77,7 @@ watch(
 
     const assetTab = {
       type: "asset",
-      label: assetStore.assetListEntryById(assetId)?.name ?? "error",
+      label: assetStore.assetFromListById[assetId]?.name ?? "error",
       id: assetId,
     };
 
@@ -94,43 +93,41 @@ watch(
       // updating tab list
       currentTabs.value = tabs;
     }
+
+    if (funcStore.selectedFuncId)
+      tabGroupRef.value?.selectTab(funcStore.selectedFuncId);
+
+    // still dont know what is racing and removing the querystring from the URL
+    setTimeout(() => {
+      if (assetStore.selectedAssetId)
+        assetStore.setAssetSelection(assetStore.selectedAssetId);
+      funcTabs.forEach((f) => {
+        assetStore.addFuncSelection(f.id);
+      });
+    }, 100); // wait until after the querystring is stripped, and rebuild it
+  },
+  { immediate: true },
+);
+
+watch(
+  () => funcStore.selectedFuncId,
+  () => {
+    if (funcStore.selectedFuncId) {
+      tabGroupRef.value?.selectTab(funcStore.selectedFuncId);
+    }
   },
 );
 
-const doneLoading = ref(false);
-
-onMounted(async () => {
-  if (assetStore.urlSelectedAssetId && !assetStore.selectedAsset) {
-    await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
-  }
-  if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
-    await funcStore.FETCH_FUNC(assetStore.urlSelectedFuncId);
-  }
-  if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
-    assetStore.openFunc(assetStore.selectedAssetId, assetStore.selectedFuncId);
-    if (tabGroupRef.value) {
-      tabGroupRef.value.selectTab(assetStore.selectedFuncId);
-    }
-  }
-  doneLoading.value = true;
-});
-
 const onTabChange = async (tabSlug: string | undefined) => {
-  // tabSlugs are just func ids here, besides the asset tab, which is just "asset"
-  if (!doneLoading.value) {
-    return;
+  if (tabSlug !== "asset") {
+    funcStore.selectedFuncId = tabSlug;
+  } else {
+    funcStore.selectedFuncId = undefined;
   }
-
-  if (tabSlug === "asset") {
-    tabSlug = undefined;
-  } else if (!tabSlug || tabSlug === selectedFuncId.value) {
-    return;
-  }
-
-  assetStore.selectAsset(assetStore.urlSelectedAssetId, tabSlug);
 };
 
 const onTabClose = (funcId: string) => {
+  assetStore.removeFuncSelection(funcId);
   if (selectedAssetId.value && typeof selectedAssetId.value === "string") {
     assetStore.closeFunc(selectedAssetId.value, funcId);
   }
@@ -139,33 +136,11 @@ const onTabClose = (funcId: string) => {
 const closeTab = (slug: string) => {
   if (tabGroupRef.value) {
     tabGroupRef.value.closeTabBySlug(slug);
+    funcStore.selectedFuncId =
+      tabGroupRef.value.selectedTabSlug !== "asset"
+        ? tabGroupRef.value.selectedTabSlug
+        : undefined;
   }
+  assetStore.removeFuncSelection(slug);
 };
-
-const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
-  "FETCH_FUNC",
-  assetStore.urlSelectedFuncId,
-);
-
-watch([() => assetStore.selectedFuncId, loadFuncDetailsReqStatus], () => {
-  if (
-    assetStore.selectedAssetId &&
-    !assetStore.selectedFuncId &&
-    loadFuncDetailsReqStatus.value.isSuccess
-  ) {
-    // TODO - This watcher seems to be the source of BUG-385
-    tabGroupRef.value?.selectTab("asset");
-  } else if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
-    tabGroupRef.value?.selectTab(assetStore.selectedFuncId);
-  }
-});
-
-watch(
-  [() => assetStore.selectedAssetId, () => funcStore.selectedFuncId],
-  () => {
-    if (assetStore.selectedAssetId && !funcStore.selectedFuncId) {
-      tabGroupRef.value?.selectTab("asset");
-    }
-  },
-);
 </script>

@@ -15,6 +15,7 @@
         </template>
         <div class="flex flex-row gap-xs">
           <IconButton
+            class="hover:scale-125"
             icon="plus"
             loadingIcon="loader"
             :requestStatus="createAssetReqStatus"
@@ -25,16 +26,31 @@
             @click="newAsset"
           />
           <IconButton
+            v-if="canContribute || true"
+            class="hover:scale-125"
             icon="cloud-upload"
             variant="simple"
-            tooltip="Contribute"
+            tooltip="Contribute All"
             tooltipPlacement="top"
             :selected="contributeAssetModalRef?.isOpen || false"
             @click="contributeAsset"
           />
+          <IconButton
+            v-if="canUpdate"
+            class="hover:scale-125"
+            icon="code-deployed"
+            variant="simple"
+            tooltip="Update All"
+            tooltipPlacement="top"
+          />
         </div>
       </SidebarSubpanelTitle>
-      <SiSearch placeholder="search assets" @search="onSearch" />
+      <SiSearch
+        ref="searchRef"
+        placeholder="search assets"
+        :filters="searchFiltersWithCounts"
+        @search="onSearch"
+      />
       <!-- <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
       >
@@ -100,7 +116,7 @@ import {
   TreeNode,
   PillCounter,
 } from "@si/vue-lib/design-system";
-import SiSearch from "@/components/SiSearch.vue";
+import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { getAssetIcon } from "@/store/components.store";
 import AssetListItem from "./AssetListItem.vue";
@@ -138,27 +154,46 @@ const contributeLoadingTexts = [
   "Syncing Cosmic Harmonics...",
 ];
 
-const props = defineProps({
-  assetId: { type: String },
-});
-
+const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
 
 const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
 
+const canContribute = computed(() =>
+  assetList.value.some((a) => a.canContribute),
+);
+const canUpdate = computed(() => assetList.value.some((a) => a.canUpdate));
+
 const categorizedAssets = computed(() =>
   assetList.value
     .filter((asset) => {
-      if (searchString.value.length) {
-        return (
+      let include = true;
+
+      if (
+        searchRef.value?.filteringActive &&
+        searchRef.value?.activeFilters.filter(Boolean).length > 0
+      ) {
+        const idxs = searchRef.value?.activeFilters.flatMap((bool, idx) =>
+          bool ? idx : [],
+        );
+        include = false;
+        idxs.forEach((idx) => {
+          if (filters.value[idx]?.includes(asset)) {
+            include = true;
+          }
+        });
+      }
+
+      if (include && searchString.value.length) {
+        include = !!(
           asset.name.toLocaleLowerCase().includes(searchString.value) ||
           asset.displayName?.toLocaleLowerCase().includes(searchString.value)
         );
       }
 
-      return true;
+      return include;
     })
     .reduce((categorized, asset) => {
       let catList = categorized[asset.category];
@@ -184,10 +219,33 @@ const categoryColor = (category: string) => {
 const newAsset = async () => {
   const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
   if (result.result.success) {
-    assetStore.selectAsset(result.result.data.id);
+    assetStore.setAssetSelection(result.result.data.id);
   }
 };
 
 const contributeAsset = () => contributeAssetModalRef.value?.open();
 const onExport = () => exportSuccessModalRef.value?.open();
+
+const filters = computed(() => [
+  assetList.value.filter((a) => a.canContribute),
+  assetList.value.filter((a) => a.canUpdate),
+]);
+
+const searchFiltersWithCounts = computed(() => {
+  const searchFilters: Array<Filter> = [
+    {
+      name: "Assets to Contribute",
+      iconTone: "action",
+      iconName: "cloud-upload",
+      count: filters.value[0]?.length,
+    },
+    {
+      name: "Updates Available",
+      iconTone: "action",
+      iconName: "code-deployed",
+      count: filters.value[1]?.length,
+    },
+  ];
+  return searchFilters;
+});
 </script>
