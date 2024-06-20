@@ -49,6 +49,9 @@ pub async fn save_variant(
         request.link.clone(),
         request.code.clone(),
         request.description.clone(),
+        request.category.clone(),
+        request.component_type,
+        request.color,
     )
     .await?;
 

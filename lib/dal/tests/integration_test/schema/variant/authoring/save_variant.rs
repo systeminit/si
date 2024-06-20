@@ -82,6 +82,9 @@ async fn save_variant(ctx: &mut DalContext) {
         link.clone(),
         updated_func_content.clone(),
         updated_description.clone(),
+        category.clone(),
+        variant.component_type(),
+        color.clone(),
     )
     .await
     .expect("Unable to save the func");
