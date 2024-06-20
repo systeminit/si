@@ -1734,6 +1734,7 @@ impl AttributeValue {
     }
 
     /// Set's the component specific prototype id for this attribute value.
+    /// Removes the existing component specific prototype if it exists.
     #[instrument(level = "info", skip(ctx))]
     pub async fn set_component_prototype_id(
         ctx: &DalContext,

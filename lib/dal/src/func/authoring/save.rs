@@ -230,7 +230,7 @@ async fn update_authentication_associations(
 
 #[instrument(
     name = "func.authoring.save_func.update_associations.leaf",
-    level = "debug",
+    level = "info",
     skip(ctx)
 )]
 async fn update_leaf_associations(
@@ -276,7 +276,11 @@ async fn update_leaf_associations(
 
     Ok(())
 }
-
+#[instrument(
+    name = "func.authoring.save_func.save_attr_func_prototypes",
+    level = "info",
+    skip(ctx)
+)]
 async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
@@ -327,9 +331,31 @@ async fn save_attr_func_prototypes(
 
     Ok(computed_backend_response_type)
 }
+#[instrument(
+    name = "func.authoring.save_func.delete_attribute_prototype_and_args",
+    level = "info",
+    skip(ctx)
+)]
+pub(crate) async fn delete_attribute_prototype_and_args(
+    ctx: &DalContext,
+    attribute_prototype_id: AttributePrototypeId,
+) -> FuncAuthoringResult<()> {
+    let current_attribute_prototype_arguments =
+        AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
+    for apa in current_attribute_prototype_arguments {
+        AttributePrototypeArgument::remove(ctx, apa).await?;
+    }
+    AttributePrototype::remove(ctx, attribute_prototype_id).await?;
+    Ok(())
+}
 
 // NOTE(nick,john): this is doing way too much bullshit. We probably need to break out its usages
 // and users.
+#[instrument(
+    name = "func.authoring.save_func.reset_attribute_prototype",
+    level = "info",
+    skip(ctx)
+)]
 pub(crate) async fn reset_attribute_prototype(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
@@ -349,8 +375,8 @@ pub(crate) async fn reset_attribute_prototype(
     // By setting to identity, this ensures that IF the user regenerates the schema variant def in the future,
     // we'll correctly reset the value sources based on what's in that code
 
-    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, unset_func_id).await?;
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id).await?;
     // loop through and delete all existing attribute prototype arguments
     let current_attribute_prototype_arguments =
         AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
@@ -359,7 +385,11 @@ pub(crate) async fn reset_attribute_prototype(
     }
     Ok(())
 }
-
+#[instrument(
+    name = "func.authoring.save_func.save_attr_func_proto_arguments",
+    level = "info",
+    skip(ctx)
+)]
 pub(crate) async fn save_attr_func_proto_arguments(
     ctx: &DalContext,
     attribute_prototype_id: AttributePrototypeId,
@@ -421,7 +451,9 @@ pub(crate) async fn save_attr_func_proto_arguments(
 
     Ok(())
 }
-
+/// Creates a new attribute prototype for a given prop/socket/component id.
+/// Also removes the existing prototype and args that exist so we don't end up
+/// with duplicates
 pub(crate) async fn create_new_attribute_prototype(
     ctx: &DalContext,
     prototype_bag: &AttributePrototypeBag,
@@ -455,6 +487,13 @@ pub(crate) async fn create_new_attribute_prototype(
                 }
             }
         } else {
+            // remove the existing attribute prototype and arguments
+            if let Some(existing_proto) =
+                AttributePrototype::find_for_prop(ctx, prop_id, &key).await?
+            {
+                delete_attribute_prototype_and_args(ctx, existing_proto).await?;
+            }
+
             Prop::add_edge_to_attribute_prototype(
                 ctx,
                 prop_id,
@@ -479,6 +518,12 @@ pub(crate) async fn create_new_attribute_prototype(
                 }
             }
         } else {
+            // remove the existing attribute prototype and arguments
+            if let Some(existing_proto) =
+                AttributePrototype::find_for_output_socket(ctx, output_socket_id).await?
+            {
+                delete_attribute_prototype_and_args(ctx, existing_proto).await?;
+            }
             OutputSocket::add_edge_to_attribute_prototype(
                 ctx,
                 output_socket_id,
