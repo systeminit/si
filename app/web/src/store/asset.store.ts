@@ -186,10 +186,12 @@ export const useAssetStore = () => {
       },
       actions: {
         addAssetSelection(id: AssetId) {
-          this.selectedAssets.push(id);
-          this.LOAD_ASSET(id);
-          this.syncSelectionIntoUrl();
-          this.selectedFuncs = [];
+          if (!this.selectedAssets.includes(id)) {
+            this.selectedAssets.push(id);
+            this.LOAD_ASSET(id);
+            this.syncSelectionIntoUrl();
+            this.selectedFuncs = [];
+          }
         },
         setAssetSelection(id: AssetId) {
           if (!this.selectedAssets.includes(id)) {
