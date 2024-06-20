@@ -455,6 +455,7 @@ export const useAssetStore = () => {
           return new ApiRequest<null>({
             method: "post",
             url: "/variant/update_variant",
+            keyRequestStatusBy: assetId,
             params: {
               ...visibility,
               ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
