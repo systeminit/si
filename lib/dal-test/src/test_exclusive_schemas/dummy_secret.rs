@@ -1,7 +1,7 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
-use dal::prop::PropPath;
+use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
 use dal::schema::variant::leaves::LeafKind;
 use dal::{BuiltinsResult, DalContext};
 use si_pkg::{
@@ -152,7 +152,7 @@ fn assemble_secret_definition_dummy(
         .widget_options(serde_json::json![
             [
                 {
-                    "label": "secretKind",
+                    "label": SECRET_KIND_WIDGET_OPTION_LABEL,
                     "value": secret_definition_name
                 }
             ]

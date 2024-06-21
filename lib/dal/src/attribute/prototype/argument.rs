@@ -288,6 +288,14 @@ impl AttributePrototypeArgument {
             .await
     }
 
+    pub async fn func_argument(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributePrototypeArgumentResult<FuncArgument> {
+        let func_arg_id = Self::func_argument_id_by_id(ctx, self.id).await?;
+        Ok(FuncArgument::get_by_id_or_error(ctx, func_arg_id).await?)
+    }
+
     pub async fn func_argument_id_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
@@ -376,7 +384,7 @@ impl AttributePrototypeArgument {
         Ok(None)
     }
 
-    async fn set_value_source(
+    pub async fn set_value_source(
         self,
         ctx: &DalContext,
         value_id: Ulid,

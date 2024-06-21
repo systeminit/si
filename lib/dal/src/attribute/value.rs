@@ -1740,6 +1740,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         attribute_prototype_id: AttributePrototypeId,
+        key: Option<String>,
     ) -> AttributeValueResult<()> {
         let maybe_existing_prototype_id =
             Self::component_prototype_id(ctx, attribute_value_id).await?;
@@ -1752,7 +1753,7 @@ impl AttributeValue {
             ctx,
             attribute_value_id,
             attribute_prototype_id,
-            EdgeWeightKind::Prototype(None),
+            EdgeWeightKind::Prototype(key),
         )
         .await?;
 
@@ -1786,7 +1787,8 @@ impl AttributeValue {
 
         Ok(())
     }
-    async fn set_value(
+
+    pub async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         value: Option<Value>,
@@ -1831,7 +1833,7 @@ impl AttributeValue {
         let func_id = Func::find_intrinsic(ctx, intrinsic_func).await?;
         let prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id()).await?;
+        Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id(), None).await?;
 
         let func_args = match normalized_value {
             Some(value) => {
@@ -2274,6 +2276,22 @@ impl AttributeValue {
         }
     }
 
+    /// If the child attribute value is the child of a map, return its map key. Otherwise return None
+    pub async fn get_key_of_child_entry(
+        ctx: &DalContext,
+        parent_attribute_value_id: AttributeValueId,
+        child_attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<String>> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .find_edge(parent_attribute_value_id, child_attribute_value_id)
+            .await?
+            .and_then(|weight| match weight.kind() {
+                EdgeWeightKind::Contain(key) => key.to_owned(),
+                _ => None,
+            }))
+    }
+
     pub async fn get_index_or_key_of_child_entry(
         ctx: &DalContext,
         child_id: AttributeValueId,
@@ -2297,14 +2315,8 @@ impl AttributeValue {
                                     None => None,
                                 }
                             }
-                            PropKind::Map => ctx
-                                .workspace_snapshot()?
-                                .find_edge(pav_id, child_id)
+                            PropKind::Map => Self::get_key_of_child_entry(ctx, pav_id, child_id)
                                 .await?
-                                .and_then(|weight| match weight.kind() {
-                                    EdgeWeightKind::Contain(key) => key.to_owned(),
-                                    _ => None,
-                                })
                                 .map(KeyOrIndex::Key),
                             _ => None,
                         }

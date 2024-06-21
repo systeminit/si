@@ -1,5 +1,6 @@
 use core::fmt;
 
+use si_events::ulid::Ulid;
 use thiserror::Error;
 
 use crate::{
@@ -66,6 +67,16 @@ impl ValueSource {
         })
     }
 
+    pub fn into_inner_id(self) -> Ulid {
+        match self {
+            ValueSource::InputSocket(id) => id.into(),
+            ValueSource::OutputSocket(id) => id.into(),
+            ValueSource::Prop(id) => id.into(),
+            ValueSource::Secret(id) => id.into(),
+            ValueSource::StaticArgumentValue(id) => id.into(),
+        }
+    }
+
     pub async fn attribute_values_for_component_id(
         &self,
         ctx: &DalContext,
@@ -92,6 +103,7 @@ impl ValueSource {
         Ok(result)
     }
 }
+
 impl fmt::Display for ValueSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

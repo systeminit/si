@@ -19,7 +19,7 @@ pub enum AttributeValuePath {
     OutputSocket(String),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum KeyOrIndex {
     Key(String),
