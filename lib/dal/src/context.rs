@@ -334,6 +334,15 @@ impl DalContext {
         Ok(workspace.default_change_set_id())
     }
 
+    pub async fn get_workspace_token(&self) -> Result<Option<String>, TransactionsError> {
+        let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+        let workspace = Workspace::get_by_pk(self, &workspace_pk)
+            .await
+            .map_err(|err| TransactionsError::Workspace(err.to_string()))?
+            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+        Ok(workspace.token())
+    }
+
     pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
         let change_set = ChangeSet::find(self, self.change_set_id())
             .await

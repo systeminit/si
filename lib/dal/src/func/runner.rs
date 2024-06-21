@@ -1,3 +1,4 @@
+use serde_json::Value;
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -17,6 +18,7 @@ use veritech_client::{
 
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootPropChild;
+use crate::TransactionsError;
 use crate::{
     action::{
         prototype::{ActionPrototype, ActionPrototypeError},
@@ -97,6 +99,8 @@ pub enum FuncRunnerError {
     Secret(#[from] SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("veritech value encrypt error: {0}")]
     VeritechValueEncrypt(#[from] VeritechValueEncryptError),
     #[error("ws event error: {0}")]
@@ -1092,6 +1096,8 @@ impl FuncRunner {
             // Decrypt message from EncryptedSecret
             let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
 
+            Self::inject_workspace_token(ctx, &mut arg).await?;
+
             // Re-encrypt raw Value for transmission to Veritech
             encrypt_value_tree(&mut arg, ctx.encryption_key())?;
 
@@ -1109,6 +1115,15 @@ impl FuncRunner {
         }
 
         Ok(results)
+    }
+
+    async fn inject_workspace_token(ctx: &DalContext, value: &mut Value) -> FuncRunnerResult<()> {
+        if let Some(token) = ctx.get_workspace_token().await? {
+            if let serde_json::Value::Object(ref mut obj) = value {
+                obj.insert("WorkspaceToken".to_string(), token.into());
+            }
+        }
+        Ok(())
     }
 
     /// This _private_ method gathers the authentication functions for a given [`PropId`](Prop)

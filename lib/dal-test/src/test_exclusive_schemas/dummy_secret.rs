@@ -57,7 +57,7 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
         )
         .build()?;
 
-    let auth_func_code = "async function auth(secret: Input): Promise<Output> { requestStorage.setItem('dummySecretString', secret.value); }";
+    let auth_func_code = "async function auth(secret: Input): Promise<Output> { requestStorage.setItem('dummySecretString', secret.value); requestStorage.setItem('workspaceToken', secret.WorkspaceToken);}";
     let fn_name = "test:setDummySecretString";
     let auth_func = FuncSpec::builder()
         .name(fn_name)

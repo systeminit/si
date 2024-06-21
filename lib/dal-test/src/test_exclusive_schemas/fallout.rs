@@ -232,8 +232,9 @@ fn action_funcs() -> BuiltinsResult<(FuncSpec, FuncSpec)> {
     // Add the action create func.
     let code = "async function main() {
         const authCheck = requestStorage.getItem('dummySecretString');
-        if (authCheck) {
-            if (authCheck === 'todd') {
+        const workspaceToken = requestStorage.getItem('workspaceToken');
+        if (authCheck && workspaceToken) {
+            if (authCheck === 'todd' && workspaceToken === 'token') {
                 return {
                     status: 'ok',
                     payload: {
