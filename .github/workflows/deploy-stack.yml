@@ -1,6 +1,6 @@
 name: Deploy Services
 
-run-name: Deploy to ${{ inputs.environment }} by @${{ github.actor }}
+run-name: Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{ github.actor }}
 
 on:
   workflow_dispatch:
