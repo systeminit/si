@@ -126,6 +126,14 @@ export function useChangeSetsStore() {
           else if (this.headSelected) {
             throw new Error("You cannot abandon HEAD!");
           }
+          if (
+            router.currentRoute.value.name &&
+            ["workspace-lab-packages", "workspace-lab-assets"].includes(
+              router.currentRoute.value.name.toString(),
+            )
+          ) {
+            router.push({ name: "workspace-lab" });
+          }
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
             url: "change_set/abandon_change_set",
@@ -133,14 +141,6 @@ export function useChangeSetsStore() {
               changeSetId: this.selectedChangeSet.id,
             },
             onSuccess: (response) => {
-              if (
-                router.currentRoute.value.name &&
-                ["workspace-lab-packages", "workspace-lab-assets"].includes(
-                  router.currentRoute.value.name.toString(),
-                )
-              ) {
-                router.push({ name: "workspace-lab" });
-              }
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });

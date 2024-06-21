@@ -282,6 +282,7 @@ import {
 import clsx from "clsx";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
@@ -301,6 +302,7 @@ const props = defineProps<{
 const funcDetailsTabGroupRef = ref();
 
 const funcStore = useFuncStore();
+const assetStore = useAssetStore();
 
 const emit = defineEmits<{
   (e: "detached"): void;
@@ -394,7 +396,19 @@ const execFunc = () => {
 const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
-    const associations = detachRef.value.detachFunc();
+    await detachRef.value.detachFunc();
+    if (assetStore.selectedAssetId)
+      assetStore.LOAD_ASSET(assetStore.selectedAssetId); // reloads the fn list
+    if (funcStore.selectedFuncId)
+      assetStore.removeFuncSelection(funcStore.selectedFuncId);
+    if (funcStore.selectedFuncId && assetStore.selectedAssetId)
+      assetStore.closeFunc(
+        assetStore.selectedAssetId,
+        funcStore.selectedFuncId,
+      );
+    funcStore.selectedFuncId = undefined; // brings you back to the asset detail
+
+    /* this code was never reachable
     if (associations && editingFunc.value) {
       isDetaching.value = true;
       await funcStore.UPDATE_FUNC({
@@ -403,7 +417,7 @@ const detachFunc = async () => {
       });
       emit("detached");
       isDetaching.value = false;
-    }
+    } */
   }
 };
 
