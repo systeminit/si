@@ -30,6 +30,7 @@ const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql"
 const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
 
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
+const DEFAULT_BUILTIN_WORKSPACE_TOKEN: &str = "builtin";
 const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
 
 #[remain::sorted]
@@ -93,6 +94,7 @@ pub struct Workspace {
     uses_actions_v2: bool,
     #[serde(flatten)]
     timestamp: Timestamp,
+    token: Option<String>,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -107,6 +109,7 @@ impl TryFrom<PgRow> for Workspace {
             default_change_set_id: row.try_get("default_change_set_id")?,
             uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
+            token: row.try_get("token")?,
         })
     }
 }
@@ -122,6 +125,24 @@ impl Workspace {
 
     pub fn uses_actions_v2(&self) -> bool {
         self.uses_actions_v2
+    }
+
+    pub fn token(&self) -> Option<String> {
+        self.token.clone()
+    }
+
+    pub async fn set_token(&mut self, ctx: &DalContext, token: String) -> WorkspaceResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE workspaces SET token = $2 WHERE pk = $1",
+                &[&self.pk, &token],
+            )
+            .await?;
+        self.token = Some(token);
+
+        Ok(())
     }
 
     pub async fn update_default_change_set_id(
@@ -197,8 +218,8 @@ impl Workspace {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2) VALUES ($1, $2, $3, $4) RETURNING *",
-                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id, &uses_actions_v2],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, token) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id, &uses_actions_v2, &DEFAULT_BUILTIN_WORKSPACE_TOKEN],
             )
             .await?;
 

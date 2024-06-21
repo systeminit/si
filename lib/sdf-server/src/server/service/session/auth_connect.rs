@@ -45,6 +45,7 @@ pub struct AuthApiUser {
 pub struct AuthApiWorkspace {
     pub id: WorkspacePk,
     pub display_name: String,
+    pub token: String,
     // dont need to do anything with these for now
     pub creator_user_id: UserPk,
     pub instance_url: String,
@@ -93,8 +94,11 @@ async fn find_or_create_user_and_workspace(
     // lookup workspace or create if we've never seen it before
     let maybe_workspace = Workspace::get_by_pk(&ctx, &auth_api_workspace.id).await?;
     let workspace = match maybe_workspace {
-        Some(workspace) => {
+        Some(mut workspace) => {
             ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+            if workspace.token().is_none() {
+                workspace.set_token(&ctx, auth_api_workspace.token).await?;
+            }
             workspace
         }
         None => {

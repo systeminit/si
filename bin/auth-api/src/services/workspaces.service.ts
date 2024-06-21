@@ -31,6 +31,7 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
   const newWorkspace = await prisma.workspace.create({
     data: {
       id: ulid(),
+      token: ulid(),
       instanceEnvType: InstanceEnvType.LOCAL,
       instanceUrl,
       displayName,
