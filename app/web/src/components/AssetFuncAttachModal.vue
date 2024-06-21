@@ -514,8 +514,10 @@ const attachNewFunc = async () => {
       name: name.value,
       options,
     });
-    if (result.result.success && props.assetId) {
-      await reloadAssetAndRoute(props.assetId);
+    if (result.result.success) {
+      funcStore.selectedFuncId = result.result.data.id;
+      assetStore.addFuncSelection(result.result.data.id);
+      if (props.assetId) await reloadAssetAndRoute(props.assetId);
     }
   }
 };

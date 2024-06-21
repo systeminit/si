@@ -213,6 +213,10 @@ export const useAssetStore = () => {
         removeFuncSelection(id: FuncId) {
           const idx = this.selectedFuncs.indexOf(id);
           if (idx !== -1) this.selectedFuncs.splice(idx, 1);
+
+          const idxx = funcsStore.openFuncIds.indexOf(id);
+          if (idxx !== -1) funcsStore.openFuncIds.splice(idxx, 1);
+          this.syncSelectionIntoUrl();
         },
         syncSelectionIntoUrl(returnQuery?: boolean) {
           let selectedIds: string[] = [];

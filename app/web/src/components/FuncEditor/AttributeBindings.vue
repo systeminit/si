@@ -85,7 +85,6 @@ import { VButton } from "@si/vue-lib/design-system";
 import {
   AttributeAssociations,
   AttributePrototypeBag,
-  FuncAssociations,
 } from "@/store/func/types";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
@@ -254,7 +253,7 @@ const prototypeViews = computed(() => {
   });
 });
 
-const detachFunc = (): FuncAssociations | undefined => {
+const detachFunc = async (): Promise<undefined> => {
   if (props.schemaVariantId) {
     const prototype = associations.value.prototypes.find(
       (proto) =>
@@ -263,7 +262,7 @@ const detachFunc = (): FuncAssociations | undefined => {
         ] === props.schemaVariantId,
     );
     // todo: remove the binding when the user hits the detach button
-    removeBinding(prototype?.id as string);
+    await removeBinding(prototype?.id as string);
     return;
   }
 };
