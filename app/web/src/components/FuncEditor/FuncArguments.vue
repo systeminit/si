@@ -72,7 +72,7 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, ref } from "vue";
-import { Inline, VButton, VormInput } from "@si/vue-lib/design-system";
+import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
