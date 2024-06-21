@@ -40,7 +40,7 @@ export function parseOutputOption(output: string): ArgOutput {
 
 export function makeRefreshOptions(options: {
   input: Array<string>;
-  missingResource: Array<string>;
+  missingResource?: Array<string>;
   output: Array<string>;
 }): RefreshOptions {
   const refreshOptions: RefreshOptions = {
@@ -52,8 +52,10 @@ export function makeRefreshOptions(options: {
     const argInput = parseInputOption(input);
     refreshOptions.inputs.push(argInput);
   }
-  for (const missing of options.missingResource) {
-    refreshOptions.missingResources.push(missing);
+  if (options.missingResource) {
+    for (const missing of options.missingResource) {
+      refreshOptions.missingResources.push(missing);
+    }
   }
   for (const output of options.output) {
     const argOutput = parseOutputOption(output);
