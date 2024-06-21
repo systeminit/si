@@ -98,6 +98,7 @@
         skopeo
         openssh
         minio-client
+	fastly
       ];
 
       buck2Derivation = {
