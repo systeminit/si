@@ -23,7 +23,7 @@
         <div class="fixed inset-0 bg-shade-100 bg-opacity-60" />
       </TransitionChild>
 
-      <div class="fixed inset-0 overflow-y-auto">
+      <div class="fixed inset-0 overflow-hidden">
         <div
           :class="
             clsx(

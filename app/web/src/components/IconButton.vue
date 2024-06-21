@@ -50,7 +50,7 @@
     @mousedown="startActive"
     @mouseup="endActive"
   >
-    <Icon :name="iconShowing" :rotate="rotate" />
+    <Icon :name="iconShowing" :rotate="rotate" :size="size" />
 
     <!-- Slot is for dropdown menus or modals to go in only! -->
     <slot />
@@ -62,6 +62,7 @@ import * as _ from "lodash-es";
 import {
   Icon,
   IconNames,
+  SpacingSizes,
   Tones,
   getToneBgColorClass,
   getToneTextColorClass,
@@ -74,6 +75,7 @@ import { PropType, computed, ref } from "vue";
 export type IconButtonVariant = "classic" | "simple";
 
 const props = defineProps({
+  size: { type: String as PropType<SpacingSizes>, default: "md" },
   icon: { type: String as PropType<IconNames>, required: true },
   iconHover: { type: String as PropType<IconNames> },
   iconTone: { type: String as PropType<Tones>, default: "action" },

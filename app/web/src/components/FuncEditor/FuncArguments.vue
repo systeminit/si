@@ -1,9 +1,9 @@
 <template>
-  <div class="p-3 flex flex-col gap-xs">
+  <div class="p-xs flex flex-col gap-xs">
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
       Add the names of the arguments to this function and their types.
     </h1>
-    <Inline alignY="center">
+    <div class="flex flex-row items-center gap-2xs">
       <VormInput
         id="newArg"
         v-model="newArg.name"
@@ -14,6 +14,7 @@
       />
       <VormInput
         v-model="newArg.kind"
+        class="flex-none"
         noLabel
         type="dropdown"
         :options="kindOptions"
@@ -27,14 +28,19 @@
         "
       />
       <VButton
-        label="Add"
+        icon="plus"
+        size="sm"
         tone="success"
         :disabled="disabled"
         @click="createArgument"
       />
-    </Inline>
+    </div>
     <ul>
-      <Inline v-for="arg in funcArguments" :key="arg.id" alignY="center">
+      <div
+        v-for="arg in funcArguments"
+        :key="arg.id"
+        class="flex flex-row items-center gap-2xs"
+      >
         <VormInput
           :id="`arg-name-${arg.id}`"
           v-model="arg.name"
@@ -46,25 +52,27 @@
         />
         <VormInput
           v-model="arg.kind"
+          class="flex-none"
           noLabel
           type="dropdown"
           :options="kindOptions"
           @change="updateArgument(arg.id, arg.name, arg.kind, arg.elementKind)"
         />
         <VButton
-          label="Delete"
+          icon="trash"
+          size="sm"
           tone="destructive"
           :disabled="disabled"
           @click="deleteArgument(arg.id)"
         />
-      </Inline>
+      </div>
     </ul>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, onMounted, ref } from "vue";
-import { Inline, VButton, VormInput } from "@si/vue-lib/design-system";
+import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";

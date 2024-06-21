@@ -1,19 +1,24 @@
 <template>
   <div>
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+    <h2 class="text-neutral-700 type-bold-sm dark:text-neutral-50">
       Function inputs
     </h2>
-    <Stack spacing="sm">
-      <VormInput v-model="codeSelected" type="checkbox"> Code</VormInput>
-      <VormInput v-model="deletedAtSelected" type="checkbox">
+    <div class="flex flex-col gap-2xs py-xs">
+      <VormInput v-model="codeSelected" noLabel type="checkbox">
+        Code</VormInput
+      >
+      <VormInput v-model="deletedAtSelected" noLabel type="checkbox">
         Deleted At
       </VormInput>
-      <VormInput v-model="domainSelected" type="checkbox"> Domain</VormInput>
-      <VormInput v-model="resourceSelected" type="checkbox">
+      <VormInput v-model="domainSelected" noLabel type="checkbox">
+        Domain</VormInput
+      >
+      <VormInput v-model="resourceSelected" noLabel type="checkbox">
         Resource
       </VormInput>
       <VormInput
         v-model="secretsSelected"
+        class="pt-xs"
         label="Function Depends on Secrets"
         prompt="Run the authentication function first, to make sure the secret is applied?"
         type="radio"
@@ -22,13 +27,13 @@
           { value: false, label: 'No' },
         ]"
       />
-    </Stack>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { Stack, VormInput } from "@si/vue-lib/design-system";
+import { VormInput } from "@si/vue-lib/design-system";
 import { LeafInputLocation } from "@/store/func/types";
 
 const props = defineProps<{

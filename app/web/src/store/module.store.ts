@@ -344,6 +344,7 @@ export const useModuleStore = () => {
               onFail: () => {
                 this.installingModuleId = null;
                 this.installingLoading = false;
+                changeSetsStore.creatingChangeSet = false;
               },
             });
           },

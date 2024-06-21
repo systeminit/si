@@ -1,5 +1,5 @@
 <template>
-  <span ref="pickerAnchorElement" class="h-7">
+  <span ref="pickerAnchorElement" class="h-7 block">
     <Teleport to="body">
       <span
         :id="id ?? 'color-picker'"

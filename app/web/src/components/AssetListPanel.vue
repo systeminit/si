@@ -13,10 +13,11 @@
             <PillCounter :count="assetList.length" />
           </div>
         </template>
-        <div class="flex flex-row gap-xs">
+        <div class="flex flex-row gap-xs items-center">
           <IconButton
             class="hover:scale-125"
             icon="plus"
+            size="sm"
             loadingIcon="loader"
             :requestStatus="createAssetReqStatus"
             variant="simple"
@@ -26,9 +27,10 @@
             @click="newAsset"
           />
           <IconButton
-            v-if="canContribute || true"
+            v-if="canContribute"
             class="hover:scale-125"
             icon="cloud-upload"
+            size="sm"
             variant="simple"
             tooltip="Contribute All"
             tooltipPlacement="top"
@@ -39,6 +41,7 @@
             v-if="canUpdate"
             class="hover:scale-125"
             icon="code-deployed"
+            size="sm"
             variant="simple"
             tooltip="Update All"
             tooltipPlacement="top"

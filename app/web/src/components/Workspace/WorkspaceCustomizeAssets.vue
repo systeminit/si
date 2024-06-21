@@ -60,7 +60,7 @@
           :assetId="assetStore.selectedAssetId"
         />
       </template>
-      <template v-if="assetStore.selectedAssets.length > 1">
+      <template v-else-if="assetStore.selectedAssets.length > 1">
         <div class="flex flex-col h-full w-full overflow-hidden">
           <ScrollArea>
             <template #top>

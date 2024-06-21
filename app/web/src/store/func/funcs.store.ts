@@ -388,6 +388,9 @@ export const useFuncStore = () => {
                 }
               };
             },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
             keyRequestStatusBy: func.id,
           });
         },
@@ -416,6 +419,9 @@ export const useFuncStore = () => {
               prototypeArguments,
               ...visibility,
             },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
           });
         },
         async UPDATE_ATTRIBUTE_PROTOTYPE(
@@ -441,6 +447,9 @@ export const useFuncStore = () => {
               prototypeArguments,
               ...visibility,
             },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
           });
         },
         async REMOVE_ATTRIBUTE_PROTOTYPE(attributePrototypeId: string) {
@@ -455,6 +464,9 @@ export const useFuncStore = () => {
             params: {
               attributePrototypeId,
               ...visibility,
+            },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
@@ -478,6 +490,9 @@ export const useFuncStore = () => {
               kind,
               elementKind,
               ...visibility,
+            },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
@@ -504,6 +519,9 @@ export const useFuncStore = () => {
               elementKind,
               ...visibility,
             },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
           });
         },
         async DELETE_FUNC_ARGUMENT(
@@ -522,6 +540,9 @@ export const useFuncStore = () => {
               funcId,
               funcArgumentId,
               ...visibility,
+            },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
@@ -556,6 +577,9 @@ export const useFuncStore = () => {
             url: "func/save_and_exec",
             keyRequestStatusBy: funcId,
             params: { ...func, ...visibility },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
           });
         },
         async TEST_EXECUTE(executeRequest: {
@@ -597,10 +621,8 @@ export const useFuncStore = () => {
             onSuccess: (response) => {
               this.funcsById[response.id] = response;
             },
-            onFail: (response) => {
-              if (changeSetsStore.headSelected) {
-                changeSetsStore.creatingChangeSet = false;
-              }
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
