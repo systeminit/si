@@ -18,9 +18,10 @@ async function main(component: Input): Promise < Output > {
     const payload = _.get(component, 'properties.resource.payload');
 <% for (const missing of it.missingResources) { %>
     if (child.stderr.includes("<%= missing %>")) {
+      console.log(\`Resource not found upstream; (<%= missing %>): Removing resource\`)
       return {
-        status: "error",
-        message: \`Refresh error; resource not found; (<%= missing %>)\`,
+        status: "ok",
+        payload: null,
       }
     }
 <% } %>
