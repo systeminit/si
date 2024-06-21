@@ -1,0 +1,21 @@
+#!/bin/bash
+
+usage() {
+    echo "----------------------------------"
+    echo "The toolbox provides a bunch of helper"
+    echo "scripts to support SI. Here's what you"
+    echo "can do:"
+    list_usages
+    exit 1
+}
+
+list_usages() {
+  for script in /usr/local/bin/si/*; do
+    if [[ -f "$script" && $(basename "$script") != "info" ]]; then
+      source "$script"
+      usage
+    fi
+  done
+}
+
+usage

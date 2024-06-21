@@ -5,6 +5,7 @@ RUN set -eux; \
     arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/64bit/) && yum install -y \
         https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_${arch}/session-manager-plugin.rpm;
 
-COPY ./scripts/* /usr/local/bin/
+COPY ./scripts/* /usr/local/bin/si/
+ENV PATH="/usr/local/bin/si:${PATH}"
 
-ENTRYPOINT ["sh", "-c"]
+ENTRYPOINT ["bash", "-c"]
