@@ -2,16 +2,15 @@
   <Modal
     ref="modalRef"
     :title="title"
-    :size="attachExisting ? '4xl' : 'md'"
+    :size="attachExisting && selectedExistingFuncId ? '4xl' : 'md'"
     @close="onClose"
   >
-    <div class="flex flex-row">
+    <div class="flex flex-row max-h-[75vh]">
       <div
         :class="
           clsx(
             'flex flex-col gap-y-4 min-w-[250px]',
-            attachExisting && 'mr-3',
-            !attachExisting && 'flex-grow',
+            attachExisting && selectedExistingFuncId ? 'mr-sm' : 'flex-grow',
           )
         "
       >
@@ -37,30 +36,30 @@
           :options="existingFuncOptions"
         />
         <template v-if="funcKind === FuncKind.Action && !attachExisting">
-          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="create"
               v-model="isCreate"
               title="This action creates a resource"
               @update:model-value="setCreate"
             />
-          </h2>
-          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          </div>
+          <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="refresh"
               v-model="isRefresh"
               title="This action refreshes a resource"
               @update:model-value="setRefresh"
             />
-          </h2>
-          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          </div>
+          <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="delete"
               v-model="isDelete"
               title="This action deletes a resource"
               @update:model-value="setDelete"
             />
-          </h2>
+          </div>
         </template>
         <VormInput
           v-if="funcKind === FuncKind.Attribute"
@@ -98,27 +97,22 @@
             </li>
           </ul>
         </template>
-        <div class="mt-auto">
-          <VButton
-            class="w-full"
-            :loading="showLoading"
-            :disabled="!attachEnabled"
-            :loadingText="`Attaching ${existingOrNew} function...`"
-            :label="`Attach ${existingOrNew} function`"
-            tone="action"
-            icon="plus"
-            size="sm"
-            @click="onAttach"
-          />
-        </div>
+        <VButton
+          class="w-full"
+          :loading="showLoading"
+          :disabled="!attachEnabled"
+          :loadingText="`Attaching ${existingOrNew} function...`"
+          :label="`Attach ${existingOrNew} function`"
+          tone="action"
+          icon="plus"
+          size="sm"
+          @click="onAttach"
+        />
       </div>
-      <div v-if="attachExisting" class="overflow-y-scroll">
-        <div
-          v-if="!selectedExistingFuncId"
-          class="items-center justify-center text-neutral-400 dark:text-neutral-300 text-sm text-center"
-        >
-          Select an existing function to attach it to this asset
-        </div>
+      <div
+        v-if="attachExisting && selectedExistingFuncId"
+        class="overflow-y-scroll"
+      >
         <div v-if="loadFuncDetailsReq?.value.isPending">
           <RequestStatusMessage :requestStatus="loadFuncDetailsReq.value" />
         </div>

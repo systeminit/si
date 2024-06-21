@@ -19,8 +19,8 @@
       />
     </div>
     <div>
-      <h2 class="pb-2 text-sm">Selected {{ thingLabel }}</h2>
-      <p v-if="modelValue.length === 0" class="pl-4 text-sm">
+      <h2 class="py-xs text-sm">Selected {{ thingLabel }}:</h2>
+      <p v-if="modelValue.length === 0" class="pl-sm text-xs italic">
         None selected. Select {{ thingLabel }} above...
       </p>
       <ul v-else class="list-disc list-inside flex flex-col">

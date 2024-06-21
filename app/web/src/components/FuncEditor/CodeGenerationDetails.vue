@@ -1,11 +1,11 @@
 <template>
-  <div class="p-3 flex flex-col gap-xs">
+  <div class="p-xs flex flex-col gap-xs">
     <template v-if="!schemaVariantId">
       <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
         Run this code generation function on the selected components and
         component types below.
       </h1>
-      <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <h2 class="pt-2xs text-neutral-700 type-bold-sm dark:text-neutral-50">
         Run on Component:
       </h2>
       <RunOnSelector
@@ -14,7 +14,7 @@
         :options="componentOptions"
         @change="updateAssociations"
       />
-      <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <h2 class="pt-2xs text-neutral-700 type-bold-sm dark:text-neutral-50">
         Run on Schema Variant:
       </h2>
       <RunOnSelector

@@ -213,7 +213,7 @@
 
           <TreeNode
             v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
-            label="Binding"
+            label="Bindings"
             defaultOpen
             enableGroupToggle
             alwaysShowArrow

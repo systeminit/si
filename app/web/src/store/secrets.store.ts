@@ -323,6 +323,9 @@ export function useSecretsStore() {
                 );
                 this.secretIsTransitioning[id] = false;
               },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
             });
           },
           async SAVE_SECRET(
@@ -423,6 +426,9 @@ export function useSecretsStore() {
                 );
                 this.secretIsTransitioning[tempId] = false;
               },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
+              },
             });
           },
           // This is totally unimplemented, as of 2024-01-29 -- Adam
@@ -459,6 +465,9 @@ export function useSecretsStore() {
                   secretsOnDef.filter((s) => s.id !== id);
 
                 this.secretIsTransitioning[secret.id] = false;
+              },
+              onFail: () => {
+                changeSetsStore.creatingChangeSet = false;
               },
             });
           },
