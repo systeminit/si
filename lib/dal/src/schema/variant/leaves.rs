@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
+    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
 };
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
@@ -200,12 +200,12 @@ impl SchemaVariant {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
-        component_id: Option<ComponentId>,
         leaf_kind: LeafKind,
         inputs: Vec<LeafInput>,
     ) -> SchemaVariantResult<(PropId, AttributePrototypeId)> {
-        // Ensure the func matches what we need.
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        // Ensure the func matches what we need.
         if func.backend_kind != FuncBackendKind::JsAttribute {
             return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id));
         }
@@ -217,34 +217,32 @@ impl SchemaVariant {
             ));
         }
 
-        if component_id.is_some() {
-            unimplemented!("component context for leaves not yet implemented in graph version");
-        }
+        // The key is the name of the func. This assume func names are unique.
+        let key = Some(func.name.to_owned());
 
+        // Gather the item and map props.
         let item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
-
         let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)
             .await?
             .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
+        // Clear existing prototypes as needed.
         if let Some(prototype_id) =
             AttributePrototype::find_for_prop(ctx, item_prop_id, &None).await?
         {
-            debug!(%prototype_id, %item_prop_id, "removing None proto");
+            debug!(%prototype_id, %item_prop_id, "removing attribute prototype without key for leaf item prop");
             AttributePrototype::remove(ctx, prototype_id).await?;
         }
-
-        let key = Some(func.name.to_owned());
         if let Some(prototype_id) =
             AttributePrototype::find_for_prop(ctx, item_prop_id, &key).await?
         {
-            debug!(%prototype_id, %item_prop_id, "removing {:?} proto", &key);
+            debug!(%prototype_id, %item_prop_id, ?key, "removing attribute prototype for leaf item prop and key that already exists");
             AttributePrototype::remove(ctx, prototype_id).await?;
         }
 
+        // Create the new prototype and add an edge to the item prop using a populated key.
         let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
-
         Prop::add_edge_to_attribute_prototype(
             ctx,
             item_prop_id,
@@ -253,6 +251,8 @@ impl SchemaVariant {
         )
         .await?;
 
+        // Now that we have the prototype, we can process all inputs and create an attribute prototype argument that
+        // sources its value from the input prop.
         for input in inputs {
             let input_prop_id = SchemaVariant::find_root_child_prop_id(
                 ctx,
@@ -261,14 +261,10 @@ impl SchemaVariant {
             )
             .await?;
 
-            let apa = AttributePrototypeArgument::new(
-                ctx,
-                attribute_prototype_id,
-                input.func_argument_id,
-            )
-            .await?;
-
-            apa.set_value_from_prop_id(ctx, input_prop_id).await?;
+            AttributePrototypeArgument::new(ctx, attribute_prototype_id, input.func_argument_id)
+                .await?
+                .set_value_from_prop_id(ctx, input_prop_id)
+                .await?;
         }
 
         Ok((map_prop_id, attribute_prototype_id))

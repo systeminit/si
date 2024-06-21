@@ -245,7 +245,8 @@ impl VariantAuthoringClient {
                 ))?;
         let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
 
-        let components_in_use = sv.get_components_on_graph(ctx).await?;
+        let components_in_use = SchemaVariant::list_component_ids(ctx, current_sv_id).await?;
+
         if components_in_use.is_empty() {
             Self::update_existing_variant_and_regenerate(
                 ctx,
