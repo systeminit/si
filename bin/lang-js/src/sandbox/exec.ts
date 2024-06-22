@@ -29,8 +29,8 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
+    const execaOptions: Options<string> = { stdin: 'ignore' };
     debug(
       `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
         ?.map((a) => `'${a}'`)
@@ -74,7 +74,6 @@ export const makeExec = (executionId: string) => {
     const c = await waitUntilEnd(
       options.cmd,
       options.args,
-      options.execaOptions,
     );
     // Update the count of how many attempts we have made
     deadlineCount += 1;
