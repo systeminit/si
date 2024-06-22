@@ -110,9 +110,11 @@ export const useFuncStore = () => {
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
+        // this powers the list
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcArgumentsById: {} as Record<FuncArgumentId, FuncArgument>,
         funcArgumentsByFuncId: {} as Record<FuncId, FuncArgument[]>,
+        // this is the code
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
         // map from schema variant ids to the input sources
         inputSourceSockets: {} as InputSocketViews,

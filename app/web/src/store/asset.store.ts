@@ -70,8 +70,10 @@ export type SchemaVariantListEntry = SchemaVariant & {
   canUpdate: boolean;
   canContribute: boolean;
 };
-export type SchemaVariantSaveRequest = Visibility &
-  Omit<SchemaVariant, "created_at" | "updated_at">;
+export type SchemaVariantSaveRequest = Visibility & { code: string } & Omit<
+    SchemaVariant,
+    "created_at" | "updated_at"
+  >;
 export type SchemaVariantCreateRequest = Omit<
   SchemaVariantSaveRequest,
   "schemaId" | "schemaVariantId"
@@ -306,6 +308,7 @@ export const useAssetStore = () => {
             url: "/variant/create_variant",
             params: {
               ...visibility,
+              code: "",
               ...omit(
                 schemaVariant,
                 "schemaId",
@@ -338,9 +341,9 @@ export const useAssetStore = () => {
           });
         },
 
-        enqueueVariantSave(schemaVariant: SchemaVariant) {
+        enqueueVariantSave(schemaVariant: SchemaVariant, code: string) {
           if (changeSetsStore.headSelected)
-            return this.SAVE_SCHEMA_VARIANT(schemaVariant);
+            return this.SAVE_SCHEMA_VARIANT(schemaVariant, code);
 
           this.variantsById[schemaVariant.schemaVariantId] = schemaVariant;
 
@@ -348,7 +351,7 @@ export const useAssetStore = () => {
             assetSaveDebouncer = keyedDebouncer((id: SchemaVariantId) => {
               const a = this.variantsById[id];
               if (!a) return;
-              this.SAVE_SCHEMA_VARIANT(a);
+              this.SAVE_SCHEMA_VARIANT(a, code);
             }, 1000);
           }
           const assetSaveFunc = assetSaveDebouncer(
@@ -359,7 +362,7 @@ export const useAssetStore = () => {
           }
         },
 
-        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant) {
+        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code: string) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -388,6 +391,7 @@ export const useAssetStore = () => {
               },
               params: {
                 ...visibility,
+                code,
                 ...omit(schemaVariant, "created_at", "updated_at"),
               },
             },
@@ -395,6 +399,19 @@ export const useAssetStore = () => {
         },
 
         async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
+          // when we load a variant, load all its code ahead of time before a user selects a func
+          const variant = this.variantFromListById[schemaVariantId];
+          if (variant) {
+            const funcIds = variant.funcs.concat([variant.assetFuncId]);
+            funcIds.forEach((fId) => {
+              funcsStore.FETCH_FUNC(fId);
+            });
+          } else {
+            throw new Error(
+              `${schemaVariantId} Variant not found. This should not happen.`,
+            );
+          }
+          // its likely we no longer need this call, because this data is identical to the list data we already have
           return new ApiRequest<
             SchemaVariant,
             Visibility & {

@@ -36,10 +36,13 @@
           : `asset-${assetId}`
       "
       v-model="editingAsset"
-      :typescript="/* TODO:jobelenus selectedAsset?.types */"
       :disabled="isReadOnly"
       @change="onChange"
     />
+    <!--
+      TODO: jobelenus
+      :typescript="selectedAsset?.types"
+    -->
   </ScrollArea>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>
@@ -55,6 +58,7 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import SiChip from "@/components/SiChip.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
@@ -68,15 +72,22 @@ const props = defineProps<{
 }>();
 
 const assetStore = useAssetStore();
+const funcStore = useFuncStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.variantsById[props.assetId] : undefined,
 );
+
+const selectedAssetFuncCode = computed(() => {
+  const fId = selectedAsset.value?.assetFuncId;
+  if (!fId) return null;
+  return funcStore.funcDetailsById[fId]?.code;
+});
 
 const isReadOnly = computed(() => {
   return false;
 });
 
-const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
+const editingAsset = ref<string>(selectedAssetFuncCode.value ?? "");
 
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT",
@@ -85,9 +96,9 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 
 watch(
   () => selectedAsset.value,
-  async (selectedAsset) => {
-    if (editingAsset.value !== selectedAsset?.code) {
-      editingAsset.value = selectedAsset?.code ?? "";
+  async () => {
+    if (editingAsset.value !== selectedAssetFuncCode.value) {
+      editingAsset.value = selectedAssetFuncCode.value ?? "";
     }
   },
   { immediate: true },
@@ -104,16 +115,18 @@ watch(
 const onChange = () => {
   if (
     !selectedAsset.value ||
-    selectedAsset.value.code === editingAsset.value ||
+    selectedAssetFuncCode.value === editingAsset.value ||
     updatedHead.value
   ) {
     return;
   }
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
-  assetStore.enqueueVariantSave({
-    ...selectedAsset.value,
-    code: editingAsset.value,
-  });
+  assetStore.enqueueVariantSave(
+    {
+      ...selectedAsset.value,
+    },
+    editingAsset.value,
+  );
 };
 </script>
