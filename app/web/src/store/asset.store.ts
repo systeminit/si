@@ -515,6 +515,35 @@ export const useAssetStore = () => {
             },
           },
           {
+            eventType: "SchemaVariantSaved",
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              const savedAssetIdx = this.assetList.findIndex(
+                (a) => a.id === data.schemaId,
+              );
+              const savedAsset = this.assetList[savedAssetIdx];
+              if (savedAsset) {
+                savedAsset.name = data.name;
+                savedAsset.category = data.category;
+                savedAsset.color = data.color;
+                savedAsset.componentType = data.componentType;
+                savedAsset.displayName = data.displayName;
+                this.assetList.splice(savedAssetIdx, 1, savedAsset);
+              }
+
+              const existingAsset = this.assetsById[data.schemaId];
+              if (existingAsset) {
+                existingAsset.name = data.name;
+                existingAsset.category = data.category;
+                existingAsset.color = data.color;
+                existingAsset.componentType = data.componentType;
+                existingAsset.displayName = data.displayName;
+                existingAsset.description = data.description || "";
+                existingAsset.link = data.link;
+              }
+            },
+          },
+          {
             eventType: "SchemaVariantUpdateFinished",
             callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
