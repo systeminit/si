@@ -32,6 +32,7 @@ use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
+use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
@@ -3252,6 +3253,23 @@ impl Component {
         } else {
             format!("{} - Copy", name)
         }
+    }
+    /// This method finds the [`AttributeValueId`](crate::AttributeValue) corresponding to either  "/root/code" or
+    /// "/root/qualification" for the given [`ComponentId`](Component) and ['LeafKind'](LeafKind).
+    pub async fn find_map_attribute_value_for_leaf_kind(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        leaf_kind: LeafKind,
+    ) -> ComponentResult<AttributeValueId> {
+        let attribute_value_id = match leaf_kind {
+            LeafKind::CodeGeneration => {
+                Component::find_code_map_attribute_value_id(ctx, component_id).await?
+            }
+            LeafKind::Qualification => {
+                Component::find_qualification_map_attribute_value_id(ctx, component_id).await?
+            }
+        };
+        Ok(attribute_value_id)
     }
 }
 

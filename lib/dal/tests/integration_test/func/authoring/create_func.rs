@@ -1,11 +1,13 @@
 use dal::action::prototype::ActionKind;
+use dal::diagram::Diagram;
 use dal::func::authoring::{
     AttributeOutputLocation, CreateFuncOptions, FuncAuthoringClient, FuncAuthoringError,
 };
 use dal::func::FuncKind;
 use dal::prop::PropPath;
-use dal::{ChangeSet, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal::schema::variant::authoring::VariantAuthoringClient;
+use dal::{AttributeValue, ChangeSet, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
+use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 
 #[test]
@@ -528,4 +530,206 @@ async fn duplicate_func_name_causes_error(ctx: &mut DalContext) {
     } else {
         panic!("Test should fail if we don't get this func exists in change set error")
     }
+}
+
+#[test]
+async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut DalContext) {
+    let asset_name = "britsTestAsset".to_string();
+    let display_name = None;
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let variant_zero = VariantAuthoringClient::create_variant(
+        ctx,
+        asset_name.clone(),
+        display_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let my_asset_schema = variant_zero
+        .schema(ctx)
+        .await
+        .expect("Unable to get the schema for the variant");
+
+    let default_schema_variant = my_asset_schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get the default schema variant id");
+    assert!(default_schema_variant.is_some());
+    assert_eq!(default_schema_variant, Some(variant_zero.id()));
+
+    // Now let's update the variant
+    let first_code_update = "function main() {\n
+     const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()
+     const myProp2 = new PropBuilder().setName(\"testPropWillRemove\").setKind(\"string\").build()
+     const arrayProp = new PropBuilder().setName(\"arrayProp\").setKind(\"array\").setEntry(\n
+        new PropBuilder().setName(\"arrayElem\").setKind(\"string\").build()\n
+    ).build();\n
+     return new AssetBuilder().addProp(myProp).addProp(arrayProp).build()\n}"
+        .to_string();
+    let updated_variant_id = VariantAuthoringClient::update_variant(
+        ctx,
+        variant_zero.id(),
+        my_asset_schema.name.clone(),
+        variant_zero.display_name(),
+        variant_zero.category().to_string(),
+        variant_zero
+            .get_color(ctx)
+            .await
+            .expect("Unable to get color of variant"),
+        variant_zero.link(),
+        first_code_update,
+        variant_zero.description(),
+        variant_zero.component_type(),
+    )
+    .await
+    .expect("unable to update asset");
+
+    // We should still see that the schema variant we updated is the same as we have no components on the graph
+    assert_eq!(variant_zero.id(), updated_variant_id);
+    // Add a component to the diagram
+    let initial_component =
+        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
+            .await
+            .expect("could not create component");
+    let initial_diagram = Diagram::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(1, initial_diagram.components.len());
+
+    let domain_prop_av_id = initial_component
+        .domain_prop_attribute_value(ctx)
+        .await
+        .expect("able to get domain prop");
+
+    // Set the domain so we get some array elements
+    AttributeValue::update(
+        ctx,
+        domain_prop_av_id,
+        Some(serde_json::json!({
+            "testProp": "test",
+            "testPropWillRemove": "testToBeRemoved",
+            "arrayProp": [
+                "first",
+                "second"
+            ]
+        })),
+    )
+    .await
+    .expect("update failed");
+
+    // Let's ensure that our prop is visible in the component
+    Prop::find_prop_id_by_path(
+        ctx,
+        updated_variant_id,
+        &PropPath::new(["root", "domain", "testProp"]),
+    )
+    .await
+    .expect("able to find testProp prop");
+    // now let's create a new code gen for the new schema variant
+    let func_name = "Code Gen Func".to_string();
+    let func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::CodeGeneration,
+        Some(func_name.clone()),
+        Some(CreateFuncOptions::CodeGenerationOptions {
+            schema_variant_id: updated_variant_id,
+        }),
+    )
+    .await
+    .expect("unable to create func");
+
+    let schema_funcs = SchemaVariant::all_funcs(ctx, updated_variant_id)
+        .await
+        .expect("Unable to get all schema variant funcs");
+
+    assert_eq!(FuncKind::CodeGeneration, func.kind);
+    assert_eq!(func_name, func.name);
+    assert_eq!(Some("main".to_string()), func.handler);
+    assert_eq!(Some("async function main(component: Input): Promise<Output> {\n  return {\n    format: \"json\",\n    code: JSON.stringify(component),\n  };\n}\n".to_string()),  func.code);
+
+    let mut expected_func: Vec<Func> = schema_funcs
+        .into_iter()
+        .filter(|f| f.name == func_name)
+        .collect();
+    assert!(!expected_func.is_empty());
+    assert_eq!(func_name, expected_func.pop().unwrap().name);
+
+    // let's also create a new qualification fo the new schema variant
+    let func_name = "Qualification Func".to_string();
+    let func = FuncAuthoringClient::create_func(
+        ctx,
+        FuncKind::Qualification,
+        Some(func_name.clone()),
+        Some(CreateFuncOptions::QualificationOptions {
+            schema_variant_id: updated_variant_id,
+        }),
+    )
+    .await
+    .expect("unable to create func");
+
+    let schema_funcs = SchemaVariant::all_funcs(ctx, updated_variant_id)
+        .await
+        .expect("Unable to get all schema variant funcs");
+
+    assert_eq!(FuncKind::Qualification, func.kind);
+    assert_eq!(func_name, func.name);
+    assert_eq!(Some("main".to_string()), func.handler);
+    assert_eq!(Some("async function main(component: Input): Promise<Output> {\n  return {\n    result: 'success',\n    message: 'Component qualified'\n  };\n}\n".to_string()),  func.code);
+
+    let mut expected_func: Vec<Func> = schema_funcs
+        .into_iter()
+        .filter(|f| f.name == func_name)
+        .collect();
+    assert!(!expected_func.is_empty());
+    assert_eq!(func_name, expected_func.pop().unwrap().name);
+
+    // commit changes, so DVU kicks off and we should see the outcome of the new qualification and code gen func
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    let component_view = initial_component
+        .view(ctx)
+        .await
+        .expect("get component view");
+
+    // This test confirms the code gen and qualification ran for the existing component with expected outputs
+    assert_eq!(
+        Some(serde_json::json!({
+            "si": {
+                "name": "demo component",
+                "type": "component",
+                "color": "#00b0b0",
+            },
+            "domain": {
+                "testProp": "test",
+                "arrayProp": [
+                    "first",
+                    "second",
+                ]
+            },
+            "resource_value": {
+            },
+            "code": {
+                "Code Gen Func": {
+                    "code": "{\"domain\":{\"testProp\":\"test\",\"arrayProp\":[\"first\",\"second\"]}}",
+                    "format":
+                        "json",
+                },
+            },
+            "qualification":{
+                "Qualification Func": {
+                    "result":"success",
+                    "message":"Component qualified",
+                }
+            }
+        })),
+        component_view
+    );
 }
