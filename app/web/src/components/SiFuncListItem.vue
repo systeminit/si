@@ -8,7 +8,7 @@
       )
     "
     noIndentationOrLeftBorder
-    :isSelected="assetStore.selectedFuncs.includes(func.id)"
+    :isSelected="funcStore.selectedFuncId === func.id"
     showSelection
     @mousedown.left.stop="onClick"
   >
@@ -30,7 +30,7 @@
 <script setup lang="ts">
 import { TreeNode } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncSummary } from "@/store/func/funcs.store";
+import { FuncSummary, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { trackEvent } from "@/utils/tracking";
 
@@ -41,6 +41,7 @@ const props = defineProps<{
 }>();
 
 const assetStore = useAssetStore();
+const funcStore = useFuncStore();
 
 const trackFunctionSelected = () => {
   trackEvent("function_selected_for_edit", {
