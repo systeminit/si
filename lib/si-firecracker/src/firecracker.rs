@@ -1,13 +1,28 @@
 use crate::errors::FirecrackerJailError;
 use cyclone_core::process;
+use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::result;
+use tokio::fs;
 use tokio::process::Child;
 use tokio::process::Command;
 
 type Result<T> = result::Result<T, FirecrackerJailError>;
+
+const FIRECRACKER_PREPARE_PATH: &str = "/firecracker-data/prepare_jailer.sh";
+const FIRECRACKER_SETUP_PATH: &str = "/firecracker-data/firecracker-setup.sh";
+const FIRECRACKER_STOP_PATH: &str = "/firecracker-data/stop.sh";
+const FIRECRACKER_PREPARE_BYTES: &[u8] = include_bytes!("scripts/prepare_jailer.sh");
+const FIRECRACKER_SETUP_BYTES: &[u8] = include_bytes!("scripts/firecracker-setup.sh");
+const FIRECRACKER_STOP_BYTES: &[u8] = include_bytes!("scripts/stop.sh");
+
+const FIRECRACKER_SCRIPTS: &[(&str, &[u8])] = &[
+    (FIRECRACKER_PREPARE_PATH, FIRECRACKER_PREPARE_BYTES),
+    (FIRECRACKER_SETUP_PATH, FIRECRACKER_SETUP_BYTES),
+    (FIRECRACKER_STOP_PATH, FIRECRACKER_STOP_BYTES),
+];
 
 #[derive(Debug)]
 pub struct FirecrackerJail {
@@ -48,15 +63,14 @@ impl FirecrackerJail {
     }
 
     pub async fn clean(id: u32) -> Result<()> {
-        let command = String::from("/firecracker-data/stop.sh");
-        let output = Command::new(command)
+        let output = Command::new(FIRECRACKER_STOP_PATH)
             .arg(id.to_string())
             .output()
             .await
-            .map_err(|e| FirecrackerJailError::Clean(e.to_string()))?;
+            .map_err(FirecrackerJailError::Clean)?;
 
         if !output.status.success() {
-            return Err(FirecrackerJailError::Clean(
+            return Err(FirecrackerJailError::Output(
                 String::from_utf8(output.stderr)
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
             ));
@@ -65,15 +79,14 @@ impl FirecrackerJail {
     }
 
     pub async fn prepare(id: u32) -> Result<()> {
-        let command = String::from("/firecracker-data/prepare_jailer.sh");
-        let output = Command::new(command)
+        let output = Command::new(FIRECRACKER_PREPARE_PATH)
             .arg(id.to_string())
             .output()
             .await
-            .map_err(|e| FirecrackerJailError::Prepare(e.to_string()))?;
+            .map_err(FirecrackerJailError::Prepare)?;
 
         if !output.status.success() {
-            return Err(FirecrackerJailError::Prepare(
+            return Err(FirecrackerJailError::Output(
                 String::from_utf8(output.stderr)
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
             ));
@@ -82,37 +95,19 @@ impl FirecrackerJail {
     }
 
     pub async fn setup(pool_size: u16) -> Result<()> {
-        let script_bytes = include_bytes!("firecracker-setup.sh");
-        let command = Path::new("/firecracker-data/firecracker-setup.sh");
+        Self::create_scripts().await?;
 
-        // we need to ensure the file is in the correct location with the correct permissions
-        std::fs::create_dir_all(
-            command
-                .parent()
-                .expect("This should never happen. Did you remove the path from the string above?"),
-        )
-        .map_err(|e| FirecrackerJailError::Setup(e.to_string()))?;
-
-        std::fs::write(command, script_bytes)
-            .map_err(|e| FirecrackerJailError::Setup(e.to_string()))?;
-
-        std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
-            .map_err(|e| FirecrackerJailError::Setup(e.to_string()))?;
-
-        // Spawn the shell process
         let output = Command::new("sudo")
-            .arg(command)
+            .arg(FIRECRACKER_SETUP_PATH)
             .arg("-j")
             .arg(pool_size.to_string())
             .arg("-rk")
-            .spawn()
-            .map_err(|e| FirecrackerJailError::Setup(e.to_string()))?
+            .spawn()?
             .wait_with_output()
-            .await
-            .map_err(|e| FirecrackerJailError::Setup(e.to_string()))?;
+            .await?;
 
         if !output.status.success() {
-            return Err(FirecrackerJailError::Setup(
+            return Err(FirecrackerJailError::Output(
                 String::from_utf8(output.stderr)
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
             ));
@@ -122,11 +117,7 @@ impl FirecrackerJail {
     }
 
     pub async fn spawn(&mut self) -> Result<()> {
-        self.child = Some(
-            self.jailer
-                .spawn()
-                .map_err(|e| FirecrackerJailError::Spawn(e.to_string()))?,
-        );
+        self.child = Some(self.jailer.spawn().map_err(FirecrackerJailError::Spawn)?);
         Ok(())
     }
 
@@ -138,5 +129,21 @@ impl FirecrackerJail {
             }
             None => Ok(()),
         }
+    }
+
+    async fn create_scripts() -> Result<()> {
+        for (path, bytes) in FIRECRACKER_SCRIPTS {
+            Self::create_script(Path::new(*path), bytes).await?;
+        }
+        Ok(())
+    }
+
+    async fn create_script(path: &Path, bytes: &[u8]) -> Result<()> {
+        if let Some(parent_dir) = path.parent() {
+            fs::create_dir_all(parent_dir).await?
+        }
+        fs::write(&path, bytes).await?;
+        fs::set_permissions(&path, Permissions::from_mode(0o755)).await?;
+        Ok(())
     }
 }

@@ -8,11 +8,23 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
     ],
-    srcs = glob(["src/**/*.rs","src/firecracker-setup.sh"]),
+    srcs = glob(["src/**/*.rs","src/scripts/*"]),
 )
 
 export_file(
     name = "firecracker-setup.sh",
-    src = "src/firecracker-setup.sh",
+    src = "src/scripts/firecracker-setup.sh",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "prepare_jailer.sh",
+    src = "src/scripts/prepare_jailer.sh",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "stop.sh",
+    src = "src/scripts/stop.sh",
     visibility = ["PUBLIC"],
 )

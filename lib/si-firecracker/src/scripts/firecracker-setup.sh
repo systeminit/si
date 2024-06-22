@@ -124,11 +124,6 @@ execute_configuration_management() {
         # Mount secondary EBS volume at /data for
         mkdir -p /firecracker-data/output/ && cd /firecracker-data/
 
-        # Helper Scripts
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/start.sh > ./start.sh
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/stop.sh > ./stop.sh
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/prepare_jailer.sh > ./prepare_jailer.sh
-
         arch=$(uname -m)
         # Remainder of the binaries
         # TODO(scott): perform some kind of check to decide if we should
@@ -198,7 +193,7 @@ execute_configuration_management() {
 
         # Set up correct permissions for the /firecracker-data/ folder
         chown -R jailer-shared:jailer-shared /firecracker-data/
-        chmod a+x /firecracker-data/*{.sh,firecracker,jailer}
+        chmod a+x /firecracker-data/{firecracker,jailer}
         # chmod 400 /firecracker-data/micro-vm-key
 
         # Copy bins to /usr/bin/
