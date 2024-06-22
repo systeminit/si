@@ -278,9 +278,6 @@ const dryRunConfig = computed(() => {
   // Note(Paulo): We only support dry run when testing functions
   if (funcStore.selectedFuncDetails?.kind === FuncKind.Attribute) {
     return "dry";
-    // eslint-disable-next-line no-constant-condition
-  } else if (false) {
-    return "choose";
   } else {
     // return "wet";
     return "dry";
