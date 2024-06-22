@@ -46,6 +46,7 @@ pub struct SchemaVariantAPI {
     link: Option<String>,
     color: String,
     asset_func_id: FuncId,
+    func_ids: Vec<FuncId>,
     component_type: ComponentType,
     input_sockets: Vec<InputSocket>,
     output_sockets: Vec<OutputSocket>,
@@ -67,11 +68,11 @@ pub async fn list_schema_variants(
     let mut schema_variants = Vec::new();
 
     for schema_id in Schema::list_ids(&ctx).await? {
-        for schema_variant in SchemaVariant::list_for_schema(&ctx, schema_id)
-            .await?
-            .into_iter()
-            .filter(|schema_variant| !schema_variant.ui_hidden())
-        {
+        // NOTE(fnichol): Yes there is `SchemaVariant::list_default_ids()`, but shortly we'll be
+        // asking for more than only the defaults which reduces us back to looping through schemas
+        // to filter appropriate schema variants.
+        let schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
+        if !schema_variant.ui_hidden() {
             schema_variants.push(schema_variant_api(&ctx, schema_id, schema_variant).await?);
         }
     }
@@ -90,8 +91,8 @@ pub async fn list_schema_variants(
 pub async fn get_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id, schema_variant_id)): Path<(
         WorkspacePk,
         ChangeSetId,
@@ -106,22 +107,22 @@ pub async fn get_variant(
     let schema_id = SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
     let schema_variant = schema_variant_api(&ctx, schema_id, schema_variant).await?;
 
-    //TODO(fnichol): fill 'er in!
-
-    // track(
-    //     &posthog_client,
-    //     &ctx,
-    //     &original_uri,
-    //     "get_variant",
-    //     serde_json::json!({
-    //                 "variant_name": variant.name(),
-    //                 "variant_category": variant.category(),
-    //                 "variant_menu_name": variant.display_name(),
-    //                 "variant_id": variant.id(),
-    //                 "schema_id": schema.id(),
-    //                 "variant_component_type": variant.component_type(),
-    //     }),
-    // );
+    // Ported from `lib/sdf-server/src/server/service/variant/get_variant.rs`, so changes may be
+    // desired here...
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "get_variant",
+        serde_json::json!({
+                    "schema_name": &schema_variant.schema_name,
+                    "variant_category": &schema_variant.category,
+                    "variant_menu_name": schema_variant.display_name.as_ref(),
+                    "variant_id": schema_variant.schema_variant_id,
+                    "schema_id": schema_variant.schema_id,
+                    "variant_component_type": schema_variant.component_type,
+        }),
+    );
 
     Ok(Json(schema_variant))
 }
@@ -143,7 +144,7 @@ impl IntoResponse for ListSchemaVariantsError {
     fn into_response(self) -> Response {
         let status_code = match &self {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
-                StatusCode::BAD_REQUEST
+                StatusCode::FORBIDDEN
             }
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
@@ -161,13 +162,15 @@ pub struct SchemaVariantMissingAssetFuncId(SchemaVariantId);
 impl SchemaVariantAPI {
     fn new(
         schema_id: SchemaId,
+        schema_name: String, // TODO(fnichol): remove when name comes from schema variant
         value: SchemaVariant,
+        func_ids: Vec<FuncId>,
         input_sockets: Vec<InputSocket>,
         output_sockets: Vec<OutputSocket>,
     ) -> Result<Self, SchemaVariantMissingAssetFuncId> {
         Ok(Self {
             schema_id,
-            schema_name: value.name, // TODO(fnichol): not 100% sure if this is the mapping...
+            schema_name,
             schema_variant_id: value.id,
             display_name: value.display_name,
             category: value.category,
@@ -177,6 +180,7 @@ impl SchemaVariantAPI {
             asset_func_id: value
                 .asset_func_id
                 .ok_or(SchemaVariantMissingAssetFuncId(value.id))?,
+            func_ids,
             component_type: value.component_type,
             input_sockets,
             output_sockets,
@@ -192,7 +196,21 @@ async fn schema_variant_api(
 ) -> Result<SchemaVariantAPI, ListSchemaVariantsError> {
     let (output_sockets, input_sockets) =
         SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
+    let func_ids: Vec<_> = SchemaVariant::all_func_ids(ctx, schema_variant.id())
+        .await?
+        .into_iter()
+        .collect();
 
-    SchemaVariantAPI::new(schema_id, schema_variant, input_sockets, output_sockets)
-        .map_err(Into::into)
+    // TODO(fnichol): remove when name comes from schema variant
+    let schema = Schema::get_by_id(ctx, schema_id).await?;
+
+    SchemaVariantAPI::new(
+        schema_id,
+        schema.name().to_owned(),
+        schema_variant,
+        func_ids,
+        input_sockets,
+        output_sockets,
+    )
+    .map_err(Into::into)
 }
