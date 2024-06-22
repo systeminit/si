@@ -70,7 +70,7 @@ pub async fn create_variant(
         &ctx,
         schema.id(),
         created_schema_variant.id(),
-        created_schema_variant.name().to_string(),
+        schema.name().to_string(),
         created_schema_variant.category().to_string(),
         created_schema_variant.get_color(&ctx).await?,
     )
