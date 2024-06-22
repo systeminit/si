@@ -13,69 +13,80 @@
         @click="openModal()"
       />
     </div>
-    <ul class="flex flex-col p-3 gap-2xs break-words">
-      <li v-for="proto in prototypeViews" :key="proto.id">
-        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Asset:
-        </h1>
-        <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
+    <template v-if="prototypeViews.length > 0">
+      <ul class="flex flex-col p-3 gap-2xs break-words">
+        <li v-for="proto in prototypeViews" :key="proto.id">
+          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Asset:
+          </h1>
+          <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
 
-        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Component:
-        </h1>
-        <h2 class="pb-xs text-sm">{{ proto.component }}</h2>
+          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Component:
+          </h1>
+          <h2 class="pb-xs text-sm">{{ proto.component }}</h2>
 
-        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Output location:
-        </h1>
-        <h2 class="pb-xs text-sm">
-          {{ proto.outputLocation?.label ?? "no output location set" }}
-        </h2>
+          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Output location:
+          </h1>
+          <h2 class="pb-xs text-sm">
+            {{ proto.outputLocation?.label ?? "no output location set" }}
+          </h2>
 
-        <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Expected Function Arguments:
-        </h1>
-        <h2 class="pb-xs text-sm">
-          Below is the source of the data for each function argument listed.
-        </h2>
-        <ul>
-          <li v-for="arg in proto.args" :key="arg.name">
-            <h1
-              class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50"
-            >
-              {{ arg.name }}
-            </h1>
-            <h2 class="pb-xs text-sm">{{ arg.path }}</h2>
-          </li>
-        </ul>
-        <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
-          <VButton
-            :disabled="disabled"
-            tone="neutral"
-            label="Edit Binding"
-            size="md"
-            @click="openModal(proto.id)"
-          />
-          <VButton
-            v-if="!schemaVariantId"
-            :disabled="disabled"
-            variant="transparent"
-            tone="destructive"
-            icon="x"
-            label="Remove Binding"
-            size="md"
-            @click="removeBinding(proto.id)"
-          />
-        </div>
-      </li>
+          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Expected Function Arguments:
+          </h1>
+          <h2 class="pb-xs text-sm">
+            Below is the source of the data for each function argument listed.
+          </h2>
+          <ul>
+            <li v-for="arg in proto.args" :key="arg.name">
+              <h1
+                class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50"
+              >
+                {{ arg.name }}
+              </h1>
+              <h2 class="pb-xs text-sm">{{ arg.path }}</h2>
+            </li>
+          </ul>
+          <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
+            <VButton
+              :disabled="disabled"
+              tone="neutral"
+              label="Edit Binding"
+              size="md"
+              @click="openModal(proto.id)"
+            />
+            <VButton
+              v-if="!schemaVariantId"
+              :disabled="disabled"
+              variant="transparent"
+              tone="destructive"
+              icon="x"
+              label="Remove Binding"
+              size="md"
+              @click="removeBinding(proto.id)"
+            />
+          </div>
+        </li>
 
-      <AttributeBindingsModal
-        ref="bindingsModalRef"
-        :schemaVariantId="schemaVariantId"
-        type="save"
-        @save="saveModal"
-      />
-    </ul>
+        <AttributeBindingsModal
+          ref="bindingsModalRef"
+          :schemaVariantId="schemaVariantId"
+          type="save"
+          @save="saveModal"
+        />
+      </ul>
+    </template>
+    <template v-else>
+      <div v-if="schemaVariantId">
+        <p class="text-neutral-400 dark:text-neutral-300 text-sm p-xs">
+          This function is not attached to this schema variant. Use the Attach
+          Existing functionality to re-attach it.
+        </p>
+      </div>
+      <div v-else></div>
+    </template>
   </div>
 </template>
 
