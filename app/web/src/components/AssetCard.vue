@@ -62,20 +62,22 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
-import { useAssetStore, AssetListEntry, AssetId } from "@/store/asset.store";
+import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import IconButton from "./IconButton.vue";
 
 const props = defineProps({
   titleCard: { type: Boolean },
-  assetId: { type: String as PropType<AssetId>, required: true },
+  assetId: { type: String as PropType<SchemaVariantId>, required: true },
 });
 
 const { theme } = useTheme();
 
 const assetStore = useAssetStore();
 const asset = computed(
-  (): AssetListEntry | undefined => assetStore.assetFromListById[props.assetId],
+  (): SchemaVariantListEntry | undefined =>
+    assetStore.variantFromListById[props.assetId],
 );
 
 const primaryColor = tinycolor(asset.value?.color ?? "000000");

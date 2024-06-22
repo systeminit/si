@@ -1,7 +1,7 @@
 <template>
   <ScrollArea>
     <RequestStatusMessage
-      v-if="loadAssetsReqStatus.isPending && assetStore.assetList.length < 1"
+      v-if="loadAssetsReqStatus.isPending && assetStore.variantList.length < 1"
       :requestStatus="loadAssetsReqStatus"
       loadingMessage="Loading assets..."
     />
@@ -66,7 +66,7 @@
         Select an asset to view or edit it.
       </div> -->
     </template>
-    <template v-if="assetStore.assetList.length > 0">
+    <template v-if="assetStore.variantList.length > 0">
       <TreeNode
         v-for="category in Object.keys(categorizedAssets)"
         :key="category"
@@ -87,7 +87,7 @@
         </template>
         <AssetListItem
           v-for="asset in categorizedAssets[category]"
-          :key="asset.id"
+          :key="asset.schemaVariantId"
           :a="asset"
           :c="categorizedAssets[category]"
         />
@@ -99,7 +99,7 @@
       label="Contribute to System Initiative"
       :loadingText="_.sample(contributeLoadingTexts)"
       :preSelectedSchemaVariantId="
-        assetStore.selectedAsset?.defaultSchemaVariantId
+        assetStore.selectedSchemaVariant?.schemaVariantId
       "
       @export-success="onExport"
     />
@@ -126,7 +126,7 @@ import {
   PillCounter,
 } from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import { AssetListEntry, useAssetStore } from "@/store/asset.store";
+import { SchemaVariantListEntry, useAssetStore } from "@/store/asset.store";
 import { getAssetIcon } from "@/store/components.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
@@ -135,9 +135,11 @@ import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
-const { assetList } = storeToRefs(assetStore);
-const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
-const createAssetReqStatus = assetStore.getRequestStatus("CREATE_ASSET");
+const { variantList: assetList } = storeToRefs(assetStore);
+const loadAssetsReqStatus = assetStore.getRequestStatus(
+  "LOAD_SCHEMA_VARIANT_LIST",
+);
+const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
@@ -214,7 +216,7 @@ const categorizedAssets = computed(() =>
       catList.push(asset);
       categorized[asset.category] = catList;
       return categorized;
-    }, {} as { [key: string]: AssetListEntry[] }),
+    }, {} as { [key: string]: SchemaVariantListEntry[] }),
 );
 
 const categoryColor = (category: string) => {
@@ -228,11 +230,11 @@ const categoryColor = (category: string) => {
 };
 
 const newAsset = async (newAssetName: string) => {
-  const result = await assetStore.CREATE_ASSET(
-    assetStore.createNewAsset(newAssetName),
+  const result = await assetStore.CREATE_VARIANT(
+    assetStore.createNewVariant(newAssetName),
   );
   if (result.result.success) {
-    assetStore.setAssetSelection(result.result.data.id);
+    assetStore.setSchemaVariantSelection(result.result.data.id);
     newAssetModalRef.value?.modal?.close();
   } else if (result.result.statusCode === 409) {
     if (newAssetModalRef.value) {

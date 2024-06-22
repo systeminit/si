@@ -12,15 +12,15 @@
           class="mt-2xs"
         >
           <AssetFuncAttachDropdown
-            v-if="assetStore.selectedAssetId"
-            :disabled="!assetStore.selectedAsset?.id"
+            v-if="assetStore.selectedVariantId"
+            :disabled="!assetStore.selectedSchemaVariant?.schemaVariantId"
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>
       </template>
 
       <FuncList
-        v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
+        v-if="assetStore.selectedVariantId && !loadAssetReqStatus.isPending"
         :funcsByKind="funcsByKind"
         context="workspace-lab-assets"
         defaultOpen
@@ -60,16 +60,17 @@ const props = defineProps<{ assetId?: string }>();
 
 const assetStore = useAssetStore();
 
-const funcsByKind = computed(() => {
-  if (!props.assetId) return {};
-  const funcsList = _.uniq(_.map(assetStore.assetsById[props.assetId]?.funcs));
-  const funcs = groupBy(funcsList, (f) => f.kind);
-
-  return funcs;
-});
+const funcsByKind = computed(() =>
+  props.assetId
+    ? groupBy(
+        assetStore.variantsById[props.assetId]?.funcs ?? [],
+        (f) => f.kind,
+      )
+    : {},
+);
 
 const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 

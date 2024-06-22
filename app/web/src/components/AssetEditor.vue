@@ -12,13 +12,13 @@
         <div class="flex flex-row items-center gap-xs pb-sm">
           <NodeSkeleton :color="selectedAsset.color" />
           <TruncateWithTooltip class="text-3xl font-bold">
-            {{ assetDisplayName(selectedAsset) }}
+            {{ schemaVariantDisplayName(selectedAsset) }}
           </TruncateWithTooltip>
         </div>
         <div class="text-sm italic flex flex-row flex-wrap gap-x-lg">
           <div>
             <span class="font-bold">Created At: </span>
-            <Timestamp :date="selectedAsset.createdAt" size="long" />
+            <Timestamp :date="selectedAsset.created_at" size="long" />
           </div>
           <!-- TODO: Populate the created by from SDF actorHistory-->
           <div>
@@ -36,7 +36,7 @@
           : `asset-${assetId}`
       "
       v-model="editingAsset"
-      :typescript="selectedAsset?.types"
+      :typescript="/* TODO:jobelenus selectedAsset?.types */"
       :disabled="isReadOnly"
       @change="onChange"
     />
@@ -54,7 +54,7 @@ import {
   RequestStatusMessage,
   ScrollArea,
 } from "@si/vue-lib/design-system";
-import { useAssetStore, assetDisplayName } from "@/store/asset.store";
+import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
 import SiChip from "@/components/SiChip.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
@@ -69,7 +69,7 @@ const props = defineProps<{
 
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
-  props.assetId ? assetStore.assetsById[props.assetId] : undefined,
+  props.assetId ? assetStore.variantsById[props.assetId] : undefined,
 );
 
 const isReadOnly = computed(() => {
@@ -79,7 +79,7 @@ const isReadOnly = computed(() => {
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
 
 const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 
@@ -111,7 +111,7 @@ const onChange = () => {
   }
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
-  assetStore.enqueueAssetSave({
+  assetStore.enqueueVariantSave({
     ...selectedAsset.value,
     code: editingAsset.value,
   });

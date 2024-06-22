@@ -389,13 +389,13 @@ const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
     const associations = await detachRef.value.detachFunc();
-    if (assetStore.selectedAssetId)
-      assetStore.LOAD_ASSET(assetStore.selectedAssetId); // reloads the fn list
+    if (assetStore.selectedVariantId)
+      assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId); // reloads the fn list
     if (funcStore.selectedFuncId)
       assetStore.removeFuncSelection(funcStore.selectedFuncId);
-    if (funcStore.selectedFuncId && assetStore.selectedAssetId)
+    if (funcStore.selectedFuncId && assetStore.selectedVariantId)
       assetStore.closeFunc(
-        assetStore.selectedAssetId,
+        assetStore.selectedVariantId,
         funcStore.selectedFuncId,
       );
     funcStore.selectedFuncId = undefined; // brings you back to the asset detail

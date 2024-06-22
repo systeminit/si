@@ -7,7 +7,7 @@
         'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
       )
     "
-    :isSelected="selectedAssets.includes(a.id)"
+    :isSelected="selectedAssets.includes(a.schemaVariantId)"
     showSelection
     @mousedown.left.stop="onClick"
     @click.right.prevent
@@ -47,30 +47,30 @@ import { storeToRefs } from "pinia";
 import { TreeNode, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import {
-  AssetListEntry,
+  SchemaVariantListEntry,
   useAssetStore,
-  assetDisplayName,
+  schemaVariantDisplayName,
 } from "@/store/asset.store";
 
 const props = defineProps({
-  a: { type: Object as PropType<AssetListEntry>, required: true },
-  c: { type: Array<AssetListEntry> },
+  a: { type: Object as PropType<SchemaVariantListEntry>, required: true },
+  c: { type: Array<SchemaVariantListEntry> },
 });
 
 const assetStore = useAssetStore();
-const { selectedAssets } = storeToRefs(assetStore);
+const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
 const onClick = (e: MouseEvent) => {
-  if (e.shiftKey) assetStore.addAssetSelection(props.a.id);
-  else assetStore.setAssetSelection(props.a.id);
+  if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);
+  else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
 };
 
-const assetNameString = (a: AssetListEntry) => {
-  const name = assetDisplayName(a);
+const assetNameString = (a: SchemaVariantListEntry) => {
+  const name = schemaVariantDisplayName(a);
   if (!props.c) return name;
 
   const duplicates = props.c.filter(
-    (asset) => assetDisplayName(asset) === name,
+    (asset) => schemaVariantDisplayName(asset) === name,
   );
   if (duplicates.length > 1) {
     return `${name} (${duplicates.indexOf(a)})`;

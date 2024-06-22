@@ -7,6 +7,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { omit } from "@/utils/omit";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -244,7 +245,7 @@ export const useActionsStore = () => {
                       actionInstanceId: actionInstance?.id,
                       componentId: actionInstance?.componentId,
                       actor: actionInstance?.actor,
-                      ..._.omit(actionPrototype, "id"),
+                      ...omit(actionPrototype, "id"),
                     };
                   }),
                 );

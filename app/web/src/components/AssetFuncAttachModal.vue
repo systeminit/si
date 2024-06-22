@@ -172,13 +172,13 @@ const createFuncStarted = ref(false);
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 
 const schemaVariantId = computed(() =>
   props.assetId
-    ? assetStore.assetsById[props.assetId]?.defaultSchemaVariantId
+    ? assetStore.variantsById[props.assetId]?.schemaVariantId
     : undefined,
 );
 
@@ -279,7 +279,9 @@ const attributeOutputLocationOptions = ref<{ label: string; value: string }[]>(
 const attrToValidate = ref<string | undefined>();
 const validationOptions = ref<{ label: string; value: string }[]>([]);
 
-const assetName = computed(() => assetStore.selectedAsset?.name ?? " none");
+const assetName = computed(
+  () => assetStore.selectedSchemaVariant?.schemaName ?? " none",
+);
 
 const existingOrNew = computed(() =>
   attachExisting.value ? "existing" : "new",
@@ -422,7 +424,7 @@ const attachToAttributeFunction = async (
 };
 
 const reloadAssetAndRoute = async (assetId: string) => {
-  await assetStore.LOAD_ASSET(assetId);
+  await assetStore.LOAD_SCHEMA_VARIANT(assetId);
   close();
 };
 

@@ -790,7 +790,7 @@ export const useFuncStore = () => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
 
-              const assetId = assetStore.selectedAssetId;
+              const assetId = assetStore.selectedVariantId;
               if (
                 assetId &&
                 this.selectedFuncId &&
@@ -816,9 +816,9 @@ export const useFuncStore = () => {
               this.FETCH_FUNC_LIST();
 
               // Reload the last selected asset to ensure that its func list is up to date.
-              const assetId = assetStore.selectedAssetId;
+              const assetId = assetStore.selectedVariantId;
               if (assetId) {
-                assetStore.LOAD_ASSET(assetId);
+                assetStore.LOAD_SCHEMA_VARIANT(assetId);
               }
 
               if (this.selectedFuncId) {

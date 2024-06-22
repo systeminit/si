@@ -79,15 +79,19 @@
           type="text"
           @blur="updateAsset"
         />
+        <!--
+        TODO: jobelenus, do we still need name? is it version? do we need version too?
         <VormInput
           id="name"
           v-model="editingAsset.name"
+          type="text"
+          label="Name"
           compact
           disabled
           label="Asset Version Name"
           placeholder="(mandatory) Provide the asset version a name"
           type="text"
-        />
+        />-->
 
         <VormInput
           id="displayName"
@@ -156,13 +160,15 @@
     <Modal
       ref="executeAssetModalRef"
       :title="
-        editingAsset && editingAsset.id ? 'Asset Updated' : 'New Asset Created'
+        editingAsset && editingAsset.schemaVariantId
+          ? 'Asset Updated'
+          : 'New Asset Created'
       "
       size="sm"
       @closeComplete="closeHandler"
     >
       {{
-        editingAsset && editingAsset.id
+        editingAsset && editingAsset.schemaVariantId
           ? "The asset you just updated will be available to use from the Assets Panel"
           : "The asset you just created will now appear in the Assets Panel."
       }}
@@ -196,7 +202,7 @@ const props = defineProps<{
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 const executeAssetModalRef = ref();
@@ -225,11 +231,11 @@ const componentTypeOptions = [
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 
-const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
+const editingAsset = ref(_.cloneDeep(assetStore.selectedSchemaVariant));
 watch(
-  () => assetStore.selectedAsset,
+  () => assetStore.selectedSchemaVariant,
   () => {
-    editingAsset.value = _.cloneDeep(assetStore.selectedAsset);
+    editingAsset.value = _.cloneDeep(assetStore.selectedSchemaVariant);
   },
   { deep: true },
 );
@@ -237,40 +243,43 @@ watch(
 const updateAsset = async () => {
   if (
     editingAsset.value &&
-    !_.isEqual(editingAsset.value, assetStore.selectedAsset)
+    !_.isEqual(editingAsset.value, assetStore.selectedSchemaVariant)
   ) {
-    await assetStore.SAVE_ASSET(editingAsset.value);
+    await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
   }
 };
 
 const execAssetReqStatus = assetStore.getRequestStatus(
-  "EXEC_ASSET",
-  assetStore.selectedAssetId,
+  "EXEC_SCHEMA_VARIANT",
+  assetStore.selectedVariantId,
 );
 const executeAsset = async () => {
-  if (assetStore.selectedAssetId) {
-    await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
+  if (assetStore.selectedVariantId) {
+    await assetStore.EXEC_SCHEMA_VARIANT(assetStore.selectedVariantId);
   }
 };
 
 const unlock = async () => {
-  if (assetStore.selectedAsset?.defaultSchemaVariantId) {
+  if (assetStore.selectedSchemaVariant?.schemaVariantId) {
     await assetStore.CREATE_UNLOCKED_COPY(
-      assetStore.selectedAsset?.defaultSchemaVariantId,
+      assetStore.selectedSchemaVariant?.schemaVariantId,
     );
   }
 };
 
 const closeHandler = () => {
-  assetStore.executeAssetTaskId = undefined;
+  assetStore.executeSchemaVariantTaskId = undefined;
 };
 
 const cloneAsset = async (name: string) => {
-  if (editingAsset.value?.id) {
-    const result = await assetStore.CLONE_ASSET(editingAsset.value.id, name);
+  if (editingAsset.value?.schemaVariantId) {
+    const result = await assetStore.CLONE_VARIANT(
+      editingAsset.value.schemaVariantId,
+      name,
+    );
     if (result.result.success) {
       cloneAssetModalRef.value?.modal?.close();
-      await assetStore.setAssetSelection(result.result.data.id);
+      await assetStore.setSchemaVariantSelection(result.result.data.id);
     }
   }
 };
