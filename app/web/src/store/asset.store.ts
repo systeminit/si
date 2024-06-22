@@ -2,7 +2,6 @@ import { watch } from "vue";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -105,8 +104,6 @@ export type AssetCreateRequest = Omit<
   "id" | "definition" | "variantExists"
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
-
-const LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY = "si-open-asset-id";
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
   (asset.displayName ?? "").length === 0 ? asset.name : asset.displayName;
@@ -268,12 +265,6 @@ export const useAssetStore = () => {
 
             funcsStore.selectedFuncId = fnIds[fnIds.length - 1];
           }
-        },
-
-        getLastSelectedAssetId(): AssetId | undefined {
-          return storage.getItem(
-            LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
-          ) as AssetId;
         },
 
         openFunc(assetId: AssetId, funcId: FuncId) {
