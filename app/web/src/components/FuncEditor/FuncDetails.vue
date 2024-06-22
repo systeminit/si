@@ -419,10 +419,7 @@ const deleteFunc = async () => {
 
 const hasAssociations = computed(() => {
   if (editingFunc?.value) {
-    return (
-      editingFunc.value.associations === undefined &&
-      !editingFunc.value.isBuiltin
-    );
+    return editingFunc.value.associations === undefined;
   }
   return false;
 });
