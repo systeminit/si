@@ -32,7 +32,7 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::NodeIndex;
+use crate::workspace_snapshot::graph::{NodeIndex, WorkspaceSnapshotGraphError};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -112,6 +112,8 @@ pub enum SchemaVariantError {
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("schema variant not found: {0}")]
+    NotFound(SchemaVariantId),
     #[error("schema variant not found for input socket: {0}")]
     NotFoundForInputSocket(InputSocketId),
     #[error("schema variant not found for output socket: {0}")]
@@ -156,21 +158,21 @@ pk!(SchemaVariantId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct SchemaVariant {
-    id: SchemaVariantId,
+    pub id: SchemaVariantId,
     #[serde(flatten)]
-    timestamp: Timestamp,
-    ui_hidden: bool,
-    version: String,
-    display_name: String,
-    category: String,
-    color: String,
-    component_type: ComponentType,
-    link: Option<String>,
-    description: Option<String>,
-    asset_func_id: Option<FuncId>,
-    finalized_once: bool,
-    is_builtin: bool,
-    is_locked: bool,
+    pub timestamp: Timestamp,
+    pub ui_hidden: bool,
+    pub name: String,
+    pub display_name: Option<String>,
+    pub category: String,
+    pub color: String,
+    pub component_type: ComponentType,
+    pub link: Option<String>,
+    pub description: Option<String>,
+    pub asset_func_id: Option<FuncId>,
+    pub finalized_once: bool,
+    pub is_builtin: bool,
+    pub is_locked: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -504,7 +506,16 @@ impl SchemaVariant {
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_index = workspace_snapshot
+            .get_node_index_by_id(id)
+            .await
+            .map_err(|err| {
+                if err.is_node_with_id_not_found() {
+                    SchemaVariantError::NotFound(id)
+                } else {
+                    err.into()
+                }
+            })?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
@@ -1400,6 +1411,15 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Schema> {
+        let schema_id = Self::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+
+        Ok(Schema::get_by_id(ctx, schema_id).await?)
+    }
+
+    pub async fn schema_id_for_schema_variant_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<SchemaId> {
         let schema_id = {
             let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -1433,7 +1453,7 @@ impl SchemaVariant {
             schema_id.ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))?
         };
 
-        Ok(Schema::get_by_id(ctx, schema_id).await?)
+        Ok(schema_id)
     }
 
     /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
