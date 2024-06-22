@@ -52,7 +52,6 @@ import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncSummary, useFuncStore } from "@/store/func/funcs.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
-import { FuncId } from "@/api/sdf/dal/func";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";

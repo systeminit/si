@@ -369,33 +369,40 @@ export const useAssetStore = () => {
             changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
-          return new ApiRequest<{ success: boolean }, SchemaVariantSaveRequest>(
-            {
-              method: "post",
-              keyRequestStatusBy: schemaVariant.schemaVariantId,
-              url: "/variant/save_variant",
-              optimistic: () => {
-                if (isHead) return () => {};
+          // TODO: jobelenus, return the code and assetFuncId IF CODE IS NOT OPTIONAL from the other call
+          return new ApiRequest<
+            { success: boolean; code: string; assetFuncId: FuncId },
+            SchemaVariantSaveRequest
+          >({
+            method: "post",
+            keyRequestStatusBy: schemaVariant.schemaVariantId,
+            url: "/variant/save_variant",
+            optimistic: () => {
+              if (isHead) return () => {};
 
-                const current =
-                  this.variantsById[schemaVariant.schemaVariantId];
-                this.variantsById[schemaVariant.schemaVariantId] =
-                  schemaVariant;
-                return () => {
-                  if (current) {
-                    this.variantsById[schemaVariant.schemaVariantId] = current;
-                  } else {
-                    delete this.variantsById[schemaVariant.schemaVariantId];
-                  }
-                };
-              },
-              params: {
-                ...visibility,
-                code,
-                ...omit(schemaVariant, "created_at", "updated_at"),
-              },
+              const current = this.variantsById[schemaVariant.schemaVariantId];
+              this.variantsById[schemaVariant.schemaVariantId] = schemaVariant;
+              return () => {
+                if (current) {
+                  this.variantsById[schemaVariant.schemaVariantId] = current;
+                } else {
+                  delete this.variantsById[schemaVariant.schemaVariantId];
+                }
+              };
             },
-          );
+            params: {
+              ...visibility,
+              code,
+              ...omit(schemaVariant, "created_at", "updated_at"),
+            },
+            onSuccess: (response) => {
+              const func = funcsStore.funcDetailsById[response.assetFuncId];
+              if (func) {
+                func.code = code;
+                funcsStore.funcDetailsById[response.assetFuncId] = func;
+              }
+            },
+          });
         },
 
         async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {

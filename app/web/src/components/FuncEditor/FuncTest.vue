@@ -22,7 +22,10 @@
       >
         <div class="pb-xs">
           Select the
-          <span v-if="assetStore.selectedSchemaVariant" class="italic font-bold">
+          <span
+            v-if="assetStore.selectedSchemaVariant"
+            class="italic font-bold"
+          >
             {{ assetStore.selectedSchemaVariant.schemaName }}
           </span>
           component to use as the input for your test:
