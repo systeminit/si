@@ -1,6 +1,6 @@
 use dal::action::prototype::ActionKind;
 use dal::pkg::import_pkg_from_pkg;
-use dal::prop::PropPath;
+use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
@@ -211,7 +211,7 @@ fn assemble_dummy_secret_socket_and_prop(
         .widget_options(serde_json::json![
             [
                 {
-                    "label": "secretKind",
+                    "label": SECRET_KIND_WIDGET_OPTION_LABEL,
                     "value": secret_definition_name
                 }
             ]

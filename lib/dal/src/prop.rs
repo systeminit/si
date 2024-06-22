@@ -88,6 +88,8 @@ pub enum PropError {
 
 pub type PropResult<T> = Result<T, PropError>;
 
+pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
+
 pk!(PropId);
 
 // TODO: currently we only have string values in all widget_options but we should extend this to
@@ -516,6 +518,17 @@ impl Prop {
 
     pub fn id(&self) -> PropId {
         self.id
+    }
+
+    pub fn secret_kind_widget_option(&self) -> Option<WidgetOption> {
+        self.widget_options
+            .as_ref()
+            .and_then(|options| {
+                options
+                    .iter()
+                    .find(|opt| opt.label == SECRET_KIND_WIDGET_OPTION_LABEL)
+            })
+            .cloned()
     }
 
     /// Returns `Some` with the parent [`PropId`](Prop) or returns `None` if the parent is a

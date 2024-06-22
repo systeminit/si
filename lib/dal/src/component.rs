@@ -4,6 +4,7 @@
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
+use si_pkg::KeyOrIndex;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 use std::num::ParseFloatError;
@@ -14,8 +15,6 @@ use tokio::sync::TryLockError;
 
 use si_events::{ulid::Ulid, ContentHash};
 
-use self::frame::{Frame, FrameError};
-use self::resource::ResourceData;
 use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
 use crate::action::{Action, ActionError, ActionState};
 use crate::actor_view::ActorView;
@@ -46,7 +45,9 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::SocketArity;
+use crate::{AttributePrototypeId, SocketArity};
+use frame::{Frame, FrameError};
+use resource::ResourceData;
 
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
@@ -174,6 +175,8 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("value source for known prop attribute value {0} is not a prop id")]
+    ValueSourceForPropValueNotPropId(AttributeValueId),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("workspace pk not found on context")]
@@ -552,8 +555,8 @@ impl Component {
         Ok(component)
     }
 
-    /// Attempts to merge the avlues from other_component into this component,
-    /// if values exist for the prop in other. Only use this immediately after
+    /// Attempts to merge the values other_component into this component, if
+    /// values exist for the prop in other. Only use this immediately after
     /// Component::new, so that we can make certain assumptions (for example, we
     /// can assume that the prototypes are correct, and that arrays and maps are
     /// empty)
@@ -562,54 +565,344 @@ impl Component {
         ctx: &DalContext,
         other_component_id: ComponentId,
     ) -> ComponentResult<()> {
-        let self_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
         let other_root_id = Component::root_attribute_value_id(ctx, other_component_id).await?;
+        let self_schema_variant_id = Component::schema_variant_id(ctx, self.id).await?;
+        let mut attribute_values = vec![];
 
-        let other_root_view = AttributeValue::get_by_id(ctx, other_root_id)
-            .await?
-            .view(ctx)
-            .await?;
+        // Gather up a bunch of data about the current schema variant
+        let mut self_input_sockets = HashMap::new();
+        for input_socket_id in
+            InputSocket::list_ids_for_schema_variant(ctx, self_schema_variant_id).await?
+        {
+            let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+            self_input_sockets.insert(input_socket.name().to_string(), input_socket.id());
+        }
 
-        // The the entire component based on the value of the other component
-        AttributeValue::update(ctx, self_root_id, other_root_view).await?;
-        // The update operation orphans deeply nested values, clear them out to
-        // avoid issues downstream
-        ctx.workspace_snapshot()?.cleanup().await?;
+        let mut self_output_sockets = HashMap::new();
+        for output_socket_id in
+            OutputSocket::list_ids_for_schema_variant(ctx, self_schema_variant_id).await?
+        {
+            let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+            self_output_sockets.insert(output_socket.name().to_string(), output_socket.id());
+        }
 
-        // Now, walk the attribute value tree and reset all prototypes to the default
+        let mut self_props = HashMap::new();
+        for prop in SchemaVariant::all_props(ctx, self_schema_variant_id).await? {
+            let path = prop.path(ctx).await?;
+            self_props.insert(path.as_owned_parts(), prop.id());
+        }
 
-        let mut value_q = VecDeque::from([self_root_id]);
-        while let Some(current_av_id) = value_q.pop_front() {
-            if let Some(component_prototype_id) =
-                AttributeValue::component_prototype_id(ctx, current_av_id).await?
-            {
-                let variant_prototype_id =
-                    AttributeValue::schema_variant_prototype_id(ctx, current_av_id).await?;
-                let is_dependent_func = Func::get_by_id_or_error(
-                    ctx,
-                    AttributePrototype::func_id(ctx, variant_prototype_id).await?,
-                )
+        // Walk the original components attribute value tree, finding matching
+        // values in self and updating their value if necessary. Also find if a
+        // component specific dynamic function was configured in the original
+        // component. If so, attempt to copy it over.
+        let mut value_q = VecDeque::from([(other_root_id, None, None)]);
+        while let Some((current_av_id_in_other, key_or_index_in_other, parent_id_in_self)) =
+            value_q.pop_front()
+        {
+            let current_av_in_other =
+                AttributeValue::get_by_id(ctx, current_av_id_in_other).await?;
+            let current_av_in_other_component_prototype_id =
+                AttributeValue::component_prototype_id(ctx, current_av_id_in_other).await?;
+            let prop_id_in_other = AttributeValue::is_for(ctx, current_av_id_in_other)
                 .await?
-                .is_dynamic();
-                // If the SV prototype is dynamic, but we have overridden it in
-                // the update, then we need to reset it to the original proto
-                if is_dependent_func {
-                    ctx.workspace_snapshot()?
-                        .remove_edge_for_ulids(
-                            ctx.change_set()?,
-                            current_av_id,
-                            component_prototype_id,
-                            EdgeWeightKindDiscriminants::Prototype,
-                        )
-                        .await?;
+                .prop_id()
+                .ok_or(ComponentError::ValueSourceForPropValueNotPropId(
+                    current_av_id_in_other,
+                ))?;
+
+            let prop_path = Prop::path_by_id(ctx, prop_id_in_other)
+                .await?
+                .as_owned_parts();
+
+            // Is there a matching prop in self for this prop in other? If there
+            // is no matching prop do nothing (this means the prop was removed
+            // from self, so can't get values from other)
+            if let Some(&prop_id_in_self) = self_props.get(&prop_path) {
+                let prop_in_self = Prop::get_by_id_or_error(ctx, prop_id_in_self).await?;
+                let prop_in_other = Prop::get_by_id_or_error(ctx, prop_id_in_other).await?;
+
+                // Prop kinds c ould have changed for the same prop. We could
+                // try and coerce values, but it's safer to just skip.  Even if
+                // there is a component specific prototype for this prop's value
+                // in other, we don't want to copy it over, since the kind has
+                // changed.
+                if prop_in_self.kind != prop_in_other.kind {
+                    continue;
+                }
+
+                // Similarly, we should verify that the secret kind has not
+                // changed if this is a secret prop. If it has changed, leave
+                // the prop alone (effectively empyting the secret)
+                if prop_in_self.secret_kind_widget_option()
+                    != prop_in_other.secret_kind_widget_option()
+                {
+                    continue;
+                }
+
+                let mut value_id_in_self = None;
+                for maybe_value_id_in_self in
+                    Component::attribute_values_for_prop_id(ctx, self.id, prop_id_in_self).await?
+                {
+                    let key_or_index_in_self = AttributeValue::get_index_or_key_of_child_entry(
+                        ctx,
+                        maybe_value_id_in_self,
+                    )
+                    .await?;
+
+                    if key_or_index_in_other == key_or_index_in_self {
+                        value_id_in_self = Some(maybe_value_id_in_self);
+                        break;
+                    }
+                }
+
+                let key =
+                    key_or_index_in_other
+                        .as_ref()
+                        .and_then(|key_or_index| match key_or_index {
+                            KeyOrIndex::Key(key) => Some(key.to_owned()),
+                            _ => None,
+                        });
+
+                match value_id_in_self {
+                    // Ok, a value exists in self that matches the value in other
+                    Some(value_id_in_self) => {
+                        attribute_values.push(value_id_in_self);
+                        match current_av_in_other_component_prototype_id {
+                            Some(component_prototype_id_in_other) => {
+                                let prototype_func =
+                                    AttributePrototype::func(ctx, component_prototype_id_in_other)
+                                        .await?;
+                                if prototype_func.is_dynamic() {
+                                    // a custom function has been defined for
+                                    // this specific component. We have to copy
+                                    // this custom prototype over, but we can
+                                    // only do so if the inputs to the function
+                                    // exist in self after regeneration and have
+                                    // the same types.
+
+                                    self.merge_component_specific_dynamic_func_from_other(
+                                        ctx,
+                                        value_id_in_self,
+                                        component_prototype_id_in_other,
+                                        &self_input_sockets,
+                                        &self_output_sockets,
+                                        &self_props,
+                                        key.clone(),
+                                    )
+                                    .await?;
+
+                                    // We continue here since we don't want to descend below a dynamic func
+                                    continue;
+                                } else {
+                                    // Ok, the original component has a
+                                    // component specific prototype here, but
+                                    // it's not a dynamic function. Just set the
+                                    // value. This means either it's a simple
+                                    // scalar that has had a value set manually,
+                                    // *OR*, it's a value set by a dynamic
+                                    // function that has been overriden by the
+                                    // user, manually, either way, we want to
+                                    // just set the value
+                                    let value_in_other = current_av_in_other.value(ctx).await?;
+                                    AttributeValue::set_value(
+                                        ctx,
+                                        value_id_in_self,
+                                        value_in_other,
+                                    )
+                                    .await?;
+                                }
+                            }
+                            None => {
+                                // Nothing needs to be done here, since if the
+                                // AV in the original component has a SV
+                                // specific proto, then it hasn't been set
+                                // manually or overridden and the default proto
+                                // and value is fine.  But we do need to see if
+                                // this value is set dynamically. If it is, we
+                                // don't want to descend, since the tree
+                                // underneath it is completely controlled by the
+                                // dynamic func
+                                let prototype_for_value_in_self =
+                                    AttributeValue::prototype_id(ctx, value_id_in_self).await?;
+                                let prototype_func =
+                                    AttributePrototype::func(ctx, prototype_for_value_in_self)
+                                        .await?;
+                                if prototype_func.is_dynamic() {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    // No value exists in self that matches the value in other.
+                    // If we have an array index or map key, we have to insert
+                    // the value correctly
+                    None => {
+                        if key_or_index_in_other.is_some() {
+                            if let Some(parent_id_in_self) = parent_id_in_self {
+                                if let Some(component_prototype_id_in_other) =
+                                    current_av_in_other_component_prototype_id
+                                {
+                                    let prototype_func = Func::get_by_id_or_error(
+                                        ctx,
+                                        AttributePrototype::func_id(
+                                            ctx,
+                                            component_prototype_id_in_other,
+                                        )
+                                        .await?,
+                                    )
+                                    .await?;
+                                    // Insert this value
+                                    let inserted_value = AttributeValue::new(
+                                        ctx,
+                                        prop_id_in_self,
+                                        Some(self.id),
+                                        Some(parent_id_in_self),
+                                        key.clone(),
+                                    )
+                                    .await?;
+                                    if prototype_func.is_dynamic() {
+                                        self.merge_component_specific_dynamic_func_from_other(
+                                            ctx,
+                                            inserted_value.id,
+                                            component_prototype_id_in_other,
+                                            &self_input_sockets,
+                                            &self_output_sockets,
+                                            &self_props,
+                                            key.clone(),
+                                        )
+                                        .await?;
+
+                                        continue;
+                                    } else {
+                                        let value_in_other = current_av_in_other.value(ctx).await?;
+                                        AttributeValue::set_value(
+                                            ctx,
+                                            inserted_value.id,
+                                            value_in_other,
+                                        )
+                                        .await?;
+                                        attribute_values.push(inserted_value.id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for child_av_id in
+                    AttributeValue::get_child_av_ids_in_order(ctx, current_av_id_in_other).await?
+                {
+                    let key_or_index =
+                        AttributeValue::get_index_or_key_of_child_entry(ctx, child_av_id).await?;
+                    value_q.push_back((child_av_id, key_or_index, value_id_in_self));
                 }
             }
+        }
 
-            for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, current_av_id).await?
-            {
-                value_q.push_back(child_av_id);
+        let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
+        let leaf_value_ids = component_graph.independent_values();
+        ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn merge_component_specific_dynamic_func_from_other(
+        &self,
+        ctx: &DalContext,
+        attribute_value_id_in_self: AttributeValueId,
+        component_prototype_id_in_other: AttributePrototypeId,
+        self_input_sockets: &HashMap<String, InputSocketId>,
+        self_output_sockets: &HashMap<String, OutputSocketId>,
+        self_props: &HashMap<Vec<String>, PropId>,
+        key: Option<String>,
+    ) -> ComponentResult<()> {
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(
+            ctx,
+            component_prototype_id_in_other,
+        )
+        .await?;
+
+        let component_prototype_func =
+            AttributePrototype::func(ctx, component_prototype_id_in_other).await?;
+        if !component_prototype_func.is_dynamic() {
+            return Ok(());
+        }
+
+        let mut new_value_sources = vec![];
+
+        for apa_id in &apa_ids {
+            let apa = AttributePrototypeArgument::get_by_id(ctx, *apa_id).await?;
+
+            let func_arg = apa.func_argument(ctx).await?;
+
+            if let Some(source) = apa.value_source(ctx).await? {
+                match source {
+                    ValueSource::InputSocket(input_socket_id) => {
+                        // find matching input socket in self
+                        let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+                        match self_input_sockets.get(input_socket.name()) {
+                            Some(self_input_socket_id) => new_value_sources.push((
+                                func_arg.id,
+                                ValueSource::InputSocket(*self_input_socket_id),
+                            )),
+                            None => {
+                                // XXX: This means that the dynamic function
+                                // XXX: here has an input that no longer exists, so
+                                // XXX: we can't copy the function over.
+                                // XXX: what should we do here? Warn the user?
+                                return Ok(());
+                            }
+                        }
+                    }
+                    ValueSource::OutputSocket(output_socket_id) => {
+                        let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+                        match self_output_sockets.get(output_socket.name()) {
+                            Some(self_output_socket_id) => new_value_sources.push((
+                                func_arg.id,
+                                ValueSource::OutputSocket(*self_output_socket_id),
+                            )),
+                            None => {
+                                return Ok(());
+                            }
+                        }
+                    }
+                    ValueSource::Prop(prop_id) => {
+                        let path = Prop::path_by_id(ctx, prop_id).await?.as_owned_parts();
+                        match self_props.get(&path) {
+                            Some(self_prop_id) => new_value_sources
+                                .push((func_arg.id, ValueSource::Prop(*self_prop_id))),
+                            None => {
+                                return Ok(());
+                            }
+                        }
+                    }
+                    ValueSource::Secret(_) | ValueSource::StaticArgumentValue(_) => {
+                        // Should we determine if this secret is still compatible?
+                        new_value_sources.push((func_arg.id, source));
+                    }
+                }
             }
         }
+
+        // All inputs are valid, create the component specific override
+        let new_prototype = AttributePrototype::new(ctx, component_prototype_func.id).await?;
+        for (func_arg_id, value_source) in new_value_sources {
+            let new_apa =
+                AttributePrototypeArgument::new(ctx, new_prototype.id, func_arg_id).await?;
+            new_apa
+                .set_value_source(ctx, value_source.into_inner_id().into())
+                .await?;
+        }
+
+        AttributeValue::set_component_prototype_id(
+            ctx,
+            attribute_value_id_in_self,
+            new_prototype.id,
+            key,
+        )
+        .await?;
 
         Ok(())
     }
@@ -747,7 +1040,8 @@ impl Component {
                     }
                 }
 
-                AttributeValue::set_component_prototype_id(ctx, pasted_av_id, prototype.id).await?;
+                AttributeValue::set_component_prototype_id(ctx, pasted_av_id, prototype.id, None)
+                    .await?;
 
                 let sources = AttributePrototype::input_sources(ctx, prototype.id).await?;
                 for source in sources {
@@ -1403,6 +1697,7 @@ impl Component {
         Self::output_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
 
+    /// Find the attribute values for *this* component and a given prop path
     pub async fn attribute_values_for_prop(
         &self,
         ctx: &DalContext,
@@ -1411,18 +1706,27 @@ impl Component {
         Self::attribute_values_for_prop_by_id(ctx, self.id(), prop_path).await
     }
 
+    /// Find the attribute values for a component id and prop path
     pub async fn attribute_values_for_prop_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
         prop_path: &[&str],
     ) -> ComponentResult<Vec<AttributeValueId>> {
-        let mut result = vec![];
-
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
 
         let prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(prop_path)).await?;
 
+        Self::attribute_values_for_prop_id(ctx, component_id, prop_id).await
+    }
+
+    /// Find the attribute values for a component id and prop id
+    pub async fn attribute_values_for_prop_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        prop_id: PropId,
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        let mut result = vec![];
         for attribute_value_id in Prop::attribute_values_for_prop_id(ctx, prop_id).await? {
             let value_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             if value_component_id == component_id {

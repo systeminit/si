@@ -39,6 +39,7 @@ use crate::{
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
 };
+use crate::{Func, FuncError};
 
 pub mod argument;
 pub mod debug;
@@ -54,6 +55,8 @@ pub enum AttributePrototypeError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
@@ -182,6 +185,13 @@ impl AttributePrototype {
         }
 
         Err(AttributePrototypeError::MissingFunction(prototype_id))
+    }
+
+    pub async fn func(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Func> {
+        Ok(Func::get_by_id_or_error(ctx, Self::func_id(ctx, prototype_id).await?).await?)
     }
 
     pub async fn find_for_prop(

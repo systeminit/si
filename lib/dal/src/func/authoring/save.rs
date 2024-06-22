@@ -475,6 +475,7 @@ pub(crate) async fn create_new_attribute_prototype(
                         ctx,
                         attribute_value_id,
                         attribute_prototype.id,
+                        None,
                     )
                     .await?;
                     affected_attribute_value_ids.push(attribute_value_id);
@@ -506,6 +507,7 @@ pub(crate) async fn create_new_attribute_prototype(
                         ctx,
                         attribute_value_id,
                         attribute_prototype.id,
+                        None,
                     )
                     .await?;
                     affected_attribute_value_ids.push(attribute_value_id);

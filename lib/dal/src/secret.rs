@@ -362,6 +362,7 @@ impl Secret {
             ctx,
             attribute_value_id,
             attribute_prototype.id(),
+            None,
         )
         .await?;
 
