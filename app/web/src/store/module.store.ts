@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import router from "@/router";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -354,6 +355,12 @@ export const useModuleStore = () => {
               method: "post",
               url: "/module/reject_module",
               params: { id: moduleId, ...getVisibilityParams() },
+              optimistic: () => {
+                // remove selection from URL
+                router.replace({
+                  name: "workspace-lab-packages",
+                });
+              },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
@@ -367,6 +374,12 @@ export const useModuleStore = () => {
               method: "post",
               url: "/module/set_as_builtin",
               params: { id: moduleId, ...getVisibilityParams() },
+              optimistic: () => {
+                // remove selection from URL
+                router.replace({
+                  name: "workspace-lab-packages",
+                });
+              },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
