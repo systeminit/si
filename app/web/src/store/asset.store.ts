@@ -198,8 +198,10 @@ export const useAssetStore = () => {
             this.selectedFuncs = [];
           }
           this.selectedAssets = [id];
-          this.LOAD_ASSET(id);
           this.syncSelectionIntoUrl();
+          if (this.assetFromListById[id]) {
+            this.LOAD_ASSET(id);
+          }
           // no last selected func
           funcsStore.selectedFuncId = undefined;
         },
@@ -494,7 +496,24 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantCreated",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
-              this.LOAD_ASSET_LIST();
+              const nowTs = new Date().toISOString();
+              const variant = {
+                id: data.schemaId,
+                defaultSchemaVariantId: data.schemaVariantId,
+                name: data.name,
+                displayName: "",
+                category: data.category,
+                componentType: ComponentType.Component,
+                color: data.color,
+                description: "",
+                funcs: [],
+                createdAt: nowTs,
+                updatedAt: nowTs,
+                canUpdate: false,
+                canContribute: false,
+              } as AssetListEntry;
+
+              this.assetList.push(variant);
             },
           },
           {
