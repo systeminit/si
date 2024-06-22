@@ -289,7 +289,6 @@ export const useAssetStore = () => {
             funcs: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            // isBuiltin: false,  TODO: jobelenus, maybe we do need isBuiltin??
             inputSockets: [],
             outputSockets: [],
           };

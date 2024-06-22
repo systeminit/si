@@ -49,7 +49,6 @@ export interface SchemaVariant {
   link: string | null;
   description: string | null;
 
-  isBuiltin: boolean;
   created_at: IsoDateString;
   updated_at: IsoDateString;
 
