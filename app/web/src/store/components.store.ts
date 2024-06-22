@@ -530,23 +530,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const schemaVariants = [];
             for (const schema of this.schemas) {
               for (const variant of schema.variants) {
-                if (!_.find(schemaVariants, { id: variant.id })) {
-                  schemaVariants.push({
-                    id: variant.id,
-                    name: variant.name,
-                    builtin: variant.builtin,
-                    isDefault: true,
-                    componentType: variant.componentType,
-                    color: variant.color,
-                    category: variant.category,
-                    inputSockets: variant.inputSockets,
-                    outputSockets: variant.outputSockets,
-                    updated_at: variant.updated_at,
-                    created_at: variant.created_at,
-                    displayName: variant.displayName,
-                    description: variant.description,
-                    schemaName: schema.name,
-                  });
+                if (variant.isDefault) {
+                  if (!_.find(schemaVariants, { id: variant.id })) {
+                    schemaVariants.push({
+                      id: variant.id,
+                      name: variant.name,
+                      builtin: variant.builtin,
+                      isDefault: true,
+                      componentType: variant.componentType,
+                      color: variant.color,
+                      category: variant.category,
+                      inputSockets: variant.inputSockets,
+                      outputSockets: variant.outputSockets,
+                      updated_at: variant.updated_at,
+                      created_at: variant.created_at,
+                      displayName: variant.displayName,
+                      description: variant.description,
+                      schemaName: schema.name,
+                    });
+                  }
                 }
               }
             }
