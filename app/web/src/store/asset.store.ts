@@ -3,23 +3,17 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { ComponentType } from "@/api/sdf/dal/diagram";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariantId, ComponentType } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import {
-  FuncId,
-  FuncSummary,
-  FuncWithDetails,
-  useFuncStore,
-} from "./func/funcs.store";
+import { FuncSummary, FuncWithDetails, useFuncStore } from "./func/funcs.store";
 import handleStoreError from "./errors";
 import { useComponentsStore } from "./components.store";
 

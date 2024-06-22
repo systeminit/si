@@ -115,7 +115,7 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 
-import { ComponentType } from "@/api/sdf/dal/diagram";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import AttributesPanelItem from "./AttributesPanelItem.vue";
 
 const props = defineProps({

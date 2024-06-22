@@ -147,9 +147,11 @@ import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,
   FuncKind,
+  FuncId,
+  FuncArgumentId,
 } from "@/api/sdf/dal/func";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { FuncId, useFuncStore, FuncArgumentId } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
   CreateFuncOptions,

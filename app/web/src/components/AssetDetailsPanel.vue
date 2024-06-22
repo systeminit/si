@@ -182,11 +182,10 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { FuncId } from "@/store/func/funcs.store";
-import { ComponentType } from "@/api/sdf/dal/diagram";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";

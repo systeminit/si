@@ -5,7 +5,13 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncArgument, FuncArgumentKind, FuncKind } from "@/api/sdf/dal/func";
+import {
+  FuncArgument,
+  FuncArgumentKind,
+  FuncKind,
+  FuncId,
+  FuncArgumentId,
+} from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
@@ -13,8 +19,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
 import { PropId } from "@/api/sdf/dal/prop";
-import { OutputSocketId } from "@/api/sdf/dal/diagram";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariantId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -31,9 +36,6 @@ import {
 } from "./types";
 
 import { FuncRunId } from "../func_runs.store";
-
-export type FuncId = string;
-export type FuncArgumentId = string;
 
 export type FuncSummary = {
   id: string;
@@ -207,7 +209,7 @@ export const useFuncStore = () => {
         schemaVariantOptions() {
           return componentsStore.schemaVariants.map((sv) => ({
             label: sv.schemaName,
-            value: sv.id,
+            value: sv.schemaVariantId,
           }));
         },
 

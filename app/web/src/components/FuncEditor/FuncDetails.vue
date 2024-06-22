@@ -272,8 +272,8 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncKind } from "@/api/sdf/dal/func";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { FuncKind, FuncId } from "@/api/sdf/dal/func";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";

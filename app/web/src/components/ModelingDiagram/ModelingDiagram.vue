@@ -243,7 +243,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
-import { ComponentType } from "@/api/sdf/dal/diagram";
+import { SchemaVariantId, ComponentType } from "@/api/sdf/dal/schema";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -2484,7 +2484,7 @@ async function triggerPasteElements() {
 
 // ELEMENT ADDITION
 const insertElementActive = computed(
-  () => !!componentsStore.selectedInsertSchemaId,
+  () => !!componentsStore.selectedInsertSchemaVariantId,
 );
 
 function fitChildInsideParentFrame(
@@ -2518,11 +2518,12 @@ async function triggerInsertElement() {
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
 
-  if (!componentsStore.selectedInsertSchemaId)
+  if (!componentsStore.selectedInsertSchemaVariantId)
     throw new Error("missing insert selection metadata");
 
-  const schemaId = componentsStore.selectedInsertSchemaId;
-  componentsStore.selectedInsertSchemaId = null;
+  const schemaVariantId =
+    componentsStore.selectedInsertSchemaVariantId as SchemaVariantId;
+  componentsStore.selectedInsertSchemaVariantId = null;
 
   const parentGroupId: string | undefined = cursorWithinGroupKey.value?.replace(
     "g-",
@@ -2538,17 +2539,14 @@ async function triggerInsertElement() {
     if (
       parentComponent &&
       (parentComponent.componentType !== ComponentType.AggregationFrame ||
-        schemaId === parentComponent.schemaId)
+        schemaVariantId === parentComponent.schemaVariantId)
     ) {
       parentId = parentGroupId;
     }
     let isFrame = false;
-    const schema = componentsStore.schemasById[schemaId];
-    if (schema) {
-      const variant = schema.variants.filter((v) => v.isDefault).pop();
-      if (variant) {
-        isFrame = variant.componentType !== ComponentType.Component;
-      }
+    const schemaVariant = componentsStore.schemaVariantsById[schemaVariantId];
+    if (schemaVariant) {
+      isFrame = schemaVariant.componentType !== ComponentType.Component;
     }
 
     if (parentComponent) {
@@ -2569,7 +2567,7 @@ async function triggerInsertElement() {
   // as this stands, the client will send a width/height for non-frames, that the API endpoint ignores
   // TODO: is there is a good way to determine whether this schemaID is a frame?
   componentsStore.CREATE_COMPONENT(
-    schemaId,
+    schemaVariantId,
     createAtPosition,
     parentId,
     createAtSize,

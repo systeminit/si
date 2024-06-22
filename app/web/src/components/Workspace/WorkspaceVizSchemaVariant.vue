@@ -90,8 +90,8 @@ const { theme } = useTheme();
 const schemaVariant = ref();
 const schemaVariantOptions = computed(() => {
   const options = componentStore.schemaVariants.map((sv) => ({
-    label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
-    value: sv.id,
+    label: sv.schemaName + (sv.isBuiltin ? " (builtin)" : ""),
+    value: sv.schemaVariantId,
   }));
   options.unshift({ label: "Full Workspace", value: "all" });
   return options;
