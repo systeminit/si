@@ -37,6 +37,7 @@
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
 import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
@@ -51,11 +52,13 @@ const props = defineProps<{ assetId?: string }>();
 
 const assetStore = useAssetStore();
 
-const funcsByKind = computed(() =>
-  props.assetId
-    ? groupBy(assetStore.assetsById[props.assetId]?.funcs ?? [], (f) => f.kind)
-    : {},
-);
+const funcsByKind = computed(() => {
+  if (!props.assetId) return {};
+  const funcsList = _.uniq(_.map(assetStore.assetsById[props.assetId]?.funcs));
+  const funcs = groupBy(funcsList, (f) => f.kind);
+
+  return funcs;
+});
 
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
