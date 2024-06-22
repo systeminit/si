@@ -66,10 +66,17 @@ pub async fn create_variant(
 
     let schema = created_schema_variant.schema(&ctx).await?;
 
-    WsEvent::schema_variant_created(&ctx, created_schema_variant.id())
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    WsEvent::schema_variant_created(
+        &ctx,
+        schema.id(),
+        created_schema_variant.id(),
+        created_schema_variant.name().to_string(),
+        created_schema_variant.category().to_string(),
+        created_schema_variant.get_color(&ctx).await?,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     ctx.commit().await?;
 

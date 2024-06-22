@@ -173,6 +173,10 @@ pub struct SchemaVariant {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantCreatedPayload {
+    schema_id: SchemaId,
+    name: String,
+    category: String,
+    color: String,
     schema_variant_id: SchemaVariantId,
     change_set_id: ChangeSetId,
 }
@@ -202,12 +206,20 @@ pub struct SchemaVariantSavedPayload {
 impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
+        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
+        name: String,
+        category: String,
+        color: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::SchemaVariantCreated(SchemaVariantCreatedPayload {
+                schema_id,
                 schema_variant_id,
+                name,
+                category,
+                color,
                 change_set_id: ctx.change_set_id(),
             }),
         )
