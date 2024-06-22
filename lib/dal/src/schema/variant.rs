@@ -1128,13 +1128,18 @@ impl SchemaVariant {
                             .await?;
 
                     // Before returning the new prototype, we need to ensure all existing components use the new
-                    // qualification.
+                    // leaf prop (either qualification or code gen).
                     let mut new_attribute_value_ids = Vec::new();
                     for component_id in Self::list_component_ids(ctx, schema_variant_id).await? {
                         let parent_attribute_value_id =
-                            Component::find_qualification_map_attribute_value_id(ctx, component_id)
-                                .await
-                                .map_err(Box::new)?;
+                            Component::find_map_attribute_value_for_leaf_kind(
+                                ctx,
+                                component_id,
+                                leaf_kind,
+                            )
+                            .await
+                            .map_err(Box::new)?;
+
                         let new_attribute_value = AttributeValue::new(
                             ctx,
                             ValueIsFor::Prop(leaf_item_prop_id),

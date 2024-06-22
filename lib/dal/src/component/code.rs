@@ -56,4 +56,23 @@ impl Component {
 
         Ok((code_views.clone(), true))
     }
+
+    /// This method finds the [`AttributeValueId`](crate::AttributeValue) corresponding to "/root/code" for
+    /// the given [`ComponentId`](Component).
+    pub async fn find_code_map_attribute_value_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValueId> {
+        match Self::attribute_values_for_prop_by_id(
+            ctx,
+            component_id,
+            RootPropChild::Code.prop_path().as_parts().as_slice(),
+        )
+        .await?
+        .first()
+        {
+            Some(qualification_map_attribute_value_id) => Ok(*qualification_map_attribute_value_id),
+            None => Err(ComponentError::MissingCodeValue(component_id)),
+        }
+    }
 }
