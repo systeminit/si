@@ -4,6 +4,7 @@
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
+import { ComponentType } from "@/api/sdf/dal/diagram";
 import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { ActionId } from "../actions.store";
@@ -270,8 +271,16 @@ export type WsEventPayloadMap = {
     newSchemaVariantId: string;
   };
   SchemaVariantSaved: {
+    schemaId: string;
     schemaVariantId: string;
+    name: string;
+    category: string;
+    displayName?: string;
+    color: string;
     changeSetId: ChangeSetId;
+    componentType: ComponentType;
+    link?: string;
+    description?: string;
   };
   FuncCreated: {
     funcId: FuncId;

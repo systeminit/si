@@ -201,6 +201,14 @@ pub struct SchemaVariantUpdatedPayload {
 pub struct SchemaVariantSavedPayload {
     schema_variant_id: SchemaVariantId,
     change_set_id: ChangeSetId,
+    schema_id: SchemaId,
+    name: String,
+    category: String,
+    color: String,
+    component_type: ComponentType,
+    link: Option<String>,
+    description: Option<String>,
+    display_name: Option<String>,
 }
 
 impl WsEvent {
@@ -226,14 +234,31 @@ impl WsEvent {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn schema_variant_saved(
         ctx: &DalContext,
+        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
+        name: String,
+        category: String,
+        color: String,
+        component_type: ComponentType,
+        link: Option<String>,
+        description: Option<String>,
+        display_name: Option<String>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::SchemaVariantSaved(SchemaVariantSavedPayload {
                 schema_variant_id,
+                schema_id,
+                name,
+                category,
+                color,
+                component_type,
+                link,
+                description,
+                display_name,
                 change_set_id: ctx.change_set_id(),
             }),
         )

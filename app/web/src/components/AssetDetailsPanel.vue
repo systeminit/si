@@ -205,6 +205,7 @@ watch(
   () => {
     editingAsset.value = _.cloneDeep(assetStore.selectedAsset);
   },
+  { deep: true },
 );
 
 const updateAsset = async () => {

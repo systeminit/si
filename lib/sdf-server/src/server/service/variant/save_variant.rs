@@ -13,7 +13,7 @@ pub struct SaveVariantRequest {
     pub id: SchemaId,
     pub default_schema_variant_id: SchemaVariantId,
     pub name: String,
-    pub menu_name: Option<String>,
+    pub display_name: Option<String>,
     pub category: String,
     pub color: String,
     pub link: Option<String>,
@@ -45,13 +45,13 @@ pub async fn save_variant(
         &ctx,
         request.default_schema_variant_id,
         request.name.clone(),
-        request.menu_name.clone(),
+        request.display_name.clone(),
         request.link.clone(),
         request.code.clone(),
         request.description.clone(),
         request.category.clone(),
         request.component_type,
-        request.color,
+        request.color.clone(),
     )
     .await?;
 
@@ -64,14 +64,25 @@ pub async fn save_variant(
                 "variant_id": request.id,
                 "variant_category": request.category,
                 "variant_name": request.name,
-                "variant_menu_name": request.menu_name,
+                "variant_menu_name": request.display_name,
         }),
     );
 
-    WsEvent::schema_variant_saved(&ctx, request.default_schema_variant_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    WsEvent::schema_variant_saved(
+        &ctx,
+        request.id,
+        request.default_schema_variant_id,
+        request.name,
+        request.category,
+        request.color,
+        request.component_type,
+        request.link,
+        request.description,
+        request.display_name,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     ctx.commit().await?;
 
