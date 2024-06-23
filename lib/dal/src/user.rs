@@ -124,6 +124,12 @@ impl User {
         }
     }
 
+    pub async fn get_by_pk_or_error(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
+        Self::get_by_pk(ctx, pk)
+            .await?
+            .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()))
+    }
+
     pub async fn authorize(
         ctx: &DalContext,
         user_pk: &UserPk,

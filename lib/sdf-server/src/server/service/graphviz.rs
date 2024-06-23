@@ -121,7 +121,7 @@ pub async fn schema_variant(
             id: sv_node_weight.id(),
             content_kind: sv_node_weight.content_address_discriminants(),
             node_kind: sv_node_weight.into(),
-            name: Some(sv.name().to_owned()),
+            name: Some(sv.version().to_owned()),
         }
     };
 

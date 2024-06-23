@@ -346,6 +346,37 @@ pub struct SchemaContentV1 {
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum SchemaVariantContent {
     V1(SchemaVariantContentV1),
+    V2(SchemaVariantContentV2),
+}
+
+impl SchemaVariantContent {
+    pub fn extract(self) -> SchemaVariantContentV2 {
+        // update progressively
+        let at_least_v2 = match self {
+            SchemaVariantContent::V1(v1) => SchemaVariantContent::V2(SchemaVariantContentV2 {
+                timestamp: v1.timestamp,
+                ui_hidden: v1.ui_hidden,
+                version: v1.name.to_owned(),
+                display_name: v1.display_name.unwrap_or(v1.name),
+                category: v1.category,
+                color: v1.color,
+                component_type: v1.component_type,
+                link: v1.link,
+                description: v1.description,
+                asset_func_id: v1.asset_func_id,
+                finalized_once: v1.finalized_once,
+                is_builtin: v1.is_builtin,
+                is_locked: true,
+            }),
+            later => later,
+        };
+
+        // extract latest
+        match at_least_v2 {
+            SchemaVariantContent::V2(v2) => v2,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -362,6 +393,23 @@ pub struct SchemaVariantContentV1 {
     pub asset_func_id: Option<FuncId>,
     pub finalized_once: bool,
     pub is_builtin: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SchemaVariantContentV2 {
+    pub timestamp: Timestamp,
+    pub ui_hidden: bool,
+    pub version: String,
+    pub display_name: String,
+    pub category: String,
+    pub color: String,
+    pub component_type: ComponentType,
+    pub link: Option<String>,
+    pub description: Option<String>,
+    pub asset_func_id: Option<FuncId>,
+    pub finalized_once: bool,
+    pub is_builtin: bool,
+    pub is_locked: bool,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

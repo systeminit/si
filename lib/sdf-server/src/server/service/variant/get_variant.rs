@@ -99,7 +99,7 @@ pub async fn get_variant(
         &original_uri,
         "get_variant",
         serde_json::json!({
-                    "variant_name": variant.name(),
+                    "variant_version": variant.version(),
                     "variant_category": variant.category(),
                     "variant_menu_name": variant.display_name(),
                     "variant_id": variant.id(),

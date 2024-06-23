@@ -612,7 +612,7 @@ impl Prop {
         let mut work_queue = VecDeque::from([prop_id]);
 
         while let Some(prop_id) = work_queue.pop_front() {
-            if let Some(prop_id) = Prop::parent_prop_id_by_id(ctx, prop_id).await? {
+            if let Some(prop_id) = Self::parent_prop_id_by_id(ctx, prop_id).await? {
                 let workspace_snapshot = ctx.workspace_snapshot()?;
                 let node_idx = workspace_snapshot.get_node_index_by_id(prop_id).await?;
 
@@ -677,7 +677,7 @@ impl Prop {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let PropContent::V1(inner) = content;
 
-        Ok(Prop::assemble(node_weight, inner))
+        Ok(Self::assemble(node_weight, inner))
     }
 
     pub async fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
@@ -904,7 +904,7 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Option<serde_json::Value>> {
-        let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
+        let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let prototype_func =
             Func::get_by_id_or_error(ctx, AttributePrototype::func_id(ctx, prototype_id).await?)
                 .await?;
@@ -938,12 +938,12 @@ impl Prop {
     ) -> PropResult<()> {
         let value = serde_json::to_value(value)?;
 
-        let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+        let prop = Self::get_by_id_or_error(ctx, prop_id).await?;
         if !prop.kind.is_scalar() {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
 
-        let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
+        let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let intrinsic: IntrinsicFunc = prop.kind.into();
         let intrinsic_id = Func::find_intrinsic(ctx, intrinsic).await?;
         let func_arg_id = *FuncArgument::list_ids_for_func(ctx, intrinsic_id)
@@ -1067,6 +1067,16 @@ impl Prop {
         };
 
         Ok(ordered_child_props)
+    }
+
+    pub async fn find_equivalent_in_schema_variant(
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<PropId> {
+        let prop_path = Self::path_by_id(ctx, prop_id).await?;
+
+        Self::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await
     }
 
     #[instrument(level = "debug", skip_all)]

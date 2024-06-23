@@ -468,7 +468,7 @@ async fn import_schema(
         for variant_spec in &schema_spec.variants()? {
             let variant = import_schema_variant(
                 ctx,
-                &mut schema,
+                &schema,
                 schema_spec.clone(),
                 variant_spec,
                 installed_module.clone(),
@@ -478,7 +478,10 @@ async fn import_schema(
             .await?;
 
             if let Some(variant) = variant {
-                installed_schema_variant_ids.push(variant.id());
+                let variant_id = variant.id();
+                variant.lock(ctx).await?;
+
+                installed_schema_variant_ids.push(variant_id);
 
                 set_default_schema_variant_id(
                     ctx,
@@ -488,7 +491,7 @@ async fn import_schema(
                         .as_ref()
                         .and_then(|data| data.default_schema_variant()),
                     variant_spec.unique_id(),
-                    variant.id(),
+                    variant_id,
                 )
                 .await?;
             }
@@ -943,7 +946,7 @@ pub async fn import_only_new_funcs(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn import_schema_variant(
     ctx: &DalContext,
-    schema: &mut Schema,
+    schema: &Schema,
     schema_spec: SiPkgSchema<'_>,
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_module: Option<Module>,
@@ -957,7 +960,7 @@ pub(crate) async fn import_schema_variant(
                 installed_pkg.list_associated_schema_variants(ctx).await?;
             let mut maybe_matching_schema_variant: Vec<SchemaVariant> = associated_schema_variants
                 .into_iter()
-                .filter(|s| s.name() == schema_spec.name())
+                .filter(|s| s.version() == schema_spec.name())
                 .collect();
             if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
                 existing_schema_variant = Some(matching_schema_variant);
@@ -968,6 +971,7 @@ pub(crate) async fn import_schema_variant(
             existing_schema_variant = Some(existing_sv);
         }
 
+        // TODO `created` is always true. if that's correct, none of the sv vars should be optional, including the return type
         let (variant, created) = match existing_schema_variant {
             None => {
                 let spec = schema_spec.to_spec().await?;
@@ -987,24 +991,24 @@ pub(crate) async fn import_schema_variant(
                         asset_func_id = Some(asset_func.id)
                     }
                 }
-                (
-                    SchemaVariant::new(
-                        ctx,
-                        schema.id(),
-                        variant_spec.name(),
-                        metadata.menu_name,
-                        metadata.category,
-                        metadata.color,
-                        metadata.component_type,
-                        metadata.link,
-                        metadata.description,
-                        asset_func_id,
-                        variant_spec.is_builtin(),
-                    )
-                    .await?
-                    .0,
-                    true,
+
+                let variant = SchemaVariant::new(
+                    ctx,
+                    schema.id(),
+                    variant_spec.name(),
+                    metadata.menu_name.unwrap_or(schema.name.to_string()),
+                    metadata.category,
+                    metadata.color,
+                    metadata.component_type,
+                    metadata.link,
+                    metadata.description,
+                    asset_func_id,
+                    variant_spec.is_builtin(),
                 )
+                .await?
+                .0;
+
+                (variant, true)
             }
             Some(installed_variant) => (installed_variant, true),
         };

@@ -74,6 +74,8 @@ pub enum AttributePrototypeArgumentError {
     NodeWeight(#[from] NodeWeightError),
     #[error("no targets for prototype argument: {0}")]
     NoTargets(AttributePrototypeArgumentId),
+    #[error("prototype argument not found for attribute prototype {0} and func arg {1}")]
+    NotFoundForApAndFuncArg(AttributePrototypeId, FuncArgumentId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -312,6 +314,27 @@ impl AttributePrototypeArgument {
         }
 
         Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
+    }
+
+    pub async fn find_by_func_argument_id_and_attribute_prototype_id(
+        ctx: &DalContext,
+        func_argument_id: FuncArgumentId,
+        ap_id: AttributePrototypeId,
+    ) -> AttributePrototypeArgumentResult<AttributePrototypeArgumentId> {
+        // AP --> APA --> Func Arg
+
+        for apa_id in AttributePrototype::list_arguments_for_id(ctx, ap_id).await? {
+            let this_func_arg_id = Self::func_argument_id_by_id(ctx, apa_id).await?;
+
+            if this_func_arg_id == func_argument_id {
+                return Ok(apa_id);
+            }
+        }
+
+        Err(AttributePrototypeArgumentError::NotFoundForApAndFuncArg(
+            ap_id,
+            func_argument_id,
+        ))
     }
 
     pub async fn value_source(

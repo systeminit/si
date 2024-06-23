@@ -227,7 +227,7 @@ impl SummaryDiagramComponent {
             schema_name: schema.name().to_owned(),
             schema_id: schema.id(),
             schema_variant_id: schema_variant.id(),
-            schema_variant_name: schema_variant.name().to_owned(),
+            schema_variant_name: schema_variant.version().to_owned(),
             schema_category: schema_variant.category().to_owned(),
             display_name: component.name(ctx).await?,
             position,
