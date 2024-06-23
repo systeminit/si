@@ -16,7 +16,7 @@ pub struct UpdateVariantRequest {
     pub id: SchemaId,
     pub default_schema_variant_id: SchemaVariantId,
     pub name: String,
-    pub menu_name: Option<String>,
+    pub display_name: Option<String>,
     pub category: String,
     pub color: String,
     pub link: Option<String>,
@@ -41,7 +41,7 @@ pub async fn update_variant(
         &ctx,
         request.default_schema_variant_id,
         request.name.clone(),
-        request.menu_name.clone(),
+        request.display_name.clone(),
         request.category.clone(),
         request.color,
         request.link,
@@ -59,7 +59,7 @@ pub async fn update_variant(
         serde_json::json!({
             "variant_name": request.name.clone(),
             "variant_category": request.category.clone(),
-            "variant_menu_name": request.menu_name.clone(),
+            "variant_menu_name": request.display_name.clone(),
             "variant_id": updated_schema_variant_id,
         }),
     );
