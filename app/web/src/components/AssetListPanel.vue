@@ -27,7 +27,7 @@
             @click="newAsset"
           />
           <IconButton
-            v-if="canContribute"
+            v-if="canContribute || true"
             class="hover:scale-125"
             icon="cloud-upload"
             size="sm"
