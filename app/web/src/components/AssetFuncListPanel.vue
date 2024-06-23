@@ -49,9 +49,8 @@ import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
 import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
-import { useAssetStore } from "@/store/asset.store";
+import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
 import { FuncSummary, useFuncStore } from "@/store/func/funcs.store";
-import { SchemaVariant } from "@/api/sdf/dal/schema";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
@@ -63,7 +62,7 @@ const props = defineProps<{ assetId?: string }>();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 
-interface VariantsWithFunctionSummary extends SchemaVariant {
+interface VariantsWithFunctionSummary extends SchemaVariantListEntry {
   funcSummaries: FuncSummary[];
   assetFunc: FuncSummary;
 }
@@ -71,10 +70,13 @@ interface VariantsWithFunctionSummary extends SchemaVariant {
 const variantSummaries = computed(() => {
   if (!props.assetId) return null;
 
-  const variant = assetStore.variantsById[
+  const variant = assetStore.variantFromListById[
     props.assetId
   ] as VariantsWithFunctionSummary;
-  variant.funcs.forEach((fId) => {
+  if (!variant) throw new Error(`${props.assetId} variant does not exist`);
+  variant.funcSummaries = [];
+
+  variant.funcIds.forEach((fId) => {
     const func = funcStore.funcsById[fId];
     if (func) variant.funcSummaries.push(func);
   });

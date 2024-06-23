@@ -157,7 +157,7 @@ export const useAssetStore = () => {
         addSchemaVariantSelection(id: SchemaVariantId) {
           if (!this.selectedSchemaVariants.includes(id)) {
             this.selectedSchemaVariants.push(id);
-            this.LOAD_SCHEMA_VARIANT(id);
+            // this.LOAD_SCHEMA_VARIANT(id);
             this.syncSelectionIntoUrl();
             this.selectedFuncs = [];
           }
@@ -176,7 +176,7 @@ export const useAssetStore = () => {
         },
         async addFuncSelection(id: FuncId) {
           if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
-          await funcsStore.FETCH_FUNC(id);
+          // await funcsStore.FETCH_FUNC(id);
           if (this.selectedSchemaVariant)
             this.openFunc(this.selectedSchemaVariant?.schemaVariantId, id);
           funcsStore.selectedFuncId = id;
@@ -286,7 +286,7 @@ export const useAssetStore = () => {
             category: "",
             componentType: ComponentType.Component,
             link: "https://www.systeminit.com/",
-            funcs: [],
+            funcIds: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             inputSockets: [],
@@ -406,9 +406,10 @@ export const useAssetStore = () => {
 
         async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
           // when we load a variant, load all its code ahead of time before a user selects a func
+          /* I could load all the code behind the scenes if we want?
           const variant = this.variantFromListById[schemaVariantId];
           if (variant) {
-            const funcIds = variant.funcs.concat([variant.assetFuncId]);
+            const funcIds = variant.funcIds.concat([variant.assetFuncId]);
             funcIds.forEach((fId) => {
               funcsStore.FETCH_FUNC(fId);
             });
@@ -416,7 +417,7 @@ export const useAssetStore = () => {
             throw new Error(
               `${schemaVariantId} Variant not found. This should not happen.`,
             );
-          }
+          } */
           // its likely we no longer need this call, because this data is identical to the list data we already have
           return new ApiRequest<
             SchemaVariant,
@@ -424,7 +425,7 @@ export const useAssetStore = () => {
               id: SchemaVariantId;
             }
           >({
-            url: "/variant/get_variant",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants/${schemaVariantId}`,
             keyRequestStatusBy: schemaVariantId,
             params: {
               id: schemaVariantId,
@@ -438,7 +439,7 @@ export const useAssetStore = () => {
 
         async LOAD_SCHEMA_VARIANT_LIST() {
           return new ApiRequest<SchemaVariant[], Visibility>({
-            url: "/variant/list_variants",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
             params: { ...visibility },
             onSuccess: (response) => {
               this.variantList = response.map((v) => {

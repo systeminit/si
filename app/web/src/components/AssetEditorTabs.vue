@@ -68,6 +68,8 @@ const loadAssetsRequestStatus = assetStore.getRequestStatus(
 
 const currentTabs = ref<{ type: string; label: string; id: string }[]>([]);
 
+const onlyOnce = ref(true);
+
 // We have to be careful about updating this list since it will cause the entire
 // tab group item list to re-render, and re-rendering will interrupt the editing
 // flow
@@ -109,14 +111,17 @@ watch(
     if (funcStore.selectedFuncId)
       tabGroupRef.value?.selectTab(funcStore.selectedFuncId);
 
-    // still dont know what is racing and removing the querystring from the URL
-    setTimeout(() => {
-      if (assetStore.selectedVariantId)
-        assetStore.setSchemaVariantSelection(assetStore.selectedVariantId);
-      funcTabs.forEach((f) => {
-        assetStore.addFuncSelection(f.id);
-      });
-    }, 100); // wait until after the querystring is stripped, and rebuild it
+    // still dont know what is racing and removing the querystring from the URL on page load
+    if (onlyOnce.value) {
+      onlyOnce.value = false;
+      setTimeout(() => {
+        if (assetStore.selectedVariantId)
+          assetStore.setSchemaVariantSelection(assetStore.selectedVariantId);
+        funcTabs.forEach((f) => {
+          assetStore.addFuncSelection(f.id);
+        });
+      }, 100); // wait until after the querystring is stripped, and rebuild it
+    }
   },
   { immediate: true },
 );

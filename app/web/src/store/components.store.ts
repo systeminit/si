@@ -516,10 +516,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
 
-          schemaVariantsById(): Record<SchemaVariantId, SchemaVariant> {
-            return _.keyBy(this.schemaVariants, "id");
-          },
-
           categories(): Categories {
             const groups = _.groupBy(this.schemaVariants, "category");
             return Object.keys(groups)
@@ -759,7 +755,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async FETCH_AVAILABLE_SCHEMAS() {
             return new ApiRequest<Array<SchemaVariant>>({
-              url: "diagram/list_schemas",
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
               params: {
                 ...visibilityParams,
               },

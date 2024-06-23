@@ -54,7 +54,7 @@ export interface SchemaVariant {
 
   version: string;
   assetFuncId: FuncId;
-  funcs: FuncId[];
+  funcIds: FuncId[];
 
   schemaId: SchemaId;
 
