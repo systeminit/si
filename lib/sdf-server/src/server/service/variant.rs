@@ -15,6 +15,7 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 pub mod clone_variant;
+mod create_unlocked_copy;
 pub mod create_variant;
 pub mod get_variant;
 pub mod list_variants;
@@ -26,6 +27,8 @@ pub mod update_variant;
 pub enum SchemaVariantError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("trying to create unlocked copy for schema variant that's not the default: {0}")]
+    CreatingUnlockedCopyForNonDefault(SchemaVariantId),
     #[error("dal schema variant error: {0}")]
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("func error: {0}")]
@@ -90,4 +93,8 @@ pub fn routes() -> Router<AppState> {
         .route("/update_variant", post(update_variant::update_variant))
         .route("/clone_variant", post(clone_variant::clone_variant))
         .route("/save_variant", post(save_variant::save_variant))
+        .route(
+            "/create_unlocked_copy",
+            post(create_unlocked_copy::create_unlocked_copy),
+        )
 }

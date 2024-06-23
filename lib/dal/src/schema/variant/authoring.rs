@@ -13,12 +13,19 @@ use si_pkg::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::action::prototype::ActionPrototypeError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::func::authoring::FuncAuthoringError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::import::import_only_new_funcs;
 use crate::pkg::{import_pkg_from_pkg, PkgError};
+use crate::prop::PropError;
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
+use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::{
     pkg, ComponentType, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
     FuncId, HistoryEventError, Schema, SchemaError, SchemaVariant, SchemaVariantError,
@@ -29,8 +36,16 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum VariantAuthoringError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
     #[error("func execution failure error: {0}")]
@@ -41,10 +56,14 @@ pub enum VariantAuthoringError {
     FuncRunGone,
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("no new asset was created")]
     NoAssetCreated,
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
     #[error("constructed package has no identity function")]
@@ -53,6 +72,8 @@ pub enum VariantAuthoringError {
     PkgMissingSchema,
     #[error("constructed package has no schema variant node")]
     PkgMissingSchemaVariant,
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -153,8 +174,8 @@ impl VariantAuthoringClient {
         Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
 
+    // TODO RENAME THIS, it clones a schema with a variant
     #[instrument(name = "variant.authoring.clone_variant", level = "info", skip_all)]
-    #[allow(clippy::too_many_arguments)]
     pub async fn clone_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -382,7 +403,7 @@ impl VariantAuthoringClient {
             .first()
             .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
 
-        let mut schema = SchemaVariant::get_by_id(ctx, current_schema_variant_id)
+        let schema = SchemaVariant::get_by_id(ctx, current_schema_variant_id)
             .await?
             .schema(ctx)
             .await?;
@@ -403,7 +424,7 @@ impl VariantAuthoringClient {
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
         if let Some(new_schema_variant) = import_schema_variant(
             ctx,
-            &mut schema,
+            &schema,
             schema_spec.clone(),
             variant_pkg_spec,
             None,
@@ -427,7 +448,7 @@ impl VariantAuthoringClient {
                     sv.category.clone_from(&category);
                     sv.component_type = component_type;
                     sv.color.clone_from(&color);
-                    sv.display_name = Some(display_name.unwrap_or(schema_name.clone()));
+                    sv.display_name = display_name.unwrap_or(schema_name.clone());
                     Ok(())
                 })
                 .await?;
@@ -531,7 +552,7 @@ impl VariantAuthoringClient {
             .first()
             .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
 
-        let mut schema = SchemaVariant::get_by_id(ctx, current_sv_id)
+        let schema = SchemaVariant::get_by_id(ctx, current_sv_id)
             .await?
             .schema(ctx)
             .await?;
@@ -545,9 +566,10 @@ impl VariantAuthoringClient {
             .await?;
 
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
+
         if let Some(new_schema_variant) = import_schema_variant(
             ctx,
-            &mut schema,
+            &schema,
             schema_spec.clone(),
             variant_pkg_spec,
             None,
@@ -559,9 +581,101 @@ impl VariantAuthoringClient {
             schema
                 .set_default_schema_variant(ctx, new_schema_variant.id)
                 .await?;
-            return Ok(new_schema_variant.id);
+
+            let new_sv_id = new_schema_variant.id;
+
+            new_schema_variant.lock(ctx).await?;
+
+            Ok(new_sv_id)
         } else {
-            return Err(VariantAuthoringError::NoAssetCreated);
+            Err(VariantAuthoringError::NoAssetCreated)
+        }
+    }
+
+    // Note(victor): This is very similar to the logic in update_and_generate_variant_with_new_version, with a few differences:
+    // 1. it makes an exact copy of the schema variant - in the future there'll be no updates on unlocked copies
+    // 2. it does not update the default schema variant
+    #[instrument(
+        name = "variant.authoring.create_unlocked_variant_copy",
+        level = "info",
+        skip_all
+    )]
+    pub async fn create_unlocked_variant_copy(
+        ctx: &DalContext,
+        source_variant_id: SchemaVariantId,
+    ) -> VariantAuthoringResult<SchemaVariant> {
+        let locked_variant = SchemaVariant::get_by_id(ctx, source_variant_id).await?;
+        let schema = locked_variant.schema(ctx).await?;
+
+        // Create copy of asset func
+        let asset_func_id = locked_variant.asset_func_id().ok_or(
+            VariantAuthoringError::SchemaVariantAssetNotFound(locked_variant.id),
+        )?;
+        let unlocked_asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+
+        // Create new schema variant based on the asset func
+        let asset_func_spec = build_asset_func_spec(&unlocked_asset_func.clone())?;
+        let definition = execute_asset_func(ctx, &unlocked_asset_func).await?;
+
+        let metadata = SchemaVariantMetadataJson {
+            name: "VERSION GOES HERE".to_string(),
+            menu_name: Some(format!("{}, unlocked", schema.name)),
+            category: locked_variant.category().to_string(),
+            color: locked_variant.color().to_string(),
+            component_type: locked_variant.component_type(),
+            link: locked_variant.link(),
+            description: locked_variant.description(),
+        };
+
+        let (unlocked_variant_spec, _skips, variant_funcs) =
+            build_variant_spec_based_on_existing_variant(
+                ctx,
+                definition,
+                &asset_func_spec,
+                &metadata,
+                source_variant_id,
+            )
+            .await?;
+
+        let schema_spec = metadata.to_spec(unlocked_variant_spec)?;
+
+        let creator_email = ctx.history_actor().email(ctx).await?;
+        let pkg_spec = PkgSpec::builder()
+            .name(&metadata.name)
+            .created_by(creator_email)
+            .funcs(variant_funcs.clone())
+            .func(asset_func_spec)
+            .schema(schema_spec)
+            .version("0")
+            .build()?;
+        let pkg = SiPkg::load_from_spec(pkg_spec)?;
+
+        let pkg_schemas = pkg.schemas()?;
+        let schema_spec = pkg_schemas
+            .first()
+            .ok_or(VariantAuthoringError::PkgMissingSchema)?;
+
+        let pkg_variants = schema_spec.variants()?;
+        let variant_pkg_spec = pkg_variants
+            .first()
+            .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
+
+        let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
+
+        if let Some(new_schema_variant) = import_schema_variant(
+            ctx,
+            &schema,
+            schema_spec.clone(),
+            variant_pkg_spec,
+            None,
+            &mut thing_map,
+            None,
+        )
+        .await?
+        {
+            Ok(new_schema_variant)
+        } else {
+            Err(VariantAuthoringError::NoAssetCreated)
         }
     }
 
@@ -615,7 +729,9 @@ impl VariantAuthoringClient {
                 sv.category.clone_from(&category.into());
                 sv.component_type = component_type;
                 sv.color.clone_from(&color.into());
-                sv.display_name = variant_display_name;
+                if let Some(display_name) = variant_display_name {
+                    sv.display_name = display_name;
+                }
                 Ok(())
             })
             .await?;

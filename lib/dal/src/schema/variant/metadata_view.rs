@@ -14,7 +14,7 @@ pub struct SchemaVariantMetadataView {
     name: String,
     category: String,
     #[serde(alias = "display_name")]
-    display_name: Option<String>,
+    display_name: String,
     color: String,
     component_type: ComponentType,
     link: Option<String>,

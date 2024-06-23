@@ -10,14 +10,23 @@
           class="flex flex-row items-center gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :loading="execAssetReqStatus.isPending"
-            loadingText="Regenerating Asset..."
-            label="Regenerate Asset"
-            successText="Successful"
-            :requestStatus="execAssetReqStatus"
-            tone="action"
-            icon="bolt"
+            v-if="useFeatureFlagsStore().IMMUTABLE_SCHEMA_VARIANTS"
+            icon="clipboard-copy"
+            label="Unlock"
             size="md"
+            tone="neutral"
+            @click="unlock"
+          />
+
+          <VButton
+            :loading="execAssetReqStatus.isPending"
+            :requestStatus="execAssetReqStatus"
+            icon="bolt"
+            label="Regenerate Asset"
+            loadingText="Regenerating Asset..."
+            size="md"
+            successText="Successful"
+            tone="action"
             @click="executeAsset"
           />
           <VButton
@@ -38,18 +47,18 @@
         <ErrorMessage
           v-for="(warning, index) in assetStore.detachmentWarnings"
           :key="warning.message"
-          class="mx-1"
           :class="{ 'cursor-pointer': !!warning.kind }"
+          class="mx-1"
           icon="alert-triangle"
           tone="warning"
           @click="openAttachModal(warning)"
         >
           {{ warning.message }}
           <VButton
-            tone="destructive"
             buttonRank="tertiary"
             icon="trash"
             size="xs"
+            tone="destructive"
             @click.stop="assetStore.detachmentWarnings.splice(index, 1)"
           />
         </ErrorMessage>
@@ -92,31 +101,31 @@
         <VormInput
           id="category"
           v-model="editingAsset.category"
-          type="text"
-          label="Category"
           compact
+          label="Category"
           placeholder="(mandatory) Provide a category for the asset"
+          type="text"
           @blur="updateAsset"
         />
         <VormInput
           id="componentType"
           v-model="editingAsset.componentType"
-          type="dropdown"
           :options="componentTypeOptions"
           compact
           label="Component Type"
+          type="dropdown"
           @change="updateAsset"
         />
         <VormInput
           id="description"
           v-model="editingAsset.description"
-          type="textarea"
-          label="Description"
           compact
+          label="Description"
           placeholder="(optional) Provide a brief description of the asset"
+          type="textarea"
           @blur="updateAsset"
         />
-        <VormInput type="container" compact label="color">
+        <VormInput compact label="color" type="container">
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
@@ -127,10 +136,10 @@
         <VormInput
           id="link"
           v-model="editingAsset.link"
-          type="url"
-          label="Documentation Link"
           compact
+          label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
+          type="url"
           @blur="updateAsset"
         />
       </Stack>
@@ -146,10 +155,10 @@
     </div>
     <Modal
       ref="executeAssetModalRef"
-      size="sm"
       :title="
         editingAsset && editingAsset.id ? 'Asset Updated' : 'New Asset Created'
       "
+      size="sm"
       @closeComplete="closeHandler"
     >
       {{
@@ -177,6 +186,7 @@ import { FuncKind } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/api/sdf/dal/diagram";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
@@ -241,6 +251,14 @@ const execAssetReqStatus = assetStore.getRequestStatus(
 const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
+  }
+};
+
+const unlock = async () => {
+  if (assetStore.selectedAsset?.defaultSchemaVariantId) {
+    await assetStore.CREATE_UNLOCKED_COPY(
+      assetStore.selectedAsset?.defaultSchemaVariantId,
+    );
   }
 };
 

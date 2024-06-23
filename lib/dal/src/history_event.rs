@@ -43,6 +43,7 @@ impl HistoryActor {
             HistoryActor::SystemInit => "unknown-backend".to_string(),
         }
     }
+
     pub async fn email(&self, ctx: &DalContext) -> HistoryEventResult<String> {
         Ok(match self {
             HistoryActor::SystemInit => "sally@systeminit.com".to_string(),

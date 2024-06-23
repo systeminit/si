@@ -22,7 +22,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
     FuncContent, InputSocketContent, OutputSocketContent, SchemaVariantContent,
-    SchemaVariantContentV1,
+    SchemaVariantContentV2,
 };
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
@@ -158,8 +158,8 @@ pub struct SchemaVariant {
     #[serde(flatten)]
     timestamp: Timestamp,
     ui_hidden: bool,
-    name: String,
-    display_name: Option<String>,
+    version: String,
+    display_name: String,
     category: String,
     color: String,
     component_type: ComponentType,
@@ -168,6 +168,7 @@ pub struct SchemaVariant {
     asset_func_id: Option<FuncId>,
     finalized_once: bool,
     is_builtin: bool,
+    is_locked: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -296,12 +297,12 @@ impl WsEvent {
     }
 }
 
-impl From<SchemaVariant> for SchemaVariantContentV1 {
+impl From<SchemaVariant> for SchemaVariantContent {
     fn from(value: SchemaVariant) -> Self {
-        Self {
+        Self::V2(SchemaVariantContentV2 {
             timestamp: value.timestamp,
             ui_hidden: value.ui_hidden,
-            name: value.name,
+            version: value.version,
             display_name: value.display_name,
             category: value.category,
             color: value.color,
@@ -311,16 +312,19 @@ impl From<SchemaVariant> for SchemaVariantContentV1 {
             asset_func_id: value.asset_func_id,
             finalized_once: value.finalized_once,
             is_builtin: value.is_builtin,
-        }
+            is_locked: value.is_locked,
+        })
     }
 }
 
 impl SchemaVariant {
-    pub fn assemble(id: SchemaVariantId, inner: SchemaVariantContentV1) -> Self {
+    pub fn assemble(id: SchemaVariantId, content: SchemaVariantContent) -> Self {
+        let inner = content.extract();
+
         Self {
             id,
             timestamp: inner.timestamp,
-            name: inner.name,
+            version: inner.version,
             display_name: inner.display_name,
             category: inner.category,
             color: inner.color,
@@ -331,6 +335,7 @@ impl SchemaVariant {
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
             is_builtin: inner.is_builtin,
+            is_locked: inner.is_locked,
         }
     }
 
@@ -338,8 +343,8 @@ impl SchemaVariant {
     pub async fn new(
         ctx: &DalContext,
         schema_id: SchemaId,
-        name: impl Into<String>,
-        display_name: impl Into<Option<String>>,
+        version: impl Into<String>,
+        display_name: impl Into<String>,
         category: impl Into<String>,
         color: impl Into<String>,
         component_type: impl Into<ComponentType>,
@@ -351,9 +356,9 @@ impl SchemaVariant {
         debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let content = SchemaVariantContentV1 {
+        let content = SchemaVariantContentV2 {
             timestamp: Timestamp::now(),
-            name: name.into(),
+            version: version.into(),
             link: link.into(),
             ui_hidden: false,
             finalized_once: false,
@@ -364,13 +369,14 @@ impl SchemaVariant {
             description: description.into(),
             asset_func_id,
             is_builtin,
+            is_locked: false,
         };
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(SchemaVariantContent::V1(content.clone()).into()),
+                Arc::new(SchemaVariantContent::V2(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -390,7 +396,7 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
-        let schema_variant = Self::assemble(id.into(), content);
+        let schema_variant = Self::assemble(id.into(), SchemaVariantContent::V2(content));
         Ok((schema_variant, root_prop))
     }
 
@@ -400,16 +406,16 @@ impl SchemaVariant {
     {
         let mut schema_variant = self;
 
-        let before = SchemaVariantContentV1::from(schema_variant.clone());
+        let before = SchemaVariantContent::from(schema_variant.clone());
         lambda(&mut schema_variant)?;
-        let updated = SchemaVariantContentV1::from(schema_variant.clone());
+        let updated = SchemaVariantContent::from(schema_variant.clone());
 
         if updated != before {
             let (hash, _) = ctx
                 .layer_db()
                 .cas()
                 .write(
-                    Arc::new(SchemaVariantContent::V1(updated.clone()).into()),
+                    Arc::new(updated.into()),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
@@ -422,6 +428,14 @@ impl SchemaVariant {
         }
 
         Ok(schema_variant)
+    }
+
+    pub async fn lock(self, ctx: &DalContext) -> SchemaVariantResult<SchemaVariant> {
+        self.modify(ctx, |sv| {
+            sv.is_locked = true;
+            Ok(())
+        })
+        .await
     }
 
     /// Returns all [`PropIds`](Prop) for a given [`SchemaVariantId`](SchemaVariant).
@@ -494,10 +508,7 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here
-        let SchemaVariantContent::V1(inner) = content;
-
-        Ok(Self::assemble(id, inner))
+        Ok(Self::assemble(id, content))
     }
 
     /// Lists all [`Components`](Component) that are using the provided [`SchemaVariantId`](SchemaVariant).
@@ -631,10 +642,7 @@ impl SchemaVariant {
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
-                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let SchemaVariantContent::V1(inner) = content;
-
-                    schema_variants.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                    schema_variants.push(Self::assemble(node_weight.id().into(), content.clone()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -653,20 +661,25 @@ impl SchemaVariant {
         self.ui_hidden
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn version(&self) -> &str {
+        &self.version
     }
 
     pub fn category(&self) -> &str {
         &self.category
     }
 
+    pub fn color(&self) -> &str {
+        &self.color
+    }
+
     pub fn timestamp(&self) -> Timestamp {
         self.timestamp
     }
 
+    // TODO update this to not be optional - and update frontend
     pub fn display_name(&self) -> Option<String> {
-        self.display_name.clone()
+        Some(self.display_name.clone())
     }
 
     pub fn link(&self) -> Option<String> {
@@ -684,8 +697,13 @@ impl SchemaVariant {
     pub fn asset_func_id(&self) -> Option<FuncId> {
         self.asset_func_id
     }
+
     pub fn is_builtin(&self) -> bool {
         self.is_builtin
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.is_locked
     }
 
     pub async fn get_root_prop_id(
@@ -941,7 +959,7 @@ impl SchemaVariant {
     async fn get_content(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<(ContentHash, SchemaVariantContentV1)> {
+    ) -> SchemaVariantResult<(ContentHash, SchemaVariantContentV2)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = schema_variant_id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
@@ -955,10 +973,7 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let SchemaVariantContent::V1(inner) = content;
-
-        Ok((hash, inner))
+        Ok((hash, content.extract()))
     }
 
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
