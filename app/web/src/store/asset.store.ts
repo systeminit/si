@@ -528,7 +528,7 @@ export const useAssetStore = () => {
                 componentType: ComponentType.Component,
                 color: data.color,
                 description: "",
-                funcs: [],
+                funcIds: [],
                 assetFuncId: "", // TODO: jobelenus, this is likely created, and we need to pass it with the event data
                 link: "",
                 version: "v0",
