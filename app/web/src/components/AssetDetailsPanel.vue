@@ -65,8 +65,9 @@
           placeholder="(mandatory) Provide the asset a name"
           @blur="updateAsset"
         />
+
         <VormInput
-          id="menuName"
+          id="displayName"
           v-model="editingAsset.displayName"
           type="text"
           label="Display name"
