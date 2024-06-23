@@ -257,6 +257,7 @@ export type WsEventPayloadMap = {
     schemaId: string;
     schemaVariantId: string;
     name: string;
+    schemaName: string;
     category: string;
     color: string;
     changeSetId: ChangeSetId;

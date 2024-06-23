@@ -24,6 +24,7 @@ pub struct GetVariantRequest {
 pub struct GetVariantResponse {
     pub id: SchemaId,
     pub default_schema_variant_id: SchemaVariantId,
+    pub schema_name: String,
     pub name: String,
     pub display_name: Option<String>,
     pub category: String,
@@ -64,7 +65,8 @@ pub async fn get_variant(
     let mut response: GetVariantResponse = GetVariantResponse {
         id: request.id,
         default_schema_variant_id,
-        name: schema.name().into(),
+        schema_name: schema.name().into(),
+        name: variant.name().into(),
         display_name: variant.display_name(),
         category: variant.category().into(),
         color: variant.get_color(&ctx).await?,
@@ -101,7 +103,7 @@ pub async fn get_variant(
         serde_json::json!({
                     "variant_name": variant.name(),
                     "variant_category": variant.category(),
-                    "variant_menu_name": variant.display_name(),
+                    "variant_display_name": variant.display_name(),
                     "variant_id": variant.id(),
                     "schema_id": schema.id(),
                     "variant_component_type": variant.component_type(),

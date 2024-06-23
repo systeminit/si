@@ -37,7 +37,9 @@ async fn create_variant(ctx: &mut DalContext) {
 
     assert_eq!(variant.category(), category.clone());
     assert_eq!(new_schema.name(), asset_name.clone());
-    assert_eq!(variant.display_name(), display_name.clone());
+    // we update the display_name to match the schema name if display_name is none
+
+    assert_eq!(variant.display_name(), Some(asset_name.clone()));
     assert_eq!(
         variant.get_color(ctx).await.expect("unable to get color"),
         color.clone()

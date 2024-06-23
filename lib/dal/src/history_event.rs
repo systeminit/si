@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::actor_view::ActorView;
-use crate::{pk, DalContext, Timestamp, UserPk};
+use crate::{pk, DalContext, Timestamp, User, UserPk};
 use crate::{Tenancy, TransactionsError};
 
 #[remain::sorted]
@@ -23,6 +23,8 @@ pub enum HistoryEventError {
     StandardModel(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("user error: {0}")]
+    User(String),
 }
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
@@ -40,6 +42,16 @@ impl HistoryActor {
             HistoryActor::User(pk) => pk.to_string(),
             HistoryActor::SystemInit => "unknown-backend".to_string(),
         }
+    }
+    pub async fn email(&self, ctx: &DalContext) -> HistoryEventResult<String> {
+        Ok(match self {
+            HistoryActor::SystemInit => "sally@systeminit.com".to_string(),
+            HistoryActor::User(user_pk) => User::get_by_pk_or_error(ctx, *user_pk)
+                .await
+                .map_err(|e| HistoryEventError::User(e.to_string()))?
+                .email()
+                .clone(),
+        })
     }
 }
 

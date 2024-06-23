@@ -199,7 +199,7 @@ const categorizedAssets = computed(() =>
 
       if (include && searchString.value.length) {
         include = !!(
-          asset.name.toLocaleLowerCase().includes(searchString.value) ||
+          asset.schemaName.toLocaleLowerCase().includes(searchString.value) ||
           asset.displayName?.toLocaleLowerCase().includes(searchString.value)
         );
       }

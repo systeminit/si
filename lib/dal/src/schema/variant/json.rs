@@ -14,12 +14,13 @@ use crate::{ComponentType, PropKind, SchemaVariantError, SocketArity};
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantMetadataJson {
-    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
-    /// punting on the issue of multiple variants for the moment.
+    /// Name for the schema.
     pub schema_name: String,
-    /// Override for the UI name for this schema
-    #[serde(alias = "menu_name")]
-    pub menu_name: Option<String>,
+    /// Name for this variant.
+    pub name: String,
+    /// Override for the UI name for this schema variant
+    #[serde(alias = "menu_name", alias = "display_name")]
+    pub display_name: Option<String>,
     /// The category this schema variant belongs to
     pub category: String,
     /// The color for the component on the component diagram as a hex string
@@ -37,8 +38,8 @@ impl SchemaVariantMetadataJson {
         let mut data_builder = SchemaSpecData::builder();
         data_builder.name(&self.schema_name);
         data_builder.category(&self.category);
-        if let Some(menu_name) = &self.menu_name {
-            data_builder.category_name(menu_name.as_str());
+        if let Some(display_name) = &self.display_name {
+            data_builder.category_name(display_name.as_str());
         }
         builder.data(data_builder.build()?);
         builder.variant(variant);
@@ -88,12 +89,14 @@ impl SchemaVariantJson {
         asset_func_spec_unique_id: &str,
     ) -> SchemaVariantResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
-        let name = "v0";
-        builder.name(name);
+        builder.name(metadata.name.clone());
 
         let mut data_builder = SchemaVariantSpecData::builder();
 
-        data_builder.name(name);
+        data_builder.name(metadata.name.clone());
+        if let Some(display_name) = metadata.display_name {
+            data_builder.display_name(display_name);
+        }
         data_builder.color(metadata.color);
         data_builder.component_type(metadata.component_type);
         if let Some(link) = metadata.link {
@@ -161,6 +164,7 @@ impl SchemaVariantJson {
                 .to_owned()
                 .unwrap_or(SchemaVariantSpecData {
                     name: "v0".into(),
+                    display_name: None,
                     color: None,
                     link: None,
                     component_type: si_pkg::SchemaVariantSpecComponentType::Component,
@@ -168,8 +172,9 @@ impl SchemaVariantJson {
                 });
 
         let metadata = SchemaVariantMetadataJson {
+            name: variant_spec_data.name,
             schema_name: schema_spec.name,
-            menu_name: schema_data.category_name,
+            display_name: schema_data.category_name,
             category: schema_data.category,
             color: variant_spec_data
                 .color

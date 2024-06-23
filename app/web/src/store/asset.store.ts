@@ -74,6 +74,7 @@ export interface DetachedValidationPrototype {
 export interface ListedVariant {
   id: AssetId;
   defaultSchemaVariantId: string;
+  schemaName: string;
   name: string;
   displayName?: string;
   category: string;
@@ -106,7 +107,7 @@ export type AssetCreateRequest = Omit<
 export type AssetCloneRequest = Visibility & { id: AssetId; name: string };
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
-  (asset.displayName ?? "").length === 0 ? asset.name : asset.displayName;
+  (asset.displayName ?? "").length === 0 ? asset.schemaName : asset.displayName;
 
 export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
@@ -303,7 +304,8 @@ export const useAssetStore = () => {
           return {
             id: nilId(),
             defaultSchemaVariantId: "",
-            name,
+            schemaName: name,
+            name: "v0",
             displayName: name,
             code: "",
             color: this.generateMockColor(),
@@ -399,8 +401,6 @@ export const useAssetStore = () => {
               return () => {
                 if (current) {
                   this.assetsById[asset.id] = current;
-                } else {
-                  delete this.assetsById[asset.id];
                 }
               };
             },
@@ -494,6 +494,7 @@ export const useAssetStore = () => {
               const variant = {
                 id: data.schemaId,
                 defaultSchemaVariantId: data.schemaVariantId,
+                schemaName: data.schemaName,
                 name: data.name,
                 displayName: "",
                 category: data.category,

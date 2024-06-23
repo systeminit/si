@@ -19,6 +19,10 @@
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Asset:
           </h1>
+          <h2 class="pb-xs text-sm">{{ proto.schema }}</h2>
+          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+            Asset version:
+          </h1>
           <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
 
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -227,9 +231,11 @@ const prototypeViews = computed(() => {
       ];
 
     const schemaVariant =
+      useComponentsStore().schemaVariantsById[schemaVariantId ?? ""]?.name ??
+      "none";
+    const schema =
       useComponentsStore().schemaVariantsById[schemaVariantId ?? ""]
         ?.schemaName ?? "none";
-
     const component =
       funcStore.componentOptions.find((c) => c.value === proto.componentId)
         ?.label ?? "all";
@@ -256,6 +262,7 @@ const prototypeViews = computed(() => {
 
     return {
       id: proto.id,
+      schema,
       schemaVariant,
       component,
       outputLocation,

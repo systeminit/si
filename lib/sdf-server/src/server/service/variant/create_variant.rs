@@ -64,7 +64,7 @@ pub async fn create_variant(
         serde_json::json!({
             "variant_name": request.name.clone(),
             "variant_category": request.category.clone(),
-            "variant_menu_name": request.display_name.clone(),
+            "variant_display_name": request.display_name.clone(),
             "variant_id": created_schema_variant.id().clone(),
         }),
     );

@@ -24,7 +24,7 @@
             {{ asset.displayName }}
           </template>
           <template v-else>
-            {{ asset.name }}
+            {{ asset.schemaName }}
           </template>
         </div>
       </Stack>

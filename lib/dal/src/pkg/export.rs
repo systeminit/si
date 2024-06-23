@@ -64,8 +64,8 @@ impl PkgExporter {
         }
     }
 
-    fn new_standalone_variant_exporter() -> Self {
-        Self::new_module_exporter("", "", None::<String>, "", vec![])
+    fn new_standalone_variant_exporter(schema_name: &str) -> Self {
+        Self::new_module_exporter(schema_name, "", None::<String>, "", vec![])
     }
 
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
@@ -144,9 +144,11 @@ impl PkgExporter {
     pub async fn export_variant_standalone(
         ctx: &DalContext,
         variant: &SchemaVariant,
+        schema_name: &str,
     ) -> PkgResult<(SchemaVariantSpec, Vec<FuncSpec>)> {
-        let mut exporter = Self::new_standalone_variant_exporter();
-
+        let mut exporter = Self::new_standalone_variant_exporter(schema_name);
+        let email = ctx.history_actor().email(ctx).await?;
+        exporter.created_by = email;
         exporter.export_funcs_for_variant(ctx, variant.id()).await?;
         exporter.export_intrinsics(ctx).await?;
         let variant_spec = exporter.export_variant(ctx, variant, false).await?;
@@ -171,7 +173,6 @@ impl PkgExporter {
         variant_spec_builder.name(variant.name());
         variant_spec_builder.is_builtin(variant_is_builtin);
         variant_spec_builder.unique_id(variant.id().to_string());
-
         let mut data_builder = SchemaVariantSpecData::builder();
 
         data_builder.name(variant.name());
@@ -179,6 +180,9 @@ impl PkgExporter {
 
         if let Some(link) = variant.link() {
             data_builder.try_link(link.to_string().deref())?;
+        }
+        if let Some(display_name) = variant.display_name() {
+            data_builder.display_name(display_name);
         }
 
         data_builder.component_type(get_component_type(ctx, variant).await?);

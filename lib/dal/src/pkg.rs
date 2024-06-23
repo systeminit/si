@@ -24,7 +24,7 @@ use crate::{
     SchemaVariantId, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
     WsEventResult, WsPayload,
 };
-use crate::{AttributePrototypeId, FuncId, PropId, PropKind};
+use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 
 use crate::module::ModuleError;
 use crate::socket::connection_annotation::ConnectionAnnotationError;
@@ -64,6 +64,8 @@ pub enum PkgError {
     FuncArgumentNotFoundByName(FuncId, String),
     #[error("func {0} could not be found by name")]
     FuncNotFoundByName(String),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("Missing Func {1} for AttributePrototype {0}")]

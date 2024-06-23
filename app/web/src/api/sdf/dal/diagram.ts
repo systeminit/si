@@ -42,7 +42,8 @@ export interface DiagramSchemaVariant {
 
 export interface DiagramSchema {
   id: string;
-  name: string;
+  name: string; // schema name
+  displayName: string; // variant display name
   builtin: boolean;
 
   variants: DiagramSchemaVariant[];
