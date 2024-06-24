@@ -83,6 +83,7 @@ export interface ListedVariant {
   color: string;
   description: string;
   funcs: FuncSummary[];
+  isLocked: boolean;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 }
@@ -323,6 +324,7 @@ export const useAssetStore = () => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             hasComponents: false,
+            isLocked: false,
           };
         },
 
@@ -531,6 +533,7 @@ export const useAssetStore = () => {
                 updatedAt: nowTs,
                 canUpdate: false,
                 canContribute: false,
+                isLocked: false,
               } as AssetListEntry;
 
               this.assetList.push(variant);

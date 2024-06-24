@@ -10,7 +10,7 @@
           class="flex flex-row items-center gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            v-if="useFeatureFlagsStore().IMMUTABLE_SCHEMA_VARIANTS"
+            v-if="ffStore.IMMUTABLE_SCHEMA_VARIANTS"
             icon="clipboard-copy"
             label="Unlock"
             size="md"
@@ -72,6 +72,7 @@
           label="Name"
           placeholder="(mandatory) Provide the asset a name"
           type="text"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
@@ -81,6 +82,7 @@
           label="Display name"
           placeholder="(optional) Provide the asset a shorter display name"
           type="text"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
@@ -90,6 +92,7 @@
           label="Category"
           placeholder="(mandatory) Provide a category for the asset"
           type="text"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
@@ -99,6 +102,7 @@
           compact
           label="Component Type"
           type="dropdown"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @change="updateAsset"
         />
         <VormInput
@@ -108,9 +112,15 @@
           label="Description"
           placeholder="(optional) Provide a brief description of the asset"
           type="textarea"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
-        <VormInput compact label="color" type="container">
+        <VormInput
+          compact
+          label="color"
+          type="container"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+        >
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
@@ -125,6 +135,7 @@
           label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
           type="url"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
       </Stack>
@@ -179,6 +190,7 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+const ffStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
