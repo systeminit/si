@@ -1,0 +1,12 @@
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy-tools-prod:
+    uses: ./.github/workflows/deploy-stack.yml
+    with:
+      environment: tools
+      service: all
+      version: stable
+    secrets: inherit

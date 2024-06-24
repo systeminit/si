@@ -91,23 +91,20 @@ jobs:
                 [[ "$check" -eq 200 || "$check" -eq 301 ]]
             }
 
-            ENVIRONMENT="${{ inputs.environment }}"
-            SERVICE="${{ inputs.service }}"
-            VERSION="${{ inputs.version }}"
-
-            if check_version_exists "$VERSION" "$SERVICE"; then
-                echo "Setting $SERVICE to $VERSION."
-                aws ssm put-parameter --name "${ENVIRONMENT}-si-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
-                id=$(aws autoscaling start-instance-refresh \
-                  --auto-scaling-group-name "${ENVIRONMENT}-${SERVICE}" \
-                  --query 'InstanceRefreshId' --output text)
-
-                # poll the instance refresh status
+            poll_instance_refresh() {
+                local environment="$1"
+                local service="$2"
+                local id="$3"
                 while true; do
                   status=$(aws autoscaling describe-instance-refreshes \
-                    --auto-scaling-group-name "${ENVIRONMENT}-${SERVICE}" \
+                    --auto-scaling-group-name "${environment}-${service}" \
                     --query "InstanceRefreshes[?InstanceRefreshId=='${id}'].Status" \
                     --output text)
+
+                  if [ -z "$status" ]; then
+                    echo "No instance refresh found with ID ${id} for ${environment}-${service}."
+                    break
+                  fi
 
                   echo "Instance refresh status: $status"
 
@@ -122,6 +119,32 @@ jobs:
                     sleep 15
                   fi
                 done
+            }
+
+            check_existing_refresh() {
+                local environment="$1"
+                local service="$2"
+                id=$(aws autoscaling describe-instance-refreshes \
+                  --auto-scaling-group-name "${environment}-${service}"\
+                  --query "InstanceRefreshes[?Status=='InProgress'].[InstanceRefreshId]"\
+                  --output text)
+                poll_instance_refresh "$environment" "$service" "$id"
+            }
+
+            ENVIRONMENT="${{ inputs.environment }}"
+            SERVICE="${{ inputs.service }}"
+            VERSION="${{ inputs.version }}"
+
+            if check_version_exists "$VERSION" "$SERVICE"; then
+                echo "Checking if an instance refresh is already underway..."
+                check_existing_refresh "$ENVIRONMENT" "$SERVICE"
+
+                echo "Setting $SERVICE to $VERSION."
+                aws ssm put-parameter --name "${ENVIRONMENT}-si-version-$SERVICE" --value "$VERSION" --type "String" --overwrite
+                id=$(aws autoscaling start-instance-refresh \
+                  --auto-scaling-group-name "${ENVIRONMENT}-${SERVICE}" \
+                  --query 'InstanceRefreshId' --output text)
+                poll_instance_refresh "$ENVIRONMENT" "$SERVICE" "$id"
             else
                 echo "Version $VERSION for $SERVICE not found in the artifacts registry. Skipping!"
                 exit 1

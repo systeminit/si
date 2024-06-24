@@ -3,6 +3,20 @@ name: Deploy Services
 run-name: Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{ github.actor }}
 
 on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        default: "tools"
+      service:
+        type: string
+        required: true
+        default: "all"
+      version:
+        type: string
+        required: true
+        default: "stable"
   workflow_dispatch:
     inputs:
       environment:
