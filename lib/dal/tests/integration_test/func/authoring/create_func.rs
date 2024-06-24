@@ -540,7 +540,7 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     let link = None;
     let category = "Integration Tests".to_string();
     let color = "#00b0b0".to_string();
-    let variant_zero = VariantAuthoringClient::create_variant(
+    let variant_zero = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
         display_name.clone(),

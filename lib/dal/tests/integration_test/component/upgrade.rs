@@ -21,7 +21,7 @@ async fn upgrade_component(ctx: &mut DalContext) {
     let link = None;
     let category = "Integration Tests".to_string();
     let color = "#00b0b0".to_string();
-    let variant_zero = VariantAuthoringClient::create_variant(
+    let variant_zero = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
         display_name.clone(),

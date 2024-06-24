@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct CloneVariantRequest {
     pub id: SchemaId,
+    pub name: String,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -31,6 +32,12 @@ pub async fn clone_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    if Schema::is_name_taken(&ctx, &request.name).await? {
+        return Ok(axum::response::Response::builder()
+            .status(409)
+            .body("schema name already taken".to_string())?);
+    }
+
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;
@@ -38,8 +45,12 @@ pub async fn clone_variant(
         SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
     )?;
 
-    let (cloned_schema_variant, schema) =
-        VariantAuthoringClient::clone_variant(&ctx, default_schema_variant_id).await?;
+    let (cloned_schema_variant, schema) = VariantAuthoringClient::clone_variant(
+        &ctx,
+        default_schema_variant_id,
+        request.name.clone(),
+    )
+    .await?;
 
     track(
         &posthog_client,
@@ -47,7 +58,7 @@ pub async fn clone_variant(
         &original_uri,
         "clone_variant",
         serde_json::json!({
-            "variant_name": schema.name(),
+            "variant_name": request.name,
             "variant_category": cloned_schema_variant.category(),
             "variant_menu_name": cloned_schema_variant.display_name(),
             "variant_id": cloned_schema_variant.id(),

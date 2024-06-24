@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, SchemaId, Visibility, WsEvent};
+use dal::{ChangeSet, Schema, SchemaId, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -26,7 +26,6 @@ pub struct CreateVariantRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantResponse {
     pub id: SchemaId,
-    pub success: bool,
 }
 
 pub async fn create_variant(
@@ -38,9 +37,15 @@ pub async fn create_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    if Schema::is_name_taken(&ctx, &request.name).await? {
+        return Ok(axum::response::Response::builder()
+            .status(409)
+            .body("schema name already taken".to_string())?);
+    }
+
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let created_schema_variant = VariantAuthoringClient::create_variant(
+    let created_schema_variant = VariantAuthoringClient::create_schema_and_variant(
         &ctx,
         request.name.clone(),
         request.display_name.clone(),
@@ -87,6 +92,5 @@ pub async fn create_variant(
     }
     Ok(response.body(serde_json::to_string(&CreateVariantResponse {
         id: schema.id(),
-        success: true,
     })?)?)
 }

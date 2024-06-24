@@ -473,4 +473,8 @@ impl Schema {
         let funcs = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
         Ok(funcs)
     }
+
+    pub async fn is_name_taken(ctx: &DalContext, name: &String) -> SchemaResult<bool> {
+        Ok(Self::list(ctx).await?.iter().any(|s| s.name.eq(name)))
+    }
 }

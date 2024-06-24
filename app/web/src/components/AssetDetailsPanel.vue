@@ -25,9 +25,15 @@
             tone="neutral"
             icon="clipboard-copy"
             size="md"
-            @click="cloneAsset"
+            @click="() => cloneAssetModalRef?.modal?.open()"
           />
         </div>
+        <AssetNameModal
+          ref="cloneAssetModalRef"
+          title="Asset Name"
+          buttonLabel="Clone Asset"
+          @submit="cloneAsset"
+        />
 
         <ErrorMessage
           v-for="(warning, index) in assetStore.detachmentWarnings"
@@ -165,6 +171,7 @@ import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/api/sdf/dal/diagram";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
+import AssetNameModal from "./AssetNameModal.vue";
 
 const props = defineProps<{
   assetId?: string;
@@ -176,6 +183,7 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
   props.assetId,
 );
 const executeAssetModalRef = ref();
+const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
 
 const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {
   if (!warning.kind) return;
@@ -232,10 +240,11 @@ const closeHandler = () => {
   assetStore.executeAssetTaskId = undefined;
 };
 
-const cloneAsset = async () => {
+const cloneAsset = async (name: string) => {
   if (editingAsset.value?.id) {
-    const result = await assetStore.CLONE_ASSET(editingAsset.value.id);
+    const result = await assetStore.CLONE_ASSET(editingAsset.value.id, name);
     if (result.result.success) {
+      cloneAssetModalRef.value?.modal?.close();
       await assetStore.setAssetSelection(result.result.data.id);
     }
   }
