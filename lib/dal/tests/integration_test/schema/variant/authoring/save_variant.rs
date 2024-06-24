@@ -18,7 +18,7 @@ async fn save_variant(ctx: &mut DalContext) {
     let link = None;
     let category = "Integration Tests".to_string();
     let color = "#00b0b0".to_string();
-    let variant = VariantAuthoringClient::create_variant(
+    let variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
         display_name.clone(),

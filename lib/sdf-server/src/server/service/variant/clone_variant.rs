@@ -32,6 +32,12 @@ pub async fn clone_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    if Schema::is_name_taken(&ctx, &request.name).await? {
+        return Ok(axum::response::Response::builder()
+            .status(409)
+            .body("schema name already taken".to_string())?);
+    }
+
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let schema = Schema::get_by_id(&ctx, request.id).await?;

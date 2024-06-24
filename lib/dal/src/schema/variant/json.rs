@@ -16,7 +16,7 @@ use crate::{ComponentType, PropKind, SchemaVariantError, SocketArity};
 pub struct SchemaVariantMetadataJson {
     /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
     /// punting on the issue of multiple variants for the moment.
-    pub name: String,
+    pub schema_name: String,
     /// Override for the UI name for this schema
     #[serde(alias = "menu_name")]
     pub menu_name: Option<String>,
@@ -31,11 +31,11 @@ pub struct SchemaVariantMetadataJson {
 }
 
 impl SchemaVariantMetadataJson {
-    pub fn to_spec(&self, variant: SchemaVariantSpec) -> SchemaVariantResult<SchemaSpec> {
+    pub fn to_schema_spec(&self, variant: SchemaVariantSpec) -> SchemaVariantResult<SchemaSpec> {
         let mut builder = SchemaSpec::builder();
-        builder.name(&self.name);
+        builder.name(&self.schema_name);
         let mut data_builder = SchemaSpecData::builder();
-        data_builder.name(&self.name);
+        data_builder.name(&self.schema_name);
         data_builder.category(&self.category);
         if let Some(menu_name) = &self.menu_name {
             data_builder.category_name(menu_name.as_str());
@@ -168,7 +168,7 @@ impl SchemaVariantJson {
                 });
 
         let metadata = SchemaVariantMetadataJson {
-            name: schema_spec.name,
+            schema_name: schema_spec.name,
             menu_name: schema_data.category_name,
             category: schema_data.category,
             color: variant_spec_data

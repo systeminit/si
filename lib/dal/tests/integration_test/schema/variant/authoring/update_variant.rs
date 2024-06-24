@@ -24,7 +24,7 @@ async fn update_variant(ctx: &mut DalContext) {
     let link = None;
     let category = "Integration Tests".to_string();
     let color = "#00b0b0".to_string();
-    let my_first_variant = VariantAuthoringClient::create_variant(
+    let my_first_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
         display_name.clone(),
@@ -138,7 +138,7 @@ async fn update_variant(ctx: &mut DalContext) {
 
 #[test]
 async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
-    let first_variant = VariantAuthoringClient::create_variant(
+    let first_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         "helix",
         None,
@@ -309,7 +309,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
 
 #[test]
 async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
-    let schema_variant = VariantAuthoringClient::create_variant(
+    let schema_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         "helix",
         None,
