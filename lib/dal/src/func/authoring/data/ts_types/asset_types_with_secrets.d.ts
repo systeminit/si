@@ -686,10 +686,12 @@ declare class SecretPropBuilder implements ISecretPropBuilder {
 interface SecretDefinition {
   name: string;
   props: PropDefinition[];
+  connectionAnnotations?: string;
 }
 
 interface ISecretDefinitionBuilder {
   addProp(prop: PropDefinition): this;
+  setName(name: string): this;
 
   build(): SecretDefinition;
 }
@@ -699,7 +701,8 @@ interface ISecretDefinitionBuilder {
  *
  * @example
  * const secretDefinition = new SecretDefinitionBuilder()
- *          .setName("DigitalOcean Token")
+ *         .setName("DigitalOcean Token")
+ *         .setConnectionAnnotations("Registry Token")
  *         .addProp(
  *             new PropBuilder()
  *             .setKind("string")
@@ -745,6 +748,18 @@ declare class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
    *     .build())
    */
   addProp(prop: PropDefinition): this;
+
+  /**
+   * Adds the specified connection annotations to the output socket for the secret
+   *
+   * @param {string} connectionAnnotations - the connection annotations to create for the output socket.
+   *
+   * @returns this
+   *
+   * @example
+   * .setConnectionAnnotation("Registry Token")
+   */
+  setConnectionAnnotation(connectionAnnotations: string): this;
 
   build(): SecretDefinition;
 }
