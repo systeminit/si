@@ -53,33 +53,33 @@ jobs:
 
   deploy-service:
     needs: invalidate-cache
-    if: ${{ github.event.inputs.service != 'all' }}
+    if: ${{ inputs.service != 'all' }}
     uses: ./.github/workflows/deploy-service.yml
     with:
-      environment: ${{ github.event.inputs.environment }}
-      service: ${{ github.event.inputs.service }}
-      version: ${{ github.event.inputs.version }}
+      environment: ${{ inputs.environment }}
+      service: ${{ inputs.service }}
+      version: ${{ inputs.version }}
     secrets: inherit
 
   deploy-services:
     needs: invalidate-cache
-    if: ${{ github.event.inputs.service == 'all' }}
+    if: ${{ inputs.service == 'all' }}
     strategy:
      fail-fast: false
      matrix:
       service: ["pinga", "rebaser", "sdf", "veritech", "web"]
     uses: ./.github/workflows/deploy-service.yml
     with:
-      environment: ${{ github.event.inputs.environment }}
+      environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
-      version: ${{ github.event.inputs.version }}
+      version: ${{ inputs.version }}
     secrets: inherit
 
   set-init:
     needs: invalidate-cache
     uses: ./.github/workflows/set-init-version.yml
     with:
-      environment: ${{ github.event.inputs.environment }}
-      service: ${{ github.event.inputs.service }}
-      version: ${{ github.event.inputs.version }}
+      environment: ${{ inputs.environment }}
+      service: ${{ inputs.service }}
+      version: ${{ inputs.version }}
     secrets: inherit
