@@ -249,9 +249,7 @@ const updateAsset = async () => {
   ) {
     const code =
       funcStore.funcDetailsById[editingAsset.value.assetFuncId]?.code;
-    if (code)
-      // TODO: jobelenus, should code be optional here? (e.g. no code don't overwrite it?)
-      await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value, code);
+    if (code) await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
     else
       throw new Error(
         `${editingAsset.value.assetFuncId} Func not found on Variant ${editingAsset.value.schemaVariantId}. This should not happen.`,

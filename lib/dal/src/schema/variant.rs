@@ -32,7 +32,7 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::{NodeIndex, WorkspaceSnapshotGraphError};
+use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{

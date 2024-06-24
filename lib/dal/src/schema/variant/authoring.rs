@@ -693,7 +693,7 @@ impl VariantAuthoringClient {
         version: impl Into<String>,
         display_name: Option<String>,
         link: Option<String>,
-        code: impl Into<String>,
+        code: Option<impl Into<String>>,
         description: Option<String>,
         category: impl Into<String>,
         component_type: ComponentType,
@@ -738,7 +738,7 @@ impl VariantAuthoringClient {
             })
             .await?;
 
-        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.into());
+        let code_base64 = code.map(|c| general_purpose::STANDARD_NO_PAD.encode(c.into()));
         let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
         current_func
             .modify(ctx, |func| {
@@ -748,7 +748,9 @@ impl VariantAuthoringClient {
                 func.display_name = display_name
                     .clone()
                     .map(|display_name| display_name.to_owned());
-                func.code_base64 = Some(code_base64);
+                if let Some(code_base64) = code_base64 {
+                    func.code_base64 = Some(code_base64);
+                }
                 func.description.clone_from(&description);
                 func.handler = Some("main".to_string());
                 func.hidden = false;

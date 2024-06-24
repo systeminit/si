@@ -18,7 +18,7 @@ pub struct SaveVariantRequest {
     pub category: String,
     pub color: String,
     pub link: Option<String>,
-    pub code: String,
+    pub code: Option<String>,
     pub description: Option<String>,
     pub component_type: ComponentType,
     #[serde(flatten)]

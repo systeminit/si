@@ -70,7 +70,7 @@ export type SchemaVariantListEntry = SchemaVariant & {
   canUpdate: boolean;
   canContribute: boolean;
 };
-export type SchemaVariantSaveRequest = Visibility & { code: string } & Omit<
+export type SchemaVariantSaveRequest = Visibility & { code?: string } & Omit<
     SchemaVariant,
     "created_at" | "updated_at"
   >;
@@ -361,16 +361,20 @@ export const useAssetStore = () => {
           }
         },
 
-        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code: string) {
+        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code?: string) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
-          // TODO: jobelenus, return the code and assetFuncId IF CODE IS NOT OPTIONAL from the other call
+          const params = {
+            ...visibility,
+            ...omit(schemaVariant, "created_at", "updated_at"),
+          } as SchemaVariantSaveRequest;
+          if (code) params.code = code;
           return new ApiRequest<
-            { success: boolean; code: string; assetFuncId: FuncId },
+            { success: boolean; assetFuncId: FuncId },
             SchemaVariantSaveRequest
           >({
             method: "post",
@@ -389,18 +393,7 @@ export const useAssetStore = () => {
                 }
               };
             },
-            params: {
-              ...visibility,
-              code,
-              ...omit(schemaVariant, "created_at", "updated_at"),
-            },
-            onSuccess: (response) => {
-              const func = funcsStore.funcDetailsById[response.assetFuncId];
-              if (func) {
-                func.code = code;
-                funcsStore.funcDetailsById[response.assetFuncId] = func;
-              }
-            },
+            params,
           });
         },
 

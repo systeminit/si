@@ -984,7 +984,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
-                schemaVariantId, // TODO: jobelenus CHANGE IN SDF
+                schemaVariantId,
                 parentId,
                 x: position.x.toString(),
                 y: position.y.toString(),
