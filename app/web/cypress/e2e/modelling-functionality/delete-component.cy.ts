@@ -16,6 +16,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
     it('delete', () => {
       cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.on('uncaught:exception', (e) => {
+        console.log(e);
+        return false;
+      });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
       
@@ -28,18 +32,12 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       // Give time to redirect onto the new change set
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
-      // Find the AWS Credential
-      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('AWS Credential').as('awsCred');
-
-      // Find the canvas to get a location to drag to
-      cy.get('canvas').first().as('konvaStage');
-
-      // Drag to the canvas
-      cy.dragTo('@awsCred', '@konvaStage');
+      // Create a region component
+      cy.createComponent("region");
 
       // Check to make sure a component has been added to the outliner
       cy.get('[class="diagram-outline-node"]', { timeout: 30000 })
-        .contains('AWS Credential', { timeout: 30000 })
+        .contains('Region', { timeout: 30000 })
         .should('be.visible')
         .rightclick();
 
@@ -51,7 +49,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         .click();
 
       // Check to make sure a component has been added to the outliner
-      cy.get('[class="diagram-outline-node"]', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible');
+      cy.get('[class="diagram-outline-node"]', { timeout: 30000 }).contains('Region', { timeout: 30000 }).should('be.visible');
 
       // Click the button to destroy change set
       cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')

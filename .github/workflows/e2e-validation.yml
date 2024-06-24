@@ -1,12 +1,29 @@
 name: Cypress E2E Tests
 
 on:
-  workflow_dispatch:
 #  schedule:
 #    - cron: '*/5 * * * *'  # Runs every 5 minutes
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+        default: "tools"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to deploy"
+        default: "tools"
+        options:
+          - tools
+          - production
 
 jobs:
   cypress-tests:
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     strategy:
       # don't fail the entire matrix on failure
@@ -16,27 +33,12 @@ jobs:
         containers: [1] # , 2, 3, 4, 5, 6, 7, 8, 9, 10] - temp disabled mass
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18.18.2'
-
-      - name: Setup authentication for vite & other synthetic test variables
-        working-directory: app/web
-        run: |
-          sudo apt update
-          sudo apt install uuid -y
-          cp .env .env.local
-          echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local                           # Production Synthetic User Email
-          echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local                           # Production Synthetic User Password
-          echo "VITE_SI_WORKSPACE_URL=${{ vars.VITE_PROD_SI_WORKSPACE_URL }}" >> .env.local                     # Production Synthetic Workspace URL
-          echo "VITE_SI_WORKSPACE_ID=${{ vars.VITE_PROD_SI_WORKSPACE_ID }}" >> .env.local                       # Production Synthetic Workspace ID
-          echo "VITE_SI_PROPAGATION_COMPONENT_A=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_A }}" >> .env.local # Production Propagation Test Component A [from]
-          echo "VITE_SI_PROPAGATION_COMPONENT_B=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_B }}" >> .env.local # Production Propagation Test Component B [to]
-          echo "VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_PROD_SI_CYPRESS_MULTIPLIER }}" >> .env.local           # Set Execution to 10 iterations
-          echo "VITE_UUID=$(uuid)" >> .env.local                                                                # UUID for test validation
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
@@ -48,12 +50,29 @@ jobs:
         run: |
           pnpm i
           pnpm install cypress
-          
+
+      - name: install uuid
+        run: |
+          sudo apt update
+          sudo apt install uuid -y
+
       - uses: nick-fields/retry@v2
         with:
           max_attempts: 3
           timeout_minutes: 20
-          command: cd app/web && npx cypress run --spec "cypress/e2e/**"
+          command: |
+            cd app/web
+            export VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}
+            export VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}
+            export VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_SI_CYPRESS_MULTIPLIER }}
+            export VITE_SI_WORKSPACE_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
+            export VITE_HOST_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
+            export VITE_SI_WORKSPACE_ID=${{ vars.VITE_SI_WORKSPACE_ID }}
+            export VITE_UUID=$(uuid)
+            export VITE_AUTH_API_URL=https://auth-api.systeminit.com
+            export VITE_AUTH_PORTAL_URL=https://auth.systeminit.com
+
+            npx cypress run --spec "cypress/e2e/**" --parallel --record --key ${{ secrets.CYPRESS_RECORD_KEY }}
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
@@ -66,4 +85,4 @@ jobs:
       - name: Send Slack Failure Webhook
         if: failure()
         run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":si: Failed Cypress E2E Test for Production: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}

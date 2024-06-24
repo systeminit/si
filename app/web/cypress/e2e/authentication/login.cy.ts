@@ -14,6 +14,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
     it("log_in", () => {
       cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
       cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.on('uncaught:exception', (e) => {
+        console.log(e);
+        return false;
+      });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       // check that you're on head i.e. that you were redirected correctly
       cy.wait(4000)

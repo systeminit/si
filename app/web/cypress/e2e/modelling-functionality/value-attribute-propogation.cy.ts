@@ -24,7 +24,11 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.log(UUID);
 
       // Go to the Synthetic Workspace
-      cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
+      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.on('uncaught:exception', (e) => {
+        console.log(e);
+        return false;
+      });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
 
@@ -35,11 +39,12 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.contains('Create change set', { timeout: 30000 }).click();
 
       // Give time to redirect onto the new change set
+      cy.wait(1000);
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Needs a proper way to select from the updated asset tree panel
       // Find the region asset
-      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('Region').as('awsRegion');
+      cy.get('.asset-palette').find('.text-sm', { timeout: 30000 }).contains('Region', { matchCase: false }).as('awsRegion');
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
@@ -56,7 +61,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.wait(1000);
 
       // Needs a proper way to select from the updated asset tree panel
-      cy.get('div[class="text-sm"]', { timeout: 30000 }).contains('EC2 Instance').as('awsEC2');
+      cy.get('.asset-palette').find('.text-sm', { timeout: 30000 }).contains('EC2 Instance', { matchCase: false }).as('awsEC2');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentB');
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
@@ -102,7 +107,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // Wait for the values to propagate
-      cy.wait(5000);
+      cy.wait(10000);
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')

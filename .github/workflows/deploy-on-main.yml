@@ -10,3 +10,10 @@ jobs:
       service: all
       version: stable
     secrets: inherit
+
+  e2e-validation:
+    needs: deploy-tools-prod
+    uses: ./.github/workflows/e2e-validation.yml
+    with:
+      environment: tools
+    secrets: inherit
