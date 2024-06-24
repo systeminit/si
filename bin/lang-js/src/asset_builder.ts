@@ -895,6 +895,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 export interface SecretDefinition {
   name: string;
   props: PropDefinition[];
+  connectionAnnotations?: string;
 }
 
 export interface ISecretDefinitionBuilder {
@@ -911,6 +912,7 @@ export interface ISecretDefinitionBuilder {
  * @example
  * const secretDefinition = new SecretDefinitionBuilder()
  *          .setName("DigitalOcean Token")
+ *         .setConnectionAnnotations("Registry Token")
  *         .addProp(
  *             new PropBuilder()
  *             .setKind("string")
@@ -931,6 +933,7 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
     this.definition = <SecretDefinition>{};
     this.definition.name = "";
     this.definition.props = [];
+    this.definition.connectionAnnotations = "";
   }
 
   /**
@@ -964,6 +967,21 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
    */
   addProp(prop: PropDefinition): this {
     this.definition.props?.push(prop);
+    return this;
+  }
+
+  /**
+   * Adds the specified connection annotations to the output socket for the secret
+   *
+   * @param {string} connectionAnnotations - the connection annotations to create for the output socket.
+   *
+   * @returns this
+   *
+   * @example
+   * .setConnectionAnnotation("Registry Token")
+   */
+  setConnectionAnnotation(connectionAnnotations: string): this {
+    this.definition.connectionAnnotations = connectionAnnotations;
     return this;
   }
 
@@ -1070,18 +1088,27 @@ export class AssetBuilder implements IAssetBuilder {
         .build(),
     );
 
-    this.addOutputSocket(
-      new SocketDefinitionBuilder()
-        .setArity("one")
-        .setName(definition.name)
-        .setValueFrom(
-          new ValueFromBuilder()
-            .setKind("prop")
-            .setPropPath(["root", "secrets", definition.name])
-            .build(),
-        )
-        .build(),
-    );
+    const outputSocketBuilder = new SocketDefinitionBuilder()
+      .setArity("one")
+      .setName(definition.name)
+      .setValueFrom(
+        new ValueFromBuilder()
+          .setKind("prop")
+          .setPropPath(["root", "secrets", definition.name])
+          .build(),
+      );
+
+    if (
+      definition.connectionAnnotations
+      && definition.connectionAnnotations !== ""
+    ) {
+      outputSocketBuilder.setConnectionAnnotation(
+        definition.connectionAnnotations,
+      );
+    }
+
+    const outputSocket = outputSocketBuilder.build();
+    this.addOutputSocket(outputSocket);
 
     return this;
   }
