@@ -3,6 +3,7 @@ use dal::action::Action;
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
+use dal::Workspace;
 use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{create_component_for_schema_name, encrypt_message};
@@ -132,6 +133,20 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         ActionKind::Create,           // expected
         create_action_prototype.kind, // actual
     );
+
+    // set workspace token as it is currently set by interacting with the auth-api
+    Workspace::get_by_pk(
+        ctx,
+        &ctx.tenancy()
+            .workspace_pk()
+            .expect("could not get workspace pk"),
+    )
+    .await
+    .expect("could not get workspace")
+    .expect("workspace is not some")
+    .set_token(ctx, "token".to_string())
+    .await
+    .expect("could not set token");
 
     // Ensure that the parent is head so that the "create" action will execute by default.
     // Technically, this primarily validates the test setup rather than the system itself, but it
