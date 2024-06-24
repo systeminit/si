@@ -37,7 +37,11 @@
       "
       v-model="editingAsset"
       :typescript="editor_ts"
-      :disabled="isReadOnly"
+      :disabled="
+        isReadOnly ||
+        (useFeatureFlagsStore().IMMUTABLE_SCHEMA_VARIANTS &&
+          selectedAsset.isLocked)
+      "
       @change="onChange"
     />
   </ScrollArea>
@@ -59,6 +63,7 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import SiChip from "@/components/SiChip.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { editor_ts } from "@/utils/load_editor_ts";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";

@@ -18,6 +18,7 @@ pub struct SchemaVariantMetadataView {
     display_name: String,
     color: String,
     component_type: ComponentType,
+    is_locked: bool,
     link: Option<String>,
     description: Option<String>,
     #[serde(flatten)]

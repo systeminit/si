@@ -60,7 +60,34 @@ export interface DetachedValidationPrototype {
   propKind: PropKind;
 }
 
+<<<<<<< HEAD
 export type SchemaVariantListEntry = SchemaVariant & {
+=======
+export interface ListedVariant {
+  id: AssetId;
+  defaultSchemaVariantId: string;
+  name: string;
+  displayName?: string;
+  category: string;
+  componentType: ComponentType;
+  color: string;
+  description: string;
+  funcs: FuncSummary[];
+  isLocked: boolean;
+  createdAt: IsoDateString;
+  updatedAt: IsoDateString;
+}
+
+export interface Variant extends ListedVariant {
+  link?: string;
+  code: string;
+  types?: string;
+  hasComponents: boolean;
+}
+
+export type Asset = Variant;
+export type AssetListEntry = ListedVariant & {
+>>>>>>> 096219c73 (Disabled inputs for assets that are locked)
   canUpdate: boolean;
   canContribute: boolean;
 };
@@ -261,7 +288,30 @@ export const useAssetStore = () => {
           ])}`;
         },
 
+<<<<<<< HEAD
         async CREATE_VARIANT(name: string) {
+=======
+        createNewAsset(): Asset {
+          return {
+            id: nilId(),
+            defaultSchemaVariantId: "",
+            name: `new asset ${Math.floor(Math.random() * 10000)}`,
+            code: "",
+            color: this.generateMockColor(),
+            description: "",
+            category: "",
+            componentType: ComponentType.Component,
+            link: "https://www.systeminit.com/",
+            funcs: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            hasComponents: false,
+            isLocked: false,
+          };
+        },
+
+        async CREATE_ASSET(asset: Asset) {
+>>>>>>> 096219c73 (Disabled inputs for assets that are locked)
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === changeSetsStore.headChangeSetId)
@@ -460,12 +510,36 @@ export const useAssetStore = () => {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "SchemaVariantCreated",
+<<<<<<< HEAD
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
               const v = variant as SchemaVariantListEntry;
               v.canContribute = false;
               v.canUpdate = false;
               this.variantList.push(v);
+=======
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              const nowTs = new Date().toISOString();
+              const variant = {
+                id: data.schemaId,
+                defaultSchemaVariantId: data.schemaVariantId,
+                name: data.name,
+                displayName: "",
+                category: data.category,
+                componentType: ComponentType.Component,
+                color: data.color,
+                description: "",
+                funcs: [],
+                createdAt: nowTs,
+                updatedAt: nowTs,
+                canUpdate: false,
+                canContribute: false,
+                isLocked: false,
+              } as AssetListEntry;
+
+              this.assetList.push(variant);
+>>>>>>> 096219c73 (Disabled inputs for assets that are locked)
             },
           },
           {

@@ -36,6 +36,7 @@ pub struct GetVariantResponse {
     pub funcs: Vec<FuncSummary>,
     pub types: String,
     pub has_components: bool,
+    pub is_locked: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -79,6 +80,7 @@ pub async fn get_variant(
         funcs,
         types: "".to_string(),
         has_components: false,
+        is_locked: variant.is_locked(),
     };
 
     if let Some(authoring_func) = variant.asset_func_id() {
