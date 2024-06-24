@@ -1,10 +1,10 @@
 use dal::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{AttributeValue, Component, DalContext};
-use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_schema_name, PropEditorTestView,
 };
+use dal_test::helpers::{extract_value_and_validation, ChangeSetTestHelpers};
 use dal_test::test;
 use serde_json::json;
 
@@ -31,7 +31,7 @@ async fn validation_format_errors(ctx: &mut DalContext) {
                 "message": "JoiValidationJsonParsingError: Unexpected token ' in JSON at position 0",
             }
         }),
-        extract_value_and_validation(prop_view)
+        extract_value_and_validation(prop_view).expect("could not extract")
     );
 
     let bad_format_path = &["root", "domain", "bad_validation_format"];
@@ -49,7 +49,7 @@ async fn validation_format_errors(ctx: &mut DalContext) {
                 "message": "JoiValidationFormatError: validationFormat must be of type object",
             }
         }),
-        extract_value_and_validation(prop_view)
+        extract_value_and_validation(prop_view).expect("could not extract")
     );
 }
 
@@ -84,7 +84,7 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": "\"value\" is required",
             }
         }),
-        extract_value_and_validation(prop_view)
+        extract_value_and_validation(prop_view).expect("could not extract")
     );
 
     AttributeValue::update(ctx, av_id, Some(json!(1)))
@@ -109,7 +109,7 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": null,
             }
         }),
-        extract_value_and_validation(prop_view)
+        extract_value_and_validation(prop_view).expect("could not extract")
     );
 
     AttributeValue::update(ctx, av_id, Some(json!(3)))
@@ -134,7 +134,7 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
                 "message": "\"value\" must be less than or equal to 2",
             }
         }),
-        extract_value_and_validation(prop_view)
+        extract_value_and_validation(prop_view).expect("could not extract")
     );
 }
 
@@ -189,7 +189,7 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         .expect("could not get value");
 
     // Check validations and values
-    let source_result = extract_value_and_validation(source_prop_view);
+    let source_result = extract_value_and_validation(source_prop_view).expect("could not extract");
     assert_eq!(
         json!({
             "value": 1,
@@ -202,7 +202,8 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         source_result
     );
 
-    let destination_result = extract_value_and_validation(destination_prop_view);
+    let destination_result =
+        extract_value_and_validation(destination_prop_view).expect("could not extract");
     assert_eq!(source_result, destination_result,);
 
     AttributeValue::update(ctx, av_id, Some(json!(3)))
@@ -224,7 +225,7 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         .get_value(prop_path)
         .expect("could not get value");
 
-    let source_result = extract_value_and_validation(source_prop_view);
+    let source_result = extract_value_and_validation(source_prop_view).expect("could not extract");
     assert_eq!(
         json!({
             "value": 3,
@@ -237,7 +238,8 @@ async fn validation_on_dependent_value(ctx: &mut DalContext) {
         source_result
     );
 
-    let destination_result = extract_value_and_validation(destination_prop_view);
+    let destination_result =
+        extract_value_and_validation(destination_prop_view).expect("could not extract");
     assert_eq!(source_result, destination_result,);
 }
 
@@ -386,18 +388,4 @@ async fn validation_qualification(ctx: &mut DalContext) {
         }),
         serde_json::to_value(validation_qualification).expect("serialise qualification")
     );
-}
-
-fn extract_value_and_validation(prop_editor_value: serde_json::Value) -> serde_json::Value {
-    let value = prop_editor_value
-        .get("value")
-        .expect("get value from property editor value");
-    let validation = prop_editor_value
-        .get("validation")
-        .expect("get validation from property editor value");
-
-    json!({
-        "value": value,
-        "validation": validation,
-    })
 }

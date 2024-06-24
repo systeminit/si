@@ -305,6 +305,9 @@ impl PropDefinition {
                 builder.map_key_func(map_key_func.to_spec(identity_func_unique_id)?);
             }
         }
+        if let Some(validation_format) = &self.validation_format {
+            builder.validation_format(validation_format);
+        }
 
         Ok(builder.build()?)
     }
