@@ -45,6 +45,8 @@ rust_binary(
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
         "firecracker-setup.sh": "//lib/si-firecracker:firecracker-setup.sh",
+        "prepare_jailer.sh": "//lib/si-firecracker:prepare_jailer.sh",
+        "stop.sh": "//lib/si-firecracker:stop.sh",
     },
     visibility = ["PUBLIC"],
 )

@@ -6,16 +6,19 @@ use thiserror::Error;
 pub enum FirecrackerJailError {
     // Failed to clean a jail
     #[error("Failed to clean a jail: {0}")]
-    Clean(String),
+    Clean(#[source] tokio::io::Error),
+    // Failed running a script to output
+    #[error("Failed to run a script: {0}")]
+    Output(String),
     // Failed to prepare a jail
     #[error("Failed to prepare a jail: {0}")]
-    Prepare(String),
+    Prepare(#[source] tokio::io::Error),
     // Failed to setup firecracker
     #[error("Failed to setup firecracker: {0}")]
-    Setup(String),
+    Setup(#[from] tokio::io::Error),
     // Failed to spawn firecracker
     #[error("Failed to spawn firecracker: {0}")]
-    Spawn(String),
+    Spawn(#[source] tokio::io::Error),
     // Failed to terminate firecracker
     #[error("Failed to terminate firecracker: {0}")]
     Terminate(#[from] cyclone_core::process::ShutdownError),
