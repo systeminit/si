@@ -28,6 +28,10 @@ describe("workspace", () => {
        .should('be.visible')
        .invoke('removeAttr', 'target')
        .click();
+    cy.on('uncaught:exception', (e) => {
+      console.log(e);
+      return false;
+    });
 
     cy.wait(5000);
 

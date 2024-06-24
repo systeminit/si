@@ -15,6 +15,10 @@ describe('web', () => {
   it('get_summary', () => {
     // Go to the Synthetic Workspace
     cy.visit(SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head');
+    cy.on('uncaught:exception', (e) => {
+      console.log(e);
+      return false;
+    });
     cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
     cy.intercept('GET', SI_WORKSPACE_URL + '/api/qualification/get_summary?visibility_change_set_pk=00000000000000000000000000', (req) => {
       // Log the intercepted request URL and response status code

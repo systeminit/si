@@ -89,8 +89,8 @@
               v-if="editingFunc?.associations?.type === 'action'"
               icon="alert-triangle"
               tone="warning"
-              >Executing will run on all attached components, so may have
-              effects on your real world resources!
+              >Executing this will run on all attached components and may affect
+              your real-world resources!
             </ErrorMessage>
             <ErrorMessage
               v-if="isConnectedToOtherAssetTypes"

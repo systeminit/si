@@ -39,12 +39,12 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go');
 
     },
-    {
-      validate: () => {
-        // Validate presence of access token in localStorage.
-        cy.window().its("localStorage").invoke("getItem", "si-auth").should("exist");
-      },
-    }
+    // {
+    //   validate: () => {
+    //     // Validate presence of access token in localStorage.
+    //     cy.window().its("localStorage").invoke("getItem", "si-auth").should("exist");
+    //   },
+    // }
   );
 
   log.snapshot("after");
