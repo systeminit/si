@@ -31,10 +31,15 @@ impl SchemaVariantMetadataView {
         for schema in schemas {
             let default_schema_variant =
                 SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+            let name = schema.name.to_owned();
+            let display_name = match default_schema_variant.display_name() {
+                Some(display_name) => display_name,
+                _ => name.clone(),
+            };
             views.push(SchemaVariantMetadataView {
                 id: schema.id,
                 default_schema_variant_id: default_schema_variant.id,
-                name: schema.name.to_owned(),
+                name,
                 category: default_schema_variant.category.to_owned(),
                 color: default_schema_variant.get_color(ctx).await?,
                 timestamp: default_schema_variant.timestamp.to_owned(),
@@ -43,8 +48,9 @@ impl SchemaVariantMetadataView {
                     .await?
                     .unwrap_or(ComponentType::Component),
                 link: default_schema_variant.link.to_owned(),
-                description: default_schema_variant.description,
-                display_name: default_schema_variant.display_name,
+                description: default_schema_variant.description(),
+                display_name,
+                is_locked: default_schema_variant.is_locked(),
             })
         }
 
