@@ -103,7 +103,7 @@ export type AssetCreateRequest = Omit<
   AssetSaveRequest,
   "id" | "definition" | "variantExists"
 >;
-export type AssetCloneRequest = Visibility & { id: AssetId };
+export type AssetCloneRequest = Visibility & { id: AssetId; name: string };
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
   (asset.displayName ?? "").length === 0 ? asset.name : asset.displayName;
@@ -298,11 +298,13 @@ export const useAssetStore = () => {
           ])}`;
         },
 
-        createNewAsset(): Asset {
+        createNewAsset(name?: string): Asset {
+          name = name || `new asset ${Math.floor(Math.random() * 10000)}`;
           return {
             id: nilId(),
             defaultSchemaVariantId: "",
-            name: `new asset ${Math.floor(Math.random() * 10000)}`,
+            name,
+            displayName: name,
             code: "",
             color: this.generateMockColor(),
             description: "",
@@ -339,7 +341,7 @@ export const useAssetStore = () => {
           });
         },
 
-        async CLONE_ASSET(assetId: AssetId) {
+        async CLONE_ASSET(assetId: AssetId, name: string) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -355,6 +357,7 @@ export const useAssetStore = () => {
             params: {
               ...visibility,
               id: assetId,
+              name,
             },
           });
         },

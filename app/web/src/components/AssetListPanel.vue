@@ -24,7 +24,7 @@
             tooltip="New Asset"
             tooltipPlacement="top"
             loadingTooltip="Creating Asset..."
-            @click="newAsset"
+            @click="() => newAssetModalRef?.modal?.open()"
           />
           <IconButton
             v-if="canContribute || true"
@@ -47,6 +47,12 @@
             tooltipPlacement="top"
           />
         </div>
+        <AssetNameModal
+          ref="newAssetModalRef"
+          title="New Asset"
+          buttonLabel="Create Asset"
+          @submit="(name) => newAsset(name)"
+        />
       </SidebarSubpanelTitle>
       <SiSearch
         ref="searchRef"
@@ -122,6 +128,7 @@ import {
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { getAssetIcon } from "@/store/components.store";
+import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
@@ -133,6 +140,7 @@ const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 const createAssetReqStatus = assetStore.getRequestStatus("CREATE_ASSET");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
+const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
 
 const contributeLoadingTexts = [
   "Engaging Photon Torpedos...",
@@ -219,10 +227,17 @@ const categoryColor = (category: string) => {
   return "#000";
 };
 
-const newAsset = async () => {
-  const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
+const newAsset = async (newAssetName: string) => {
+  const result = await assetStore.CREATE_ASSET(
+    assetStore.createNewAsset(newAssetName),
+  );
   if (result.result.success) {
     assetStore.setAssetSelection(result.result.data.id);
+    newAssetModalRef.value?.modal?.close();
+  } else if (result.result.statusCode === 409) {
+    if (newAssetModalRef.value) {
+      newAssetModalRef.value.setError("That name is already in use");
+    }
   }
 };
 

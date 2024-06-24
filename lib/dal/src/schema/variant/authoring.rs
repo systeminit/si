@@ -20,9 +20,8 @@ use crate::pkg::import::import_only_new_funcs;
 use crate::pkg::{import_pkg_from_pkg, PkgError};
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use crate::{
-    generate_unique_id, pkg, ComponentType, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, Schema, SchemaError, SchemaVariant,
-    SchemaVariantError, SchemaVariantId,
+    pkg, ComponentType, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
+    FuncId, Schema, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId,
 };
 
 #[allow(missing_docs)]
@@ -159,22 +158,22 @@ impl VariantAuthoringClient {
     pub async fn clone_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
+        name: String,
     ) -> VariantAuthoringResult<(SchemaVariant, Schema)> {
         println!("clone variant");
         let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
 
-        let new_name = format!("{} Clone {}", schema.name(), generate_unique_id(4));
         let menu_name = variant.display_name().map(|mn| format!("{mn} Clone"));
 
         if let Some(asset_func_id) = variant.asset_func_id() {
             let old_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
 
-            let cloned_func = old_func.duplicate(ctx, new_name.clone()).await?;
+            let cloned_func = old_func.duplicate(ctx, name.clone()).await?;
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
             let definition = execute_asset_func(ctx, &cloned_func).await?;
             let metadata = SchemaVariantMetadataJson {
-                name: new_name.clone(),
+                name: name,
                 menu_name: menu_name.clone(),
                 category: variant.category().to_string(),
                 color: variant.get_color(ctx).await?,

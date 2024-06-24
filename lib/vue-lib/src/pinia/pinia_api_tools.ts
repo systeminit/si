@@ -106,7 +106,12 @@ export class ApiRequest<
   // ie, checking success guarantees data is present
   get result():
     | { success: true; data: Response }
-    | { success: false; err: Error; errBody?: any } {
+    | {
+        success: false;
+        err: Error;
+        errBody?: any;
+        statusCode?: number | undefined;
+      } {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     if (this.rawSuccess === undefined)
       throw new Error("You must await the request to access the result");
@@ -121,6 +126,7 @@ export class ApiRequest<
         // the (json) body of the failed request, if applicable
         ...(this.rawResponseError instanceof AxiosError && {
           errBody: this.rawResponseError.response?.data,
+          statusCode: this.rawResponseError.response?.status,
         }),
       };
     }
