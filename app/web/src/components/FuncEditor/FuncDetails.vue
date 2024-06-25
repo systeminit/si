@@ -298,7 +298,6 @@ const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 
 const emit = defineEmits<{
-  (e: "detached"): void;
   (e: "expandPanel"): void;
 }>();
 
@@ -389,7 +388,7 @@ const execFunc = () => {
 const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
-    await detachRef.value.detachFunc();
+    const associations = await detachRef.value.detachFunc();
     if (assetStore.selectedAssetId)
       assetStore.LOAD_ASSET(assetStore.selectedAssetId); // reloads the fn list
     if (funcStore.selectedFuncId)
@@ -401,16 +400,14 @@ const detachFunc = async () => {
       );
     funcStore.selectedFuncId = undefined; // brings you back to the asset detail
 
-    /* this code was never reachable
     if (associations && editingFunc.value) {
       isDetaching.value = true;
       await funcStore.UPDATE_FUNC({
         ...editingFunc.value,
         associations,
       });
-      emit("detached");
       isDetaching.value = false;
-    } */
+    }
   }
 };
 

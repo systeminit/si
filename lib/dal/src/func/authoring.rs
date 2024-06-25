@@ -46,7 +46,7 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototypeError};
+use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
@@ -59,9 +59,10 @@ use crate::func::FuncKind;
 use crate::prop::PropError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototypeId, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId, SchemaVariantError,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEventError,
+    AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
+    WsEventError,
 };
 
 use super::runner::{FuncRunner, FuncRunnerError};
@@ -435,6 +436,33 @@ impl FuncAuthoringClient {
             );
         }
 
+        Ok(())
+    }
+
+    /// For a given [`FuncId`], regardless of what kind of [`Func`] it is, look for all associated bindings and remove
+    /// them from every currently attached [`SchemaVariant`]
+    pub async fn detach_func_from_everywhere(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncAuthoringResult<()> {
+        // first check for attribute prototypes
+        let maybe_attribute_prototypes =
+            AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
+        for attribute_prototype in maybe_attribute_prototypes {
+            save::reset_attribute_prototype(ctx, attribute_prototype, true).await?;
+        }
+
+        // then check for and remove authentication prototypes
+        for schema_variant_id in
+            SchemaVariant::list_schema_variant_ids_using_auth_func_id(ctx, func_id).await?
+        {
+            SchemaVariant::remove_authentication_prototype(ctx, func_id, schema_variant_id).await?;
+        }
+
+        // then check for and remove action prototypes
+        for action_prototype_id in ActionPrototype::list_for_func_id(ctx, func_id).await? {
+            ActionPrototype::remove(ctx, action_prototype_id).await?;
+        }
         Ok(())
     }
 
