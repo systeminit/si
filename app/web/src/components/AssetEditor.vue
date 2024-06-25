@@ -36,13 +36,10 @@
           : `asset-${assetId}`
       "
       v-model="editingAsset"
+      :typescript="editor_ts"
       :disabled="isReadOnly"
       @change="onChange"
     />
-    <!--
-      TODO: jobelenus
-      :typescript="selectedAsset?.types"
-    -->
   </ScrollArea>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>
@@ -61,6 +58,7 @@ import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SiChip from "@/components/SiChip.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { editor_ts } from "@/utils/load_editor_ts";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";
