@@ -27,7 +27,7 @@
             @click="() => newAssetModalRef?.modal?.open()"
           />
           <IconButton
-            v-if="canContribute || true"
+            v-if="canContribute"
             class="hover:scale-125"
             icon="cloud-upload"
             size="sm"

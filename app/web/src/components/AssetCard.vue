@@ -1,12 +1,7 @@
 <template>
   <div
     v-if="asset"
-    :class="
-      clsx(
-        'p-xs border-l-4 border relative',
-        titleCard ? 'mb-xs' : 'rounded-md',
-      )
-    "
+    :class="clsx('p-xs border-l-4 border relative', !titleCard && 'rounded-md')"
     :style="{
       borderColor: asset.color,
       backgroundColor: `#${bodyBg.toHex()}`,

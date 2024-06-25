@@ -15,247 +15,240 @@
   </LoadingMessage>
   <div
     v-else-if="selectedFuncId && editingFunc"
-    :class="
-      clsx(
-        singleModelScreen ? 'relative' : 'absolute',
-        'h-full w-full flex flex-col overflow-hidden',
-      )
-    "
+    :class="clsx('h-full w-full flex flex-col overflow-hidden')"
   >
-    <TabGroup
-      ref="funcDetailsTabGroupRef"
-      marginTop="2xs"
-      @update:selected-tab="expandTestPanel"
-    >
-      <TabGroupItem label="Properties" slug="properties">
-        <div
-          class="flex flex-col absolute inset-0 overflow-y-auto overflow-x-hidden"
-        >
-          <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
-            <div class="flex gap-2xs flex-wrap">
-              <VButton
-                v-if="enableTestPanel"
-                class="--tone-action"
-                icon="save"
-                size="md"
-                label="Test"
-                @click="funcDetailsTabGroupRef.selectTab('test')"
-              />
+    <div class="flex flex-col">
+      <ErrorMessage
+        v-if="editingFunc?.associations?.type === 'action'"
+        icon="alert-triangle"
+        tone="warning"
+        variant="block"
+        >Executing this will run on all attached components and may affect your
+        real-world resources!
+      </ErrorMessage>
+      <ErrorMessage
+        v-if="execFuncReqStatus.isError"
+        :requestStatus="execFuncReqStatus"
+        variant="block"
+      />
+      <ErrorMessage
+        v-if="isConnectedToOtherAssetTypes"
+        icon="alert-triangle"
+        variant="block"
+        tone="warning"
+      >
+        This function is connected to other
+        {{
+          editingFunc?.associations &&
+          editingFunc?.associations?.type === "attribute"
+            ? "attributes"
+            : "assets"
+        }}.
+      </ErrorMessage>
 
-              <VButton
-                v-if="
-                  funcStore.selectedFuncDetails &&
-                  funcStore.selectedFuncDetails?.associations?.type !==
-                    'authentication'
-                "
-                class="--tone-success"
-                icon="save"
-                size="md"
-                loadingText="Executing..."
-                label="Execute"
-                :requestStatus="execFuncReqStatus"
-                successText="Finished"
-                @click="execFunc"
-              />
+      <SidebarSubpanelTitle
+        icon="func"
+        :label="selectedFuncSummary?.name"
+        variant="subtitle"
+      />
 
-              <VButton
-                v-if="schemaVariantId"
-                :loading="isDetaching"
-                tone="destructive"
-                icon="x"
-                label="Detach"
-                size="md"
-                loadingText="Detaching..."
-                @click="detachFunc"
-              />
-
-              <VButton
-                :loading="isDeleting"
-                tone="destructive"
-                :disabled="hasAssociations"
-                icon="x"
-                label="Delete"
-                size="md"
-                loadingText="Deleting..."
-                @click="deleteFunc"
-              />
-            </div>
-
-            <ErrorMessage
-              v-if="execFuncReqStatus.isError"
-              :requestStatus="execFuncReqStatus"
-            />
-            <ErrorMessage
-              v-if="editingFunc?.associations?.type === 'action'"
-              icon="alert-triangle"
-              tone="warning"
-              >Executing this will run on all attached components and may affect
-              your real-world resources!
-            </ErrorMessage>
-            <ErrorMessage
-              v-if="isConnectedToOtherAssetTypes"
-              icon="alert-triangle"
-              tone="warning"
+      <div
+        class="flex flex-row gap-2xs items-center justify-evenly py-xs border-b border-neutral-200 dark:border-neutral-600"
+      >
+        <IconButton
+          icon="save"
+          loadingIcon="loader"
+          iconTone="success"
+          loadingTooltip="Executing..."
+          tooltip="Execute"
+          tooltipPlacement="top"
+          :requestStatus="execFuncReqStatus"
+          :disabled="
+            !(
+              funcStore.selectedFuncDetails &&
+              funcStore.selectedFuncDetails?.associations?.type !==
+                'authentication'
+            )
+          "
+          @click="execFunc"
+        />
+        <IconButton
+          tooltip="Test"
+          tooltipPlacement="top"
+          icon="test-tube"
+          iconTone="action"
+          :disabled="!enableTestPanel"
+          @click="funcDetailsTabGroupRef.selectTab('test')"
+        />
+        <IconButton
+          :loading="isDetaching"
+          iconTone="warning"
+          icon="unlink"
+          tooltip="Detach"
+          tooltipPlacement="top"
+          loadingTooltip="Detaching..."
+          :disabled="!schemaVariantId"
+          @click="detachFunc"
+        />
+        <IconButton
+          :loading="isDeleting"
+          iconTone="destructive"
+          :disabled="hasAssociations"
+          icon="trash"
+          tooltip="Delete"
+          tooltipPlacement="top"
+          loadingTooltip="Deleting..."
+          @click="deleteFunc"
+        />
+      </div>
+    </div>
+    <div class="flex-grow relative">
+      <TabGroup
+        ref="funcDetailsTabGroupRef"
+        growTabsToFillWidth
+        variant="fullsize"
+      >
+        <TabGroupItem label="Properties" slug="properties">
+          <div
+            class="flex flex-col absolute inset-0 overflow-y-auto overflow-x-hidden border-t border-neutral-200 dark:border-neutral-600"
+          >
+            <TreeNode
+              label="Attributes"
+              defaultOpen
+              enableGroupToggle
+              alwaysShowArrow
+              noIndentationOrLeftBorder
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
             >
-              This function is connected to other
-              {{
-                editingFunc?.associations &&
-                editingFunc?.associations?.type === "attribute"
-                  ? "attributes"
-                  : "assets"
-              }}.
-            </ErrorMessage>
-          </Stack>
+              <Stack class="p-xs" spacing="none">
+                <VormInput
+                  v-model="editingFunc.name"
+                  label="Name"
+                  required
+                  compact
+                  @blur="updateFunc"
+                />
+                <VormInput
+                  v-model="editingFunc.displayName"
+                  label="Display Name"
+                  required
+                  compact
+                  @blur="updateFunc"
+                />
+                <VormInput
+                  v-model="editingFunc.description"
+                  type="textarea"
+                  compact
+                  label="Description"
+                  @blur="updateFunc"
+                />
+              </Stack>
+            </TreeNode>
 
-          <!-- <TreeNode
-            label="Logs"
-            defaultOpen
-            enableGroupToggle
-            alwaysShowArrow
-            indentationSize="none"
-            leftBorderSize="none"
-            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
-          >
-            {{ lastExecutionLog }}
-            <VButton @click="getLastExecution">Load</VButton>
-          </TreeNode> -->
-
-          <TreeNode
-            label="Attributes"
-            defaultOpen
-            enableGroupToggle
-            alwaysShowArrow
-            noIndentationOrLeftBorder
-            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
-          >
-            <Stack class="p-xs" spacing="none">
-              <VormInput
-                v-model="editingFunc.name"
-                label="Name"
-                required
-                compact
-                @blur="updateFunc"
-              />
-              <VormInput
-                v-model="editingFunc.displayName"
-                label="Display Name"
-                required
-                compact
-                @blur="updateFunc"
-              />
-              <VormInput
-                v-model="editingFunc.description"
-                type="textarea"
-                compact
-                label="Description"
-                @blur="updateFunc"
-              />
-            </Stack>
-          </TreeNode>
-
-          <ActionDetails
-            v-if="editingFunc.associations?.type === 'action'"
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :requestStatus="updateFuncReqStatus"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
-          <AuthenticationDetails
-            v-if="editingFunc.associations?.type === 'authentication'"
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
-          <CodeGenerationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'codeGeneration'
-            "
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
-          <QualificationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'qualification'
-            "
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
-
-          <TreeNode
-            v-if="editingFunc.kind === FuncKind.Attribute"
-            label="Arguments"
-            defaultOpen
-            enableGroupToggle
-            alwaysShowArrow
-            indentationSize="none"
-            leftBorderSize="none"
-            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
-          >
-            <FuncArguments
-              v-if="
-                editingFunc.associations &&
-                editingFunc.associations.type === 'attribute'
-              "
-              :funcId="editingFunc.id"
+            <ActionDetails
+              v-if="editingFunc.associations?.type === 'action'"
+              ref="detachRef"
+              v-model="editingFunc.associations"
+              :requestStatus="updateFuncReqStatus"
+              :schemaVariantId="schemaVariantId"
+              @change="updateFunc"
             />
-          </TreeNode>
-
-          <TreeNode
-            v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
-            label="Bindings"
-            defaultOpen
-            enableGroupToggle
-            alwaysShowArrow
-            indentationSize="none"
-            leftBorderSize="none"
-            labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-            childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
-          >
-            <AttributeBindings
+            <AuthenticationDetails
+              v-if="editingFunc.associations?.type === 'authentication'"
+              ref="detachRef"
+              v-model="editingFunc.associations"
+              :schemaVariantId="schemaVariantId"
+              @change="updateFunc"
+            />
+            <CodeGenerationDetails
               v-if="
                 editingFunc.associations &&
-                editingFunc.associations.type === 'attribute'
+                editingFunc.associations.type === 'codeGeneration'
               "
               ref="detachRef"
               v-model="editingFunc.associations"
               :schemaVariantId="schemaVariantId"
               @change="updateFunc"
             />
-          </TreeNode>
-        </div>
-      </TabGroupItem>
+            <QualificationDetails
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'qualification'
+              "
+              ref="detachRef"
+              v-model="editingFunc.associations"
+              :schemaVariantId="schemaVariantId"
+              @change="updateFunc"
+            />
 
-      <TabGroupItem
-        v-if="editingFunc.kind === FuncKind.Attribute"
-        label="Bindings"
-        slug="bindings"
-      >
-        <AttributeBindings
-          v-if="
-            editingFunc.associations &&
-            editingFunc.associations.type === 'attribute'
-          "
-          ref="detachRef"
-          v-model="editingFunc.associations"
-          @change="updateFunc"
-        />
-      </TabGroupItem>
+            <TreeNode
+              v-if="editingFunc.kind === FuncKind.Attribute"
+              label="Arguments"
+              defaultOpen
+              enableGroupToggle
+              alwaysShowArrow
+              indentationSize="none"
+              leftBorderSize="none"
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+            >
+              <FuncArguments
+                v-if="
+                  editingFunc.associations &&
+                  editingFunc.associations.type === 'attribute'
+                "
+                :funcId="editingFunc.id"
+              />
+            </TreeNode>
 
-      <TabGroupItem v-if="enableTestPanel" label="Test" slug="test">
-        <FuncTest />
-      </TabGroupItem>
-    </TabGroup>
+            <TreeNode
+              v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
+              label="Bindings"
+              defaultOpen
+              enableGroupToggle
+              alwaysShowArrow
+              indentationSize="none"
+              leftBorderSize="none"
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+            >
+              <AttributeBindings
+                v-if="
+                  editingFunc.associations &&
+                  editingFunc.associations.type === 'attribute'
+                "
+                ref="detachRef"
+                v-model="editingFunc.associations"
+                :schemaVariantId="schemaVariantId"
+                @change="updateFunc"
+              />
+            </TreeNode>
+          </div>
+        </TabGroupItem>
+
+        <TabGroupItem
+          v-if="editingFunc.kind === FuncKind.Attribute"
+          label="Bindings"
+          slug="bindings"
+        >
+          <AttributeBindings
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'attribute'
+            "
+            ref="detachRef"
+            v-model="editingFunc.associations"
+            class="border-t border-neutral-200 dark:border-neutral-600"
+            @change="updateFunc"
+          />
+        </TabGroupItem>
+
+        <TabGroupItem v-if="enableTestPanel" label="Test" slug="test">
+          <FuncTest />
+        </TabGroupItem>
+      </TabGroup>
+    </div>
   </div>
   <div
     v-else
@@ -276,7 +269,6 @@ import {
   TabGroup,
   TabGroupItem,
   TreeNode,
-  VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -291,11 +283,12 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
 import EmptyStateCard from "../EmptyStateCard.vue";
+import IconButton from "../IconButton.vue";
+import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 
 const props = defineProps<{
   funcId?: FuncId;
   schemaVariantId?: string;
-  singleModelScreen?: boolean;
   allowTestPanel?: boolean;
 }>();
 
@@ -436,12 +429,6 @@ const hasAssociations = computed(() => {
   }
   return false;
 });
-
-const expandTestPanel = (selectedTabSlug: string | undefined) => {
-  if (selectedTabSlug === "test") {
-    emit("expandPanel");
-  }
-};
 
 // The parent component can allow the test panel to be enabled, but we need to dynamically enable
 // it based on the func kind.

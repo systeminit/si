@@ -13,7 +13,7 @@
       v-if="filter.iconName"
       :name="filter.iconName"
       size="sm"
-      :class="clsx(iconClasses, filter.iconName.includes('logo') && 'mx-2xs')"
+      :class="clsx(iconClasses, extraPadding && 'mx-2xs')"
       :style="filter.iconColor && !selected ? { color: filter.iconColor } : {}"
     />
     <div class="pr-2xs">
@@ -41,4 +41,14 @@ const iconClasses = computed(() => {
     return getToneTextColorClass(props.filter.iconTone);
   } else return "";
 });
+
+// Add an icon to this list if it needs to have additional X padding to look right
+const extraPaddingIcons = ["cloud-upload", "code-deployed"];
+
+const extraPadding = computed(
+  () =>
+    props.filter.iconName &&
+    (props.filter.iconName.includes("logo") ||
+      extraPaddingIcons.includes(props.filter.iconName)),
+);
 </script>
