@@ -29,6 +29,16 @@ export function connectionAnnotationFitsReference(
   { tokens: targetCa }: ConnectionAnnotation,
   { tokens: referenceCa }: ConnectionAnnotation,
 ) {
+  // If the length is longer than 1, we assume you have already parsed the
+  // connection annotations. Otherwise, we need to parse them.
+  if (targetCa.length === 1) {
+    // @ts-ignore
+    targetCa = parseConnectionAnnotation(targetCa[0]);
+  }
+  if (referenceCa.length === 1) {
+    // @ts-ignore
+    referenceCa = parseConnectionAnnotation(referenceCa[0]);
+  }
   // a fitting target annotation is either the same as the reference one or a supertype thereof
   const lowerTargetCa = _.map(targetCa, (a) => a.toLowerCase());
   const lowerReferenceCa = _.map(referenceCa, (a) => a.toLowerCase());
