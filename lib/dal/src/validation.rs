@@ -7,6 +7,7 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::value::AttributeValueError;
 use crate::func::backend::validation::ValidationRunResult;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::layer_db_types::{ValidationContent, ValidationContentV1};
@@ -22,18 +23,18 @@ use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
     Component, ComponentId, FuncError, HistoryEventError, Prop, Timestamp,
 };
-use crate::{DalContext, TransactionsError};
+use crate::{ComponentError, DalContext, TransactionsError};
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ValidationError {
     #[error("attribute value error: {0}")]
-    AttributeValue(String),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
-    Component(String),
+    Component(#[from] Box<ComponentError>),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -265,7 +266,7 @@ impl ValidationOutput {
         Ok(
             if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, attribute_value_id)
                 .await
-                .map_err(|e| ValidationError::AttributeValue(e.to_string()))?
+                .map_err(Box::new)?
             {
                 let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
                 prop.validation_format
@@ -348,11 +349,11 @@ impl ValidationOutput {
     ) -> ValidationResult<Vec<(AttributeValueId, ValidationOutput)>> {
         let component = Component::get_by_id(ctx, component_id)
             .await
-            .map_err(|e| ValidationError::Component(e.to_string()))?;
+            .map_err(Box::new)?;
         let domain_av = component
             .domain_prop_attribute_value(ctx)
             .await
-            .map_err(|e| ValidationError::Component(e.to_string()))?;
+            .map_err(Box::new)?;
 
         let mut outputs = vec![];
         let mut queue = VecDeque::from(vec![domain_av]);
@@ -365,7 +366,7 @@ impl ValidationOutput {
             let children_av_ids =
                 AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
                     .await
-                    .map_err(|e| ValidationError::AttributeValue(e.to_string()))?;
+                    .map_err(Box::new)?;
 
             queue.extend(children_av_ids);
 

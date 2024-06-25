@@ -228,3 +228,20 @@ pub async fn fetch_resource_last_synced_value(
         .await?;
     Ok(last_synced_value)
 }
+
+/// Extracts the value and validation from a raw property edtior value.
+pub fn extract_value_and_validation(
+    prop_editor_value: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let value = prop_editor_value
+        .get("value")
+        .ok_or(eyre!("get value from property editor value"))?;
+    let validation = prop_editor_value
+        .get("validation")
+        .ok_or(eyre!("get validation from property editor value"))?;
+
+    Ok(serde_json::json!({
+        "value": value,
+        "validation": validation,
+    }))
+}

@@ -286,7 +286,8 @@
 
       <div
         :class="{
-          'force-border-red-400': validation && validation.status !== 'Success',
+          'force-border-destructive-500':
+            validation && validation.status !== 'Success',
           'my-1': validation && validation.status !== 'Success',
         }"
         class="attributes-panel-item__input-wrap"
@@ -474,7 +475,7 @@
     <div
       v-if="showValidationDetails && validation"
       :style="{ marginLeft: indentPx }"
-      class="text-red-400 flex flex-col bg-black pl-3 border-y border-red-400 pb-1 my-1"
+      class="flex flex-col pl-3 border pb-1 m-2 text-destructive-500 border-destructive-500 bg-destructive-100 dark:text-destructive-900 dark:border-destructive-900 dark:bg-destructive-500"
     >
       <p class="my-3">{{ validation.message }}</p>
 
@@ -1269,8 +1270,8 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   }
 }
 
-.force-border-red-400 {
-  border-color: rgb(251 113 133 / var(--tw-border-opacity)) !important;
+.force-border-destructive-500 {
+  border-color: @colors-destructive-500 !important;
 }
 .attributes-panel-item__input-wrap {
   position: relative;
