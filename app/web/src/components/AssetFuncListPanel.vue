@@ -27,7 +27,7 @@
       />
       <template v-else>
         <EmptyStateCard
-          v-if="assetStore.selectedAssets.length > 1"
+          v-if="assetStore.selectedSchemaVariants.length > 1"
           iconName="funcs"
           primaryText="Cannot Select Functions"
           secondaryText="You have selected multiple assets above. To select a function, select one asset."
