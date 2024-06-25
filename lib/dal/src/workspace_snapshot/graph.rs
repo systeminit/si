@@ -12,12 +12,14 @@ use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::{ulid::Ulid, ContentHash};
+use si_layer_cache::db::serialize;
 use thiserror::Error;
 
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::edge_info::EdgeInfo;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
@@ -77,6 +79,8 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWithIdNotFound(Ulid),
     #[error("No Prop found for NodeIndex {0:?}")]
     NoPropFound(NodeIndex),
+    #[error("Ordering node {0} has id in its order for non-existent node {1}")]
+    OrderingNodeHasNonexistentNodeInOrder(Ulid, Ulid),
     #[error("NodeIndex has too many Ordering children: {0:?}")]
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
@@ -1182,7 +1186,21 @@ impl WorkspaceSnapshotGraph {
         })
     }
 
-    #[allow(dead_code, clippy::disallowed_methods)]
+    /// Write the graph to disk. This *MAY PANIC*. Use only for debugging.
+    #[allow(clippy::disallowed_methods)]
+    pub fn write_to_disk(&self, file_suffix: &str) {
+        let serialized = serialize::to_vec(self).expect("unable to serialize");
+        let filename = format!("{}-{}", Ulid::new(), file_suffix);
+
+        let home_env = std::env::var("HOME").expect("No HOME environment variable set");
+        let home = std::path::Path::new(&home_env);
+        let mut file = File::create(home.join(&filename)).expect("could not create file");
+        file.write_all(&serialized).expect("could not write file");
+
+        println!("Wrote graph to {}", home.join(&filename).display());
+    }
+
+    #[allow(clippy::disallowed_methods)]
     pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
         let suffix = suffix.unwrap_or("dot");
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
@@ -1359,14 +1377,6 @@ impl WorkspaceSnapshotGraph {
             pub target_lineage: Ulid,
         }
 
-        #[derive(Debug, Copy, Clone)]
-        struct EdgeInfo {
-            pub source_node_index: NodeIndex,
-            pub target_node_index: NodeIndex,
-            pub edge_kind: EdgeWeightKindDiscriminants,
-            pub edge_index: EdgeIndex,
-        }
-
         let mut updates = Vec::new();
         let mut conflicts = Vec::new();
 
@@ -1439,11 +1449,11 @@ impl WorkspaceSnapshotGraph {
         let to_rebase_root_node = self.get_node_weight(self.root())?;
         let onto_root_node = onto.get_node_weight(onto.root())?;
 
-        let to_rebase_last_saw_onto = to_rebase_root_node
+        let to_rebase_last_seen_by_onto_vector_clock_id = to_rebase_root_node
             .vector_clock_recently_seen()
             .entry_for(onto_vector_clock_id);
 
-        let onto_last_saw_to_rebase = onto_root_node
+        let onto_last_seen_by_to_rebase_vector_clock_id = onto_root_node
             .vector_clock_recently_seen()
             .entry_for(to_rebase_vector_clock_id);
 
@@ -1470,9 +1480,13 @@ impl WorkspaceSnapshotGraph {
                 .entry_for(to_rebase_vector_clock_id)
             {
                 let maybe_seen_by_onto_at =
-                    if let Some(onto_last_saw_to_rebase) = onto_last_saw_to_rebase {
-                        if edge_first_seen_by_to_rebase <= onto_last_saw_to_rebase {
-                            Some(onto_last_saw_to_rebase)
+                    if let Some(onto_last_seen_by_to_rebase_vector_clock_id) =
+                        onto_last_seen_by_to_rebase_vector_clock_id
+                    {
+                        if edge_first_seen_by_to_rebase
+                            <= onto_last_seen_by_to_rebase_vector_clock_id
+                        {
+                            Some(onto_last_seen_by_to_rebase_vector_clock_id)
                         } else {
                             None
                         }
@@ -1546,9 +1560,13 @@ impl WorkspaceSnapshotGraph {
                 .entry_for(onto_vector_clock_id)
             {
                 let maybe_seen_by_to_rebase_at =
-                    if let Some(to_rebase_last_saw_onto) = to_rebase_last_saw_onto {
-                        if edge_weight_first_seen_by_onto <= to_rebase_last_saw_onto {
-                            Some(to_rebase_last_saw_onto)
+                    if let Some(to_rebase_last_seen_by_onto_vector_clock_id) =
+                        to_rebase_last_seen_by_onto_vector_clock_id
+                    {
+                        if edge_weight_first_seen_by_onto
+                            <= to_rebase_last_seen_by_onto_vector_clock_id
+                        {
+                            Some(to_rebase_last_seen_by_onto_vector_clock_id)
                         } else {
                             None
                         }
@@ -1588,28 +1606,34 @@ impl WorkspaceSnapshotGraph {
                                 container: container_node_information,
                                 removed_item: removed_item_node_information,
                             });
+                        // If the vector clock ids are identical, the seen
+                        // timestamps become a little less informative. To
+                        // determine whether this is a new edge or one that
+                        // should stay removed in to_rebase, we simply determine
+                        // whether to_rebase or onto was more recently "seen"
+                        // overall
+                        } else if to_rebase_vector_clock_id == onto_vector_clock_id
+                            && to_rebase_last_seen_by_onto_vector_clock_id
+                                < onto_last_seen_by_to_rebase_vector_clock_id
+                        {
+                            updates.push(Update::new_edge(
+                                self,
+                                onto,
+                                to_rebase_container_index,
+                                only_onto_edge_info,
+                                onto_edge_weight.to_owned(),
+                            )?);
                         }
                     }
                     None => {
-                        let source_node_weight = self.get_node_weight(to_rebase_container_index)?;
-                        let destination_node_weight =
-                            onto.get_node_weight(only_onto_edge_info.target_node_index)?;
-                        let source_node_information = NodeInformation {
-                            index: to_rebase_container_index,
-                            id: source_node_weight.id().into(),
-                            node_weight_kind: source_node_weight.into(),
-                        };
-                        let destination_node_information = NodeInformation {
-                            index: only_onto_edge_info.target_node_index,
-                            id: destination_node_weight.id().into(),
-                            node_weight_kind: destination_node_weight.into(),
-                        };
-
-                        updates.push(Update::NewEdge {
-                            source: source_node_information,
-                            destination: destination_node_information,
-                            edge_weight: onto_edge_weight.clone(),
-                        })
+                        // This edge has never been seen by to_rebase
+                        updates.push(Update::new_edge(
+                            self,
+                            onto,
+                            to_rebase_container_index,
+                            only_onto_edge_info,
+                            onto_edge_weight.to_owned(),
+                        )?);
                     }
                 }
             }
@@ -1996,12 +2020,12 @@ impl WorkspaceSnapshotGraph {
                 self.get_node_weight(container_ordering_index)?
             {
                 for ordered_id in ordering_weight.order() {
-                    ordered_child_indexes.push(
-                        *self
-                            .node_index_by_id
-                            .get(ordered_id)
-                            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(*ordered_id))?,
-                    );
+                    ordered_child_indexes.push(*self.node_index_by_id.get(ordered_id).ok_or(
+                        WorkspaceSnapshotGraphError::OrderingNodeHasNonexistentNodeInOrder(
+                            ordering_weight.id(),
+                            *ordered_id,
+                        ),
+                    )?);
                 }
             }
         } else {

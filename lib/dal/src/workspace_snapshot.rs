@@ -23,6 +23,7 @@
 
 pub mod conflict;
 pub mod content_address;
+pub mod edge_info;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
@@ -407,7 +408,7 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.root())
     }
 
-    #[instrument(name = "workspace_snapshot.working_copy", level = "debug", skip_all)]
+    #[instrument(name = "workspace_snapshot.working_copy", level = "trace", skip_all)]
     async fn working_copy(&self) -> SnapshotReadGuard<'_> {
         SnapshotReadGuard {
             read_only_graph: self.read_only_graph.clone(),
@@ -417,7 +418,7 @@ impl WorkspaceSnapshot {
 
     #[instrument(
         name = "workspace_snapshot.working_copy_mut",
-        level = "debug",
+        level = "trace",
         skip_all
     )]
     async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
@@ -428,6 +429,14 @@ impl WorkspaceSnapshot {
 
         SnapshotWriteGuard {
             working_copy_write_guard: self.working_copy.write().await,
+        }
+    }
+
+    /// Discard all changes in the working copy and return the graph to the
+    /// version fetched from the layer db
+    pub async fn revert(&self) {
+        if self.working_copy.read().await.is_some() {
+            *self.working_copy.write().await = None
         }
     }
 
@@ -766,6 +775,10 @@ impl WorkspaceSnapshot {
         if let Some(subgraph) = self.working_copy().await.subgraph(subgraph_root_idx) {
             subgraph.tiny_dot_to_file(suffix);
         }
+    }
+
+    pub async fn write_to_disk(&self, file_suffix: &str) {
+        self.working_copy().await.write_to_disk(file_suffix);
     }
 
     #[instrument(
