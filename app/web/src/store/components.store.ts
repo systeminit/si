@@ -570,6 +570,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 schemasWithAtLeastOneVariant.push({
                   id: schema.id,
                   name: schema.name,
+                  displayName: schema.displayName,
                   builtin: schema.builtin,
                   variants: schema.variants,
                   category: schema.variants[0].category,

@@ -59,7 +59,7 @@ pub async fn update_variant(
         serde_json::json!({
             "variant_name": request.name.clone(),
             "variant_category": request.category.clone(),
-            "variant_menu_name": request.display_name.clone(),
+            "variant_display_name": request.display_name.clone(),
             "variant_id": updated_schema_variant_id,
         }),
     );

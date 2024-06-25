@@ -10,6 +10,7 @@ use crate::{
 pub struct SchemaVariantMetadataView {
     id: SchemaId,
     default_schema_variant_id: SchemaVariantId,
+    schema_name: String,
     name: String,
     category: String,
     #[serde(alias = "display_name")]
@@ -33,7 +34,8 @@ impl SchemaVariantMetadataView {
             views.push(SchemaVariantMetadataView {
                 id: schema.id,
                 default_schema_variant_id: default_schema_variant.id,
-                name: schema.name.to_owned(),
+                schema_name: schema.name.to_owned(),
+                name: default_schema_variant.name.to_owned(),
                 category: default_schema_variant.category.to_owned(),
                 color: default_schema_variant.get_color(ctx).await?,
                 timestamp: default_schema_variant.timestamp.to_owned(),

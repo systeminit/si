@@ -40,9 +40,10 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) {
     assert_eq!(default_schema_variant, Some(variant.id()));
 
     // now lets create a pkg from the asset and import it
-    let (variant_spec, variant_funcs) = PkgExporter::export_variant_standalone(ctx, &variant)
-        .await
-        .expect("should go to spec");
+    let (variant_spec, variant_funcs) =
+        PkgExporter::export_variant_standalone(ctx, &variant, schema.name())
+            .await
+            .expect("should go to spec");
 
     let schema_spec = SchemaSpec::builder()
         .name(schema.name())

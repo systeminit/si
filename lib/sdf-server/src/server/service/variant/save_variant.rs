@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 pub struct SaveVariantRequest {
     pub id: SchemaId,
     pub default_schema_variant_id: SchemaVariantId,
+    pub schema_name: String,
     pub name: String,
     pub display_name: Option<String>,
     pub category: String,
@@ -44,6 +45,7 @@ pub async fn save_variant(
     VariantAuthoringClient::save_variant_content(
         &ctx,
         request.default_schema_variant_id,
+        request.schema_name.clone(),
         request.name.clone(),
         request.display_name.clone(),
         request.link.clone(),
@@ -64,7 +66,7 @@ pub async fn save_variant(
                 "variant_id": request.id,
                 "variant_category": request.category,
                 "variant_name": request.name,
-                "variant_menu_name": request.display_name,
+                "variant_display_name": request.display_name,
         }),
     );
 

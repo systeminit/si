@@ -112,7 +112,8 @@ pub struct SchemaVariantSpecData {
     pub link: Option<Url>,
     #[builder(setter(into, strip_option), default)]
     pub color: Option<String>,
-
+    #[builder(setter(into, strip_option), default)]
+    pub display_name: Option<String>,
     #[builder(setter(into), default)]
     pub component_type: SchemaVariantSpecComponentType,
     #[builder(setter(into))]

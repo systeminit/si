@@ -49,7 +49,7 @@
 import isEqual from "lodash-es/isEqual";
 import { watch, ref, computed } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
-import { useAssetStore } from "@/store/asset.store";
+import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import AssetEditor from "./AssetEditor.vue";
 import FuncEditor from "./FuncEditor/FuncEditor.vue";
@@ -84,10 +84,10 @@ watch(
     if (!requestStatus.isSuccess) {
       return;
     }
-
+    const asset = assetStore.assetFromListById[assetId];
     const assetTab = {
       type: "asset",
-      label: assetStore.assetFromListById[assetId]?.name ?? "error",
+      label: asset ? assetDisplayName(asset) ?? "error" : "error",
       id: assetId,
     };
 

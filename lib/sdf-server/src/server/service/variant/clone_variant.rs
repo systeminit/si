@@ -60,7 +60,7 @@ pub async fn clone_variant(
         serde_json::json!({
             "variant_name": request.name,
             "variant_category": cloned_schema_variant.category(),
-            "variant_menu_name": cloned_schema_variant.display_name(),
+            "variant_display_name": cloned_schema_variant.display_name(),
             "variant_id": cloned_schema_variant.id(),
             "variant_component_type": cloned_schema_variant.component_type(),
         }),

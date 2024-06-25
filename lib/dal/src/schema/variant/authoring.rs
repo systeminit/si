@@ -21,7 +21,8 @@ use crate::pkg::{import_pkg_from_pkg, PkgError};
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use crate::{
     pkg, ComponentType, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, Schema, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    FuncId, HistoryEventError, Schema, SchemaError, SchemaVariant, SchemaVariantError,
+    SchemaVariantId,
 };
 
 #[allow(missing_docs)]
@@ -38,6 +39,8 @@ pub enum VariantAuthoringError {
     FuncRun(#[from] FuncRunnerError),
     #[error("func run value sender has terminated without sending")]
     FuncRunGone,
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("no new asset was created")]
@@ -111,22 +114,19 @@ impl VariantAuthoringClient {
         let definition = execute_asset_func(ctx, &asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
-            schema_name: name,
-            menu_name: display_name.clone(),
+            schema_name: name.clone(),
+            name: "v0".into(),
+            display_name: display_name.clone(),
             category: category.into(),
             color: color.into(),
             component_type: ComponentType::Component,
             link: link.clone(),
             description: description.clone(),
         };
+        let email = ctx.history_actor().email(ctx).await?;
 
-        //TODO @stack72 - figure out how we get the current user in this!
-        let pkg_spec = build_pkg_spec_for_variant(
-            definition,
-            &asset_func_spec,
-            &metadata,
-            "sally@systeminit.com",
-        )?;
+        let pkg_spec =
+            build_pkg_spec_for_variant(&name, definition, &asset_func_spec, &metadata, &email)?;
 
         let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
 
@@ -163,7 +163,7 @@ impl VariantAuthoringClient {
         let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
 
-        let display_name = variant.display_name().map(|dn| format!("{dn} Clone"));
+        let display_name = variant.display_name().map(|mn| format!("{mn} Clone"));
 
         if let Some(asset_func_id) = variant.asset_func_id() {
             let old_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
@@ -172,20 +172,22 @@ impl VariantAuthoringClient {
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
             let definition = execute_asset_func(ctx, &cloned_func).await?;
             let metadata = SchemaVariantMetadataJson {
-                schema_name: name,
-                menu_name: display_name.clone(),
+                schema_name: name.clone(),
+                name: "v0".into(),
+                display_name: display_name.clone(),
                 category: variant.category().to_string(),
                 color: variant.get_color(ctx).await?,
                 component_type: variant.component_type(),
                 link: variant.link().clone(),
                 description: variant.description().clone(),
             };
-            //TODO @stack72 - figure out how we get the current user in this!
+            let email = ctx.history_actor().email(ctx).await?;
             let pkg_spec = build_pkg_spec_for_variant(
+                &schema.name,
                 definition,
                 &cloned_func_spec,
                 &metadata,
-                "sally@systeminit.com",
+                &email,
             )?;
 
             let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
@@ -227,7 +229,7 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         current_sv_id: SchemaVariantId,
         name: impl Into<String>,
-        menu_name: Option<String>,
+        display_name: Option<String>,
         category: impl Into<String>,
         color: impl Into<String>,
         link: Option<String>,
@@ -236,6 +238,7 @@ impl VariantAuthoringClient {
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
         let sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
+        let schema = sv.schema(ctx).await?;
         let asset_func_id =
             sv.asset_func_id()
                 .ok_or(VariantAuthoringError::SchemaVariantAssetNotFound(
@@ -249,8 +252,9 @@ impl VariantAuthoringClient {
             Self::update_existing_variant_and_regenerate(
                 ctx,
                 current_sv_id,
+                schema.name,
                 name,
-                menu_name.clone(),
+                display_name.clone(),
                 category,
                 color,
                 link.clone(),
@@ -261,12 +265,15 @@ impl VariantAuthoringClient {
             .await?;
             Ok(current_sv_id)
         } else {
+            let name = name.into();
+            let name = increment_version(&name);
             Self::update_and_generate_variant_with_new_version(
                 ctx,
                 &asset_func,
                 current_sv_id,
+                schema.name,
                 name,
-                menu_name.clone(),
+                display_name.clone(),
                 category,
                 color,
                 link.clone(),
@@ -287,8 +294,9 @@ impl VariantAuthoringClient {
     async fn update_existing_variant_and_regenerate(
         ctx: &DalContext,
         current_schema_variant_id: SchemaVariantId,
+        schema_name: impl Into<String>,
         name: impl Into<String>,
-        menu_name: Option<String>,
+        display_name: Option<String>,
         category: impl Into<String>,
         color: impl Into<String>,
         link: Option<String>,
@@ -308,14 +316,14 @@ impl VariantAuthoringClient {
         let name = name.into();
         let category = category.into();
         let color = color.into();
-
+        let schema_name = schema_name.into();
         let mut asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
         asset_func = asset_func
             .modify(ctx, |func| {
                 func.name.clone_from(&name);
                 func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
                 func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
-                func.display_name = menu_name
+                func.display_name = display_name
                     .clone()
                     .map(|display_name| display_name.to_owned());
                 func.code_base64 = Some(code_base64);
@@ -329,8 +337,9 @@ impl VariantAuthoringClient {
         let asset_func_spec = build_asset_func_spec(&asset_func)?;
         let definition = execute_asset_func(ctx, &asset_func).await?;
         let metadata = SchemaVariantMetadataJson {
-            schema_name: name.clone(),
-            menu_name: menu_name.clone(),
+            schema_name: schema_name.clone(),
+            name: name.clone(),
+            display_name: display_name.clone(),
             category: category.clone(),
             color: color.clone(),
             component_type,
@@ -349,10 +358,10 @@ impl VariantAuthoringClient {
             .await?;
 
         let schema_spec = metadata.to_schema_spec(new_variant_spec)?;
-        //TODO @stack72 - figure out how we get the current user in this!
+        let email = ctx.history_actor().email(ctx).await?;
         let pkg_spec = PkgSpec::builder()
-            .name(&metadata.schema_name)
-            .created_by("sally@systeminit.com")
+            .name(&schema_name.clone())
+            .created_by(&email)
             .funcs(variant_funcs.clone())
             .func(asset_func_spec)
             .schema(schema_spec)
@@ -381,7 +390,7 @@ impl VariantAuthoringClient {
         schema
             .clone()
             .modify(ctx, |s| {
-                s.name.clone_from(&name);
+                s.name.clone_from(&schema_name.clone());
                 Ok(())
             })
             .await?;
@@ -418,7 +427,7 @@ impl VariantAuthoringClient {
                     sv.category.clone_from(&category);
                     sv.component_type = component_type;
                     sv.color.clone_from(&color);
-                    sv.display_name = menu_name;
+                    sv.display_name = Some(display_name.unwrap_or(schema_name.clone()));
                     Ok(())
                 })
                 .await?;
@@ -437,8 +446,9 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         old_asset_func: &Func,
         current_sv_id: SchemaVariantId,
+        schema_name: impl Into<String>,
         name: impl Into<String>,
-        menu_name: Option<String>,
+        display_name: Option<String>,
         category: impl Into<String>,
         color: impl Into<String>,
         link: Option<String>,
@@ -447,6 +457,7 @@ impl VariantAuthoringClient {
         component_type: ComponentType,
     ) -> VariantAuthoringResult<SchemaVariantId> {
         let name = name.into();
+        let schema_name = schema_name.into();
         let mut new_asset_func = old_asset_func
             .duplicate(ctx, generate_scaffold_func_name(&name))
             .await?;
@@ -457,7 +468,7 @@ impl VariantAuthoringClient {
             .modify(ctx, |func| {
                 func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
                 func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
-                func.display_name = menu_name
+                func.display_name = display_name
                     .clone()
                     .map(|display_name| display_name.to_owned());
                 func.code_base64 = Some(code_base64);
@@ -473,8 +484,9 @@ impl VariantAuthoringClient {
         let definition = execute_asset_func(ctx, &new_asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
-            schema_name: name.clone(),
-            menu_name: menu_name.clone(),
+            schema_name: schema_name.clone(),
+            name: name.clone(),
+            display_name: display_name.clone(),
             category: category.into(),
             color: color.into(),
             component_type,
@@ -494,10 +506,11 @@ impl VariantAuthoringClient {
 
         let schema_spec = metadata.to_schema_spec(new_variant_spec)?;
 
-        //TODO @stack72 - figure out how we get the current user in this!
+        let email = ctx.history_actor().email(ctx).await?;
+
         let pkg_spec = PkgSpec::builder()
-            .name(&metadata.schema_name)
-            .created_by("sally@systeminit.com")
+            .name(&schema_name.clone())
+            .created_by(&email)
             .funcs(variant_funcs.clone())
             .func(asset_func_spec)
             .schema(schema_spec)
@@ -526,7 +539,7 @@ impl VariantAuthoringClient {
         schema
             .clone()
             .modify(ctx, |s| {
-                s.name.clone_from(&name);
+                s.name = schema_name;
                 Ok(())
             })
             .await?;
@@ -561,8 +574,9 @@ impl VariantAuthoringClient {
     pub async fn save_variant_content(
         ctx: &DalContext,
         current_schema_variant_id: SchemaVariantId,
-        content_name: impl Into<String>,
-        menu_name: Option<String>,
+        schema_name: impl Into<String>,
+        name: impl Into<String>,
+        display_name: Option<String>,
         link: Option<String>,
         code: impl Into<String>,
         description: Option<String>,
@@ -579,22 +593,23 @@ impl VariantAuthoringClient {
             VariantAuthoringError::SchemaVariantAssetNotFound(current_schema_variant_id),
         )?;
 
-        let name: String = content_name.into();
+        let name: String = name.into();
         let name = &name;
 
         current_schema
             .modify(ctx, |s| {
-                s.name = name.to_string();
+                s.name = schema_name.into();
                 Ok(())
             })
             .await?;
 
         let variant_description = description.clone();
         let variant_link = link.clone();
-        let variant_display_name = menu_name.clone();
+        let variant_display_name = display_name.clone();
 
         current_schema_variant
             .modify(ctx, |sv| {
+                sv.name.clone_from(name);
                 sv.description = variant_description;
                 sv.link = variant_link;
                 sv.category.clone_from(&category.into());
@@ -612,7 +627,7 @@ impl VariantAuthoringClient {
                 func.name = name.to_string();
                 func.backend_kind = FuncBackendKind::JsSchemaVariantDefinition;
                 func.backend_response_type = FuncBackendResponseType::SchemaVariantDefinition;
-                func.display_name = menu_name
+                func.display_name = display_name
                     .clone()
                     .map(|display_name| display_name.to_owned());
                 func.code_base64 = Some(code_base64);
@@ -637,7 +652,7 @@ async fn build_variant_spec_based_on_existing_variant(
     let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
     let existing_variant = SchemaVariant::get_by_id(ctx, existing_variant_id).await?;
-
+    let schema = existing_variant.schema(ctx).await?;
     let variant_spec = definition.to_spec(
         metadata.clone(),
         &identity_func_spec.unique_id,
@@ -645,7 +660,7 @@ async fn build_variant_spec_based_on_existing_variant(
     )?;
 
     let (existing_variant_spec, variant_funcs) =
-        PkgExporter::export_variant_standalone(ctx, &existing_variant).await?;
+        PkgExporter::export_variant_standalone(ctx, &existing_variant, schema.name()).await?;
 
     let identity_name = IntrinsicFunc::Identity.name();
     let identity_func = variant_funcs
@@ -732,6 +747,7 @@ async fn execute_asset_func(
 
 #[allow(clippy::result_large_err)]
 fn build_pkg_spec_for_variant(
+    schema_name: &str,
     definition: SchemaVariantJson,
     asset_func_spec: &FuncSpec,
     metadata: &SchemaVariantMetadataJson,
@@ -746,7 +762,7 @@ fn build_pkg_spec_for_variant(
     )?;
     let schema_spec = metadata.to_schema_spec(variant_spec)?;
     Ok(PkgSpec::builder()
-        .name(metadata.clone().schema_name)
+        .name(schema_name)
         .created_by(user_email)
         .func(identity_func_spec)
         .func(asset_func_spec.clone())
@@ -759,4 +775,13 @@ fn generate_scaffold_func_name(name: impl AsRef<str>) -> String {
     let version = Utc::now().format("%Y%m%d%H%M%S%f").to_string();
     let generated_name = format!("{}Scaffold_{}", name.as_ref().to_case(Case::Camel), version);
     generated_name
+}
+/// temporarily increment the version so we can differentiate between schema variants when viewing attribute func bindings. This is a holdover until we start using versions for real.
+fn increment_version(input: &str) -> String {
+    if let Some(stripped) = input.strip_prefix('v') {
+        if let Ok(num) = stripped.parse::<u32>() {
+            return format!("v{}", num + 1);
+        }
+    }
+    input.to_string()
 }

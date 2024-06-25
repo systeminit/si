@@ -61,14 +61,22 @@
         <div>
           <ErrorMessage :requestStatus="execAssetReqStatus" />
         </div>
-
+        <VormInput
+          id="schemaName"
+          v-model="editingAsset.schemaName"
+          type="text"
+          label="Asset Name"
+          compact
+          placeholder="(mandatory) Provide the asset a name"
+          @blur="updateAsset"
+        />
         <VormInput
           id="name"
           v-model="editingAsset.name"
           type="text"
-          label="Name"
+          label="Asset Version Name"
           compact
-          placeholder="(mandatory) Provide the asset a name"
+          placeholder="(mandatory) Provide the asset version a name"
           @blur="updateAsset"
         />
 
@@ -78,7 +86,7 @@
           type="text"
           label="Display name"
           compact
-          placeholder="(optional) Provide the asset a shorter display name"
+          placeholder="(optional) Provide the asset version a display name"
           @blur="updateAsset"
         />
         <VormInput

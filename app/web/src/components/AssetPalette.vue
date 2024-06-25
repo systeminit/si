@@ -284,9 +284,11 @@ const schemaDisplayName = (
   schemas: DiagramSchemaWithDisplayMetadata[],
 ) => {
   const duplicates = schemas.filter((s) => s.name === schema.name);
+  let displayName = schema.variants[0]?.displayName;
+  if (!displayName) displayName = schema.name;
   if (duplicates.length > 1) {
-    return `${schema.name} (${duplicates.indexOf(schema)})`;
-  } else return schema.name;
+    return `${displayName} (${duplicates.indexOf(schema)})`;
+  } else return displayName;
 };
 
 const updateMouseNode = (e: MouseEvent) => {
