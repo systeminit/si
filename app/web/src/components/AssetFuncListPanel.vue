@@ -29,8 +29,8 @@
         <EmptyStateCard
           v-if="assetStore.selectedAssets.length > 1"
           iconName="funcs"
-          primaryText=""
-          secondaryText="You have selected multiple assets above"
+          primaryText="Cannot Select Functions"
+          secondaryText="You have selected multiple assets above. To select a function, select one asset."
         />
         <EmptyStateCard
           v-else

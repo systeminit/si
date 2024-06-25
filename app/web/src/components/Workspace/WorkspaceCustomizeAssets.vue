@@ -47,7 +47,6 @@
           v-if="funcStore.selectedFuncId"
           :funcId="funcStore.selectedFuncId"
           :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
-          singleModelScreen
           allowTestPanel
           @detached="onDetach"
           @expand-panel="rightResizablePanelRef?.maximize()"
@@ -95,7 +94,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, computed } from "vue";
+import { onBeforeUnmount, onMounted, ref, computed, watch } from "vue";
 import {
   ResizablePanel,
   ScrollArea,
@@ -119,8 +118,8 @@ import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 
-const leftResizablePanelRef = ref();
-const rightResizablePanelRef = ref();
+const leftResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
+const rightResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -191,4 +190,15 @@ const onDetach = async () => {
     assetStore.closeFunc(assetStore.selectedAssetId, funcStore.selectedFuncId);
   }
 };
+
+watch(
+  () => assetStore.selectedAssets.length,
+  (newVal, oldVal) => {
+    if (newVal > 1 && oldVal < 2 && leftResizablePanelRef.value) {
+      leftResizablePanelRef.value.subpanelCollapseSet(true);
+    } else if (newVal === 1 && oldVal > 1 && leftResizablePanelRef.value) {
+      leftResizablePanelRef.value.subpanelCollapseSet(false);
+    }
+  },
+);
 </script>

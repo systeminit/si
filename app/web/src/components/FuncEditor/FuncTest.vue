@@ -2,13 +2,13 @@
   <ScrollArea>
     <template #top>
       <div
-        class="flex flex-row gap-xs items-center p-xs m-xs border dark:border-neutral-600 rounded justify-between"
+        class="flex flex-row gap-xs items-center p-xs justify-between border-y border-neutral-200 dark:border-neutral-600"
       >
         <div
-          class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow"
+          class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow break-words"
         >
           Test {{ funcStore.selectedFuncDetails?.kind + " " || "" }}Function
-          <span class="italic">{{ editingFunc?.name }}</span>
+          <span class="italic">"{{ editingFunc?.name }}"</span>
         </div>
         <StatusIndicatorIcon
           v-if="runningTest"

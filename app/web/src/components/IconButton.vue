@@ -11,12 +11,10 @@
         variant === 'classic' && [
           'rounded-md',
           disableClicking
-            ? 'border border-transparent p-[1px]'
+            ? 'border border-transparent p-[1px] opacity-50'
             : [
                 !noBorderOnHover && 'border border-transparent p-[1px]',
-                !noBorderOnHover &&
-                  !selectedOrActive &&
-                  'hover:border-action-500',
+                !noBorderOnHover && !selectedOrActive && borderHoverColorClass,
                 selectedOrActive
                   ? `text-shade-0 ${getToneBgColorClass(iconTone)}`
                   : iconIdleTone
@@ -59,6 +57,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
+import { tw } from "@si/vue-lib";
 import {
   Icon,
   IconNames,
@@ -139,5 +138,12 @@ const iconShowing = computed(() => {
     return props.iconHover && hover.value && !props.selected
       ? props.iconHover
       : props.icon;
+});
+
+const borderHoverColorClass = computed(() => {
+  if (props.iconTone === "destructive") return tw`hover:border-destructive-500`;
+  else if (props.iconTone === "warning") return tw`hover:border-warning-500`;
+  else if (props.iconTone === "success") return tw`hover:border-success-500`;
+  else return tw`hover:border-action-500`;
 });
 </script>

@@ -1,6 +1,13 @@
 <template>
   <div
-    class="flex text-neutral-500 dark:text-neutral-400 border-b dark:border-neutral-500 items-center px-xs py-2xs gap-xs"
+    :class="
+      clsx(
+        'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs',
+        variant === 'title'
+          ? 'dark:border-neutral-500'
+          : 'border-neutral-200 dark:border-neutral-600',
+      )
+    "
   >
     <div class="flex-none empty:hidden">
       <slot name="icon">
@@ -8,9 +15,18 @@
       </slot>
     </div>
 
-    <div class="grow uppercase text-md font-bold leading-6">
+    <TruncateWithTooltip
+      :class="
+        clsx(
+          'grow font-bold',
+          variant === 'title'
+            ? 'uppercase text-md leading-6'
+            : 'text-sm break-words',
+        )
+      "
+    >
       <slot name="label">{{ label }}</slot>
-    </div>
+    </TruncateWithTooltip>
     <div class="flex-none empty:hidden">
       <slot />
     </div>
@@ -19,10 +35,18 @@
 
 <script setup lang="ts">
 import { Icon, IconNames } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { PropType } from "vue";
+import TruncateWithTooltip from "./TruncateWithTooltip.vue";
+
+export type SidebarSubpanelTitleVariant = "title" | "subtitle";
 
 const props = defineProps({
   label: { type: String },
   icon: { type: String as PropType<IconNames> },
+  variant: {
+    type: String as PropType<SidebarSubpanelTitleVariant>,
+    default: "title",
+  },
 });
 </script>
