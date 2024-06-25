@@ -95,8 +95,8 @@ import Frame from "~icons/iconamoon/frame-light";
 import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
 import MaterialSymbolsStopCircleOutlineRounded from "~icons/material-symbols/stop-circle-outline-rounded";
 
-import TdesignLinkUnlink from '~icons/tdesign/link-unlink'
-import PhTestTubeFill from '~icons/ph/test-tube-fill'
+import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
+import PhTestTubeFill from "~icons/ph/test-tube-fill";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
