@@ -25,12 +25,20 @@
         context="workspace-lab-assets"
         defaultOpen
       />
-      <EmptyStateCard
-        v-else
-        iconName="funcs"
-        primaryText="Select Asset, View Functions"
-        secondaryText="Select an asset from the list above to view its attached functions here."
-      />
+      <template v-else>
+        <EmptyStateCard
+          v-if="assetStore.selectedAssets.length > 1"
+          iconName="funcs"
+          primaryText=""
+          secondaryText="You have selected multiple assets above"
+        />
+        <EmptyStateCard
+          v-else
+          iconName="funcs"
+          primaryText="Select Asset, View Functions"
+          secondaryText="Select an asset from the list above to view its attached functions here."
+        />
+      </template>
     </ScrollArea>
     <AssetFuncAttachModal ref="attachModalRef" :assetId="assetId" />
   </div>

@@ -14,6 +14,11 @@
         <WorkspaceCustomizeEmptyState
           :requestStatus="loadAssetsRequestStatus"
           loadingMessage="Loading assets..."
+          :instructions="
+            assetStore.selectedAssets.length > 1
+              ? 'You have selected multiple assets, use the right pane!'
+              : undefined
+          "
         />
       </template>
       <TabGroupItem
@@ -71,7 +76,12 @@ watch(
     assetStore.openAssetFuncIds,
   ],
   ([requestStatus, assetId, openAssetFuncIds]) => {
-    if (!requestStatus.isSuccess || !assetId) {
+    // no asset/multiple assets selected, don't show tabs
+    if (!assetId) {
+      currentTabs.value = [];
+      return;
+    }
+    if (!requestStatus.isSuccess) {
       return;
     }
 
