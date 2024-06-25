@@ -42,12 +42,6 @@ on:
         default: "stable"
 
 jobs:
-  invalidate-cache:
-    uses: ./.github/workflows/invalidate-cache.yml
-    with:
-      environment: shared
-    secrets: inherit
-
   set-init:
     uses: ./.github/workflows/set-init-version.yml
     with:
@@ -70,7 +64,7 @@ jobs:
           fi
 
   deploy-services:
-    needs: ["invalidate-cache", "define-deployment-matrix"]
+    needs: "define-deployment-matrix"
     strategy:
      fail-fast: false
      matrix:

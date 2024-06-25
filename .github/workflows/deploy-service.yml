@@ -32,7 +32,6 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy web
-        id: deploy-web
         if: ${{ inputs.service == 'web' }}
         run: |
             ENVIRONMENT="${{ inputs.environment }}"
@@ -79,6 +78,20 @@ jobs:
                 echo "Image systeminit/web:$VERSION not found on Docker Hub. Skipping!"
                 exit 1
             fi
+
+      - name: Invalidate web cache
+        if: ${{ inputs.service == 'web' }}
+        run: |
+          ENV=${{ inputs.environment }}
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='$ENV-cdn'].Id | [0]" --output text)
+          # Create a CloudFront invalidation for all objects (/*)
+          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
+          # Check the status of the invalidation until it's completed
+          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+              echo "Invalidation is still in progress. Waiting..."
+              sleep 5
+          done
+          echo "Invalidation is complete."
 
       - name: Deploy service
         if: ${{ inputs.service != 'web' }}
@@ -149,11 +162,3 @@ jobs:
                 echo "Version $VERSION for $SERVICE not found in the artifacts registry. Skipping!"
                 exit 1
             fi
-
-  invalidate-cache:
-    if: ${{ inputs.service == 'web' }}
-    needs: deploy
-    uses: ./.github/workflows/invalidate-cache.yml
-    with:
-      environment: ${{ inputs.environment }}
-    secrets: inherit
