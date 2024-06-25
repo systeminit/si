@@ -3,12 +3,6 @@ on:
     branches:
       - main
 
-# We want to ensure that in-progress cron runs are canceled
-# when do a deploy so they don't fail erroneously
-concurrency:
-  group: e2e
-  cancel-in-progress: true
-
 jobs:
   deploy-tools-prod:
     uses: ./.github/workflows/deploy-stack.yml
@@ -16,11 +10,4 @@ jobs:
       environment: tools
       service: all
       version: stable
-    secrets: inherit
-
-  e2e-validation:
-    needs: deploy-tools-prod
-    uses: ./.github/workflows/e2e-validation.yml
-    with:
-      environment: tools
     secrets: inherit

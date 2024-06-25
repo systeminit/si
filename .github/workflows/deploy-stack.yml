@@ -7,15 +7,12 @@ on:
     inputs:
       environment:
         type: string
-        required: true
         default: "tools"
       service:
         type: string
-        required: true
         default: "all"
       version:
         type: string
-        required: true
         default: "stable"
   workflow_dispatch:
     inputs:
@@ -51,23 +48,33 @@ jobs:
       environment: shared
     secrets: inherit
 
-  deploy-service:
-    needs: invalidate-cache
-    if: ${{ inputs.service != 'all' }}
-    uses: ./.github/workflows/deploy-service.yml
+  set-init:
+    uses: ./.github/workflows/set-init-version.yml
     with:
       environment: ${{ inputs.environment }}
       service: ${{ inputs.service }}
       version: ${{ inputs.version }}
     secrets: inherit
 
+  define-deployment-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.services.outputs.services }}
+    steps:
+      - id: services
+        run: |
+          if [ "${{ inputs.service }}" = "all" ]; then
+            echo 'services=["pinga", "rebaser", "sdf", "veritech", "web"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'services=["${{ inputs.service }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
   deploy-services:
-    needs: invalidate-cache
-    if: ${{ inputs.service == 'all' }}
+    needs: ["invalidate-cache", "define-deployment-matrix"]
     strategy:
      fail-fast: false
      matrix:
-      service: ["pinga", "rebaser", "sdf", "veritech", "web"]
+      service: ${{ fromJSON(needs.define-deployment-matrix.outputs.services) }}
     uses: ./.github/workflows/deploy-service.yml
     with:
       environment: ${{ inputs.environment }}
@@ -75,11 +82,14 @@ jobs:
       version: ${{ inputs.version }}
     secrets: inherit
 
-  set-init:
-    needs: invalidate-cache
-    uses: ./.github/workflows/set-init-version.yml
+  e2e-validation:
+    # We want to ensure that in-progress cron runs against tools-prod
+    # are canceled when we do a deploy so they don't fail erroneously
+    concurrency:
+      group: e2e-${{ inputs.environment }}
+      cancel-in-progress: true
+    needs: deploy-services
+    uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}
-      service: ${{ inputs.service }}
-      version: ${{ inputs.version }}
     secrets: inherit

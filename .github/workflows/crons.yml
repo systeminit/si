@@ -6,7 +6,7 @@ on:
 # when do a deploy so they don't fail erroneously, but these
 # cannot cancel deploys
 concurrency:
-  group: e2e
+  group: e2e-tools
   cancel-in-progress: false
 
 jobs:
