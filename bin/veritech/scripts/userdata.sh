@@ -73,6 +73,9 @@ wget https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/
 
 # prep system
 mkdir -p /run/app
+
+DOCKER_CREDS=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id ${SI_HOSTENV}-dockerhub-creds | jq -r '.SecretString')
+docker login --username $(echo $DOCKER_CREDS | jq -r '.username') --password-stdin <<< $(echo $DOCKER_CREDS | jq -r '.password')
 wget https://raw.githubusercontent.com/systeminit/si/${BRANCH:-main}/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
 
 docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
