@@ -66,12 +66,11 @@ impl SecretDefinitionView {
         secret_definition_prop_id: PropId,
     ) -> SecretDefinitionViewResult<Self> {
         // Now, find all the fields of the definition.
-        let field_prop_ids = Prop::direct_child_prop_ids(ctx, secret_definition_prop_id).await?;
+        let field_props = Prop::direct_child_props_ordered(ctx, secret_definition_prop_id).await?;
 
         // Assemble the form data views.
         let mut form_data_views = Vec::new();
-        for field_prop_id in field_prop_ids {
-            let field_prop = Prop::get_by_id_or_error(ctx, field_prop_id).await?;
+        for field_prop in field_props {
             form_data_views.push(SecretFormDataView {
                 name: field_prop.name,
                 kind: field_prop.kind.to_string(),
