@@ -79,19 +79,6 @@
           type="text"
           @blur="updateAsset"
         />
-        <!--
-        TODO: jobelenus, do we still need name? is it version? do we need version too?
-        <VormInput
-          id="name"
-          v-model="editingAsset.name"
-          type="text"
-          label="Name"
-          compact
-          disabled
-          label="Asset Version Name"
-          placeholder="(mandatory) Provide the asset version a name"
-          type="text"
-        />-->
 
         <VormInput
           id="displayName"
