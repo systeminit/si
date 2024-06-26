@@ -30,17 +30,17 @@
             @click="executeAsset"
           />
           <VButton
-            label="Clone"
-            tone="neutral"
             icon="clipboard-copy"
+            label="Clone"
             size="md"
+            tone="neutral"
             @click="() => cloneAssetModalRef?.modal?.open()"
           />
         </div>
         <AssetNameModal
           ref="cloneAssetModalRef"
-          title="Asset Name"
           buttonLabel="Clone Asset"
+          title="Asset Name"
           @submit="cloneAsset"
         />
 
@@ -73,29 +73,29 @@
         <VormInput
           id="schemaName"
           v-model="editingAsset.schemaName"
-          type="text"
-          label="Asset Name"
           compact
+          label="Asset Name"
           placeholder="(mandatory) Provide the asset a name"
+          type="text"
           @blur="updateAsset"
         />
         <VormInput
           id="name"
           v-model="editingAsset.name"
-          type="text"
-          label="Asset Version Name"
           compact
+          disabled
+          label="Asset Version Name"
           placeholder="(mandatory) Provide the asset version a name"
-          @blur="updateAsset"
+          type="text"
         />
 
         <VormInput
           id="displayName"
           v-model="editingAsset.displayName"
-          type="text"
-          label="Display name"
           compact
+          label="Display name"
           placeholder="(optional) Provide the asset version a display name"
+          type="text"
           @blur="updateAsset"
         />
         <VormInput

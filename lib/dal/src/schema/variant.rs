@@ -21,7 +21,7 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
-    FuncContent, InputSocketContent, OutputSocketContent, SchemaVariantContent,
+    ContentTypeError, FuncContent, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV2,
 };
 use crate::prop::{PropError, PropPath};
@@ -84,6 +84,8 @@ pub enum SchemaVariantError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("content error: {0}")]
+    ContentType(#[from] ContentTypeError),
     #[error("default schema variant not found for schema: {0}")]
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
@@ -318,10 +320,14 @@ impl From<SchemaVariant> for SchemaVariantContent {
 }
 
 impl SchemaVariant {
-    pub fn assemble(id: SchemaVariantId, content: SchemaVariantContent) -> Self {
-        let inner = content.extract();
+    pub async fn assemble(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+        content: SchemaVariantContent,
+    ) -> SchemaVariantResult<Self> {
+        let inner = content.extract(ctx, id).await?;
 
-        Self {
+        Ok(Self {
             id,
             timestamp: inner.timestamp,
             version: inner.version,
@@ -336,7 +342,7 @@ impl SchemaVariant {
             finalized_once: inner.finalized_once,
             is_builtin: inner.is_builtin,
             is_locked: inner.is_locked,
-        }
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -396,7 +402,8 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
-        let schema_variant = Self::assemble(id.into(), SchemaVariantContent::V2(content));
+        let schema_variant =
+            Self::assemble(ctx, id.into(), SchemaVariantContent::V2(content)).await?;
         Ok((schema_variant, root_prop))
     }
 
@@ -508,7 +515,7 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        Ok(Self::assemble(id, content))
+        Self::assemble(ctx, id, content).await
     }
 
     /// Lists all [`Components`](Component) that are using the provided [`SchemaVariantId`](SchemaVariant).
@@ -642,7 +649,8 @@ impl SchemaVariant {
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
-                    schema_variants.push(Self::assemble(node_weight.id().into(), content.clone()));
+                    schema_variants
+                        .push(Self::assemble(ctx, node_weight.id().into(), content.clone()).await?);
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -973,7 +981,7 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
-        Ok((hash, content.extract()))
+        Ok((hash, content.extract(ctx, schema_variant_id).await?))
     }
 
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].

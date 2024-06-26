@@ -20,7 +20,7 @@ async fn clone_variant(ctx: &mut DalContext) {
         .get_default_schema_variant_id(ctx)
         .await
         .expect("Unable to find the default schema variant id");
-    let existing_schema = SchemaVariant::get_by_id(
+    let existing_variant = SchemaVariant::get_by_id(
         ctx,
         default_schema_variant.expect("unable to unwrap schema variant id"),
     )
@@ -32,12 +32,12 @@ async fn clone_variant(ctx: &mut DalContext) {
     let (new_schema_variant, _) = VariantAuthoringClient::clone_variant(
         ctx,
         default_schema_variant.expect("unable to get the schema variant id from the option"),
-        existing_schema.name().to_string(),
+        schema.name().to_string(),
     )
     .await
     .expect("unable to clone the schema variant");
 
-    assert_eq!(new_schema_variant.category(), existing_schema.category());
+    assert_eq!(new_schema_variant.category(), existing_variant.category());
     assert_eq!(
         new_schema_variant.display_name(),
         Some("dummy-secret Clone".to_string())

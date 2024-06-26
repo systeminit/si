@@ -179,7 +179,7 @@ impl VariantAuthoringClient {
     pub async fn clone_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-        name: String,
+        schema_name: String,
     ) -> VariantAuthoringResult<(SchemaVariant, Schema)> {
         let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
@@ -189,11 +189,11 @@ impl VariantAuthoringClient {
         if let Some(asset_func_id) = variant.asset_func_id() {
             let old_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
 
-            let cloned_func = old_func.duplicate(ctx, name.clone()).await?;
+            let cloned_func = old_func.duplicate(ctx, schema_name.clone()).await?;
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
             let definition = execute_asset_func(ctx, &cloned_func).await?;
             let metadata = SchemaVariantMetadataJson {
-                schema_name: name.clone(),
+                schema_name: schema_name.clone(),
                 name: "v0".into(),
                 display_name: display_name.clone(),
                 category: variant.category().to_string(),
@@ -618,8 +618,9 @@ impl VariantAuthoringClient {
         let definition = execute_asset_func(ctx, &unlocked_asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
+            schema_name: schema.name.clone(),
             name: "VERSION GOES HERE".to_string(),
-            menu_name: Some(format!("{}, unlocked", schema.name)),
+            display_name: Some(format!("{}, unlocked", locked_variant.display_name.clone())),
             category: locked_variant.category().to_string(),
             color: locked_variant.color().to_string(),
             component_type: locked_variant.component_type(),
@@ -637,7 +638,7 @@ impl VariantAuthoringClient {
             )
             .await?;
 
-        let schema_spec = metadata.to_spec(unlocked_variant_spec)?;
+        let schema_spec = metadata.to_schema_spec(unlocked_variant_spec)?;
 
         let creator_email = ctx.history_actor().email(ctx).await?;
         let pkg_spec = PkgSpec::builder()
@@ -689,7 +690,7 @@ impl VariantAuthoringClient {
         ctx: &DalContext,
         current_schema_variant_id: SchemaVariantId,
         schema_name: impl Into<String>,
-        name: impl Into<String>,
+        version: impl Into<String>,
         display_name: Option<String>,
         link: Option<String>,
         code: impl Into<String>,
@@ -707,7 +708,8 @@ impl VariantAuthoringClient {
             VariantAuthoringError::SchemaVariantAssetNotFound(current_schema_variant_id),
         )?;
 
-        let name: String = name.into();
+        // TODO rename this to version without breaking frontend
+        let name: String = version.into();
         let name = &name;
 
         current_schema
@@ -723,7 +725,7 @@ impl VariantAuthoringClient {
 
         current_schema_variant
             .modify(ctx, |sv| {
-                sv.name.clone_from(name);
+                sv.version.clone_from(name);
                 sv.description = variant_description;
                 sv.link = variant_link;
                 sv.category.clone_from(&category.into());

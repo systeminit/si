@@ -2,17 +2,28 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
+use thiserror::Error;
 
 use crate::action::prototype::ActionKind;
 use crate::validation::ValidationStatus;
 use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
-    ActionPrototypeId, ComponentId, ComponentType, FuncBackendKind, FuncBackendResponseType,
-    FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
+    ActionPrototypeId, ComponentId, ComponentType, DalContext, FuncBackendKind,
+    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaVariant, SchemaVariantId, SocketArity,
+    SocketKind, Timestamp, UserPk,
 };
 
-/// This type gathers up all the kinds of things we will store in the
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ContentTypeError {
+    #[error("error extracting schema variant content : {0}")]
+    SchemaVariantContent(String),
+}
+
+pub type ContentTypeResult<T> = Result<T, ContentTypeError>;
+
+/// This type gathers all the kinds of things we will store in the
 /// content-store portion of the layered database. Anything we want to read or
 /// write from there should be added here. Then the impl_into_content_types!
 /// macro should be used to provide from/into implementations between the inner
@@ -350,32 +361,49 @@ pub enum SchemaVariantContent {
 }
 
 impl SchemaVariantContent {
-    pub fn extract(self) -> SchemaVariantContentV2 {
+    pub async fn extract(
+        self,
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> ContentTypeResult<SchemaVariantContentV2> {
         // update progressively
         let at_least_v2 = match self {
-            SchemaVariantContent::V1(v1) => SchemaVariantContent::V2(SchemaVariantContentV2 {
-                timestamp: v1.timestamp,
-                ui_hidden: v1.ui_hidden,
-                version: v1.name.to_owned(),
-                display_name: v1.display_name.unwrap_or(v1.name),
-                category: v1.category,
-                color: v1.color,
-                component_type: v1.component_type,
-                link: v1.link,
-                description: v1.description,
-                asset_func_id: v1.asset_func_id,
-                finalized_once: v1.finalized_once,
-                is_builtin: v1.is_builtin,
-                is_locked: true,
-            }),
+            SchemaVariantContent::V1(v1) => {
+                let display_name = if let Some(display_name) = v1.display_name {
+                    display_name
+                } else {
+                    let schema = SchemaVariant::schema_for_schema_variant_id(ctx, id)
+                        .await
+                        .map_err(|e| ContentTypeError::SchemaVariantContent(e.to_string()))?;
+                    schema.name
+                };
+
+                SchemaVariantContent::V2(SchemaVariantContentV2 {
+                    timestamp: v1.timestamp,
+                    ui_hidden: v1.ui_hidden,
+                    version: v1.name.to_owned(),
+                    display_name,
+                    category: v1.category,
+                    color: v1.color,
+                    component_type: v1.component_type,
+                    link: v1.link,
+                    description: v1.description,
+                    asset_func_id: v1.asset_func_id,
+                    finalized_once: v1.finalized_once,
+                    is_builtin: v1.is_builtin,
+                    is_locked: true,
+                })
+            }
             later => later,
         };
 
         // extract latest
-        match at_least_v2 {
+        let latest = match at_least_v2 {
             SchemaVariantContent::V2(v2) => v2,
             _ => unreachable!(),
-        }
+        };
+
+        Ok(latest)
     }
 }
 
