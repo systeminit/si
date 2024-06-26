@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
-    change_set::ChangeSet,
     workspace_snapshot::{
         graph::LineageId,
         node_weight::NodeWeightResult,
@@ -33,18 +32,19 @@ pub struct AttributePrototypeArgumentNodeWeight {
 
 impl AttributePrototypeArgumentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         targets: Option<ArgumentTargets>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
             targets,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
+            vector_clock_write: VectorClock::new(vector_clock_id),
             timestamp: Timestamp::now(),
         })
     }

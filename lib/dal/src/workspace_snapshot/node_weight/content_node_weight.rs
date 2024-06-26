@@ -1,17 +1,15 @@
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::VectorClockId;
 use si_events::{ulid::Ulid, ContentHash};
 
-use crate::EdgeWeightKindDiscriminants;
-use crate::{
-    change_set::ChangeSet,
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::LineageId,
-        node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::{HasVectorClocks, VectorClock},
-    },
+use crate::workspace_snapshot::{
+    content_address::ContentAddress,
+    graph::LineageId,
+    node_weight::{NodeWeightError, NodeWeightResult},
+    vector_clock::{HasVectorClocks, VectorClock},
 };
+use crate::EdgeWeightKindDiscriminants;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContentNodeWeight {
@@ -42,18 +40,19 @@ pub struct ContentNodeWeight {
 
 impl ContentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
+            vector_clock_write: VectorClock::new(vector_clock_id),
             to_delete: false,
         })
     }

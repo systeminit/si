@@ -132,11 +132,17 @@ impl Schema {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::Schema(hash),
+        )?;
+
         workspace_snapshot.add_node(node_weight).await?;
 
         let schema_category_index_id = workspace_snapshot
@@ -145,7 +151,7 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
+                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -250,7 +256,7 @@ impl Schema {
             // we now need to update that edge to be a Use
             workspace_snapshot
                 .remove_edge(
-                    ctx.change_set()?,
+                    ctx.vector_clock_id()?,
                     source_index,
                     target_index,
                     edge_weight.kind().into(),
@@ -277,7 +283,7 @@ impl Schema {
 
         workspace_snapshot
             .remove_edge(
-                ctx.change_set()?,
+                ctx.vector_clock_id()?,
                 source_index,
                 target_index,
                 EdgeWeightKind::new_use().into(),
@@ -338,7 +344,7 @@ impl Schema {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, schema.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, schema.id.into(), hash)
                 .await?;
         }
 

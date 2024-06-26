@@ -377,10 +377,14 @@ impl SchemaVariant {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight =
-            NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::SchemaVariant(hash),
+        )?;
         workspace_snapshot.add_node(node_weight).await?;
 
         // Schema --Use--> SchemaVariant (this)
@@ -417,7 +421,7 @@ impl SchemaVariant {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, schema_variant.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, schema_variant.id.into(), hash)
                 .await?;
         }
 
@@ -925,10 +929,9 @@ impl SchemaVariant {
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let change_set = ctx.change_set()?;
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                change_set,
+                ctx.vector_clock_id()?,
                 schema_variant_id,
                 func_id,
                 EdgeWeightKindDiscriminants::AuthenticationPrototype,
@@ -1764,7 +1767,7 @@ impl SchemaVariant {
         for (_edge_weight, _source_index, target_index) in maybe_schema_indices {
             workspace_snapshot
                 .remove_node_by_id(
-                    ctx.change_set()?,
+                    ctx.vector_clock_id()?,
                     workspace_snapshot.get_node_weight(target_index).await?.id(),
                 )
                 .await?;

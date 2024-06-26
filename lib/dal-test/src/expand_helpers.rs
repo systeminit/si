@@ -9,7 +9,23 @@ use jwt_simple::claims::Claims;
 use jwt_simple::prelude::Duration;
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
-use crate::{helpers::generate_fake_name, jwt_private_signing_key, WorkspaceSignup};
+use crate::{
+    helpers::create_user, helpers::generate_fake_name, jwt_private_signing_key, WorkspaceSignup,
+};
+
+/// Creates a user for each test to run as
+pub async fn setup_history_actor_ctx(ctx: &mut DalContext) {
+    let user = create_user(ctx).await.expect("unable to create user");
+    user.associate_workspace(
+        ctx,
+        ctx.tenancy()
+            .workspace_pk()
+            .expect("no workspace pk set on context"),
+    )
+    .await
+    .expect("unable to associate user with workspace");
+    ctx.update_history_actor(dal::HistoryActor::User(user.pk()));
+}
 
 /// This function is used during macro expansion for setting up a [`ChangeSet`] in an integration test.
 pub async fn create_change_set_and_update_ctx(
