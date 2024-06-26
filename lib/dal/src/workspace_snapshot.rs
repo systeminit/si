@@ -619,7 +619,7 @@ impl WorkspaceSnapshot {
         let component_node_index = other.read_only_graph.get_node_index_by_id(component_id)?;
         Ok(self.working_copy_mut().await.import_component_subgraph(
             vector_clock_id,
-            &*other.read_only_graph,
+            &other.read_only_graph,
             component_node_index,
         )?)
     }

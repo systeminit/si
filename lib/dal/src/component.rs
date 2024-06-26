@@ -185,6 +185,8 @@ pub enum ComponentError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("attribute value {0} has wrong type for operation: {0}")]
     WrongAttributeValueType(AttributeValueId, ValueIsFor),
+    #[error("Attribute Prototype Argument used by too many Attribute Prototypes: {0}")]
+    WrongNumberOfPrototypesForAttributePrototypeArgument(AttributePrototypeArgumentId),
     #[error("WsEvent error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -1297,34 +1299,60 @@ impl Component {
         Self::get_parent_by_id(ctx, self.id).await
     }
 
+    async fn try_get_node_weight_and_content(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Option<(ComponentNodeWeight, ComponentContentV1)>> {
+        if let Some((component_node_weight, content_hash)) =
+            Self::try_get_node_weight_and_content_hash(ctx, component_id).await?
+        {
+            let content: ComponentContent = ctx
+                .layer_db()
+                .cas()
+                .try_read_as(&content_hash)
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    component_id.into(),
+                ))?;
+
+            let ComponentContent::V1(inner) = content;
+
+            return Ok(Some((component_node_weight, inner)));
+        }
+
+        Ok(None)
+    }
+
     async fn get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV1)> {
-        let (component_node_weight, hash) =
-            Self::get_node_weight_and_content_hash(ctx, component_id).await?;
-
-        let content: ComponentContent = ctx.layer_db().cas().try_read_as(&hash).await?.ok_or(
-            WorkspaceSnapshotError::MissingContentFromStore(component_id.into()),
-        )?;
-
-        let ComponentContent::V1(inner) = content;
-
-        Ok((component_node_weight, inner))
+        Self::try_get_node_weight_and_content(ctx, component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))
     }
 
-    async fn get_node_weight_and_content_hash(
+    async fn try_get_node_weight_and_content_hash(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<(ComponentNodeWeight, ContentHash)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+    ) -> ComponentResult<Option<(ComponentNodeWeight, ContentHash)>> {
         let id: Ulid = component_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        if let Some(node_index) = ctx
+            .workspace_snapshot()?
+            .try_get_node_index_by_id(id)
+            .await?
+        {
+            let node_weight = ctx
+                .workspace_snapshot()?
+                .get_node_weight(node_index)
+                .await?;
 
-        let hash = node_weight.content_hash();
-        let component_node_weight = node_weight.get_component_node_weight()?;
-        Ok((component_node_weight, hash))
+            let hash = node_weight.content_hash();
+            let component_node_weight = node_weight.get_component_node_weight()?;
+            return Ok(Some((component_node_weight, hash)));
+        }
+
+        Ok(None)
     }
 
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
@@ -1439,6 +1467,19 @@ impl Component {
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
         Ok(Self::assemble(&node_weight, content))
+    }
+
+    pub async fn try_get_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Option<Self>> {
+        if let Some((node_weight, content)) =
+            Self::try_get_node_weight_and_content(ctx, component_id).await?
+        {
+            return Ok(Some(Self::assemble(&node_weight, content)));
+        }
+
+        Ok(None)
     }
 
     pub async fn set_geometry(
@@ -1839,18 +1880,66 @@ impl Component {
         Self::input_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
 
-    #[instrument(level = "info", skip(ctx))]
-    async fn connect_inner(
+    #[instrument(level = "debug", skip(ctx))]
+    async fn create_new_connection(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<Option<(AttributeValueId, AttributePrototypeArgumentId)>> {
-        let total_start = std::time::Instant::now();
-
+        destination_prototype_id: AttributePrototypeId,
+    ) -> ComponentResult<AttributePrototypeArgumentId> {
+        debug!(
+            "Creating new Component connection: {:?}, {:?}, {:?}, {:?}",
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id
+        );
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
+        let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
+            ctx,
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_prototype_id,
+        )
+        .await?;
+
+        drop(cycle_check_guard);
+        debug!("Cycle Check Guard dropped");
+
+        Ok(attribute_prototype_argument.id())
+    }
+
+    pub async fn remove_edge_from_frame(
+        ctx: &DalContext,
+        parent_id: ComponentId,
+        child_id: ComponentId,
+    ) -> ComponentResult<()> {
+        ctx.workspace_snapshot()?
+            .remove_edge_for_ulids(
+                ctx.change_set()?,
+                parent_id,
+                child_id,
+                EdgeWeightKindDiscriminants::FrameContains,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(level = "info", skip(ctx))]
+    pub async fn connect(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        source_output_socket_id: OutputSocketId,
+        destination_component_id: ComponentId,
+        destination_input_socket_id: InputSocketId,
+    ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
+        let total_start = std::time::Instant::now();
+        // Already have this connection? Nothing to do.
         let destination_component = Component::get_by_id(ctx, destination_component_id).await?;
         for connection in destination_component.incoming_connections(ctx).await? {
             if connection.from_component_id == source_component_id
@@ -1886,8 +1975,54 @@ impl Component {
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
 
-        // check for socket arity on the input socket
-        // if the input socket has arity of one, and there's an existing edge, need to remove it before adding the new one
+        Self::connect_arity_cleanup(
+            ctx,
+            destination_component_id,
+            destination_input_socket_id,
+            destination_prototype_id,
+        )
+        .await?;
+
+        let attribute_prototype_argument_id = match Self::restore_connection_from_base_change_set(
+            ctx,
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        )
+        .await?
+        {
+            Some(apa_id) => apa_id,
+            None => {
+                Self::create_new_connection(
+                    ctx,
+                    source_component_id,
+                    source_output_socket_id,
+                    destination_component_id,
+                    destination_input_socket_id,
+                    destination_prototype_id,
+                )
+                .await?
+            }
+        };
+
+        ctx.add_dependent_values_and_enqueue(vec![destination_attribute_value_id])
+            .await?;
+
+        debug!("Component::connect took {:?}", total_start.elapsed());
+
+        Ok(Some(attribute_prototype_argument_id))
+    }
+
+    /// Check for socket arity on the input socket; if the input socket has arity of
+    /// one, and there's an existing edge, need to remove it before we can add a new one.
+    #[instrument(level = "debug", skip(ctx))]
+    async fn connect_arity_cleanup(
+        ctx: &DalContext,
+        destination_component_id: ComponentId,
+        destination_input_socket_id: InputSocketId,
+        destination_prototype_id: AttributePrototypeId,
+    ) -> ComponentResult<()> {
         let input_socket = InputSocket::get_by_id(ctx, destination_input_socket_id).await?;
         if input_socket.arity() == SocketArity::One {
             let existing_attribute_prototype_args =
@@ -1918,68 +2053,188 @@ impl Component {
             }
         }
 
-        let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
-            ctx,
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_prototype_id,
-        )
-        .await?;
-
-        drop(cycle_check_guard);
-        info!(
-            "Cycle Check Guard dropped, add edge took {:?}",
-            total_start.elapsed()
-        );
-
-        Ok(Some((
-            destination_attribute_value_id,
-            attribute_prototype_argument.id(),
-        )))
-    }
-
-    pub async fn remove_edge_from_frame(
-        ctx: &DalContext,
-        parent_id: ComponentId,
-        child_id: ComponentId,
-    ) -> ComponentResult<()> {
-        ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
-                ctx.change_set()?,
-                parent_id,
-                child_id,
-                EdgeWeightKindDiscriminants::FrameContains,
-            )
-            .await?;
-
         Ok(())
     }
 
-    pub async fn connect(
+    #[instrument(level = "debug", skip(ctx))]
+    async fn restore_connection_from_base_change_set(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
-        let maybe = Self::connect_inner(
-            ctx,
+        debug!(
+            "Restoring connection from base change set: {:?}, {:?}, {:?}, {:?}",
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id
+        );
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+        let base_change_set_ctx = &base_change_set_ctx;
+        let base_change_set_component = if let Some(component) =
+            Component::try_get_by_id(base_change_set_ctx, destination_component_id).await?
+        {
+            component
+        } else {
+            return Ok(None);
+        };
+        let base_change_set_connection = match base_change_set_component
+            .incoming_connections(base_change_set_ctx)
+            .await?
+            .iter()
+            .find(|ic| {
+                ic.from_component_id == source_component_id
+                    && ic.from_output_socket_id == source_output_socket_id
+                    && ic.to_component_id == destination_component_id
+                    && ic.to_input_socket_id == destination_input_socket_id
+            })
+            .cloned()
+        {
+            Some(connection) => connection,
+            None => return Ok(None),
+        };
+        debug!(
+            "Restoring connection from base change set: {:?}, {:?}, {:?}, {:?}, {:?}",
             source_component_id,
             source_output_socket_id,
             destination_component_id,
             destination_input_socket_id,
+            base_change_set_connection,
+        );
+
+        let base_attribute_prototype_argument_node_index = base_change_set_ctx
+            .workspace_snapshot()?
+            .get_node_index_by_id(base_change_set_connection.attribute_prototype_argument_id)
+            .await?;
+        let base_attribute_prototype_argument_node_weight = base_change_set_ctx
+            .workspace_snapshot()?
+            .get_node_weight(base_attribute_prototype_argument_node_index)
+            .await?;
+        let base_func_arg_id = AttributePrototypeArgument::func_argument_id_by_id(
+            base_change_set_ctx,
+            base_change_set_connection.attribute_prototype_argument_id,
         )
         .await?;
 
-        if let Some((destination_attribute_value_id, attribute_prototype_argument_id)) = maybe {
-            ctx.add_dependent_values_and_enqueue(vec![destination_attribute_value_id])
-                .await?;
+        // We want to recreate the `AttributePrototype -> AttributePrototypeArgument` edge as it
+        // exists in the base change set.
+        let mut base_prototype_argument_incoming_edges = base_change_set_ctx
+            .workspace_snapshot()?
+            .edges_directed(
+                base_change_set_connection.attribute_prototype_argument_id,
+                petgraph::Direction::Incoming,
+            )
+            .await?;
+        base_prototype_argument_incoming_edges.retain(
+            |(edge_weight, _source_index, _destination_index)| {
+                EdgeWeightKindDiscriminants::PrototypeArgument == edge_weight.kind().into()
+            },
+        );
+        let (base_prototype_to_argument_edge_weight, prototype_id) =
+            if base_prototype_argument_incoming_edges.len() == 1 {
+                match base_prototype_argument_incoming_edges.first() {
+                    Some((edge_weight, source_node_index, _destination_node_index)) => {
+                        let prototype_weight = base_change_set_ctx
+                            .workspace_snapshot()?
+                            .get_node_weight(*source_node_index)
+                            .await?;
+                        (edge_weight, prototype_weight.id())
+                    }
+                    None => {
+                        // We just made sure that there was exactly one element in the Vec.
+                        unreachable!("Unable to get first element of a one element Vec");
+                    }
+                }
+            } else {
+                return Err(
+                    ComponentError::WrongNumberOfPrototypesForAttributePrototypeArgument(
+                        base_change_set_connection.attribute_prototype_argument_id,
+                    ),
+                );
+            };
 
-            Ok(Some(attribute_prototype_argument_id))
-        } else {
-            Ok(None)
-        }
+        // We want to recreate the `AttributePrototypeArgument -> OutputSocket` edge
+        // (EdgeWeightKind::PrototypeArgumentValue).
+        let base_prototype_arg_to_output_socket_edges = base_change_set_ctx
+            .workspace_snapshot()?
+            .get_edges_between_nodes(
+                base_change_set_connection
+                    .attribute_prototype_argument_id
+                    .into(),
+                source_output_socket_id.into(),
+            )
+            .await?;
+        let base_prototype_arg_to_output_socket_edge_weight =
+            match base_prototype_arg_to_output_socket_edges.first() {
+                Some(edge_weight) => edge_weight,
+                None => {
+                    return Err(AttributePrototypeArgumentError::MissingSource(
+                        base_change_set_connection.attribute_prototype_argument_id,
+                    )
+                    .into());
+                }
+            };
+
+        // We want to recreate the `AttributePrototypeArgument -> FuncArg` edge
+        // (EdgeWeightKind::Use).
+        let base_prototype_arg_to_func_arg_edges = base_change_set_ctx
+            .workspace_snapshot()?
+            .get_edges_between_nodes(
+                base_change_set_connection
+                    .attribute_prototype_argument_id
+                    .into(),
+                base_func_arg_id.into(),
+            )
+            .await?;
+        let base_prototype_arg_to_func_arg_edge_weight =
+            match base_prototype_arg_to_func_arg_edges.first() {
+                Some(edge_weight) => edge_weight,
+                None => {
+                    return Err(AttributePrototypeArgumentError::MissingFuncArgument(
+                        base_change_set_connection.attribute_prototype_argument_id,
+                    )
+                    .into())
+                }
+            };
+
+        let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
+
+        // Recreate the AttributePrototypeArgument & associated edges.
+        // We only need to import the AttributePrototypeArgument node, as all of the other relevant
+        // nodes should already exist.
+        ctx.workspace_snapshot()?
+            .add_node(base_attribute_prototype_argument_node_weight.clone())
+            .await?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                prototype_id,
+                base_prototype_to_argument_edge_weight.clone(),
+                base_change_set_connection.attribute_prototype_argument_id,
+            )
+            .await?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                base_change_set_connection.attribute_prototype_argument_id,
+                base_prototype_arg_to_func_arg_edge_weight.clone(),
+                base_func_arg_id,
+            )
+            .await?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                base_change_set_connection.attribute_prototype_argument_id,
+                base_prototype_arg_to_output_socket_edge_weight.clone(),
+                source_output_socket_id,
+            )
+            .await?;
+
+        drop(cycle_check_guard);
+        debug!("Cycle Check Guard dropped");
+
+        Ok(Some(
+            base_attribute_prototype_argument_node_weight.id().into(),
+        ))
     }
 
     // Returns map of node id -> parent node ids
@@ -3602,6 +3857,18 @@ impl Component {
                 component_id,
             )
             .await?;
+
+        let component = Component::get_by_id(ctx, component_id).await?;
+
+        ctx.add_dependent_values_and_enqueue(
+            component
+                .input_socket_attribute_values(ctx)
+                .await?
+                .values()
+                .map(|ism| ism.attribute_value_id)
+                .collect(),
+        )
+        .await?;
 
         Ok(())
     }
