@@ -10,17 +10,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveVariantRequest {
-    pub id: SchemaId,
-    pub default_schema_variant_id: SchemaVariantId,
-    pub schema_name: String,
-    pub name: String,
-    pub display_name: Option<String>,
-    pub category: String,
-    pub color: String,
-    pub link: Option<String>,
+    pub variant: si_frontend_types::SchemaVariant,
     pub code: Option<String>,
-    pub description: Option<String>,
-    pub component_type: ComponentType,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

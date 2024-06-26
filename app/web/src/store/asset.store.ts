@@ -64,10 +64,9 @@ export type SchemaVariantListEntry = SchemaVariant & {
   canUpdate: boolean;
   canContribute: boolean;
 };
-export type SchemaVariantSaveRequest = Visibility & { code?: string } & Omit<
-    SchemaVariant,
-    "created_at" | "updated_at"
-  >;
+export type SchemaVariantSaveRequest = Visibility & { code?: string } & {
+  variant: Omit<SchemaVariant, "created_at" | "updated_at">;
+};
 export type SchemaVariantCreateRequest = { name: string; color: string };
 export type SchemaVariantCloneRequest = Visibility & {
   id: SchemaVariantId;
@@ -330,11 +329,6 @@ export const useAssetStore = () => {
             changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
-          const params = {
-            ...visibility,
-            ...omit(schemaVariant, "created_at", "updated_at"),
-          } as SchemaVariantSaveRequest;
-          if (code) params.code = code;
           return new ApiRequest<
             { success: boolean; assetFuncId: FuncId },
             SchemaVariantSaveRequest
@@ -355,24 +349,19 @@ export const useAssetStore = () => {
                 }
               };
             },
-            params,
+            params: {
+              ...visibility,
+              code,
+              variant: omit(schemaVariant, "created_at", "updated_at"),
+            },
           });
         },
 
         async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
           // when we load a variant, load all its code ahead of time before a user selects a func
-          /* I could load all the code behind the scenes if we want?
           const variant = this.variantFromListById[schemaVariantId];
-          if (variant) {
-            const funcIds = variant.funcIds.concat([variant.assetFuncId]);
-            funcIds.forEach((fId) => {
-              funcsStore.FETCH_FUNC(fId);
-            });
-          } else {
-            throw new Error(
-              `${schemaVariantId} Variant not found. This should not happen.`,
-            );
-          } */
+          if (variant) await funcsStore.FETCH_FUNC(variant.assetFuncId);
+
           // its likely we no longer need this call, because this data is identical to the list data we already have
           return new ApiRequest<
             SchemaVariant,

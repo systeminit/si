@@ -120,11 +120,12 @@ const onChange = () => {
   }
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
-  assetStore.enqueueVariantSave(
-    {
-      ...selectedAsset.value,
-    },
-    editingAsset.value,
-  );
+  if (!updatedHead.value)
+    assetStore.enqueueVariantSave(
+      {
+        ...selectedAsset.value,
+      },
+      editingAsset.value,
+    );
 };
 </script>
