@@ -1589,7 +1589,7 @@ impl WorkspaceSnapshot {
             return Ok(removed_component_ids);
         };
 
-        if let Some(change_set_vector_clock_id) = base_snapshot
+        if let Some(change_set_vector_clock_id) = self
             .read_only_graph
             .max_recently_seen_clock_id(Some(ctx.change_set_id()))
         {
@@ -1859,7 +1859,7 @@ impl WorkspaceSnapshot {
             .ok_or(WorkspaceSnapshotError::RecentlySeenClocksMissing(
                 base_change_set_id,
             ))?;
-        if let Some(change_set_vector_clock_id) = base_snapshot
+        if let Some(change_set_vector_clock_id) = self
             .read_only_graph
             .max_recently_seen_clock_id(Some(ctx.change_set_id()))
         {
