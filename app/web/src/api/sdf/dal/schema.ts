@@ -55,6 +55,7 @@ export interface SchemaVariant {
   version: string;
   assetFuncId: FuncId;
   funcIds: FuncId[];
+  isLocked: boolean;
 
   schemaId: SchemaId;
 
