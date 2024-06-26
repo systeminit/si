@@ -7,7 +7,6 @@ on:
         type: string
         required: true
         description: "where to deploy"
-        default: "tools"
   workflow_dispatch:
     inputs:
       environment:
@@ -20,17 +19,38 @@ on:
           - production
 
 jobs:
+  define-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.tests.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: tests
+        working-directory: app/web/cypress/e2e
+        run: |
+            # get the names of all test subdirs with out slashes
+            test_dirs=$(find . -mindepth 1 -maxdepth 1 -type d  | sed 's|^\./||')
+            test_array="[]"
+            # put them into an array
+            for d in $test_dirs; do
+              test_array=$(echo "$test_array" | jq --arg d "$d" '. += [$d]')
+            done
+            test_array=$(echo "$test_array" | jq -c '.')
+            echo "$test_array"
+            echo "tests=$test_array" >> "$GITHUB_OUTPUT"
+
   cypress-tests:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    needs: define-test-matrix
     strategy:
       # don't fail the entire matrix on failure
       fail-fast: false
       matrix:
-        # run copies of the current job in parallel
+        # run copies of the current job in parallel split by test dir
         # TODO: we really should build once and set it as an
         # artifact so we aren't rebuilding for each of these
-        containers: [1, 2, 3] #, 4, 5, 6, 7, 8, 9, 10] - temp disabled mass
+        tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -56,11 +76,7 @@ jobs:
           sudo apt update
           sudo apt install uuid -y
 
-      - uses: nick-fields/retry@v2
-        with:
-          max_attempts: 3
-          timeout_minutes: 20
-          command: |
+      - run: |
             cd app/web
             export VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}
             export VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}
@@ -72,17 +88,22 @@ jobs:
             export VITE_AUTH_API_URL=https://auth-api.systeminit.com
             export VITE_AUTH_PORTAL_URL=https://auth.systeminit.com
 
-            npx cypress run --spec "cypress/e2e/**" --parallel --record --key ${{ secrets.CYPRESS_RECORD_KEY }}
+            npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**"
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cypress-recordings-run-${{ matrix.containers }}
+          name: cypress-recordings-run-${{ matrix.tests }}
           path: app/web/cypress/videos/**/*.mp4
           retention-days: 5
 
-      - name: Send Slack Failure Webhook
-        if: failure()
-        run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+  on-failure:
+    runs-on: ubuntu-latest
+    needs: cypress-tests
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - run: |
+          curl -X POST \
+            -H 'Content-type: application/json' \
+            --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
