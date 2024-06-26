@@ -230,9 +230,7 @@ const categoryColor = (category: string) => {
 };
 
 const newAsset = async (newAssetName: string) => {
-  const result = await assetStore.CREATE_VARIANT(
-    assetStore.createNewVariant(newAssetName),
-  );
+  const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
     assetStore.setSchemaVariantSelection(result.result.data.id);
     newAssetModalRef.value?.modal?.close();

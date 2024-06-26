@@ -4,18 +4,12 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
-import {
-  SchemaVariant,
-  SchemaVariantId,
-  ComponentType,
-} from "@/api/sdf/dal/schema";
+import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { dateToVersion } from "@/utils/dateformats";
 import { omit } from "@/utils/omit";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -74,10 +68,7 @@ export type SchemaVariantSaveRequest = Visibility & { code?: string } & Omit<
     SchemaVariant,
     "created_at" | "updated_at"
   >;
-export type SchemaVariantCreateRequest = Omit<
-  SchemaVariantSaveRequest,
-  "schemaId" | "schemaVariantId"
->;
+export type SchemaVariantCreateRequest = { name: string; color: string };
 export type SchemaVariantCloneRequest = Visibility & {
   id: SchemaVariantId;
   name: string;
@@ -271,30 +262,7 @@ export const useAssetStore = () => {
           ])}`;
         },
 
-        createNewVariant(name: string): SchemaVariant {
-          const schemaName =
-            name || `new asset ${Math.floor(Math.random() * 10000)}`;
-          return {
-            schemaId: nilId(),
-            schemaVariantId: nilId(),
-            schemaName,
-            displayName: schemaName,
-            version: dateToVersion(new Date()),
-            assetFuncId: nilId(),
-            color: this.generateMockColor(),
-            description: "",
-            category: "",
-            componentType: ComponentType.Component,
-            link: "https://www.systeminit.com/",
-            funcIds: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            inputSockets: [],
-            outputSockets: [],
-          };
-        },
-
-        async CREATE_VARIANT(schemaVariant: SchemaVariant) {
+        async CREATE_VARIANT(name: string) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === changeSetsStore.headChangeSetId)
@@ -307,14 +275,8 @@ export const useAssetStore = () => {
             url: "/variant/create_variant",
             params: {
               ...visibility,
-              code: "",
-              ...omit(
-                schemaVariant,
-                "schemaId",
-                "schemaVariantId",
-                "created_at",
-                "updated_at",
-              ),
+              name,
+              color: this.generateMockColor(),
             },
           });
         },
