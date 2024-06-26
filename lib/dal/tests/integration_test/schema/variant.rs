@@ -17,7 +17,7 @@ async fn new(ctx: &DalContext) {
         ctx,
         schema.id(),
         "ringo starr",
-        Some("ringo".to_string()),
+        "ringo".to_string(),
         "beatles",
         "#FFFFFF",
         ComponentType::Component,
@@ -28,7 +28,7 @@ async fn new(ctx: &DalContext) {
     )
     .await
     .expect("cannot create schema variant");
-    assert_eq!(variant.name(), "ringo starr");
+    assert_eq!(variant.version(), "ringo starr");
 }
 
 #[test]
@@ -38,7 +38,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
         ctx,
         schema.id(),
         "v0",
-        Some("v0_display_name".to_string()),
+        "v0_display_name".to_string(),
         "demo",
         "#000000",
         ComponentType::Component,
@@ -71,7 +71,7 @@ async fn list_root_si_child_props(ctx: &DalContext) {
         ctx,
         schema.id(),
         "v0",
-        Some("v0_display_name".to_string()),
+        "v0_display_name".to_string(),
         "demo",
         "#000000",
         ComponentType::Component,

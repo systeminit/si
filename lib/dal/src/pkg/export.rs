@@ -170,12 +170,12 @@ impl PkgExporter {
         variant_is_builtin: bool,
     ) -> PkgResult<SchemaVariantSpec> {
         let mut variant_spec_builder = SchemaVariantSpec::builder();
-        variant_spec_builder.name(variant.name());
+        variant_spec_builder.name(variant.version());
         variant_spec_builder.is_builtin(variant_is_builtin);
         variant_spec_builder.unique_id(variant.id().to_string());
         let mut data_builder = SchemaVariantSpecData::builder();
 
-        data_builder.name(variant.name());
+        data_builder.name(variant.version());
         data_builder.color(variant.get_color(ctx).await?);
 
         if let Some(link) = variant.link() {

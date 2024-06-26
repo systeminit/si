@@ -64,7 +64,7 @@ impl SchemaView {
                         // FIXME(nick): use the real value here
                         builtin: true,
                         is_default: schema_variant.id() == default_variant_id,
-                        name: schema_variant.name().to_owned(),
+                        name: schema_variant.version().to_owned(),
                         color: schema_variant.get_color(ctx).await?,
                         category: schema_variant.category().to_owned(),
                         component_type: schema_variant.component_type().to_owned(),
@@ -85,6 +85,7 @@ impl SchemaView {
                         timestamp: schema_variant.timestamp(),
                         description: schema_variant.description(),
                         display_name: schema_variant.display_name(),
+                        is_locked: schema_variant.is_locked(),
                     });
                 }
 
@@ -129,6 +130,7 @@ pub struct SchemaVariantView {
     timestamp: Timestamp,
     description: Option<String>,
     display_name: Option<String>,
+    is_locked: bool,
 }
 
 impl SchemaVariantView {

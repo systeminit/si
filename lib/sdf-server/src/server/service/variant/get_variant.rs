@@ -66,7 +66,7 @@ pub async fn get_variant(
         id: request.id,
         default_schema_variant_id,
         schema_name: schema.name().into(),
-        name: variant.name().into(),
+        name: variant.version().into(),
         display_name: variant.display_name(),
         category: variant.category().into(),
         color: variant.get_color(&ctx).await?,
@@ -101,7 +101,7 @@ pub async fn get_variant(
         &original_uri,
         "get_variant",
         serde_json::json!({
-                    "variant_name": variant.name(),
+                    "variant_version": variant.version(),
                     "variant_category": variant.category(),
                     "variant_display_name": variant.display_name(),
                     "variant_id": variant.id(),

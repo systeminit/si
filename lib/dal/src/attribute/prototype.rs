@@ -657,6 +657,27 @@ impl AttributePrototype {
         }
         Ok(sources)
     }
+
+    pub async fn list_arguments_for_id(
+        ctx: &DalContext,
+        ap_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentId>> {
+        let mut apas = vec![];
+
+        let snap = ctx.workspace_snapshot()?;
+
+        for idx in snap
+            .outgoing_targets_for_edge_weight_kind(
+                ap_id,
+                EdgeWeightKindDiscriminants::PrototypeArgument,
+            )
+            .await?
+        {
+            apas.push(snap.get_node_weight(idx).await?.id().into())
+        }
+
+        Ok(apas)
+    }
 }
 
 #[remain::sorted]

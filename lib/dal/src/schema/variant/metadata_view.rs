@@ -11,10 +11,11 @@ pub struct SchemaVariantMetadataView {
     id: SchemaId,
     default_schema_variant_id: SchemaVariantId,
     schema_name: String,
+    // TODO rename this to version without breaking the frontend
     name: String,
     category: String,
     #[serde(alias = "display_name")]
-    display_name: Option<String>,
+    display_name: String,
     color: String,
     component_type: ComponentType,
     link: Option<String>,
@@ -35,7 +36,7 @@ impl SchemaVariantMetadataView {
                 id: schema.id,
                 default_schema_variant_id: default_schema_variant.id,
                 schema_name: schema.name.to_owned(),
-                name: default_schema_variant.name.to_owned(),
+                name: default_schema_variant.version.to_owned(),
                 category: default_schema_variant.category.to_owned(),
                 color: default_schema_variant.get_color(ctx).await?,
                 timestamp: default_schema_variant.timestamp.to_owned(),

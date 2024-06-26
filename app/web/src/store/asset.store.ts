@@ -11,6 +11,7 @@ import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { ComponentType } from "@/api/sdf/dal/diagram";
 import { nonNullable } from "@/utils/typescriptLinter";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -461,6 +462,25 @@ export const useAssetStore = () => {
             params: {
               ...visibility,
               ..._.omit(asset, ["hasComponents", "createdAt", "updatedAt"]),
+            },
+          });
+        },
+
+        async CREATE_UNLOCKED_COPY(id: SchemaVariantId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          this.detachmentWarnings = [];
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "/variant/create_unlocked_copy",
+            keyRequestStatusBy: id,
+            params: {
+              ...visibility,
+              id,
             },
           });
         },

@@ -63,6 +63,8 @@ pub enum InputSocketError {
     MultipleSocketsForAttributeValue(AttributeValueId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("input socket not found by name {0} in schema variant {1}")]
+    NotFoundByName(String, SchemaVariantId),
     #[error("schema variant error: {0}")]
     OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("schema variant error: {0}")]
@@ -203,6 +205,17 @@ impl InputSocket {
         }
 
         Ok(None)
+    }
+
+    pub async fn find_with_name_or_error(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        schema_variant_id: SchemaVariantId,
+    ) -> InputSocketResult<Self> {
+        let name = name.as_ref();
+        Self::find_with_name(ctx, name, schema_variant_id)
+            .await?
+            .ok_or_else(|| InputSocketError::NotFoundByName(name.to_string(), schema_variant_id))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -458,5 +471,18 @@ impl InputSocket {
             }
         }
         Ok(false)
+    }
+
+    pub async fn find_equivalent_in_schema_variant(
+        ctx: &DalContext,
+        input_socket_id: InputSocketId,
+        schema_variant_id: SchemaVariantId,
+    ) -> InputSocketResult<InputSocketId> {
+        let socket_name = Self::get_by_id(ctx, input_socket_id).await?.name;
+        Ok(
+            Self::find_with_name_or_error(ctx, socket_name, schema_variant_id)
+                .await?
+                .id,
+        )
     }
 }

@@ -56,6 +56,8 @@ pub enum OutputSocketError {
     NameCollision(OutputSocketId, OutputSocketId, SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("output socket not found by name {0} in schema variant {1}")]
+    NotFoundByName(String, SchemaVariantId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
@@ -368,6 +370,18 @@ impl OutputSocket {
         }
         Ok(maybe_output_socket)
     }
+
+    pub async fn find_with_name_or_error(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        schema_variant_id: SchemaVariantId,
+    ) -> OutputSocketResult<Self> {
+        let name = name.as_ref();
+        Self::find_with_name(ctx, name, schema_variant_id)
+            .await?
+            .ok_or_else(|| OutputSocketError::NotFoundByName(name.to_string(), schema_variant_id))
+    }
+
     #[instrument(level="debug" skip(ctx))]
     pub async fn fits_input_by_id(
         ctx: &DalContext,
@@ -447,5 +461,18 @@ impl OutputSocket {
         }
 
         Ok(results)
+    }
+
+    pub async fn find_equivalent_in_schema_variant(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+        schema_variant_id: SchemaVariantId,
+    ) -> OutputSocketResult<OutputSocketId> {
+        let socket_name = Self::get_by_id(ctx, output_socket_id).await?.name;
+        Ok(
+            Self::find_with_name_or_error(ctx, socket_name, schema_variant_id)
+                .await?
+                .id,
+        )
     }
 }
