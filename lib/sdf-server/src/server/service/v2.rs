@@ -5,11 +5,8 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use dal::{
-    ChangeSetId, ComponentType, DalContext, FuncId, InputSocket, OutputSocket, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, Timestamp, WorkspacePk,
-};
-use serde::Serialize;
+use dal::{ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk};
+use si_frontend_types as frontend_types;
 use thiserror::Error;
 
 use crate::server::{
@@ -34,33 +31,13 @@ pub fn routes() -> Router<AppState> {
         )
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SchemaVariantAPI {
-    schema_id: SchemaId,
-    schema_name: String,
-    schema_variant_id: SchemaVariantId,
-    display_name: Option<String>,
-    category: String,
-    description: Option<String>,
-    link: Option<String>,
-    color: String,
-    asset_func_id: FuncId,
-    func_ids: Vec<FuncId>,
-    component_type: ComponentType,
-    input_sockets: Vec<InputSocket>,
-    output_sockets: Vec<OutputSocket>,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-}
-
 pub async fn list_schema_variants(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> Result<Json<Vec<SchemaVariantAPI>>, ListSchemaVariantsError> {
+) -> Result<Json<Vec<frontend_types::SchemaVariant>>, SchemaVariantsAPIError> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -73,7 +50,7 @@ pub async fn list_schema_variants(
         // to filter appropriate schema variants.
         let schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
         if !schema_variant.ui_hidden() {
-            schema_variants.push(schema_variant_api(&ctx, schema_id, schema_variant).await?);
+            schema_variants.push(schema_variant.into_fontend_type(&ctx, schema_id).await?);
         }
     }
 
@@ -98,14 +75,14 @@ pub async fn get_variant(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> Result<Json<SchemaVariantAPI>, ListSchemaVariantsError> {
+) -> Result<Json<frontend_types::SchemaVariant>, SchemaVariantsAPIError> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
     let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
     let schema_id = SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-    let schema_variant = schema_variant_api(&ctx, schema_id, schema_variant).await?;
+    let schema_variant = schema_variant.into_fontend_type(&ctx, schema_id).await?;
 
     // Ported from `lib/sdf-server/src/server/service/variant/get_variant.rs`, so changes may be
     // desired here...
@@ -129,9 +106,7 @@ pub async fn get_variant(
 
 #[remain::sorted]
 #[derive(Debug, Error)]
-pub enum ListSchemaVariantsError {
-    #[error("asset func missing: {0}")]
-    AssetFuncMissing(#[from] SchemaVariantMissingAssetFuncId),
+pub enum SchemaVariantsAPIError {
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema error: {0}")]
@@ -140,7 +115,7 @@ pub enum ListSchemaVariantsError {
     Transactions(#[from] dal::TransactionsError),
 }
 
-impl IntoResponse for ListSchemaVariantsError {
+impl IntoResponse for SchemaVariantsAPIError {
     fn into_response(self) -> Response {
         let status_code = match &self {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
@@ -153,64 +128,4 @@ impl IntoResponse for ListSchemaVariantsError {
 
         ApiError::new(status_code, self).into_response()
     }
-}
-
-#[derive(Debug, Error)]
-#[error("schema variant missing asset func id; schema_variant_id={0}")]
-pub struct SchemaVariantMissingAssetFuncId(SchemaVariantId);
-
-impl SchemaVariantAPI {
-    fn new(
-        schema_id: SchemaId,
-        schema_name: String, // TODO(fnichol): remove when name comes from schema variant
-        value: SchemaVariant,
-        func_ids: Vec<FuncId>,
-        input_sockets: Vec<InputSocket>,
-        output_sockets: Vec<OutputSocket>,
-    ) -> Result<Self, SchemaVariantMissingAssetFuncId> {
-        Ok(Self {
-            schema_id,
-            schema_name,
-            schema_variant_id: value.id,
-            display_name: value.display_name,
-            category: value.category,
-            description: value.description,
-            link: value.link,
-            color: value.color,
-            asset_func_id: value
-                .asset_func_id
-                .ok_or(SchemaVariantMissingAssetFuncId(value.id))?,
-            func_ids,
-            component_type: value.component_type,
-            input_sockets,
-            output_sockets,
-            timestamp: value.timestamp,
-        })
-    }
-}
-
-async fn schema_variant_api(
-    ctx: &DalContext,
-    schema_id: SchemaId,
-    schema_variant: SchemaVariant,
-) -> Result<SchemaVariantAPI, ListSchemaVariantsError> {
-    let (output_sockets, input_sockets) =
-        SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
-    let func_ids: Vec<_> = SchemaVariant::all_func_ids(ctx, schema_variant.id())
-        .await?
-        .into_iter()
-        .collect();
-
-    // TODO(fnichol): remove when name comes from schema variant
-    let schema = Schema::get_by_id(ctx, schema_id).await?;
-
-    SchemaVariantAPI::new(
-        schema_id,
-        schema.name().to_owned(),
-        schema_variant,
-        func_ids,
-        input_sockets,
-        output_sockets,
-    )
-    .map_err(Into::into)
 }

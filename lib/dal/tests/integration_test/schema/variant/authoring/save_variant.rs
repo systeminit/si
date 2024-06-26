@@ -82,7 +82,7 @@ async fn save_variant(ctx: &mut DalContext) {
         updated_func_name.clone(),
         display_name.clone(),
         link.clone(),
-        updated_func_content.clone(),
+        Some(updated_func_content.clone()),
         updated_description.clone(),
         category.clone(),
         variant.component_type(),

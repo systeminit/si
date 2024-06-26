@@ -3,6 +3,7 @@
 use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
+use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -108,6 +109,8 @@ pub enum SchemaVariantError {
     LeafFunctionMustBeJsAttribute(FuncId),
     #[error("Leaf map prop not found for item prop {0}")]
     LeafMapPropNotFound(PropId),
+    #[error("schema variant missing asset func id; schema_variant_id={0}")]
+    MissingAssetFuncId(SchemaVariantId),
     #[error("more than one schema found for schema variant: {0}")]
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
@@ -156,34 +159,84 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
 pk!(SchemaVariantId);
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct SchemaVariant {
-    pub id: SchemaVariantId,
-    #[serde(flatten)]
-    pub timestamp: Timestamp,
-    pub ui_hidden: bool,
-    pub name: String,
-    pub display_name: Option<String>,
-    pub category: String,
-    pub color: String,
-    pub component_type: ComponentType,
-    pub link: Option<String>,
-    pub description: Option<String>,
-    pub asset_func_id: Option<FuncId>,
-    pub finalized_once: bool,
-    pub is_builtin: bool,
-    pub is_locked: bool,
+impl From<si_events::SchemaVariantId> for SchemaVariantId {
+    fn from(value: si_events::SchemaVariantId) -> Self {
+        Self(value.into_raw_id())
+    }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SchemaVariantCreatedPayload {
-    schema_id: SchemaId,
+impl From<SchemaVariantId> for si_events::SchemaVariantId {
+    fn from(value: SchemaVariantId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct SchemaVariant {
+    id: SchemaVariantId,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+    ui_hidden: bool,
     name: String,
+    display_name: Option<String>,
     category: String,
     color: String,
-    schema_variant_id: SchemaVariantId,
-    change_set_id: ChangeSetId,
+    component_type: ComponentType,
+    link: Option<String>,
+    description: Option<String>,
+    asset_func_id: Option<FuncId>,
+    finalized_once: bool,
+    is_builtin: bool,
+}
+
+impl SchemaVariant {
+    pub async fn into_fontend_type(
+        self,
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<frontend_types::SchemaVariant> {
+        // NOTE(fnichol): We're going to start asserting that there *is* an asset func id as all
+        // schema variants must be created via a func. Since the graph representation currently has
+        // this as optional we make this assertion here and error if not present.
+        let asset_func_id = self
+            .asset_func_id
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id()))?
+            .into();
+
+        let (output_sockets, input_sockets) =
+            SchemaVariant::list_all_sockets(ctx, self.id()).await?;
+        let func_ids: Vec<_> = SchemaVariant::all_func_ids(ctx, self.id())
+            .await?
+            .into_iter()
+            .map(|func_id| func_id.into())
+            .collect();
+
+        // TODO(fnichol): remove when name comes from schema variant
+        let schema = Schema::get_by_id(ctx, schema_id).await?;
+
+        Ok(frontend_types::SchemaVariant {
+            schema_id: schema_id.into(),
+            schema_name: schema.name().to_owned(),
+            schema_variant_id: self.id.into(),
+            display_name: self.display_name,
+            category: self.category,
+            description: self.description,
+            link: self.link,
+            color: self.color,
+            asset_func_id,
+            func_ids,
+            component_type: self.component_type.into(),
+            input_sockets: input_sockets
+                .into_iter()
+                .map(|socket| socket.into())
+                .collect(),
+            output_sockets: output_sockets
+                .into_iter()
+                .map(|socket| socket.into())
+                .collect(),
+            timestamp: self.timestamp.into(),
+        })
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -220,23 +273,10 @@ impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
         schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-        name: String,
-        category: String,
-        color: String,
+        schema_variant: SchemaVariant,
     ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::SchemaVariantCreated(SchemaVariantCreatedPayload {
-                schema_id,
-                schema_variant_id,
-                name,
-                category,
-                color,
-                change_set_id: ctx.change_set_id(),
-            }),
-        )
-        .await
+        let payload = schema_variant.into_fontend_type(ctx, schema_id).await?;
+        WsEvent::new(ctx, WsPayload::SchemaVariantCreated(payload)).await
     }
 
     #[allow(clippy::too_many_arguments)]
