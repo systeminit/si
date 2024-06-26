@@ -86,41 +86,34 @@ impl PkgExporter {
         ctx: &DalContext,
         schema: &Schema,
     ) -> PkgResult<(SchemaSpec, Vec<FuncSpec>)> {
-        let variant = SchemaVariant::list_for_schema(ctx, schema.id()).await?;
         let mut funcs = vec![];
         let schema_is_builtin = schema.is_builtin();
+
+        let default_variant = SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
 
         let mut schema_spec_builder = SchemaSpec::builder();
         schema_spec_builder.name(schema.name());
         schema_spec_builder.unique_id(schema.id().to_string());
 
-        let default_variant_id = schema.get_default_schema_variant_id(ctx).await?;
         let mut default_variant_unique_id = None;
-        let mut category = "".to_string();
 
-        for variant in &variant {
-            let variant = SchemaVariant::get_by_id(ctx, variant.id()).await?;
-            let variant_is_builtin = variant.is_builtin();
-            let variant_category = variant.clone().category().to_owned();
+        let variant_is_builtin = default_variant.is_builtin();
+        let variant_category = default_variant.clone().category().to_owned();
 
-            let variant_funcs = self.export_funcs_for_variant(ctx, variant.id()).await?;
-            funcs.extend(variant_funcs);
+        let variant_funcs = self
+            .export_funcs_for_variant(ctx, default_variant.id())
+            .await?;
+        funcs.extend(variant_funcs);
 
-            let variant_spec = self
-                .export_variant(ctx, &variant, variant_is_builtin)
-                .await?;
-            self.variant_map
-                .insert(variant.id(), variant_spec.to_owned());
-            if variant_spec.unique_id.is_some() {
-                if let Some(default_variant_id) = default_variant_id {
-                    if variant.id() == default_variant_id {
-                        category = variant_category;
-                        variant_spec
-                            .unique_id
-                            .clone_into(&mut default_variant_unique_id);
-                    }
-                }
-            }
+        let variant_spec = self
+            .export_variant(ctx, &default_variant, variant_is_builtin)
+            .await?;
+        self.variant_map
+            .insert(default_variant.id(), variant_spec.to_owned());
+        if variant_spec.unique_id.is_some() {
+            variant_spec
+                .unique_id
+                .clone_into(&mut default_variant_unique_id);
 
             schema_spec_builder.variant(variant_spec);
         }
@@ -128,7 +121,7 @@ impl PkgExporter {
         let mut data_builder = SchemaSpecData::builder();
         data_builder.name(schema.name());
         data_builder.ui_hidden(schema.ui_hidden());
-        data_builder.category(category.clone());
+        data_builder.category(variant_category.clone());
         if let Some(default_unique_id) = default_variant_unique_id {
             data_builder.default_schema_variant(default_unique_id);
         }
