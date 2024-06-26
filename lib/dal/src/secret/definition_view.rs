@@ -10,6 +10,8 @@ use crate::{DalContext, Prop, PropId, SchemaVariant, SchemaVariantError, SchemaV
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretDefinitionViewError {
+    #[error("schema variant: {0} has missing output socket")]
+    IncompleteSchemaVariant(SchemaVariantId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
@@ -82,16 +84,32 @@ impl SecretDefinitionView {
             });
         }
 
-        // Get the name from the (hopefully) only child of secrets prop.
-        let secrets_prop_id =
-            SchemaVariant::find_root_child_prop_id(ctx, schema_variant_id, RootPropChild::Secrets)
-                .await?;
+        dbg!(&form_data_views);
 
-        let entry_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop_id).await?;
-        let entry_prop = Prop::get_by_id_or_error(ctx, entry_prop_id).await?;
+        let (output_sockets, _) = SchemaVariant::list_all_sockets(ctx, schema_variant_id).await?;
+        let secret_output_socket =
+            output_sockets
+                .first()
+                .ok_or(SecretDefinitionViewError::IncompleteSchemaVariant(
+                    schema_variant_id,
+                ))?;
+
+        // // Get the name from the (hopefully) only child of secrets prop.
+        // let secrets_prop_id =
+        //     SchemaVariant::find_root_child_prop_id(ctx, schema_variant_id, RootPropChild::Secrets)
+        //         .await?;
+
+        // let secret_props = Prop::direct_child_prop_ids(ctx, secrets_prop_id).await?;
+        // for secret_prop_id in secret_props {
+        //     let prop = Prop::get_by_id_or_error(ctx, secret_prop_id).await?;
+        //     if prop.name != secret_output_socket.name() {
+        //         co
+        //     }
+        // }
+        // let entry_prop = Prop::get_by_id_or_error(ctx, entry_prop_id).await?;
 
         Ok(Self {
-            secret_definition: entry_prop.name,
+            secret_definition: secret_output_socket.name().to_owned(),
             form_data: form_data_views,
         })
     }

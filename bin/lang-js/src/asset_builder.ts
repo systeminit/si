@@ -1154,11 +1154,11 @@ export class AssetBuilder implements IAssetBuilder {
   }
 
   build() {
-    if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
-      throw new Error(
-        "Secret defining schema shouldn't define any extra secret props",
-      );
-    }
+    // if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
+    //   throw new Error(
+    //     "Secret defining schema shouldn't define any extra secret props",
+    //   );
+    // }
 
     return this.asset;
   }

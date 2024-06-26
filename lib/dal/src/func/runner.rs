@@ -1161,24 +1161,21 @@ impl FuncRunner {
                 continue;
             }
 
+            // "/root/secrets" OBJECT
             let secrets_prop =
                 Prop::find_prop_by_path(ctx, secret_defining_sv_id, secret_path).await?;
 
-            let secret_child_prop_id =
-                Prop::direct_single_child_prop_id(ctx, secrets_prop.id).await?;
-            let secret_child_prop = Prop::get_by_id_or_error(ctx, secret_child_prop_id).await?;
-
-            if secret_child_prop.name != secret_definition_name {
-                continue;
+            for secret_child_prop_id in Prop::direct_child_prop_ids(ctx, secrets_prop.id).await? {
+                let secret_child_prop = Prop::get_by_id_or_error(ctx, secret_child_prop_id).await?;
+                if secret_child_prop.name == secret_definition_name {
+                    for auth_func_id in
+                        SchemaVariant::list_auth_func_ids_for_id(ctx, secret_defining_sv_id).await?
+                    {
+                        auth_funcs.push(Func::get_by_id_or_error(ctx, auth_func_id).await?)
+                    }
+                    return Ok(auth_funcs);
+                }
             }
-
-            for auth_func_id in
-                SchemaVariant::list_auth_func_ids_for_id(ctx, secret_defining_sv_id).await?
-            {
-                auth_funcs.push(Func::get_by_id_or_error(ctx, auth_func_id).await?)
-            }
-
-            break;
         }
 
         Ok(auth_funcs)
