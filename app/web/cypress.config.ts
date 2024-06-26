@@ -23,6 +23,7 @@ export default defineConfig({
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
+    retries: 3,
   },
   projectId: "k8tgfj",
   video: true,
