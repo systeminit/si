@@ -1,5 +1,6 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
+use chrono::Utc;
 use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
@@ -57,6 +58,7 @@ mod value_from;
 pub mod authoring;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
+use crate::schema::variant::authoring::VariantAuthoringError;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -71,6 +73,8 @@ pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "#00b0bc";
 pub enum SchemaVariantError {
     #[error("action prototype error: {0}")]
     ActionPrototype(String),
+    #[error("asset func not found for schema variant: {0}")]
+    AssetFuncNotFound(SchemaVariantId),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute argument prototype error: {0}")]
@@ -177,8 +181,8 @@ pub struct SchemaVariant {
     #[serde(flatten)]
     timestamp: Timestamp,
     ui_hidden: bool,
-    name: String,
-    display_name: Option<String>,
+    version: String,
+    display_name: String,
     category: String,
     color: String,
     component_type: ComponentType,
@@ -187,10 +191,11 @@ pub struct SchemaVariant {
     asset_func_id: Option<FuncId>,
     finalized_once: bool,
     is_builtin: bool,
+    is_locked: bool,
 }
 
 impl SchemaVariant {
-    pub async fn into_fontend_type(
+    pub async fn into_frontend_type(
         self,
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -211,13 +216,13 @@ impl SchemaVariant {
             .map(|func_id| func_id.into())
             .collect();
 
-        // TODO(fnichol): remove when name comes from schema variant
         let schema = Schema::get_by_id(ctx, schema_id).await?;
 
         Ok(frontend_types::SchemaVariant {
             schema_id: schema_id.into(),
             schema_name: schema.name().to_owned(),
             schema_variant_id: self.id.into(),
+            version: self.version,
             display_name: self.display_name,
             category: self.category,
             description: self.description,
@@ -234,6 +239,7 @@ impl SchemaVariant {
                 .into_iter()
                 .map(|socket| socket.into())
                 .collect(),
+            is_locked: self.is_locked,
             timestamp: self.timestamp.into(),
         })
     }
@@ -275,7 +281,7 @@ impl WsEvent {
         schema_id: SchemaId,
         schema_variant: SchemaVariant,
     ) -> WsEventResult<Self> {
-        let payload = schema_variant.into_fontend_type(ctx, schema_id).await?;
+        let payload = schema_variant.into_frontend_type(ctx, schema_id).await?;
         WsEvent::new(ctx, WsPayload::SchemaVariantCreated(payload)).await
     }
 
@@ -344,9 +350,9 @@ impl WsEvent {
 impl From<SchemaVariant> for SchemaVariantContent {
     fn from(value: SchemaVariant) -> Self {
         Self::V2(SchemaVariantContentV2 {
-            timestamp: value.timestamp,
-            ui_hidden: value.ui_hidden,
-            version: value.version,
+            timestamp: value.timestamp(),
+            ui_hidden: value.ui_hidden(),
+            version: value.version().to_string(),
             display_name: value.display_name,
             category: value.category,
             color: value.color,
@@ -736,9 +742,8 @@ impl SchemaVariant {
         self.timestamp
     }
 
-    // TODO update this to not be optional - and update frontend
-    pub fn display_name(&self) -> Option<String> {
-        Some(self.display_name.clone())
+    pub fn display_name(&self) -> &str {
+        &self.display_name
     }
 
     pub fn link(&self) -> Option<String> {
@@ -763,6 +768,14 @@ impl SchemaVariant {
 
     pub fn is_locked(&self) -> bool {
         self.is_locked
+    }
+
+    pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {
+        let asset_func_id = self
+            .asset_func_id
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))?;
+
+        Ok(Func::get_by_id_or_error(ctx, asset_func_id).await?)
     }
 
     pub async fn get_root_prop_id(
@@ -1859,5 +1872,10 @@ impl SchemaVariant {
     pub async fn rebuild_variant_root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
         RootProp::new(ctx, self.id).await?;
         Ok(())
+    }
+
+    pub fn generate_version_string() -> String {
+        let date = Utc::now();
+        format!("{}", date.format("%Y%m%d%H%M%S"))
     }
 }

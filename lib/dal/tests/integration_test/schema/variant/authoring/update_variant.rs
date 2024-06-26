@@ -314,7 +314,6 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         "helix",
         None,
         None,
-        None,
         "modal editors",
         "#00b0b0",
     )
@@ -346,7 +345,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         ctx,
         schema_variant.id(),
         &schema.name,
-        schema_variant.display_name(),
+        Some(schema_variant.display_name().to_string()),
         schema_variant.category(),
         schema_variant
             .get_color(ctx)
@@ -540,7 +539,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         ctx,
         schema_variant.id(),
         &schema.name,
-        schema_variant.display_name(),
+        Some(schema_variant.display_name()),
         schema_variant.category(),
         schema_variant
             .get_color(ctx)

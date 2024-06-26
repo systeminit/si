@@ -84,7 +84,7 @@ impl SchemaView {
                             .collect(),
                         timestamp: schema_variant.timestamp(),
                         description: schema_variant.description(),
-                        display_name: schema_variant.display_name(),
+                        display_name: Some(schema_variant.display_name().to_string()),
                         is_locked: schema_variant.is_locked(),
                     });
                 }

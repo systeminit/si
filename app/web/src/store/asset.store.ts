@@ -462,7 +462,7 @@ export const useAssetStore = () => {
             keyRequestStatusBy: schemaVariantId,
             params: {
               ...visibility,
-              ...omit(variant, "created_at", "updated_at"),
+              variant: omit(variant, "created_at", "updated_at"),
             },
           });
         },

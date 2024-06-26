@@ -535,7 +535,7 @@ async fn duplicate_func_name_causes_error(ctx: &mut DalContext) {
 #[test]
 async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut DalContext) {
     let asset_name = "britsTestAsset".to_string();
-    let display_name = None;
+    let display_name = asset_name.clone();
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();

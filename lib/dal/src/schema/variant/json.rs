@@ -16,11 +16,11 @@ use crate::{ComponentType, PropKind, SchemaVariantError, SocketArity};
 pub struct SchemaVariantMetadataJson {
     /// Name for the schema.
     pub schema_name: String,
-    /// Name for this variant.
-    pub name: String,
+    /// Version of this variant.
+    pub version: String,
     /// Override for the UI name for this schema variant
-    #[serde(alias = "menu_name", alias = "display_name")]
-    pub display_name: Option<String>,
+    #[serde(alias = "display_name")]
+    pub display_name: String,
     /// The category this schema variant belongs to
     pub category: String,
     /// The color for the component on the component diagram as a hex string
@@ -38,9 +38,7 @@ impl SchemaVariantMetadataJson {
         let mut data_builder = SchemaSpecData::builder();
         data_builder.name(&self.schema_name);
         data_builder.category(&self.category);
-        if let Some(display_name) = &self.display_name {
-            data_builder.category_name(display_name.as_str());
-        }
+        data_builder.category_name(&self.display_name);
         builder.data(data_builder.build()?);
         builder.variant(variant);
 
@@ -89,14 +87,12 @@ impl SchemaVariantJson {
         asset_func_spec_unique_id: &str,
     ) -> SchemaVariantResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
-        builder.name(metadata.name.clone());
+        builder.name(metadata.version.clone());
 
         let mut data_builder = SchemaVariantSpecData::builder();
 
-        data_builder.name(metadata.name.clone());
-        if let Some(display_name) = metadata.display_name {
-            data_builder.display_name(display_name);
-        }
+        data_builder.name(metadata.version.clone());
+        data_builder.display_name(metadata.display_name);
         data_builder.color(metadata.color);
         data_builder.component_type(metadata.component_type);
         if let Some(link) = metadata.link {
@@ -172,9 +168,9 @@ impl SchemaVariantJson {
                 });
 
         let metadata = SchemaVariantMetadataJson {
-            name: variant_spec_data.name,
-            schema_name: schema_spec.name,
-            display_name: schema_data.category_name,
+            version: variant_spec_data.name,
+            schema_name: schema_spec.name.clone(),
+            display_name: schema_data.category_name.unwrap_or(schema_spec.name),
             category: schema_data.category,
             color: variant_spec_data
                 .color

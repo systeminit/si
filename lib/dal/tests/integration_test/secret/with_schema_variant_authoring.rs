@@ -11,7 +11,7 @@ use dal_test::test;
 async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut DalContext) {
     // Create a new schema variant and commit.
     let schema_variant = VariantAuthoringClient::create_schema_and_variant(
-        ctx, "ergo sum", None, None, None, "bungie", "#00b0b0",
+        ctx, "ergo sum", None, None, "bungie", "#00b0b0",
     )
     .await
     .expect("could not create new asset");

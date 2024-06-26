@@ -8,7 +8,8 @@ pub struct SchemaVariant {
     pub schema_id: SchemaId,
     pub schema_name: String,
     pub schema_variant_id: SchemaVariantId,
-    pub display_name: Option<String>,
+    pub version: String,
+    pub display_name: String,
     pub category: String,
     pub description: Option<String>,
     pub link: Option<String>,
@@ -18,6 +19,7 @@ pub struct SchemaVariant {
     pub component_type: ComponentType,
     pub input_sockets: Vec<InputSocket>,
     pub output_sockets: Vec<OutputSocket>,
+    pub is_locked: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }

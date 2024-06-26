@@ -13,11 +13,7 @@ use crate::service::variant::SchemaVariantResult;
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantRequest {
     pub name: String,
-    pub display_name: Option<String>,
-    pub category: String,
     pub color: String,
-    pub link: Option<String>,
-    pub description: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -48,13 +44,14 @@ pub async fn create_variant(
     let created_schema_variant = VariantAuthoringClient::create_schema_and_variant(
         &ctx,
         request.name.clone(),
-        request.display_name.clone(),
-        request.description.clone(),
-        request.link.clone(),
-        request.category.clone(),
+        None::<String>,
+        None::<String>,
+        "".to_string(),
         request.color.clone(),
     )
     .await?;
+
+    let schema = created_schema_variant.schema(&ctx).await?;
 
     track(
         &posthog_client,
@@ -63,13 +60,10 @@ pub async fn create_variant(
         "create_variant",
         serde_json::json!({
             "variant_name": request.name.clone(),
-            "variant_category": request.category.clone(),
-            "variant_display_name": request.display_name.clone(),
             "variant_id": created_schema_variant.id().clone(),
+            "schema_id": schema.id(),
         }),
     );
-
-    let schema = created_schema_variant.schema(&ctx).await?;
 
     WsEvent::schema_variant_created(&ctx, schema.id(), created_schema_variant)
         .await?

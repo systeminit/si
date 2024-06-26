@@ -16,7 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 async fn upgrade_component(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "paulsTestAsset".to_string();
-    let display_name = None;
+    let display_name = asset_name.clone();
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();

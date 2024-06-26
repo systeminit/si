@@ -61,17 +61,12 @@ pub async fn create_unlocked_copy(
         }),
     );
 
-    WsEvent::schema_variant_created(
-        &ctx,
-        unlocked_variant.schema(&ctx).await?.id(),
-        unlocked_variant.id(),
-        unlocked_variant.version().to_string(),
-        unlocked_variant.category().to_string(),
-        unlocked_variant.color().to_string(),
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+    let unlocked_variant_id = unlocked_variant.id();
+
+    WsEvent::schema_variant_created(&ctx, schema.id(), unlocked_variant)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 
@@ -82,6 +77,6 @@ pub async fn create_unlocked_copy(
     }
 
     Ok(response.body(serde_json::to_string(&CloneVariantResponse {
-        id: unlocked_variant.id(),
+        id: unlocked_variant_id,
     })?)?)
 }

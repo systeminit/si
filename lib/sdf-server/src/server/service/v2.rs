@@ -50,7 +50,7 @@ pub async fn list_schema_variants(
         // to filter appropriate schema variants.
         let schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
         if !schema_variant.ui_hidden() {
-            schema_variants.push(schema_variant.into_fontend_type(&ctx, schema_id).await?);
+            schema_variants.push(schema_variant.into_frontend_type(&ctx, schema_id).await?);
         }
     }
 
@@ -82,10 +82,11 @@ pub async fn get_variant(
 
     let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
     let schema_id = SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-    let schema_variant = schema_variant.into_fontend_type(&ctx, schema_id).await?;
+    let schema_variant = schema_variant.into_frontend_type(&ctx, schema_id).await?;
 
     // Ported from `lib/sdf-server/src/server/service/variant/get_variant.rs`, so changes may be
     // desired here...
+
     track(
         &posthog_client,
         &ctx,
@@ -94,7 +95,7 @@ pub async fn get_variant(
         serde_json::json!({
                     "schema_name": &schema_variant.schema_name,
                     "variant_category": &schema_variant.category,
-                    "variant_menu_name": schema_variant.display_name.as_ref(),
+                    "variant_menu_name": schema_variant.display_name,
                     "variant_id": schema_variant.schema_variant_id,
                     "schema_id": schema_variant.schema_id,
                     "variant_component_type": schema_variant.component_type,

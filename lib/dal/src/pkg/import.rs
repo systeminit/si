@@ -997,7 +997,7 @@ pub(crate) async fn import_schema_variant(
                     ctx,
                     schema.id(),
                     variant_spec.name(),
-                    metadata.display_name.unwrap_or(schema_name),
+                    metadata.display_name,
                     metadata.category,
                     metadata.color,
                     metadata.component_type,

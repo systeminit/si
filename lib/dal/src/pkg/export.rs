@@ -174,9 +174,7 @@ impl PkgExporter {
         if let Some(link) = variant.link() {
             data_builder.try_link(link.to_string().deref())?;
         }
-        if let Some(display_name) = variant.display_name() {
-            data_builder.display_name(display_name);
-        }
+        data_builder.display_name(variant.display_name());
 
         data_builder.component_type(get_component_type(ctx, variant).await?);
 
