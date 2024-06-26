@@ -1,5 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use dal::func::authoring::FuncAuthoringClient;
 use dal::{ChangeSet, Func, FuncId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +32,9 @@ pub async fn delete_func(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
+    // first remove all existing associations
+    FuncAuthoringClient::detach_func_from_everywhere(&ctx, request.id).await?;
+    // then delete func
     let func_name = Func::delete_by_id(&ctx, request.id).await?;
 
     track(

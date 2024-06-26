@@ -48,7 +48,6 @@
           :funcId="funcStore.selectedFuncId"
           :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
           allowTestPanel
-          @detached="onDetach"
           @expand-panel="rightResizablePanelRef?.maximize()"
         />
         <!-- the key here is to force remounting so we get the proper asset
@@ -184,12 +183,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
 });
-
-const onDetach = async () => {
-  if (assetStore.selectedAssetId && funcStore.selectedFuncId) {
-    assetStore.closeFunc(assetStore.selectedAssetId, funcStore.selectedFuncId);
-  }
-};
 
 watch(
   () => assetStore.selectedAssets.length,

@@ -10,6 +10,7 @@ use thiserror::Error;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
+    action::ActionId,
     component::ComponentUpdatedPayload,
     diagram::{DiagramError, SummaryDiagramComponent},
     func::{
@@ -421,9 +422,43 @@ impl ActionPrototype {
         }
         Ok(triggered_actions)
     }
+
+    async fn find_enqueued_actions(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<Vec<ActionId>> {
+        let mut enqueued_actions = vec![];
+
+        for (_, tail_node_idx, _head_node_idx) in ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(id, Incoming, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            if let NodeWeight::Action(node_weight) = ctx
+                .workspace_snapshot()?
+                .get_node_weight(tail_node_idx)
+                .await?
+            {
+                enqueued_actions.push(node_weight.id().into());
+            }
+        }
+        Ok(enqueued_actions)
+    }
+
     pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<()> {
         let change_set = ctx.change_set()?;
+        // check if there are existing actions queued for this prototype and remove them
+        let enqueued_actions = dbg!(Self::find_enqueued_actions(ctx, id).await?);
 
+        for action in enqueued_actions {
+            ctx.workspace_snapshot()?
+                .remove_node_by_id(change_set, action)
+                .await?;
+            WsEvent::action_list_updated(ctx)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, id)
             .await?;
