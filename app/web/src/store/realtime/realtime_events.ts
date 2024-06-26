@@ -4,7 +4,7 @@
 import { FuncId } from "@/api/sdf/dal/func";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
-import { ComponentType } from "@/api/sdf/dal/schema";
+import { ComponentType, SchemaVariant } from "@/api/sdf/dal/schema";
 import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { ActionId } from "../actions.store";
@@ -253,15 +253,7 @@ export type WsEventPayloadMap = {
     secretId: SecretId;
     changeSetId: ChangeSetId;
   };
-  SchemaVariantCreated: {
-    schemaId: string;
-    schemaVariantId: string;
-    name: string;
-    schemaName: string;
-    category: string;
-    color: string;
-    changeSetId: ChangeSetId;
-  };
+  SchemaVariantCreated: SchemaVariant;
   SchemaVariantCloned: {
     schemaVariantId: string;
     changeSetId: ChangeSetId;

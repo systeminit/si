@@ -509,32 +509,12 @@ export const useAssetStore = () => {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "SchemaVariantCreated",
-            callback: (data) => {
-              if (data.changeSetId !== changeSetId) return;
-              const nowTs = new Date().toISOString();
-              const variant = {
-                schemaId: data.schemaId,
-                schemaVariantId: data.schemaVariantId,
-                schemaName: data.name,
-                displayName: "",
-                category: data.category,
-                componentType: ComponentType.Component,
-                color: data.color,
-                description: "",
-                funcIds: [],
-                assetFuncId: "", // TODO: jobelenus, this is likely created, and we need to pass it with the event data
-                link: "",
-                version: "v0",
-                created_at: nowTs,
-                updated_at: nowTs,
-                canUpdate: false,
-                canContribute: false,
-                isBuiltin: false,
-                outputSockets: [],
-                inputSockets: [],
-              } as SchemaVariantListEntry;
-
-              this.variantList.push(variant);
+            callback: (variant, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const v = variant as SchemaVariantListEntry;
+              v.canContribute = false;
+              v.canUpdate = false;
+              this.variantList.push(v);
             },
           },
           {
