@@ -526,7 +526,7 @@ async fn secret_definition_works_with_dummy_qualification(
             .expect("no output attribute value found");
         assert!(output_socket_attribute_value_ids.is_empty());
         let output_socket_attribute_value =
-            AttributeValue::get_by_id(ctx, output_socket_attribute_value_id)
+            AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
                 .await
                 .expect("could not get attribute value by id")
                 .value(ctx)
@@ -609,7 +609,7 @@ async fn secret_definition_works_with_dummy_qualification(
             .expect("no output attribute value found");
         assert!(output_socket_attribute_value_ids.is_empty());
         let output_socket_attribute_value =
-            AttributeValue::get_by_id(ctx, output_socket_attribute_value_id)
+            AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
                 .await
                 .expect("could not get attribute value by id")
                 .value(ctx)

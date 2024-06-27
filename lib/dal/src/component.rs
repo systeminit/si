@@ -171,10 +171,18 @@ pub enum ComponentError {
     Serde(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one")]
+    TooManyExplicitConnectionSources(Vec<ComponentId>, ComponentId, InputSocketId),
+    #[error(
+        "too many inferred connections ({0:?}) for input socket match ({1:?}) with an arity of one"
+    )]
+    TooManyInferredConnections(Vec<OutputSocketMatch>, InputSocketMatch),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one")]
+    UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, InputSocketMatch),
     #[error("value source for known prop attribute value {0} is not a prop id")]
     ValueSourceForPropValueNotPropId(AttributeValueId),
     #[error("workspace error: {0}")]
@@ -231,12 +239,14 @@ pub struct InferredIncomingConnection {
     pub from_output_socket_id: OutputSocketId,
     pub to_delete: bool,
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct InputSocketMatch {
     pub component_id: ComponentId,
     pub input_socket_id: InputSocketId,
     pub attribute_value_id: AttributeValueId,
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct OutputSocketMatch {
     pub component_id: ComponentId,
@@ -342,7 +352,7 @@ impl Component {
         for value_id in root_value_ids {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == id {
-                let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
+                let root_value = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
                 return Ok(root_value.view(ctx).await?);
             }
         }
@@ -603,7 +613,7 @@ impl Component {
             value_q.pop_front()
         {
             let current_av_in_other =
-                AttributeValue::get_by_id(ctx, current_av_id_in_other).await?;
+                AttributeValue::get_by_id_or_error(ctx, current_av_id_in_other).await?;
             let current_av_in_other_component_prototype_id =
                 AttributeValue::component_prototype_id(ctx, current_av_id_in_other).await?;
             let prop_id_in_other = AttributeValue::is_for(ctx, current_av_id_in_other)
@@ -940,7 +950,7 @@ impl Component {
                     && prop.kind != PropKind::Map
                     && prop.kind != PropKind::Array
                 {
-                    let copied_av = AttributeValue::get_by_id(ctx, copied_av_id).await?;
+                    let copied_av = AttributeValue::get_by_id_or_error(ctx, copied_av_id).await?;
                     let value = copied_av.value(ctx).await?;
                     AttributeValue::update(ctx, pasted_av_id, value).await?;
                 }
@@ -1188,19 +1198,31 @@ impl Component {
         Ok(outgoing_edges)
     }
 
+    /// Calls [`Self::incoming_connections_by_id`] by passing in the id from [`self`](Component).
     pub async fn incoming_connections(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<Vec<IncomingConnection>> {
+        Self::incoming_connections_for_id(ctx, self.id).await
+    }
+
+    /// Finds all incoming connections for explicit edges (i.e. those coming from
+    /// [`Components`](ComponentType::Component) and not from frames.
+    pub async fn incoming_connections_for_id(
+        ctx: &DalContext,
+        id: ComponentId,
+    ) -> ComponentResult<Vec<IncomingConnection>> {
         let mut incoming_edges = vec![];
 
-        for (to_input_socket_id, to_value_id) in self.input_socket_attribute_values(ctx).await? {
+        for (to_input_socket_id, to_value_id) in
+            Self::input_socket_attribute_values_for_component_id(ctx, id).await?
+        {
             let prototype_id =
                 AttributeValue::prototype_id(ctx, to_value_id.attribute_value_id).await?;
             for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
                 ctx,
                 prototype_id,
-                self.id,
+                id,
             )
             .await?
             {
@@ -1581,7 +1603,7 @@ impl Component {
             .next()
             .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
 
-        let av = AttributeValue::get_by_id(ctx, value_id).await?;
+        let av = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
 
         match av.view(ctx).await? {
             Some(serde_value) => {
@@ -1608,7 +1630,7 @@ impl Component {
             .next()
             .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
 
-        let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
+        let name_av = AttributeValue::get_by_id_or_error(ctx, name_value_id).await?;
 
         Ok(match name_av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
@@ -1624,7 +1646,7 @@ impl Component {
             .next()
             .ok_or(ComponentError::ComponentMissingColorValue(self.id()))?;
 
-        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
+        let color_av = AttributeValue::get_by_id_or_error(ctx, color_value_id).await?;
 
         Ok(match color_av.view(ctx).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
@@ -1643,7 +1665,7 @@ impl Component {
                 .into_iter()
                 .next()
                 .ok_or(ComponentError::ComponentMissingTypeValue(component_id))?;
-        let type_value = AttributeValue::get_by_id(ctx, type_value_id)
+        let type_value = AttributeValue::get_by_id_or_error(ctx, type_value_id)
             .await?
             .view(ctx)
             .await?
@@ -3891,6 +3913,77 @@ impl Component {
         .await?;
 
         Ok(())
+    }
+
+    /// Finds the source [`Component`] of any [`ComponentType`] for a given [`InputSocketMatch`] where the
+    /// [`InputSocket`] has an [arity](SocketArity) of [one](SocketArity::One).
+    #[instrument(
+        name = "component.source_component_for_arity_one_input_socket_match",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn source_component_for_arity_one_input_socket_match(
+        ctx: &DalContext,
+        input_socket_match: InputSocketMatch,
+    ) -> ComponentResult<Option<ComponentId>> {
+        let maybe_explicit_connection_source = {
+            let explicit_connections =
+                Component::incoming_connections_for_id(ctx, input_socket_match.component_id)
+                    .await?;
+            let filtered_explicit_connection_sources: Vec<ComponentId> = explicit_connections
+                .iter()
+                .filter(|c| c.to_input_socket_id == input_socket_match.input_socket_id)
+                .map(|c| c.from_component_id)
+                .collect();
+            if filtered_explicit_connection_sources.len() > 1 {
+                return Err(ComponentError::TooManyExplicitConnectionSources(
+                    filtered_explicit_connection_sources,
+                    input_socket_match.component_id,
+                    input_socket_match.input_socket_id,
+                ));
+            }
+            filtered_explicit_connection_sources.first().copied()
+        };
+
+        let maybe_inferred_connection_source = {
+            let inferred_connections =
+                match Component::find_available_inferred_connections_to_input_socket(
+                    ctx,
+                    input_socket_match,
+                )
+                .await
+                {
+                    Ok(inferred_connections) => inferred_connections,
+                    Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
+                        debug!(?input_socket_match, "component type not yet set when finding available inferred connections to input socket");
+                        Vec::new()
+                    }
+                    Err(other_err) => Err(other_err)?,
+                };
+            if inferred_connections.len() > 1 {
+                return Err(ComponentError::TooManyInferredConnections(
+                    inferred_connections,
+                    input_socket_match,
+                ));
+            }
+            inferred_connections.first().map(|c| c.component_id)
+        };
+
+        match (
+            maybe_explicit_connection_source,
+            maybe_inferred_connection_source,
+        ) {
+            (Some(explicit_source), Some(inferred_source)) => {
+                Err(ComponentError::UnexpectedExplicitAndInferredSources(
+                    explicit_source,
+                    inferred_source,
+                    input_socket_match,
+                ))
+            }
+            (Some(explicit_source), None) => Ok(Some(explicit_source)),
+            (None, Some(inferred_source)) => Ok(Some(inferred_source)),
+            (None, None) => Ok(None),
+        }
     }
 }
 

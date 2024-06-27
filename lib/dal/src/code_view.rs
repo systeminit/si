@@ -76,7 +76,7 @@ impl CodeView {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, CodeViewError> {
-        let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
         let code_view_name = match attribute_value.key(ctx).await? {
             Some(key) => key,
             None => return Ok(None),

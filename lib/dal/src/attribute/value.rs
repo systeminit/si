@@ -646,7 +646,8 @@ impl AttributeValue {
                                 )
                                 .await?
                             {
-                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                                let attribute_value =
+                                    AttributeValue::get_by_id_or_error(ctx, av_id).await?;
                                 // XXX: We need to properly handle the difference between "there is
                                 // XXX: no value" vs "the value is null", but right now we collapse
                                 // XXX: the two to just be "null" when passing these to a function.
@@ -754,7 +755,8 @@ impl AttributeValue {
                     // XXX: We need to properly handle the difference between "there is
                     // XXX: no value" vs "the value is null", but right now we collapse
                     // XXX: the two to just be "null" when passing these to a function.
-                    let output_av = Self::get_by_id(ctx, output_match.attribute_value_id).await?;
+                    let output_av =
+                        Self::get_by_id_or_error(ctx, output_match.attribute_value_id).await?;
                     let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
                     inputs.push(view);
                 }
@@ -1016,7 +1018,7 @@ impl AttributeValue {
                 prop_node.kind()
             };
 
-            let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
+            let attribute_value = Self::get_by_id_or_error(ctx, attribute_value_id).await?;
 
             // If value is for scalar, just go to parent
             if !prop_kind.is_scalar() {
@@ -1226,7 +1228,8 @@ impl AttributeValue {
                             AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
                                 .await?
                         {
-                            let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
+                            let child_av =
+                                AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
 
                             if let ValueIsFor::Prop(child_prop_id) =
                                 AttributeValue::is_for(ctx, child_av.id()).await?
@@ -1284,7 +1287,8 @@ impl AttributeValue {
                                 workspace_snapshot.get_node_index_by_id(child_av_id).await?;
 
                             if let Some(key) = child_av_keys.get(&node_index) {
-                                let child_av = AttributeValue::get_by_id(ctx, child_av_id).await?;
+                                let child_av =
+                                    AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
                                 if let Some(view) = child_av.view(ctx).await? {
                                     map_view.insert(key.to_owned(), view);
                                 }
@@ -1306,7 +1310,8 @@ impl AttributeValue {
                         };
 
                         for element_av_id in element_av_ids {
-                            let av = AttributeValue::get_by_id(ctx, element_av_id.into()).await?;
+                            let av = AttributeValue::get_by_id_or_error(ctx, element_av_id.into())
+                                .await?;
                             if let Some(view) = av.view(ctx).await? {
                                 array_view.push(view);
                             }
@@ -1999,7 +2004,7 @@ impl AttributeValue {
         Ok(())
     }
 
-    pub async fn get_by_id(
+    pub async fn get_by_id_or_error(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Self> {

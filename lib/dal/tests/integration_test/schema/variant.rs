@@ -84,16 +84,17 @@ async fn list_root_si_child_props(ctx: &DalContext) {
     .expect("cannot create schema variant");
 
     // Gather all children of "/root/si".
-    let expected_si_child_prop_ids = Prop::direct_child_prop_ids(ctx, root_prop.si_prop_id)
-        .await
-        .expect("could not get direct child prop ids");
+    let expected_si_child_prop_ids =
+        Prop::direct_child_prop_ids_unordered(ctx, root_prop.si_prop_id)
+            .await
+            .expect("could not get direct child prop ids");
 
     // Now, test our query.
     let found_si_prop =
         SchemaVariant::find_root_child_prop_id(ctx, schema_variant.id(), RootPropChild::Si)
             .await
             .expect("could not get si prop");
-    let found_si_child_prop_ids = Prop::direct_child_prop_ids(ctx, found_si_prop)
+    let found_si_child_prop_ids = Prop::direct_child_prop_ids_unordered(ctx, found_si_prop)
         .await
         .expect("could not get direct child prop ids");
 

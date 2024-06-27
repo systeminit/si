@@ -121,7 +121,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
         AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
             .await
             .expect("get the vec of child ids");
-    let parrot_names_third_item = AttributeValue::get_by_id(
+    let parrot_names_third_item = AttributeValue::get_by_id_or_error(
         ctx,
         *parrot_names_child_ids
             .get(2)
@@ -141,7 +141,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     let treasure_child_ids = AttributeValue::get_child_av_ids_in_order(ctx, treasure_map_value_id)
         .await
         .expect("get the vec of child ids");
-    let treasure_second_item = AttributeValue::get_by_id(
+    let treasure_second_item = AttributeValue::get_by_id_or_error(
         ctx,
         *treasure_child_ids
             .get(1)
@@ -190,7 +190,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // Check that the items around the removed item are correct
 
     // Get the second item in the array
-    let parrot_names_second_item = AttributeValue::get_by_id(
+    let parrot_names_second_item = AttributeValue::get_by_id_or_error(
         ctx,
         *parrot_names_child_ids
             .get(1)
@@ -207,7 +207,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     assert_eq!(parrot_names_second_item_value, Some("samantha".into()));
 
     // Get the third item in the array
-    let parrot_names_third_item = AttributeValue::get_by_id(
+    let parrot_names_third_item = AttributeValue::get_by_id_or_error(
         ctx,
         *parrot_names_child_ids
             .get(2)
@@ -241,7 +241,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // Check that the items around the removed item are correct
 
     // Get the first item in the treasure map
-    let treasure_first_item = AttributeValue::get_by_id(
+    let treasure_first_item = AttributeValue::get_by_id_or_error(
         ctx,
         *treasure_child_ids
             .first()
@@ -266,7 +266,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     assert_eq!(treasure_first_item_key, Some("ohio".to_string()));
 
     // Get the second item in the treasure map
-    let treasure_second_item = AttributeValue::get_by_id(
+    let treasure_second_item = AttributeValue::get_by_id_or_error(
         ctx,
         *treasure_child_ids
             .get(1)

@@ -555,7 +555,7 @@ impl PkgExporter {
         }
 
         let mut stack: Vec<(PropId, Option<PropId>)> = Vec::new();
-        for child_tree_node in Prop::direct_child_prop_ids(ctx, root_prop.id()).await? {
+        for child_tree_node in Prop::direct_child_prop_ids_unordered(ctx, root_prop.id()).await? {
             stack.push((child_tree_node, None));
         }
 
@@ -607,7 +607,8 @@ impl PkgExporter {
                 parent_prop_id,
             });
 
-            for child_tree_node in Prop::direct_child_prop_ids(ctx, child_prop.id).await? {
+            for child_tree_node in Prop::direct_child_prop_ids_unordered(ctx, child_prop.id).await?
+            {
                 stack.push((child_tree_node, Some(prop_id)));
             }
         }
@@ -1044,7 +1045,7 @@ pub async fn get_component_type(
         .await?
         .pop()
     {
-        let av = AttributeValue::get_by_id(ctx, av_id).await?;
+        let av = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
         if let Some(type_value) = av.view(ctx).await? {
             let component_type: ComponentType = serde_json::from_value(type_value)?;
             return Ok(component_type.into());
