@@ -168,7 +168,9 @@
             class="text-center pt-2xs italic text-2xs text-neutral-400"
             :style="{ paddingLeft: indentPxPlusOne }"
           >
-            +{{ numberOfHiddenChildren }} hidden empty props
+            +{{ numberOfHiddenChildren }} hidden empty prop{{
+              numberOfHiddenChildren > 1 ? "s" : ""
+            }}
           </div>
         </div>
 

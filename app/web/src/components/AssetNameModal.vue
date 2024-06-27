@@ -5,10 +5,11 @@
       v-model="assetName"
       type="text"
       label="Asset Name"
+      noLabel
       required
       @enterPressed="submit"
     />
-    <VButton class="mt-md" @click="submit">{{ props.buttonLabel }}</VButton>
+    <VButton class="mt-sm" @click="submit">{{ props.buttonLabel }}</VButton>
   </Modal>
 </template>
 
