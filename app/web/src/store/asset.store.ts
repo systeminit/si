@@ -514,9 +514,9 @@ export const useAssetStore = () => {
               const variant = {
                 id: data.schemaId,
                 defaultSchemaVariantId: data.schemaVariantId,
-                schemaName: data.schemaName,
+                schemaName: data.name,
                 name: data.name,
-                displayName: "",
+                displayName: data.name,
                 category: data.category,
                 componentType: ComponentType.Component,
                 color: data.color,
