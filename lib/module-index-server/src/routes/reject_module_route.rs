@@ -91,6 +91,9 @@ pub async fn reject_module(
         kind: Set(module.kind),
         is_builtin_at: Set(module.is_builtin_at),
         is_builtin_at_by_display_name: Set(module.is_builtin_at_by_display_name),
+        schema_category: Set(module.schema_category),
+        schema_name: Set(module.schema_name),
+        schema_id: Set(module.schema_id),
     };
 
     let updated_module: si_module::Model = dbg!(active_module.update(&txn).await)?;
