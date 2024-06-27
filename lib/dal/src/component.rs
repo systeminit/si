@@ -1939,14 +1939,34 @@ impl Component {
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<Option<AttributePrototypeArgumentId>> {
         let total_start = std::time::Instant::now();
+        // Make sure both source & destination Components exist in the "current" change set.
+        // Eventually, this should probably be reported as an error actionable by the frontend, but
+        // for now, this is a no-op so we don't end up creating a broken graph.
+        let (_source_component, destination_component) = match (
+            Component::try_get_by_id(ctx, source_component_id).await?,
+            Component::try_get_by_id(ctx, destination_component_id).await?,
+        ) {
+            (Some(source), Some(destination)) => (source, destination),
+            (source, destination) => {
+                warn!(
+                    "Not creating edge; either source or destination component does not exist in current change set: {:?}, {:?}",
+                    source,
+                    destination,
+                );
+                return Ok(None);
+            }
+        };
         // Already have this connection? Nothing to do.
-        let destination_component = Component::get_by_id(ctx, destination_component_id).await?;
         for connection in destination_component.incoming_connections(ctx).await? {
             if connection.from_component_id == source_component_id
                 && connection.from_output_socket_id == source_output_socket_id
                 && connection.to_component_id == destination_component_id
                 && connection.to_input_socket_id == destination_input_socket_id
             {
+                warn!(
+                    "Not creating edge; already have this connection in change set: {:?}",
+                    connection
+                );
                 return Ok(None);
             }
         }
