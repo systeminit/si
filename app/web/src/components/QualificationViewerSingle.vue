@@ -79,7 +79,7 @@
       </div>
     </div>
 
-    <Modal ref="detailsModalRef" size="2xl" :title="qualification.title">
+    <Modal ref="detailsModalRef" :title="qualification.title" size="2xl">
       <div class="my-xs">
         <StatusMessageBox :status="qualificationStatus">
           <template v-if="qualificationStatus === 'failure'">

@@ -24,7 +24,7 @@
       )
     "
   >
-    <Icon name="alert-triangle" class="mr-xs flex-none" />
+    <Icon :name="props.icon" class="mr-xs flex-none" />
     <div class="flex-grow">
       <slot>{{ computedMessage }}</slot>
     </div>
@@ -36,7 +36,7 @@ import { computed, PropType } from "vue";
 import clsx from "clsx";
 import { ApiRequestStatus } from "../../pinia";
 import { Tones } from "../utils/color_utils";
-import { Icon, themeClasses } from "..";
+import { Icon, themeClasses, IconNames } from "..";
 
 export type ErrorMessageVariant = "classic" | "block";
 
@@ -49,6 +49,7 @@ const props = defineProps({
     type: String as PropType<ErrorMessageVariant>,
     default: "classic",
   },
+  icon: { type: String as PropType<IconNames>, default: "alert-triangle" },
 });
 
 const computedMessage = computed(() => {

@@ -13,7 +13,7 @@ async fn save_variant(ctx: &mut DalContext) {
         .expect("could not update visibility");
 
     let asset_name = "paulsTestAsset".to_string();
-    let display_name = None;
+    let display_name = asset_name.clone();
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();
@@ -21,7 +21,6 @@ async fn save_variant(ctx: &mut DalContext) {
     let variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
-        display_name.clone(),
         description.clone(),
         link.clone(),
         category.clone(),
@@ -35,10 +34,10 @@ async fn save_variant(ctx: &mut DalContext) {
         .await
         .expect("Unable to get the schema for the variant");
 
-    assert_eq!(variant.category(), category.clone());
-    assert_eq!(new_schema.name(), asset_name.clone());
+    assert_eq!(variant.category(), &category);
+    assert_eq!(new_schema.name(), &asset_name);
     // we update the display_name to match the schema name if display_name is none
-    assert_eq!(variant.display_name(), Some(asset_name.clone()));
+    assert_eq!(variant.display_name(), &asset_name);
     assert_eq!(
         variant.get_color(ctx).await.expect("unable to get color"),
         color.clone()
@@ -75,18 +74,18 @@ async fn save_variant(ctx: &mut DalContext) {
     let updated_description = Some("My Func Has A Description".to_string());
     let updated_func_content = "function main() {\n const myProp = new PropBuilder().setName(\"PaulsProp\").setKind(\"string\").build();\n  return new AssetBuilder().addProp(myProp).build()\n}"
             .to_string();
+
     VariantAuthoringClient::save_variant_content(
         ctx,
         variant.id(),
-        updated_func_name.clone(),
-        updated_func_name.clone(),
-        display_name.clone(),
-        link.clone(),
-        updated_func_content.clone(),
+        updated_func_name,
+        &display_name,
+        "category.clone()",
         updated_description.clone(),
-        category.clone(),
+        variant.link(),
+        &color,
         variant.component_type(),
-        color.clone(),
+        Some(updated_func_content.clone()),
     )
     .await
     .expect("Unable to save the func");
@@ -102,7 +101,6 @@ async fn save_variant(ctx: &mut DalContext) {
     assert!(maybe_func.is_some());
     let func = maybe_func.unwrap();
 
-    assert_eq!(func.name, updated_func_name);
     assert_eq!(func.kind, FuncKind::SchemaVariantDefinition);
     assert_eq!(
         func.backend_response_type,

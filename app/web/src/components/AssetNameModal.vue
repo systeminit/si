@@ -32,8 +32,7 @@ const submit = () => {
 
 const setError = (msg: string) => {
   if (assetNameVorm.value) {
-    assetNameVorm.value.validationState.isError = true;
-    assetNameVorm.value.validationState.errorMessage = msg;
+    assetNameVorm.value.setError(msg);
   }
 };
 

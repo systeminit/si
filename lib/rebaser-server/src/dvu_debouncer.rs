@@ -72,11 +72,11 @@ impl DvuDebouncer {
         builder.set_no_auto_migrate_snapshots();
         let mut ctx = builder.build_default().await?;
 
-        ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_inner().into()));
-        ctx.update_tenancy(Tenancy::new(self.workspace_id.into_inner().into()));
+        ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_raw_id().into()));
+        ctx.update_tenancy(Tenancy::new(self.workspace_id.into_raw_id().into()));
 
         if let Some(change_set) =
-            ChangeSet::find(&ctx, self.change_set_id.into_inner().into()).await?
+            ChangeSet::find(&ctx, self.change_set_id.into_raw_id().into()).await?
         {
             if !matches!(
                 change_set.status,

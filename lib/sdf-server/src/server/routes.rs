@@ -53,6 +53,7 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/module", crate::server::service::module::routes())
         // .nest("/api/status", crate::server::service::status::routes())
         .nest("/api/variant", crate::server::service::variant::routes())
+        .nest("/api/v2", crate::server::service::v2::routes())
         .layer(CompressionLayer::new());
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).

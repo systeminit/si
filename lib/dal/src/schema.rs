@@ -59,6 +59,18 @@ pub type SchemaResult<T> = Result<T, SchemaError>;
 
 pk!(SchemaId);
 
+impl From<si_events::SchemaId> for SchemaId {
+    fn from(value: si_events::SchemaId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<SchemaId> for si_events::SchemaId {
+    fn from(value: SchemaId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Schema {
     id: SchemaId,

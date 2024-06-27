@@ -272,8 +272,8 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncKind } from "@/api/sdf/dal/func";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { FuncKind, FuncId } from "@/api/sdf/dal/func";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
@@ -332,10 +332,6 @@ watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
 watch(
   () => funcStore.selectedFuncId,
   () => {
-    if (funcStore.selectedFuncId) {
-      funcStore.FETCH_FUNC(funcStore.selectedFuncId);
-    }
-
     if (
       funcDetailsTabGroupRef.value &&
       funcDetailsTabGroupRef.value.tabExists("properties")
@@ -389,13 +385,13 @@ const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
     const associations = await detachRef.value.detachFunc();
-    if (assetStore.selectedAssetId)
-      assetStore.LOAD_ASSET(assetStore.selectedAssetId); // reloads the fn list
+    if (assetStore.selectedVariantId)
+      assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId); // reloads the fn list
     if (funcStore.selectedFuncId)
       assetStore.removeFuncSelection(funcStore.selectedFuncId);
-    if (funcStore.selectedFuncId && assetStore.selectedAssetId)
+    if (funcStore.selectedFuncId && assetStore.selectedVariantId)
       assetStore.closeFunc(
-        assetStore.selectedAssetId,
+        assetStore.selectedVariantId,
         funcStore.selectedFuncId,
       );
     funcStore.selectedFuncId = undefined; // brings you back to the asset detail
@@ -419,10 +415,7 @@ const deleteFunc = async () => {
 
 const hasAssociations = computed(() => {
   if (editingFunc?.value) {
-    return (
-      editingFunc.value.associations === undefined &&
-      !editingFunc.value.isBuiltin
-    );
+    return editingFunc.value.associations === undefined;
   }
   return false;
 });

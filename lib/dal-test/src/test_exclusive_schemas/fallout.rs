@@ -63,11 +63,11 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("fallout_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&fallout_authoring_schema_func.unique_id)
                         .build()?,

@@ -10,17 +10,9 @@
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            v-if="useFeatureFlagsStore().IMMUTABLE_SCHEMA_VARIANTS"
-            icon="clipboard-copy"
-            label="Unlock"
-            size="md"
-            tone="neutral"
-            @click="unlock"
-          />
-
-          <VButton
-            :loading="execAssetReqStatus.isPending"
-            :requestStatus="execAssetReqStatus"
+            :disabled="saveAssetReqStatus.isPending"
+            :loading="updateAssetReqStatus.isPending"
+            :requestStatus="updateAssetReqStatus"
             icon="bolt"
             label="Regenerate Asset"
             loadingText="Regenerating Asset..."
@@ -68,30 +60,23 @@
 
       <Stack class="p-xs" spacing="none">
         <div>
-          <ErrorMessage :requestStatus="execAssetReqStatus" />
+          <ErrorMessage :requestStatus="updateAssetReqStatus" />
         </div>
         <VormInput
           id="schemaName"
           v-model="editingAsset.schemaName"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Asset Name"
           placeholder="(mandatory) Provide the asset a name"
           type="text"
           @blur="updateAsset"
         />
-        <VormInput
-          id="name"
-          v-model="editingAsset.name"
-          compact
-          disabled
-          label="Asset Version Name"
-          placeholder="(mandatory) Provide the asset version a name"
-          type="text"
-        />
 
         <VormInput
           id="displayName"
           v-model="editingAsset.displayName"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Display name"
           placeholder="(optional) Provide the asset version a display name"
@@ -101,6 +86,7 @@
         <VormInput
           id="category"
           v-model="editingAsset.category"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Category"
           placeholder="(mandatory) Provide a category for the asset"
@@ -110,6 +96,7 @@
         <VormInput
           id="componentType"
           v-model="editingAsset.componentType"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           :options="componentTypeOptions"
           compact
           label="Component Type"
@@ -119,13 +106,19 @@
         <VormInput
           id="description"
           v-model="editingAsset.description"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Description"
           placeholder="(optional) Provide a brief description of the asset"
           type="textarea"
           @blur="updateAsset"
         />
-        <VormInput compact label="color" type="container">
+        <VormInput
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          compact
+          label="color"
+          type="container"
+        >
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
@@ -136,6 +129,7 @@
         <VormInput
           id="link"
           v-model="editingAsset.link"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
@@ -148,7 +142,7 @@
       v-else
       class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
     >
-      <template v-if="props.assetId"
+      <template v-if="props.assetId && loadAssetReqStatus.isError"
         >Asset "{{ props.assetId }}" does not exist!
       </template>
       <template v-else>Select an asset to view its details.</template>
@@ -156,13 +150,15 @@
     <Modal
       ref="executeAssetModalRef"
       :title="
-        editingAsset && editingAsset.id ? 'Asset Updated' : 'New Asset Created'
+        editingAsset && editingAsset.schemaVariantId
+          ? 'Asset Updated'
+          : 'New Asset Created'
       "
       size="sm"
       @closeComplete="closeHandler"
     >
       {{
-        editingAsset && editingAsset.id
+        editingAsset && editingAsset.schemaVariantId
           ? "The asset you just updated will be available to use from the Assets Panel"
           : "The asset you just created will now appear in the Assets Panel."
       }}
@@ -182,11 +178,11 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { FuncId } from "@/store/func/funcs.store";
-import { ComponentType } from "@/api/sdf/dal/diagram";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useFuncStore } from "@/store/func/funcs.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
@@ -195,9 +191,11 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+const ffStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
+const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 const executeAssetModalRef = ref();
@@ -226,11 +224,11 @@ const componentTypeOptions = [
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 
-const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
+const editingAsset = ref(_.cloneDeep(assetStore.selectedSchemaVariant));
 watch(
-  () => assetStore.selectedAsset,
+  () => assetStore.selectedSchemaVariant,
   () => {
-    editingAsset.value = _.cloneDeep(assetStore.selectedAsset);
+    editingAsset.value = _.cloneDeep(assetStore.selectedSchemaVariant);
   },
   { deep: true },
 );
@@ -238,40 +236,45 @@ watch(
 const updateAsset = async () => {
   if (
     editingAsset.value &&
-    !_.isEqual(editingAsset.value, assetStore.selectedAsset)
+    !_.isEqual(editingAsset.value, assetStore.selectedSchemaVariant)
   ) {
-    await assetStore.SAVE_ASSET(editingAsset.value);
+    const code =
+      funcStore.funcDetailsById[editingAsset.value.assetFuncId]?.code;
+    if (code) await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
+    else
+      throw new Error(
+        `${editingAsset.value.assetFuncId} Func not found on Variant ${editingAsset.value.schemaVariantId}. This should not happen.`,
+      );
   }
 };
 
-const execAssetReqStatus = assetStore.getRequestStatus(
-  "EXEC_ASSET",
-  assetStore.selectedAssetId,
+const updateAssetReqStatus = assetStore.getRequestStatus(
+  "REGENERATE_VARIANT",
+  assetStore.selectedVariantId,
+);
+const saveAssetReqStatus = assetStore.getRequestStatus(
+  "SAVE_SCHEMA_VARIANT",
+  assetStore.selectedVariantId,
 );
 const executeAsset = async () => {
-  if (assetStore.selectedAssetId) {
-    await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
-  }
-};
-
-const unlock = async () => {
-  if (assetStore.selectedAsset?.defaultSchemaVariantId) {
-    await assetStore.CREATE_UNLOCKED_COPY(
-      assetStore.selectedAsset?.defaultSchemaVariantId,
-    );
+  if (editingAsset.value) {
+    await assetStore.REGENERATE_VARIANT(editingAsset.value.schemaVariantId);
   }
 };
 
 const closeHandler = () => {
-  assetStore.executeAssetTaskId = undefined;
+  assetStore.executeSchemaVariantTaskId = undefined;
 };
 
 const cloneAsset = async (name: string) => {
-  if (editingAsset.value?.id) {
-    const result = await assetStore.CLONE_ASSET(editingAsset.value.id, name);
+  if (editingAsset.value?.schemaVariantId) {
+    const result = await assetStore.CLONE_VARIANT(
+      editingAsset.value.schemaVariantId,
+      name,
+    );
     if (result.result.success) {
       cloneAssetModalRef.value?.modal?.close();
-      await assetStore.setAssetSelection(result.result.data.id);
+      await assetStore.setSchemaVariantSelection(result.result.data.id);
     }
   }
 };

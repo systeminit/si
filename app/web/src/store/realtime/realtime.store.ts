@@ -4,6 +4,7 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/store/apis";
 import { ActorView } from "@/api/sdf/dal/history_actor";
+import { omit } from "@/utils/omit";
 import { useAuthStore } from "../auth.store";
 import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
 
@@ -224,7 +225,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     handleEvent(
       messageEventData.payload.kind,
       messageEventData.payload.data,
-      _.omit(messageEventData, "payload") as RealtimeEventMetadata,
+      omit(messageEventData, "payload") as RealtimeEventMetadata,
     );
   });
   socket.addEventListener("error", (errorEvent) => {

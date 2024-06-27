@@ -186,6 +186,9 @@ you can pass in options as props too */
       <div v-if="validationState.isError" class="vorm-input__error-message">
         {{ validationState.errorMessage }}
       </div>
+      <div v-if="error_set" class="vorm-input__error-message">
+        {{ error_set }}
+      </div>
     </div>
   </div>
 </template>
@@ -397,7 +400,7 @@ watch(
 const { theme } = useTheme();
 
 const computedClasses = computed(() => ({
-  "--error": validationState.isError,
+  "--error": validationState.isError || error_set.value,
   "--focused": isFocus.value,
   "--disabled": disabledBySelfOrParent.value,
   [`--type-${props.type}`]: true,
@@ -679,6 +682,11 @@ function focus() {
   }
 }
 
+const error_set = ref<string | null>(null);
+function setError(msg: string) {
+  error_set.value = msg;
+}
+
 defineExpose({
   focus,
 
@@ -699,6 +707,7 @@ defineExpose({
   // but this second call to `expose` was overwriting that one, so we must include it again
   validationState,
   validationMethods,
+  setError,
 
   // Just in case you need to access the DOM element for the input field
   inputRef,

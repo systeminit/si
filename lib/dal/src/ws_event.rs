@@ -3,6 +3,7 @@ use std::num::ParseIntError;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_frontend_types as frontend_types;
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -21,8 +22,7 @@ use crate::pkg::{
 };
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{
-    SchemaVariantClonedPayload, SchemaVariantCreatedPayload, SchemaVariantSavedPayload,
-    SchemaVariantUpdatedPayload,
+    SchemaVariantClonedPayload, SchemaVariantSavedPayload, SchemaVariantUpdatedPayload,
 };
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
@@ -30,7 +30,7 @@ use crate::{
     pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
-use crate::{SecretCreatedPayload, SecretUpdatedPayload};
+use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -47,6 +47,8 @@ pub enum WsEventError {
     ParseIntError(#[from] ParseIntError),
     #[error(transparent)]
     Pg(#[from] PgError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -95,7 +97,7 @@ pub enum WsPayload {
     Online(OnlinePayload),
     ResourceRefreshed(ComponentUpdatedPayload),
     SchemaVariantCloned(SchemaVariantClonedPayload),
-    SchemaVariantCreated(SchemaVariantCreatedPayload),
+    SchemaVariantCreated(frontend_types::SchemaVariant),
     SchemaVariantSaved(SchemaVariantSavedPayload),
     SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
     SecretCreated(SecretCreatedPayload),

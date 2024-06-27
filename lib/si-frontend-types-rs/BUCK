@@ -1,0 +1,17 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+alias(
+    name = "si-frontend-types-rs",
+    actual = ":si-frontend-types",
+)
+
+rust_library(
+    name = "si-frontend-types",
+    deps = [
+        "//lib/si-events-rs:si-events",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:strum",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
