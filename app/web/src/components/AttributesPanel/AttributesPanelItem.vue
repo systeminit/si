@@ -1,5 +1,6 @@
 <template>
   <div
+    v-if="!isHidden"
     :class="{
       '--section': canHaveChildren,
       '--input': !canHaveChildren,
@@ -70,18 +71,22 @@
             >
               <template v-if="isChildOfArray">
                 {{ propName }}[{{ attributeDef.arrayIndex }}]
-                <button
-                  class="attributes-panel-item__delete-child-button hover:scale-125 items-center"
-                  @click="removeChildHandler"
-                >
-                  <Icon name="trash" size="xs" />
-                </button>
               </template>
               <template v-else-if="isChildOfMap">
                 {{ attributeDef.mapKey }}
               </template>
               <template v-else>
                 {{ fullPropDef.name }}
+              </template>
+              <template
+                v-if="propIsEditable && (isChildOfArray || isChildOfMap)"
+              >
+                <button
+                  class="attributes-panel-item__delete-child-button hover:scale-125 items-center pl-2xs"
+                  @click="removeChildHandler"
+                >
+                  <Icon name="trash" size="xs" />
+                </button>
               </template>
             </div>
 
@@ -150,23 +155,22 @@
         v-show="isOpen && headerHasContent"
         class="attributes-panel-item__children"
       >
-        <template v-if="attributeDef.children.length">
-          <!-- <div class="w-[50%] h-[1px] bg-shade-0 ml-auto"></div> -->
-          <AttributesPanelItem
-            v-for="childProp in attributeDef.children"
-            :key="`${propName}/${childProp.propDef?.name}`"
-            :attributeDef="childProp"
-            :level="level + 1"
-          />
-        </template>
-        <!-- <div
-          v-else
-          :style="{
-            marginLeft: `${HEADER_HEIGHT + INDENT_SIZE * (props.level + 1)}px`,
-          }"
-        >
-          This prop does not currently have any children.
-        </div> -->
+        <AttributesPanelItem
+          v-for="childProp in attributeDef.children"
+          :key="`${propName}/${childProp.propDef?.name}`"
+          :attributeDef="childProp"
+          :level="level + 1"
+        />
+
+        <div v-if="numberOfHiddenChildren > 0" class="attributes-panel-item">
+          <!-- TODO(wendy) - If we want to add the option to show the hidden props, add the click handler here! -->
+          <div
+            class="text-center pt-2xs italic text-2xs text-neutral-400"
+            :style="{ paddingLeft: indentPxPlusOne }"
+          >
+            +{{ numberOfHiddenChildren }} hidden empty props
+          </div>
+        </div>
 
         <template v-if="(isArray || isMap) && propManual">
           <div
@@ -649,6 +653,42 @@ const headerMainLabelTooltip = computed(() => {
 const isOpen = ref(true); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
 
+const shouldBeHidden = (item: AttributeTreeItem) => {
+  if (!item.value?.isControlledByAncestor) return false;
+
+  const canHaveChildren = ["object", "map", "array"].includes(
+    item.propDef.kind,
+  );
+
+  if (canHaveChildren && item.children.length === 0) {
+    return true;
+  }
+
+  const children = [];
+  children.push(item);
+
+  while (children.length > 0) {
+    const child = children.pop();
+    if (!child) break;
+    if (["object", "map", "array"].includes(child.propDef.kind)) {
+      _.extend(children, child.children);
+    } else if (child.value) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const isHidden = computed(() => shouldBeHidden(props.attributeDef));
+
+const numberOfHiddenChildren = computed(() => {
+  let count = 0;
+  props.attributeDef.children.forEach((child) => {
+    if (shouldBeHidden(child)) count++;
+  });
+  return count;
+});
+
 const headerHasContent = computed(() => {
   return (
     props.attributeDef.children.length ||
@@ -735,6 +775,9 @@ const indentPx = computed(
   () => `${HEADER_HEIGHT + INDENT_SIZE * props.level}px`,
 );
 const topPx = computed(() => `${HEADER_HEIGHT * props.level}px`);
+const indentPxPlusOne = computed(
+  () => `${HEADER_HEIGHT + INDENT_SIZE * (props.level + 1)}px`,
+);
 
 const headerZIndex = computed(() => 300 - props.level);
 
@@ -814,7 +857,7 @@ const validAttributeValueSources = computed(() => {
     sources.push(AttributeValueSource.Socket);
   }
 
-  if (props.attributeDef.value?.isControlledByAncestor === false) {
+  if (propControlledByParent.value === false) {
     sources.push(AttributeValueSource.Manual);
   }
   if (!sources.includes(propSource.value)) {
