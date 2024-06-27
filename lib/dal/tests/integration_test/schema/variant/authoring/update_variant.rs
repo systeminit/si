@@ -19,15 +19,13 @@ use dal_test::test;
 async fn update_variant(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "paulsTestAsset".to_string();
-    let display_name = None;
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();
     let color = "#00b0b0".to_string();
-    let my_first_variant = VariantAuthoringClient::create_schema_and_variant(
+    let first_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
-        display_name.clone(),
         description.clone(),
         link.clone(),
         category.clone(),
@@ -36,42 +34,47 @@ async fn update_variant(ctx: &mut DalContext) {
     .await
     .expect("Unable to create new asset");
 
-    let my_asset_schema = my_first_variant
+    let schema = first_variant
         .schema(ctx)
         .await
         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = my_asset_schema
+    let default_schema_variant = schema
         .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get the default schema variant id");
     assert!(default_schema_variant.is_some());
-    assert_eq!(default_schema_variant, Some(my_first_variant.id()));
+    assert_eq!(default_schema_variant, Some(first_variant.id()));
 
     // Now let's update the variant
     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string();
-    let updated_sv_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
-        my_first_variant.id(),
-        my_asset_schema.name.clone(),
-        my_first_variant.display_name(),
-        my_first_variant.category().to_string(),
-        my_first_variant
+        first_variant.id(),
+        &schema.name,
+        first_variant.display_name(),
+        first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
+        first_variant
             .get_color(ctx)
             .await
-            .expect("Unable to get color of variant"),
-        my_first_variant.link(),
-        new_code,
-        my_first_variant.description(),
-        my_first_variant.component_type(),
+            .expect("get color from schema variant"),
+        first_variant.component_type(),
+        Some(new_code),
     )
     .await
-    .expect("unable to update asset");
+    .expect("save variant contents");
 
-    assert_eq!(my_first_variant.id(), updated_sv_id);
+    let updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+        .await
+        .expect("unable to update asset");
+
+    assert_eq!(first_variant.id(), updated_sv_id);
 
     // Add a component to the diagram
-    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
+    create_component_for_schema_name(ctx, schema.name.clone(), "demo component")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -90,29 +93,34 @@ async fn update_variant(ctx: &mut DalContext) {
 
     // Now let's update the asset a second time!
     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addProp(anotherProp).build()\n}".to_string();
-    let second_updated_sv_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
-        my_first_variant.id(),
-        my_asset_schema.name.clone(),
-        my_first_variant.display_name(),
-        my_first_variant.category().to_string(),
-        my_first_variant
+        first_variant.id(),
+        &schema.name,
+        first_variant.display_name(),
+        first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
+        first_variant
             .get_color(ctx)
             .await
-            .expect("Unable to get color of variant"),
-        my_first_variant.link(),
-        new_code,
-        my_first_variant.description(),
-        my_first_variant.component_type(),
+            .expect("get color from schema variant"),
+        first_variant.component_type(),
+        Some(new_code),
     )
     .await
-    .expect("unable to update asset");
+    .expect("save variant contents");
+
+    let second_updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+        .await
+        .expect("regenerate asset");
 
     // We should have a NEW schema variant id as there is a component on the graph
-    assert_ne!(second_updated_sv_id, my_first_variant.id());
+    assert_ne!(second_updated_sv_id, first_variant.id());
 
     // Let's ensure that our latest prop is visible in the component
-    create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component 2")
+    create_component_for_schema_name(ctx, schema.name.clone(), "demo component 2")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -128,7 +136,7 @@ async fn update_variant(ctx: &mut DalContext) {
     .expect("able to find anotherProp prop");
 
     // Let's check that the default schema variant has been updated
-    let updated_default_schema_variant = my_asset_schema
+    let updated_default_schema_variant = schema
         .get_default_schema_variant_id(ctx)
         .await
         .expect("unable to get the default schema variant id");
@@ -143,7 +151,6 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         "helix",
         None,
         None,
-        None,
         "modal editors",
         "#00b0b0",
     )
@@ -155,23 +162,27 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         .expect("could not get schema");
 
     // Update the variant with a new string prop.
-    let updated_variant_id = VariantAuthoringClient::update_variant(
+    VariantAuthoringClient::save_variant_content(
         ctx,
         first_variant.id(),
         &schema.name,
         first_variant.display_name(),
         first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
         first_variant
             .get_color(ctx)
             .await
-            .expect("could not get color"),
-        first_variant.link(),
-        "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}",
-        first_variant.description(),
+            .expect("get color from schema variant"),
         first_variant.component_type(),
+        Some("function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string()),
     )
-    .await
-    .expect("unable to update variant");
+        .await
+        .expect("save variant contents");
+
+    let updated_variant_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+        .await
+        .expect("unable to update variant");
     assert_eq!(
         first_variant.id(), // expected
         updated_variant_id  // actual
@@ -208,23 +219,28 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     assert_eq!(1, diagram.components.len());
 
     // Update the variant again, but this time, we should get a new schema variant id.
-    let second_updated_variant_id = VariantAuthoringClient::update_variant(
+    VariantAuthoringClient::save_variant_content(
         ctx,
         first_variant.id(),
         &schema.name,
         first_variant.display_name(),
         first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
         first_variant
             .get_color(ctx)
             .await
-            .expect("could not get color"),
-        first_variant.link(),
-        "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addProp(anotherProp).build()\n}",
-        first_variant.description(),
+            .expect("get color from schema variant"),
         first_variant.component_type(),
+        Some("function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addProp(anotherProp).build()\n}".to_string()),
     )
-    .await
-    .expect("could not udpate variant");
+        .await
+        .expect("save variant contents");
+
+    let second_updated_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+            .await
+            .expect("could not udpate variant");
     assert_ne!(second_updated_variant_id, first_variant.id());
 
     // Create another component and check that the second prop exists on it.
@@ -314,7 +330,6 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         "helix",
         None,
         None,
-        None,
         "modal editors",
         "#00b0b0",
     )
@@ -342,23 +357,29 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
                 .build();
             return new AssetBuilder().addProp(input1).addProp(calculate).build()
         }";
-    let first_update_variant_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
         schema_variant.id(),
         &schema.name,
         schema_variant.display_name(),
         schema_variant.category(),
+        schema_variant.description(),
+        schema_variant.link(),
         schema_variant
             .get_color(ctx)
             .await
-            .expect("could not get color"),
-        schema_variant.link(),
-        code,
-        schema_variant.description(),
+            .expect("get color from schema variant"),
         schema_variant.component_type(),
+        Some(code),
     )
     .await
-    .expect("unable to update variant");
+    .expect("save variant contents");
+
+    let first_update_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant.id())
+            .await
+            .expect("unable to update variant");
     assert_eq!(
         schema_variant.id(),     // expected
         first_update_variant_id  // actual
@@ -536,23 +557,29 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let schema_variant = SchemaVariant::get_by_id(ctx, first_update_variant_id)
         .await
         .expect("could not get schema variant");
-    let second_update_variant_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
         schema_variant.id(),
         &schema.name,
         schema_variant.display_name(),
         schema_variant.category(),
+        schema_variant.description(),
+        schema_variant.link(),
         schema_variant
             .get_color(ctx)
             .await
-            .expect("could not get color"),
-        schema_variant.link(),
-        code,
-        schema_variant.description(),
+            .expect("get color from schema variant"),
         schema_variant.component_type(),
+        Some(code),
     )
     .await
-    .expect("unable to update variant");
+    .expect("save variant contents");
+
+    let second_update_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant.id())
+            .await
+            .expect("unable to update variant");
     assert_ne!(first_update_variant_id, second_update_variant_id);
 
     // Create a second qualification.

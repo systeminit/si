@@ -17,7 +17,7 @@
       </div>
     </template>
     <template #subpanel2>
-      <AssetFuncListPanel :assetId="assetStore.selectedAssetId" />
+      <AssetFuncListPanel :assetId="assetStore.selectedVariantId" />
     </template>
   </component>
 
@@ -38,15 +38,16 @@
   >
     <div class="absolute w-full flex flex-col h-full">
       <AssetCard
-        v-if="assetStore.selectedAssetId"
+        v-if="assetStore.selectedVariantId"
         titleCard
-        :assetId="assetStore.selectedAssetId"
+        :assetId="assetStore.selectedVariantId"
       />
-      <template v-if="assetStore.selectedAssetId">
+      <template v-if="assetStore.selectedVariantId">
         <FuncDetails
           v-if="funcStore.selectedFuncId"
           :funcId="funcStore.selectedFuncId"
-          :schemaVariantId="assetStore.selectedAsset?.defaultSchemaVariantId"
+          :schemaVariantId="assetStore.selectedSchemaVariant?.schemaVariantId"
+          singleModelScreen
           allowTestPanel
           @expand-panel="rightResizablePanelRef?.maximize()"
         />
@@ -54,11 +55,11 @@
         request statuses -->
         <AssetDetailsPanel
           v-else
-          :key="assetStore.selectedAssetId"
-          :assetId="assetStore.selectedAssetId"
+          :key="assetStore.selectedVariantId"
+          :assetId="assetStore.selectedVariantId"
         />
       </template>
-      <template v-else-if="assetStore.selectedAssets.length > 1">
+      <template v-else-if="assetStore.selectedSchemaVariants.length > 1">
         <div class="flex flex-col h-full w-full overflow-hidden">
           <ScrollArea>
             <template #top>
@@ -69,11 +70,11 @@
             </template>
 
             <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
-              {{ assetStore.selectedAssets.length }} assets selected:
+              {{ assetStore.selectedSchemaVariants.length }} assets selected:
             </div>
             <Stack spacing="xs" class="p-xs">
               <AssetCard
-                v-for="assetId in assetStore.selectedAssets"
+                v-for="assetId in assetStore.selectedSchemaVariants"
                 :key="assetId"
                 :titleCard="false"
                 :assetId="assetId"
@@ -129,7 +130,7 @@ const open = (mouse: MouseEvent) => {
 const rightClickMenuItems = computed(() => {
   const canContribute = [];
   const canUpdate = [];
-  assetStore.selectedAssetRecords.forEach((asset) => {
+  assetStore.selectedSchemaVariantRecords.forEach((asset) => {
     if (asset.canContribute) canContribute.push(asset);
     if (asset.canUpdate) canUpdate.push(asset);
   });
@@ -185,7 +186,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => assetStore.selectedAssets.length,
+  () => assetStore.selectedSchemaVariants.length,
   (newVal, oldVal) => {
     if (newVal > 1 && oldVal < 2 && leftResizablePanelRef.value) {
       leftResizablePanelRef.value.subpanelCollapseSet(true);

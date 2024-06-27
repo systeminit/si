@@ -18,6 +18,7 @@ pub struct SchemaVariantMetadataView {
     display_name: String,
     color: String,
     component_type: ComponentType,
+    is_locked: bool,
     link: Option<String>,
     description: Option<String>,
     #[serde(flatten)]
@@ -45,8 +46,9 @@ impl SchemaVariantMetadataView {
                     .await?
                     .unwrap_or(ComponentType::Component),
                 link: default_schema_variant.link.to_owned(),
-                description: default_schema_variant.description,
-                display_name: default_schema_variant.display_name,
+                description: default_schema_variant.description.clone(),
+                display_name: default_schema_variant.display_name().to_string(),
+                is_locked: default_schema_variant.is_locked(),
             })
         }
 

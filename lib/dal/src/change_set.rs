@@ -70,7 +70,13 @@ pub enum ChangeSetError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<WsEventError> for ChangeSetError {
+    fn from(value: WsEventError) -> Self {
+        Self::WsEvent(Box::new(value))
+    }
 }
 
 /// The primary result type for this module.

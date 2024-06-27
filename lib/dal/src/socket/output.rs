@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
+use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -71,6 +72,18 @@ pub enum OutputSocketError {
 pub type OutputSocketResult<T> = Result<T, OutputSocketError>;
 
 pk!(OutputSocketId);
+
+impl From<si_events::OutputSocketId> for OutputSocketId {
+    fn from(value: si_events::OutputSocketId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<OutputSocketId> for si_events::OutputSocketId {
+    fn from(value: OutputSocketId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
 
 /// This socket can only provide data to external [`SchemaVariants`](crate::SchemaVariant). It can
 /// only consume data within its own [`SchemaVariant`](crate::SchemaVariant).
@@ -474,5 +487,14 @@ impl OutputSocket {
                 .await?
                 .id,
         )
+    }
+}
+
+impl From<OutputSocket> for frontend_types::OutputSocket {
+    fn from(value: OutputSocket) -> Self {
+        Self {
+            id: value.id.into(),
+            name: value.name,
+        }
     }
 }

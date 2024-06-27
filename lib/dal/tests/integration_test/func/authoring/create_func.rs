@@ -535,7 +535,6 @@ async fn duplicate_func_name_causes_error(ctx: &mut DalContext) {
 #[test]
 async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut DalContext) {
     let asset_name = "britsTestAsset".to_string();
-    let display_name = None;
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();
@@ -543,7 +542,6 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     let variant_zero = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
-        display_name.clone(),
         description.clone(),
         link.clone(),
         category.clone(),
@@ -573,23 +571,28 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     ).build();\n
      return new AssetBuilder().addProp(myProp).addProp(arrayProp).build()\n}"
         .to_string();
-    let updated_variant_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
         variant_zero.id(),
         my_asset_schema.name.clone(),
         variant_zero.display_name(),
-        variant_zero.category().to_string(),
+        variant_zero.category(),
+        variant_zero.description(),
+        variant_zero.link(),
         variant_zero
             .get_color(ctx)
             .await
-            .expect("Unable to get color of variant"),
-        variant_zero.link(),
-        first_code_update,
-        variant_zero.description(),
+            .expect("get color from schema variant"),
         variant_zero.component_type(),
+        Some(first_code_update),
     )
     .await
-    .expect("unable to update asset");
+    .expect("save variant contents");
+
+    let updated_variant_id = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id())
+        .await
+        .expect("unable to update asset");
 
     // We should still see that the schema variant we updated is the same as we have no components on the graph
     assert_eq!(variant_zero.id(), updated_variant_id);

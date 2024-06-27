@@ -192,11 +192,11 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("starfield_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&starfield_authoring_schema_func.unique_id)
                         .build()?,
@@ -488,11 +488,11 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("morningstar_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&morningstar_authoring_schema_func.unique_id)
                         .build()?,
@@ -645,11 +645,11 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("etoiles_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&etoiles_authoring_schema_func.unique_id)
                         .build()?,

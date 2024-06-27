@@ -1,11 +1,16 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
-import { watch } from "vue";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncArgument, FuncArgumentKind, FuncKind } from "@/api/sdf/dal/func";
+import {
+  FuncArgument,
+  FuncArgumentKind,
+  FuncKind,
+  FuncId,
+  FuncArgumentId,
+} from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
@@ -13,8 +18,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
 import { PropId } from "@/api/sdf/dal/prop";
-import { OutputSocketId } from "@/api/sdf/dal/diagram";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariantId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -31,9 +35,6 @@ import {
 } from "./types";
 
 import { FuncRunId } from "../func_runs.store";
-
-export type FuncId = string;
-export type FuncArgumentId = string;
 
 export type FuncSummary = {
   id: string;
@@ -108,9 +109,11 @@ export const useFuncStore = () => {
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
+        // this powers the list
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcArgumentsById: {} as Record<FuncArgumentId, FuncArgument>,
         funcArgumentsByFuncId: {} as Record<FuncId, FuncArgument[]>,
+        // this is the code
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
         // map from schema variant ids to the input sources
         inputSourceSockets: {} as InputSocketViews,
@@ -207,7 +210,7 @@ export const useFuncStore = () => {
         schemaVariantOptions() {
           return componentsStore.schemaVariants.map((sv) => ({
             label: sv.schemaName,
-            value: sv.id,
+            value: sv.schemaVariantId,
           }));
         },
 
@@ -747,23 +750,6 @@ export const useFuncStore = () => {
         this.FETCH_FUNC_LIST();
         this.FETCH_INPUT_SOURCE_LIST();
 
-        // could do this from components, but may as well do here...
-        const stopWatchSelectedFunc = watch([() => this.selectedFuncId], () => {
-          if (this.selectedFuncId) {
-            // only fetch if we don't have this one already in our state,
-            // otherwise we can overwrite functions with their previous value
-            // before the save queue is drained.
-            if (
-              typeof this.funcDetailsById[this.selectedFuncId] === "undefined"
-            ) {
-              this.FETCH_FUNC(this.selectedFuncId);
-            }
-
-            // add the func to the list of open ones
-            this.setOpenFuncId(this.selectedFuncId, true);
-          }
-        });
-
         const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
 
@@ -788,7 +774,7 @@ export const useFuncStore = () => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
 
-              const assetId = assetStore.selectedAssetId;
+              const assetId = assetStore.selectedVariantId;
               if (
                 assetId &&
                 this.selectedFuncId &&
@@ -814,9 +800,9 @@ export const useFuncStore = () => {
               this.FETCH_FUNC_LIST();
 
               // Reload the last selected asset to ensure that its func list is up to date.
-              const assetId = assetStore.selectedAssetId;
+              const assetId = assetStore.selectedVariantId;
               if (assetId) {
-                assetStore.LOAD_ASSET(assetId);
+                assetStore.LOAD_SCHEMA_VARIANT(assetId);
               }
 
               if (this.selectedFuncId) {
@@ -841,7 +827,6 @@ export const useFuncStore = () => {
           },
         ]);
         return () => {
-          stopWatchSelectedFunc();
           realtimeStore.unsubscribe(this.$id);
         };
       },

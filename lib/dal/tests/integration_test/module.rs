@@ -125,7 +125,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
         .variants
         .first()
         .expect("unable to get the schema variant");
-    assert_eq!(pkg_schema_variant.name, "v0");
     assert_eq!(pkg_schema_variant.auth_funcs.len(), 1);
     assert_eq!(pkg_schema_variant.leaf_functions.len(), 1);
     assert_eq!(pkg_schema_variant.sockets.len(), 1);

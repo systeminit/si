@@ -39,7 +39,7 @@
           <span class="pr-2 select-none">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
           <span class="text-2xs italic text-neutral-500 ml-xs">
-            {{ schemaVariantsById?.[svId]?.name }}
+            {{ schemaVariantsById?.[svId]?.displayName }}
             {{ svTimestampStringById[svId] }}
           </span>
           <VButton
@@ -174,13 +174,13 @@ const svTimestampStringById = computed(() =>
 
 const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
-    .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
-    .filter((sv) => sv.isDefault)
+    .filter((sv) => !schemaVariantsForExport.value.includes(sv.schemaVariantId))
+    // .filter((sv) => sv.isDefault)
     .map((sv) => ({
-      label: `${sv.schemaName}: ${sv.name} ${
-        svTimestampStringById.value[sv.id]
+      label: `${sv.schemaName}: ${sv.displayName} ${
+        svTimestampStringById.value[sv.schemaVariantId]
       }`,
-      value: sv.id,
+      value: sv.schemaVariantId,
     })),
 );
 

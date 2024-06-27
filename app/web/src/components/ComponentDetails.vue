@@ -197,7 +197,7 @@ import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useActionsStore } from "@/store/actions.store";
-import { ComponentType } from "@/api/sdf/dal/diagram";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";

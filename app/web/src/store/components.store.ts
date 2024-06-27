@@ -19,9 +19,9 @@ import {
 } from "@/components/ModelingDiagram/diagram_types";
 import {
   ComponentType,
-  DiagramSchema,
-  DiagramSchemaVariant,
-} from "@/api/sdf/dal/diagram";
+  SchemaVariant,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { ChangeSetId, ChangeStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import {
@@ -43,6 +43,7 @@ import {
   GROUP_DEFAULT_WIDTH,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
+import { nonNullable } from "@/utils/typescriptLinter";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -56,7 +57,6 @@ import { useStatusStore } from "./status.store";
 type RequestUlid = string;
 
 export type ComponentNodeId = string;
-type SchemaId = string;
 
 const toast = useToast();
 
@@ -83,19 +83,9 @@ export type ComponentTreeNode = {
   statusIcons?: StatusIconsSet;
 } & FullComponent;
 
-export interface DiagramSchemaVariantWithDisplayMetadata
-  extends DiagramSchemaVariant {
-  schemaName: string;
-}
-
-export interface DiagramSchemaWithDisplayMetadata extends DiagramSchema {
-  category: string;
-  color: string;
-}
-
 export type Categories = {
   displayName: string;
-  schemas: DiagramSchemaWithDisplayMetadata[];
+  schemaVariants: SchemaVariant[];
 }[];
 
 const qualificationStatusToIconMap: Record<
@@ -273,7 +263,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
 
           edgesById: {} as Record<EdgeId, Edge>,
-          schemasById: {} as Record<SchemaId, DiagramSchema>,
+          schemaVariantsById: {} as Record<SchemaVariantId, SchemaVariant>,
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -285,7 +275,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           panTargetComponentId: null as ComponentId | null,
 
           // used by the diagram to track which schema is selected for insertion
-          selectedInsertSchemaId: null as SchemaId | null,
+          selectedInsertSchemaVariantId: null as SchemaVariantId | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
@@ -524,78 +514,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          schemas: (state) => _.values(state.schemasById),
-
-          schemaVariants(): DiagramSchemaVariantWithDisplayMetadata[] {
-            const schemaVariants = [];
-            for (const schema of this.schemas) {
-              for (const variant of schema.variants) {
-                if (variant.isDefault) {
-                  if (!_.find(schemaVariants, { id: variant.id })) {
-                    schemaVariants.push({
-                      id: variant.id,
-                      name: variant.name,
-                      builtin: variant.builtin,
-                      isDefault: true,
-                      componentType: variant.componentType,
-                      color: variant.color,
-                      category: variant.category,
-                      inputSockets: variant.inputSockets,
-                      outputSockets: variant.outputSockets,
-                      updated_at: variant.updated_at,
-                      created_at: variant.created_at,
-                      displayName: variant.displayName,
-                      description: variant.description,
-                      schemaName: schema.name,
-                    });
-                  }
-                }
-              }
-            }
-            return schemaVariants;
-          },
-
-          schemaVariantsById(): Record<
-            string,
-            DiagramSchemaVariantWithDisplayMetadata
-          > {
-            return _.keyBy(this.schemaVariants, "id");
-          },
-
-          schemasWithAtLeastOneVariant(): DiagramSchemaWithDisplayMetadata[] {
-            // NOTE(nick): there is likely a prettier way to do this using lodash. Sorry Wendy and John <3.
-            const schemasWithAtLeastOneVariant = [];
-            for (const schema of this.schemas) {
-              if (schema.variants[0]) {
-                schemasWithAtLeastOneVariant.push({
-                  id: schema.id,
-                  name: schema.name,
-                  displayName: schema.displayName,
-                  builtin: schema.builtin,
-                  variants: schema.variants,
-                  category: schema.variants[0].category,
-                  color: schema.variants[0].color,
-                });
-              }
-            }
-            return schemasWithAtLeastOneVariant;
-          },
-
-          schemasByCategory(): Record<
-            string,
-            DiagramSchemaWithDisplayMetadata[]
-          > {
-            return _.groupBy(
-              this.schemasWithAtLeastOneVariant,
-              (s) => s.category,
-            );
-          },
+          schemaVariants: (state) => _.values(state.schemaVariantsById),
 
           categories(): Categories {
-            return _.map(this.schemasByCategory, (schemas, category) => ({
-              displayName: category,
-              schemas,
-            }));
+            const groups = _.groupBy(this.schemaVariants, "category");
+            return Object.keys(groups)
+              .map((category) => {
+                const variants = groups[category];
+                if (!variants) return null;
+                return {
+                  displayName: category,
+                  schemaVariants: variants,
+                };
+              })
+              .filter(nonNullable);
           },
 
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
@@ -822,13 +754,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async FETCH_AVAILABLE_SCHEMAS() {
-            return new ApiRequest<Array<DiagramSchema>>({
-              url: "diagram/list_schemas",
+            return new ApiRequest<Array<SchemaVariant>>({
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
               params: {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                this.schemasById = _.keyBy(response, "id");
+                this.schemaVariantsById = _.keyBy(response, "schemaVariantId");
               },
             });
           },
@@ -1023,16 +955,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          setInsertSchema(schemaId: SchemaId) {
-            this.selectedInsertSchemaId = schemaId;
+          setInsertSchema(schemaVariantId: SchemaVariantId) {
+            this.selectedInsertSchemaVariantId = schemaVariantId;
             this.setSelectedComponentId(null);
           },
           cancelInsert() {
-            this.selectedInsertSchemaId = null;
+            this.selectedInsertSchemaVariantId = null;
           },
 
           async CREATE_COMPONENT(
-            schemaId: string,
+            schemaVariantId: SchemaVariantId,
             position: Vector2d,
             parentId?: string,
             size?: Size2D,
@@ -1052,7 +984,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
-                schemaId,
+                schemaVariantId,
                 parentId,
                 x: position.x.toString(),
                 y: position.y.toString(),

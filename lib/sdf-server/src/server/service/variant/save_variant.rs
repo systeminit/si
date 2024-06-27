@@ -4,23 +4,14 @@ use crate::service::variant::SchemaVariantResult;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, ComponentType, SchemaId, SchemaVariantId, Visibility, WsEvent};
+use dal::{ChangeSet, SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveVariantRequest {
-    pub id: SchemaId,
-    pub default_schema_variant_id: SchemaVariantId,
-    pub schema_name: String,
-    pub name: String,
-    pub display_name: Option<String>,
-    pub category: String,
-    pub color: String,
-    pub link: Option<String>,
-    pub code: String,
-    pub description: Option<String>,
-    pub component_type: ComponentType,
+    pub variant: si_frontend_types::SchemaVariant,
+    pub code: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -36,24 +27,29 @@ pub async fn save_variant(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<SaveVariantRequest>,
+    Json(SaveVariantRequest {
+        variant,
+        code,
+        visibility,
+    }): Json<SaveVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
+    let variant_id: SchemaVariantId = variant.schema_variant_id.into();
+
     VariantAuthoringClient::save_variant_content(
         &ctx,
-        request.default_schema_variant_id,
-        request.schema_name.clone(),
-        request.name.clone(),
-        request.display_name.clone(),
-        request.link.clone(),
-        request.code.clone(),
-        request.description.clone(),
-        request.category.clone(),
-        request.component_type,
-        request.color.clone(),
+        variant_id,
+        &variant.schema_name,
+        variant.display_name.clone(),
+        variant.category.clone(),
+        variant.description.clone(),
+        variant.link.clone(),
+        variant.color.clone(),
+        variant.component_type.into(),
+        code,
     )
     .await?;
 
@@ -63,24 +59,24 @@ pub async fn save_variant(
         &original_uri,
         "save_variant",
         serde_json::json!({
-                "variant_id": request.id,
-                "variant_category": request.category,
-                "variant_name": request.name,
-                "variant_display_name": request.display_name,
+                "variant_id": variant_id,
+                "variant_category": variant.category.clone(),
+                "variant_name": variant.schema_name.clone(),
+                "variant_display_name": variant.display_name.clone(),
         }),
     );
 
     WsEvent::schema_variant_saved(
         &ctx,
-        request.id,
-        request.default_schema_variant_id,
-        request.name,
-        request.category,
-        request.color,
-        request.component_type,
-        request.link,
-        request.description,
-        request.display_name,
+        variant.schema_id.into(),
+        variant_id,
+        variant.schema_name,
+        variant.category,
+        variant.color,
+        variant.component_type.into(),
+        variant.link,
+        variant.description,
+        variant.display_name,
     )
     .await?
     .publish_on_commit(&ctx)

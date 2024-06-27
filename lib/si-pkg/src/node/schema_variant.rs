@@ -15,14 +15,14 @@ use super::{read_common_fields, write_common_fields, PkgNode};
 
 const KEY_COLOR_STR: &str = "color";
 const KEY_LINK_STR: &str = "link";
-const KEY_NAME_STR: &str = "name";
+const KEY_VERSION_STR: &str = "name"; // This got renamed to Version, but we kept the key for backwards compatibility
 const KEY_COMPONENT_TYPE_STR: &str = "component_type";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_IS_BUILTIN_STR: &str = "is_builtin";
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantData {
-    pub name: String,
+    pub version: String,
     pub link: Option<Url>,
     pub color: Option<String>,
     pub component_type: SchemaVariantSpecComponentType,
@@ -31,7 +31,7 @@ pub struct SchemaVariantData {
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantNode {
-    pub name: String,
+    pub version: String,
     pub data: Option<SchemaVariantData>,
     pub unique_id: Option<String>,
     pub deleted: bool,
@@ -40,13 +40,13 @@ pub struct SchemaVariantNode {
 
 impl NameStr for SchemaVariantNode {
     fn name(&self) -> &str {
-        &self.name
+        &self.version
     }
 }
 
 impl WriteBytes for SchemaVariantNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
-        write_key_value_line(writer, KEY_NAME_STR, self.name())?;
+        write_key_value_line(writer, KEY_VERSION_STR, self.name())?;
         if let Some(data) = &self.data {
             write_key_value_line(
                 writer,
@@ -75,7 +75,7 @@ impl ReadBytes for SchemaVariantNode {
     where
         Self: std::marker::Sized,
     {
-        let name = read_key_value_line(reader, KEY_NAME_STR)?;
+        let version = read_key_value_line(reader, KEY_VERSION_STR)?;
         let data = match read_key_value_line_opt(reader, KEY_LINK_STR)? {
             Some(link_str) => {
                 let link = if link_str.is_empty() {
@@ -96,7 +96,7 @@ impl ReadBytes for SchemaVariantNode {
                 let func_unique_id = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
 
                 Some(SchemaVariantData {
-                    name: name.to_owned(),
+                    version: version.to_owned(),
                     link,
                     color,
                     component_type,
@@ -114,7 +114,7 @@ impl ReadBytes for SchemaVariantNode {
         };
 
         Ok(Some(Self {
-            name,
+            version,
             data,
             unique_id,
             deleted,
@@ -161,9 +161,9 @@ impl NodeChild for SchemaVariantSpec {
         NodeWithChildren::new(
             NodeKind::Tree,
             Self::NodeType::SchemaVariant(SchemaVariantNode {
-                name: self.name.to_owned(),
+                version: self.version.to_owned(),
                 data: self.data.as_ref().map(|data| SchemaVariantData {
-                    name: self.name.to_owned(),
+                    version: self.version.to_owned(),
                     link: data.link.as_ref().cloned(),
                     color: data.color.as_ref().cloned(),
                     component_type: data.component_type,

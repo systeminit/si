@@ -975,7 +975,6 @@ pub(crate) async fn import_schema_variant(
         let (variant, created) = match existing_schema_variant {
             None => {
                 let spec = schema_spec.to_spec().await?;
-                let schema_name = spec.name.clone();
                 let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
 
                 let mut asset_func_id: Option<FuncId> = None;
@@ -996,8 +995,8 @@ pub(crate) async fn import_schema_variant(
                 let variant = SchemaVariant::new(
                     ctx,
                     schema.id(),
-                    variant_spec.name(),
-                    metadata.display_name.unwrap_or(schema_name),
+                    variant_spec.version(),
+                    metadata.display_name,
                     metadata.category,
                     metadata.color,
                     metadata.component_type,

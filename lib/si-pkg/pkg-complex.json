@@ -59,7 +59,6 @@
       "uniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
       "arguments": []
     }
-
   ],
   "schemas": [
     {
@@ -68,7 +67,7 @@
       "category": "Kubernetes",
       "variants": [
         {
-          "name": "v0",
+          "version": "v0",
           "siPropFuncs": [],
           "sockets": [],
           "actionFuncs": [],
@@ -80,12 +79,17 @@
             {
               "funcUniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
               "leafKind": "qualification",
-              "inputs": ["domain", "code"]
+              "inputs": [
+                "domain",
+                "code"
+              ]
             },
             {
               "funcUniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
               "leafKind": "codeGeneration",
-              "inputs": ["domain"]
+              "inputs": [
+                "domain"
+              ]
             }
           ],
           "resourceValue": {
@@ -105,11 +109,13 @@
               {
                 "name": "apiVersion",
                 "kind": "string",
-                "validations": [{
-                  "kind": "integerIsBetweenTwoIntegers",
-                  "upper_bound": 31337,
-                  "lower_bound": 2600
-                }]
+                "validations": [
+                  {
+                    "kind": "integerIsBetweenTwoIntegers",
+                    "upper_bound": 31337,
+                    "lower_bound": 2600
+                  }
+                ]
               },
               {
                 "name": "kind",
