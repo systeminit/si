@@ -12,7 +12,8 @@ use crate::service::variant::SchemaVariantResult;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantRequest {
-    pub name: String,
+    pub name: String, // Will become version soon
+    pub schema_name: String,
     pub display_name: Option<String>,
     pub category: String,
     pub color: String,
@@ -37,7 +38,7 @@ pub async fn create_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    if Schema::is_name_taken(&ctx, &request.name).await? {
+    if Schema::is_name_taken(&ctx, &request.schema_name).await? {
         return Ok(axum::response::Response::builder()
             .status(409)
             .body("schema name already taken".to_string())?);
@@ -47,8 +48,8 @@ pub async fn create_variant(
 
     let created_schema_variant = VariantAuthoringClient::create_schema_and_variant(
         &ctx,
-        request.name.clone(),
-        request.display_name.clone(),
+        &request.schema_name,
+        Some(request.schema_name.clone()),
         request.description.clone(),
         request.link.clone(),
         request.category.clone(),
