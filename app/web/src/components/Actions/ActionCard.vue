@@ -71,36 +71,33 @@
       size="sm"
     />
     <div class="flex flex-col flex-grow min-w-0">
-      <div class="w-full truncate">
+      <TruncateWithToolTip class="w-full">
         <span class="font-bold">
           {{ actionKindToAbbreviation(props.action.kind) }}:
         </span>
         <span
           :class="
             clsx(
-              props.noInteraction
-                ? 'text-neutral-500 dark:text-neutral-400'
-                : 'cursor-pointer',
-              component?.displayName && !props.noInteraction
-                ? 'dark:text-action-300 text-action-500'
-                : 'text-neutral-500 dark:text-neutral-400',
-              isHover && !props.noInteraction && 'underline',
+              'text-neutral-500 dark:text-neutral-400',
+              'dark:text-action-300 text-action-500',
             )
           "
-          @click="onClick"
-          @mouseenter="onHoverStart"
-          @mouseleave="onHoverEnd"
         >
           <template v-if="component">
             {{ component?.schemaName }}
             {{ component?.displayName ?? "unknown" }}
+            {{
+              props.action.kind === ActionKind.Manual
+                ? props.action.description
+                : ""
+            }}
           </template>
           <template v-else-if="actionHistory">
             {{ actionHistory.schemaName }}
             {{ actionHistory.componentName }}
           </template>
         </span>
-      </div>
+      </TruncateWithToolTip>
       <div
         v-if="props.action.actor"
         class="text-neutral-500 dark:text-neutral-400 truncate"
@@ -260,6 +257,7 @@ import {
 } from "@/store/actions.store";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+import TruncateWithToolTip from "../TruncateWithTooltip.vue";
 
 const componentsStore = useComponentsStore();
 const actionStore = useActionsStore();
@@ -445,35 +443,6 @@ const emit = defineEmits<{
   (e: "openMenu", mouse: MouseEvent): void;
   (e: "history", id: ActionId, tabSlug: string): void;
 }>();
-
-function onClick() {
-  if (props.noInteraction) return false;
-  if (component.value) {
-    componentsStore.setSelectedComponentId(component.value.id);
-    componentsStore.eventBus.emit("panToComponent", {
-      componentId: component.value.id,
-      center: true,
-    });
-  }
-}
-
-const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.action.componentId,
-);
-
-function onHoverStart() {
-  if (props.noInteraction) return false;
-  if (component.value) {
-    componentsStore.setHoveredComponentId(props.action.componentId);
-  }
-}
-
-function onHoverEnd() {
-  if (props.noInteraction) return false;
-  if (component.value) {
-    componentsStore.setHoveredComponentId(null);
-  }
-}
 </script>
 
 <style lang="less">
