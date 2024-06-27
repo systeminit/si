@@ -1,6 +1,6 @@
 use axum::routing::post;
 use axum::{response::Response, routing::get, Json, Router};
-use dal::WsEventError;
+use dal::{FuncError as DalFuncError, WsEventError};
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
@@ -33,6 +33,8 @@ pub enum ActionError {
     ComponentNotFound(ComponentId),
     #[error(transparent)]
     DalSchema(#[from] DalSchemaError),
+    #[error(transparent)]
+    Func(#[from] DalFuncError),
     #[error("Cannot cancel Running or Dispatched actions. ActionId {0}")]
     InvalidActionCancellation(ActionId),
     #[error("Cannot update action state that's not Queued to On Hold. Action with Id {0}")]

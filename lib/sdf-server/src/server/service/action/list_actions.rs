@@ -2,6 +2,7 @@ use axum::extract::Query;
 use axum::Json;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
+use dal::Func;
 use dal::{action::ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
@@ -52,7 +53,10 @@ pub async fn list_actions(
 
     for action_id in action_ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
+
         let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+        let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
+        let func = Func::get_by_id_or_error(&ctx, func_id).await?;
         let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
         let func_run_id = ctx
             .layer_db()
@@ -66,7 +70,7 @@ pub async fn list_actions(
             prototype_id: prototype.id(),
             name: prototype.name().clone(),
             component_id: Action::component_id(&ctx, action_id).await?,
-            description: prototype.description().clone(),
+            description: func.display_name,
             kind: prototype.kind,
             state: action.state(),
             func_run_id,
