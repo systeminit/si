@@ -91,12 +91,9 @@ pub async fn promote_builtin_route(
             Utc.fix(),
         ))),
         is_builtin_at_by_display_name: Set(Some(data)),
-        schema_name: Set(module.schema_name),
-        schema_category: Set(module.schema_category),
-        schema_id: Set(module.schema_id),
     };
 
-    let updated_module: si_module::Model = active_module.update(&txn).await?;
+    let updated_module: si_module::Model = dbg!(active_module.update(&txn).await)?;
 
     txn.commit().await?;
 
