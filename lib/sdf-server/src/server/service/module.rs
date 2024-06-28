@@ -1,6 +1,7 @@
-use crate::server::{impl_default_error_into_response, state::AppState};
+use crate::server::state::AppState;
+use axum::http::StatusCode;
 use axum::{
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -121,7 +122,25 @@ pub enum ModuleError {
 
 pub type ModuleResult<T> = Result<T, ModuleError>;
 
-impl_default_error_into_response!(ModuleError);
+impl IntoResponse for ModuleError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            ModuleError::ChangeSetNotFound(_)
+            | ModuleError::ModuleHashNotFound(_)
+            | ModuleError::PackageNotFound(_)
+            | ModuleError::SchemaNotFoundForVariant(_)
+            | ModuleError::SchemaVariantNotFound(_)
+            | ModuleError::WorkspaceNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
+
+        let body = Json(
+            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
+        );
+
+        (status, body).into_response()
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
