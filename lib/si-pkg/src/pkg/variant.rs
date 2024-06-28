@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaVariantData {
-    name: String,
+    version: String,
     link: Option<Url>,
     color: Option<String>,
     component_type: SchemaVariantSpecComponentType,
@@ -28,8 +28,8 @@ pub struct SiPkgSchemaVariantData {
 }
 
 impl SiPkgSchemaVariantData {
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
+    pub fn version(&self) -> &str {
+        self.version.as_ref()
     }
 
     pub fn link(&self) -> Option<&Url> {
@@ -51,7 +51,7 @@ impl SiPkgSchemaVariantData {
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaVariant<'a> {
-    name: String,
+    version: String,
     data: Option<SiPkgSchemaVariantData>,
     unique_id: Option<String>,
     deleted: bool,
@@ -110,9 +110,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
         };
 
         let schema_variant = Self {
-            name: schema_variant_node.name.to_owned(),
+            version: schema_variant_node.version.to_owned(),
             data: schema_variant_node.data.map(|data| SiPkgSchemaVariantData {
-                name: schema_variant_node.name,
+                version: schema_variant_node.version,
                 link: data.link,
                 color: data.color,
                 component_type: data.component_type,
@@ -132,8 +132,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.data.as_ref()
     }
 
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
+    pub fn version(&self) -> &str {
+        self.version.as_ref()
     }
 
     pub fn unique_id(&self) -> Option<&str> {
@@ -399,7 +399,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
     pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
 
-        builder.name(self.name()).deleted(self.deleted);
+        builder.version(self.version()).deleted(self.deleted);
 
         if let Some(unique_id) = self.unique_id() {
             builder.unique_id(unique_id);
@@ -408,7 +408,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         if let Some(data) = self.data() {
             let mut data_builder = SchemaVariantSpecData::builder();
 
-            data_builder.name(self.name());
+            data_builder.version(self.version());
             data_builder.component_type(data.component_type());
 
             if let Some(link) = data.link() {

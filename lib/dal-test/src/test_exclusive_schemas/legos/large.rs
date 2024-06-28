@@ -69,11 +69,11 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("large_lego_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&large_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)
@@ -186,11 +186,11 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("large_even_lego_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&large_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)

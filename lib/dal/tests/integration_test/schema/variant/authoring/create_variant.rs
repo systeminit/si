@@ -13,7 +13,6 @@ async fn create_variant(ctx: &mut DalContext) {
         .expect("could not update visibility");
 
     let asset_name = "paulsTestAsset".to_string();
-    let display_name = None;
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();
@@ -21,7 +20,6 @@ async fn create_variant(ctx: &mut DalContext) {
     let variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
-        display_name.clone(),
         description.clone(),
         link.clone(),
         category.clone(),
@@ -36,10 +34,10 @@ async fn create_variant(ctx: &mut DalContext) {
         .expect("Unable to get the schema for the variant");
 
     assert_eq!(variant.category(), category.clone());
-    assert_eq!(new_schema.name(), asset_name.clone());
-    // we update the display_name to match the schema name if display_name is none
+    assert_eq!(new_schema.name(), &asset_name);
 
-    assert_eq!(variant.display_name(), Some(asset_name.clone()));
+    // we initialize display_name to match the schema name
+    assert_eq!(variant.display_name(), &asset_name);
     assert_eq!(
         variant.get_color(ctx).await.expect("unable to get color"),
         color.clone()

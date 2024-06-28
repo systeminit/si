@@ -7,27 +7,27 @@
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle
-          label="Asset Functions"
-          icon="func"
           class="mt-2xs"
+          icon="func"
+          label="Asset Functions"
         >
           <AssetFuncAttachDropdown
-            v-if="assetStore.selectedAssetId"
-            :disabled="!assetStore.selectedAsset?.id"
+            v-if="assetStore.selectedVariantId"
+            :disabled="!assetStore.selectedSchemaVariant?.schemaVariantId"
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>
       </template>
 
       <FuncList
-        v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
+        v-if="assetStore.selectedVariantId && !loadAssetReqStatus.isPending"
         :funcsByKind="funcsByKind"
         context="workspace-lab-assets"
         defaultOpen
       />
       <template v-else>
         <EmptyStateCard
-          v-if="assetStore.selectedAssets.length > 1"
+          v-if="assetStore.selectedSchemaVariants.length > 1"
           iconName="funcs"
           primaryText="Cannot Select Functions"
           secondaryText="You have selected multiple assets above. To select a function, select one asset."
@@ -49,7 +49,8 @@ import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
 import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
-import { useAssetStore } from "@/store/asset.store";
+import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
+import { FuncSummary, useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
@@ -59,17 +60,39 @@ import EmptyStateCard from "./EmptyStateCard.vue";
 const props = defineProps<{ assetId?: string }>();
 
 const assetStore = useAssetStore();
+const funcStore = useFuncStore();
 
-const funcsByKind = computed(() => {
-  if (!props.assetId) return {};
-  const funcsList = _.uniq(_.map(assetStore.assetsById[props.assetId]?.funcs));
-  const funcs = groupBy(funcsList, (f) => f.kind);
+interface VariantsWithFunctionSummary extends SchemaVariantListEntry {
+  funcSummaries: FuncSummary[];
+  assetFunc: FuncSummary;
+}
 
-  return funcs;
+const variantSummaries = computed(() => {
+  if (!props.assetId) return null;
+
+  const variant = assetStore.variantFromListById[
+    props.assetId
+  ] as VariantsWithFunctionSummary;
+  if (!variant) return null;
+  variant.funcSummaries = [];
+
+  variant.funcIds.forEach((fId) => {
+    const func = funcStore.funcsById[fId];
+    if (func) variant.funcSummaries.push(func);
+  });
+  const func = funcStore.funcsById[variant.assetFuncId];
+  if (func) variant.assetFunc = func;
+  return variant;
 });
 
+const funcsByKind = computed(() =>
+  variantSummaries.value
+    ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind)
+    : {},
+);
+
 const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 

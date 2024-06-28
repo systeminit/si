@@ -27,6 +27,8 @@ import Minus from "~icons/heroicons/minus-20-solid";
 import MinusCircle from "~icons/heroicons/minus-circle-20-solid";
 import MinusSquare from "./custom-icons/minus-square.svg?raw";
 
+import SlidersVertical from "./custom-icons/sliders-vertical.svg?raw";
+
 import Plus from "~icons/heroicons/plus-20-solid";
 import PlusCircle from "~icons/heroicons/plus-circle-20-solid";
 import PlusSquare from "./custom-icons/plus-square.svg?raw";
@@ -286,6 +288,7 @@ export const ICONS = Object.freeze({
   settings: Gear,
   show: Eye,
   slash: SlashForward,
+  "sliders-vertical": SlidersVertical,
   star: Star,
   sun: Sun,
   "test-tube": PhTestTubeFill,

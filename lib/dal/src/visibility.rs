@@ -30,6 +30,17 @@ impl Visibility {
     }
 }
 
+// NOTE(fnichol): the fact that this is now trivial is another sure sign that perhaps `Visibility`
+// can be removed unless there's another strongly associated piece of data that belongs in
+// `Visibility`.
+impl From<ChangeSetId> for Visibility {
+    fn from(value: ChangeSetId) -> Self {
+        Self {
+            change_set_id: value,
+        }
+    }
+}
+
 impl postgres_types::ToSql for Visibility {
     fn to_sql(
         &self,

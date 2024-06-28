@@ -107,7 +107,7 @@ impl SchemaVariantSpecPropRoot {
 #[builder(build_fn(error = "SpecError"))]
 pub struct SchemaVariantSpecData {
     #[builder(setter(into))]
-    pub name: String,
+    pub version: String,
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
     #[builder(setter(into, strip_option), default)]
@@ -142,7 +142,7 @@ impl SchemaVariantSpecDataBuilder {
 #[builder(build_fn(error = "SpecError"))]
 pub struct SchemaVariantSpec {
     #[builder(setter(into))]
-    pub name: String,
+    pub version: String,
 
     #[builder(setter(into, strip_option), default)]
     pub data: Option<SchemaVariantSpecData>,
@@ -439,7 +439,7 @@ impl SchemaVariantSpec {
         identity_func_unique_id: &str,
     ) -> (Self, Vec<MergeSkip>) {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
-        schema_variant_builder.name(&self.name);
+        schema_variant_builder.version(&self.version);
         schema_variant_builder.data = Some(self.data.clone());
 
         // These are the sockets as defined by the new asset (just their names)
@@ -763,11 +763,11 @@ mod tests {
         let si_name_path = PropSpec::make_path(&["root", "si", "name"], None);
 
         let sv_1 = SchemaVariantSpec::builder()
-            .name("v0")
+            .version("v0")
             .unique_id("monte_cristo_sv_1")
             .data(
                 SchemaVariantSpecData::builder()
-                    .name("v0")
+                    .version("v0")
                     .color("#ffff00")
                     .func_unique_id("cristo_1")
                     .build()
@@ -852,11 +852,11 @@ mod tests {
             .expect("build sv");
 
         let sv_2 = SchemaVariantSpec::builder()
-            .name("v1")
+            .version("v1")
             .unique_id("monte_cristo_sv_1")
             .data(
                 SchemaVariantSpecData::builder()
-                    .name("v0")
+                    .version("v0")
                     .color("#ffff00")
                     .func_unique_id("cristo_2")
                     .build()

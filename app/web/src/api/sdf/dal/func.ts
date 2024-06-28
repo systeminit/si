@@ -1,3 +1,6 @@
+export type FuncArgumentId = string;
+export type FuncId = string;
+
 export enum FuncKind {
   Action = "Action",
   Attribute = "Attribute",

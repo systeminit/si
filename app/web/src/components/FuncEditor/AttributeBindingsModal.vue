@@ -58,11 +58,8 @@ import { storeToRefs } from "pinia";
 import { Modal, useModal } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributePrototypeBag, OutputLocation } from "@/store/func/types";
-import {
-  useFuncStore,
-  OutputLocationOption,
-  FuncArgumentId,
-} from "@/store/func/funcs.store";
+import { FuncArgumentId } from "@/api/sdf/dal/func";
+import { useFuncStore, OutputLocationOption } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 function nilId(): string {

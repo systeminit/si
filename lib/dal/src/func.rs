@@ -119,6 +119,18 @@ pub fn is_intrinsic(name: &str) -> bool {
 
 id!(FuncId);
 
+impl From<si_events::FuncId> for FuncId {
+    fn from(value: si_events::FuncId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<FuncId> for si_events::FuncId {
+    fn from(value: FuncId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
 // NOTE: This is here only for backward compatibility
 pk!(FuncExecutionPk);
 

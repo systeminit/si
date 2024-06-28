@@ -1309,6 +1309,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-frontend-types",
  "si-hash",
  "si-layer-cache",
  "si-pkg",
@@ -4652,6 +4653,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-frontend-types",
  "si-layer-cache",
  "si-pkg",
  "si-posthog",
@@ -5092,6 +5094,16 @@ dependencies = [
  "remain",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "si-frontend-types"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde",
+ "si-events",
+ "strum 0.26.2",
 ]
 
 [[package]]

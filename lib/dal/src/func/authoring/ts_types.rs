@@ -2,13 +2,13 @@
 
 use crate::{FuncBackendKind, FuncBackendResponseType};
 
-const SCHEMA_VARIANT_DEFINITION_TYPES: &str = concat!(
+/*const SCHEMA_VARIANT_DEFINITION_TYPES: &str = concat!(
     include_str!("data/ts_types/asset_types_with_secrets.d.ts"),
     "\n",
     include_str!("data/ts_types/joi.d.ts"),
     "\n",
     "type Output = any;"
-);
+);*/
 
 pub(crate) fn compile_return_types(
     response_type: FuncBackendResponseType,
@@ -67,7 +67,9 @@ pub(crate) fn compile_return_types(
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::Void => "type Output = void;",
-        FuncBackendResponseType::SchemaVariantDefinition => SCHEMA_VARIANT_DEFINITION_TYPES,
+        _ => "",
+        // we no longer serve this from the backend, its static on the front end
+        //FuncBackendResponseType::SchemaVariantDefinition => SCHEMA_VARIANT_DEFINITION_TYPES
     }
 }
 

@@ -7,16 +7,17 @@
         'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
       )
     "
-    :isSelected="selectedAssets.includes(a.id)"
+    :isSelected="selectedAssets.includes(a.schemaVariantId)"
     showSelection
     @mousedown.left.stop="onClick"
     @click.right.prevent
   >
     <template #label>
       <div class="text-xs w-full truncate flex flex-row items-center gap-1">
-        <div class="shrink-0">{{ assetNameString(a) }}</div>
+        <div class="shrink-0">{{ schemaVariantDisplayName(a) }}</div>
 
         <div class="ml-auto flex flex-none gap-xs">
+          <EditingPill v-if="!a.isLocked" :color="a.color" />
           <Icon
             v-if="a.canContribute"
             name="cloud-upload"
@@ -47,33 +48,22 @@ import { storeToRefs } from "pinia";
 import { TreeNode, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import {
-  AssetListEntry,
+  SchemaVariantListEntry,
   useAssetStore,
-  assetDisplayName,
+  schemaVariantDisplayName,
 } from "@/store/asset.store";
+import EditingPill from "./EditingPill.vue";
 
 const props = defineProps({
-  a: { type: Object as PropType<AssetListEntry>, required: true },
-  c: { type: Array<AssetListEntry> },
+  a: { type: Object as PropType<SchemaVariantListEntry>, required: true },
+  c: { type: Array<SchemaVariantListEntry> },
 });
 
 const assetStore = useAssetStore();
-const { selectedAssets } = storeToRefs(assetStore);
+const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
 const onClick = (e: MouseEvent) => {
-  if (e.shiftKey) assetStore.addAssetSelection(props.a.id);
-  else assetStore.setAssetSelection(props.a.id);
-};
-
-const assetNameString = (a: AssetListEntry) => {
-  const name = assetDisplayName(a);
-  if (!props.c) return name;
-
-  const duplicates = props.c.filter(
-    (asset) => assetDisplayName(asset) === name,
-  );
-  if (duplicates.length > 1) {
-    return `${name} (${duplicates.indexOf(a)})`;
-  } else return name;
+  if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);
+  else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
 };
 </script>

@@ -40,10 +40,10 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
@@ -114,10 +114,10 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
                 .build()?)
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)
@@ -197,10 +197,10 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ff00ff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .component_type(ComponentType::Component)

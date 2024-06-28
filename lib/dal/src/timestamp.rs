@@ -30,3 +30,21 @@ impl Timestamp {
         }
     }
 }
+
+impl From<si_events::Timestamp> for Timestamp {
+    fn from(value: si_events::Timestamp) -> Self {
+        Self {
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+        }
+    }
+}
+
+impl From<Timestamp> for si_events::Timestamp {
+    fn from(value: Timestamp) -> Self {
+        Self {
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+        }
+    }
+}

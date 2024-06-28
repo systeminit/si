@@ -12,13 +12,8 @@ use crate::service::variant::SchemaVariantResult;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantRequest {
-    pub name: String, // Will become version soon
-    pub schema_name: String,
-    pub display_name: Option<String>,
-    pub category: String,
+    pub name: String,
     pub color: String,
-    pub link: Option<String>,
-    pub description: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -38,7 +33,7 @@ pub async fn create_variant(
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    if Schema::is_name_taken(&ctx, &request.schema_name).await? {
+    if Schema::is_name_taken(&ctx, &request.name).await? {
         return Ok(axum::response::Response::builder()
             .status(409)
             .body("schema name already taken".to_string())?);
@@ -48,14 +43,15 @@ pub async fn create_variant(
 
     let created_schema_variant = VariantAuthoringClient::create_schema_and_variant(
         &ctx,
-        &request.schema_name,
-        Some(request.schema_name.clone()),
-        request.description.clone(),
-        request.link.clone(),
-        request.category.clone(),
+        request.name.clone(),
+        None::<String>,
+        None::<String>,
+        "".to_string(),
         request.color.clone(),
     )
     .await?;
+
+    let schema = created_schema_variant.schema(&ctx).await?;
 
     track(
         &posthog_client,
@@ -64,25 +60,15 @@ pub async fn create_variant(
         "create_variant",
         serde_json::json!({
             "variant_name": request.name.clone(),
-            "variant_category": request.category.clone(),
-            "variant_display_name": request.display_name.clone(),
             "variant_id": created_schema_variant.id().clone(),
+            "schema_id": schema.id(),
         }),
     );
 
-    let schema = created_schema_variant.schema(&ctx).await?;
-
-    WsEvent::schema_variant_created(
-        &ctx,
-        schema.id(),
-        created_schema_variant.id(),
-        schema.name().to_string(),
-        created_schema_variant.category().to_string(),
-        created_schema_variant.get_color(&ctx).await?,
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+    WsEvent::schema_variant_created(&ctx, schema.id(), created_schema_variant)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

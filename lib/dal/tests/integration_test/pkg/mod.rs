@@ -9,7 +9,6 @@ use si_pkg::{FuncSpec, FuncSpecData, PkgSpec, SchemaSpec, SchemaSpecData, SiPkg}
 async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "imanasset".to_string();
-    let display_name = None;
     let description = None;
     let link = None;
     let category = "Integration Tests".to_string();
@@ -17,7 +16,6 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) {
     let variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         asset_name.clone(),
-        display_name.clone(),
         description.clone(),
         link.clone(),
         category.clone(),
@@ -92,7 +90,7 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) {
     let (_, mut variants, _) = import_pkg_from_pkg(ctx, &pkg, None)
         .await
         .expect("should import");
-    assert!(variants.len() == 1);
+    assert_eq!(variants.len(), 1);
 
     let default_schema_variant = schema
         .get_default_schema_variant_id(ctx)

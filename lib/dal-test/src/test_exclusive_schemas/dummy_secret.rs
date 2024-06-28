@@ -98,11 +98,11 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id(format!("{name}_sv"))
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&authoring_schema_func.unique_id)
                         .build()?,

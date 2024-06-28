@@ -3,7 +3,7 @@ import { ConnectionAnnotation } from "@si/ts-lib";
 import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { ComponentType } from "@/api/sdf/dal/diagram";
+import { ComponentType } from "@/api/sdf/dal/schema";
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };

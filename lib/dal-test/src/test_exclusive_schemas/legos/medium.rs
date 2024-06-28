@@ -69,11 +69,11 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("medium_lego_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&medium_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)
@@ -181,11 +181,11 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
         )
         .variant(
             SchemaVariantSpec::builder()
-                .name("v0")
+                .version("v0")
                 .unique_id("medium_even_lego_sv")
                 .data(
                     SchemaVariantSpecData::builder()
-                        .name("v0")
+                        .version("v0")
                         .color("#ffffff")
                         .func_unique_id(&medium_lego_authoring_schema_func.unique_id)
                         .component_type(ComponentType::ConfigurationFrameUp)

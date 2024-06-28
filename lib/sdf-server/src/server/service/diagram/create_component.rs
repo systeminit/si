@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::{
-    generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent,
+    generate_name, ChangeSet, Component, ComponentId, SchemaVariant, SchemaVariantId, Visibility,
+    WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -15,7 +16,7 @@ use crate::service::diagram::DiagramResult;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentRequest {
-    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
     pub parent_id: Option<ComponentId>,
     pub x: String,
     pub y: String,
@@ -44,7 +45,7 @@ pub async fn create_component(
 
     let name = generate_name();
 
-    let variant = SchemaVariant::get_default_for_schema(&ctx, request.schema_id).await?;
+    let variant = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
 
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
 
