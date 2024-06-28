@@ -104,11 +104,15 @@ pub type ComponentResult<T> = Result<T, ComponentError>;
 impl IntoResponse for ComponentError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            ComponentError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            ComponentError::InvalidVisibility => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentError::SchemaNotFound
+            | ComponentError::InvalidVisibility
+            | ComponentError::PropNotFound(_)
+            | ComponentError::SchemaVariantNotFound
+            | ComponentError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
                 (StatusCode::CONFLICT, self.to_string())
             }
+
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
