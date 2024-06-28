@@ -10,6 +10,8 @@ id!(ComponentId);
 id!(AttributeValueId);
 id!(ActionId);
 id!(ActionPrototypeId);
+id!(AttributePrototypeId);
+id!(AttributePrototypeArgumentId);
 
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum FuncRunState {
@@ -106,7 +108,7 @@ pub enum FuncBackendResponseType {
 }
 
 #[remain::sorted]
-#[derive(AsRefStr, Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
+#[derive(AsRefStr, Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]
 pub enum ActionKind {
     /// Create the "outside world" version of the modeled object.
     Create,

@@ -18,6 +18,10 @@ use crate::{
     SchemaVariantId, WorkspaceSnapshotError,
 };
 
+// create_association
+// delete_association(?)
+// update_association
+
 #[instrument(
     name = "func.authoring.save_func.update_associations",
     level = "debug",
@@ -362,6 +366,8 @@ pub(crate) async fn reset_attribute_prototype(
             AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
             return Ok(());
         }
+        // Find the last locked schema variant's equivalent and set the prototype?
+        // regeneration?
     }
 
     // If we aren't trying to use the default prototype, or the default prototype is the same as the

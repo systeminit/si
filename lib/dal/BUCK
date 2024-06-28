@@ -87,6 +87,7 @@ rust_test(
         "//lib/rebaser-core:rebaser-core",
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-events-rs:si-events",
+        "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-pkg:si-pkg",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:chrono",

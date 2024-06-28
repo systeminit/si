@@ -505,6 +505,7 @@ impl From<InputSocket> for frontend_types::InputSocket {
         Self {
             id: value.id.into(),
             name: value.name,
+            eligible_to_send_data: false,
         }
     }
 }

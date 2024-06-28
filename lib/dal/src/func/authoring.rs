@@ -57,6 +57,7 @@ use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::prop::PropError;
+use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
@@ -65,6 +66,14 @@ use crate::{
     WsEventError,
 };
 
+use super::binding::action::ActionBinding;
+use super::binding::attribute::AttributeBinding;
+use super::binding::authentication::AuthBinding;
+use super::binding::leaf::LeafBinding;
+use super::binding::{
+    AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBindings,
+    FuncBindingsError,
+};
 use super::runner::{FuncRunner, FuncRunnerError};
 use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
 
@@ -95,6 +104,8 @@ pub enum FuncAuthoringError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
+    #[error("func bindings error: {0}")]
+    FuncBindings(#[from] FuncBindingsError),
     #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
     FuncCannotHaveAssociations(FuncId, FuncKind, FuncAssociations),
     #[error("func named \"{0}\" already exists in this change set")]
@@ -164,6 +175,108 @@ impl FuncAuthoringClient {
             name: func.name.to_owned(),
             code: func.code_plaintext()?,
         })
+    }
+    /// Creates a new Attribute Func and returns it
+    #[instrument(
+        name = "func.authoring.create_new_attribute_func",
+        level = "info",
+        skip(ctx)
+    )]
+
+    pub async fn create_new_attribute_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        eventual_parent: Option<EventualParent>,
+        output_location: AttributeFuncDestination,
+        argument_bindings: Vec<AttributeArgumentBinding>,
+    ) -> FuncAuthoringResult<Func> {
+        let func = create::create(ctx, FuncKind::Attribute, name, None).await?;
+        AttributeBinding::upsert_attribute_binding(
+            ctx,
+            func.id,
+            eventual_parent,
+            output_location,
+            argument_bindings,
+        )
+        .await?;
+        Ok(func)
+    }
+
+    /// Creates a new Action Func and returns it
+    #[instrument(
+        name = "func.authoring.create_new_action_func",
+        level = "info",
+        skip(ctx)
+    )]
+
+    pub async fn create_new_action_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        action_kind: ActionKind,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncAuthoringResult<Func> {
+        let func = create::create(ctx, FuncKind::Action, name, None).await?;
+        ActionBinding::create_action_binding(ctx, func.id, action_kind, schema_variant_id).await?;
+        Ok(func)
+    }
+
+    /// Creates a new Code Gen or Qualification Func and returns it
+    #[instrument(
+        name = "func.authoring.create_new_leaf_func",
+        level = "info",
+        skip(ctx)
+    )]
+
+    pub async fn create_new_leaf_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        leaf_kind: LeafKind,
+        eventual_parent: EventualParent,
+        inputs: &[LeafInputLocation],
+    ) -> FuncAuthoringResult<Func> {
+        let func = match leaf_kind {
+            LeafKind::CodeGeneration => {
+                let func = create::create(ctx, FuncKind::CodeGeneration, name, None).await?;
+                LeafBinding::create_leaf_func_binding(
+                    ctx,
+                    func.id,
+                    eventual_parent,
+                    leaf_kind,
+                    inputs,
+                )
+                .await?;
+                func
+            }
+            LeafKind::Qualification => {
+                let func = create::create(ctx, FuncKind::Qualification, name, None).await?;
+                LeafBinding::create_leaf_func_binding(
+                    ctx,
+                    func.id,
+                    eventual_parent,
+                    leaf_kind,
+                    inputs,
+                )
+                .await?;
+                func
+            }
+        };
+        Ok(func)
+    }
+
+    /// Create a new Auth func and return it
+    #[instrument(
+        name = "func.authoring.create_new_auth_func",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn create_new_auth_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncAuthoringResult<Func> {
+        let func = create::create(ctx, FuncKind::Authentication, name, None).await?;
+        AuthBinding::create_auth_binding(ctx, func.id, schema_variant_id).await?;
+        Ok(func)
     }
 
     /// Performs a "test" [`Func`] execution and returns the [`FuncRunId`](si_events::FuncRun).
@@ -291,6 +404,7 @@ impl FuncAuthoringClient {
 
     /// Creates an [`AttributePrototype`]. Used when attaching an existing attribute
     /// function to a schema variant and/or component
+    /// todo: remove once front end consumes new routes
     #[instrument(
         name = "func.authoring.create_attribute_prototype",
         level = "info",
@@ -331,6 +445,7 @@ impl FuncAuthoringClient {
     }
 
     /// Updates an [`AttributePrototype`].
+    /// todo: remove once front end consumes new routes
     #[instrument(
         name = "func.authoring.update_attribute_prototype",
         level = "info",
@@ -372,6 +487,7 @@ impl FuncAuthoringClient {
     }
 
     /// Removes an [`AttributePrototype`].
+    /// todo: remove once front end consumes new routes
     #[instrument(
         name = "func.authoring.remove_attribute_prototype",
         level = "info",
@@ -403,6 +519,7 @@ impl FuncAuthoringClient {
     }
 
     /// Saves a [`Func`].
+    /// todo: remove once front end consumes new routes
     #[instrument(name = "func.authoring.save_func", level = "info", skip(ctx))]
     pub async fn save_func(
         ctx: &DalContext,
@@ -441,6 +558,7 @@ impl FuncAuthoringClient {
 
     /// For a given [`FuncId`], regardless of what kind of [`Func`] it is, look for all associated bindings and remove
     /// them from every currently attached [`SchemaVariant`]
+    /// todo: remove once front end consumes new routes
     pub async fn detach_func_from_everywhere(
         ctx: &DalContext,
         func_id: FuncId,
@@ -466,6 +584,43 @@ impl FuncAuthoringClient {
         Ok(())
     }
 
+    #[instrument(level = "info", name = "func.authoring.save_code", skip(ctx))]
+    /// Save only the code for the given [`FuncId`]
+    pub async fn save_code(
+        ctx: &DalContext,
+        func_id: FuncId,
+        code: String,
+    ) -> FuncAuthoringResult<()> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        Func::modify_by_id(ctx, func.id, |func| {
+            func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
+
+            Ok(())
+        })
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(level = "info", name = "func.authoring.update_func", skip(ctx))]
+    /// Save metadata about the [`FuncId`]
+    pub async fn update_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+        display_name: Option<String>,
+        description: Option<String>,
+    ) -> FuncAuthoringResult<Func> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        let updated_func = Func::modify_by_id(ctx, func.id, |func| {
+            display_name.clone_into(&mut func.display_name);
+            description.clone_into(&mut func.description);
+            Ok(())
+        })
+        .await?;
+        Ok(updated_func)
+    }
+
     /// Compiles types corresponding to "lang-js".
     pub fn compile_langjs_types() -> &'static str {
         ts_types::compile_langjs_types()
@@ -477,6 +632,14 @@ impl FuncAuthoringClient {
         kind: FuncBackendKind,
     ) -> &'static str {
         ts_types::compile_return_types(response_type, kind)
+    }
+
+    /// Comiples return types based on the [`FuncBindings`] for the Func
+    pub async fn compile_types_from_bindings(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncAuthoringResult<String> {
+        Ok(FuncBindings::compile_types(ctx, func_id).await?)
     }
 }
 

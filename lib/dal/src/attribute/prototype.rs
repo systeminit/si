@@ -95,7 +95,7 @@ pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 #[remain::sorted]
 #[derive(Debug, Clone, Copy, EnumDiscriminants)]
 pub enum AttributePrototypeEventualParent {
-    Component(ComponentId),
+    Component(ComponentId, AttributeValueId),
     SchemaVariantFromInputSocket(SchemaVariantId, InputSocketId),
     SchemaVariantFromOutputSocket(SchemaVariantId, OutputSocketId),
     SchemaVariantFromProp(SchemaVariantId, PropId),
@@ -104,6 +104,12 @@ pub enum AttributePrototypeEventualParent {
 // TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
 // that the argument is a new one.
 pk!(AttributePrototypeId);
+
+impl From<AttributePrototypeId> for si_events::AttributePrototypeId {
+    fn from(value: AttributePrototypeId) -> Self {
+        si_events::AttributePrototypeId::from_raw_id(value.into())
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {
@@ -544,11 +550,14 @@ impl AttributePrototype {
         let node_weight_id = node_weight.id();
 
         let eventual_parent = match node_weight {
-            NodeWeight::AttributeValue(_) => AttributePrototypeEventualParent::Component(
-                AttributeValue::component_id(ctx, node_weight_id.into())
-                    .await
-                    .map_err(Box::new)?,
-            ),
+            NodeWeight::AttributeValue(attribute_value_id) => {
+                AttributePrototypeEventualParent::Component(
+                    AttributeValue::component_id(ctx, node_weight_id.into())
+                        .await
+                        .map_err(Box::new)?,
+                    attribute_value_id.id().into(),
+                )
+            }
             NodeWeight::Prop(_) => AttributePrototypeEventualParent::SchemaVariantFromProp(
                 SchemaVariant::find_for_prop_id(ctx, node_weight_id.into())
                     .await

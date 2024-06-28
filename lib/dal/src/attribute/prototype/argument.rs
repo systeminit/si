@@ -45,6 +45,18 @@ pub mod value_source;
 // that the argument is a new one.
 pk!(AttributePrototypeArgumentId);
 
+impl From<si_events::AttributePrototypeArgumentId> for AttributePrototypeArgumentId {
+    fn from(value: si_events::AttributePrototypeArgumentId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<AttributePrototypeArgumentId> for si_events::AttributePrototypeArgumentId {
+    fn from(value: AttributePrototypeArgumentId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
