@@ -64,6 +64,10 @@ export const createTypescriptSource = async (
     target: ts.ScriptTarget.ES2020,
     noUncheckedIndexedAccess: true,
     lib: ["ES2020", "DOM"],
+    allowJs: true,
+    checkJs: true,
+    strict: false,
+    suppressImplicitAnyIndexErrors: true,
   };
 
   if (!fsMap && !vfsSystem) {
@@ -78,10 +82,11 @@ export const createTypescriptSource = async (
 
   fsMap.set(defaultFilename, fallbackCode);
   fsMap.set("func.d.ts", types);
+  fsMap.set("lodash.d.ts", "declare var _: any");
 
   tsEnv = createVirtualTypeScriptEnvironment(
     vfsSystem,
-    [defaultFilename, "func.d.ts"],
+    [defaultFilename, "func.d.ts", "lodash.d.ts"],
     ts,
     compilerOptions,
   );

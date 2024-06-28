@@ -45,8 +45,8 @@
               :key="idx"
               class="p-2 break-words"
             >
-              <pre trim>
-{{ subCheck.description }}
+              <pre trim
+                >{{ subCheck.description }}
               </pre>
             </li>
           </ul>
