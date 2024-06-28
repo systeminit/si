@@ -78,12 +78,26 @@ function open() {
 }
 
 async function onConfirmRestore() {
-  if (componentsStore.selectedComponentIds) {
+  if (
+    componentsStore.selectedComponentIds &&
+    componentsStore.selectedComponentIds.length > 0
+  ) {
     const data = {} as Record<ComponentId, boolean>;
     componentsStore.selectedComponentIds.forEach((cId) => {
       data[cId] = !!componentsStore.componentsById[cId]?.fromBaseChangeSet;
     });
     await componentsStore.RESTORE_COMPONENTS(data);
+  } else if (componentsStore.selectedEdge) {
+    await componentsStore.CREATE_COMPONENT_CONNECTION(
+      {
+        componentId: componentsStore.selectedEdge.fromComponentId,
+        socketId: componentsStore.selectedEdge.fromSocketId,
+      },
+      {
+        componentId: componentsStore.selectedEdge.toComponentId,
+        socketId: componentsStore.selectedEdge.toSocketId,
+      },
+    );
   }
   componentsStore.setSelectedComponentId(null);
   close();
