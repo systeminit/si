@@ -6,7 +6,7 @@ pub mod module_id;
 pub mod schema_id;
 
 pub use module_id::ModuleId;
-pub use schema_id::SchemaId;
+// pub use schema_id::SchemaId;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,12 +98,12 @@ pub struct Model {
     pub kind: ModuleKind,
     pub is_builtin_at: Option<DateTimeWithTimeZone>,
     pub is_builtin_at_by_display_name: Option<String>,
-    #[sea_orm(column_type = "Text")]
-    pub schema_name: Option<String>,
-    #[sea_orm(column_type = "Text")]
-    pub schema_category: Option<String>,
-    #[sea_orm(column_type = r##"custom("ident")"##)]
-    pub schema_id: Option<SchemaId>,
+    // #[sea_orm(column_type = "Text")]
+    // pub schema_name: Option<String>,
+    // #[sea_orm(column_type = "Text")]
+    // pub schema_category: Option<String>,
+    // #[sea_orm(column_type = r##"custom("ident")"##)]
+    // pub schema_id: Option<SchemaId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
