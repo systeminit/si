@@ -1,5 +1,7 @@
+use crate::server::state::AppState;
+use axum::http::StatusCode;
 use axum::{
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -14,8 +16,6 @@ use dal::{workspace_snapshot::WorkspaceSnapshotError, FuncId, TransactionsError}
 use dal::{ChangeSetError, WsEventError};
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
-
-use crate::server::{impl_default_error_into_response, state::AppState};
 
 pub mod create_attribute_prototype;
 pub mod create_func;
@@ -78,7 +78,17 @@ pub enum FuncError {
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
-impl_default_error_into_response!(FuncError);
+impl IntoResponse for FuncError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+
+        let body = Json(
+            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
+        );
+
+        (status, body).into_response()
+    }
+}
 
 pub fn routes() -> Router<AppState> {
     Router::new()
