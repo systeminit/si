@@ -469,7 +469,7 @@ async fn create_prop_stack(
     builder.has_data(false);
 
     let default_value = match &spec {
-        SiPkgProp::Array { data, .. }
+        SiPkgProp::String { data, .. }
         | SiPkgProp::Boolean { data, .. }
         | SiPkgProp::Number { data, .. } => {
             data.as_ref().and_then(|data| data.default_value.to_owned())
