@@ -10,8 +10,9 @@
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :loading="execAssetReqStatus.isPending"
-            :requestStatus="execAssetReqStatus"
+            :disabled="saveAssetReqStatus.isPending"
+            :loading="updateAssetReqStatus.isPending"
+            :requestStatus="updateAssetReqStatus"
             icon="bolt"
             label="Regenerate Asset"
             loadingText="Regenerating Asset..."
@@ -59,64 +60,64 @@
 
       <Stack class="p-xs" spacing="none">
         <div>
-          <ErrorMessage :requestStatus="execAssetReqStatus" />
+          <ErrorMessage :requestStatus="updateAssetReqStatus" />
         </div>
         <VormInput
           id="schemaName"
           v-model="editingAsset.schemaName"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Asset Name"
           placeholder="(mandatory) Provide the asset a name"
           type="text"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
 
         <VormInput
           id="displayName"
           v-model="editingAsset.displayName"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Display name"
           placeholder="(optional) Provide the asset version a display name"
           type="text"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
           id="category"
           v-model="editingAsset.category"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Category"
           placeholder="(mandatory) Provide a category for the asset"
           type="text"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
           id="componentType"
           v-model="editingAsset.componentType"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           :options="componentTypeOptions"
           compact
           label="Component Type"
           type="dropdown"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @change="updateAsset"
         />
         <VormInput
           id="description"
           v-model="editingAsset.description"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Description"
           placeholder="(optional) Provide a brief description of the asset"
           type="textarea"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
         <VormInput
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="color"
           type="container"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
         >
           <ColorPicker
             id="color"
@@ -128,11 +129,11 @@
         <VormInput
           id="link"
           v-model="editingAsset.link"
+          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           compact
           label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
           type="url"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
           @blur="updateAsset"
         />
       </Stack>
@@ -247,13 +248,17 @@ const updateAsset = async () => {
   }
 };
 
-const execAssetReqStatus = assetStore.getRequestStatus(
-  "EXEC_SCHEMA_VARIANT",
+const updateAssetReqStatus = assetStore.getRequestStatus(
+  "REGENERATE_VARIANT",
+  assetStore.selectedVariantId,
+);
+const saveAssetReqStatus = assetStore.getRequestStatus(
+  "SAVE_SCHEMA_VARIANT",
   assetStore.selectedVariantId,
 );
 const executeAsset = async () => {
-  if (assetStore.selectedVariantId) {
-    await assetStore.EXEC_SCHEMA_VARIANT(assetStore.selectedVariantId);
+  if (editingAsset.value) {
+    await assetStore.REGENERATE_VARIANT(editingAsset.value.schemaVariantId);
   }
 };
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::Visibility;
-use dal::{ChangeSet, SchemaVariantId, WsEvent};
+use dal::{ChangeSet, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -13,25 +13,44 @@ use crate::service::variant::SchemaVariantResult;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateVariantRequest {
-    pub schema_variant_id: SchemaVariantId,
+    // We need to get the updated data here, to ensure we create the prop the user is seeing
+    pub variant: si_frontend_types::SchemaVariant,
+    pub code: String,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
-// TODO rename this to regenerate variant when the endpoint changes
-pub async fn update_variant(
+pub async fn regenerate_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(UpdateVariantRequest {
-        schema_variant_id,
+        variant,
+        code,
         visibility,
     }): Json<UpdateVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+
+    let schema_variant_id = variant.schema_variant_id.into();
+
+    VariantAuthoringClient::save_variant_content(
+        &ctx,
+        schema_variant_id,
+        &variant.schema_name,
+        &variant.display_name,
+        &variant.category,
+        variant.description,
+        variant.link,
+        &variant.color,
+        variant.component_type.into(),
+        Some(code),
+    )
+    .await?;
+
     let updated_schema_variant_id =
         VariantAuthoringClient::regenerate_variant(&ctx, schema_variant_id).await?;
 

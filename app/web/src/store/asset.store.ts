@@ -107,6 +107,7 @@ export const useAssetStore = () => {
         // represents state of the left rail lists and all open editor tabs
         selectedSchemaVariants: [] as SchemaVariantId[],
         selectedFuncs: [] as FuncId[],
+        editingFuncLatestCode: {} as Record<SchemaVariantId, string>,
 
         detachmentWarnings: [] as {
           message: string;
@@ -307,6 +308,8 @@ export const useAssetStore = () => {
         },
 
         enqueueVariantSave(schemaVariant: SchemaVariant, code: string) {
+          this.editingFuncLatestCode[schemaVariant.schemaVariantId] = code;
+
           if (changeSetsStore.headSelected)
             return this.SAVE_SCHEMA_VARIANT(schemaVariant, code);
 
@@ -314,9 +317,17 @@ export const useAssetStore = () => {
 
           if (!assetSaveDebouncer) {
             assetSaveDebouncer = keyedDebouncer((id: SchemaVariantId) => {
-              const a = this.variantsById[id];
-              if (!a) return;
-              this.SAVE_SCHEMA_VARIANT(a, code);
+              const variant = this.variantsById[id];
+              if (!variant) return;
+              const code =
+                this.editingFuncLatestCode[schemaVariant.schemaVariantId];
+
+              if (!code)
+                throw Error(
+                  `No asset code for variant ${variant.schemaVariantId}`,
+                );
+
+              this.SAVE_SCHEMA_VARIANT(variant, code);
             }, 1000);
           }
           const assetSaveFunc = assetSaveDebouncer(
@@ -361,11 +372,45 @@ export const useAssetStore = () => {
             },
           });
         },
+        async REGENERATE_VARIANT(schemaVariantId: SchemaVariantId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          this.detachmentWarnings = [];
+          const variant = this.variantsById[schemaVariantId];
+          if (!variant)
+            throw new Error(`${schemaVariantId} Variant does not exist`);
+
+          const code = this.editingFuncLatestCode[schemaVariantId];
+
+          if (!code) throw new Error(`${schemaVariantId} Code does not exist`);
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: "/variant/regenerate_variant",
+            keyRequestStatusBy: schemaVariantId,
+            params: {
+              ...visibility,
+              variant,
+              code,
+            },
+          });
+        },
 
         async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
           // when we load a variant, load all its code ahead of time before a user selects a func
           const variant = this.variantFromListById[schemaVariantId];
-          if (variant) await funcsStore.FETCH_FUNC(variant.assetFuncId);
+          if (variant) {
+            await funcsStore.FETCH_FUNC(variant.assetFuncId);
+
+            const code = funcsStore.funcDetailsById[variant.assetFuncId]?.code;
+
+            if (code) {
+              this.editingFuncLatestCode[schemaVariantId] = code;
+            }
+          }
 
           // its likely we no longer need this call, because this data is identical to the list data we already have
           return new ApiRequest<
@@ -397,28 +442,6 @@ export const useAssetStore = () => {
                 e.canUpdate = false;
                 return e;
               });
-            },
-          });
-        },
-
-        async EXEC_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          this.detachmentWarnings = [];
-          const variant = this.variantsById[schemaVariantId];
-          if (!variant)
-            throw new Error(`${schemaVariantId} Variant does not exist`);
-
-          return new ApiRequest<null>({
-            method: "post",
-            url: "/variant/update_variant",
-            keyRequestStatusBy: schemaVariantId,
-            params: {
-              ...visibility,
-              schemaVariantId,
             },
           });
         },

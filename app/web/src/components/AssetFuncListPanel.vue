@@ -7,9 +7,9 @@
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle
-          label="Asset Functions"
-          icon="func"
           class="mt-2xs"
+          icon="func"
+          label="Asset Functions"
         >
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedVariantId"
@@ -73,7 +73,7 @@ const variantSummaries = computed(() => {
   const variant = assetStore.variantFromListById[
     props.assetId
   ] as VariantsWithFunctionSummary;
-  if (!variant) throw new Error(`${props.assetId} variant does not exist`);
+  if (!variant) return null;
   variant.funcSummaries = [];
 
   variant.funcIds.forEach((fId) => {
