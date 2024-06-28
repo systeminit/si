@@ -320,7 +320,10 @@ const diagramContext = useDiagramContext();
 const { edgeDisplayMode } = diagramContext;
 
 const isDeleted = computed(
-  () => props.node.def.changeStatus === "deleted" || props.node.def.toDelete,
+  () =>
+    props.node.def.changeStatus === "deleted" ||
+    props.node.def.toDelete ||
+    props.node.def.fromBaseChangeSet,
 );
 const isModified = computed(() => props.node.def.changeStatus === "modified");
 const isAdded = computed(() => props.node.def.changeStatus === "added");

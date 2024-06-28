@@ -17,7 +17,7 @@
         class="shrink-0"
         tone="inherit"
       />
-      <div class="grow truncate">
+      <div v-if="created" class="grow truncate">
         {{ formatters.timeAgo(created.timestamp) }} by
         {{ created.actor.label }}
       </div>
@@ -42,7 +42,7 @@
         class="shrink-0"
         tone="inherit"
       />
-      <div class="grow truncate">
+      <div v-if="modified" class="grow truncate">
         {{ formatters.timeAgo(modified?.timestamp) }} by
         {{ modified?.actor.label }}
       </div>
@@ -58,7 +58,7 @@
         class="shrink-0"
         tone="inherit"
       />
-      <div class="grow truncate">
+      <div v-if="deleted" class="grow truncate">
         {{ formatters.timeAgo(deleted?.timestamp) }} by
         {{ deleted?.actor.label }}
       </div>

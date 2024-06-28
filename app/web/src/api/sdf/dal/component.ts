@@ -52,6 +52,7 @@ export interface RawComponent {
   updatedInfo: ActorAndTimestamp;
   toDelete: boolean;
   canBeUpgraded: boolean;
+  fromBaseChangeSet: boolean;
 }
 
 export type EdgeId = string;

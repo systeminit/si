@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{hash_map::Entry, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
 
@@ -41,6 +41,8 @@ pub type LineageId = Ulid;
 pub enum WorkspaceSnapshotGraphError {
     #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
+    #[error("could not find category node of kind: {0:?}")]
+    CategoryNodeNotFound(CategoryNodeKind),
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Unable to retrieve content for ContentHash")]
@@ -1684,6 +1686,169 @@ impl WorkspaceSnapshotGraph {
         }
 
         Ok(())
+    }
+
+    pub fn import_component_subgraph(
+        &mut self,
+        vector_clock_id: VectorClockId,
+        other: &WorkspaceSnapshotGraph,
+        component_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // * DFS event-based traversal.
+        //   * DfsEvent::Discover(attribute_prototype_argument_node_index, _):
+        //     If APA has targets, skip & return Control::Prune, since we don't want to bring in
+        //     Components other than the one specified. Only arguments linking Inout & Output
+        //     Sockets will have targets (the source & destination ComponentIDs).
+        //   * DfsEvent::Discover(func_node_index, _):
+        //     Add edge from Funcs Category node to imported Func node.
+        let mut edges_by_tail = HashMap::new();
+        petgraph::visit::depth_first_search(&other.graph, Some(component_node_index), |event| {
+            self.import_component_subgraph_process_dfs_event(
+                other,
+                &mut edges_by_tail,
+                vector_clock_id,
+                event,
+            )
+        })?;
+
+        Ok(())
+    }
+
+    /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
+    fn import_component_subgraph_process_dfs_event(
+        &mut self,
+        other: &WorkspaceSnapshotGraph,
+        edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
+        vector_clock_id: VectorClockId,
+        event: DfsEvent<NodeIndex>,
+    ) -> WorkspaceSnapshotGraphResult<petgraph::visit::Control<()>> {
+        match event {
+            // We only check to see if we can prune graph traversal in the node discovery event.
+            // The "real" work is done in the node finished event.
+            DfsEvent::Discover(other_node_index, _) => {
+                let other_node_weight = other.get_node_weight(other_node_index)?;
+
+                // AttributePrototypeArguments with targets connect Input & Output Sockets, and we
+                // don't want to import either the Component on the other end of the connection, or
+                // the connection itself. Unfortunately, we can't prune when looking at the
+                // relevant edge, as that would prune _all remaining edges_ outgoing from the
+                // AttributePrototype.
+                if NodeWeightDiscriminants::AttributePrototypeArgument == other_node_weight.into() {
+                    let apa_node_weight =
+                        other_node_weight.get_attribute_prototype_argument_node_weight()?;
+                    if apa_node_weight.targets().is_some() {
+                        return Ok(petgraph::visit::Control::Prune);
+                    }
+                }
+
+                // When we hit something that already exists, we're pretty much guaranteed to have
+                // left "the component" and have gone into already-existing Funcs or the Schema
+                // Variant.
+                if self
+                    .find_equivalent_node(other_node_weight.id(), other_node_weight.lineage_id())?
+                    .is_some()
+                {
+                    return Ok(petgraph::visit::Control::Prune);
+                }
+
+                Ok(petgraph::visit::Control::Continue)
+            }
+            // We wait to do the "real" import work in the Finish event as these happen in
+            // post-order, so we are guaranteed that all of the targets of the outgoing edges
+            // have been imported.
+            DfsEvent::Finish(other_node_index, _) => {
+                // See if we already have the node from other in self.
+                let other_node_weight = other.get_node_weight(other_node_index)?;
+                // Even though we prune when the equivalent node is_some() in the Discover event,
+                // we will still get a Finish event for the node that returned Control::Prune in
+                // its Discover event.
+                if self
+                    .find_equivalent_node(other_node_weight.id(), other_node_weight.lineage_id())?
+                    .is_none()
+                {
+                    // AttributePrototypeArguments for cross-component connections will still have
+                    // their DfsEvent::Finish fire, and won't already exist in self, but we do not
+                    // want to import them.
+                    if let NodeWeight::AttributePrototypeArgument(
+                        attribute_prototype_argument_node_weight,
+                    ) = other_node_weight
+                    {
+                        if attribute_prototype_argument_node_weight.targets().is_some() {
+                            return Ok(petgraph::visit::Control::Prune);
+                        }
+                    }
+
+                    // Import the node.
+                    self.add_node(other_node_weight.clone())?;
+
+                    // Create all edges with this node as the tail.
+                    if let Entry::Occupied(edges) = edges_by_tail.entry(other_node_index) {
+                        for (other_head_node_index, edge_weight) in edges.get() {
+                            // Need to get this on every iteration as the node index changes as we
+                            // add edges.
+                            let self_node_index =
+                                self.get_node_index_by_id(other_node_weight.id())?;
+                            let other_head_node_weight =
+                                other.get_node_weight(*other_head_node_index)?;
+                            let self_head_node_index =
+                                self.get_node_index_by_id(other_head_node_weight.id())?;
+                            self.add_edge(
+                                self_node_index,
+                                edge_weight.clone(),
+                                self_head_node_index,
+                            )?;
+                        }
+                    }
+
+                    // Funcs and Components have incoming edges from their Category nodes that we
+                    // want to exist, but won't be discovered by the graph traversal on its own.
+                    let category_kind = if NodeWeightDiscriminants::Func == other_node_weight.into()
+                    {
+                        Some(CategoryNodeKind::Func)
+                    } else if NodeWeightDiscriminants::Component == other_node_weight.into() {
+                        Some(CategoryNodeKind::Component)
+                    } else {
+                        None
+                    };
+
+                    if let Some(category_node_kind) = category_kind {
+                        let self_node_index = self.get_node_index_by_id(other_node_weight.id())?;
+                        let (_, category_node_idx) = self
+                            .get_category_node(None, category_node_kind)?
+                            .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
+                                CategoryNodeKind::Func,
+                            ))?;
+                        self.add_edge(
+                            category_node_idx,
+                            EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())?,
+                            self_node_index,
+                        )?;
+                    }
+                }
+
+                Ok(petgraph::visit::Control::Continue)
+            }
+            DfsEvent::BackEdge(tail_node_index, head_node_index)
+            | DfsEvent::CrossForwardEdge(tail_node_index, head_node_index)
+            | DfsEvent::TreeEdge(tail_node_index, head_node_index) => {
+                // We'll keep track of the edges we encounter, instead of doing something with them
+                // right away as the common case (TreeEdge) is that we'll encounter the edge before
+                // we encounter the node for the head (target) of the edge. We can't actually do
+                // anything about importing the edge until we've also imported the head node.
+                for edgeref in other
+                    .graph
+                    .edges_connecting(tail_node_index, head_node_index)
+                {
+                    edges_by_tail
+                        .entry(tail_node_index)
+                        .and_modify(|entry| {
+                            entry.push((head_node_index, edgeref.weight().clone()));
+                        })
+                        .or_insert_with(|| vec![(head_node_index, edgeref.weight().clone())]);
+                }
+                Ok(petgraph::visit::Control::Continue)
+            }
+        }
     }
 
     pub fn is_acyclic_directed(&self) -> bool {

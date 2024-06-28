@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
@@ -20,8 +20,9 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, Component, ComponentId, DalContext, HistoryEventError, InputSocketId,
-    OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, StandardModelError,
+    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HistoryEventError,
+    InputSocketId, OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
+    StandardModelError, TransactionsError, Workspace, WorkspaceError,
 };
 
 #[remain::sorted]
@@ -35,6 +36,8 @@ pub enum DiagramError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found")]
     AttributeValueNotFound,
+    #[error("Change Set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
@@ -77,8 +80,12 @@ pub enum DiagramError {
     SocketNotFound,
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("Transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("Workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -378,6 +385,8 @@ impl Diagram {
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
         let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         let components = Component::list(ctx).await?;
+        let mut virtual_and_real_components_by_id: HashMap<ComponentId, Component> =
+            components.iter().cloned().map(|c| (c.id(), c)).collect();
         let mut component_views = Vec::with_capacity(components.len());
         let new_component_ids: HashSet<ComponentId> = ctx
             .workspace_snapshot()?
@@ -437,8 +446,122 @@ impl Diagram {
             );
         }
 
-        // We also want to display the edges & components that would be actively removed when we
-        // merge this change set into its base change set.
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await?;
+        if workspace.default_change_set_id() != ctx.change_set_id()
+            && ctx.change_set()?.base_change_set_id.is_some()
+        {
+            // We also want to display the edges & components that would be actively removed when we
+            // merge this change set into its base change set.
+            let removed_component_ids = ctx
+                .workspace_snapshot()?
+                .components_removed_relative_to_base(ctx)
+                .await?;
+
+            // We now need to retrieve these Components from the base change set, and build
+            // SummaryDiagramComponents for them with from_base_change_set true, and change_status
+            // ChangeStatus::Removed
+            let base_change_set_ctx = ctx.clone_with_base().await?;
+            let base_change_set_ctx = &base_change_set_ctx;
+
+            for removed_component_id in removed_component_ids {
+                // We don't need to worry about these duplicating SummaryDiagramComponents that
+                // have already been generated as they're generated from the list of Components
+                // still in the change set's snapshot, while the list of Component IDs we're
+                // working on here are explicitly ones that do not exist in that snapshot anymore.
+                let base_change_set_component =
+                    Component::get_by_id(base_change_set_ctx, removed_component_id).await?;
+                let mut summary_diagram_component = SummaryDiagramComponent::assemble(
+                    base_change_set_ctx,
+                    &base_change_set_component,
+                    ChangeStatus::Deleted,
+                )
+                .await?;
+                summary_diagram_component.from_base_change_set = true;
+                virtual_and_real_components_by_id
+                    .insert(removed_component_id, base_change_set_component);
+
+                component_views.push(summary_diagram_component);
+            }
+
+            // We need to bring in any AttributePrototypeArguments for incoming & outgoing
+            // connections that have been removed.
+            let removed_attribute_prototype_argument_ids = ctx
+                .workspace_snapshot()?
+                .socket_edges_removed_relative_to_base(ctx)
+                .await?;
+            let mut incoming_connections_by_component_id: HashMap<
+                ComponentId,
+                Vec<IncomingConnection>,
+            > = HashMap::new();
+
+            for removed_attribute_prototype_argument_id in &removed_attribute_prototype_argument_ids
+            {
+                let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
+                    base_change_set_ctx,
+                    *removed_attribute_prototype_argument_id,
+                )
+                .await?;
+
+                // This should always be Some as
+                // `WorkspaceSnapshot::socket_edges_removed_relative_to_base` only returns the
+                // IDs of arguments that have targets.
+                if let Some(targets) = attribute_prototype_argument.targets() {
+                    if let hash_map::Entry::Vacant(vacant_entry) =
+                        incoming_connections_by_component_id.entry(targets.destination_component_id)
+                    {
+                        let removed_component = Component::get_by_id(
+                            base_change_set_ctx,
+                            targets.destination_component_id,
+                        )
+                        .await?;
+                        let mut incoming_connections = removed_component
+                            .incoming_connections(base_change_set_ctx)
+                            .await?;
+                        // We only care about connections going to the Component in the base that
+                        // are *ALSO* ones that we are considered to have removed.
+                        incoming_connections.retain(|connection| {
+                            removed_attribute_prototype_argument_ids
+                                .contains(&connection.attribute_prototype_argument_id)
+                        });
+                        vacant_entry.insert(incoming_connections);
+                    }
+                }
+            }
+
+            for incoming_connections in incoming_connections_by_component_id.values() {
+                for incoming_connection in incoming_connections {
+                    let from_component = virtual_and_real_components_by_id
+                        .get(&incoming_connection.from_component_id)
+                        .cloned()
+                        .ok_or(ComponentError::NotFound(
+                            incoming_connection.from_component_id,
+                        ))?;
+                    let to_component = virtual_and_real_components_by_id
+                        .get(&incoming_connection.to_component_id)
+                        .ok_or(ComponentError::NotFound(
+                            incoming_connection.to_component_id,
+                        ))?;
+                    let mut summary_diagram_edge = SummaryDiagramEdge::assemble(
+                        incoming_connection.clone(),
+                        from_component,
+                        to_component,
+                        ChangeStatus::Deleted,
+                    )?;
+                    summary_diagram_edge.from_base_change_set = true;
+
+                    diagram_edges.push(summary_diagram_edge);
+                }
+            }
+        }
 
         Ok(Self {
             edges: diagram_edges,

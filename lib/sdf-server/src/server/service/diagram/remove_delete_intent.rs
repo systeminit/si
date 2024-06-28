@@ -42,10 +42,43 @@ async fn remove_single_delete_intent(
     Ok(())
 }
 
+async fn restore_component_from_base_change_set(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): &PosthogClient,
+) -> DiagramResult<()> {
+    Component::restore_from_base_change_set(ctx, component_id).await?;
+    let comp = Component::get_by_id(ctx, component_id).await?;
+    let comp_schema = comp.schema(ctx).await?;
+
+    track(
+        posthog_client,
+        ctx,
+        original_uri,
+        "restore_from_base_change_set",
+        serde_json::json!({
+            "how": "/diagram/remove_delete_intent",
+            "component_id": component_id,
+            "component_schema_name": comp_schema.name(),
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
+
+    Ok(())
+}
+
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveDeleteIntentComponentInformation {
+    pub component_id: ComponentId,
+    pub from_base_change_set: bool,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoveDeleteIntentRequest {
-    pub component_ids: Vec<ComponentId>,
+    pub components: Vec<RemoveDeleteIntentComponentInformation>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -62,8 +95,27 @@ pub async fn remove_delete_intent(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    for component_id in request.component_ids {
-        remove_single_delete_intent(&ctx, component_id, &original_uri, &posthog_client).await?;
+    for component_info in request.components {
+        match component_info.from_base_change_set {
+            true => {
+                restore_component_from_base_change_set(
+                    &ctx,
+                    component_info.component_id,
+                    &original_uri,
+                    &posthog_client,
+                )
+                .await?
+            }
+            false => {
+                remove_single_delete_intent(
+                    &ctx,
+                    component_info.component_id,
+                    &original_uri,
+                    &posthog_client,
+                )
+                .await?
+            }
+        }
     }
 
     ctx.commit().await?;
