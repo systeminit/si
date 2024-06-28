@@ -11,7 +11,7 @@ use dal_test::test;
 async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut DalContext) {
     // Create a new schema variant and commit.
     let schema_variant = VariantAuthoringClient::create_schema_and_variant(
-        ctx, "ergo sum", None, None, None, "bungie", "#00b0b0",
+        ctx, "ergo sum", None, None, "bungie", "#00b0b0",
     )
     .await
     .expect("could not create new asset");
@@ -88,21 +88,27 @@ async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut D
         .schema(ctx)
         .await
         .expect("could not get schema");
-    let _updated_schema_variant_id = VariantAuthoringClient::update_variant(
+
+    VariantAuthoringClient::save_variant_content(
         ctx,
         schema_variant.id(),
         schema.name,
         schema_variant.display_name(),
-        schema_variant.category().to_string(),
+        schema_variant.category(),
+        Some("let's update the description".to_string()),
+        schema_variant.link(),
         schema_variant
             .get_color(ctx)
             .await
-            .expect("could not get color"),
-        schema_variant.link(),
-        "function main() { return new AssetBuilder().build() }",
-        Some("let's update the description".to_string()),
+            .expect("get color from schema variant"),
         schema_variant.component_type(),
+        Some("function main() { return new AssetBuilder().build() }"),
     )
     .await
-    .expect("could not upgrade variant");
+    .expect("save variant contents");
+
+    let _updated_schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant.id())
+            .await
+            .expect("could not upgrade variant");
 }

@@ -26,7 +26,7 @@ pub struct GetVariantResponse {
     pub default_schema_variant_id: SchemaVariantId,
     pub schema_name: String,
     pub name: String,
-    pub display_name: Option<String>,
+    pub display_name: String,
     pub category: String,
     pub color: String,
     pub link: Option<String>,
@@ -36,6 +36,7 @@ pub struct GetVariantResponse {
     pub funcs: Vec<FuncSummary>,
     pub types: String,
     pub has_components: bool,
+    pub is_locked: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -67,7 +68,7 @@ pub async fn get_variant(
         default_schema_variant_id,
         schema_name: schema.name().into(),
         name: variant.version().into(),
-        display_name: variant.display_name(),
+        display_name: variant.display_name().to_string(),
         category: variant.category().into(),
         color: variant.get_color(&ctx).await?,
         link: variant.link(),
@@ -79,6 +80,7 @@ pub async fn get_variant(
         funcs,
         types: "".to_string(),
         has_components: false,
+        is_locked: variant.is_locked(),
     };
 
     if let Some(authoring_func) = variant.asset_func_id() {

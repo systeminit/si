@@ -107,6 +107,7 @@ import { useComponentsStore } from "@/store/components.store";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
+const componentStore = useComponentsStore();
 
 const props = defineProps<{
   modelValue: AttributeAssociations;
@@ -231,11 +232,9 @@ const prototypeViews = computed(() => {
       ];
 
     const schemaVariant =
-      useComponentsStore().schemaVariantsById[schemaVariantId ?? ""]?.name ??
-      "none";
-    const schema =
-      useComponentsStore().schemaVariantsById[schemaVariantId ?? ""]
-        ?.schemaName ?? "none";
+      componentStore.schemaVariantsById[schemaVariantId ?? ""];
+    const name = schemaVariant?.displayName || "none";
+    const schema = schemaVariant?.schemaName || "none";
     const component =
       funcStore.componentOptions.find((c) => c.value === proto.componentId)
         ?.label ?? "all";
@@ -263,7 +262,7 @@ const prototypeViews = computed(() => {
     return {
       id: proto.id,
       schema,
-      schemaVariant,
+      schemaVariant: name,
       component,
       outputLocation,
       args,

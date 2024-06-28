@@ -147,9 +147,11 @@ import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,
   FuncKind,
+  FuncId,
+  FuncArgumentId,
 } from "@/api/sdf/dal/func";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { FuncId, useFuncStore, FuncArgumentId } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
   CreateFuncOptions,
@@ -170,13 +172,13 @@ const createFuncStarted = ref(false);
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
-  "LOAD_ASSET",
+  "LOAD_SCHEMA_VARIANT",
   props.assetId,
 );
 
 const schemaVariantId = computed(() =>
   props.assetId
-    ? assetStore.assetsById[props.assetId]?.defaultSchemaVariantId
+    ? assetStore.variantsById[props.assetId]?.schemaVariantId
     : undefined,
 );
 
@@ -211,13 +213,7 @@ watch(
         !funcStore.funcDetailsById[funcId] ||
         !funcStore.funcArgumentsByFuncId[funcId]
       ) {
-        const result = await funcStore.FETCH_FUNC(funcId);
-        if (result.result.success) {
-          selectedFuncCode.value = result.result.data.code;
-          if (result.result.data.associations?.type === "attribute") {
-            await funcStore.FETCH_FUNC_ARGUMENT_LIST(funcId);
-          }
-        }
+        await funcStore.FETCH_FUNC_ARGUMENT_LIST(funcId);
       } else {
         selectedFuncCode.value = funcStore.funcDetailsById[funcId]?.code ?? "";
       }
@@ -277,7 +273,9 @@ const attributeOutputLocationOptions = ref<{ label: string; value: string }[]>(
 const attrToValidate = ref<string | undefined>();
 const validationOptions = ref<{ label: string; value: string }[]>([]);
 
-const assetName = computed(() => assetStore.selectedAsset?.name ?? " none");
+const assetName = computed(
+  () => assetStore.selectedSchemaVariant?.schemaName ?? " none",
+);
 
 const existingOrNew = computed(() =>
   attachExisting.value ? "existing" : "new",
@@ -420,7 +418,7 @@ const attachToAttributeFunction = async (
 };
 
 const reloadAssetAndRoute = async (assetId: string) => {
-  await assetStore.LOAD_ASSET(assetId);
+  await assetStore.LOAD_SCHEMA_VARIANT(assetId);
   close();
 };
 

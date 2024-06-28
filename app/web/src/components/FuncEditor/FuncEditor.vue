@@ -40,7 +40,8 @@
 import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { LoadingMessage, ErrorMessage } from "@si/vue-lib/design-system";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { FuncId } from "@/api/sdf/dal/func";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "@/components/CodeEditor.vue";
 

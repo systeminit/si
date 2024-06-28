@@ -43,7 +43,7 @@
           :key="categoryIndex"
           :label="category.displayName"
           :primaryIcon="getAssetIcon(category.displayName)"
-          :color="category.schemas[0]?.color || '#000'"
+          :color="category.schemaVariants[0]?.color || '#000'"
           enableDefaultHoverClasses
           enableGroupToggle
           alwaysShowArrow
@@ -51,28 +51,33 @@
         >
           <template #icons>
             <PillCounter
-              :count="category.schemas.length"
+              :count="category.schemaVariants.length"
               showHoverInsideTreeNode
             />
           </template>
           <TreeNode
-            v-for="(schema, schemaIndex) in category.schemas"
+            v-for="(schemaVariant, schemaIndex) in category.schemaVariants"
             :key="schemaIndex"
-            :color="schema.color"
+            :color="schemaVariant.color"
             :classes="
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
                 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
               )
             "
-            :isSelected="componentsStore.selectedInsertSchemaId === schema.id"
+            :isSelected="
+              componentsStore.selectedInsertSchemaVariantId ===
+              schemaVariant.schemaVariantId
+            "
             showSelection
-            @mousedown.left.stop="onSelect(schema.id, $event)"
+            @mousedown.left.stop="
+              onSelect(schemaVariant.schemaVariantId, $event)
+            "
             @click.right.prevent
           >
             <template #label>
               <TruncateWithTooltip class="text-sm">
-                {{ schemaDisplayName(schema, category.schemas) }}
+                {{ schemaVariantDisplayName(schemaVariant) }}
               </TruncateWithTooltip>
               <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
@@ -80,18 +85,24 @@
                 asset by: System Initiative
               </div> -->
             </template>
+            <template #icons>
+              <EditingPill
+                v-if="!schemaVariant.isLocked"
+                :color="schemaVariant.color"
+              />
+            </template>
           </TreeNode>
         </TreeNode>
       </ScrollArea>
     </template>
 
-    <template v-if="selectedSchema">
+    <template v-if="selectedSchemaVariant">
       <Teleport to="body">
         <div
           ref="mouseNode"
           class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
         >
-          <NodeSkeleton :color="selectedSchema.color" />
+          <NodeSkeleton :color="selectedSchemaVariant.color" />
         </div>
       </Teleport>
     </template>
@@ -113,12 +124,14 @@ import {
   useComponentsStore,
   getAssetIcon,
   Categories,
-  DiagramSchemaWithDisplayMetadata,
 } from "@/store/components.store";
+import { schemaVariantDisplayName } from "@/store/asset.store";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import TruncateWithTooltip from "@/components/TruncateWithTooltip.vue";
+import EditingPill from "@/components/EditingPill.vue";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
@@ -159,15 +172,15 @@ const filteredCategoriesBySearchString = (
     }
 
     // otherwise, filter out the individual assets that don't match
-    const matchingSchemas = _.filter(c.schemas, (s) => {
-      const categoryAndSchemaName = `${c.displayName} ${s.name}`;
+    const matchingSchemas = _.filter(c.schemaVariants, (s) => {
+      const categoryAndSchemaName = `${c.displayName} ${s.schemaName}`;
       return categoryAndSchemaName.toLowerCase().includes(searchString);
     });
 
     if (matchingSchemas.length > 0) {
       inProgress.push({
         displayName: c.displayName,
-        schemas: matchingSchemas,
+        schemaVariants: matchingSchemas,
       });
     }
   });
@@ -254,7 +267,7 @@ const getAssetCount = (categories: Categories) => {
   let count = 0;
 
   categories.forEach((category) => {
-    count += category.schemas.length;
+    count += category.schemaVariants.length;
   });
 
   return count;
@@ -264,32 +277,14 @@ const assetCount = computed(() =>
   getAssetCount(filteredCategoriesAndSchemas.value),
 );
 
-const schemasById = computed(() => {
-  return categories.value.reduce((p, c) => {
-    c.schemas.forEach((schema) => {
-      p[schema.id] = schema;
-    });
-    return p;
-  }, {} as Record<string, DiagramSchemaWithDisplayMetadata>);
-});
-const selectedSchema = computed(() => {
-  if (componentsStore.selectedInsertSchemaId)
-    return schemasById.value[componentsStore.selectedInsertSchemaId];
+const selectedSchemaVariant = computed(() => {
+  if (componentsStore.selectedInsertSchemaVariantId)
+    return componentsStore.schemaVariantsById[
+      componentsStore.selectedInsertSchemaVariantId
+    ];
   return undefined;
 });
 const mouseNode = ref();
-
-const schemaDisplayName = (
-  schema: DiagramSchemaWithDisplayMetadata,
-  schemas: DiagramSchemaWithDisplayMetadata[],
-) => {
-  const duplicates = schemas.filter((s) => s.name === schema.name);
-  let displayName = schema.variants[0]?.displayName;
-  if (!displayName) displayName = schema.name;
-  if (duplicates.length > 1) {
-    return `${displayName} (${duplicates.indexOf(schema)})`;
-  } else return displayName;
-};
 
 const updateMouseNode = (e: MouseEvent) => {
   if (mouseNode.value) {
@@ -300,11 +295,11 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string, e: MouseEvent) {
-  if (componentsStore.selectedInsertSchemaId === schemaId) {
+function onSelect(schemaVariantId: SchemaVariantId, e: MouseEvent) {
+  if (componentsStore.selectedInsertSchemaVariantId === schemaVariantId) {
     componentsStore.cancelInsert();
   } else {
-    componentsStore.setInsertSchema(schemaId);
+    componentsStore.setInsertSchema(schemaVariantId);
     if (e) {
       nextTick(() => {
         updateMouseNode(e);
@@ -316,7 +311,7 @@ function onSelect(schemaId: string, e: MouseEvent) {
 const onKeyDown = (e: KeyboardEvent) => {
   if (
     (e.key === "Escape" || e.key === "Backspace") &&
-    componentsStore.selectedInsertSchemaId
+    componentsStore.selectedInsertSchemaVariantId
   ) {
     componentsStore.cancelInsert();
     e.stopPropagation();
@@ -325,7 +320,7 @@ const onKeyDown = (e: KeyboardEvent) => {
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (componentsStore.selectedInsertSchemaId) {
+  if (componentsStore.selectedInsertSchemaVariantId) {
     componentsStore.cancelInsert();
   }
 };

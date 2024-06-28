@@ -15,7 +15,7 @@
           :requestStatus="loadAssetsRequestStatus"
           loadingMessage="Loading assets..."
           :instructions="
-            assetStore.selectedAssets.length > 1
+            assetStore.selectedSchemaVariants.length > 1
               ? 'You have selected multiple assets, use the right pane!'
               : undefined
           "
@@ -49,7 +49,7 @@
 import isEqual from "lodash-es/isEqual";
 import { watch, ref, computed } from "vue";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
-import { useAssetStore, assetDisplayName } from "@/store/asset.store";
+import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import AssetEditor from "./AssetEditor.vue";
 import FuncEditor from "./FuncEditor/FuncEditor.vue";
@@ -60,11 +60,15 @@ const funcStore = useFuncStore();
 
 const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
-const selectedAssetId = computed(() => assetStore.selectedAssetId);
+const selectedAssetId = computed(() => assetStore.selectedVariantId);
 
-const loadAssetsRequestStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const loadAssetsRequestStatus = assetStore.getRequestStatus(
+  "LOAD_SCHEMA_VARIANT_LIST",
+);
 
 const currentTabs = ref<{ type: string; label: string; id: string }[]>([]);
+
+const onlyOnce = ref(true);
 
 // We have to be careful about updating this list since it will cause the entire
 // tab group item list to re-render, and re-rendering will interrupt the editing
@@ -72,8 +76,8 @@ const currentTabs = ref<{ type: string; label: string; id: string }[]>([]);
 watch(
   [
     loadAssetsRequestStatus,
-    () => assetStore.selectedAssetId,
-    assetStore.openAssetFuncIds,
+    () => assetStore.selectedVariantId,
+    assetStore.openVariantFuncIds,
   ],
   ([requestStatus, assetId, openAssetFuncIds]) => {
     // no asset/multiple assets selected, don't show tabs
@@ -84,10 +88,10 @@ watch(
     if (!requestStatus.isSuccess) {
       return;
     }
-    const asset = assetStore.assetFromListById[assetId];
+    const asset = assetStore.variantFromListById[assetId];
     const assetTab = {
       type: "asset",
-      label: asset ? assetDisplayName(asset) ?? "error" : "error",
+      label: asset ? schemaVariantDisplayName(asset) ?? "error" : "error",
       id: assetId,
     };
 
@@ -107,14 +111,17 @@ watch(
     if (funcStore.selectedFuncId)
       tabGroupRef.value?.selectTab(funcStore.selectedFuncId);
 
-    // still dont know what is racing and removing the querystring from the URL
-    setTimeout(() => {
-      if (assetStore.selectedAssetId)
-        assetStore.setAssetSelection(assetStore.selectedAssetId);
-      funcTabs.forEach((f) => {
-        assetStore.addFuncSelection(f.id);
-      });
-    }, 100); // wait until after the querystring is stripped, and rebuild it
+    // still dont know what is racing and removing the querystring from the URL on page load
+    if (onlyOnce.value) {
+      onlyOnce.value = false;
+      setTimeout(() => {
+        if (assetStore.selectedVariantId)
+          assetStore.setSchemaVariantSelection(assetStore.selectedVariantId);
+        funcTabs.forEach((f) => {
+          assetStore.addFuncSelection(f.id);
+        });
+      }, 100); // wait until after the querystring is stripped, and rebuild it
+    }
   },
   { immediate: true },
 );

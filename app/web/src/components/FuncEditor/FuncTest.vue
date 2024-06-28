@@ -22,8 +22,11 @@
       >
         <div class="pb-xs">
           Select the
-          <span v-if="assetStore.selectedAsset" class="italic font-bold">
-            {{ assetStore.selectedAsset.name }}
+          <span
+            v-if="assetStore.selectedSchemaVariant"
+            class="italic font-bold"
+          >
+            {{ assetStore.selectedSchemaVariant.schemaName }}
           </span>
           component to use as the input for your test:
         </div>
@@ -31,7 +34,7 @@
           v-if="selectedAsset"
           ref="funcTestSelectorRef"
           :testStatus="testStatus"
-          :schemaVariantId="selectedAsset?.defaultSchemaVariantId"
+          :schemaVariantId="selectedAsset?.schemaVariantId"
           :isAttributeFunc="isAttributeFunc"
           :readyToTest="readyToTest"
           @startTest="startTest"
@@ -240,7 +243,7 @@ const funcRunsStore = useFuncRunsStore();
 const additionalOutputInfoModalRef = ref();
 const funcTestSelectorRef = ref<InstanceType<typeof FuncTestSelector>>();
 
-const selectedAsset = computed(() => assetStore.selectedAsset);
+const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
 const editingFuncDetails = computed(() => funcStore.selectedFuncDetails);
 const editingFunc = ref(_.cloneDeep(editingFuncDetails.value));
 
@@ -278,9 +281,6 @@ const dryRunConfig = computed(() => {
   // Note(Paulo): We only support dry run when testing functions
   if (funcStore.selectedFuncDetails?.kind === FuncKind.Attribute) {
     return "dry";
-    // eslint-disable-next-line no-constant-condition
-  } else if (false) {
-    return "choose";
   } else {
     // return "wet";
     return "dry";

@@ -139,6 +139,19 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotNotWritten,
 }
 
+impl WorkspaceSnapshotError {
+    pub fn is_node_with_id_not_found(&self) -> bool {
+        matches!(
+            self,
+            Self::WorkspaceSnapshotGraph(
+                crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError::NodeWithIdNotFound(
+                    _,
+                ),
+            )
+        )
+    }
+}
+
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
 /// The workspace graph. The concurrency types used here to give us interior

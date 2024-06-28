@@ -11,7 +11,7 @@ import {
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { ComponentType } from "@/api/sdf/dal/diagram";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,

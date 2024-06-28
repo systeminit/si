@@ -5,6 +5,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use si_frontend_types as frontend_types;
 use si_pkg::SchemaVariantSpecComponentType;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -63,6 +64,30 @@ impl From<ComponentType> for SchemaVariantSpecComponentType {
         match value {
             ComponentType::Component => Self::Component,
             ComponentType::AggregationFrame => Self::AggregationFrame,
+            ComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
+            ComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
+        }
+    }
+}
+
+impl From<frontend_types::ComponentType> for ComponentType {
+    fn from(value: frontend_types::ComponentType) -> Self {
+        match value {
+            si_frontend_types::ComponentType::AggregationFrame => Self::AggregationFrame,
+            si_frontend_types::ComponentType::Component => Self::Component,
+            si_frontend_types::ComponentType::ConfigurationFrameDown => {
+                Self::ConfigurationFrameDown
+            }
+            si_frontend_types::ComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
+        }
+    }
+}
+
+impl From<ComponentType> for frontend_types::ComponentType {
+    fn from(value: ComponentType) -> Self {
+        match value {
+            ComponentType::AggregationFrame => Self::AggregationFrame,
+            ComponentType::Component => Self::Component,
             ComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
             ComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
         }

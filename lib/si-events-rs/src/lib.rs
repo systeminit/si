@@ -7,10 +7,15 @@ pub mod xxhash_type;
 
 mod actor;
 mod cas;
+mod func;
 mod func_execution;
 mod func_run;
 mod func_run_log;
+mod schema;
+mod schema_variant;
+mod socket;
 mod tenancy;
+mod timestamp;
 mod vector_clock_id;
 mod web_event;
 
@@ -20,6 +25,7 @@ pub use crate::{
     cas::CasValue,
     content_hash::ContentHash,
     encrypted_secret::EncryptedSecretKey,
+    func::FuncId,
     func_execution::*,
     func_run::{
         ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributeValueId, ComponentId,
@@ -27,9 +33,13 @@ pub use crate::{
         FuncRunBuilderError, FuncRunId, FuncRunState, FuncRunValue,
     },
     func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
+    schema::SchemaId,
+    schema_variant::SchemaVariantId,
+    socket::{InputSocketId, OutputSocketId},
     tenancy::ChangeSetId,
     tenancy::Tenancy,
     tenancy::WorkspacePk,
+    timestamp::Timestamp,
     vector_clock_id::{VectorClockActorId, VectorClockChangeSetId, VectorClockId},
     web_event::WebEvent,
     workspace_snapshot_address::WorkspaceSnapshotAddress,
@@ -84,8 +94,25 @@ macro_rules! id {
                 [0; ::ulid::ULID_LEN]
             }
 
-            /// Converts type into inner [`Ulid`](::ulid::Ulid).
-            pub fn into_inner(self) -> ::ulid::Ulid {
+            /// Constructs a new instance of Self from the given raw identifier.
+            ///
+            /// This function is typically used to consume ownership of the specified identifier.
+            pub fn from_raw_id(value: ::ulid::Ulid) -> Self {
+                Self(value)
+            }
+
+            /// Extracts the raw identifier.
+            ///
+            /// This function is typically used to borrow an owned idenfier.
+            pub fn as_raw_id(&self) -> ::ulid::Ulid {
+                self.0
+            }
+
+            /// Consumes this object, returning the raw underlying identifier.
+            ///
+            /// This function is typically used to transfer ownership of the underlying identifier
+            /// to the caller.
+            pub fn into_raw_id(self) -> ::ulid::Ulid {
                 self.0
             }
         }
@@ -93,12 +120,6 @@ macro_rules! id {
         impl From<$name> for String {
             fn from(id: $name) -> Self {
                 ulid::Ulid::from(id.0).into()
-            }
-        }
-
-        impl<'a> From<&'a $name> for ulid::Ulid {
-            fn from(id: &'a $name) -> Self {
-                id.0
             }
         }
 

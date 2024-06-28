@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import router from "@/router";
@@ -14,16 +13,6 @@ export type ModuleId = string;
 export type ModuleName = string;
 export type ModuleHash = string;
 export type ModuleSlug = ModuleHash;
-
-export interface SchemaVariant {
-  id: string;
-  name: string;
-  schemaName: string;
-  schemaId: string;
-  color: string;
-  inputSockets: DiagramInputSocket[];
-  outputSockets: DiagramOutputSocket[];
-}
 
 export interface ModuleFuncView {
   name: string;
