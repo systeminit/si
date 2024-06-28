@@ -554,17 +554,16 @@ impl PkgExporter {
             builder: PropSpecBuilder,
             prop_id: PropId,
             parent_prop_id: Option<PropId>,
-            inside_map_or_array: bool,
         }
 
-        let mut stack: Vec<(PropId, Option<PropId>, bool)> = Vec::new();
+        let mut stack: Vec<(PropId, Option<PropId>)> = Vec::new();
         for child_tree_node in Prop::direct_child_prop_ids(ctx, root_prop.id()).await? {
-            stack.push((child_tree_node, None, false));
+            stack.push((child_tree_node, None));
         }
 
         let mut traversal_stack: Vec<TraversalStackEntry> = Vec::new();
 
-        while let Some((prop_id, parent_prop_id, inside_map_or_array)) = stack.pop() {
+        while let Some((prop_id, parent_prop_id)) = stack.pop() {
             let child_prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
             let mut builder = PropSpec::builder();
 
@@ -608,16 +607,10 @@ impl PkgExporter {
                 builder,
                 prop_id,
                 parent_prop_id,
-                inside_map_or_array,
             });
 
             for child_tree_node in Prop::direct_child_prop_ids(ctx, child_prop.id).await? {
-                stack.push((
-                    child_tree_node,
-                    Some(prop_id),
-                    matches!(child_prop.kind, PropKind::Array | PropKind::Map)
-                        || inside_map_or_array,
-                ));
+                stack.push((child_tree_node, Some(prop_id)));
             }
         }
 
@@ -702,28 +695,6 @@ impl PkgExporter {
                     inputs.drain(..).for_each(|input| {
                         entry.builder.input(input);
                     });
-                }
-            }
-
-            // TODO: handle default values for complex types. We also cannot set default values for
-            // children of arrays and maps, at any depth (currently), since that requires tracking the
-            // key or index
-            if matches!(
-                entry.builder.get_kind(),
-                Some(PropSpecKind::String)
-                    | Some(PropSpecKind::Number)
-                    | Some(PropSpecKind::Boolean)
-            ) && !entry.inside_map_or_array
-            {
-                if let Some(av_id) = Prop::attribute_values_for_prop_id(ctx, entry.prop_id)
-                    .await?
-                    .pop()
-                {
-                    let av = AttributeValue::get_by_id(ctx, av_id).await?;
-                    if let Some(default_value) = av.value(ctx).await? {
-                        entry.builder.has_data(true);
-                        entry.builder.default_value(default_value);
-                    }
                 }
             }
 
