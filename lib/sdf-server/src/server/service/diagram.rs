@@ -112,6 +112,7 @@ impl IntoResponse for DiagramError {
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
+        error!(error = true, body);
 
         (status, body).into_response()
     }

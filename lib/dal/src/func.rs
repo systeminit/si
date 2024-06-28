@@ -1,7 +1,10 @@
+use authoring::{FuncAuthoringClient, FuncAuthoringError};
 use base64::{engine::general_purpose, Engine};
+use binding::FuncBindingsError;
 use serde::{Deserialize, Serialize};
 use si_events::CasValue;
 use si_events::{ulid::Ulid, ContentHash};
+use si_frontend_types::FuncSummary;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
@@ -31,6 +34,7 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 pub mod argument;
 pub mod authoring;
 pub mod backend;
+pub mod binding;
 pub mod intrinsics;
 pub mod runner;
 pub mod summary;
@@ -60,6 +64,10 @@ pub enum FuncError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] Box<FuncAssociationsError>),
+    #[error("func authoring client error: {0}")]
+    FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
+    #[error("func bindings error: {0}")]
+    FuncBindings(#[from] Box<FuncBindingsError>),
     #[error("func name already in use {0}")]
     FuncNameInUse(String),
     #[error("func to be deleted has associations: {0}")]
@@ -629,6 +637,29 @@ impl Func {
         .await?;
 
         Ok(duplicated_func)
+    }
+
+    pub async fn into_frontend_type(&self, ctx: &DalContext) -> FuncResult<FuncSummary> {
+        let types = [
+            FuncAuthoringClient::compile_return_types(
+                self.backend_response_type,
+                self.backend_kind,
+            ),
+            FuncAuthoringClient::compile_types_from_bindings(ctx, self.id)
+                .await
+                .map_err(Box::new)?
+                .as_str(),
+            FuncAuthoringClient::compile_langjs_types(),
+        ]
+        .join("\n");
+        Ok(FuncSummary {
+            func_id: self.id.into(),
+            kind: self.kind.into(),
+            name: self.name.clone(),
+            display_name: self.display_name.clone(),
+            is_locked: false,
+            types,
+        })
     }
 }
 

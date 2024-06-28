@@ -55,6 +55,18 @@ impl From<LeafKind> for PkgLeafKind {
     }
 }
 
+impl From<LeafInputLocation> for si_frontend_types::func::LeafInputLocation {
+    fn from(value: LeafInputLocation) -> Self {
+        match value {
+            LeafInputLocation::Code => si_frontend_types::func::LeafInputLocation::Code,
+            LeafInputLocation::DeletedAt => si_frontend_types::func::LeafInputLocation::DeletedAt,
+            LeafInputLocation::Domain => si_frontend_types::func::LeafInputLocation::Domain,
+            LeafInputLocation::Resource => si_frontend_types::func::LeafInputLocation::Resource,
+            LeafInputLocation::Secrets => si_frontend_types::func::LeafInputLocation::Secrets,
+        }
+    }
+}
+
 /// This enum provides available child [`Prop`](crate::Prop) trees of [`RootProp`](crate::RootProp)
 /// that can be used as "inputs" for [`Funcs`](crate::Func) on leaves.
 ///

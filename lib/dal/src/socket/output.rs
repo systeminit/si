@@ -495,6 +495,8 @@ impl From<OutputSocket> for frontend_types::OutputSocket {
         Self {
             id: value.id.into(),
             name: value.name,
+            //default to false, but figure out how to do this better
+            eligible_to_recieve_data: false,
         }
     }
 }

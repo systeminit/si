@@ -48,6 +48,7 @@ impl SchemaVariantMetadataView {
                 link: default_schema_variant.link.to_owned(),
                 description: default_schema_variant.description,
                 display_name: default_schema_variant.display_name,
+                is_locked: default_schema_variant.is_locked,
             })
         }
 

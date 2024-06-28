@@ -105,6 +105,14 @@ pub enum AttributePrototypeEventualParent {
 // that the argument is a new one.
 pk!(AttributePrototypeId);
 
+impl Into<si_events::AttributePrototypeId> for AttributePrototypeId {
+    fn into(self) -> si_events::AttributePrototypeId {
+        let mut ulid = Ulid::new();
+        self.clone_into(ulid);
+        ulid.into()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {
     pub id: AttributePrototypeId,

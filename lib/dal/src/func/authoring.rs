@@ -65,6 +65,7 @@ use crate::{
     WsEventError,
 };
 
+use super::binding::{FuncBindings, FuncBindingsError};
 use super::runner::{FuncRunner, FuncRunnerError};
 use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
 
@@ -95,6 +96,8 @@ pub enum FuncAuthoringError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
+    #[error("func bindings error: {0}")]
+    FuncBindings(#[from] FuncBindingsError),
     #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
     FuncCannotHaveAssociations(FuncId, FuncKind, FuncAssociations),
     #[error("func named \"{0}\" already exists in this change set")]
@@ -466,6 +469,38 @@ impl FuncAuthoringClient {
         Ok(())
     }
 
+    pub async fn save_code(
+        ctx: &DalContext,
+        func_id: FuncId,
+        code: String,
+    ) -> FuncAuthoringResult<()> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        Func::modify_by_id(ctx, func.id, |func| {
+            func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
+
+            Ok(())
+        })
+        .await?;
+        Ok(())
+    }
+    pub async fn update_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+        display_name: Option<String>,
+        description: Option<String>,
+    ) -> FuncAuthoringResult<()> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        Func::modify_by_id(ctx, func.id, |func| {
+            display_name.clone_into(&mut func.display_name);
+            description.clone_into(&mut func.description);
+            Ok(())
+        })
+        .await?;
+        Ok(())
+    }
+
     /// Compiles types corresponding to "lang-js".
     pub fn compile_langjs_types() -> &'static str {
         ts_types::compile_langjs_types()
@@ -477,6 +512,12 @@ impl FuncAuthoringClient {
         kind: FuncBackendKind,
     ) -> &'static str {
         ts_types::compile_return_types(response_type, kind)
+    }
+    pub async fn compile_types_from_bindings(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncAuthoringResult<String> {
+        Ok(FuncBindings::compile_types(ctx, func_id).await?)
     }
 }
 

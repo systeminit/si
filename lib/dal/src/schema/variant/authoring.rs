@@ -131,7 +131,7 @@ impl VariantAuthoringClient {
         .await?;
 
         let asset_func_spec = build_asset_func_spec(&asset_func)?;
-        let definition = execute_asset_func(ctx, &asset_func).await?;
+        let definition = Self::execute_asset_func(ctx, &asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
             schema_name: name.clone(),
@@ -188,7 +188,7 @@ impl VariantAuthoringClient {
 
             let cloned_func = old_func.duplicate(ctx, schema_name.clone()).await?;
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
-            let definition = execute_asset_func(ctx, &cloned_func).await?;
+            let definition = Self::execute_asset_func(ctx, &cloned_func).await?;
 
             let metadata = SchemaVariantMetadataJson {
                 schema_name: schema_name.clone(),
@@ -318,7 +318,7 @@ impl VariantAuthoringClient {
         let schema_name = schema_name.into();
 
         let asset_func_spec = build_asset_func_spec(&asset_func)?;
-        let definition = execute_asset_func(ctx, &asset_func).await?;
+        let definition = Self::execute_asset_func(ctx, &asset_func).await?;
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema_name.clone(),
             version: SchemaVariant::generate_version_string(),
@@ -446,7 +446,7 @@ impl VariantAuthoringClient {
             .await?;
 
         let asset_func_spec = build_asset_func_spec(&new_asset_func.clone())?;
-        let definition = execute_asset_func(ctx, &new_asset_func).await?;
+        let definition = Self::execute_asset_func(ctx, &new_asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema_name.clone(),
@@ -559,7 +559,7 @@ impl VariantAuthoringClient {
 
         // Create new schema variant based on the asset func
         let asset_func_spec = build_asset_func_spec(&unlocked_asset_func.clone())?;
-        let definition = execute_asset_func(ctx, &unlocked_asset_func).await?;
+        let definition = Self::execute_asset_func(ctx, &unlocked_asset_func).await?;
 
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema.name.clone(),
@@ -704,6 +704,48 @@ impl VariantAuthoringClient {
             .await?;
         Ok(())
     }
+    pub async fn execute_asset_func(
+        ctx: &DalContext,
+        asset_func: &Func,
+    ) -> VariantAuthoringResult<SchemaVariantJson> {
+        let result_channel = FuncRunner::run_asset_definition_func(ctx, asset_func).await?;
+        let func_run_value = result_channel
+            .await
+            .map_err(|_| VariantAuthoringError::FuncRunGone)??;
+
+        if let Some(error) = func_run_value
+            .value()
+            .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
+            .as_object()
+            .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
+            .get("error")
+            .and_then(|e| e.as_str())
+        {
+            return Err(VariantAuthoringError::FuncExecutionFailure(
+                error.to_owned(),
+            ));
+        }
+        let func_resp = func_run_value
+            .value()
+            .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
+            .as_object()
+            .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
+            .get("definition")
+            .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?;
+
+        ctx.layer_db()
+            .func_run()
+            .set_state_to_success(
+                func_run_value.func_run_id(),
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        Ok(serde_json::from_value::<SchemaVariantJson>(
+            func_resp.to_owned(),
+        )?)
+    }
 }
 
 async fn build_variant_spec_based_on_existing_variant(
@@ -764,49 +806,6 @@ fn build_asset_func_spec(asset_func: &Func) -> VariantAuthoringResult<FuncSpec> 
     Ok(schema_variant_func_spec
         .data(func_spec_data_builder.build()?)
         .build()?)
-}
-
-async fn execute_asset_func(
-    ctx: &DalContext,
-    asset_func: &Func,
-) -> VariantAuthoringResult<SchemaVariantJson> {
-    let result_channel = FuncRunner::run_asset_definition_func(ctx, asset_func).await?;
-    let func_run_value = result_channel
-        .await
-        .map_err(|_| VariantAuthoringError::FuncRunGone)??;
-
-    if let Some(error) = func_run_value
-        .value()
-        .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
-        .as_object()
-        .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
-        .get("error")
-        .and_then(|e| e.as_str())
-    {
-        return Err(VariantAuthoringError::FuncExecutionFailure(
-            error.to_owned(),
-        ));
-    }
-    let func_resp = func_run_value
-        .value()
-        .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
-        .as_object()
-        .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?
-        .get("definition")
-        .ok_or(VariantAuthoringError::FuncExecution(asset_func.id))?;
-
-    ctx.layer_db()
-        .func_run()
-        .set_state_to_success(
-            func_run_value.func_run_id(),
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )
-        .await?;
-
-    Ok(serde_json::from_value::<SchemaVariantJson>(
-        func_resp.to_owned(),
-    )?)
 }
 
 #[allow(clippy::result_large_err)]
