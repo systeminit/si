@@ -69,7 +69,16 @@ pub type QualificationResult<T> = std::result::Result<T, QualificationError>;
 
 impl IntoResponse for QualificationError {
     fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let (status, error_message) = match self {
+            QualificationError::ComponentNotFound(_)
+            | QualificationError::FuncCodeNotFound(_)
+            | QualificationError::FuncNotFound
+            | QualificationError::SchemaNotFound(_)
+            | QualificationError::SchemaVariantNotFound => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
 
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),

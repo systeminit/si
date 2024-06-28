@@ -75,7 +75,13 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
 impl IntoResponse for SchemaVariantError {
     fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let (status, error_message) = match self {
+            SchemaVariantError::FuncNotFound(_)
+            | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
+            | SchemaVariantError::SchemaVariantAssetNotFound(_)
+            | SchemaVariantError::VariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
 
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
