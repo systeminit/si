@@ -443,6 +443,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentResource(): Resource | undefined {
             return this.componentResourceById[this.selectedComponentId || 0];
           },
+          schemaVariantOptions: (state): { label: string; value: string }[] => {
+            return Object.values(state.schemaVariantsById).map((sv) => ({
+              label: sv.displayName || sv.schemaName,
+              value: sv.schemaVariantId,
+            }));
+          },
 
           diagramNodes(): DiagramNodeDef[] {
             const qualificationsStore = useQualificationsStore();
@@ -1131,6 +1137,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async FETCH_COMPONENT_JSON(componentId: ComponentId) {
+            return new ApiRequest<{ json: unknown }>({
+              url: "component/json",
+              keyRequestStatusBy: componentId,
+              params: {
+                componentId,
+                ...visibilityParams,
+              },
+            });
+          },
+
           async FETCH_COMPONENT_DIFF(componentId: ComponentId) {
             return new ApiRequest<{ componentDiff: ComponentDiff }>({
               url: "component/get_diff",
@@ -1141,17 +1158,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.componentDiffsById[componentId] = response.componentDiff;
-              },
-            });
-          },
-
-          async FETCH_COMPONENT_JSON(componentId: ComponentId) {
-            return new ApiRequest<{ json: unknown }>({
-              url: "component/json",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                ...visibilityParams,
               },
             });
           },

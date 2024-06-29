@@ -246,12 +246,10 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { FullComponent, useComponentsStore } from "@/store/components.store";
+import { ActionKind, ActionState, ActionId } from "@/api/sdf/dal/action";
 import {
-  ActionKind,
-  ActionState,
   ActionView,
   useActionsStore,
-  ActionId,
   ActionProposedView,
   ActionHistoryView,
 } from "@/store/actions.store";

@@ -121,16 +121,8 @@ pub fn v2_routes() -> Router<AppState> {
         )
         // Attribute Bindings
         .route(
-            "/:func_id/create_attribute_binding",
-            post(binding::attribute::create_attribute_binding::create_attribute_binding),
-        )
-        .route(
             "/:func_id/reset_attribute_binding",
             post(binding::attribute::reset_attribute_binding::reset_attribute_binding),
-        )
-        .route(
-            "/:func_id/update_attribute_binding",
-            post(binding::attribute::update_attribute_binding::update_attribute_binding),
         )
         // Func Arguments
         .route(

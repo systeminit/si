@@ -232,7 +232,7 @@ const categoryColor = (category: string) => {
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
-    assetStore.setSchemaVariantSelection(result.result.data.id);
+    assetStore.setSchemaVariantSelection(result.result.data.id, true);
     newAssetModalRef.value?.modal?.close();
   } else if (result.result.statusCode === 409) {
     if (newAssetModalRef.value) {

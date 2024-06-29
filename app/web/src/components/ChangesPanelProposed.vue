@@ -51,12 +51,11 @@
 import * as _ from "lodash-es";
 import { ref, reactive, computed } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
+import { ActionId, ActionState } from "@/api/sdf/dal/action";
 import {
   useActionsStore,
   ActionProposedView,
-  ActionId,
   ActionView,
-  ActionState,
 } from "@/store/actions.store";
 import FuncRunTabGroup from "@/components/Actions/FuncRunTabGroup.vue";
 import { FuncRun, useFuncRunsStore } from "@/store/func_runs.store";

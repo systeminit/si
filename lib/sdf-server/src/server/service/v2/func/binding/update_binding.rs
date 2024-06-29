@@ -4,7 +4,10 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{action::ActionBinding, leaf::LeafBinding, FuncBindings},
+    func::binding::{
+        action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
+        AttributeArgumentBinding, FuncBindings,
+    },
     schema::variant::leaves::LeafInputLocation,
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
 };
@@ -32,6 +35,46 @@ pub async fn update_binding(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
     match func.kind {
+        dal::func::FuncKind::Attribute => {
+            for binding in request.bindings {
+                if let frontend_types::FuncBinding::Attribute {
+                    argument_bindings,
+                    attribute_prototype_id,
+                    ..
+                } = binding
+                {
+                    match attribute_prototype_id {
+                        Some(attribute_prototype_id) => {
+                            let mut arguments: Vec<AttributeArgumentBinding> = vec![];
+                            for arg_binding in argument_bindings {
+                                let input_location =
+                                    AttributeArgumentBinding::assemble_attribute_input_location(
+                                        arg_binding.prop_id,
+                                        arg_binding.input_socket_id,
+                                    )?;
+                                arguments.push(AttributeArgumentBinding {
+                                    func_argument_id: arg_binding
+                                        .func_argument_id
+                                        .into_raw_id()
+                                        .into(),
+                                    attribute_func_input_location: input_location,
+                                    attribute_prototype_argument_id: None, // when creating a new prototype,
+                                                                           // we don't have the attribute prototype arguments yet
+                                });
+                            }
+
+                            AttributeBinding::update_attribute_binding_arguments(
+                                &ctx,
+                                attribute_prototype_id.into_raw_id().into(),
+                                arguments,
+                            )
+                            .await?;
+                        }
+                        None => return Err(FuncAPIError::MissingPrototypeId),
+                    }
+                }
+            }
+        }
         dal::func::FuncKind::Action => {
             for binding in request.bindings {
                 if let frontend_types::FuncBinding::Action {

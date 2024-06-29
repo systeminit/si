@@ -22,7 +22,7 @@
 
       <SiFuncListItem
         v-for="func in funcsForKind(kind)"
-        :key="func.id"
+        :key="func.funcId"
         :func="func"
         :context="context"
       />
@@ -48,11 +48,11 @@ import { PropType } from "vue";
 import { PillCounter, TreeNode, Icon } from "@si/vue-lib/design-system";
 import { Dictionary } from "async";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
-import { FuncSummary } from "@/store/func/funcs.store";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,
   customizableFuncKindToFuncKind,
+  FuncSummary,
 } from "@/api/sdf/dal/func";
 
 const props = defineProps({

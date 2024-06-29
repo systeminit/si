@@ -1,85 +1,59 @@
 <template>
   <div class="p-3 flex flex-col gap-xs">
-    <template v-if="!schemaVariantId">
-      <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-        Run this authentication function on components that use the secret kind
-        defined by the component types below.
-      </h1>
-      <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Run on Schema Variant:
-      </h2>
-      <RunOnSelector
-        v-model="selectedVariants"
-        thingLabel="schema variants"
-        :options="schemaVariantOptions"
-        @change="updateAssociations"
-      />
-    </template>
+    <p class="text-sm">You can detach this function above.</p>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, toRef, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Option } from "@/components/SelectMenu.vue";
-import {
-  AuthenticationAssociations,
-  FuncAssociations,
-} from "@/store/func/types";
+import { FuncId } from "@/api/sdf/dal/func";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
-import RunOnSelector from "./RunOnSelector.vue";
+import { useComponentsStore } from "@/store/components.store";
+import { nonNullable } from "@/utils/typescriptLinter";
 
 const funcStore = useFuncStore();
-const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
+const componentsStore = useComponentsStore();
+const { schemaVariantOptions } = storeToRefs(componentsStore);
 
 const props = defineProps<{
-  modelValue: AuthenticationAssociations;
-  schemaVariantId?: string;
+  funcId: FuncId;
+  schemaVariantId?: SchemaVariantId;
 }>();
 
-const modelValue = toRef(props, "modelValue");
+const binding = computed(() => {
+  const bindings = funcStore.authenticationBindings[props.funcId];
+  const binding = bindings
+    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
+    .pop();
+  return binding;
+});
+
+const validSchemaVariantIds = computed(() => {
+  const bindings = funcStore.actionBindings[props.funcId];
+  return bindings?.map((b) => b.schemaVariantId).filter(nonNullable);
+});
 
 const selectedVariants = ref<Option[]>(
-  toOptionValues(schemaVariantOptions.value, modelValue.value.schemaVariantIds),
+  toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []),
 );
 
-const emit = defineEmits<{
-  (e: "update:modelValue", v: AuthenticationAssociations): void;
-  (e: "change", v: AuthenticationAssociations): void;
-}>();
-
 watch(
-  [modelValue, schemaVariantOptions, componentOptions],
-  ([mv, svOpts]) => {
-    selectedVariants.value = toOptionValues(svOpts, mv.schemaVariantIds);
+  [validSchemaVariantIds, schemaVariantOptions],
+  () => {
+    selectedVariants.value = toOptionValues(
+      schemaVariantOptions.value,
+      validSchemaVariantIds.value || [],
+    );
   },
   { immediate: true },
 );
 
-const getUpdatedAssociations = (
-  schemaVariantIds: string[],
-): AuthenticationAssociations => ({
-  schemaVariantIds,
-  type: "authentication",
-});
-
-const updateAssociations = () => {
-  const associations = getUpdatedAssociations(
-    selectedVariants.value.map(({ value }) => value as string),
-  );
-  emit("update:modelValue", associations);
-  emit("change", associations);
-};
-
-const detachFunc = (): FuncAssociations | undefined => {
-  if (props.schemaVariantId) {
-    return getUpdatedAssociations(
-      selectedVariants.value
-        .map(({ value }) => value as string)
-        .filter((schemaVariantId) => schemaVariantId !== props.schemaVariantId),
-    );
-  }
+const detachFunc = () => {
+  if (binding.value) funcStore.DELETE_BINDING(props.funcId, [binding.value]);
 };
 
 defineExpose({ detachFunc });

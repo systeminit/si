@@ -93,7 +93,7 @@ const selectedAsset = computed(() =>
 const selectedAssetFuncCode = computed(() => {
   const fId = selectedAsset.value?.assetFuncId;
   if (!fId) return null;
-  return funcStore.funcDetailsById[fId]?.code;
+  return funcStore.funcCodeById[fId]?.code;
 });
 
 const isReadOnly = computed(() => {

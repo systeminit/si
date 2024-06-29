@@ -7,7 +7,7 @@ import {
   ActionKind,
   ActionPrototypeId,
   ActionResultState,
-} from "./actions.store";
+} from "@/api/sdf/dal/action";
 import { useWorkspacesStore } from "./workspaces.store";
 import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";

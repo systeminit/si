@@ -38,7 +38,9 @@ import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { PropType, computed, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { AttributePrototypeBag } from "@/store/func/types";
+import { FuncKind } from "@/api/sdf/dal/func";
+import { outputSocketsAndPropsFor } from "@/api/sdf/dal/schema";
+import { Option } from "@/components/SelectMenu.vue";
 import { TestStatus } from "./FuncTest.vue";
 
 const componentsStore = useComponentsStore();
@@ -72,78 +74,48 @@ const disableTestButton = computed(
     (props.isAttributeFunc && !selectedPrototypeId.value),
 );
 
-const prototypeIsForSelectedComponent = (
-  prototype: AttributePrototypeBag,
-): boolean => {
-  // First, we need to ensure the component and its asset have been selected . If not, we need to bail.
-  if (!selectedComponentId.value) {
-    return false;
-  }
-
-  // Default to checking if the prototype belongs to the component first. If it doesn't, we need to check
-  // if it belongs its schema variant. If the prototype belongs to neither, it has been orphaned and we need to
-  // error (this should not be possible, but we still want to check).
-  if (prototype.componentId) {
-    return prototype.componentId === selectedComponentId.value;
-  } else if (prototype.schemaVariantId) {
-    return prototype.schemaVariantId === props.schemaVariantId;
-  } else {
-    throw new Error(
-      "prototype has been orphaned: it neither belongs to a component nor a schema variant",
-    );
-  }
-};
-
 // Only for attribute funcs, assemble prototypes that belong to the selected component.
-const prototypeAttributeOptions = computed(
-  (): {
-    label: string;
-    value: string;
-  }[] => {
-    const options = [];
+const prototypeAttributeOptions = computed(() => {
+  let options: Option[] = [];
 
-    // Despite the fact that we can compile prototype options for _all_ components, we should wait until
-    // the user selects a _single_ component.
-    if (!funcStore.selectedFuncId || !selectedComponentId.value) return [];
-    const selectedFunc = funcStore.selectedFuncDetails;
+  // Despite the fact that we can compile prototype options for _all_ components, we should wait until
+  // the user selects a _single_ component.
+  if (!funcStore.selectedFuncId || !selectedComponentId.value) return [];
 
-    if (selectedFunc?.associations?.type === "attribute") {
-      const attributeAssociations = selectedFunc.associations;
-
-      for (const prototype of attributeAssociations.prototypes) {
-        if (prototypeIsForSelectedComponent(prototype)) {
-          // Once we know the prototype belongs to either the selected component or its schema variant,
-          // we assemble the option based on what output location the prototype is bound to. If it is
-          // bound to nowhere, we need to error (this should not be possible, but we still want to check).
-          if (prototype.propId) {
-            options.push({
-              label:
-                funcStore.propIdToSourceName(prototype.propId) ??
-                `Attribute: ${prototype.propId}`,
-              value: prototype.id,
-            });
-          } else if (prototype.outputSocketId) {
-            options.push({
-              label:
-                funcStore.outputSocketIdToSourceName(
-                  prototype.outputSocketId,
-                ) ?? `Output Socket: ${prototype.outputSocketId}`,
-              value: prototype.id,
-            });
-          } else {
-            throw new Error(
-              "prototype to test is not bound to an output location",
-            );
-          }
+  if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
+    funcStore.attributeBindings[funcStore.selectedFuncSummary.funcId]?.forEach(
+      (binding) => {
+        let schemaVariant;
+        if (
+          binding.schemaVariantId &&
+          binding.schemaVariantId === props.schemaVariantId
+        )
+          schemaVariant =
+            componentsStore.schemaVariantsById[binding.schemaVariantId];
+        if (
+          binding.componentId &&
+          binding.componentId === selectedComponentId.value
+        ) {
+          const schemaVariantId =
+            componentsStore.componentsById[binding.componentId]
+              ?.schemaVariantId;
+          if (schemaVariantId)
+            schemaVariant = componentsStore.schemaVariantsById[schemaVariantId];
         }
-      }
-      return options;
-    } else {
-      // If the selected func is not an attribute func, there are no options to assemble.
-      return [];
-    }
-  },
-);
+        if (schemaVariant) {
+          const { socketOptions, propOptions } =
+            outputSocketsAndPropsFor(schemaVariant);
+          options = [...socketOptions, ...propOptions];
+        }
+      },
+    );
+
+    return options;
+  } else {
+    // If the selected func is not an attribute func, there are no options to assemble.
+    return [];
+  }
+});
 
 // We need the user to select a prototype after selecting a component if its an attribute func.
 const loadInputIfNotAttributeFunc = () => {

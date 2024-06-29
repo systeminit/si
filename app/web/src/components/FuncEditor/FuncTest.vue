@@ -7,8 +7,10 @@
         <div
           class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow break-words"
         >
-          Test {{ funcStore.selectedFuncDetails?.kind + " " || "" }}Function
-          <span class="italic">"{{ editingFunc?.name }}"</span>
+          Test {{ funcStore.selectedFuncSummary?.kind + " " || "" }}Function
+          <span class="italic"
+            >"{{ funcStore.selectedFuncSummary?.name }}"</span
+          >
         </div>
         <StatusIndicatorIcon
           v-if="runningTest"
@@ -35,7 +37,9 @@
           ref="funcTestSelectorRef"
           :testStatus="testStatus"
           :schemaVariantId="selectedAsset?.schemaVariantId"
-          :isAttributeFunc="isAttributeFunc"
+          :isAttributeFunc="
+            funcStore.selectedFuncSummary?.kind === FuncKind.Attribute
+          "
           :readyToTest="readyToTest"
           @startTest="startTest"
           @loadInput="loadInput"
@@ -227,7 +231,7 @@ import { computed, ref } from "vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useComponentsStore } from "@/store/components.store";
-import { FuncKind } from "@/api/sdf/dal/func";
+import { FuncKind, LeafInputLocation } from "@/api/sdf/dal/func";
 import { useFuncRunsStore } from "@/store/func_runs.store";
 import FuncTestSelector from "./FuncTestSelector.vue";
 import CodeViewer from "../CodeViewer.vue";
@@ -244,15 +248,9 @@ const additionalOutputInfoModalRef = ref();
 const funcTestSelectorRef = ref<InstanceType<typeof FuncTestSelector>>();
 
 const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
-const editingFuncDetails = computed(() => funcStore.selectedFuncDetails);
-const editingFunc = ref(_.cloneDeep(editingFuncDetails.value));
 
-const isAttributeFunc = computed(() => {
-  if (!funcStore.selectedFuncId) return false;
-  return funcStore.selectedFuncDetails?.associations?.type === "attribute";
-});
 const enableTestTabGroup = computed((): boolean => {
-  if (isAttributeFunc.value) {
+  if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
     if (
       funcTestSelectorRef.value?.selectedComponentId &&
       funcTestSelectorRef.value?.selectedPrototypeId
@@ -279,7 +277,7 @@ const runningTest = ref(false);
 const dryRunConfig = computed(() => {
   // TODO(Wendy) - which function variants allow for a choice of dry run? which are always dry and which are always wet?
   // Note(Paulo): We only support dry run when testing functions
-  if (funcStore.selectedFuncDetails?.kind === FuncKind.Attribute) {
+  if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
     return "dry";
   } else {
     // return "wet";
@@ -363,28 +361,26 @@ const prepareTest = async () => {
 
   resetTestData();
 
-  const selectedFunc = funcStore.selectedFuncDetails;
-
-  if (selectedFunc?.associations?.type === "attribute") {
+  if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
     if (!funcTestSelectorRef.value.selectedPrototypeId) {
       throw new Error(
         "cannot prepare test for attribute func without a selected prototype",
       );
     }
 
-    const prototype = _.find(
-      selectedFunc.associations.prototypes,
-      (p) => p.id === funcTestSelectorRef.value?.selectedPrototypeId,
-    );
-    if (!prototype) {
-      throw new Error(
-        "could not find prototype for selected prototype id when preparing test",
-      );
-    }
+    const propId = funcTestSelectorRef.value.selectedPrototypeId.startsWith(
+      "p_",
+    )
+      ? funcTestSelectorRef.value.selectedPrototypeId.replace("p_", "")
+      : undefined;
+    const outputSocketId =
+      funcTestSelectorRef.value.selectedPrototypeId.startsWith("s_")
+        ? funcTestSelectorRef.value.selectedPrototypeId.replace("s_", "")
+        : undefined;
 
     const res = await funcStore.FETCH_PROTOTYPE_ARGUMENTS(
-      prototype.propId,
-      prototype.outputSocketId,
+      propId,
+      outputSocketId,
     );
     if (!res.result.success) {
       throw new Error(
@@ -399,8 +395,8 @@ const prepareTest = async () => {
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
   } else if (
-    selectedFunc?.associations?.type === "codeGeneration" ||
-    selectedFunc?.associations?.type === "qualification"
+    funcStore.selectedFuncSummary?.kind === FuncKind.CodeGeneration ||
+    funcStore.selectedFuncSummary?.kind === FuncKind.Qualification
   ) {
     const res = await componentsStore.FETCH_COMPONENT_JSON(
       funcTestSelectorRef.value.selectedComponentId,
@@ -432,12 +428,35 @@ const prepareTest = async () => {
     };
 
     const properties: Record<string, unknown> = {};
-    for (const input of selectedFunc.associations.inputs) {
-      if (!props) break;
+    let selectedInputs = [] as LeafInputLocation[];
 
-      const key = toSnakeCase(`${input}`);
-      properties[key] = props[key];
-    }
+    if (funcStore.selectedFuncSummary?.kind === FuncKind.CodeGeneration)
+      selectedInputs =
+        funcStore.codegenBindings[funcStore.selectedFuncId]?.find((b) => {
+          const schemaVariantId =
+            componentsStore.componentsById[
+              funcTestSelectorRef.value?.selectedComponentId || ""
+            ]?.schemaVariantId;
+          if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
+          return false;
+        })?.inputs || [];
+
+    if (funcStore.selectedFuncSummary?.kind === FuncKind.Qualification)
+      selectedInputs =
+        funcStore.qualificationBindings[funcStore.selectedFuncId]?.find((b) => {
+          const schemaVariantId =
+            componentsStore.componentsById[
+              funcTestSelectorRef.value?.selectedComponentId || ""
+            ]?.schemaVariantId;
+          if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
+          return false;
+        })?.inputs || [];
+
+    if (props)
+      for (const input of selectedInputs) {
+        const key = toSnakeCase(`${input}`);
+        properties[key] = props[key];
+      }
 
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
@@ -451,7 +470,7 @@ const prepareTest = async () => {
 
 const startTest = async () => {
   if (
-    !funcStore.selectedFuncDetails ||
+    !funcStore.selectedFuncCode ||
     !funcTestSelectorRef.value?.selectedComponentId ||
     !readyToTest.value
   )
@@ -468,9 +487,9 @@ const startTest = async () => {
   const args = testInputProperties.value;
 
   const response = await funcStore.TEST_EXECUTE({
-    id: funcStore.selectedFuncDetails.id,
+    funcId: funcStore.selectedFuncCode.funcId,
     args,
-    code: funcStore.selectedFuncDetails.code,
+    code: funcStore.selectedFuncCode.code,
     componentId: funcTestSelectorRef.value?.selectedComponentId,
   });
 
