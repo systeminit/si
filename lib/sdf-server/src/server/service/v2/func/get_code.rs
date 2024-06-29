@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{OriginalUri, Path, Query},
     Json,
 };
 use dal::{ChangeSetId, FuncId, WorkspacePk};
@@ -13,8 +13,12 @@ use super::{get_code_response, FuncAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+
+// TODO: find the right way to pass a Vec<FuncId>
+// the API call uses the `id[]=<...>&id[]=<...?` format
+// but that doesn't work here with Rust
 pub struct GetRequest {
-    pub func_ids: Vec<FuncId>,
+    pub id: FuncId,
 }
 
 pub async fn get_code(
@@ -23,15 +27,13 @@ pub async fn get_code(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Json(request): Json<GetRequest>,
+    Query(request): Query<GetRequest>,
 ) -> FuncAPIResult<Json<Vec<FuncCode>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
     let mut funcs = Vec::new();
 
-    for func_id in request.func_ids {
-        funcs.push(get_code_response(&ctx, func_id).await?);
-    }
+    funcs.push(get_code_response(&ctx, request.id).await?);
     Ok(Json(funcs))
 }

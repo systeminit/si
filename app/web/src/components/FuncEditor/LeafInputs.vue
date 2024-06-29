@@ -34,7 +34,7 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { VormInput } from "@si/vue-lib/design-system";
-import { LeafInputLocation } from "@/store/func/types";
+import { LeafInputLocation } from "@/api/sdf/dal/func";
 
 const props = defineProps<{
   modelValue: LeafInputLocation[];

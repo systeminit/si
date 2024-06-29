@@ -181,7 +181,6 @@ import * as _ from "lodash-es";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { useFuncStore } from "@/store/func/funcs.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
@@ -193,7 +192,6 @@ const props = defineProps<{
 
 const ffStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
-const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT",
   props.assetId,
@@ -238,13 +236,13 @@ const updateAsset = async () => {
     editingAsset.value &&
     !_.isEqual(editingAsset.value, assetStore.selectedSchemaVariant)
   ) {
-    const code =
-      funcStore.funcDetailsById[editingAsset.value.assetFuncId]?.code;
-    if (code) await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
-    else
+    // const code = funcStore.funcCodeById[editingAsset.value.assetFuncId]?.code;
+    // if (code)
+    await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
+    /* else
       throw new Error(
         `${editingAsset.value.assetFuncId} Func not found on Variant ${editingAsset.value.schemaVariantId}. This should not happen.`,
-      );
+      ); */
   }
 };
 
@@ -274,7 +272,7 @@ const cloneAsset = async (name: string) => {
     );
     if (result.result.success) {
       cloneAssetModalRef.value?.modal?.close();
-      await assetStore.setSchemaVariantSelection(result.result.data.id);
+      await assetStore.setSchemaVariantSelection(result.result.data.id, true);
     }
   }
 };

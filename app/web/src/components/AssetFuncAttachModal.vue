@@ -35,7 +35,7 @@
           required
           :options="existingFuncOptions"
         />
-        <template v-if="funcKind === FuncKind.Action && !attachExisting">
+        <template v-if="funcKind === FuncKind.Action">
           <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="create"
@@ -141,7 +141,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import { ActionKind } from "@/store/actions.store";
+import { ActionKind } from "@/api/sdf/dal/action";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import {
   CUSTOMIZABLE_FUNC_TYPES,
@@ -149,15 +149,22 @@ import {
   FuncKind,
   FuncId,
   FuncArgumentId,
+  FuncBindingKind,
+  FuncBinding,
+  Authentication,
+  CodeGeneration,
+  Action,
+  Attribute,
+  Qualification,
+  AttributeArgumentBinding,
 } from "@/api/sdf/dal/func";
+import {
+  outputSocketsAndPropsFor,
+  inputSocketsAndPropsFor,
+} from "@/api/sdf/dal/schema";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
-import {
-  CreateFuncOptions,
-  CreateFuncOutputLocation,
-  FuncAssociations,
-} from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
@@ -198,10 +205,16 @@ const name = ref("");
 const funcKind = ref(FuncKind.Action);
 
 const selectedExistingFuncId = ref<FuncId | undefined>();
+const selectedExistingFuncSummary = computed(() => {
+  if (selectedExistingFuncId.value)
+    return funcStore.funcsById[selectedExistingFuncId.value];
+
+  return undefined;
+});
 const selectedFuncCode = ref<string>("");
 const loadFuncDetailsReq = computed(() =>
   selectedExistingFuncId.value
-    ? funcStore.getRequestStatus("FETCH_FUNC", selectedExistingFuncId.value)
+    ? funcStore.getRequestStatus("FETCH_CODE", selectedExistingFuncId.value)
     : undefined,
 );
 
@@ -209,19 +222,13 @@ watch(
   selectedExistingFuncId,
   async (funcId) => {
     if (funcId) {
-      if (
-        !funcStore.funcDetailsById[funcId] ||
-        !funcStore.funcArgumentsByFuncId[funcId]
-      ) {
-        await funcStore.FETCH_FUNC_ARGUMENT_LIST(funcId);
-      } else {
-        selectedFuncCode.value = funcStore.funcDetailsById[funcId]?.code ?? "";
-      }
+      await funcStore.FETCH_CODE(funcId);
+      selectedFuncCode.value = funcStore.funcCodeById[funcId]?.code || "";
 
       editableBindings.value = [];
-      if (func.value?.associations?.type === "attribute") {
+      if (selectedExistingFuncSummary.value?.kind === FuncKind.Attribute) {
         editableBindings.value =
-          funcStore.funcArgumentsByFuncId[func.value.id]?.map((a) => ({
+          selectedExistingFuncSummary.value.arguments?.map((a) => ({
             funcArgumentId: a.id,
             binding: noneSource,
           })) ?? [];
@@ -236,45 +243,20 @@ const existingFuncOptions = computed(() =>
     .filter((func) => func.kind === funcKind.value)
     .map((func) => ({
       label: func.name,
-      value: func.id,
+      value: func.funcId,
     })),
 );
 
-// VormInput does not support object types for option values, so we do transform
-// the value into JSON and parse it back to use it
 const attributeOutputLocation = ref<string | undefined>();
-const attributeOutputLocationParsed = computed<
-  CreateFuncOutputLocation | undefined
->(() => {
-  const parsed = attributeOutputLocation.value
-    ? JSON.parse(attributeOutputLocation.value)
-    : undefined;
-
-  if (parsed) {
-    if ("propId" in parsed && parsed.propId) {
-      return {
-        type: "prop",
-        propId: parsed.propId,
-      };
-    } else if ("outputSocketId" in parsed && parsed.outputSocketId) {
-      return {
-        type: "outputSocket",
-        outputSocketId: parsed.outputSocketId,
-      };
-    }
-  }
-
-  return undefined;
-});
-const attributeOutputLocationOptions = ref<{ label: string; value: string }[]>(
-  [],
-);
+const attributeOutputLocationOptions = ref<Option[]>([]);
 
 const attrToValidate = ref<string | undefined>();
-const validationOptions = ref<{ label: string; value: string }[]>([]);
 
 const assetName = computed(
-  () => assetStore.selectedSchemaVariant?.schemaName ?? " none",
+  () =>
+    assetStore.selectedSchemaVariant?.displayName ??
+    assetStore.selectedSchemaVariant?.schemaName ??
+    " none",
 );
 
 const existingOrNew = computed(() =>
@@ -294,14 +276,14 @@ const attachEnabled = computed(() => {
   const nameIsSet =
     attachExisting.value || !!(name.value && name.value.length > 0);
   const hasOutput =
-    funcKind.value !== FuncKind.Attribute ||
-    !!attributeOutputLocationParsed.value;
+    funcKind.value !== FuncKind.Attribute || !!attributeOutputLocation.value;
   const existingSelected =
     !attachExisting.value || !!selectedExistingFuncId.value;
   const argsConfigured =
     !attachExisting.value ||
     funcKind.value !== FuncKind.Attribute ||
     editableBindings.value.every((b) => b.binding.value !== nilId());
+
   return nameIsSet && hasOutput && existingSelected && argsConfigured;
 });
 
@@ -323,108 +305,25 @@ const open = async (
   selectedExistingFuncId.value = funcId;
   attrToValidate.value = undefined;
 
-  await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId.value);
-  attributeOutputLocationOptions.value = schemaVariantId.value
-    ? funcStore
-        .outputLocationOptionsForSchemaVariant(schemaVariantId.value)
-        .map(({ label, value }) => ({
-          label,
-          value: JSON.stringify(value),
-        }))
-    : [];
+  attributeOutputLocationOptions.value = [];
+  if (props.assetId) {
+    const schemaVariant = assetStore.variantsById[props.assetId];
+    if (schemaVariant) {
+      const { socketOptions, propOptions } =
+        outputSocketsAndPropsFor(schemaVariant);
 
-  validationOptions.value = schemaVariantId.value
-    ? funcStore.propsAsOptionsForSchemaVariant(schemaVariantId.value)
-    : [];
+      attributeOutputLocationOptions.value = [...socketOptions, ...propOptions];
+    }
+  }
 
   openModal();
 };
 
-const newFuncOptions = (
-  funcKind: FuncKind,
-  schemaVariantId: string,
-): CreateFuncOptions => {
-  const baseOptions = {
-    schemaVariantId,
-  };
-
-  let kind = ActionKind.Manual;
-  switch (funcKind) {
-    case FuncKind.Authentication:
-      return {
-        type: "authenticationOptions",
-        ...baseOptions,
-      };
-    case FuncKind.Action:
-      if (isCreate.value) kind = ActionKind.Create;
-      if (isDelete.value) kind = ActionKind.Destroy;
-      if (isRefresh.value) kind = ActionKind.Refresh;
-
-      return {
-        type: "actionOptions",
-        actionKind: kind,
-        ...baseOptions,
-      };
-    case FuncKind.Attribute:
-      if (attributeOutputLocationParsed.value) {
-        return {
-          type: "attributeOptions",
-          outputLocation: attributeOutputLocationParsed.value,
-        };
-      }
-      throw new Error(
-        `attributeOutputLocationParsed not defined for Attribute`,
-      );
-
-    case FuncKind.CodeGeneration:
-      return {
-        type: "codeGenerationOptions",
-        ...baseOptions,
-      };
-    case FuncKind.Qualification:
-      return {
-        type: "qualificationOptions",
-        ...baseOptions,
-      };
-    default:
-      throw new Error(`newFuncOptions not defined for ${funcKind}`);
-  }
-};
-
-const attachToAttributeFunction = async (
-  outputLocation: CreateFuncOutputLocation,
-) => {
-  if (!selectedExistingFuncId.value || !schemaVariantId.value) return;
-  const prototypes = editableBindings.value.map((b) => ({
-    id: nilId(),
-    funcArgumentId: b.funcArgumentId,
-    inputSocketId: b.binding.label.includes("Input Socket")
-      ? (b.binding.value as string)
-      : undefined,
-    propId: b.binding.label.includes("Attribute")
-      ? (b.binding.value as string)
-      : undefined,
-  }));
-  await funcStore.CREATE_ATTRIBUTE_PROTOTYPE(
-    selectedExistingFuncId.value,
-    schemaVariantId.value,
-    prototypes,
-    nilId(),
-    "propId" in outputLocation ? outputLocation.propId : undefined,
-    "outputSocketId" in outputLocation
-      ? outputLocation.outputSocketId
-      : undefined,
-  );
-};
-
+// NOT SURE I NEED THIS
 const reloadAssetAndRoute = async (assetId: string) => {
   await assetStore.LOAD_SCHEMA_VARIANT(assetId);
   close();
 };
-
-const func = computed(
-  () => funcStore.funcDetailsById[selectedExistingFuncId.value ?? -1],
-);
 
 interface EditingBinding {
   funcArgumentId: string;
@@ -433,82 +332,140 @@ interface EditingBinding {
 
 const editableBindings = ref<EditingBinding[]>([]);
 const inputSourceOptions = computed<Option[]>(() => {
-  const selectedVariantId = schemaVariantId.value ?? -1;
-  const socketOptions =
-    funcStore.inputSourceSockets[selectedVariantId]?.map((socket) => ({
-      label: `Input Socket: ${socket.name}`,
-      value: socket.inputSocketId,
-    })) ?? [];
-
-  const propOptions =
-    funcStore.inputSourceProps[selectedVariantId]?.map((prop) => ({
-      label: `Attribute: ${prop.path}`,
-      value: prop.propId,
-    })) ?? [];
+  let socketOptions: Option[] = [];
+  let propOptions: Option[] = [];
+  if (schemaVariantId.value) {
+    const variant = assetStore.variantsById[schemaVariantId.value];
+    if (variant) {
+      ({ socketOptions, propOptions } = inputSocketsAndPropsFor(variant));
+    }
+  }
 
   return socketOptions.concat(propOptions);
 });
 const funcArgumentName = (
   funcArgumentId: FuncArgumentId,
 ): string | undefined => {
-  return funcStore.funcArgumentsById[funcArgumentId]?.name;
+  return selectedExistingFuncSummary.value?.arguments
+    .filter((a) => a.id === funcArgumentId)
+    .pop()?.name;
 };
 const noneSource = { label: "select source", value: nilId() };
 
-const attachExistingFunc = async () => {
-  if (schemaVariantId.value && selectedExistingFuncId.value) {
-    const func = funcStore.funcDetailsById[selectedExistingFuncId.value];
-    if (func) {
-      let updatedAssociations: FuncAssociations | undefined;
-      const associations = func?.associations;
-      if (!associations) {
-        return;
-      }
+const commonBindingConstruction = () => {
+  const binding = {
+    funcId: selectedExistingFuncId.value,
+    schemaVariantId: schemaVariantId.value,
+  } as unknown;
+  switch (funcKind.value) {
+    case FuncKind.Authentication:
+      // eslint-disable-next-line no-case-declarations
+      const auth = binding as Authentication;
+      auth.bindingKind = FuncBindingKind.Authentication;
+      return auth;
+    case FuncKind.Action:
+      // eslint-disable-next-line no-case-declarations
+      const action = binding as Action;
+      action.bindingKind = FuncBindingKind.Action;
+      if (isCreate.value) action.kind = ActionKind.Create;
+      if (isDelete.value) action.kind = ActionKind.Destroy;
+      if (isRefresh.value) action.kind = ActionKind.Refresh;
+      if (!isRefresh.value && !isDelete.value && !isCreate.value)
+        action.kind = ActionKind.Manual;
+      return action;
+    case FuncKind.CodeGeneration:
+      // eslint-disable-next-line no-case-declarations
+      const bind = binding as CodeGeneration;
+      bind.inputs = [];
+      bind.bindingKind = FuncBindingKind.CodeGeneration;
+      return bind;
+    case FuncKind.Qualification:
+      // eslint-disable-next-line no-case-declarations
+      const qual = binding as Qualification;
+      qual.inputs = [];
+      qual.bindingKind = FuncBindingKind.Qualification;
+      return qual;
+    default:
+      return null;
+  }
+};
 
-      switch (associations.type) {
-        case "authentication":
-        case "action":
-        case "codeGeneration":
-        case "qualification":
-          updatedAssociations = _.cloneDeep(associations);
-          updatedAssociations.schemaVariantIds.push(schemaVariantId.value);
-          break;
-        case "attribute":
-          if (attributeOutputLocationParsed.value) {
-            attachToAttributeFunction(attributeOutputLocationParsed.value);
-            if (props.assetId) await reloadAssetAndRoute(props.assetId);
-          }
-          break;
-        default:
-          throw new Error(
-            `type "${
-              (associations as FuncAssociations)?.type
-            }" is not supported by attachExistingFunc`,
-          );
-      }
-      if (updatedAssociations) {
-        func.associations = updatedAssociations;
-        const response = await funcStore.UPDATE_FUNC(func);
-        if (response.result.success && props.assetId) {
-          await reloadAssetAndRoute(props.assetId);
-        }
-      }
+const attachExistingFunc = async () => {
+  const bindings: FuncBinding[] = [];
+
+  const binding = commonBindingConstruction();
+  if (binding) bindings.push(binding);
+
+  if (funcKind.value === FuncKind.Attribute) {
+    const attr = {
+      funcId: selectedExistingFuncId.value,
+      schemaVariantId: schemaVariantId.value,
+      bindingKind: FuncBindingKind.Attribute,
+    } as Attribute;
+    const argBindings: AttributeArgumentBinding[] = [];
+    editableBindings.value.forEach(async (b) => {
+      const arg = {
+        funcArgumentId: b.funcArgumentId,
+      } as AttributeArgumentBinding;
+      const bString = b.binding.value as string;
+      if (bString.startsWith("s_"))
+        arg.inputSocketId = bString.replace("s_", "");
+      else if (bString.startsWith("p_")) arg.propId = bString.replace("p_", "");
+
+      argBindings.push(arg);
+    });
+    attr.argumentBindings = argBindings;
+    if (attributeOutputLocation.value?.startsWith("s_"))
+      attr.outputSocketId = attributeOutputLocation.value.replace("s_", "");
+    else if (attributeOutputLocation.value?.startsWith("p_"))
+      attr.propId = attributeOutputLocation.value.replace("p_", "");
+
+    bindings.push(attr);
+  }
+  if (bindings.length > 0 && selectedExistingFuncId.value) {
+    const response = await funcStore.CREATE_BINDING(
+      selectedExistingFuncId.value,
+      bindings,
+    );
+    if (response.result.success && props.assetId) {
+      await reloadAssetAndRoute(props.assetId);
     }
   }
 };
 
 const attachNewFunc = async () => {
   if (schemaVariantId.value) {
-    const options = newFuncOptions(funcKind.value, schemaVariantId.value);
     createFuncStarted.value = true;
+    let binding = commonBindingConstruction() as FuncBinding;
+    if (!binding) {
+      let outputSocketId;
+      let propId;
+      if (attributeOutputLocation.value?.startsWith("s_"))
+        outputSocketId = attributeOutputLocation.value.replace("s_", "");
+      else if (attributeOutputLocation.value?.startsWith("p_"))
+        propId = attributeOutputLocation.value.replace("p_", "");
+
+      binding = {
+        funcId: selectedExistingFuncId.value,
+        schemaVariantId: schemaVariantId.value,
+        bindingKind: FuncBindingKind.Attribute,
+        argumentBindings: [],
+        propId,
+        outputSocketId,
+        componentId: null,
+        attributePrototypeId: null,
+      } as Attribute;
+    }
     const result = await funcStore.CREATE_FUNC({
-      kind: funcKind.value,
       name: name.value,
-      options,
+      displayName: name.value,
+      description: "",
+      binding,
+      kind: funcKind.value,
     });
     if (result.result.success) {
-      funcStore.selectedFuncId = result.result.data.id;
-      assetStore.addFuncSelection(result.result.data.id);
+      funcStore.selectedFuncId = result.result.data.summary.funcId;
+      assetStore.addFuncSelection(result.result.data.summary.funcId);
       if (props.assetId) await reloadAssetAndRoute(props.assetId);
     }
   }

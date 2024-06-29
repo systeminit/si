@@ -1,6 +1,5 @@
 <template>
   <div class="p-xs flex flex-col gap-xs">
-    <ErrorMessage :requestStatus="props.requestStatus" />
     <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
       <SiCheckBox
         id="create"
@@ -28,53 +27,55 @@
         @update:model-value="setDelete"
       />
     </div>
-    <template v-if="!schemaVariantId">
-      <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Run on Assets of Type:
-      </div>
-      <RunOnSelector
-        v-model="selectedVariants"
-        thingLabel="assets of type"
-        :options="schemaVariantOptions"
-        :disabled="disabled"
-        @change="updateAssociations"
-      />
-    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, toRef, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import { ErrorMessage } from "@si/vue-lib/design-system";
 import { Option } from "@/components/SelectMenu.vue";
-import { ActionAssociations, FuncAssociations } from "@/store/func/types";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { ActionKind } from "@/store/actions.store";
-import RunOnSelector from "./RunOnSelector.vue";
+import { useComponentsStore } from "@/store/components.store";
+import { ActionKind } from "@/api/sdf/dal/action";
+import { FuncId } from "@/api/sdf/dal/func";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { nonNullable } from "@/utils/typescriptLinter";
 
 const funcStore = useFuncStore();
-const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
+const componentsStore = useComponentsStore();
+const { schemaVariantOptions } = storeToRefs(componentsStore);
 
 const props = defineProps<{
-  modelValue: ActionAssociations;
-  schemaVariantId?: string;
+  funcId: FuncId;
+  schemaVariantId: SchemaVariantId;
   disabled?: boolean;
-  requestStatus: ApiRequestStatus;
 }>();
 
 const isCreate = ref(false);
 const isDelete = ref(false);
 const isRefresh = ref(false);
+
+const binding = computed(() => {
+  const bindings = funcStore.actionBindings[props.funcId];
+  const binding = bindings
+    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
+    .pop();
+  return binding;
+});
+
+const validSchemaVariantIds = computed(() => {
+  const bindings = funcStore.actionBindings[props.funcId];
+  return bindings?.map((b) => b.schemaVariantId).filter(nonNullable);
+});
+
 watch(
-  () => props.modelValue.kind,
+  binding,
   () => {
-    isCreate.value = props.modelValue.kind === ActionKind.Create;
-    isDelete.value = props.modelValue.kind === ActionKind.Destroy;
-    isRefresh.value = props.modelValue.kind === ActionKind.Refresh;
+    isCreate.value = binding.value?.kind === ActionKind.Create;
+    isDelete.value = binding.value?.kind === ActionKind.Destroy;
+    isRefresh.value = binding.value?.kind === ActionKind.Refresh;
   },
   { immediate: true },
 );
@@ -100,62 +101,33 @@ const setDelete = () => {
   updateKind();
 };
 
-const modelValue = toRef(props, "modelValue");
-
 const selectedVariants = ref<Option[]>(
-  toOptionValues(schemaVariantOptions.value, modelValue.value.schemaVariantIds),
+  toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []),
 );
 
-const emit = defineEmits<{
-  (e: "update:modelValue", v: ActionAssociations): void;
-  (e: "change", v: ActionAssociations): void;
-  (e: "detach", v: ActionAssociations): void;
-}>();
-
 watch(
-  [modelValue, schemaVariantOptions, componentOptions],
-  ([mv, svOpts]) => {
-    selectedVariants.value = toOptionValues(svOpts, mv.schemaVariantIds);
+  [validSchemaVariantIds, schemaVariantOptions],
+  () => {
+    selectedVariants.value = toOptionValues(
+      schemaVariantOptions.value,
+      validSchemaVariantIds.value || [],
+    );
   },
   { immediate: true },
 );
 
 const updateKind = () => {
-  if (selectedVariants.value.length > 0) {
-    updateAssociations();
+  if (binding.value) {
+    binding.value.kind = ActionKind.Manual;
+    if (isCreate.value) binding.value.kind = ActionKind.Create;
+    if (isDelete.value) binding.value.kind = ActionKind.Destroy;
+    if (isRefresh.value) binding.value.kind = ActionKind.Refresh;
+    funcStore.UPDATE_BINDING(props.funcId, [binding.value]);
   }
 };
 
-const getUpdatedAssociations = (
-  schemaVariantIds: string[],
-): ActionAssociations => {
-  let kind = ActionKind.Manual;
-  if (isCreate.value) kind = ActionKind.Create;
-  if (isDelete.value) kind = ActionKind.Destroy;
-  if (isRefresh.value) kind = ActionKind.Refresh;
-  return {
-    kind,
-    schemaVariantIds,
-    type: "action",
-  };
-};
-
-const updateAssociations = () => {
-  const associations = getUpdatedAssociations(
-    selectedVariants.value.map(({ value }) => value as string),
-  );
-  emit("update:modelValue", associations);
-  emit("change", associations);
-};
-
-const detachFunc = (): FuncAssociations | undefined => {
-  if (props.schemaVariantId) {
-    return getUpdatedAssociations(
-      selectedVariants.value
-        .map(({ value }) => value as string)
-        .filter((schemaVariantId) => schemaVariantId !== props.schemaVariantId),
-    );
-  }
+const detachFunc = () => {
+  if (binding.value) funcStore.DELETE_BINDING(props.funcId, [binding.value]);
 };
 
 defineExpose({ detachFunc });

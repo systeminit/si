@@ -18,12 +18,12 @@
       <CodeEditor
         :id="
           changeSetsStore.headChangeSetId !==
-            changeSetsStore.selectedChangeSetId && selectedFuncDetails
-            ? `func-${selectedFuncDetails.id}`
+            changeSetsStore.selectedChangeSetId && selectedFuncCode
+            ? `func-${selectedFuncCode.funcId}`
             : undefined
         "
         v-model="editingFunc"
-        :typescript="selectedFuncDetails?.types"
+        :typescript="selectedFuncCode?.types"
         @change="updateFuncCode"
         @close="emit('close')"
       />
@@ -52,19 +52,19 @@ const props = defineProps({
 });
 
 const funcStore = useFuncStore();
-const { selectedFuncSummary, selectedFuncDetails } = storeToRefs(funcStore);
+const { selectedFuncSummary, selectedFuncCode } = storeToRefs(funcStore);
 
-const editingFunc = ref<string>(selectedFuncDetails.value?.code ?? "");
+const editingFunc = ref<string>(selectedFuncCode.value?.code ?? "");
 
 const loadFuncDetailsReq = funcStore.getRequestStatus(
-  "FETCH_FUNC",
+  "FETCH_CODE",
   props.funcId,
 );
 
 watch(
-  selectedFuncDetails,
+  selectedFuncCode,
   () => {
-    if (!selectedFuncDetails.value) {
+    if (!selectedFuncCode.value) {
       return;
     }
 
@@ -72,10 +72,10 @@ watch(
     // we will copy the code from each the currently edited func into every func we've edited in
     // the past!
     if (
-      selectedFuncDetails.value.id === props.funcId &&
-      editingFunc.value !== selectedFuncDetails.value.code
+      selectedFuncCode.value.funcId === props.funcId &&
+      editingFunc.value !== selectedFuncCode.value.code
     ) {
-      editingFunc.value = selectedFuncDetails.value.code;
+      editingFunc.value = selectedFuncCode.value.code;
     }
   },
   { immediate: true },

@@ -8,6 +8,14 @@ import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { omit } from "@/utils/omit";
+import {
+  ActionId,
+  ActionKind,
+  ActionPrototype,
+  ActionPrototypeId,
+  ActionState,
+  ActionResultState,
+} from "@/api/sdf/dal/action";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -42,34 +50,12 @@ export type DeprecatedActionBatch = {
   finishedAt: string | null;
 };
 
-export interface ActionPrototype {
-  id: ActionPrototypeId;
-  name: string;
-  displayName: string;
-}
-
 export type ComponentAndAction = {
   actionPrototypeId: ActionPrototypeId;
   actionInstanceId?: ActionId;
   componentId?: ComponentId | null;
   actor?: string;
 } & Omit<ActionPrototype, "id">;
-
-export enum ActionState {
-  Dispatched = "Dispatched",
-  Failed = "Failed",
-  OnHold = "OnHold",
-  Queued = "Queued",
-  Running = "Running",
-}
-
-export enum ActionKind {
-  Create = "Create",
-  Destroy = "Destroy",
-  Refresh = "Refresh",
-  Manual = "Manual",
-  Update = "Update",
-}
 
 export interface ActionView {
   id: ActionId;
@@ -88,12 +74,6 @@ export interface ActionProposedView extends ActionView {
   myDependencies: ActionId[];
   dependentOn: ActionId[];
   holdStatusInfluencedBy: ActionId[];
-}
-
-export enum ActionResultState {
-  Success = "Success",
-  Failure = "Failure",
-  Unknown = "Unknown",
 }
 
 export interface ActionHistoryView extends ActionView {
@@ -117,8 +97,6 @@ export interface ChangeSetDetail {
 
 // STUFF FOR BOTH ACTIONS V1 AND V2
 
-export type ActionPrototypeId = string;
-export type ActionId = string;
 export type FuncRunId = string;
 
 // END STUFF

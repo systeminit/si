@@ -44,9 +44,12 @@
       />
       <template v-if="assetStore.selectedVariantId">
         <FuncDetails
-          v-if="funcStore.selectedFuncId"
+          v-if="
+            funcStore.selectedFuncId &&
+            assetStore.selectedSchemaVariant?.schemaVariantId
+          "
           :funcId="funcStore.selectedFuncId"
-          :schemaVariantId="assetStore.selectedSchemaVariant?.schemaVariantId"
+          :schemaVariantId="assetStore.selectedSchemaVariant.schemaVariantId"
           singleModelScreen
           allowTestPanel
           @expand-panel="rightResizablePanelRef?.maximize()"

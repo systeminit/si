@@ -13,28 +13,39 @@
         @click="openModal()"
       />
     </div>
-    <template v-if="prototypeViews.length > 0">
+    <template v-if="bindings && bindings.length > 0">
       <ul class="flex flex-col p-3 gap-2xs break-words">
-        <li v-for="proto in prototypeViews" :key="proto.id">
+        <li v-for="bind in bindings" :key="bind.attributePrototypeId">
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Asset:
           </h1>
-          <h2 class="pb-xs text-sm">{{ proto.schema }}</h2>
+          <h2 class="pb-xs text-sm">
+            {{
+              componentStore.schemaVariantsById[bind.schemaVariantId || ""]
+                ?.displayName || "N/A"
+            }}
+          </h2>
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Asset version:
           </h1>
-          <h2 class="pb-xs text-sm">{{ proto.schemaVariant }}</h2>
+          <h2 class="pb-xs text-sm">
+            {{
+              componentStore.schemaVariantsById[bind.schemaVariantId || ""]
+                ?.version || "N/A"
+            }}
+          </h2>
 
-          <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
+          <!--<h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Component:
           </h1>
-          <h2 class="pb-xs text-sm">{{ proto.component }}</h2>
+          <h2 class="pb-xs text-sm">{{ componentStore.componentsById[bind.componentId || ""]
+                ?.displayName || "N/A" }}</h2>-->
 
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Output location:
           </h1>
           <h2 class="pb-xs text-sm">
-            {{ proto.outputLocation?.label ?? "no output location set" }}
+            {{ bind.outputDescription }}
           </h2>
 
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -44,13 +55,16 @@
             Below is the source of the data for each function argument listed.
           </h2>
           <ul>
-            <li v-for="arg in proto.args" :key="arg.name">
+            <li v-for="arg in bind.argumentBindings" :key="arg.funcArgumentId">
               <h1
+                v-if="arg.propId"
                 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50"
               >
-                {{ arg.name }}
+                {{ getPropPathFrom(bind.schemaVariantId, arg.propId) }}
               </h1>
-              <h2 class="pb-xs text-sm">{{ arg.path }}</h2>
+              <h2 v-if="arg.inputSocketId" class="pb-xs text-sm">
+                {{ getSocketNameFrom(bind.schemaVariantId, arg.inputSocketId) }}
+              </h2>
             </li>
           </ul>
           <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
@@ -59,31 +73,31 @@
               tone="neutral"
               label="Edit Binding"
               size="md"
-              @click="openModal(proto.id)"
+              @click="openModal(bind)"
             />
             <VButton
-              v-if="!schemaVariantId"
               :disabled="disabled"
               variant="transparent"
               tone="destructive"
               icon="x"
               label="Remove Binding"
               size="md"
-              @click="removeBinding(proto.id)"
+              @click="removeBinding(bind)"
             />
           </div>
         </li>
 
         <AttributeBindingsModal
           ref="bindingsModalRef"
-          :schemaVariantId="schemaVariantId"
+          :funcId="$props.funcId"
+          :schemaVariantId="$props.schemaVariantId"
           type="save"
           @save="saveModal"
         />
       </ul>
     </template>
     <template v-else>
-      <div v-if="schemaVariantId">
+      <div v-if="$props.schemaVariantId">
         <p class="text-neutral-400 dark:text-neutral-300 text-sm p-xs">
           This function is not attached to this schema variant. Use the Attach
           Existing functionality to re-attach it.
@@ -98,93 +112,103 @@
 import { computed, ref } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import {
-  AttributeAssociations,
-  AttributePrototypeBag,
-} from "@/store/func/types";
+  FuncId,
+  Attribute,
+  FuncBindingKind,
+  AttributePrototypeId,
+} from "@/api/sdf/dal/func";
+import { PropId } from "@/api/sdf/dal/prop";
+import { OutputSocketId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { nilId } from "@/utils/nilId";
 import { useComponentsStore } from "@/store/components.store";
+import { nonNullable } from "@/utils/typescriptLinter";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
 const componentStore = useComponentsStore();
 
 const props = defineProps<{
-  modelValue: AttributeAssociations;
-  schemaVariantId?: string;
+  funcId: FuncId;
+  schemaVariantId?: SchemaVariantId;
   disabled?: boolean;
 }>();
 
 const bindingsModalRef = ref<InstanceType<typeof AttributeBindingsModal>>();
 
-const funcArguments = computed(() => funcStore.funcArguments);
-const funcId = computed(() => funcStore.selectedFuncId);
+const binding = computed(() => {
+  if (!props.schemaVariantId) return null;
 
-const associations = computed(
-  () =>
-    funcStore.funcDetailsById[funcId.value as string]
-      ?.associations as AttributeAssociations,
-);
-
-const makeEmptyPrototype = (): AttributePrototypeBag => ({
-  id: nilId(),
-  componentId: nilId(),
-  propId: nilId(),
-  prototypeArguments: funcArguments.value
-    ? funcArguments.value.map(({ id }) => ({
-        funcArgumentId: id,
-      }))
-    : [],
+  const bindings = funcStore.attributeBindings[props.funcId];
+  const binding = bindings
+    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
+    .pop();
+  return binding;
 });
 
-const rehydratePrototype = (
-  existing: AttributePrototypeBag,
-): AttributePrototypeBag => ({
-  id: existing.id,
-  componentId: existing.componentId,
-  propId: existing.propId,
-  prototypeArguments: funcArguments.value
-    ? funcArguments.value.map(({ id }) => {
-        const foundArg = existing.prototypeArguments.find(
-          (protoArg) => protoArg.funcArgumentId === id,
-        );
-        if (foundArg) {
-          return {
-            id: foundArg.id ?? nilId(),
-            funcArgumentId: id,
-            propId: foundArg.propId,
-            inputSocketId: foundArg.inputSocketId,
-          };
-        }
-        return { funcArgumentId: id };
-      })
-    : [],
-});
-
-const removeBinding = async (prototypeId: string) => {
-  await funcStore.REMOVE_ATTRIBUTE_PROTOTYPE(prototypeId);
+const getPropPathFrom = (
+  schemaVariantId: SchemaVariantId | null,
+  propId: PropId,
+) => {
+  return componentStore.schemaVariantsById[schemaVariantId || ""]?.props.find(
+    (p) => (p.id === propId ? p : null),
+  )?.path;
 };
 
-const addOrUpdateBinding = async (prototype: AttributePrototypeBag) => {
-  if (prototype.id !== nilId()) {
-    // update prototype
-    await funcStore.UPDATE_ATTRIBUTE_PROTOTYPE(
-      funcId.value as string,
-      prototype.id as string,
-      prototype.prototypeArguments,
-      prototype.propId,
-      prototype.outputSocketId,
-    );
+const getSocketNameFrom = (
+  schemaVariantId: SchemaVariantId | null,
+  outputSocketId: OutputSocketId,
+) => {
+  return componentStore.schemaVariantsById[
+    schemaVariantId || ""
+  ]?.outputSockets.find((o) => (o.id === outputSocketId ? o : null))?.name;
+};
+
+interface ExtendedBinding extends Attribute {
+  outputDescription: string;
+  attributePrototypeId: AttributePrototypeId;
+}
+const bindings = computed(() => {
+  let b;
+  if (props.schemaVariantId) b = [binding.value];
+  else {
+    b = funcStore.attributeBindings[props.funcId];
+  }
+  b = ((b as ExtendedBinding[]) || []).filter(nonNullable);
+  return b.map((_b) => {
+    if (_b.outputSocketId) {
+      _b.outputDescription =
+        getSocketNameFrom(_b.schemaVariantId, _b.outputSocketId) || "N/A";
+    }
+    if (_b.propId) {
+      _b.outputDescription =
+        getPropPathFrom(_b.schemaVariantId, _b.propId) || "N/A";
+    }
+    return _b;
+  });
+});
+
+const makeBinding = () => {
+  return {
+    bindingKind: FuncBindingKind.Attribute,
+    funcId: props.funcId,
+    attributePrototypeId: null,
+    schemaVariantId: props.schemaVariantId,
+    componentId: null,
+    propId: null,
+    outputSocketId: null,
+    argumentBindings: [],
+  } as Attribute;
+};
+
+const removeBinding = async (binding: Attribute) => {
+  await funcStore.RESET_ATTRIBUTE_BINDING(props.funcId, [binding]);
+};
+
+const addOrUpdateBinding = async (binding: Attribute) => {
+  if (binding.attributePrototypeId) {
+    await funcStore.UPDATE_BINDING(props.funcId, [binding]);
   } else {
-    // create new prototype
-    await funcStore.CREATE_ATTRIBUTE_PROTOTYPE(
-      funcId.value as string,
-      prototype.schemaVariantId as string,
-      prototype.prototypeArguments,
-      prototype.componentId,
-      prototype.propId,
-      prototype.outputSocketId,
-    );
+    await funcStore.CREATE_BINDING(props.funcId, [binding]);
   }
 };
 
@@ -192,96 +216,22 @@ const closeModal = () => {
   bindingsModalRef.value?.close();
 };
 
-const saveModal = (prototype?: AttributePrototypeBag) => {
-  if (prototype) {
-    addOrUpdateBinding(prototype);
+const saveModal = (binding?: Attribute) => {
+  if (binding) {
+    addOrUpdateBinding(binding);
   }
   closeModal();
 };
 
-const openModal = (prototypeId?: string) => {
-  const prototype = prototypeId
-    ? associations.value.prototypes.find((proto) => proto.id === prototypeId)
-    : makeEmptyPrototype();
+const openModal = (binding?: Attribute) => {
+  if (!binding) binding = makeBinding();
 
-  if (prototype) {
-    const proto = rehydratePrototype(prototype);
-    bindingsModalRef.value?.open(proto);
-  }
+  bindingsModalRef.value?.open(binding);
 };
 
-const prototypeViews = computed(() => {
-  const validPrototypes = associations.value.prototypes.filter((proto) => {
-    // If no sv id on component, don't filter at all
-    if (props.schemaVariantId === undefined) {
-      return true;
-    }
-
-    const schemaVariantId =
-      funcStore.schemaVariantIdForPrototypeTargetId[
-        proto.propId ?? proto.outputSocketId ?? ""
-      ];
-
-    return schemaVariantId === props.schemaVariantId;
-  });
-
-  return validPrototypes.map((proto) => {
-    const schemaVariantId =
-      funcStore.schemaVariantIdForPrototypeTargetId[
-        proto.propId ?? proto.outputSocketId ?? ""
-      ];
-
-    const schemaVariant =
-      componentStore.schemaVariantsById[schemaVariantId ?? ""];
-    const name = schemaVariant?.displayName || "none";
-    const schema = schemaVariant?.schemaName || "none";
-    const component =
-      funcStore.componentOptions.find((c) => c.value === proto.componentId)
-        ?.label ?? "all";
-
-    const outputLocation = funcStore.outputLocationForAttributePrototype(proto);
-    const args = funcStore.funcArguments?.map((funcArg) => ({
-      name: funcArg.name,
-      path: (() => {
-        const protoArg = proto.prototypeArguments.find(
-          (protoArg) => protoArg.funcArgumentId === funcArg.id,
-        );
-        if (protoArg) {
-          return (
-            funcStore.propIdToSourceName(protoArg.propId ?? nilId()) ??
-            funcStore.inputSocketIdToSourceName(
-              protoArg.inputSocketId ?? nilId(),
-            ) ??
-            "none"
-          );
-        }
-        return "none";
-      })(),
-    }));
-
-    return {
-      id: proto.id,
-      schema,
-      schemaVariant: name,
-      component,
-      outputLocation,
-      args,
-    };
-  });
-});
-
-const detachFunc = async (): Promise<undefined> => {
-  if (props.schemaVariantId) {
-    const prototype = associations.value.prototypes.find(
-      (proto) =>
-        funcStore.schemaVariantIdForPrototypeTargetId[
-          proto.propId ?? proto.outputSocketId ?? ""
-        ] === props.schemaVariantId,
-    );
-    // todo: remove the binding when the user hits the detach button
-    await removeBinding(prototype?.id as string);
-    return;
-  }
+const detachFunc = async () => {
+  if (binding.value)
+    funcStore.RESET_ATTRIBUTE_BINDING(props.funcId, [binding.value]);
 };
 
 defineExpose({ detachFunc });
