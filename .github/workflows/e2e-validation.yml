@@ -24,7 +24,7 @@ jobs:
     outputs:
       tests: ${{ steps.tests.outputs.tests }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: tests
         working-directory: app/web/cypress/e2e
         run: |
@@ -53,15 +53,15 @@ jobs:
         tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18.18.2'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
             version: 8.10.5
 
