@@ -4,7 +4,10 @@ use ulid::Ulid;
 use url::Url;
 
 use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
-use crate::{IndexClientError, IndexClientResult, ModuleDetailsResponse};
+use crate::{
+    IndexClientError, IndexClientResult, ModuleDetailsResponse, MODULE_BASED_ON_HASH_NAME,
+    MODULE_BUNDLE_FIELD_NAME,
+};
 
 #[derive(Debug, Clone)]
 pub struct IndexClient {
@@ -80,15 +83,26 @@ impl IndexClient {
         &self,
         module_name: &str,
         module_version: &str,
+        module_based_on_hash: Option<String>,
         module_bytes: Vec<u8>,
     ) -> IndexClientResult<ModuleDetailsResponse> {
         let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
             .file_name(format!("{module_name}_{module_version}.tar"));
 
+        let mut multipart_form =
+            reqwest::multipart::Form::new().part(MODULE_BUNDLE_FIELD_NAME, module_upload_part);
+
+        if let Some(module_based_on_hash) = module_based_on_hash {
+            multipart_form = multipart_form.part(
+                MODULE_BASED_ON_HASH_NAME,
+                reqwest::multipart::Part::text(module_based_on_hash),
+            );
+        }
+
         let upload_url = self.base_url.join("modules")?;
         let upload_response = reqwest::Client::new()
             .post(upload_url)
-            .multipart(reqwest::multipart::Form::new().part("module bundle", module_upload_part))
+            .multipart(multipart_form)
             .bearer_auth(&self.auth_token)
             .send()
             .await?

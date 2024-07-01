@@ -3,6 +3,7 @@ use crate::server::tracking::track;
 use crate::service::module::{ModuleError, ModuleResult};
 use axum::extract::OriginalUri;
 use axum::Json;
+use dal::module::Module;
 use dal::pkg::export::PkgExporter;
 use dal::{HistoryActor, SchemaVariant, SchemaVariantId, User, Visibility};
 use serde::{Deserialize, Serialize};
@@ -77,6 +78,17 @@ pub async fn export_module(
         schema_ids.push(schema.id());
     }
 
+    let based_on_hash = if schema_ids.len() == 1 {
+        match schema_ids.first().copied() {
+            None => None,
+            Some(schema_id) => Module::find_for_schema_id(&ctx, schema_id)
+                .await?
+                .map(|module| module.root_hash().to_string()),
+        }
+    } else {
+        None
+    };
+
     let mut exporter = PkgExporter::new_module_exporter(
         &request.name,
         &request.version,
@@ -90,7 +102,12 @@ pub async fn export_module(
     let index_client =
         module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let response = index_client
-        .upload_module(request.name.trim(), request.version.trim(), module_payload)
+        .upload_module(
+            request.name.trim(),
+            request.version.trim(),
+            based_on_hash,
+            module_payload,
+        )
         .await?;
 
     track(
