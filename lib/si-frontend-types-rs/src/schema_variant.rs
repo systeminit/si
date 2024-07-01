@@ -64,7 +64,7 @@ pub struct InputSocket {
 pub struct OutputSocket {
     pub id: OutputSocketId,
     pub name: String,
-    pub eligible_to_recieve_data: bool,
+    pub eligible_to_receive_data: bool,
 }
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

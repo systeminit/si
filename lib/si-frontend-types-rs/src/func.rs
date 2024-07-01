@@ -30,6 +30,7 @@ pub struct FuncSummary {
     pub display_name: Option<String>,
     pub is_locked: bool,
     pub arguments: Vec<FuncArgument>,
+    #[serde(flatten)]
     pub bindings: FuncBindings,
 }
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]

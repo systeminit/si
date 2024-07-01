@@ -10,12 +10,12 @@ use dal::{
         authoring::FuncAuthoringClient,
         binding::{
             AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
-            EventualParent, FuncBindings,
+            EventualParent,
         },
         FuncKind,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, Func, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
 };
 use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
 
@@ -40,7 +40,6 @@ pub struct CreateFuncRequest {
 pub struct CreateFuncResponse {
     summary: FuncSummary,
     code: FuncCode,
-    binding: frontend_types::FuncBindings,
 }
 
 pub async fn create_func(
@@ -64,7 +63,7 @@ pub async fn create_func(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let created_func_response = match request.kind {
+    let func = match request.kind {
         FuncKind::Action => {
             if let FuncBinding::Action {
                 schema_variant_id: Some(schema_variant_id),
@@ -72,23 +71,13 @@ pub async fn create_func(
                 ..
             } = request.binding
             {
-                let created_func = FuncAuthoringClient::create_new_action_func(
+                FuncAuthoringClient::create_new_action_func(
                     &ctx,
                     request.name,
                     kind.into(),
                     schema_variant_id.into(),
                 )
-                .await?;
-
-                let func = Func::get_by_id_or_error(&ctx, created_func.id).await?;
-                let binding = FuncBindings::from_func_id(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type();
-                CreateFuncResponse {
-                    summary: func.into_frontend_type(&ctx).await?,
-                    code: get_code_response(&ctx, created_func.id).await?,
-                    binding,
-                }
+                .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -129,24 +118,14 @@ pub async fn create_func(
                     });
                 }
 
-                let created_func = FuncAuthoringClient::create_new_attribute_func(
+                FuncAuthoringClient::create_new_attribute_func(
                     &ctx,
                     request.name,
                     eventual_parent,
                     output_location,
                     arg_bindings,
                 )
-                .await?;
-
-                let binding = FuncBindings::from_func_id(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type();
-                let func = Func::get_by_id_or_error(&ctx, created_func.id).await?;
-                CreateFuncResponse {
-                    summary: func.into_frontend_type(&ctx).await?,
-                    code: get_code_response(&ctx, func.id).await?,
-                    binding,
-                }
+                .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -157,22 +136,12 @@ pub async fn create_func(
                 func_id: _,
             } = request.binding
             {
-                let created_func = FuncAuthoringClient::create_new_auth_func(
+                FuncAuthoringClient::create_new_auth_func(
                     &ctx,
                     request.name,
                     schema_variant_id.into(),
                 )
-                .await?;
-
-                let binding = FuncBindings::from_func_id(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type();
-                let new_func = Func::get_by_id_or_error(&ctx, created_func.id).await?;
-                CreateFuncResponse {
-                    summary: new_func.into_frontend_type(&ctx).await?,
-                    code: get_code_response(&ctx, created_func.id).await?,
-                    binding,
-                }
+                .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -189,23 +158,14 @@ pub async fn create_func(
                 } else {
                     inputs.into_iter().map(|input| input.into()).collect()
                 };
-                let created_func = FuncAuthoringClient::create_new_leaf_func(
+                FuncAuthoringClient::create_new_leaf_func(
                     &ctx,
                     request.name,
                     LeafKind::CodeGeneration,
                     EventualParent::SchemaVariant(schema_variant_id.into()),
                     &inputs,
                 )
-                .await?;
-                let binding = FuncBindings::from_func_id(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type();
-                let new_func = Func::get_by_id_or_error(&ctx, created_func.id).await?;
-                CreateFuncResponse {
-                    summary: new_func.into_frontend_type(&ctx).await?,
-                    code: get_code_response(&ctx, created_func.id).await?,
-                    binding,
-                }
+                .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -223,39 +183,25 @@ pub async fn create_func(
                     inputs.into_iter().map(|input| input.into()).collect()
                 };
 
-                let created_func = FuncAuthoringClient::create_new_leaf_func(
+                FuncAuthoringClient::create_new_leaf_func(
                     &ctx,
                     request.name,
                     LeafKind::Qualification,
                     EventualParent::SchemaVariant(schema_variant_id.into()),
                     &inputs,
                 )
-                .await?;
-                let binding = FuncBindings::from_func_id(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type();
-                let new_func = Func::get_by_id_or_error(&ctx, created_func.id)
-                    .await?
-                    .into_frontend_type(&ctx)
-                    .await?;
-                CreateFuncResponse {
-                    summary: new_func,
-                    code: get_code_response(&ctx, created_func.id).await?,
-                    binding,
-                }
+                .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
         }
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     };
-    let types = get_types(
-        &ctx,
-        created_func_response.summary.func_id.into_raw_id().into(),
-    )
-    .await?;
 
-    WsEvent::func_created(&ctx, created_func_response.summary.clone(), types)
+    let types = get_types(&ctx, func.id).await?;
+    let code = get_code_response(&ctx, func.id).await?;
+    let summary = func.into_frontend_type(&ctx).await?;
+    WsEvent::func_created(&ctx, summary.clone(), types)
         .await?
         .publish_on_commit(&ctx)
         .await?;
@@ -266,9 +212,9 @@ pub async fn create_func(
         "created_func",
         serde_json::json!({
             "how": "/func/created_func",
-            "func_id": created_func_response.summary.func_id,
-            "func_name": created_func_response.summary.name.to_owned(),
-            "func_kind": created_func_response.summary.kind,
+            "func_id": summary.func_id,
+            "func_name": summary.name.to_owned(),
+            "func_kind": summary.kind,
         }),
     );
 
@@ -280,5 +226,8 @@ pub async fn create_func(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(response.body(serde_json::to_string(&created_func_response)?)?)
+    Ok(response.body(serde_json::to_string(&CreateFuncResponse {
+        summary,
+        code,
+    })?)?)
 }

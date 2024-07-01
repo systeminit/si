@@ -147,6 +147,7 @@ pub fn v2_routes() -> Router<AppState> {
         )
 }
 
+// helper to assemble the front end struct to return the code and types so SDF can decide when these events need to fire
 pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<FuncCode> {
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
     let code = func.code_plaintext()?.unwrap_or("".to_string());
@@ -156,6 +157,8 @@ pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResu
         types: get_types(ctx, func_id).await?,
     })
 }
+
+// helper to get updated types to fire WSEvents so SDF can decide when these events need to fire
 pub async fn get_types(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<String> {
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
     let types = [

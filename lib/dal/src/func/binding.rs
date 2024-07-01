@@ -537,21 +537,22 @@ impl FuncBindings {
 #[serde(rename_all = "camelCase")]
 pub struct FuncBindingsWsEventPayload {
     change_set_id: ChangeSetId,
-    func_bindings: si_frontend_types::FuncBindings,
+    #[serde(flatten)]
+    bindings: si_frontend_types::FuncBindings,
     types: String,
 }
 
 impl WsEvent {
     pub async fn func_bindings_updated(
         ctx: &DalContext,
-        func_bindings: si_frontend_types::FuncBindings,
+        bindings: si_frontend_types::FuncBindings,
         types: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FuncBindingsUpdated(FuncBindingsWsEventPayload {
                 change_set_id: ctx.change_set_id(),
-                func_bindings,
+                bindings,
                 types,
             }),
         )

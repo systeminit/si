@@ -1049,7 +1049,6 @@ impl FuncRunner {
 
         let mut funcs_and_secrets = vec![];
         for secret_prop_id in secret_props {
-            // if manually set: do this
             let auth_funcs = Self::auth_funcs_for_secret_prop_id(
                 ctx,
                 secret_prop_id,
@@ -1080,17 +1079,6 @@ impl FuncRunner {
                     Err(other_err) => return Err(other_err)?,
                 }
             }
-            // if not manually set - find input socket
-            // find connected / inferred matching output socket
-            // find component of output socket
-            // find sv of component
-            // get auth func for it
-
-            // check it's secret props - repeat ---
-            // if manually set do the above
-            // if not, check input socket
-
-            // on and on
 
             if let Some(value) = maybe_value {
                 let key = Secret::key_from_value_in_attribute_value(value)?;
