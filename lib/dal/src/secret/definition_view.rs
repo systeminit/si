@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::prop::{PropError, PropPath};
 use crate::property_editor::schema::PropertyEditorPropWidgetKind;
-use crate::schema::variant::root_prop::RootPropChild;
 use crate::{DalContext, Prop, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId};
 
 #[allow(missing_docs)]
@@ -81,16 +81,14 @@ impl SecretDefinitionView {
             });
         }
 
-        // Get the name from the (hopefully) only child of secrets prop.
-        let secrets_prop_id =
-            SchemaVariant::find_root_child_prop_id(ctx, schema_variant_id, RootPropChild::Secrets)
+        // Get the secret output socket corresponding to the definition. There should only be one
+        // output socket as secret defining schema variants are required to have one and only one.
+        let secret_output_socket =
+            SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
                 .await?;
 
-        let entry_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop_id).await?;
-        let entry_prop = Prop::get_by_id_or_error(ctx, entry_prop_id).await?;
-
         Ok(Self {
-            secret_definition: entry_prop.name,
+            secret_definition: secret_output_socket.name().to_owned(),
             form_data: form_data_views,
         })
     }

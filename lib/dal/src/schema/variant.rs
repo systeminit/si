@@ -144,6 +144,10 @@ pub enum SchemaVariantError {
     Schema(#[from] SchemaError),
     #[error("schema not found for schema variant: {0}")]
     SchemaNotFound(SchemaVariantId),
+    #[error("secret defining schema variant ({0}) has no output sockets and needs one for the secret corresponding to its secret definition")]
+    SecretDefiningSchemaVariantMissingOutputSocket(SchemaVariantId),
+    #[error("found too many output sockets ({0:?}) for secret defining schema variant ({1})")]
+    SecretDefiningSchemaVariantTooManyOutputSockets(Vec<OutputSocketId>, SchemaVariantId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("spec error: {0}")]
@@ -1887,5 +1891,51 @@ impl SchemaVariant {
     pub fn generate_version_string() -> String {
         let date = Utc::now();
         format!("{}", date.format("%Y%m%d%H%M%S"))
+    }
+
+    /// Lists all default [`SchemaVariantIds`](SchemaVariant) that have a secret definition.
+    pub async fn list_default_secret_defining_ids(
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let mut ids = Vec::new();
+        for maybe_secret_defining_id in Self::list_default_ids(ctx).await? {
+            if Prop::find_prop_id_by_path_opt(
+                ctx,
+                maybe_secret_defining_id,
+                &PropPath::new(["root", "secret_definition"]),
+            )
+            .await?
+            .is_some()
+            {
+                ids.push(maybe_secret_defining_id);
+            }
+        }
+        Ok(ids)
+    }
+
+    /// Finds the secret [`OutputSocket`] corresponding to the secret definition. There should only be one
+    /// [`OutputSocket`] as secret defining [`SchemaVariants`](SchemaVariant) are required to have one and only one.
+    ///
+    /// _Warning: this function does not validate that the [`SchemaVariantId`](SchemaVariant) passed in corresponds to
+    /// an actual secret defining [`SchemaVariant`]. Knowing that is the responsibility of the caller._
+    pub async fn find_output_socket_for_secret_defining_id(
+        ctx: &DalContext,
+        secret_defining_id: SchemaVariantId,
+    ) -> SchemaVariantResult<OutputSocket> {
+        let (output_sockets, _) = SchemaVariant::list_all_sockets(ctx, secret_defining_id).await?;
+        if output_sockets.len() > 1 {
+            let output_socket_ids: Vec<OutputSocketId> =
+                output_sockets.iter().map(|s| s.id()).collect();
+            return Err(
+                SchemaVariantError::SecretDefiningSchemaVariantTooManyOutputSockets(
+                    output_socket_ids,
+                    secret_defining_id,
+                ),
+            );
+        }
+        let secret_output_socket = output_sockets.first().ok_or(
+            SchemaVariantError::SecretDefiningSchemaVariantMissingOutputSocket(secret_defining_id),
+        )?;
+        Ok(secret_output_socket.to_owned())
     }
 }

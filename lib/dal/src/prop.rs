@@ -561,7 +561,7 @@ impl Prop {
         }
     }
 
-    pub async fn direct_child_prop_ids(
+    pub async fn direct_child_prop_ids_unordered(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<PropId>> {
@@ -595,7 +595,7 @@ impl Prop {
         prop_id: PropId,
     ) -> PropResult<PropId> {
         let mut direct_child_prop_ids_should_only_be_one =
-            Self::direct_child_prop_ids(ctx, prop_id).await?;
+            Self::direct_child_prop_ids_unordered(ctx, prop_id).await?;
 
         let single_child_prop_id = direct_child_prop_ids_should_only_be_one
             .pop()

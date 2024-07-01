@@ -185,7 +185,7 @@ impl AttributePrototypeDebugView {
                             .await?
                         {
                             let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+                                AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
                             let prop_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
                             let view = attribute_value.view(ctx).await?.unwrap_or(Value::Null);
@@ -212,7 +212,7 @@ impl AttributePrototypeDebugView {
                             .await?
                         {
                             let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+                                AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
@@ -241,7 +241,7 @@ impl AttributePrototypeDebugView {
                             .await?
                         {
                             let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+                                AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
@@ -297,7 +297,8 @@ impl AttributePrototypeDebugView {
                     let attribute_value_path =
                         AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
                     let output_av =
-                        AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
+                        AttributeValue::get_by_id_or_error(ctx, output_match.attribute_value_id)
+                            .await?;
                     let value_view = output_av.view(ctx).await?.unwrap_or(Value::Null);
                     let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
                     if let Some(func_argument) =

@@ -60,7 +60,8 @@ impl PropertyEditorValues {
         let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
         let root_prop_id =
             AttributeValue::prop_id_for_id_or_error(ctx, root_attribute_value_id).await?;
-        let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
+        let root_attribute_value =
+            AttributeValue::get_by_id_or_error(ctx, root_attribute_value_id).await?;
 
         let validation =
             ValidationOutputNode::find_for_attribute_value_id(ctx, root_attribute_value_id)
@@ -144,7 +145,8 @@ impl PropertyEditorValues {
             for (child_av_id, key) in cache {
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let child_attribute_value = AttributeValue::get_by_id(ctx, child_av_id).await?;
+                let child_attribute_value =
+                    AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
                 let prop_id_for_child_attribute_value =
                     AttributeValue::prop_id_for_id_or_error(ctx, child_av_id).await?;
                 let child_property_editor_value_id = PropertyEditorValueId::from(child_av_id);
@@ -249,7 +251,9 @@ impl PropertyEditorValues {
             ids_by_key
         };
 
-        for secret_prop_id in Prop::direct_child_prop_ids(ctx, secret_object_prop_id).await? {
+        for secret_prop_id in
+            Prop::direct_child_prop_ids_unordered(ctx, secret_object_prop_id).await?
+        {
             let attribute_value_id = self.find_by_prop_id(secret_prop_id).ok_or(
                 PropertyEditorError::PropertyEditorValueNotFoundByPropId(secret_object_prop_id),
             )?;

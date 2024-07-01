@@ -337,7 +337,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -379,7 +379,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -421,7 +421,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -601,7 +601,7 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -638,7 +638,7 @@ async fn remove_connection(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)

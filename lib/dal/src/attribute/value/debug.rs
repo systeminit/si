@@ -80,7 +80,7 @@ impl AttributeDebugView {
         key: Option<String>,
         parent_id: Option<AttributeValueId>,
     ) -> AttributeDebugViewResult<AttributeDebugView> {
-        let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
         let prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
         let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
 

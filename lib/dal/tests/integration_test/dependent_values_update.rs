@@ -132,7 +132,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -177,7 +177,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -298,7 +298,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -341,7 +341,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -384,7 +384,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
+    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
