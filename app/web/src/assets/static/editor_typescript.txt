@@ -612,12 +612,15 @@ declare class PropBuilder implements IPropBuilder {
 
 interface SecretPropDefinition extends PropDefinition {
   hasInputSocket: boolean;
+  connectionAnnotation: string;
 }
 
 interface ISecretPropBuilder {
   setName(name: string): this;
 
   setSecretKind(kind: string): this;
+  
+  setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;
 
@@ -665,6 +668,8 @@ declare class SecretPropBuilder implements ISecretPropBuilder {
    * .setSecretKind("DigitalOcean Credential")
    */
   setSecretKind(kind: string): this;
+  
+  setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;
 
