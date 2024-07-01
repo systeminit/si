@@ -5,17 +5,20 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
-use module_index_client::{FuncMetadata, ModuleDetailsResponse};
+use module_index_client::{
+    FuncMetadata, ModuleDetailsResponse, MODULE_BASED_ON_HASH_NAME, MODULE_BUNDLE_FIELD_NAME,
+};
 use s3::error::S3Error;
-use sea_orm::{ActiveModelTrait, DbErr, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, Set};
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError, SiPkgKind};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
-    models::si_module,
+    models::si_module::{self, ModuleKind, SchemaId},
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -65,26 +68,55 @@ pub async fn upsert_module_route(
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
 ) -> Result<Json<ModuleDetailsResponse>, UpsertModuleError> {
-    info!("Upsert module");
-    let field = match multipart.next_field().await.unwrap() {
-        Some(f) => f,
-        None => return Err(UpsertModuleError::UploadRequiredError),
-    };
-    info!("Found multipart field");
-    let data = field.bytes().await?;
-    info!("Got part data");
+    let mut module_data = None;
+    let mut module_based_on_hash = None;
+    while let Some(field) = multipart.next_field().await? {
+        match field.name() {
+            Some(MODULE_BUNDLE_FIELD_NAME) => {
+                module_data = Some(field.bytes().await?);
+            }
+            Some(MODULE_BASED_ON_HASH_NAME) => {
+                module_based_on_hash = Some(field.text().await?);
+            }
+            _ => debug!("Unknown multipart form field on module upload, skipping..."),
+        }
+    }
+
+    let data = module_data.ok_or(UpsertModuleError::UploadRequiredError)?;
 
     // SiPkg using old term "package" but we are dealing with a "module"
     let loaded_module = SiPkg::load_from_bytes(data.to_vec())?;
     let module_metadata = loaded_module.metadata()?;
 
-    info!("upserting module: {:?}", &module_metadata);
+    info!(
+        "upserting module: {:?} based on hash: {:?}",
+        &module_metadata, &module_based_on_hash
+    );
 
     let version = module_metadata.version().to_owned();
     let module_kind = match module_metadata.kind() {
-        SiPkgKind::WorkspaceBackup => si_module::ModuleKind::WorkspaceBackup,
-        SiPkgKind::Module => si_module::ModuleKind::Module,
+        SiPkgKind::WorkspaceBackup => ModuleKind::WorkspaceBackup,
+        SiPkgKind::Module => ModuleKind::Module,
     };
+
+    let schema_id = match module_kind {
+        ModuleKind::WorkspaceBackup => None,
+        ModuleKind::Module => match module_based_on_hash {
+            None => Some(SchemaId(Ulid::new())),
+            Some(based_on_hash) => si_module::Entity::find()
+                .filter(si_module::Column::Kind.eq(ModuleKind::Module))
+                .filter(si_module::Column::LatestHash.eq(based_on_hash))
+                .limit(1)
+                .all(&txn)
+                .await?
+                .first()
+                .and_then(|module| module.schema_id),
+        },
+    };
+
+    if let Some(schema_id) = schema_id {
+        info!("module gets schema id: {}", schema_id.0);
+    }
 
     let schemas: Vec<String> = loaded_module
         .schemas()?
@@ -118,6 +150,7 @@ pub async fn upsert_module_route(
             funcs,
         })?),
         kind: Set(module_kind),
+        schema_id: Set(schema_id),
         ..Default::default() // all other attributes are `NotSet`
     };
 
@@ -127,11 +160,11 @@ pub async fn upsert_module_route(
         .put_object(format!("{}.sipkg", module_metadata.hash()), &data)
         .await?;
 
-    let new_module: si_module::Model = dbg!(new_module.insert(&txn).await)?;
+    let new_module: si_module::Model = new_module.insert(&txn).await?;
 
     txn.commit().await?;
 
-    Ok(dbg!(Json(new_module.try_into()?)))
+    Ok(Json(new_module.try_into()?))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -48,7 +48,12 @@ impl sea_orm::sea_query::Nullable for SchemaId {
 
 impl sea_orm::TryGetable for SchemaId {
     fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let json_str: String = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
+        let json_str: String =
+            res.try_get_by(idx)
+                .map_err(TryGetError::DbErr)
+                .and_then(|opt: Option<String>| {
+                    opt.ok_or(sea_orm::TryGetError::Null("null".to_string()))
+                })?;
         Ulid::from_string(&json_str)
             .map_err(|e| TryGetError::DbErr(DbErr::Type(e.to_string())))
             .map(SchemaId)
