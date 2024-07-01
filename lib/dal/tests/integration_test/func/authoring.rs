@@ -1,3 +1,4 @@
+mod binding;
 mod create_func;
 mod func_argument;
 mod save_and_exec;

@@ -209,6 +209,12 @@ impl From<ComponentId> for si_events::ComponentId {
     }
 }
 
+impl From<si_events::ComponentId> for ComponentId {
+    fn from(value: si_events::ComponentId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct IncomingConnection {
     pub attribute_prototype_argument_id: AttributePrototypeArgumentId,

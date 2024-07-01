@@ -85,7 +85,7 @@ impl AttributePrototypeBag {
     ) -> FuncAssociationsResult<Self> {
         let eventual_parent = AttributePrototype::eventual_parent(ctx, id).await?;
         let (component_id, schema_variant_id, prop_id, output_socket_id) = match eventual_parent {
-            AttributePrototypeEventualParent::Component(component_id) => {
+            AttributePrototypeEventualParent::Component(component_id, _) => {
                 (Some(component_id), None, None, None)
             }
             AttributePrototypeEventualParent::SchemaVariantFromInputSocket(

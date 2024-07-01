@@ -92,6 +92,18 @@ pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
 
 pk!(PropId);
 
+impl From<si_events::PropId> for PropId {
+    fn from(value: si_events::PropId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<PropId> for si_events::PropId {
+    fn from(value: PropId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
 // TODO: currently we only have string values in all widget_options but we should extend this to
 // support other types. However, we cannot use serde_json::Value since postcard will not
 // deserialize into a serde_json::Value.
@@ -270,6 +282,20 @@ pub enum PropKind {
     String,
 }
 
+impl From<PropKind> for si_frontend_types::PropKind {
+    fn from(value: PropKind) -> Self {
+        match value {
+            PropKind::Array => si_frontend_types::PropKind::Array,
+            PropKind::Boolean => si_frontend_types::PropKind::Boolean,
+            PropKind::Integer => si_frontend_types::PropKind::Integer,
+            PropKind::Json => si_frontend_types::PropKind::Json,
+            PropKind::Map => si_frontend_types::PropKind::Map,
+            PropKind::Object => si_frontend_types::PropKind::Object,
+            PropKind::String => si_frontend_types::PropKind::String,
+        }
+    }
+}
+
 impl PropKind {
     pub fn is_container(&self) -> bool {
         matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
@@ -338,6 +364,25 @@ impl From<PropKind> for FuncBackendResponseType {
 }
 
 impl Prop {
+    pub async fn into_frontend_type(self, ctx: &DalContext) -> PropResult<si_frontend_types::Prop> {
+        let path = self.path(ctx).await?.with_replaced_sep_and_prefix("/");
+        Ok(si_frontend_types::Prop {
+            id: self.id().into(),
+            kind: self.kind.into(),
+            name: self.name.to_owned(),
+            path: path.to_owned(),
+            eligible_to_receive_data: {
+                // props can receive data if they're on a certain part of the prop tree
+                // or if they're not a child of an array/map (for now?)
+                let eligible_by_path = path == "/root/resource_value"
+                    || path == "/root/si/color"
+                    || path.starts_with("/root/domain/")
+                    || path.starts_with("/root/resource_value/");
+                eligible_by_path && self.can_be_used_as_prototype_arg
+            },
+            eligible_to_send_data: self.can_be_used_as_prototype_arg,
+        })
+    }
     pub fn assemble(prop_node_weight: PropNodeWeight, inner: PropContentV1) -> Self {
         Self {
             id: prop_node_weight.id().into(),

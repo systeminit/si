@@ -55,6 +55,18 @@ impl From<LeafKind> for PkgLeafKind {
     }
 }
 
+impl From<LeafInputLocation> for si_frontend_types::LeafInputLocation {
+    fn from(value: LeafInputLocation) -> Self {
+        match value {
+            LeafInputLocation::Code => si_frontend_types::LeafInputLocation::Code,
+            LeafInputLocation::DeletedAt => si_frontend_types::LeafInputLocation::DeletedAt,
+            LeafInputLocation::Domain => si_frontend_types::LeafInputLocation::Domain,
+            LeafInputLocation::Resource => si_frontend_types::LeafInputLocation::Resource,
+            LeafInputLocation::Secrets => si_frontend_types::LeafInputLocation::Secrets,
+        }
+    }
+}
+
 /// This enum provides available child [`Prop`](crate::Prop) trees of [`RootProp`](crate::RootProp)
 /// that can be used as "inputs" for [`Funcs`](crate::Func) on leaves.
 ///
@@ -62,7 +74,7 @@ impl From<LeafKind> for PkgLeafKind {
 /// as "inputs" in order to prevent cycles. This enum provides an approved subset of those
 /// children_.
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum LeafInputLocation {
     /// The input location corresponding to "/root/code".
@@ -112,6 +124,17 @@ impl From<LeafInputLocation> for PkgLeafInputLocation {
             LeafInputLocation::Resource => Self::Resource,
             LeafInputLocation::DeletedAt => Self::DeletedAt,
             LeafInputLocation::Secrets => Self::Secrets,
+        }
+    }
+}
+impl From<si_frontend_types::LeafInputLocation> for LeafInputLocation {
+    fn from(value: si_frontend_types::LeafInputLocation) -> Self {
+        match value {
+            si_frontend_types::LeafInputLocation::Code => LeafInputLocation::Code,
+            si_frontend_types::LeafInputLocation::DeletedAt => LeafInputLocation::DeletedAt,
+            si_frontend_types::LeafInputLocation::Domain => LeafInputLocation::Domain,
+            si_frontend_types::LeafInputLocation::Resource => LeafInputLocation::Resource,
+            si_frontend_types::LeafInputLocation::Secrets => LeafInputLocation::Secrets,
         }
     }
 }

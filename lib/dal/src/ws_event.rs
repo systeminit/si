@@ -15,8 +15,9 @@ use crate::component::{
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
     ConnectionDeletedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
+use crate::func::binding::FuncBindingsWsEventPayload;
 use crate::func::runner::FuncRunLogUpdatedPayload;
-use crate::func::FuncWsEventPayload;
+use crate::func::{FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventPayload};
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
 };
@@ -87,9 +88,13 @@ pub enum WsPayload {
     ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
     FuncArgumentsSaved(FuncWsEventPayload),
+    FuncBindingsUpdated(FuncBindingsWsEventPayload),
+    FuncCodeSaved(FuncWsEventCodeSaved),
+    FuncCreated(FuncWsEventFuncSummary),
     FuncDeleted(FuncWsEventPayload),
     FuncRunLogUpdated(FuncRunLogUpdatedPayload),
     FuncSaved(FuncWsEventPayload),
+    FuncUpdated(FuncWsEventFuncSummary),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
     InferredEdgeRemove(InferredEdgeRemovePayload),
     InferredEdgeUpsert(InferredEdgeUpsertPayload),

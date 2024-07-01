@@ -65,7 +65,7 @@ pub enum ActionPrototypeError {
 pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
 
 #[remain::sorted]
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]
 pub enum ActionKind {
     /// Create the "outside world" version of the modeled object.
     Create,
@@ -89,6 +89,17 @@ impl From<ActionKind> for si_events::ActionKind {
             ActionKind::Manual => si_events::ActionKind::Manual,
             ActionKind::Refresh => si_events::ActionKind::Refresh,
             ActionKind::Update => si_events::ActionKind::Update,
+        }
+    }
+}
+impl From<si_events::ActionKind> for ActionKind {
+    fn from(value: si_events::ActionKind) -> Self {
+        match value {
+            si_events::ActionKind::Create => ActionKind::Create,
+            si_events::ActionKind::Destroy => ActionKind::Destroy,
+            si_events::ActionKind::Manual => ActionKind::Refresh,
+            si_events::ActionKind::Refresh => ActionKind::Refresh,
+            si_events::ActionKind::Update => ActionKind::Update,
         }
     }
 }

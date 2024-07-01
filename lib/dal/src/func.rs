@@ -1,7 +1,11 @@
+use argument::{FuncArgument, FuncArgumentError};
+use authoring::FuncAuthoringError;
 use base64::{engine::general_purpose, Engine};
+use binding::{FuncBindings, FuncBindingsError};
 use serde::{Deserialize, Serialize};
 use si_events::CasValue;
 use si_events::{ulid::Ulid, ContentHash};
+use si_frontend_types::FuncSummary;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
@@ -31,6 +35,7 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 pub mod argument;
 pub mod authoring;
 pub mod backend;
+pub mod binding;
 pub mod intrinsics;
 pub mod runner;
 pub mod summary;
@@ -58,8 +63,14 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] Box<FuncAssociationsError>),
+    #[error("func authoring client error: {0}")]
+    FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
+    #[error("func bindings error: {0}")]
+    FuncBindings(#[from] Box<FuncBindingsError>),
     #[error("func name already in use {0}")]
     FuncNameInUse(String),
     #[error("func to be deleted has associations: {0}")]
@@ -630,13 +641,55 @@ impl Func {
 
         Ok(duplicated_func)
     }
+
+    pub async fn into_frontend_type(&self, ctx: &DalContext) -> FuncResult<FuncSummary> {
+        let args = FuncArgument::list_for_func(ctx, self.id)
+            .await
+            .map_err(Box::new)?;
+        let mut arguments = vec![];
+        for arg in args {
+            arguments.push(si_frontend_types::FuncArgument {
+                id: Some(arg.id.into()),
+                name: arg.name.clone(),
+                kind: arg.kind.into(),
+                element_kind: arg.element_kind.map(Into::into),
+                timestamp: arg.timestamp.into(),
+            });
+        }
+        let bindings = FuncBindings::from_func_id(ctx, self.id)
+            .await
+            .map_err(Box::new)?
+            .into_frontend_type();
+        Ok(FuncSummary {
+            func_id: self.id.into(),
+            kind: self.kind.into(),
+            name: self.name.clone(),
+            display_name: self.display_name.clone(),
+            is_locked: false,
+            arguments,
+            bindings,
+        })
+    }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncWsEventPayload {
     func_id: FuncId,
     change_set_id: ChangeSetId,
+}
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncWsEventFuncSummary {
+    change_set_id: ChangeSetId,
+    func_summary: si_frontend_types::FuncSummary,
+    types: String,
+}
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncWsEventCodeSaved {
+    change_set_id: ChangeSetId,
+    func_code: si_frontend_types::FuncCode,
 }
 
 impl WsEvent {
@@ -668,6 +721,52 @@ impl WsEvent {
             WsPayload::FuncSaved(FuncWsEventPayload {
                 func_id,
                 change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_updated(
+        ctx: &DalContext,
+        func_summary: si_frontend_types::FuncSummary,
+        types: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncUpdated(FuncWsEventFuncSummary {
+                change_set_id: ctx.change_set_id(),
+                func_summary,
+                types,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_created(
+        ctx: &DalContext,
+        func_summary: si_frontend_types::FuncSummary,
+        types: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncUpdated(FuncWsEventFuncSummary {
+                change_set_id: ctx.change_set_id(),
+                func_summary,
+                types,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_code_saved(
+        ctx: &DalContext,
+        func_code: si_frontend_types::FuncCode,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncCodeSaved(FuncWsEventCodeSaved {
+                change_set_id: ctx.change_set_id(),
+                func_code,
             }),
         )
         .await

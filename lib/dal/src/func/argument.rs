@@ -135,7 +135,49 @@ impl From<FuncArgumentKind> for PkgFuncArgumentKind {
     }
 }
 
+impl From<si_frontend_types::FuncArgumentKind> for FuncArgumentKind {
+    fn from(value: si_frontend_types::FuncArgumentKind) -> Self {
+        match value {
+            si_frontend_types::FuncArgumentKind::Any => FuncArgumentKind::Any,
+            si_frontend_types::FuncArgumentKind::Array => FuncArgumentKind::Array,
+            si_frontend_types::FuncArgumentKind::Boolean => FuncArgumentKind::Boolean,
+            si_frontend_types::FuncArgumentKind::Integer => FuncArgumentKind::Integer,
+            si_frontend_types::FuncArgumentKind::Json => FuncArgumentKind::Json,
+            si_frontend_types::FuncArgumentKind::Map => FuncArgumentKind::Map,
+            si_frontend_types::FuncArgumentKind::Object => FuncArgumentKind::Object,
+            si_frontend_types::FuncArgumentKind::String => FuncArgumentKind::String,
+        }
+    }
+}
+
 id!(FuncArgumentId);
+
+impl From<si_events::FuncArgumentId> for FuncArgumentId {
+    fn from(value: si_events::FuncArgumentId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<FuncArgumentId> for si_events::FuncArgumentId {
+    fn from(value: FuncArgumentId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
+
+impl From<FuncArgumentKind> for si_frontend_types::FuncArgumentKind {
+    fn from(value: FuncArgumentKind) -> Self {
+        match value {
+            FuncArgumentKind::Any => si_frontend_types::FuncArgumentKind::Any,
+            FuncArgumentKind::Array => si_frontend_types::FuncArgumentKind::Array,
+            FuncArgumentKind::Boolean => si_frontend_types::FuncArgumentKind::Boolean,
+            FuncArgumentKind::Integer => si_frontend_types::FuncArgumentKind::Integer,
+            FuncArgumentKind::Json => si_frontend_types::FuncArgumentKind::Json,
+            FuncArgumentKind::Map => si_frontend_types::FuncArgumentKind::Map,
+            FuncArgumentKind::Object => si_frontend_types::FuncArgumentKind::Object,
+            FuncArgumentKind::String => si_frontend_types::FuncArgumentKind::String,
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncArgument {

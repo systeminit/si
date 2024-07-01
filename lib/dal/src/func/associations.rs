@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -87,8 +88,17 @@ impl FuncAssociations {
     ) -> FuncAssociationsResult<(Option<Self>, String)> {
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
-                let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func.id).await?;
-                let action_prototype_ids = ActionPrototype::list_for_func_id(ctx, func.id).await?;
+                let schemas_and_prototypes =
+                    SchemaVariant::list_for_action_func(ctx, func.id).await?;
+                let schema_variant_ids = schemas_and_prototypes
+                    .clone()
+                    .into_iter()
+                    .map(|(sv, _)| sv)
+                    .collect_vec();
+                let action_prototype_ids = schemas_and_prototypes
+                    .into_iter()
+                    .map(|(_, ap)| ap)
+                    .collect_vec();
 
                 // TODO(nick): right now, we just grab the first one and it decides the action kind for all of them.
                 // This should be configurable on a "per prototype" basis in the future.
@@ -154,7 +164,7 @@ impl FuncAssociations {
                         AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
 
                     match eventual_parent {
-                        AttributePrototypeEventualParent::Component(component_id) => {
+                        AttributePrototypeEventualParent::Component(component_id, _) => {
                             component_ids.push(component_id)
                         }
                         AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
@@ -200,7 +210,7 @@ impl FuncAssociations {
                     let eventual_parent =
                         AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
                     match eventual_parent {
-                        AttributePrototypeEventualParent::Component(component_id) => {
+                        AttributePrototypeEventualParent::Component(component_id, _) => {
                             component_ids.push(component_id)
                         }
                         AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
