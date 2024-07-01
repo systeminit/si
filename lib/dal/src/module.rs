@@ -20,7 +20,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaVariant,
+    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaId, SchemaVariant,
     SchemaVariantError, Timestamp, TransactionsError,
 };
 
@@ -202,6 +202,30 @@ impl Module {
             let module: Module = Self::get_by_id(ctx, module_node_weight.id().into()).await?;
             if module.root_hash == root_hash.as_ref() {
                 return Ok(Some(module));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub async fn find_for_schema_id(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> ModuleResult<Option<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        for source_idx in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(schema_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = workspace_snapshot.get_node_weight(source_idx).await?;
+            if let NodeWeight::Content(content_node_weight) = node_weight {
+                if ContentAddressDiscriminants::Module
+                    == content_node_weight.content_address().into()
+                {
+                    let module = Self::get_by_id(ctx, content_node_weight.id().into()).await?;
+                    return Ok(Some(module));
+                }
             }
         }
 
