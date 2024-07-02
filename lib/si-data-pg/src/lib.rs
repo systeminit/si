@@ -11,12 +11,14 @@ use rustls::{
     pki_types::{CertificateDer, TrustAnchor},
     RootCertStore,
 };
+use tempfile::NamedTempFile;
 use tokio_postgres_rustls::MakeRustlsConnect;
 
 use base64::{engine::general_purpose, Engine};
 use std::{
     cmp,
     fmt::{self, Debug},
+    io::Write,
     net::ToSocketAddrs,
     path::Path,
     sync::Arc,
@@ -88,6 +90,8 @@ pub enum PgPoolError {
     ReadPem(std::io::Error),
     #[error("migration error: {0}")]
     Refinery(#[from] refinery::Error),
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
     #[error("failed to resolve pg hostname")]
     ResolveHostname(std::io::Error),
     #[error("resolved hostname returned no entries")]
@@ -110,6 +114,7 @@ pub struct PgPoolConfig {
     pub password: SensitiveString,
     pub certificate_path: Option<CanonicalFile>,
     pub certificate_base64: Option<String>,
+    pub certificate_url: Option<String>,
     pub dbname: String,
     pub application_name: String,
     pub hostname: String,
@@ -129,6 +134,7 @@ impl Default for PgPoolConfig {
             password: SensitiveString::from("bugbear"),
             certificate_path: None,
             certificate_base64: None,
+            certificate_url: None,
             dbname: String::from("si"),
             application_name: String::from("si-unknown-app"),
             hostname: String::from("localhost"),
@@ -287,6 +293,11 @@ impl PgPool {
                 Self::get_certificate_from_base64(cert.to_string()).await?,
             );
         }
+        if let Some(cert) = &settings.certificate_url {
+            root_cert_store.add_parsable_certificates(
+                Self::get_certificate_from_remote(cert.to_string()).await?,
+            );
+        }
         let config = rustls::ClientConfig::builder()
             .with_root_certificates(root_cert_store)
             .with_no_client_auth();
@@ -323,6 +334,17 @@ impl PgPool {
     ) -> PgPoolResult<Vec<CertificateDer<'static>>> {
         let buf = std::fs::read(path).map_err(PgPoolError::ReadPem)?;
         Self::get_certificate_from_bytes(&buf).await
+    }
+
+    // Creates a Certificate object from a remote certificate
+    async fn get_certificate_from_remote(
+        url: String,
+    ) -> PgPoolResult<Vec<CertificateDer<'static>>> {
+        let contents = &reqwest::get(&url).await?.bytes().await?;
+
+        let mut temp_file = NamedTempFile::new()?;
+        temp_file.write_all(contents)?;
+        Self::get_certificate_from_path(&temp_file).await
     }
 
     /// Attempts to establish a database connection and returns an error if not successful.

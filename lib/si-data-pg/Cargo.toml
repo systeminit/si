@@ -18,11 +18,13 @@ num_cpus = { workspace = true }
 ouroboros = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
+reqwest = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
+tempfile = { workspace = true  }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
