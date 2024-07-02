@@ -39,10 +39,33 @@ jobs:
             echo "$test_array"
             echo "tests=$test_array" >> "$GITHUB_OUTPUT"
 
+  sdf-healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      # we should make sure that SDF is even up before we try
+    - name: Calculate URL
+      id: url
+      run: |
+        if [ "${{ inputs.environment }}" = "tools" ]; then
+          echo "url=https://tools.systeminit.com/api/" >> $GITHUB_OUTPUT
+        else
+          echo "url=https://app.systeminit.com/api/" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Check to make sure SDF is up
+      uses: jtalk/url-health-check-action@v4
+      with:
+        url: ${{ steps.url.outputs.url }}
+        follow-redirect: true
+        max-attempts: 30
+        retry-delay: 10s
+        retry-all: true
+
+
   cypress-tests:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    needs: define-test-matrix
+    needs: ["define-test-matrix", "sdf-healthcheck"]
     strategy:
       # don't fail the entire matrix on failure
       fail-fast: false
@@ -62,8 +85,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-            version: 8.10.5
 
       - name: Install Cypress
         working-directory: app/web
