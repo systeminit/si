@@ -1,0 +1,15 @@
+# This is essentially a dummy to allow us to set
+# buildkite/si-merge-queue as a status check. This
+# is run during a PR, but the Buildkite check is run
+# in the merge queue
+name: PR Checks to confuse and delight
+
+on:
+  pull_request:
+
+jobs:
+  si-merge-queue:
+    name: buildkite/si-merge-queue
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "Success!"
