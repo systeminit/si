@@ -359,17 +359,9 @@ const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
     detachRef.value.detachFunc();
-    // TODO: move all this to WsEvents
     if (assetStore.selectedVariantId)
       assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId);
-    if (funcStore.selectedFuncId)
-      assetStore.removeFuncSelection(funcStore.selectedFuncId);
-    if (funcStore.selectedFuncId && assetStore.selectedVariantId)
-      assetStore.closeFunc(
-        assetStore.selectedVariantId,
-        funcStore.selectedFuncId,
-      );
-    funcStore.selectedFuncId = undefined; // brings you back to the asset detail
+    if (funcStore.selectedFuncId) assetStore.setFuncSelection(undefined);
   }
 };
 

@@ -53,6 +53,6 @@ const trackFunctionSelected = () => {
 
 const onClick = () => {
   trackFunctionSelected();
-  assetStore.addFuncSelection(props.func.funcId);
+  assetStore.setFuncSelection(props.func.funcId);
 };
 </script>

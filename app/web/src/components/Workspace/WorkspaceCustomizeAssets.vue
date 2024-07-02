@@ -17,15 +17,29 @@
       </div>
     </template>
     <template #subpanel2>
-      <AssetFuncListPanel :assetId="assetStore.selectedVariantId" />
+      <AssetFuncListPanel :assetId="selectedVariantId" />
     </template>
   </component>
 
   <div
-    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
+    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold relative"
   >
-    <div class="left-2 right-2 top-0 bottom-2 absolute">
-      <AssetEditorTabs />
+    <div class="absolute left-0 right-0 top-0 bottom-0">
+      <FuncEditor
+        v-if="selectedVariantId && selectedFuncId"
+        :funcId="selectedFuncId"
+      />
+      <AssetEditor v-else-if="selectedVariantId" :assetId="selectedVariantId" />
+      <WorkspaceCustomizeEmptyState
+        v-else
+        :requestStatus="loadAssetsRequestStatus"
+        loadingMessage="Loading assets..."
+        :instructions="
+          assetStore.selectedSchemaVariants.length > 1
+            ? 'You have selected multiple assets, use the right pane!'
+            : undefined
+        "
+      />
     </div>
   </div>
 
@@ -38,18 +52,17 @@
   >
     <div class="absolute w-full flex flex-col h-full">
       <AssetCard
-        v-if="assetStore.selectedVariantId"
+        v-if="selectedVariantId"
         titleCard
-        :assetId="assetStore.selectedVariantId"
+        :assetId="selectedVariantId"
       />
-      <template v-if="assetStore.selectedVariantId">
+      <template v-if="selectedVariantId">
         <FuncDetails
           v-if="
-            funcStore.selectedFuncId &&
-            assetStore.selectedSchemaVariant?.schemaVariantId
+            selectedFuncId && assetStore.selectedSchemaVariant?.schemaVariantId
           "
-          :funcId="funcStore.selectedFuncId"
-          :schemaVariantId="assetStore.selectedSchemaVariant.schemaVariantId"
+          :funcId="selectedFuncId"
+          :schemaVariantId="assetStore.selectedSchemaVariant?.schemaVariantId"
           singleModelScreen
           allowTestPanel
           @expand-panel="rightResizablePanelRef?.maximize()"
@@ -58,8 +71,8 @@
         request statuses -->
         <AssetDetailsPanel
           v-else
-          :key="assetStore.selectedVariantId"
-          :assetId="assetStore.selectedVariantId"
+          :key="selectedVariantId"
+          :assetId="selectedVariantId"
         />
       </template>
       <template v-else-if="assetStore.selectedSchemaVariants.length > 1">
@@ -110,16 +123,24 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
-import AssetEditorTabs from "../AssetEditorTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 import EmptyStateCard from "../EmptyStateCard.vue";
 import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+import AssetEditor from "../AssetEditor.vue";
+import FuncEditor from "../FuncEditor/FuncEditor.vue";
+import WorkspaceCustomizeEmptyState from "../WorkspaceCustomizeEmptyState.vue";
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
+
+const selectedVariantId = computed(() => assetStore.selectedVariantId);
+const selectedFuncId = computed(() => funcStore.selectedFuncId);
+const loadAssetsRequestStatus = assetStore.getRequestStatus(
+  "LOAD_SCHEMA_VARIANT_LIST",
+);
 
 const leftResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
 const rightResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();

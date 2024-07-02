@@ -20,7 +20,6 @@
         v-if="!requestStatus.isSuccess"
         :requestStatus="requestStatus"
         :loadingMessage="loadingMessage"
-        noPadding
       />
     </div>
   </div>
