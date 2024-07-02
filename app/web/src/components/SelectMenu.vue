@@ -85,6 +85,10 @@ export interface Option {
   value: string | number | object;
 }
 
+export interface StringOption extends Option {
+  value: string;
+}
+
 const emit = defineEmits(["update:modelValue", "change"]);
 
 const props = defineProps<{

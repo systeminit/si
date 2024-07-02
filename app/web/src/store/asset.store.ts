@@ -10,7 +10,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { FuncWithDetails, useFuncStore } from "./func/funcs.store";
+import { useFuncStore } from "./func/funcs.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
@@ -137,11 +137,6 @@ export const useAssetStore = () => {
           if (state.selectedFuncs.length === 1) return state.selectedFuncs[0];
           else return undefined;
         },
-        selectedFunc(): FuncWithDetails | undefined {
-          if (this.selectedFuncId)
-            return funcsStore.funcDetailsById[this.selectedFuncId];
-          else return undefined;
-        },
       },
       actions: {
         addSchemaVariantSelection(id: SchemaVariantId) {
@@ -152,7 +147,7 @@ export const useAssetStore = () => {
             this.selectedFuncs = [];
           }
         },
-        setSchemaVariantSelection(id: SchemaVariantId) {
+        setSchemaVariantSelection(id: SchemaVariantId, forceCode?: boolean) {
           if (
             this.selectedSchemaVariants.length === 1 &&
             this.selectedSchemaVariants[0] === id
@@ -164,15 +159,13 @@ export const useAssetStore = () => {
           }
           this.selectedSchemaVariants = [id];
           this.syncSelectionIntoUrl();
-          if (this.variantFromListById[id]) {
-            this.LOAD_SCHEMA_VARIANT(id);
-          }
+          this.LOAD_SCHEMA_VARIANT(id, forceCode);
           // no last selected func
           funcsStore.selectedFuncId = undefined;
         },
         async addFuncSelection(id: FuncId) {
           if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
-          await funcsStore.FETCH_FUNC(id);
+          await funcsStore.FETCH_CODE(id);
           if (this.selectedSchemaVariant)
             this.openFunc(this.selectedSchemaVariant?.schemaVariantId, id);
           funcsStore.selectedFuncId = id;
@@ -223,7 +216,7 @@ export const useAssetStore = () => {
               } else if (id.startsWith("f_")) {
                 id = id.substring(2);
                 this.selectedFuncs.push(id);
-                promises.push(funcsStore.FETCH_FUNC(id));
+                promises.push(funcsStore.FETCH_CODE(id));
                 fnIds.push(id);
               }
             });
@@ -399,13 +392,18 @@ export const useAssetStore = () => {
           });
         },
 
-        async LOAD_SCHEMA_VARIANT(schemaVariantId: SchemaVariantId) {
-          // when we load a variant, load all its code ahead of time before a user selects a func
+        async LOAD_SCHEMA_VARIANT(
+          schemaVariantId: SchemaVariantId,
+          forceCode?: boolean,
+        ) {
           const variant = this.variantFromListById[schemaVariantId];
           if (variant) {
-            await funcsStore.FETCH_FUNC(variant.assetFuncId);
+            // if we clicked on the item in the list, or we don't have the code yet, load it
+            // otherwise don't load it——we may be overwriting something
+            if (!funcsStore.funcCodeById[variant.assetFuncId] || forceCode)
+              await funcsStore.FETCH_CODE(variant.assetFuncId);
 
-            const code = funcsStore.funcDetailsById[variant.assetFuncId]?.code;
+            const code = funcsStore.funcCodeById[variant.assetFuncId]?.code;
 
             if (code) {
               this.editingFuncLatestCode[schemaVariantId] = code;
@@ -548,8 +546,19 @@ export const useAssetStore = () => {
                 this.LOAD_SCHEMA_VARIANT(this.selectedVariantId);
                 await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
               }
-
-              await funcsStore.FETCH_INPUT_SOURCE_LIST(data.newSchemaVariantId);
+            },
+          },
+          {
+            eventType: "SchemaVariantUpdated",
+            callback: (variant, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const v = variant as SchemaVariantListEntry;
+              v.canContribute = false;
+              v.canUpdate = false;
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              this.variantList.splice(savedAssetIdx, 1, v);
             },
           },
           {

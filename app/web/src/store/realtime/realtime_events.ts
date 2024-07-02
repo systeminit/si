@@ -1,13 +1,13 @@
 // This is a map of valid websocket events to the shape of their payload
 // used in the subscribe fn to limit valid event names and set callback payload type
 
-import { FuncId } from "@/api/sdf/dal/func";
+import { FuncBinding, FuncId, FuncSummary } from "@/api/sdf/dal/func";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
 import { ComponentType, SchemaVariant } from "@/api/sdf/dal/schema";
+import { ActionId } from "@/api/sdf/dal/action";
 import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
-import { ActionId } from "../actions.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
@@ -254,6 +254,7 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
   };
   SchemaVariantCreated: SchemaVariant;
+  SchemaVariantUpdated: SchemaVariant;
   SchemaVariantCloned: {
     schemaVariantId: string;
     changeSetId: ChangeSetId;
@@ -275,8 +276,19 @@ export type WsEventPayloadMap = {
     link?: string;
     description?: string;
   };
+  FuncBindingsUpdated: {
+    types: string;
+    bindings: FuncBinding[];
+    changeSetId: ChangeSetId;
+  };
   FuncCreated: {
-    funcId: FuncId;
+    types: string;
+    funcSummary: FuncSummary;
+    changeSetId: ChangeSetId;
+  };
+  FuncUpdated: {
+    types: string;
+    funcSummary: FuncSummary;
     changeSetId: ChangeSetId;
   };
   FuncDeleted: {

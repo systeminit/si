@@ -5,21 +5,46 @@
     primaryText="No Function Selected"
     secondaryText="Select a function from the list on the left panel to view its details here."
   />
-  <LoadingMessage
-    v-else-if="
-      (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
-      !loadFuncDetailsReqStatus.isRequested
-    "
-  >
-    Loading function "{{ selectedFuncSummary?.name }}"
-  </LoadingMessage>
   <div
-    v-else-if="selectedFuncId && editingFunc"
+    v-else-if="selectedFuncSummary && editingFunc"
     :class="clsx('h-full w-full flex flex-col overflow-hidden')"
   >
     <div class="flex flex-col">
+      <SidebarSubpanelTitle
+        icon="func"
+        variant="subtitle"
+        :label="selectedFuncSummary.name"
+      >
+        <template v-if="ffStore.IMMUTABLE_SCHEMA_VARIANTS">
+          <EditingPill
+            v-if="!selectedFuncSummary.isLocked"
+            color="#666"
+          ></EditingPill>
+          <IconButton
+            v-else
+            class="hover:scale-125"
+            variant="simple"
+            icon="sliders-vertical"
+            tooltip="Edit"
+            tooltipPlacement="top"
+          />
+        </template>
+      </SidebarSubpanelTitle>
       <ErrorMessage
-        v-if="editingFunc?.associations?.type === 'action'"
+        v-if="isConnectedToOtherAssetTypes"
+        icon="alert-triangle"
+        variant="block"
+        tone="warning"
+      >
+        This function is connected to other
+        {{
+          selectedFuncSummary.kind === FuncKind.Attribute
+            ? "attributes"
+            : "assets"
+        }}.
+      </ErrorMessage>
+      <ErrorMessage
+        v-if="selectedFuncSummary.kind === FuncKind.Action"
         icon="alert-triangle"
         tone="warning"
         variant="block"
@@ -31,27 +56,6 @@
         :requestStatus="execFuncReqStatus"
         variant="block"
       />
-      <ErrorMessage
-        v-if="isConnectedToOtherAssetTypes"
-        icon="alert-triangle"
-        variant="block"
-        tone="warning"
-      >
-        This function is connected to other
-        {{
-          editingFunc?.associations &&
-          editingFunc?.associations?.type === "attribute"
-            ? "attributes"
-            : "assets"
-        }}.
-      </ErrorMessage>
-
-      <SidebarSubpanelTitle
-        icon="func"
-        :label="selectedFuncSummary?.name"
-        variant="subtitle"
-      />
-
       <div
         class="flex flex-row gap-2xs items-center justify-evenly py-xs border-b border-neutral-200 dark:border-neutral-600"
       >
@@ -63,13 +67,7 @@
           tooltip="Execute"
           tooltipPlacement="top"
           :requestStatus="execFuncReqStatus"
-          :disabled="
-            !(
-              funcStore.selectedFuncDetails &&
-              funcStore.selectedFuncDetails?.associations?.type !==
-                'authentication'
-            )
-          "
+          :disabled="!(selectedFuncSummary.kind !== FuncKind.Authentication)"
           @click="execFunc"
         />
         <IconButton
@@ -87,7 +85,6 @@
           tooltip="Detach"
           tooltipPlacement="top"
           loadingTooltip="Detaching..."
-          :disabled="!schemaVariantId"
           @click="detachFunc"
         />
         <IconButton
@@ -147,43 +144,32 @@
             </TreeNode>
 
             <ActionDetails
-              v-if="editingFunc.associations?.type === 'action'"
+              v-if="selectedFuncSummary.kind === FuncKind.Action"
               ref="detachRef"
-              v-model="editingFunc.associations"
-              :requestStatus="updateFuncReqStatus"
-              :schemaVariantId="schemaVariantId"
-              @change="updateFunc"
+              :funcId="selectedFuncSummary.funcId"
+              :schemaVariantId="$props.schemaVariantId"
             />
             <AuthenticationDetails
-              v-if="editingFunc.associations?.type === 'authentication'"
+              v-if="selectedFuncSummary.kind === FuncKind.Authentication"
               ref="detachRef"
-              v-model="editingFunc.associations"
-              :schemaVariantId="schemaVariantId"
-              @change="updateFunc"
+              :funcId="selectedFuncSummary.funcId"
+              :schemaVariantId="$props.schemaVariantId"
             />
             <CodeGenerationDetails
-              v-if="
-                editingFunc.associations &&
-                editingFunc.associations.type === 'codeGeneration'
-              "
+              v-if="selectedFuncSummary.kind === FuncKind.CodeGeneration"
               ref="detachRef"
-              v-model="editingFunc.associations"
-              :schemaVariantId="schemaVariantId"
-              @change="updateFunc"
+              :funcId="selectedFuncSummary.funcId"
+              :schemaVariantId="$props.schemaVariantId"
             />
             <QualificationDetails
-              v-if="
-                editingFunc.associations &&
-                editingFunc.associations.type === 'qualification'
-              "
+              v-if="selectedFuncSummary.kind === FuncKind.Qualification"
               ref="detachRef"
-              v-model="editingFunc.associations"
-              :schemaVariantId="schemaVariantId"
-              @change="updateFunc"
+              :funcId="selectedFuncSummary.funcId"
+              :schemaVariantId="$props.schemaVariantId"
             />
 
             <TreeNode
-              v-if="editingFunc.kind === FuncKind.Attribute"
+              v-if="selectedFuncSummary?.kind === FuncKind.Attribute"
               label="Arguments"
               defaultOpen
               enableGroupToggle
@@ -193,17 +179,14 @@
               labelClasses="border-b border-neutral-200 dark:border-neutral-600"
               childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
             >
-              <FuncArguments
-                v-if="
-                  editingFunc.associations &&
-                  editingFunc.associations.type === 'attribute'
-                "
-                :funcId="editingFunc.id"
-              />
+              <FuncArguments :funcId="editingFunc.funcId" />
             </TreeNode>
 
             <TreeNode
-              v-if="editingFunc.kind === FuncKind.Attribute && schemaVariantId"
+              v-if="
+                selectedFuncSummary?.kind === FuncKind.Attribute &&
+                $props.schemaVariantId
+              "
               label="Bindings"
               defaultOpen
               enableGroupToggle
@@ -214,33 +197,23 @@
               childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
             >
               <AttributeBindings
-                v-if="
-                  editingFunc.associations &&
-                  editingFunc.associations.type === 'attribute'
-                "
                 ref="detachRef"
-                v-model="editingFunc.associations"
-                :schemaVariantId="schemaVariantId"
-                @change="updateFunc"
+                :schemaVariantId="$props.schemaVariantId"
+                :funcId="selectedFuncSummary.funcId"
               />
             </TreeNode>
           </div>
         </TabGroupItem>
 
         <TabGroupItem
-          v-if="editingFunc.kind === FuncKind.Attribute"
+          v-if="selectedFuncSummary?.kind === FuncKind.Attribute"
           label="Bindings"
           slug="bindings"
         >
           <AttributeBindings
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'attribute'
-            "
             ref="detachRef"
-            v-model="editingFunc.associations"
+            :funcId="selectedFuncSummary.funcId"
             class="border-t border-neutral-200 dark:border-neutral-600"
-            @change="updateFunc"
           />
         </TabGroupItem>
 
@@ -264,7 +237,6 @@ import { computed, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
   ErrorMessage,
-  LoadingMessage,
   Stack,
   TabGroup,
   TabGroupItem,
@@ -272,10 +244,16 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncKind, FuncId } from "@/api/sdf/dal/func";
+import {
+  FuncKind,
+  FuncId,
+  FuncBinding,
+  FuncBindingKind,
+} from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -285,10 +263,11 @@ import FuncTest from "./FuncTest.vue";
 import EmptyStateCard from "../EmptyStateCard.vue";
 import IconButton from "../IconButton.vue";
 import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
+import EditingPill from "../EditingPill.vue";
 
 const props = defineProps<{
-  funcId?: FuncId;
-  schemaVariantId?: string;
+  funcId: FuncId;
+  schemaVariantId: string;
   allowTestPanel?: boolean;
 }>();
 
@@ -296,6 +275,7 @@ const funcDetailsTabGroupRef = ref();
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
+const ffStore = useFeatureFlagsStore();
 
 const emit = defineEmits<{
   (e: "expandPanel"): void;
@@ -310,22 +290,17 @@ type DetachType =
 const detachRef = ref<DetachType>();
 const funcId = computed(() => props.funcId);
 
-const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
-  "FETCH_FUNC",
-  funcId,
-);
 const updateFuncReqStatus = funcStore.getRequestStatus("UPDATE_FUNC", funcId);
-const { selectedFuncId, selectedFuncSummary } = storeToRefs(funcStore);
+const { selectedFuncSummary } = storeToRefs(funcStore);
 
-const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
-const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
+const editingFunc = ref(_.cloneDeep(selectedFuncSummary.value));
 
 function resetEditingFunc() {
-  editingFunc.value = _.cloneDeep(storeFuncDetails.value);
+  editingFunc.value = _.cloneDeep(selectedFuncSummary.value);
 }
 
 // when the func details finish loading, we copy into our local draft
-watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
+watch([updateFuncReqStatus], () => {
   resetEditingFunc();
 });
 
@@ -343,31 +318,30 @@ watch(
 );
 
 const updateFunc = () => {
-  if (
-    !editingFunc.value ||
-    _.isEqual(editingFunc.value, storeFuncDetails.value)
-  )
-    return;
-  funcStore.UPDATE_FUNC(editingFunc.value);
+  if (editingFunc.value) funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
-const isConnectedToOtherAssetTypes = computed(() => {
-  if (editingFunc?.value && editingFunc?.value?.associations) {
-    const associations = editingFunc.value.associations;
-    switch (associations.type) {
-      case "codeGeneration":
-      case "qualification":
-        return (
-          associations.schemaVariantIds.length > 1 ||
-          associations.componentIds.length > 1
-        );
-      case "action":
-        return associations.schemaVariantIds.length > 1;
-      case "attribute":
-        return associations.prototypes.length > 1;
-      default:
-        return false;
-    }
+// THIS FEELS UNNECESSARY NOW
+const isConnectedToOtherAssetTypes = computed<boolean>(() => {
+  if (
+    selectedFuncSummary.value &&
+    selectedFuncSummary.value.bindings.length > 0
+  ) {
+    return selectedFuncSummary.value.bindings
+      .map((b: FuncBinding) => {
+        switch (b.bindingKind) {
+          case FuncBindingKind.Qualification:
+          case FuncBindingKind.CodeGeneration:
+            return !!b.schemaVariantId;
+          case FuncBindingKind.Action:
+            return !!b.schemaVariantId;
+          case FuncBindingKind.Attribute:
+            return !!b.attributePrototypeId;
+          default:
+            return false;
+        }
+      })
+      .some(Boolean);
   }
   return false;
 });
@@ -384,9 +358,10 @@ const execFunc = () => {
 const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
-    const associations = await detachRef.value.detachFunc();
+    detachRef.value.detachFunc();
+    // TODO: move all this to WsEvents
     if (assetStore.selectedVariantId)
-      assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId); // reloads the fn list
+      assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId);
     if (funcStore.selectedFuncId)
       assetStore.removeFuncSelection(funcStore.selectedFuncId);
     if (funcStore.selectedFuncId && assetStore.selectedVariantId)
@@ -395,15 +370,6 @@ const detachFunc = async () => {
         funcStore.selectedFuncId,
       );
     funcStore.selectedFuncId = undefined; // brings you back to the asset detail
-
-    if (associations && editingFunc.value) {
-      isDetaching.value = true;
-      await funcStore.UPDATE_FUNC({
-        ...editingFunc.value,
-        associations,
-      });
-      isDetaching.value = false;
-    }
   }
 };
 
@@ -414,21 +380,26 @@ const deleteFunc = async () => {
 };
 
 const hasAssociations = computed(() => {
-  if (editingFunc?.value) {
-    return editingFunc.value.associations === undefined;
-  }
+  if (selectedFuncSummary.value?.bindings.length === 0) return true;
   return false;
 });
 
 // The parent component can allow the test panel to be enabled, but we need to dynamically enable
 // it based on the func kind.
-const enableTestPanel = computed((): boolean => {
+const enableTestPanel = computed(() => {
   return (
     props.allowTestPanel &&
-    (funcStore.selectedFuncDetails?.associations?.type === "action" ||
-      funcStore.selectedFuncDetails?.associations?.type === "attribute" ||
-      funcStore.selectedFuncDetails?.associations?.type === "codeGeneration" ||
-      funcStore.selectedFuncDetails?.associations?.type === "qualification")
+    selectedFuncSummary.value &&
+    selectedFuncSummary.value.bindings
+      .map((b) => b.bindingKind)
+      .filter((kind) =>
+        [
+          FuncBindingKind.Action,
+          FuncBindingKind.Attribute,
+          FuncBindingKind.CodeGeneration,
+          FuncBindingKind.Qualification,
+        ].includes(kind),
+      ).length > 0
   );
 });
 </script>

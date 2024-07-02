@@ -64,6 +64,6 @@ const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
 const onClick = (e: MouseEvent) => {
   if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);
-  else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
+  else assetStore.setSchemaVariantSelection(props.a.schemaVariantId, true);
 };
 </script>

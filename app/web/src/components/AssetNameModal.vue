@@ -28,6 +28,7 @@ const assetNameVorm = ref<InstanceType<typeof VormInput>>();
 
 const submit = () => {
   emit("submit", assetName.value);
+  assetName.value = "";
 };
 
 const setError = (msg: string) => {

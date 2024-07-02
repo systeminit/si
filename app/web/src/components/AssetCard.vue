@@ -149,7 +149,7 @@ const unlock = async () => {
       asset.value.schemaVariantId,
     );
     if (resp.result.success) {
-      assetStore.setSchemaVariantSelection(resp.result.data?.id);
+      assetStore.setSchemaVariantSelection(resp.result.data?.id, true);
     }
   }
 };

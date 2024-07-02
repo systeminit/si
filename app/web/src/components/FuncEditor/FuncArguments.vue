@@ -18,14 +18,6 @@
         noLabel
         type="dropdown"
         :options="kindOptions"
-        @change="
-          updateArgument(
-            newArg.id,
-            newArg.name,
-            newArg.kind,
-            newArg.elementKind,
-          )
-        "
       />
       <VButton
         icon="plus"
@@ -42,13 +34,12 @@
         class="flex flex-row items-center gap-2xs"
       >
         <VormInput
-          :id="`arg-name-${arg.id}`"
           v-model="arg.name"
           type="text"
           noLabel
           placeholder="Argument name"
           :disabled="disabled"
-          @blur="updateArgument(arg.id, arg.name, arg.kind, arg.elementKind)"
+          @blur="updateArgument(arg)"
         />
         <VormInput
           v-model="arg.kind"
@@ -56,7 +47,7 @@
           noLabel
           type="dropdown"
           :options="kindOptions"
-          @change="updateArgument(arg.id, arg.name, arg.kind, arg.elementKind)"
+          @change="updateArgument(arg)"
         />
         <VButton
           icon="trash"
@@ -71,11 +62,12 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { nilId } from "@/utils/nilId";
 
 const props = defineProps<{
   funcId: string;
@@ -87,19 +79,19 @@ const funcsStore = useFuncStore();
 const generateKindOptions = () => {
   const options: Option[] = [];
   for (const kind in FuncArgumentKind) {
-    options.push({ label: kind, value: kind });
+    options.push({ label: kind, value: kind.toLowerCase() });
   }
   return options;
 };
 
 const kindOptions = generateKindOptions();
-// we haven't implemented element kinds yet
-// const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const newArg = ref<FuncArgument>({
-  id: "",
+  id: nilId(),
   name: "",
   kind: FuncArgumentKind.String,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 });
 
 const resetNewArg = () => {
@@ -108,40 +100,20 @@ const resetNewArg = () => {
 };
 
 const createArgument = async () => {
-  await funcsStore.CREATE_FUNC_ARGUMENT(
-    props.funcId,
-    newArg.value.name,
-    newArg.value.kind,
-    newArg.value.elementKind,
-  );
+  await funcsStore.CREATE_FUNC_ARGUMENT(props.funcId, newArg.value);
 
   resetNewArg();
 };
 
-const updateArgument = async (
-  funcArgumentId: string,
-  name: string,
-  kind: FuncArgumentKind,
-  elementKind?: FuncArgumentKind,
-) => {
-  await funcsStore.UPDATE_FUNC_ARGUMENT(
-    props.funcId,
-    funcArgumentId,
-    name,
-    kind,
-    elementKind,
-  );
+const updateArgument = async (arg: FuncArgument) => {
+  await funcsStore.UPDATE_FUNC_ARGUMENT(props.funcId, arg);
 };
 
 const funcArguments = computed(
-  () => funcsStore.funcArgumentsByFuncId[props.funcId],
+  () => funcsStore.funcsById[props.funcId]?.arguments,
 );
 
 const deleteArgument = async (funcArgumentId: string) => {
   await funcsStore.DELETE_FUNC_ARGUMENT(props.funcId, funcArgumentId);
 };
-
-onMounted(() => {
-  funcsStore.FETCH_FUNC_ARGUMENT_LIST(props.funcId);
-});
 </script>

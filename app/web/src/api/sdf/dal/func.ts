@@ -1,5 +1,12 @@
+import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
+import { InputSocketId, OutputSocketId, SchemaVariantId } from "./schema";
+import { ComponentId } from "./component";
+import { PropId } from "./prop";
+
 export type FuncArgumentId = string;
 export type FuncId = string;
+export type AttributePrototypeArgumentId = string;
+export type AttributePrototypeId = string;
 
 export enum FuncKind {
   Action = "Action",
@@ -9,7 +16,7 @@ export enum FuncKind {
   Intrinsic = "Intrinsic",
   Qualification = "Qualification",
   SchemaVariantDefinition = "SchemaVariantDefinition",
-  Unknwon = "Unknown",
+  Unknown = "Unknown",
 }
 
 export enum CustomizableFuncKind {
@@ -69,14 +76,14 @@ export const isCustomizableFuncKind = (f: FuncKind) =>
   f in CUSTOMIZABLE_FUNC_TYPES;
 
 export enum FuncArgumentKind {
-  Array = "Array",
-  Boolean = "Boolean",
-  Integer = "Integer",
-  Json = "Json",
-  Object = "Object",
-  String = "String",
-  Map = "Map",
-  Any = "Any",
+  Array = "array",
+  Boolean = "boolean",
+  Integer = "integer",
+  Json = "json",
+  Object = "object",
+  String = "string",
+  Map = "map",
+  Any = "any",
 }
 
 export interface FuncArgument {
@@ -84,4 +91,102 @@ export interface FuncArgument {
   name: string;
   kind: FuncArgumentKind;
   elementKind?: FuncArgumentKind;
+  created_at: IsoDateString;
+  updated_at: IsoDateString;
 }
+
+export interface FuncSummary {
+  funcId: FuncId;
+  kind: FuncKind;
+  name: string;
+  displayName: string | null;
+  description: string | null;
+  isLocked: boolean;
+  arguments: FuncArgument[];
+  bindings: FuncBinding[];
+}
+
+export interface FuncCode {
+  funcId: FuncId;
+  code: string;
+  types: string;
+}
+
+export interface AttributeArgumentBinding {
+  funcArgumentId: FuncArgumentId;
+  attributePrototypeArgumentId: AttributePrototypeArgumentId | null;
+  propId: PropId | null;
+  inputSocketId: InputSocketId | null;
+}
+
+export enum FuncBindingKind {
+  Action = "action",
+  Attribute = "attribute",
+  Authentication = "authentication",
+  CodeGeneration = "codeGeneration",
+  Qualification = "qualification",
+}
+
+export interface Action {
+  bindingKind: FuncBindingKind.Action;
+  // uneditable
+  funcId: FuncId | null;
+  schemaVariantId: SchemaVariantId | null;
+  actionPrototypeId: ActionPrototypeId | null;
+  // editable
+  kind: ActionKind | null;
+}
+
+export interface Attribute {
+  bindingKind: FuncBindingKind.Attribute;
+  // uneditable
+  funcId: FuncId | null;
+  attributePrototypeId: AttributePrototypeId | null;
+  // needed on create
+  schemaVariantId: SchemaVariantId | null;
+  componentId: ComponentId | null;
+  // editable
+  propId: PropId | null;
+  outputSocketId: OutputSocketId | null;
+  argumentBindings: AttributeArgumentBinding[];
+}
+
+export interface Authentication {
+  bindingKind: FuncBindingKind.Authentication;
+  funcId: FuncId;
+  schemaVariantId: SchemaVariantId;
+}
+
+export interface CodeGeneration {
+  bindingKind: FuncBindingKind.CodeGeneration;
+  funcId: FuncId | null;
+  schemaVariantId: SchemaVariantId | null;
+  attributePrototypeId: AttributePrototypeId | null;
+  componentId: ComponentId | null;
+  // editable
+  inputs: LeafInputLocation[];
+}
+
+export interface Qualification {
+  bindingKind: FuncBindingKind.Qualification;
+  funcId: FuncId | null;
+  schemaVariantId: SchemaVariantId | null;
+  attributePrototypeId: AttributePrototypeId | null;
+  componentId: ComponentId | null;
+  // editable
+  inputs: LeafInputLocation[];
+}
+
+export type FuncBinding =
+  | Action
+  | Attribute
+  | Authentication
+  | CodeGeneration
+  | Qualification;
+
+export type LeafInputLocation =
+  | "code"
+  | "deletedAt"
+  | "domain"
+  | "resource"
+  | "secrets";

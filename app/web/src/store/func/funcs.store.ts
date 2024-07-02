@@ -6,10 +6,18 @@ import storage from "local-storage-fallback"; // drop-in storage polyfill which 
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,
-  FuncArgumentKind,
-  FuncKind,
   FuncId,
   FuncArgumentId,
+  FuncSummary,
+  FuncCode,
+  FuncBinding,
+  FuncBindingKind,
+  FuncKind,
+  Action,
+  Attribute,
+  CodeGeneration,
+  Authentication,
+  Qualification,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -17,39 +25,11 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
-import { PropId } from "@/api/sdf/dal/prop";
-import { SchemaVariantId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
-import {
-  AttributePrototypeBag,
-  AttributePrototypeArgumentBag,
-  CreateFuncOptions,
-  FuncAssociations,
-  InputSocketView,
-  InputSourceProp,
-  OutputLocation,
-  OutputSocketView,
-} from "./types";
-
 import { FuncRunId } from "../func_runs.store";
-
-export type FuncSummary = {
-  id: string;
-  kind: FuncKind;
-  name: string;
-  displayName?: string;
-  description?: string;
-  isBuiltin: boolean;
-};
-
-export type FuncWithDetails = FuncSummary & {
-  code: string;
-  types: string;
-  associations?: FuncAssociations;
-};
 
 type FuncExecutionState =
   | "Create"
@@ -69,25 +49,11 @@ export type FuncExecutionLog = {
   functionFailure?: any; // FunctionResultFailure
 };
 
-export interface SaveFuncResponse {
-  types: string;
-  associations?: FuncAssociations;
-}
-
 export interface DeleteFuncResponse {
   success: boolean;
 }
 
-export interface OutputLocationOption {
-  label: string;
-  value: OutputLocation;
-}
-
 const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
-
-export type InputSourceProps = { [key: string]: InputSourceProp[] };
-export type InputSocketViews = { [key: string]: InputSocketView[] };
-export type OutputSocketViews = { [key: string]: OutputSocketView[] };
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -106,251 +72,142 @@ export const useFuncStore = () => {
 
   let funcSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
+  const processBindings = (func: FuncSummary) => {
+    const actionBindings = [] as Action[];
+    const attributeBindings = [] as Attribute[];
+    const authenticationBindings = [] as Authentication[];
+    const codegenBindings = [] as CodeGeneration[];
+    const qualificationBindings = [] as Qualification[];
+
+    func.bindings.forEach((binding) => {
+      switch (binding.bindingKind) {
+        case FuncBindingKind.Action:
+          actionBindings.push(binding as Action);
+          break;
+        case FuncBindingKind.Attribute:
+          attributeBindings.push(binding as Attribute);
+          break;
+        case FuncBindingKind.Authentication:
+          authenticationBindings.push(binding as Authentication);
+          break;
+        case FuncBindingKind.CodeGeneration:
+          codegenBindings.push(binding as CodeGeneration);
+          break;
+        case FuncBindingKind.Qualification:
+          qualificationBindings.push(binding as Qualification);
+          break;
+        default:
+          throw new Error(`Unexpected FuncBinding ${JSON.stringify(binding)}`);
+      }
+    });
+
+    return {
+      actionBindings,
+      attributeBindings,
+      authenticationBindings,
+      codegenBindings,
+      qualificationBindings,
+    };
+  };
+
+  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${selectedChangeSetId}/funcs`;
+
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
         // this powers the list
         funcsById: {} as Record<FuncId, FuncSummary>,
-        funcArgumentsById: {} as Record<FuncArgumentId, FuncArgument>,
-        funcArgumentsByFuncId: {} as Record<FuncId, FuncArgument[]>,
         // this is the code
-        funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
-        // map from schema variant ids to the input sources
-        inputSourceSockets: {} as InputSocketViews,
-        inputSourceProps: {} as InputSourceProps,
-        outputSockets: {} as OutputSocketViews,
+        funcCodeById: {} as Record<FuncId, FuncCode>,
+        // bindings
+        actionBindings: {} as Record<FuncId, Action[]>,
+        attributeBindings: {} as Record<FuncId, Attribute[]>,
+        authenticationBindings: {} as Record<FuncId, Authentication[]>,
+        codegenBindings: {} as Record<FuncId, CodeGeneration[]>,
+        qualificationBindings: {} as Record<FuncId, Qualification[]>,
+        // open editor tabs, this is duplicated in asset store
         openFuncIds: [] as FuncId[],
-        lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
+        editingFuncLatestCode: {} as Record<FuncId, string>,
       }),
       getters: {
         selectedFuncSummary(state): FuncSummary | undefined {
           return state.funcsById[this.selectedFuncId || ""];
         },
-        selectedFuncDetails(state): FuncWithDetails | undefined {
-          return state.funcDetailsById[this.selectedFuncId || ""];
-        },
-        funcArguments(state): FuncArgument[] | undefined {
-          return state.selectedFuncId
-            ? state.funcArgumentsByFuncId[state.selectedFuncId]
-            : undefined;
+        selectedFuncCode(state): FuncCode | undefined {
+          return state.funcCodeById[this.selectedFuncId || ""];
         },
 
         nameForSchemaVariantId: (_state) => (schemaVariantId: string) =>
           componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
 
-        funcById: (state) => (funcId: FuncId) => state.funcDetailsById[funcId],
-
         funcList: (state) => _.values(state.funcsById),
-
-        allProps: (state) =>
-          _.reduce(
-            state.inputSourceProps,
-            (acc, props) => [...acc, ...props],
-            [] as InputSourceProp[],
-          ),
-
-        propsForId(): Record<PropId, InputSourceProp> {
-          return _.keyBy(this.allProps, (s) => s.propId);
-        },
-
-        inputSocketForId:
-          (state) =>
-          (inputSocketId: string): InputSocketView | undefined => {
-            for (const sockets of Object.values(state.inputSourceSockets)) {
-              const inputSourceSocket = sockets.find(
-                (socket) => socket.inputSocketId === inputSocketId,
-              );
-              if (inputSourceSocket) {
-                return inputSourceSocket;
-              }
-            }
-            return undefined;
-          },
-
-        allOutputSockets: (state) => {
-          return _.reduce(
-            state.outputSockets,
-            (acc, sockets) => [...acc, ...sockets],
-            [] as OutputSocketView[],
-          );
-        },
-
-        outputSocketsForId(): Record<OutputSocketId, OutputSocketView> {
-          return _.keyBy(this.allOutputSockets, (s) => s.outputSocketId);
-        },
-
-        schemaVariantIdForPrototypeTargetId(): Record<
-          OutputSocketId | PropId,
-          SchemaVariantId
-        > {
-          const propsBySvId = _.mapValues(
-            this.propsForId,
-            (p) => p.schemaVariantId,
-          );
-          const outputSocketBySvId = _.mapValues(
-            this.outputSocketsForId,
-            (s) => s.schemaVariantId,
-          );
-
-          return _.merge({}, propsBySvId, outputSocketBySvId);
-        },
-
-        // Filter props by schema variant
-        propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
-          (schemaVariantId === nilId()
-            ? _.flatten(Object.values(state.inputSourceProps))
-            : state.inputSourceProps[schemaVariantId]
-          )?.map((prop) => ({
-            label: prop.path,
-            value: prop.propId,
-          })) ?? [],
-
-        schemaVariantOptions() {
-          return componentsStore.schemaVariants.map((sv) => ({
-            label: sv.schemaName,
-            value: sv.schemaVariantId,
-          }));
-        },
-
-        componentOptions(): { label: string; value: string }[] {
-          return componentsStore.allComponents.map(
-            ({ displayName, id, schemaVariantId }) => ({
-              label: `${displayName} (${
-                this.nameForSchemaVariantId(schemaVariantId) ?? "unknown"
-              })`,
-              value: id,
-            }),
-          );
-        },
       },
 
       actions: {
-        propIdToSourceName(propId: string) {
-          const prop = this.propsForId[propId];
-          if (prop) {
-            return `Attribute: ${prop.path}`;
-          }
-        },
-        inputSocketIdToSourceName(inputSocketId: string) {
-          const socket = this.inputSocketForId(inputSocketId);
-          if (socket) {
-            return `Input Socket: ${socket.name}`;
-          }
-        },
-
-        outputSocketIdToSourceName(outputSocketId: string) {
-          const outputSocket = this.outputSocketsForId[outputSocketId];
-          if (outputSocket) {
-            return `Output Socket: ${outputSocket.name}`;
-          }
-          return undefined;
-        },
-
-        outputLocationForAttributePrototype(
-          prototype: AttributePrototypeBag,
-        ): OutputLocation | undefined {
-          if (prototype.propId) {
-            return {
-              label: this.propIdToSourceName(prototype.propId) ?? "none",
-              propId: prototype.propId,
-            };
-          }
-
-          if (prototype.outputSocketId) {
-            return {
-              label:
-                this.outputSocketIdToSourceName(prototype.outputSocketId) ??
-                "none",
-              outputSocketId: prototype.outputSocketId,
-            };
-          }
-
-          return undefined;
-        },
-
-        outputLocationOptionsForSchemaVariant(
-          schemaVariantId: string,
-        ): OutputLocationOption[] {
-          const propOptions =
-            (schemaVariantId === nilId()
-              ? _.flatten(Object.values(this.inputSourceProps))
-              : this.inputSourceProps[schemaVariantId]
-            )
-              ?.filter((p) => p.eligibleForOutput)
-              .map((prop) => {
-                const label = this.propIdToSourceName(prop.propId) ?? "none";
-                return {
-                  label,
-                  value: {
-                    label,
-                    propId: prop.propId,
-                  },
-                };
-              }) ?? [];
-
-          const socketOptions =
-            (schemaVariantId === nilId()
-              ? _.flatten(Object.values(this.outputSockets))
-              : this.outputSockets[schemaVariantId]
-            )?.map((socket) => {
-              const label =
-                this.outputSocketIdToSourceName(socket.outputSocketId) ??
-                "none";
-              return {
-                label,
-                value: {
-                  label,
-                  outputSocketId: socket.outputSocketId,
-                },
-              };
-            }) ?? [];
-          return [...propOptions, ...socketOptions];
-        },
-
         async FETCH_FUNC_LIST() {
-          return new ApiRequest<{ funcs: FuncSummary[] }, Visibility>({
-            url: "func/list_funcs",
-            params: {
-              ...visibility,
-            },
+          return new ApiRequest<FuncSummary[], Visibility>({
+            url: `${API_PREFIX}`,
             onSuccess: (response) => {
-              this.funcsById = _.keyBy(response.funcs, (f) => f.id);
+              response.forEach((func) => {
+                const bindings = processBindings(func);
+                this.actionBindings[func.funcId] = bindings.actionBindings;
+                this.attributeBindings[func.funcId] =
+                  bindings.attributeBindings;
+                this.authenticationBindings[func.funcId] =
+                  bindings.authenticationBindings;
+                this.qualificationBindings[func.funcId] =
+                  bindings.qualificationBindings;
+                this.codegenBindings[func.funcId] = bindings.codegenBindings;
+              });
+
+              this.funcsById = _.keyBy(response, (f) => f.funcId);
               this.recoverOpenFuncIds();
             },
           });
         },
-        async FETCH_FUNC(funcId: FuncId) {
-          return new ApiRequest<FuncWithDetails>({
-            url: "func/get_func",
+        async FETCH_CODE(funcId: FuncId) {
+          return new ApiRequest<FuncCode[]>({
+            url: `${API_PREFIX}/code`,
             params: {
               id: funcId,
-              ...visibility,
             },
             keyRequestStatusBy: funcId,
             onSuccess: (response) => {
-              this.funcDetailsById[response.id] = response;
+              response.forEach((func: FuncCode) => {
+                this.funcCodeById[func.funcId] = func;
+              });
             },
           });
         },
-        async FETCH_FUNC_ASSOCIATIONS(funcId: FuncId) {
-          return new ApiRequest<{ associations?: FuncAssociations }>({
-            url: "func/get_func_associations",
-            params: {
-              id: funcId,
-              ...visibility,
-            },
-            keyRequestStatusBy: funcId,
+        async CREATE_FUNC(createFuncRequest: {
+          name: string;
+          displayName: string;
+          description: string;
+          kind: FuncKind;
+          binding: FuncBinding;
+        }) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
+            method: "post",
+            url: `${API_PREFIX}/create`,
+            params: { ...createFuncRequest },
             onSuccess: (response) => {
-              const func = this.funcDetailsById[funcId];
-              if (func) {
-                func.associations = response.associations;
-                this.funcDetailsById[funcId] = func;
-              }
+              // summary coming through the WsEvent
+              this.funcCodeById[response.code.funcId] = response.code;
+              // select the fn to load it in the editor done in the component
+            },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
+        // TODO: jobelenus, doesn't exist yet...
         async DELETE_FUNC(funcId: FuncId) {
           return new ApiRequest<DeleteFuncResponse>({
             method: "post",
@@ -361,79 +218,58 @@ export const useFuncStore = () => {
             },
           });
         },
-        async UPDATE_FUNC(func: FuncWithDetails) {
+        async UPDATE_FUNC(func: FuncSummary) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
-          return new ApiRequest<SaveFuncResponse>({
+          return new ApiRequest({
             method: "post",
-            url: "func/save_func",
+            url: `${API_PREFIX}/${func.funcId}/update`,
             params: {
-              ...func,
-              ...visibility,
+              displayName: func.displayName,
+              description: func.description,
             },
             optimistic: () => {
               if (isHead) return () => {};
 
-              const current = this.funcById(func.id);
-              this.funcDetailsById[func.id] = {
-                ...func,
-                code: current?.code ?? func.code,
-              };
+              const current = this.funcsById[func.funcId];
               return () => {
                 if (current) {
-                  this.funcDetailsById[func.id] = current;
+                  this.funcsById[func.funcId] = current;
                 } else {
-                  delete this.funcDetailsById[func.id];
+                  delete this.funcCodeById[func.funcId];
+                  delete this.funcsById[func.funcId];
                 }
               };
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
-            keyRequestStatusBy: func.id,
+            keyRequestStatusBy: func.funcId,
           });
         },
-        async CREATE_ATTRIBUTE_PROTOTYPE(
-          funcId: FuncId,
-          schemaVariantId: string,
-          prototypeArguments: AttributePrototypeArgumentBag[],
-          componentId?: string,
-          propId?: string,
-          outputSocketId?: string,
-        ) {
+        async CREATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
+          // TODO: jobelenus, handle this WsEvent (no funcId on it?!)
           return new ApiRequest<null>({
             method: "post",
-            url: "func/create_attribute_prototype",
+            url: `${API_PREFIX}/${funcId}/bindings/create`,
             params: {
-              funcId,
-              schemaVariantId,
-              componentId,
-              propId,
-              outputSocketId,
-              prototypeArguments,
-              ...visibility,
+              bindings,
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
           });
         },
-        async UPDATE_ATTRIBUTE_PROTOTYPE(
-          funcId: FuncId,
-          attributePrototypeId: string,
-          prototypeArguments: AttributePrototypeArgumentBag[],
-          propId?: string,
-          outputSocketId?: string,
-        ) {
+        async UPDATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -441,21 +277,18 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: "func/update_attribute_prototype",
+            url: `${API_PREFIX}/${funcId}/bindings/update`,
             params: {
               funcId,
-              attributePrototypeId,
-              propId,
-              outputSocketId,
-              prototypeArguments,
-              ...visibility,
+              bindings,
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
           });
         },
-        async REMOVE_ATTRIBUTE_PROTOTYPE(attributePrototypeId: string) {
+        // How you "DETACH" an attribute function
+        async RESET_ATTRIBUTE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -463,22 +296,17 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: "func/remove_attribute_prototype",
+            url: `${API_PREFIX}/${funcId}/reset_attribute_binding`,
             params: {
-              attributePrototypeId,
-              ...visibility,
+              bindings,
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
           });
         },
-        async CREATE_FUNC_ARGUMENT(
-          funcId: FuncId,
-          name: string,
-          kind: FuncArgumentKind,
-          elementKind?: FuncArgumentKind,
-        ) {
+        // How you "DETACH" all other function bindings
+        async DELETE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -486,26 +314,16 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: "func/create_func_argument",
+            url: `${API_PREFIX}/${funcId}/bindings/delete`,
             params: {
-              funcId,
-              name,
-              kind,
-              elementKind,
-              ...visibility,
+              bindings,
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
           });
         },
-        async UPDATE_FUNC_ARGUMENT(
-          funcId: FuncId,
-          funcArgumentId: FuncArgumentId,
-          name: string,
-          kind: FuncArgumentKind,
-          elementKind?: FuncArgumentKind,
-        ) {
+        async CREATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
@@ -513,14 +331,26 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: "func/update_func_argument",
+            url: `${API_PREFIX}/${funcId}/create_argument`,
             params: {
-              funcId,
-              funcArgumentId,
-              name,
-              kind,
-              elementKind,
-              ...visibility,
+              ...funcArg,
+            },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
+          });
+        },
+        async UPDATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest<null>({
+            method: "post",
+            url: `${API_PREFIX}/${funcId}/${funcArg.id}/update`,
+            params: {
+              ...funcArg,
             },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
@@ -538,138 +368,33 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: "func/delete_func_argument",
-            params: {
-              funcId,
-              funcArgumentId,
-              ...visibility,
-            },
+            url: `${API_PREFIX}/${funcId}/${funcArgumentId}/delete`,
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
           });
         },
-        async FETCH_FUNC_ARGUMENT_LIST(funcId: FuncId) {
-          return new ApiRequest<{ funcArguments: FuncArgument[] }>({
-            url: "func/list_func_arguments",
-            params: {
-              funcId,
-              ...visibility,
-            },
-            onSuccess: (response) => {
-              this.funcArgumentsByFuncId[funcId] = response.funcArguments;
-              for (const argument of response.funcArguments) {
-                this.funcArgumentsById[argument.id] = argument;
-              }
-            },
-          });
-        },
+        // TODO: jobelenus, is this still "save"? or *just* execute?
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
-          const func = this.funcById(funcId);
+          const func = this.funcsById[funcId];
           if (func) {
-            trackEvent("func_save_and_exec", { id: func.id, name: func.name });
-          }
-
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<SaveFuncResponse>({
-            method: "post",
-            url: "func/save_and_exec",
-            keyRequestStatusBy: funcId,
-            params: { ...func, ...visibility },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
-          });
-        },
-        async TEST_EXECUTE(executeRequest: {
-          id: FuncId;
-          args: unknown;
-          code: string;
-          componentId: string;
-        }) {
-          const func = this.funcById(executeRequest.id);
-          if (func) {
-            trackEvent("function_test_execute", {
-              id: func.id,
+            trackEvent("func_save_and_exec", {
+              id: func.funcId,
               name: func.name,
             });
           }
 
-          return new ApiRequest<{
-            funcRunId: FuncRunId;
-          }>({
-            method: "post",
-            url: "func/test_execute",
-            params: { ...executeRequest, ...visibility },
-          });
-        },
-        async CREATE_FUNC(createFuncRequest: {
-          kind: FuncKind;
-          name?: string;
-          options?: CreateFuncOptions;
-        }) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest<FuncSummary>({
+          return new ApiRequest({
             method: "post",
-            url: "func/create_func",
-            params: { ...createFuncRequest, ...visibility },
-            onSuccess: (response) => {
-              this.funcsById[response.id] = response;
-            },
+            url: `${API_PREFIX}/${funcId}/execute`,
+            keyRequestStatusBy: funcId,
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
-            },
-          });
-        },
-        async FETCH_INPUT_SOURCE_LIST(schemaVariantId?: string) {
-          return new ApiRequest<{
-            inputSockets: InputSocketView[];
-            outputSockets: OutputSocketView[];
-            props: InputSourceProp[];
-          }>({
-            url: "func/list_input_sources",
-            params: { schemaVariantId, ...visibility },
-            onSuccess: (response) => {
-              const inputSourceSockets = this.inputSourceSockets;
-              const inputSourceSocketsFromResponse = _.groupBy(
-                response.inputSockets,
-                "schemaVariantId",
-              );
-              for (const schemaVariantId in inputSourceSocketsFromResponse) {
-                inputSourceSockets[schemaVariantId] =
-                  inputSourceSocketsFromResponse[schemaVariantId] ?? [];
-              }
-              this.inputSourceSockets = inputSourceSockets;
-
-              const inputSourceProps = this.inputSourceProps;
-              const inputSourcePropsFromResponse = _.groupBy(
-                response.props,
-                "schemaVariantId",
-              );
-              for (const _schemaVariantId in inputSourcePropsFromResponse) {
-                inputSourceProps[_schemaVariantId] =
-                  inputSourcePropsFromResponse[_schemaVariantId] ?? [];
-              }
-              this.inputSourceProps = inputSourceProps;
-
-              const outputSockets = this.outputSockets;
-              const outputSocketsFromResponse = _.groupBy(
-                response.outputSockets,
-                "schemaVariantId",
-              );
-              for (const _schemaVariantId in outputSocketsFromResponse) {
-                outputSockets[_schemaVariantId] =
-                  outputSocketsFromResponse[_schemaVariantId] ?? [];
-              }
-              this.outputSockets = outputSockets;
             },
           });
         },
@@ -682,6 +407,29 @@ export const useFuncStore = () => {
           }>({
             url: "attribute/get_prototype_arguments",
             params: { propId, outputSocketId, ...visibility },
+          });
+        },
+        async TEST_EXECUTE(executeRequest: {
+          funcId: FuncId;
+          args: unknown;
+          code: string;
+          componentId: string;
+        }) {
+          const func = this.funcsById[executeRequest.funcId];
+          if (func) {
+            trackEvent("function_test_execute", {
+              id: func.funcId,
+              name: func.name,
+            });
+          }
+
+          // why aren't we doing anything with the result of this?!
+          return new ApiRequest<{
+            funcRunId: FuncRunId;
+          }>({
+            method: "post",
+            url: `${API_PREFIX}/${executeRequest.funcId}/test_execute`,
+            params: { ...executeRequest },
           });
         },
 
@@ -717,38 +465,48 @@ export const useFuncStore = () => {
         },
 
         updateFuncCode(funcId: FuncId, code: string) {
-          const func = _.cloneDeep(this.funcDetailsById[funcId]);
+          const func = _.cloneDeep(this.funcCodeById[funcId]);
           if (!func || func.code === code) return;
           func.code = code;
 
           this.enqueueFuncSave(func);
         },
 
-        enqueueFuncSave(func: FuncWithDetails) {
-          if (changeSetsStore.headSelected) return this.UPDATE_FUNC(func);
-
-          this.funcDetailsById[func.id] = func;
+        enqueueFuncSave(func: FuncCode) {
+          this.editingFuncLatestCode[func.funcId] = func.code;
 
           // Lots of ways to handle this... we may want to handle this debouncing in the component itself
           // so the component has its own "draft" state that it passes back to the store when it's ready to save
           // however this should work for now, and lets the store handle this logic
           if (!funcSaveDebouncer) {
             funcSaveDebouncer = keyedDebouncer((id: FuncId) => {
-              const f = this.funcDetailsById[id];
-              if (!f) return;
-              this.UPDATE_FUNC(f);
+              const f = this.funcCodeById[id];
+              const code = this.editingFuncLatestCode[id];
+              if (!f || !code) return;
+              f.code = code;
+              this.SAVE_FUNC(f);
             }, 500);
           }
           // call debounced function which will trigger sending the save to the backend
-          const saveFunc = funcSaveDebouncer(func.id);
+          const saveFunc = funcSaveDebouncer(func.funcId);
           if (saveFunc) {
-            saveFunc(func.id);
+            saveFunc(func.funcId);
           }
+        },
+
+        async SAVE_FUNC(func: FuncCode) {
+          return new ApiRequest<FuncCode>({
+            method: "post",
+            url: `${API_PREFIX}/${func.funcId}/save_code`,
+            params: { code: func.code },
+            onFail: () => {
+              changeSetsStore.creatingChangeSet = false;
+            },
+          });
         },
       },
       onActivated() {
         this.FETCH_FUNC_LIST();
-        this.FETCH_INPUT_SOURCE_LIST();
 
         const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
@@ -760,12 +518,34 @@ export const useFuncStore = () => {
               this.FETCH_FUNC_LIST();
             },
           },
-          // TODO(victor) we don't need the changeSetId checks below, since nats filters messages already
           {
-            eventType: "FuncCreated",
+            eventType: "FuncBindingsUpdated",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
-              this.FETCH_FUNC_LIST();
+              // all the bindings for one given func
+              const funcId = data.bindings[0]?.funcId;
+              if (funcId) {
+                const func = this.funcsById[funcId];
+                if (func) func.bindings = data.bindings;
+              }
+            },
+          },
+          {
+            eventType: "FuncUpdated",
+            callback: (data) => {
+              if (data.changeSetId !== selectedChangeSetId) return;
+              this.funcsById[data.funcSummary.funcId] = data.funcSummary;
+              const bindings = processBindings(data.funcSummary);
+              this.actionBindings[data.funcSummary.funcId] =
+                bindings.actionBindings;
+              this.attributeBindings[data.funcSummary.funcId] =
+                bindings.attributeBindings;
+              this.authenticationBindings[data.funcSummary.funcId] =
+                bindings.authenticationBindings;
+              this.qualificationBindings[data.funcSummary.funcId] =
+                bindings.qualificationBindings;
+              this.codegenBindings[data.funcSummary.funcId] =
+                bindings.codegenBindings;
             },
           },
           {
@@ -785,26 +565,21 @@ export const useFuncStore = () => {
             },
           },
           {
-            eventType: "FuncArgumentsSaved",
-            callback: (data) => {
-              if (data.changeSetId !== selectedChangeSetId) return;
-              if (data.funcId !== this.selectedFuncId) return;
-              this.FETCH_FUNC_ARGUMENT_LIST(data.funcId);
-              this.FETCH_FUNC(data.funcId);
-            },
-          },
-          {
             eventType: "FuncSaved",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
+              // TODO: jobelenus, send data over the wire so i dont need this call
               this.FETCH_FUNC_LIST();
 
               // Reload the last selected asset to ensure that its func list is up to date.
+              // TODO: jobelenus, move this to the asset store!
               const assetId = assetStore.selectedVariantId;
               if (assetId) {
                 assetStore.LOAD_SCHEMA_VARIANT(assetId);
               }
 
+              // TODO, i dont know how this would ever fire to someone sitting on head?
+              // wouldn't we listen for an event "changeset applied"???
               if (this.selectedFuncId) {
                 // Only fetch if we don't have the selected func in our state or if we are on HEAD.
                 // If we are on HEAD, the func is immutable, so we are safe to fetch. However, if
@@ -813,13 +588,11 @@ export const useFuncStore = () => {
                 // value before the save queue is drained.
                 if (data.funcId === this.selectedFuncId) {
                   if (
-                    typeof this.funcDetailsById[this.selectedFuncId] ===
+                    typeof this.funcCodeById[this.selectedFuncId] ===
                       "undefined" ||
                     changeSetsStore.headSelected
                   ) {
-                    this.FETCH_FUNC(this.selectedFuncId);
-                  } else {
-                    this.FETCH_FUNC_ASSOCIATIONS(this.selectedFuncId);
+                    this.FETCH_CODE(this.selectedFuncId);
                   }
                 }
               }
