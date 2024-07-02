@@ -38,6 +38,7 @@
 
       buck2NativeBuildInputs = with pkgs;
         [
+          cowsay
           b3sum
           bash
           buck2
