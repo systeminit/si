@@ -15,8 +15,8 @@ use super::{NodeWeightError, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentNodeWeight {
-    id: Ulid,
-    lineage_id: LineageId,
+    pub id: Ulid,
+    pub lineage_id: LineageId,
     content_address: ContentAddress,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -105,11 +105,18 @@ impl ComponentNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
+    pub fn overwrite_id(&mut self, id: Ulid) {
+        self.id = id
+    }
+
+    pub fn overwrite_lineage_id(&mut self, id: LineageId) {
+        self.lineage_id = id
+    }
+
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[
             EdgeWeightKindDiscriminants::Use,
             EdgeWeightKindDiscriminants::Root,
-            EdgeWeightKindDiscriminants::SocketValue,
         ]
     }
 }

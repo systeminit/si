@@ -3,6 +3,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use strum::{Display, EnumIter};
 
 use crate::change_set::ChangeSet;
+use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 use crate::EdgeWeightKindDiscriminants;
@@ -27,8 +28,8 @@ pub enum CategoryNodeKind {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CategoryNodeWeight {
-    id: Ulid,
-    lineage_id: Ulid,
+    pub id: Ulid,
+    pub lineage_id: LineageId,
     kind: CategoryNodeKind,
     // TODO This should not be a content hash, since it does not point to a value in cas
     content_hash: ContentHash,

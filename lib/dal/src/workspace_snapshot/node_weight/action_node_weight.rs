@@ -15,12 +15,12 @@ use super::NodeWeightResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionNodeWeight {
-    id: Ulid,
+    pub id: Ulid,
     state: ActionState,
     originating_changeset_id: ChangeSetId,
     // DEPRECATED
     func_execution_pk: Option<FuncExecutionPk>,
-    lineage_id: LineageId,
+    pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,

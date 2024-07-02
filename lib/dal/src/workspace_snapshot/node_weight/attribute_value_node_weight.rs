@@ -15,8 +15,8 @@ use crate::{
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AttributeValueNodeWeight {
-    id: Ulid,
-    lineage_id: LineageId,
+    pub id: Ulid,
+    pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,

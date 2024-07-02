@@ -17,8 +17,8 @@ use crate::{
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FuncNodeWeight {
-    id: Ulid,
-    lineage_id: LineageId,
+    pub id: Ulid,
+    pub lineage_id: LineageId,
     content_address: ContentAddress,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,

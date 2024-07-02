@@ -56,7 +56,7 @@ use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::DeprecatedWorkspaceSnapshotGraph;
+use crate::workspace_snapshot::graph::{DeprecatedWorkspaceSnapshotGraph, LineageId};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
@@ -1342,6 +1342,29 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(
+        name = "workspace_snapshot.update_node_id",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
+    pub async fn update_node_id(
+        &self,
+        current_id: impl Into<Ulid>,
+        new_id: impl Into<Ulid>,
+        new_lineage_id: LineageId,
+    ) -> WorkspaceSnapshotResult<()> {
+        let idx = self.get_node_index_by_id(current_id).await?;
+        self.working_copy_mut()
+            .await
+            .update_node_id(idx, new_id, new_lineage_id)
+            .await?;
+
+        self.replace_references(idx).await?;
+
+        Ok(())
+    }
+
+    #[instrument(
         name = "workspace_snapshot.ordered_children_for_node",
         level = "debug",
         skip_all,
@@ -1506,6 +1529,8 @@ impl WorkspaceSnapshot {
             VectorClockId::from(Ulid::from(ctx.change_set_id())),
         )?;
 
+        let mut added_component_ids = HashSet::new();
+
         for update in &conflicts_and_updates.updates {
             match update {
                 Update::ReplaceSubgraph {
@@ -1515,25 +1540,32 @@ impl WorkspaceSnapshot {
                 | Update::MergeCategoryNodes {
                     to_rebase_category_id: _,
                     onto_category_id: _,
+                } => {
+                    /* Updates unused for determining if a Component is removed in regard to the updates */
                 }
-                | Update::NewEdge {
-                    source: _,
-                    destination: _,
+                Update::NewEdge {
+                    source,
+                    destination,
                     edge_weight: _,
                 } => {
-                    /* Updates unused for determining if a Component is removed with regards to the updates */
+                    // get updates that add an edge from the Components category to a component, which implies component creation
+                    if source.index != component_category_idx
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
+                    {
+                        continue;
+                    }
+
+                    added_component_ids.insert(ComponentId::from(Ulid::from(destination.id)));
                 }
                 Update::RemoveEdge {
                     source,
                     destination,
                     edge_kind: _,
                 } => {
-                    if !(source.index == component_category_idx
-                        && destination.node_weight_kind == NodeWeightDiscriminants::Component)
+                    // get updates that remove an edge from the Components category to a component, which implies component deletion
+                    if source.index != component_category_idx
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
                     {
-                        // We are only interested in updates that remove the edge from the
-                        // Components category to the Component itself, as this means we would
-                        // be deleting that Component.
                         continue;
                     }
 
@@ -1542,7 +1574,11 @@ impl WorkspaceSnapshot {
             }
         }
 
-        Ok(removed_component_ids)
+        // Filter out ComponentIds that have both been deleted and created, since that implies an upgrade and not a real deletion
+        Ok(removed_component_ids
+            .into_iter()
+            .filter(|id| !added_component_ids.contains(id))
+            .collect())
     }
 
     #[instrument(

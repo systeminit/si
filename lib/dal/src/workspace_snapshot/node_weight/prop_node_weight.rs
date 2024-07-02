@@ -17,8 +17,8 @@ use crate::{
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PropNodeWeight {
-    id: Ulid,
-    lineage_id: LineageId,
+    pub id: Ulid,
+    pub lineage_id: LineageId,
     content_address: ContentAddress,
     merkle_tree_hash: MerkleTreeHash,
     kind: PropKind,

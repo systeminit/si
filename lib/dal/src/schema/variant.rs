@@ -498,6 +498,7 @@ impl SchemaVariant {
 
     pub async fn lock(self, ctx: &DalContext) -> SchemaVariantResult<SchemaVariant> {
         self.modify(ctx, |sv| {
+            sv.version = Self::generate_version_string();
             sv.is_locked = true;
             Ok(())
         })
@@ -667,6 +668,17 @@ impl SchemaVariant {
             .await?
             .into_iter()
             .find(|v| !v.is_locked))
+    }
+
+    pub async fn get_latest_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<Option<Self>> {
+        let mut variants = Self::list_for_schema(ctx, schema_id).await?;
+
+        variants.sort_by_key(|v| v.version().to_string());
+
+        Ok(variants.last().cloned())
     }
 
     pub async fn get_default_for_schema(
@@ -1897,8 +1909,7 @@ impl SchemaVariant {
     }
 
     pub fn generate_version_string() -> String {
-        let date = Utc::now();
-        format!("{}", date.format("%Y%m%d%H%M%S"))
+        format!("{}", Utc::now().format("%Y%m%d%H%M%S"))
     }
 
     /// Lists all default [`SchemaVariantIds`](SchemaVariant) that have a secret definition.

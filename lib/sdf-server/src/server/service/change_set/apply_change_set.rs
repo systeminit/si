@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set::ChangeSet;
-use dal::Visibility;
+use dal::{Schema, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -29,6 +29,22 @@ pub async fn apply_change_set(
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    // Lock all unlocked variants
+    for schema_id in Schema::list_ids(&ctx).await? {
+        let schema = Schema::get_by_id(&ctx, schema_id).await?;
+        let Some(variant) = SchemaVariant::get_unlocked_for_schema(&ctx, schema_id).await? else {
+            continue;
+        };
+
+        let variant_id = variant.id();
+
+        variant.lock(&ctx).await?;
+        schema.set_default_schema_variant(&ctx, variant_id).await?;
+    }
+
+    // We need to run a commit before apply so changes get saved
+    ctx.commit().await?;
 
     let change_set = ChangeSet::apply_to_base_change_set(&mut ctx).await?;
 

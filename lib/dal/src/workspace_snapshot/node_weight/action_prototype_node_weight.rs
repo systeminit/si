@@ -14,13 +14,13 @@ use super::NodeWeightResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionPrototypeNodeWeight {
-    id: Ulid,
+    pub id: Ulid,
     kind: ActionKind,
     // TODO: Move behind ContentHash, and out of the node weight directly.
     name: String,
     // TODO: Move behind ContentHash, and out of the node weight directly.
     description: Option<String>,
-    lineage_id: LineageId,
+    pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
