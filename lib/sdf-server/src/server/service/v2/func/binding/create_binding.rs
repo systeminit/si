@@ -5,8 +5,8 @@ use axum::{
 };
 use dal::{
     func::binding::{
-        action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
-        AttributeArgumentBinding, EventualParent, FuncBindings,
+        action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
+        leaf::LeafBinding, AttributeArgumentBinding, EventualParent, FuncBindings,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
@@ -101,7 +101,12 @@ pub async fn create_binding(
                     func_id,
                 } = binding
                 {
-                    AuthBinding::create_auth_binding(&ctx, func_id, schema_variant_id).await?;
+                    AuthBinding::create_auth_binding(
+                        &ctx,
+                        func_id.into(),
+                        schema_variant_id.into(),
+                    )
+                    .await?;
                 }
             }
         }
