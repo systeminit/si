@@ -180,7 +180,8 @@ declare class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   setUiHidden(hidden: boolean): this;
 
   /**
-   * Set the value of this socket using a ValueFromBuilder
+   * DEPRECATED: Set the value of this socket using a ValueFromBuilder.
+   * The recommended way to do this is to attach an attribute function.
    *
    * @param {ValueFrom} valueFrom
    *
@@ -321,7 +322,8 @@ declare class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
   setKey(key: string): this;
 
   /**
-   * Set the value of this key from a ValueFromBuilder
+   * DEPRECATED: Set the value of this socket using a ValueFromBuilder.
+   * The recommended way to do this is to attach an attribute function.
    *
    * @param {ValueFrom} valueFrom
    *
@@ -581,7 +583,8 @@ declare class PropBuilder implements IPropBuilder {
   setName(name: string): this;
 
   /**
-   * Set the value of this prop using a ValueFromBuilder
+   * DEPRECATED: Set the value of this socket using a ValueFromBuilder.
+   * The recommended way to do this is to attach an attribute function.
    *
    * @param {ValueFrom} valueFrom
    *
