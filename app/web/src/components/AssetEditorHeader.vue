@@ -46,7 +46,7 @@ import { Timestamp, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
-import { FuncWithDetails } from "@/store/func/funcs.store";
+import { FuncSummary } from "@/api/sdf/dal/func";
 import EditingPill from "./EditingPill.vue";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
@@ -55,7 +55,7 @@ const assetStore = useAssetStore();
 
 defineProps({
   selectedAsset: { type: Object as PropType<SchemaVariant>, required: true },
-  selectedFunc: { type: Object as PropType<FuncWithDetails> },
+  selectedFunc: { type: Object as PropType<FuncSummary> },
 });
 
 const onClick = () => {

@@ -15,7 +15,7 @@
     <template #top>
       <AssetEditorHeader
         :selectedAsset="selectedAsset"
-        :selectedFunc="selectedFuncCode"
+        :selectedFunc="selectedFuncSummary"
       />
     </template>
 
