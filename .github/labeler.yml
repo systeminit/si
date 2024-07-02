@@ -1,202 +1,269 @@
----
 #
 # Project infrastructure
 #
 A-ci:
-  - .ci/**/*
-  - .github/**/*
-  - Makefile
-  - ./**/Makefile
+  - changed-files:
+    - any-glob-to-any-file:
+      - .ci/**/*
+      - .github/**/*
+      - Makefile
+      - ./**/Makefile
 A-docs:
-  - docs/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - docs/**/*
 
 #
 # System Initiative apps (i.e. webapps/ios apps/android apps)
 #
 A-web:
-  - app/web/**/*
-  - .prettierrc.js
+  - changed-files:
+    - any-glob-to-any-file:
+      - app/web/**/*
+      - .prettierrc.js
 
 #
 # System Initiative bins (i.e. services/programs/binaries)
 #
 A-cyclone:
-  - bin/cyclone/**/*
-  - lib/cyclone-client/**/*
-  - lib/cyclone-core/**/*
-  - lib/cyclone-server/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/cyclone/**/*
+      - lib/cyclone-client/**/*
+      - lib/cyclone-core/**/*
+      - lib/cyclone-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-sdf:
-  - bin/sdf/**/*
-  - lib/sdf-server/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/sdf/**/*
+      - lib/sdf-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-veritech:
-  - bin/veritech/**/*
-  - lib/veritech-client/**/*
-  - lib/veritech-core/**/*
-  - lib/veritech-server/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/veritech/**/*
+      - lib/veritech-client/**/*
+      - lib/veritech-core/**/*
+      - lib/veritech-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-pinga:
-  - bin/pinga/**/*
-  - lib/pinga-server/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/pinga/**/*
+      - lib/pinga-server/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-lang-js:
-  - bin/lang-js/**/*
-  - .prettierrc.js
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/lang-js/**/*
+      - .prettierrc.js
 A-module-index:
-  - bin/module-index/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/module-index/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-discord-bot:
-  - bin/si-discord-bot/**/*
-  - .prettierrc.js
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/si-discord-bot/**/*
+      - .prettierrc.js
 A-si:
-  - bin/si/**/*
-  - lib/si-cli/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/si/**/*
+      - lib/si-cli/**/*
 A-rebaser:
-  - bin/rebaser/**/*
-  - lib/rebaser-server/**/*
-  - lib/rebaser-core/**/*
-  - lib/rebaser-client/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/rebaser/**/*
+      - lib/rebaser-server/**/*
+      - lib/rebaser-core/**/*
+      - lib/rebaser-client/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)
 #
 A-buck2-resources:
-  - lib/A-buck2-resources/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/A-buck2-resources/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-bytes-lines-codec:
-  - lib/bytes-lines-codec/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/bytes-lines-codec/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-config-file:
-  - lib/config-file/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/config-file/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-dal:
-  - lib/dal/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/dal/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-dal-test:
-  - lib/dal-test/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/dal-test/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-nats-subscriber:
-  - lib/nats-subscriber/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/nats-subscriber/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-object-tree:
-  - lib/object-tree/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/object-tree/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-data-nats:
-  - lib/si-data-nats/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-data-nats/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-data-pg:
-  - lib/si-data-pg/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-data-pg/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-layer-cache:
-  - lib/si-layer-cache/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-layer-cache/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-pkg:
-  - lib/si-pkg/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-pkg/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-pool-noodle:
-  - lib/si-pool-noodle/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-pool-noodle/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-posthog-rs:
-  - lib/si-posthog-rs/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-posthog-rs/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-settings:
-  - lib/si-settings/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-settings/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-std:
-  - lib/si-std/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-std/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-si-test-macros:
-  - lib/si-test-macros/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/si-test-macros/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-telemetry-application-rs:
-  - lib/telemetry-application-rs/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/telemetry-application-rs/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 A-telemetry-rs:
-  - lib/telemetry-rs/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
+  - changed-files:
+    - any-glob-to-any-file:
+      - lib/telemetry-rs/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 
 #
 # Third-party development images
 #
 A-nats:
-  - component/nats/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - component/nats/**/*
 A-otelcol:
-  - component/otelcol/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - component/otelcol/**/*
 A-postgres:
-  - component/postgres/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - component/postgres/**/*
 A-skopeo:
-  - component/skopeo/**/*
+  - changed-files:
+    - any-glob-to-any-file:
+      - component/skopeo/**/*

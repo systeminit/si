@@ -54,6 +54,7 @@ pub(crate) struct Args {
         hide_env_values = true
     )]
     pub(crate) log_json: bool,
+    pub(crate) log_json_test: bool,
 
     /// NATS connection URL [example: 0.0.0.0:4222]
     #[arg(long, short = 'u')]
