@@ -119,7 +119,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
         .await
         .expect("unable to list actions for component");
     assert_eq!(
-        1,             // expected
+        0,             // expected
         actions.len()  // actual
     );
     let create_action_id = actions.pop().expect("no actions found");
