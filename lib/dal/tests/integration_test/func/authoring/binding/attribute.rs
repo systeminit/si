@@ -6,8 +6,8 @@ use dal::attribute::prototype::argument::AttributePrototypeArgument;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::binding::attribute::AttributeBinding;
 use dal::func::binding::{
-    AttributeArgumentBinding, AttributeFuncDestination, AttributeFuncArgumentSource, EventualParent,
-    FuncBinding, FuncBindings,
+    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
+    EventualParent, FuncBinding, FuncBindings,
 };
 use dal::func::summary::FuncSummary;
 use dal::prop::PropPath;

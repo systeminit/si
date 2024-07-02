@@ -8,7 +8,7 @@ use strum::{AsRefStr, Display, EnumString};
 
 use crate::prop::{PropPath, WidgetOptions};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorResult};
-use crate::{DalContext, Prop, PropKind, SchemaVariantId};
+use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,11 +26,13 @@ impl PropertyEditorSchema {
         let mut props = HashMap::new();
         let mut child_props = HashMap::new();
 
+        let builder = PropertyEditorPropBuilder::new(ctx, schema_variant_id).await?;
+
         // Get the root prop and load it into the work queue.
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
         let root_prop = Prop::get_by_id_or_error(ctx, root_prop_id).await?;
-        let root_property_editor_prop = PropertyEditorProp::new(ctx, root_prop).await?;
+        let root_property_editor_prop = builder.build(ctx, root_prop).await?;
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
@@ -57,9 +59,7 @@ impl PropertyEditorSchema {
             let mut child_property_editor_prop_ids = Vec::new();
             for child_prop in cache {
                 let child_prop_id = child_prop.id;
-                // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
-                // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let child_property_editor_prop = PropertyEditorProp::new(ctx, child_prop).await?;
+                let child_property_editor_prop = builder.build(ctx, child_prop).await?;
 
                 // Load the work queue with the child prop.
                 work_queue.push_back((child_prop_id, child_property_editor_prop.id));
@@ -81,21 +81,52 @@ impl PropertyEditorSchema {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PropertyEditorProp {
-    pub id: PropertyEditorPropId,
-    pub name: String,
-    pub kind: PropertyEditorPropKind,
-    pub widget_kind: PropertyEditorPropWidgetKind,
-    pub doc_link: Option<String>,
-    pub documentation: Option<String>,
-    pub validation_format: Option<String>,
-    pub default_can_be_set_by_socket: bool,
+/// A builder for creating [`PropertyEditorProps`](PropertyEditorProp).
+#[derive(Debug)]
+pub struct PropertyEditorPropBuilder {
+    /// If the [`SchemaVariant`] is a secret-defining [`SchemaVariant`], this will be populated
+    /// with the [`PropId`](Prop) of the [`Prop`] underneath "/root/secrets" corresponding to
+    /// the definition.
+    origin_secret_prop_id: Option<PropId>,
 }
 
-impl PropertyEditorProp {
-    pub async fn new(ctx: &DalContext, prop: Prop) -> PropertyEditorResult<PropertyEditorProp> {
+impl PropertyEditorPropBuilder {
+    pub async fn new(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropertyEditorResult<Self> {
+        // We need to know if we are secret-defining schema variant and what the corresponding
+        // "/root/secrets" prop is. We need to know this because a secret prop can only be edited
+        // if it is the origin secret prop on its corresponding secret-defining component.
+        let origin_secret_prop_id = if SchemaVariant::is_secret_defining(ctx, schema_variant_id)
+            .await?
+        {
+            let output_socket =
+                SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
+                    .await?;
+            Some(
+                Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant_id,
+                    &PropPath::new(["root", "secrets", output_socket.name()]),
+                )
+                .await?,
+            )
+        } else {
+            None
+        };
+
+        Ok(Self {
+            origin_secret_prop_id,
+        })
+    }
+
+    /// This non-consuming method creates a [`PropertyEditorProp`] with a given [`Prop`].
+    pub async fn build(
+        &self,
+        ctx: &DalContext,
+        prop: Prop,
+    ) -> PropertyEditorResult<PropertyEditorProp> {
         let default_can_be_set_by_socket = !prop.input_socket_sources(ctx).await?.is_empty();
 
         Ok(PropertyEditorProp {
@@ -110,8 +141,26 @@ impl PropertyEditorProp {
             documentation: prop.documentation.map(Into::into),
             validation_format: prop.validation_format.map(Into::into),
             default_can_be_set_by_socket,
+            is_origin_secret: match self.origin_secret_prop_id {
+                Some(prop_id) => prop_id == prop.id,
+                None => false,
+            },
         })
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyEditorProp {
+    pub id: PropertyEditorPropId,
+    pub name: String,
+    pub kind: PropertyEditorPropKind,
+    pub widget_kind: PropertyEditorPropWidgetKind,
+    pub doc_link: Option<String>,
+    pub documentation: Option<String>,
+    pub validation_format: Option<String>,
+    pub default_can_be_set_by_socket: bool,
+    pub is_origin_secret: bool,
 }
 
 #[remain::sorted]
@@ -141,7 +190,6 @@ impl From<PropKind> for PropertyEditorPropKind {
     }
 }
 
-// TODO(nick,theo,wendy): consider passing "widget options" to _all_ widgets.
 #[remain::sorted]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]

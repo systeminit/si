@@ -118,11 +118,6 @@ import { useComponentAttributesStore } from "@/store/component_attributes.store"
 import { ComponentType } from "@/api/sdf/dal/schema";
 import AttributesPanelItem from "./AttributesPanelItem.vue";
 
-const props = defineProps({
-  object: Object,
-  numPreviewProps: { type: Number, default: 3 },
-});
-
 const rootRef = ref<HTMLDivElement>();
 
 // toggle to true to show JSON tree explorer or attributes/values

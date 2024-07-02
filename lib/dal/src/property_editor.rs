@@ -12,8 +12,8 @@ use crate::validation::ValidationError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, ComponentError, PropId, SchemaVariantId, SecretError, StandardModelError,
-    TransactionsError,
+    pk, AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
+    StandardModelError, TransactionsError,
 };
 
 pub mod schema;
@@ -38,6 +38,8 @@ pub enum PropertyEditorError {
     Prop(#[from] PropError),
     #[error("property editor value not found by prop id: {0}")]
     PropertyEditorValueNotFoundByPropId(PropId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
     #[error("secret error: {0}")]

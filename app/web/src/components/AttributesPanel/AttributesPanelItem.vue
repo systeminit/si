@@ -437,7 +437,7 @@
           >
             <div v-if="secret" class="attributes-panel-item__secret-value">
               <Icon name="key" size="xs" />
-              {{ secretDefinitionId }} / {{ secret.name }}
+              {{ secret.definition }} / {{ secret.name }}
             </div>
             <div v-else class="attributes-panel-item__secret-value-empty">
               select/add secret
@@ -445,9 +445,9 @@
           </div>
 
           <SecretsModal
-            v-if="secretDefinitionId"
+            v-if="secretDefinitionIdForProp"
             ref="secretModalRef"
-            :definitionId="secretDefinitionId"
+            :definitionId="secretDefinitionIdForProp"
             @select="secretSelectedHandler"
           />
         </template>
@@ -546,18 +546,17 @@
     </Modal>
 
     <!-- MODAL FOR WHEN YOU CLICK A PROP WHICH IS CONTROLLED BY A PARENT OR SOCKET -->
-    <Modal
-      ref="confirmEditModalRef"
-      :title="
-        propControlledByParent
-          ? `You Cannot Edit Prop &quot;${propName}&quot;`
-          : 'Are You Sure?'
-      "
-    >
+    <Modal ref="confirmEditModalRef" :title="confirmEditModalTitle">
       <div class="pb-sm">
         <template v-if="propControlledByParent">
           You cannot edit prop "{{ propName }}" because it is populated by a
           function from an ancestor prop.
+        </template>
+        <template v-else-if="isImmutableSecretProp">
+          You cannot edit a non-origin secret prop. You can only edit a secret
+          prop on the component that it originates from (i.e. the component
+          whose asset defines it). For example, an "AWS Credential" secret must
+          be set on an "AWS Credential" component.
         </template>
         <template v-else>
           Editing the prop "{{ propName }}" directly will override the value
@@ -579,7 +578,9 @@
       </div>
       <div class="flex gap-sm">
         <VButton
-          :class="propControlledByParent ? 'flex-grow' : ''"
+          :class="
+            propControlledByParent || isImmutableSecretProp ? 'flex-grow' : ''
+          "
           icon="x"
           tone="shade"
           variant="ghost"
@@ -588,7 +589,7 @@
           Cancel
         </VButton>
         <VButton
-          v-if="!propControlledByParent"
+          v-if="!propControlledByParent && !isImmutableSecretProp"
           class="flex-grow"
           icon="edit"
           tone="action"
@@ -907,12 +908,16 @@ const sourceIcon = computed(() => {
 
 const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
 
-const propIsEditable = computed(
-  () =>
+const propIsEditable = computed(() => {
+  if (isImmutableSecretProp.value) {
+    return false;
+  }
+  return (
     sourceOverridden.value ||
     editOverride.value ||
-    (!propPopulatedBySocket.value && !propSetByDynamicFunc.value),
-);
+    (!propPopulatedBySocket.value && !propSetByDynamicFunc.value)
+  );
+});
 
 const sourceTooltip = computed(() => {
   if (sourceOverridden.value) {
@@ -1098,7 +1103,10 @@ const secretsStore = useSecretsStore();
 const secret = computed(
   () => secretsStore.secretsById[newValueString.value?.toString() || ""],
 );
-const secretDefinitionId = computed(() => {
+const isImmutableSecretProp = computed(
+  () => !fullPropDef.value.isOriginSecret && widgetKind.value === "secret",
+);
+const secretDefinitionIdForProp = computed(() => {
   if (props.attributeDef.propDef.widgetKind.kind !== "secret") return;
   const widgetOptions = props.attributeDef.propDef.widgetKind.options;
   // A widget of kind=secret has a single option that points to its secret definition
@@ -1116,6 +1124,20 @@ function secretSelectedHandler(newSecret: Secret) {
 }
 
 const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
+const confirmEditModalTitle = computed(() => {
+  if (propControlledByParent.value) {
+    if (propName.value) {
+      return `You Cannot Edit Prop &quote;${propName.value}&quote;`;
+    }
+    return "You Cannot Edit Prop";
+  }
+
+  if (isImmutableSecretProp.value) {
+    return "You Cannot Edit Non-Origin Secret Prop";
+  }
+
+  return "Are You Sure?";
+});
 
 const openConfirmEditModal = () => {
   if (confirmEditModalRef.value) {
