@@ -45,7 +45,7 @@ pub async fn clone_variant(
         SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
     )?;
 
-    let (cloned_schema_variant, schema) = VariantAuthoringClient::clone_variant(
+    let (cloned_schema_variant, schema) = VariantAuthoringClient::new_schema_with_cloned_variant(
         &ctx,
         default_schema_variant_id,
         request.name.clone(),

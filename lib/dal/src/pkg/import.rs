@@ -51,6 +51,7 @@ pub type ThingMap = super::ChangeSetThingMap<String, Thing>;
 
 #[derive(Clone, Debug, Default)]
 pub struct ImportOptions {
+    /// List of schema names to import. If set to `None`, the importer will import everything
     pub schemas: Option<Vec<String>>,
     pub skip_import_funcs: Option<HashMap<String, Func>>,
     /// If set to `true`, the importer will install the assets from the module
@@ -59,6 +60,9 @@ pub struct ImportOptions {
     /// If set to `true` then we will set the functions to a builtin
     /// in the UI. They will be marked as such.
     pub is_builtin: bool,
+    /// Locked schema variants can't be edited directly. Setting this to `true` will create
+    /// editable components.
+    pub create_unlocked: bool,
 }
 
 const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
@@ -181,8 +185,14 @@ async fn import_change_set(
             metadata.name(),
         );
 
-        let (_, schema_variant_ids) =
-            import_schema(ctx, schema_spec, installed_pkg.clone(), thing_map).await?;
+        let (_, schema_variant_ids) = import_schema(
+            ctx,
+            schema_spec,
+            installed_pkg.clone(),
+            thing_map,
+            options.create_unlocked,
+        )
+        .await?;
 
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
@@ -424,6 +434,7 @@ async fn import_schema(
     schema_spec: &SiPkgSchema<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
+    create_unlocked: bool,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let schema_and_category = {
         let mut existing_schema: Option<Schema> = None;
@@ -479,7 +490,9 @@ async fn import_schema(
 
             if let Some(variant) = variant {
                 let variant_id = variant.id();
-                variant.lock(ctx).await?;
+                if !create_unlocked {
+                    variant.lock(ctx).await?;
+                }
 
                 installed_schema_variant_ids.push(variant_id);
 

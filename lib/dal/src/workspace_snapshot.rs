@@ -1506,6 +1506,8 @@ impl WorkspaceSnapshot {
             VectorClockId::from(Ulid::from(ctx.change_set_id())),
         )?;
 
+        let mut added_component_ids = HashSet::new();
+
         for update in &conflicts_and_updates.updates {
             match update {
                 Update::ReplaceSubgraph {
@@ -1515,25 +1517,32 @@ impl WorkspaceSnapshot {
                 | Update::MergeCategoryNodes {
                     to_rebase_category_id: _,
                     onto_category_id: _,
+                } => {
+                    /* Updates unused for determining if a Component is removed in regard to the updates */
                 }
-                | Update::NewEdge {
-                    source: _,
-                    destination: _,
+                Update::NewEdge {
+                    source,
+                    destination,
                     edge_weight: _,
                 } => {
-                    /* Updates unused for determining if a Component is removed with regards to the updates */
+                    // get updates that add an edge from the Components category to a component, which implies component creation
+                    if source.index != component_category_idx
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
+                    {
+                        continue;
+                    }
+
+                    added_component_ids.insert(ComponentId::from(Ulid::from(destination.id)));
                 }
                 Update::RemoveEdge {
                     source,
                     destination,
                     edge_kind: _,
                 } => {
-                    if !(source.index == component_category_idx
-                        && destination.node_weight_kind == NodeWeightDiscriminants::Component)
+                    // get updates that remove an edge from the Components category to a component, which implies component deletion
+                    if source.index != component_category_idx
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
                     {
-                        // We are only interested in updates that remove the edge from the
-                        // Components category to the Component itself, as this means we would
-                        // be deleting that Component.
                         continue;
                     }
 
@@ -1542,7 +1551,11 @@ impl WorkspaceSnapshot {
             }
         }
 
-        Ok(removed_component_ids)
+        // Filter out ComponentIds that have both been deleted and created, since that implies an upgrade and not a real deletion
+        Ok(removed_component_ids
+            .into_iter()
+            .filter(|id| !added_component_ids.contains(id))
+            .collect())
     }
 
     #[instrument(

@@ -3770,8 +3770,27 @@ impl Component {
         .await?;
 
         // Let's remove the original resource so that we don't queue a delete action
+        let original_component_id = self.id();
+
         original_component.clear_resource(ctx).await?;
-        original_component.delete(ctx).await?;
+        Self::remove(ctx, original_component.id).await?;
+
+        // Now we replace the new component id with the id of the original one
+        let snap = ctx.workspace_snapshot()?;
+
+        let new_component_idx = snap.get_node_index_by_id(new_component.id).await?;
+
+        let mut new_node_weight = snap
+            .get_node_weight(new_component_idx)
+            .await?
+            .get_component_node_weight()?
+            .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
+
+        new_node_weight.overwrite_id(original_component_id.into());
+
+        snap.add_node(NodeWeight::Component(new_node_weight))
+            .await?;
+        snap.replace_references(new_component_idx).await?;
 
         Ok(new_component)
     }

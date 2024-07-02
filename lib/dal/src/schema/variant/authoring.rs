@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -21,15 +22,15 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::import::import_only_new_funcs;
-use crate::pkg::{import_pkg_from_pkg, PkgError};
+use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
 use crate::prop::PropError;
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    pkg, ComponentType, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, HistoryEventError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId,
+    pkg, Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, HistoryEventError, Schema, SchemaError, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId,
 };
 
 #[allow(missing_docs)]
@@ -42,6 +43,8 @@ pub enum VariantAuthoringError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func authoring error: {0}")]
@@ -152,19 +155,18 @@ impl VariantAuthoringClient {
         let pkg_spec =
             build_pkg_spec_for_variant(&name, definition, &asset_func_spec, &metadata, &email)?;
 
-        let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
+        let pkg = dbg!(SiPkg::load_from_spec(pkg_spec.clone())?);
 
         let (_, schema_variant_ids, _) = import_pkg_from_pkg(
             ctx,
             &pkg,
-            Some(pkg::ImportOptions {
-                schemas: None,
+            Some(ImportOptions {
                 skip_import_funcs: Some(HashMap::from_iter([(
                     asset_func_spec.unique_id.to_owned(),
                     asset_func.clone(),
                 )])),
-                no_record: true,
-                is_builtin: false,
+                create_unlocked: true,
+                ..Default::default()
             }),
         )
         .await?;
@@ -174,12 +176,13 @@ impl VariantAuthoringClient {
             .copied()
             .ok_or(VariantAuthoringError::NoAssetCreated)?;
 
-        Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
+        Ok(dbg!(
+            SchemaVariant::get_by_id(ctx, schema_variant_id).await?
+        ))
     }
 
-    // TODO RENAME THIS, it clones a schema with a variant
     #[instrument(name = "variant.authoring.clone_variant", level = "info", skip_all)]
-    pub async fn clone_variant(
+    pub async fn new_schema_with_cloned_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         schema_name: String,
@@ -218,14 +221,13 @@ impl VariantAuthoringClient {
             let (_, schema_variant_ids, _) = import_pkg_from_pkg(
                 ctx,
                 &pkg,
-                Some(pkg::ImportOptions {
-                    schemas: None,
+                Some(ImportOptions {
                     skip_import_funcs: Some(HashMap::from_iter([(
                         cloned_func_spec.unique_id.to_owned(),
                         cloned_func.clone(),
                     )])),
-                    no_record: true,
-                    is_builtin: false,
+                    create_unlocked: true,
+                    ..Default::default()
                 }),
             )
             .await?;
@@ -272,7 +274,7 @@ impl VariantAuthoringClient {
             .await?;
             Ok(sv_id)
         } else {
-            Self::update_and_generate_variant_with_new_version(
+            let new_variant = Self::generate_variant_with_updates(
                 ctx,
                 sv_id,
                 schema.name,
@@ -283,7 +285,22 @@ impl VariantAuthoringClient {
                 sv.description,
                 sv.component_type,
             )
-            .await
+            .await?;
+
+            for component_id in components_in_use {
+                Component::get_by_id(ctx, component_id)
+                    .await?
+                    .upgrade_to_new_variant(ctx, new_variant.id)
+                    .await?;
+            }
+
+            // TODO delete instead of locking
+            SchemaVariant::get_by_id(ctx, sv_id)
+                .await?
+                .lock(ctx)
+                .await?;
+
+            Ok(new_variant.id)
         }
     }
 
@@ -423,7 +440,7 @@ impl VariantAuthoringClient {
         level = "info",
         skip_all
     )]
-    async fn update_and_generate_variant_with_new_version(
+    async fn generate_variant_with_updates(
         ctx: &DalContext,
         current_sv_id: SchemaVariantId,
         schema_name: impl Into<String>,
@@ -433,7 +450,7 @@ impl VariantAuthoringClient {
         link: Option<String>,
         description: Option<String>,
         component_type: ComponentType,
-    ) -> VariantAuthoringResult<SchemaVariantId> {
+    ) -> VariantAuthoringResult<SchemaVariant> {
         let schema_name = schema_name.into();
 
         let old_sv = SchemaVariant::get_by_id(ctx, current_sv_id).await?;
@@ -520,15 +537,7 @@ impl VariantAuthoringClient {
         )
         .await?
         {
-            schema
-                .set_default_schema_variant(ctx, new_schema_variant.id)
-                .await?;
-
-            let new_sv_id = new_schema_variant.id;
-
-            new_schema_variant.lock(ctx).await?;
-
-            Ok(new_sv_id)
+            Ok(new_schema_variant)
         } else {
             Err(VariantAuthoringError::NoAssetCreated)
         }

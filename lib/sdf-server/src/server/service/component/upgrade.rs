@@ -32,10 +32,15 @@ pub async fn upgrade(
     let current_component = Component::get_by_id(&ctx, request.component_id).await?;
     let current_schema_variant = current_component.schema_variant(&ctx).await?;
     let schema = current_schema_variant.schema(&ctx).await?;
-    let default_schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?;
+
+    let upgrade_target_variant =
+        match SchemaVariant::get_unlocked_for_schema(&ctx, schema.id()).await? {
+            Some(unlocked_variant) => unlocked_variant,
+            None => SchemaVariant::get_default_for_schema(&ctx, schema.id()).await?,
+        };
 
     // This is just a check to see if someone has made a request incorrectly!
-    if current_schema_variant.id() == default_schema_variant.id() {
+    if current_schema_variant.id() == upgrade_target_variant.id() {
         return Err(ComponentError::SchemaVariantUpgradeSkipped);
     }
 
@@ -51,7 +56,7 @@ pub async fn upgrade(
     }
 
     let upgraded_component = current_component
-        .upgrade_to_new_variant(&ctx, default_schema_variant.id())
+        .upgrade_to_new_variant(&ctx, upgrade_target_variant.id())
         .await?;
 
     track(
@@ -63,7 +68,7 @@ pub async fn upgrade(
             "how": "/component/upgrade_component",
             "component_id": request.component_id,
             "component_schema_variant_id": current_schema_variant.id(),
-            "new_schema_variant_id": default_schema_variant.id(),
+            "new_schema_variant_id": upgrade_target_variant.id(),
             "change_set_id": ctx.change_set_id(),
         }),
     );

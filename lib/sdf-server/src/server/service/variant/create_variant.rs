@@ -51,7 +51,7 @@ pub async fn create_variant(
     )
     .await?;
 
-    let schema = created_schema_variant.schema(&ctx).await?;
+    let schema = dbg!(&created_schema_variant).schema(&ctx).await?;
 
     track(
         &posthog_client,

@@ -29,7 +29,7 @@ async fn clone_variant(ctx: &mut DalContext) {
 
     assert!(default_schema_variant.is_some());
 
-    let (new_schema_variant, _) = VariantAuthoringClient::clone_variant(
+    let (new_schema_variant, _) = VariantAuthoringClient::new_schema_with_cloned_variant(
         ctx,
         default_schema_variant.expect("unable to get the schema variant id from the option"),
         schema.name().to_string(),

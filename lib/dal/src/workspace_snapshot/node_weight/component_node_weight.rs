@@ -105,6 +105,10 @@ impl ComponentNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
+    pub fn overwrite_id(&mut self, id: Ulid) {
+        self.id = id
+    }
+
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[
             EdgeWeightKindDiscriminants::Use,

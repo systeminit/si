@@ -7,8 +7,9 @@ use axum::{
 use dal::{
     action::{prototype::ActionPrototypeError, ActionError},
     ActionPrototypeId, ChangeSetApplyError as DalChangeSetApplyError,
-    ChangeSetError as DalChangeSetError, ComponentError, FuncError, StandardModelError,
-    TransactionsError, WorkspaceError, WorkspaceSnapshotError, WsEventError,
+    ChangeSetError as DalChangeSetError, ComponentError, FuncError, SchemaError,
+    SchemaVariantError, StandardModelError, TransactionsError, WorkspaceError,
+    WorkspaceSnapshotError, WsEventError,
 };
 
 use telemetry::prelude::*;
@@ -49,6 +50,10 @@ pub enum ChangeSetError {
     Func(#[from] FuncError),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]

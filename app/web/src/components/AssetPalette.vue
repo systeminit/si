@@ -31,22 +31,22 @@
 
           <SiSearch
             ref="searchRef"
-            placeholder="search assets"
             :filters="searchFiltersWithCounts"
+            placeholder="search assets"
             @search="onSearchUpdated"
           />
         </template>
 
         <TreeNode
           v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
-          ref="collapsibleRefs"
           :key="categoryIndex"
+          ref="collapsibleRefs"
+          :color="category.schemaVariants[0]?.color || '#000'"
           :label="category.displayName"
           :primaryIcon="getAssetIcon(category.displayName)"
-          :color="category.schemaVariants[0]?.color || '#000'"
+          alwaysShowArrow
           enableDefaultHoverClasses
           enableGroupToggle
-          alwaysShowArrow
           indentationSize="none"
         >
           <template #icons>
@@ -58,13 +58,13 @@
           <TreeNode
             v-for="(schemaVariant, schemaIndex) in category.schemaVariants"
             :key="schemaIndex"
-            :color="schemaVariant.color"
             :classes="
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
                 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
               )
             "
+            :color="schemaVariant.color"
             :isSelected="
               componentsStore.selectedInsertSchemaVariantId ===
               schemaVariant.schemaVariantId
@@ -79,11 +79,12 @@
               <TruncateWithTooltip class="text-sm">
                 {{ schemaVariantDisplayName(schemaVariant) }}
               </TruncateWithTooltip>
-              <!-- <div
+              <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
               >
-                asset by: System Initiative
-              </div> -->
+                {{ schemaVariant.schemaVariantId }}
+                <!--                asset by: System Initiative-->
+              </div>
             </template>
             <template #icons>
               <EditingPill

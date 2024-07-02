@@ -44,8 +44,6 @@ pub async fn list_schema_variants(
 
     let mut schema_variants = Vec::new();
 
-    // NOTE(victor): This is not optimized, since it loops twice through the defaults, but it'll get the job done for now
-    // determining the default should change soon, and then we can get rid of SchemaVariant::get_default_for_schema over here
     for schema_id in Schema::list_ids(&ctx).await? {
         let default_schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
         if !default_schema_variant.ui_hidden() {

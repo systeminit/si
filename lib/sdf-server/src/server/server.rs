@@ -423,10 +423,8 @@ async fn install_builtins(
                     &ctx,
                     &pkg,
                     Some(dal::pkg::ImportOptions {
-                        schemas: None,
-                        skip_import_funcs: None,
-                        no_record: false,
                         is_builtin: true,
+                        ..Default::default()
                     }),
                 )
                 .await

@@ -228,6 +228,14 @@ impl SummaryDiagramComponent {
             })?
         };
 
+        let can_be_upgraded = if let Some(unlocked_schema_variant) =
+            SchemaVariant::get_unlocked_for_schema(ctx, schema.id()).await?
+        {
+            unlocked_schema_variant.id() != schema_variant.id()
+        } else {
+            default_schema_variant.id() != schema_variant.id()
+        };
+
         Ok(SummaryDiagramComponent {
             id: component.id(),
             component_id: component.id(),
@@ -249,7 +257,7 @@ impl SummaryDiagramComponent {
             created_info,
             deleted_info: serde_json::Value::Null,
             to_delete: component.to_delete(),
-            can_be_upgraded: default_schema_variant.id() != schema_variant.id(),
+            can_be_upgraded,
             from_base_change_set: false,
         })
     }
