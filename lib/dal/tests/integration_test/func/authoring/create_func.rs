@@ -9,7 +9,7 @@ use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::schema::variant::leaves::LeafKind;
 use dal::{AttributeValue, ChangeSet, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
-use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 
 #[test]
@@ -127,8 +127,8 @@ async fn create_qualification_with_schema_variant_chainsaw(ctx: &mut DalContext)
     assert!(maybe_sv_id.is_some());
     let sv_id = maybe_sv_id.unwrap();
 
-    let func_name = "Paul's Test Func".to_string();
-    let func = FuncAuthoringClient::create_new_leaf_func(
+    let func_name = "Paul's Test Func 2".to_string();
+    assert!(FuncAuthoringClient::create_new_leaf_func(
         ctx,
         Some(func_name.clone()),
         LeafKind::Qualification,
@@ -136,9 +136,26 @@ async fn create_qualification_with_schema_variant_chainsaw(ctx: &mut DalContext)
         &[],
     )
     .await
-    .expect("unable to create func");
+    .is_err());
+    let func = Func::find_id_by_name(ctx, func_name.clone())
+        .await
+        .expect("has func");
+    dbg!(func);
+    let new_sv = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
+        .await
+        .expect("can unlock sv")
+        .id();
+    let func = FuncAuthoringClient::create_new_leaf_func(
+        ctx,
+        Some(func_name.clone()),
+        LeafKind::Qualification,
+        EventualParent::SchemaVariant(new_sv),
+        &[],
+    )
+    .await
+    .expect("can create func");
 
-    let schema_funcs = SchemaVariant::all_funcs(ctx, sv_id)
+    let schema_funcs = SchemaVariant::all_funcs(ctx, new_sv)
         .await
         .expect("Unable to get all schema variant funcs");
 
@@ -273,6 +290,11 @@ async fn create_codegen_with_schema_variant_chainsaw(ctx: &mut DalContext) {
     assert!(maybe_sv_id.is_some());
     let sv_id = maybe_sv_id.unwrap();
 
+    // create unlocked copy
+    let sv_id = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
+        .await
+        .expect("could create unlocked copy")
+        .id();
     let func_name = "Paul's Test Func".to_string();
 
     let func = FuncAuthoringClient::create_new_leaf_func(
@@ -431,6 +453,12 @@ async fn create_attribute_override_dynamic_func_for_prop_chainsaw(ctx: &mut DalC
         .await
         .expect("unable to get default schema variant id")
         .expect("default schema variant id not found");
+    // create unlocked copy
+    let schema_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+            .await
+            .expect("could create unlocked copy")
+            .id();
     let prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,
@@ -572,6 +600,12 @@ async fn create_attribute_override_dynamic_func_for_output_socket_chainsaw(ctx: 
         .await
         .expect("unable to get default schema variant id")
         .expect("default schema variant id not found");
+    // create unlocked copy
+    let schema_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+            .await
+            .expect("can create unlocked copy")
+            .id();
     let output_socket = OutputSocket::find_with_name(ctx, "anything", schema_variant_id)
         .await
         .expect("could not perform find output socket")
@@ -737,6 +771,11 @@ async fn create_action_with_schema_variant_chainsaw(ctx: &mut DalContext) {
         .expect("unable to get schema variant");
     assert!(maybe_sv_id.is_some());
     let sv_id = maybe_sv_id.unwrap();
+    // create unlocked copy
+    let sv_id = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
+        .await
+        .expect("can create unlocked copy")
+        .id();
 
     let func_name = "Paul's Test Action Func".to_string();
     let func = FuncAuthoringClient::create_new_action_func(
@@ -911,10 +950,13 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     // We should still see that the schema variant we updated is the same as we have no components on the graph
     assert_eq!(variant_zero.id(), updated_variant_id);
     // Add a component to the diagram
-    let initial_component =
-        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
-            .await
-            .expect("could not create component");
+    let initial_component = create_component_for_default_schema_name(
+        ctx,
+        my_asset_schema.name.clone(),
+        "demo component",
+    )
+    .await
+    .expect("could not create component");
     let initial_diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -1050,6 +1092,8 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
         component_view
     );
 }
+
+/// todo fix this test
 #[test]
 async fn create_qualification_and_code_gen_with_existing_component_chainsaw(ctx: &mut DalContext) {
     let asset_name = "britsTestAsset".to_string();
@@ -1114,11 +1158,15 @@ async fn create_qualification_and_code_gen_with_existing_component_chainsaw(ctx:
 
     // We should still see that the schema variant we updated is the same as we have no components on the graph
     assert_eq!(variant_zero.id(), updated_variant_id);
+
     // Add a component to the diagram
-    let initial_component =
-        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
-            .await
-            .expect("could not create component");
+    let initial_component = create_component_for_default_schema_name(
+        ctx,
+        my_asset_schema.name.clone(),
+        "demo component",
+    )
+    .await
+    .expect("could not create component");
     let initial_diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");

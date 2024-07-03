@@ -224,6 +224,7 @@ pub struct ComponentContentV1 {
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum FuncContent {
     V1(FuncContentV1),
+    V2(FuncContentV2),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -241,10 +242,48 @@ pub struct FuncContentV1 {
     /// A hash of the code above
     pub code_blake3: ContentHash,
 }
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct FuncContentV2 {
+    pub timestamp: Timestamp,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub link: Option<String>,
+    pub hidden: bool,
+    pub builtin: bool,
+    pub backend_response_type: FuncBackendResponseType,
+    pub backend_kind: FuncBackendKind,
+    pub handler: Option<String>,
+    pub code_base64: Option<String>,
+    /// A hash of the code above
+    pub code_blake3: ContentHash,
+    pub is_locked: bool,
+}
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum FuncArgumentContent {
     V1(FuncArgumentContentV1),
+}
+
+impl FuncContent {
+    pub fn extract(self) -> FuncContentV2 {
+        match self {
+            FuncContent::V1(v1) => FuncContentV2 {
+                timestamp: v1.timestamp,
+                hidden: v1.hidden,
+                display_name: v1.display_name,
+                link: v1.link,
+                description: v1.description,
+                is_locked: true,
+                builtin: v1.builtin,
+                backend_response_type: v1.backend_response_type,
+                backend_kind: v1.backend_kind,
+                handler: v1.handler,
+                code_base64: v1.code_base64,
+                code_blake3: v1.code_blake3,
+            },
+            FuncContent::V2(v2) => v2,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

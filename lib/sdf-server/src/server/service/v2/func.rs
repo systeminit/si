@@ -8,7 +8,7 @@ use dal::{
     func::{
         argument::FuncArgumentError,
         authoring::{FuncAuthoringClient, FuncAuthoringError},
-        binding::FuncBindingsError,
+        binding::FuncBindingError,
     },
     ChangeSetError, DalContext, Func, FuncError, FuncId, WsEventError,
 };
@@ -20,6 +20,8 @@ use crate::{server::state::AppState, service::ApiError};
 pub mod argument;
 pub mod binding;
 pub mod create_func;
+pub mod create_unlocked_copy;
+pub mod delete_func;
 pub mod execute_func;
 pub mod get_code;
 pub mod list_funcs;
@@ -30,6 +32,8 @@ pub mod update_func;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncAPIError {
+    #[error("cannot delete locked func: {0}")]
+    CannotDeleteLockedFunc(FuncId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("func error: {0}")]
@@ -39,7 +43,7 @@ pub enum FuncAPIError {
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
     #[error("func bindings error: {0}")]
-    FuncBindings(#[from] FuncBindingsError),
+    FuncBinding(#[from] FuncBindingError),
     #[error("The function name \"{0}\" is reserved")]
     FuncNameReserved(String),
     #[error("hyper error: {0}")]
@@ -86,7 +90,11 @@ impl IntoResponse for FuncAPIError {
             | Self::MissingInputLocationForAttributeFunc
             | Self::MissingOutputLocationForAttributeFunc
             | Self::MissingPrototypeId
-            | Self::MissingSchemaVariantAndFunc => StatusCode::BAD_REQUEST,
+            | Self::MissingSchemaVariantAndFunc
+            | Self::Func(dal::FuncError::FuncLocked(_))
+            | Self::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
+                StatusCode::BAD_REQUEST
+            }
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
@@ -106,6 +114,11 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/:func_id/save_code", post(save_code::save_code)) // only saves func code
         .route("/:func_id/test_execute", post(test_execute::test_execute))
         .route("/:func_id/execute", post(execute_func::execute_func))
+        .route(
+            "/:func_id/create_unlocked_copy",
+            post(create_unlocked_copy::create_unlocked_copy),
+        )
+        .route("/:func_id/delete", get(delete_func::delete_func))
         // Func Bindings
         .route(
             "/:func_id/bindings/create",
@@ -119,7 +132,7 @@ pub fn v2_routes() -> Router<AppState> {
             "/:func_id/bindings/update",
             post(binding::update_binding::update_binding),
         )
-        // Attribute Bindings
+        // Reset Attribute Bindings
         .route(
             "/:func_id/reset_attribute_binding",
             post(binding::attribute::reset_attribute_binding::reset_attribute_binding),

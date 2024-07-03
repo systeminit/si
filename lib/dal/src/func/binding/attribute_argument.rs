@@ -9,7 +9,7 @@ use crate::{
     DalContext, InputSocketId, PropId,
 };
 
-use super::{FuncBindingsError, FuncBindingsResult};
+use super::{FuncBindingError, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttributeFuncArgumentSource {
@@ -60,7 +60,7 @@ impl AttributeArgumentBinding {
     pub async fn assemble(
         ctx: &DalContext,
         attribute_prototype_argument_id: AttributePrototypeArgumentId,
-    ) -> FuncBindingsResult<Self> {
+    ) -> FuncBindingResult<Self> {
         let attribute_prototype_argument =
             AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id).await?;
 
@@ -77,14 +77,14 @@ impl AttributeArgumentBinding {
                         AttributeFuncArgumentSource::StaticArgument(static_value.value.to_string())
                     }
                     value_source => {
-                        return Err(FuncBindingsError::UnexpectedValueSource(
+                        return Err(FuncBindingError::UnexpectedValueSource(
                             value_source,
                             attribute_prototype_argument_id,
                         ))
                     }
                 },
                 None => {
-                    return Err(FuncBindingsError::MissingValueSource(
+                    return Err(FuncBindingError::MissingValueSource(
                         attribute_prototype_argument_id,
                     ))
                 }
@@ -105,7 +105,7 @@ impl AttributeArgumentBinding {
     pub fn assemble_attribute_input_location(
         prop_id: Option<si_events::PropId>,
         input_socket_id: Option<si_events::InputSocketId>,
-    ) -> FuncBindingsResult<AttributeFuncArgumentSource> {
+    ) -> FuncBindingResult<AttributeFuncArgumentSource> {
         let input_location = match (prop_id, input_socket_id) {
             (None, Some(input_socket_id)) => {
                 AttributeFuncArgumentSource::InputSocket(input_socket_id.into())
@@ -113,7 +113,7 @@ impl AttributeArgumentBinding {
 
             (Some(prop_id), None) => AttributeFuncArgumentSource::Prop(prop_id.into()),
             _ => {
-                return Err(FuncBindingsError::MalformedInput(
+                return Err(FuncBindingError::MalformedInput(
                     "cannot set more than one output location".to_owned(),
                 ))
             }

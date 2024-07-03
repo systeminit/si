@@ -38,6 +38,8 @@ pub enum FuncArgumentError {
     EmptyNameDuringCreation,
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func id not found for func arg id: {0}")]
+    FuncIdNotFound(FuncArgumentId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("intrinsic func {0} ({1}) missing func argument edge")]
@@ -330,6 +332,26 @@ impl FuncArgument {
         }
 
         Ok(func_args)
+    }
+
+    pub async fn get_func_id_for_func_arg_id(
+        ctx: &DalContext,
+        func_arg_id: FuncArgumentId,
+    ) -> FuncArgumentResult<FuncId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let func_id_node_idx = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_arg_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        if let Some(idx) = func_id_node_idx.into_iter().next() {
+            let node_weight = workspace_snapshot
+                .get_node_weight(idx)
+                .await?
+                .get_func_node_weight()?;
+            return Ok(node_weight.id().into());
+        }
+
+        Err(FuncArgumentError::FuncIdNotFound(func_arg_id))
     }
 
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).

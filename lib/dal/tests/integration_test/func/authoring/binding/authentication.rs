@@ -2,6 +2,7 @@ use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::authentication::AuthBinding;
 use dal::func::summary::FuncSummary;
 use dal::func::FuncKind;
+use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
@@ -22,6 +23,12 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
         .expect("unable to get the funcs for a schema variant");
     let total_funcs = funcs.len();
 
+    // create unlocked copy
+    let schema_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+            .await
+            .expect("could create unlocked copy")
+            .id();
     // Attach one auth func to the schema variant and commit.
     let func_id = Func::find_id_by_name(ctx, "test:setDummySecretString")
         .await

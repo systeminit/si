@@ -2,7 +2,7 @@ use dal::change_set::view::OpenChangeSetsView;
 use dal::diagram::Diagram;
 use dal::{DalContext, Workspace};
 use dal_test::helpers::{
-    create_component_for_schema_name, ChangeSetTestHelpers, PropEditorTestView,
+    create_component_for_default_schema_name, ChangeSetTestHelpers, PropEditorTestView,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -22,7 +22,7 @@ async fn export_import_loop(ctx: &mut DalContext) {
 
     // Create Component With Value
     let original_pirate_name = "Cap'n Crunch ";
-    create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+    create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)

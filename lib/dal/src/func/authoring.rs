@@ -57,13 +57,14 @@ use crate::func::associations::{FuncAssociations, FuncAssociationsError};
 use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::prop::PropError;
+use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId,
     SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
-    WsEventError,
+    WsEvent, WsEventError,
 };
 
 use super::binding::action::ActionBinding;
@@ -71,8 +72,8 @@ use super::binding::attribute::AttributeBinding;
 use super::binding::authentication::AuthBinding;
 use super::binding::leaf::LeafBinding;
 use super::binding::{
-    AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBindings,
-    FuncBindingsError,
+    AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBinding,
+    FuncBindingError,
 };
 use super::runner::{FuncRunner, FuncRunnerError};
 use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
@@ -96,6 +97,8 @@ pub enum FuncAuthoringError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cannot unlock non-default schema variant: {0}")]
+    CannotUnlockNonDefaultSchemaVariant(SchemaVariantId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("func error: {0}")]
@@ -105,7 +108,7 @@ pub enum FuncAuthoringError {
     #[error("func associations error: {0}")]
     FuncAssociations(#[from] FuncAssociationsError),
     #[error("func bindings error: {0}")]
-    FuncBindings(#[from] FuncBindingsError),
+    FuncBinding(#[from] FuncBindingError),
     #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
     FuncCannotHaveAssociations(FuncId, FuncKind, FuncAssociations),
     #[error("func named \"{0}\" already exists in this change set")]
@@ -146,6 +149,8 @@ pub enum FuncAuthoringError {
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
     #[error("unexpected func kind ({0}) for func ({1}) when creating func argument (expected an attribute func kind)")]
     UnexpectedFuncKindCreatingFuncArgument(FuncId, FuncKind),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoringClient(#[from] Box<VariantAuthoringError>),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -214,6 +219,7 @@ impl FuncAuthoringClient {
         action_kind: ActionKind,
         schema_variant_id: SchemaVariantId,
     ) -> FuncAuthoringResult<Func> {
+        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
         let func = create::create(ctx, FuncKind::Action, name, None).await?;
         ActionBinding::create_action_binding(ctx, func.id, action_kind, schema_variant_id).await?;
         Ok(func)
@@ -232,6 +238,7 @@ impl FuncAuthoringClient {
         eventual_parent: EventualParent,
         inputs: &[LeafInputLocation],
     ) -> FuncAuthoringResult<Func> {
+        eventual_parent.error_if_locked(ctx).await?;
         let func = match leaf_kind {
             LeafKind::CodeGeneration => {
                 let func = create::create(ctx, FuncKind::CodeGeneration, name, None).await?;
@@ -272,6 +279,7 @@ impl FuncAuthoringClient {
         name: Option<String>,
         schema_variant_id: SchemaVariantId,
     ) -> FuncAuthoringResult<Func> {
+        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
         let func = create::create(ctx, FuncKind::Authentication, name, None).await?;
         AuthBinding::create_auth_binding(ctx, func.id, schema_variant_id).await?;
         Ok(func)
@@ -380,6 +388,7 @@ impl FuncAuthoringClient {
     }
 
     /// Creates a [`FuncArgument`].
+    /// Returns an error if the [`Func`] is locked
     #[instrument(name = "func.authoring.create_func_argument", level = "info", skip_all)]
     pub async fn create_func_argument(
         ctx: &DalContext,
@@ -389,6 +398,8 @@ impl FuncAuthoringClient {
         element_kind: Option<FuncArgumentKind>,
     ) -> FuncAuthoringResult<()> {
         let func = Func::get_by_id_or_error(ctx, id).await?;
+        // don't create a func argument if the function is locked
+        func.error_if_locked()?;
         if func.kind != FuncKind::Attribute {
             return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
                 func.id, func.kind,
@@ -505,6 +516,11 @@ impl FuncAuthoringClient {
         ctx: &DalContext,
         id: FuncArgumentId,
     ) -> FuncAuthoringResult<()> {
+        // don't delete func argument if func is locked
+        let func_id = FuncArgument::get_func_id_for_func_arg_id(ctx, id).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        func.error_if_locked()?;
+
         for attribute_prototype_argument_id in
             FuncArgument::list_attribute_prototype_argument_ids(ctx, id).await?
         {
@@ -554,6 +570,177 @@ impl FuncAuthoringClient {
         Ok(())
     }
 
+    /// Creates an unlocked copy of the [`FuncId`]
+    /// If the attached [`SchemaVariant`]s are locked, we also create unlocked copies of the variant(s)
+    /// If a single [`SchemaVariantId`] is provided, we only clone the bindings for that [`SchemaVariant`], otherwise
+    /// we clone the bindings for all currently attached [`SchemaVariants`]
+    #[instrument(
+        level = "info",
+        skip(ctx),
+        name = "func.authoring.create_unlocked_func_copy"
+    )]
+    pub async fn create_unlocked_func_copy(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: Option<SchemaVariantId>,
+    ) -> FuncAuthoringResult<Func> {
+        match schema_variant_id {
+            Some(schema_variant_id) => Ok(Self::create_unlocked_func_copy_for_single_variant(
+                ctx,
+                func_id,
+                schema_variant_id,
+            )
+            .await?),
+            None => {
+                Ok(Self::create_unlocked_func_copy_for_all_schema_variants(ctx, func_id).await?)
+            }
+        }
+    }
+
+    async fn create_unlocked_func_copy_for_single_variant(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncAuthoringResult<Func> {
+        let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        let schema = SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        // is the current schema varaint already unlocked? if so, proceed
+        let current_schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+        if !current_schema_variant.is_locked() {
+            //already on an unlocked variant, just create unlocked copy of the func and reattach
+            // bindings for that schema variant
+            let unlocked_latest =
+                FuncBinding::get_bindings_for_unlocked_schema_variants(ctx, func_id).await?;
+
+            // now, create the unlocked copy of the func
+            let new_func = old_func.create_unlocked_func_copy(ctx).await?;
+
+            for binding in unlocked_latest {
+                // for the binding, remove it and create the equivalent for the new one
+                if binding.get_schema_variant() == Some(schema_variant_id) {
+                    binding.port_binding_to_new_func(ctx, new_func.id).await?;
+                }
+            }
+            // ws event
+
+            return Ok(new_func);
+        } else if current_schema_variant.is_default(ctx).await? {
+            let new_schema_variant =
+                VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+                    .await
+                    .map_err(Box::new)?;
+            let new_schema_variant_id = new_schema_variant.id();
+
+            WsEvent::schema_variant_created(ctx, schema, new_schema_variant)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+            let unlocked_latest =
+                FuncBinding::get_bindings_for_unlocked_schema_variants(ctx, func_id).await?;
+
+            // now, create the unlocked copy of the func
+            let new_func = old_func.create_unlocked_func_copy(ctx).await?;
+
+            for binding in unlocked_latest {
+                // for the binding, remove it and create the equivalent for the new one
+                if binding.get_schema_variant() == Some(new_schema_variant_id) {
+                    binding.port_binding_to_new_func(ctx, new_func.id).await?;
+                }
+            }
+            // ws event
+
+            return Ok(new_func);
+        } else {
+            return Err(FuncAuthoringError::CannotUnlockNonDefaultSchemaVariant(
+                schema_variant_id,
+            ));
+        }
+    }
+
+    /// Find all of the latest [`SchemaVariant`]s that have bindings for the given [`FuncId`]
+    /// If any of them are currently locked, create unlocked copies of the variants
+    /// Then, create an unlocked copy of the current Func, delete the binding for the now 'old'
+    /// func and recreate the exact binding for the newly unlocked copy for the potentially new,
+    /// unlocked schema variants (as well as all existing unlocked schema variants)
+    async fn create_unlocked_func_copy_for_all_schema_variants(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncAuthoringResult<Func> {
+        let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
+
+        for (schema_variant_id, binding) in
+            FuncBinding::get_bindings_for_default_and_unlocked_schema_variants(ctx, old_func.id)
+                .await?
+        {
+            // todo figure out ws event here
+            // See if the Schema Variant is locked
+            if SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await? {
+                let schema_id =
+                    SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+                dbg!("creating unlocked copy");
+                // if it's locked, create an unlocked copy of it
+                // creating the unlocked copy will keep the func in question bound at the same place (so we'll see another binding for the
+                // func after creating a copy)
+                let new_schema_variant =
+                    VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+                        .await
+                        .map_err(Box::new)?;
+                WsEvent::schema_variant_created(ctx, schema_id, new_schema_variant)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
+            }
+        }
+
+        // now get the bindings for the unlocked, schema variants for the current func. We need this for later.
+        // this will include any newly unlocked variants if they exist
+        let unlocked_latest =
+            FuncBinding::get_bindings_for_unlocked_schema_variants(ctx, func_id).await?;
+        dbg!(&unlocked_latest);
+        // create the unlocked copy of the func
+        let new_func = old_func.create_unlocked_func_copy(ctx).await?;
+
+        // loop through the other bindings and port them to the new func
+        for binding in unlocked_latest {
+            dbg!(&binding);
+            // for the binding, remove it and create the equivalent for the new one
+            binding.port_binding_to_new_func(ctx, new_func.id).await?;
+        }
+        // get latest bindings and fire an event
+        let bindings: Vec<si_frontend_types::FuncBinding> = FuncBinding::for_func_id(ctx, func_id)
+            .await?
+            .into_iter()
+            .map(|binding| binding.into())
+            .collect();
+        let new_bindings: Vec<si_frontend_types::FuncBinding> =
+            FuncBinding::for_func_id(ctx, new_func.id)
+                .await?
+                .into_iter()
+                .map(|binding| binding.into())
+                .collect();
+        WsEvent::func_bindings_updated(
+            ctx,
+            si_frontend_types::FuncBindings { bindings: bindings },
+            Self::compile_types_from_bindings(ctx, func_id).await?,
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+
+        WsEvent::func_bindings_updated(
+            ctx,
+            si_frontend_types::FuncBindings {
+                bindings: new_bindings,
+            },
+            Self::compile_types_from_bindings(ctx, new_func.id).await?,
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+        Ok(new_func)
+    }
+
     /// For a given [`FuncId`], regardless of what kind of [`Func`] it is, look for all associated bindings and remove
     /// them from every currently attached [`SchemaVariant`]
     /// todo: remove once front end consumes new routes
@@ -584,13 +771,14 @@ impl FuncAuthoringClient {
 
     #[instrument(level = "info", name = "func.authoring.save_code", skip(ctx))]
     /// Save only the code for the given [`FuncId`]
+    /// Returns an error if the [`Func`] is currently locked
     pub async fn save_code(
         ctx: &DalContext,
         func_id: FuncId,
         code: String,
     ) -> FuncAuthoringResult<()> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
-
+        func.error_if_locked()?;
         Func::modify_by_id(ctx, func.id, |func| {
             func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
 
@@ -600,8 +788,9 @@ impl FuncAuthoringClient {
         Ok(())
     }
 
-    #[instrument(level = "info", name = "func.authoring.update_func", skip(ctx))]
     /// Save metadata about the [`FuncId`]
+    /// Returns an error if the [`Func`] is currently locked
+    #[instrument(level = "info", name = "func.authoring.update_func", skip(ctx))]
     pub async fn update_func(
         ctx: &DalContext,
         func_id: FuncId,
@@ -609,7 +798,7 @@ impl FuncAuthoringClient {
         description: Option<String>,
     ) -> FuncAuthoringResult<Func> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
-
+        func.error_if_locked()?;
         let updated_func = Func::modify_by_id(ctx, func.id, |func| {
             display_name.clone_into(&mut func.display_name);
             description.clone_into(&mut func.description);
@@ -632,12 +821,12 @@ impl FuncAuthoringClient {
         ts_types::compile_return_types(response_type, kind)
     }
 
-    /// Comiples return types based on the [`FuncBindings`] for the Func
+    /// Comiples return types based on the [`FuncBinding`] for the Func
     pub async fn compile_types_from_bindings(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncAuthoringResult<String> {
-        Ok(FuncBindings::compile_types(ctx, func_id).await?)
+        Ok(FuncBinding::compile_types(ctx, func_id).await?)
     }
 }
 

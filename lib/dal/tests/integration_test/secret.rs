@@ -6,7 +6,7 @@ use dal::{
     AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop, Secret,
     SecretAlgorithm, SecretVersion,
 };
-use dal_test::helpers::{create_component_for_schema_name, encrypt_message, ChangeSetTestHelpers};
+use dal_test::helpers::{create_component_for_default_schema_name, encrypt_message, ChangeSetTestHelpers};
 use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
@@ -265,7 +265,7 @@ async fn update_encrypted_contents_with_dependent_values(
     nw: &WorkspaceSignup,
 ) {
     // Create a component and commit.
-    let component = create_component_for_schema_name(ctx, "dummy-secret", "secret-definition")
+    let component = create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
         .await
         .expect("could not create component");
     let schema_variant_id = Component::schema_variant_id(ctx, component.id())
@@ -440,7 +440,7 @@ async fn secret_definition_works_with_dummy_qualification(
 ) {
     // Create a component and commit.
     let secret_definition_component =
-        create_component_for_schema_name(ctx, "dummy-secret", "secret-definition")
+        create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
             .await
             .expect("could not create component");
     let secret_definition_component_id = secret_definition_component.id();

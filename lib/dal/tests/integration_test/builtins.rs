@@ -51,7 +51,7 @@ async fn docker_image_has_one_qualfiication_map_prop(ctx: &DalContext) {
 
 #[test]
 async fn builtin_funcs_and_schemas_are_not_empty(ctx: &DalContext) {
-    let funcs: Vec<String> = Func::list(ctx)
+    let funcs: Vec<String> = Func::list_all(ctx)
         .await
         .expect("list funcs should work")
         .iter()

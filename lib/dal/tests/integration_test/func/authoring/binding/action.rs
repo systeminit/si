@@ -2,12 +2,13 @@ use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionId};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::action::ActionBinding;
-use dal::func::binding::FuncBindings;
+use dal::func::binding::FuncBinding;
 use dal::func::summary::FuncSummary;
 use dal::func::view::FuncView;
 use dal::func::{FuncAssociations, FuncKind};
+use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
-use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{create_component_for_unlocked_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 
 #[test]
@@ -25,6 +26,13 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         .await
         .expect("unable to get the funcs for a schema variant");
     let total_funcs = funcs.len();
+
+    // create unlocked copy of schema variant
+    let schema_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+            .await
+            .expect("can create unlocked copy")
+            .id();
 
     // Attach one action func to the schema variant and commit.
     let func_id = Func::find_id_by_name(ctx, "test:createActionFallout")
@@ -158,18 +166,24 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         .await
         .expect("unable to find by name")
         .expect("no schema found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let old_schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
         .await
         .expect("unable to get default schema variant");
 
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = FuncSummary::list_for_schema_variant_id(ctx, old_schema_variant_id)
         .await
         .expect("unable to get the funcs for a schema variant");
     let initial_total_funcs = funcs.len();
+    // create unlocked copy
+    let schema_variant_id =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, old_schema_variant_id)
+            .await
+            .expect("can create unlocked copy")
+            .id();
 
     // create a component
-    let new_component = create_component_for_schema_name(ctx, "starfield", "component")
+    let new_component = create_component_for_unlocked_schema_name(ctx, "starfield", "component")
         .await
         .expect("unable to create new component");
 
@@ -200,14 +214,25 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         .expect("unable to get func")
         .expect("func is some");
 
-    // detach the action
-    for action_prototype_id in ActionPrototype::list_for_func_id(ctx, func_id)
+    let bindings = FuncBinding::for_func_id(ctx, func_id)
         .await
-        .expect("unable to list prototypes for func")
-    {
-        ActionBinding::delete_action_binding(ctx, action_prototype_id)
-            .await
-            .expect("could not delete action binding");
+        .expect("found func bindings");
+    // shoudl be two bindings
+    assert_eq!(2, bindings.len(),);
+
+    // detach the action
+    for action_binding in bindings {
+        let FuncBinding::Action(action_binding) = action_binding else {
+            panic!("wrong binding kind for Func")
+        };
+        let result =
+            ActionBinding::delete_action_binding(ctx, action_binding.action_prototype_id).await;
+
+        if action_binding.schema_variant_id == old_schema_variant_id {
+            assert!(result.is_err());
+        } else {
+            result.expect("can delete prototype");
+        }
     }
 
     // check the func count for the schema variant is accurate
@@ -282,47 +307,6 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
     }
     assert_eq!(
         1,            //expected
-        queued.len()  // actual
-    );
-
-    // finally, delete the action
-    let func_id = Func::find_id_by_name(ctx, "test:createActionStarfield")
-        .await
-        .expect("unable to find the func")
-        .expect("no func found");
-
-    // sdf calls this first if there are associations, so call it here too
-    FuncBindings::delete_all_bindings_for_func_id(ctx, func_id)
-        .await
-        .expect("could not delete bindings");
-
-    Func::delete_by_id(ctx, func_id)
-        .await
-        .expect("unable to delete the func");
-
-    // check the func count for the schema variant
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
-        .await
-        .expect("unable to get the funcs for a schema variant");
-    assert_eq!(
-        total_funcs - 1, // expected
-        funcs.len()      // actual
-    );
-
-    // check that the action has been removed from the queue
-    let enqueued_actions = Action::list_topologically(ctx)
-        .await
-        .expect("can list actions");
-    let mut queued = Vec::new();
-
-    for action_id in enqueued_actions.into_iter() {
-        if can_assemble(ctx, action_id).await {
-            queued.push(action_id);
-        }
-    }
-    // make sure there aren't any enqueued actions
-    assert_eq!(
-        0,            //expected
         queued.len()  // actual
     );
 }

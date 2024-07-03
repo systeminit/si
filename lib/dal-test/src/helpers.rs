@@ -58,7 +58,7 @@ pub async fn create_schema(ctx: &DalContext) -> Result<Schema> {
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
 /// [`Schema`] name.
-pub async fn create_component_for_schema_name(
+pub async fn create_component_for_default_schema_name(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -68,6 +68,22 @@ pub async fn create_component_for_schema_name(
         .ok_or(eyre!("schema not found"))?;
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
     Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?)
+}
+
+/// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
+/// [`Schema`] name.
+pub async fn create_component_for_unlocked_schema_name(
+    ctx: &DalContext,
+    schema_name: impl AsRef<str>,
+    name: impl AsRef<str>,
+) -> Result<Component> {
+    let schema = Schema::find_by_name(ctx, schema_name)
+        .await?
+        .ok_or(eyre!("schema not found"))?;
+    let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
+        .await?
+        .ok_or(eyre!("no unlocked schema variant for schema name"))?;
+    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id.id()).await?)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided

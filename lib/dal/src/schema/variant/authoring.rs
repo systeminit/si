@@ -193,7 +193,9 @@ impl VariantAuthoringClient {
         if let Some(asset_func_id) = variant.asset_func_id() {
             let old_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
 
-            let cloned_func = old_func.duplicate(ctx, schema_name.clone()).await?;
+            let cloned_func = old_func
+                .clone_func_with_new_name(ctx, schema_name.clone())
+                .await?;
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
             let definition = Self::execute_asset_func(ctx, &cloned_func).await?;
 
@@ -469,7 +471,7 @@ impl VariantAuthoringClient {
         let old_asset_func = old_sv.get_asset_func(ctx).await?;
 
         let new_asset_func = old_asset_func
-            .duplicate(ctx, generate_scaffold_func_name(&schema_name))
+            .clone_func_with_new_name(ctx, generate_scaffold_func_name(&schema_name))
             .await?;
 
         let asset_func_spec = build_asset_func_spec(&new_asset_func.clone())?;
@@ -565,9 +567,9 @@ impl VariantAuthoringClient {
     )]
     pub async fn create_unlocked_variant_copy(
         ctx: &DalContext,
-        source_variant_id: SchemaVariantId,
+        locked_variant_id: SchemaVariantId,
     ) -> VariantAuthoringResult<SchemaVariant> {
-        let locked_variant = SchemaVariant::get_by_id(ctx, source_variant_id).await?;
+        let locked_variant = SchemaVariant::get_by_id(ctx, locked_variant_id).await?;
         let schema = locked_variant.schema(ctx).await?;
 
         if let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema.id).await? {
@@ -575,21 +577,19 @@ impl VariantAuthoringClient {
                 schema.id, variant.id,
             ));
         }
+        // check if it's latest maybe or default -- yes do this
+
+        let (existing_variant_spec, variant_funcs) =
+            PkgExporter::export_variant_standalone(ctx, &locked_variant, schema.name()).await?;
 
         // Create copy of asset func
-        let asset_func_id = locked_variant.asset_func_id().ok_or(
-            VariantAuthoringError::SchemaVariantAssetNotFound(locked_variant.id),
-        )?;
+        let locked_variant_asset_func_id = locked_variant.get_asset_func(ctx).await?;
 
-        let unlocked_asset_func = Func::get_by_id_or_error(ctx, asset_func_id)
-            .await?
-            .duplicate(ctx, generate_scaffold_func_name(&schema.name))
+        let unlocked_asset_func = locked_variant_asset_func_id
+            .clone_func_with_new_name(ctx, generate_scaffold_func_name(&schema.name))
             .await?;
 
-        // Create new schema variant based on the asset func
-        let asset_func_spec = build_asset_func_spec(&unlocked_asset_func)?;
-        let definition = Self::execute_asset_func(ctx, &unlocked_asset_func).await?;
-
+        let unlocked_asset_spec = build_asset_func_spec(&unlocked_asset_func)?;
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema.name.clone(),
             version: SchemaVariant::generate_version_string(),
@@ -601,28 +601,17 @@ impl VariantAuthoringClient {
             description: locked_variant.description(),
         };
 
-        let (unlocked_variant_spec, _skips, variant_funcs) =
-            build_variant_spec_based_on_existing_variant(
-                ctx,
-                definition,
-                &asset_func_spec,
-                &metadata,
-                source_variant_id,
-            )
-            .await?;
-
-        let schema_spec = metadata.to_schema_spec(unlocked_variant_spec)?;
-
+        let schema_spec = metadata.to_schema_spec(existing_variant_spec)?;
         let creator_email = ctx.history_actor().email(ctx).await?;
         let pkg_spec = PkgSpec::builder()
-            .name(&metadata.version)
+            .name(schema.name().clone())
             .created_by(creator_email)
             .funcs(variant_funcs.clone())
-            .func(asset_func_spec)
+            .func(unlocked_asset_spec)
             .schema(schema_spec)
             .version("0")
             .build()?;
-        let pkg = SiPkg::load_from_spec(pkg_spec)?;
+        let pkg: SiPkg = SiPkg::load_from_spec(pkg_spec)?;
 
         let pkg_schemas = pkg.schemas()?;
         let schema_spec = pkg_schemas

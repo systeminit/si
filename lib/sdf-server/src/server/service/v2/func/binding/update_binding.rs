@@ -6,7 +6,7 @@ use axum::{
 use dal::{
     func::binding::{
         action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
-        AttributeArgumentBinding, FuncBindings,
+        AttributeArgumentBinding,
     },
     schema::variant::leaves::LeafInputLocation,
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
@@ -152,9 +152,12 @@ pub async fn update_binding(
         }
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     }
-    let binding = FuncBindings::from_func_id(&ctx, func_id)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
         .await?
-        .into_frontend_type();
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
+
     track(
         &posthog_client,
         &ctx,

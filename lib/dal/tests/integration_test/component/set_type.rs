@@ -1,10 +1,10 @@
 use dal::{ComponentType, DalContext};
-use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::test;
 
 #[test]
 async fn set_type(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "starfield", "black star")
+    let component = create_component_for_default_schema_name(ctx, "starfield", "black star")
         .await
         .expect("could not create component");
 

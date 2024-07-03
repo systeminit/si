@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set::ChangeSet;
-use dal::{Schema, SchemaVariant, Visibility};
+use dal::{Func, Schema, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -41,6 +41,12 @@ pub async fn apply_change_set(
 
         variant.lock(&ctx).await?;
         schema.set_default_schema_variant(&ctx, variant_id).await?;
+    }
+    // Lock all unlocked functions too
+    for func in Func::list_for_default_and_editing(&ctx).await? {
+        if !func.is_locked {
+            func.lock(&ctx).await?;
+        }
     }
 
     // We need to run a commit before apply so changes get saved

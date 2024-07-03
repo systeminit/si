@@ -104,6 +104,7 @@ pub enum WsPayload {
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(frontend_types::SchemaVariant),
     SchemaVariantSaved(SchemaVariantSavedPayload),
+    SchemaVariantUpdated(frontend_types::SchemaVariant),
     SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),

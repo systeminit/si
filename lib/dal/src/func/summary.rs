@@ -36,7 +36,7 @@ impl FuncSummary {
     ///
     /// This includes [`Funcs`](Func) that are "free floating" and not used by any [`Schema`] at present.
     pub async fn list(ctx: &DalContext) -> FuncSummaryResult<Vec<Self>> {
-        let funcs = Func::list(ctx).await?;
+        let funcs = Func::list_for_default_and_editing(ctx).await?;
         Ok(Self::from_funcs(funcs.as_slice()))
     }
 

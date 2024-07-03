@@ -58,7 +58,7 @@ async fn duplicate(ctx: &mut DalContext) {
 
     let duplicated_func_name = "Paul's Test Func Clone".to_string();
     let duplicated_func = func
-        .duplicate(ctx, duplicated_func_name)
+        .clone_func_with_new_name(ctx, duplicated_func_name)
         .await
         .expect("Unable to duplicate the func");
 
@@ -73,6 +73,7 @@ async fn duplicate(ctx: &mut DalContext) {
     );
     assert_eq!(duplicated_func.handler, func.handler);
     assert_eq!(duplicated_func.code_base64, func.code_base64);
+    assert_eq!(false, duplicated_func.is_locked);
 }
 
 #[test]

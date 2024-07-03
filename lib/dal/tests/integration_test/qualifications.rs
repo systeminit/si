@@ -5,13 +5,13 @@ use dal::qualification::{
     QualificationSubCheckStatus, QualificationView,
 };
 use dal::{Component, DalContext};
-use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn list_qualifications(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(
+    let component = create_component_for_default_schema_name(
         ctx,
         "dummy-secret",
         "deserializing serde json value null into an option results in None and that's insane",

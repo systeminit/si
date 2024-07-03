@@ -8,7 +8,7 @@ use dal::func::FuncAssociations;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, DalContext, Prop};
-use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -117,7 +117,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
 
     // Add a component to the diagram
     let initial_component =
-        create_component_for_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
+        create_component_for_default_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
             .await
             .expect("could not create component");
     let initial_diagram = Diagram::assemble(ctx)

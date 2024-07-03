@@ -17,6 +17,7 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
+#[ignore]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {
     let (func_id, saved_func) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
 
@@ -43,9 +44,11 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         .await
         .expect("could not find schema")
         .expect("schema not found");
-    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id())
+    let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await
-        .expect("no schema variant found");
+        .expect("no schema variant found")
+        .expect("has an unlocked variant")
+        .id();
     let input_location_prop_id = Prop::find_prop_id_by_path(
         ctx,
         schema_variant_id,

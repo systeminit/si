@@ -4,7 +4,7 @@ use dal::{
     AttributeValue, ChangeSet, Component, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType,
 };
-use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -81,7 +81,9 @@ async fn modify_func_node(ctx: &mut DalContext) {
         modified_func.code_base64.as_deref()
     );
 
-    let funcs = Func::list(ctx).await.expect("able to list funcs");
+    let funcs = Func::list_for_default_and_editing(ctx)
+        .await
+        .expect("able to list funcs");
     let modified_func_again = funcs
         .iter()
         .find(|f| f.id == modified_func.id)
@@ -369,7 +371,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 #[test]
 async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     let shared_component_id =
-        create_component_for_schema_name(ctx, "Docker Image", "Shared component")
+        create_component_for_default_schema_name(ctx, "Docker Image", "Shared component")
             .await
             .expect("could not create component")
             .id();
@@ -421,7 +423,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
         .await
         .expect("Unable to switch to change set B");
     let _change_set_b_component_id =
-        create_component_for_schema_name(ctx, "Docker Image", "Change Set B Component")
+        create_component_for_default_schema_name(ctx, "Docker Image", "Change Set B Component")
             .await
             .expect("could not creat component")
             .id();
