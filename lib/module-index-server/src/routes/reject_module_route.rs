@@ -10,6 +10,7 @@ use telemetry::prelude::info;
 use thiserror::Error;
 
 use crate::app_state::AppState;
+use crate::models::si_module::make_module_details_response;
 use crate::routes::upsert_module_route::UpsertModuleError;
 use crate::whoami::{is_systeminit_auth_token, WhoamiError};
 use crate::{
@@ -68,10 +69,13 @@ pub async fn reject_module(
     let data = dbg!(field.text().await.unwrap());
     info!("Got part data");
 
-    let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
-        Some(module) => module,
-        _ => return Err(RejectModuleError::NotFound(module_id)),
-    };
+    let (module, linked_modules) = si_module::Entity::find_by_id(module_id)
+        .find_with_linked(si_module::SchemaIdReferenceLink)
+        .all(&txn)
+        .await?
+        .first()
+        .cloned()
+        .ok_or(RejectModuleError::NotFound(module_id))?;
 
     let active_module = si_module::ActiveModel {
         id: Set(module.id),
@@ -98,5 +102,7 @@ pub async fn reject_module(
 
     txn.commit().await?;
 
-    Ok(Json(Some(updated_module.try_into()?)))
+    let response = make_module_details_response(updated_module, linked_modules);
+
+    Ok(Json(Some(response)))
 }

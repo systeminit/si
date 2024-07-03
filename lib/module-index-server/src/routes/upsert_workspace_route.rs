@@ -14,11 +14,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::models::si_module::ModuleKind;
-use crate::routes::upsert_module_route::ExtraMetadata;
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
     models::si_module,
 };
+use module_index_client::ExtraMetadata;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -1,3 +1,4 @@
+use module_index_client::ModuleDetailsResponse;
 use sea_orm::{entity::prelude::*, sea_query, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -103,14 +104,49 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "Entity",
+        from = "Column::SchemaId",
+        to = "Column::SchemaId"
+        on_condition = r#"Column::SchemaId.is_not_null()"#
+    )]
+    SchemaIdReference,
+}
+
+pub struct SchemaIdReferenceLink;
+
+impl Linked for SchemaIdReferenceLink {
+    type FromEntity = Entity;
+    type ToEntity = Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::SchemaIdReference.def()]
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl TryInto<module_index_client::ModuleDetailsResponse> for Model {
-    type Error = crate::routes::upsert_module_route::UpsertModuleError;
-
-    fn try_into(self) -> Result<module_index_client::ModuleDetailsResponse, Self::Error> {
-        Ok(serde_json::from_value(serde_json::to_value(self)?)?)
+pub fn make_module_details_response(
+    module: Model,
+    linked_modules: Vec<Model>,
+) -> ModuleDetailsResponse {
+    ModuleDetailsResponse {
+        id: module.id.to_string(),
+        name: module.name,
+        description: module.description,
+        owner_user_id: module.owner_user_id.to_string(),
+        owner_display_name: module.owner_display_name,
+        metadata: module.metadata,
+        latest_hash: module.latest_hash,
+        latest_hash_created_at: module.latest_hash_created_at.into(),
+        created_at: module.created_at.into(),
+        schema_id: module.schema_id.map(|schema_id| schema_id.to_string()),
+        past_hashes: Some(
+            linked_modules
+                .into_iter()
+                .map(|module| module.latest_hash)
+                .collect(),
+        ),
     }
 }

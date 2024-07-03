@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
+use module_index_client::ModuleDetailsResponse;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,7 +12,7 @@ use thiserror::Error;
 use crate::{
     app_state::AppState,
     extract::{Authorization, DbConnection},
-    models::si_module,
+    models::si_module::{self, make_module_details_response, SchemaIdReferenceLink},
     whoami::{is_systeminit_auth_token, WhoamiError},
 };
 
@@ -48,7 +49,7 @@ pub struct ListModulesRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListModulesResponse {
-    modules: Vec<si_module::Model>,
+    modules: Vec<ModuleDetailsResponse>,
 }
 
 pub async fn list_module_route(
@@ -73,7 +74,6 @@ pub async fn list_module_route(
         .filter(si_module::Column::Kind.eq(kind.to_db_kind()));
     let query = if !su {
         let user_id = user_claim.user_pk.to_string();
-        dbg!(&user_id);
         query.filter(si_module::Column::OwnerUserId.eq(user_id))
     } else {
         query
@@ -92,7 +92,13 @@ pub async fn list_module_route(
         .order_by_desc(si_module::Column::OwnerUserId)
         .order_by_desc(si_module::Column::CreatedAt);
 
-    let modules: Vec<si_module::Model> = query.all(&txn).await?;
+    let modules = query
+        .find_with_linked(SchemaIdReferenceLink)
+        .all(&txn)
+        .await?
+        .into_iter()
+        .map(|(module, linked_modules)| make_module_details_response(module, linked_modules))
+        .collect();
 
     Ok(Json(ListModulesResponse { modules }))
 }

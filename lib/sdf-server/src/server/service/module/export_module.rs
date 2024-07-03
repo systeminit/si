@@ -78,15 +78,16 @@ pub async fn export_module(
         schema_ids.push(schema.id());
     }
 
-    let based_on_hash = if schema_ids.len() == 1 {
+    let (based_on_hash, module_schema_id) = if schema_ids.len() == 1 {
         match schema_ids.first().copied() {
-            None => None,
-            Some(schema_id) => Module::find_for_schema_id(&ctx, schema_id)
-                .await?
-                .map(|module| module.root_hash().to_string()),
+            None => (None, None),
+            Some(schema_id) => match Module::find_for_schema_id(&ctx, schema_id).await? {
+                Some(module) => (Some(module.root_hash().to_string()), module.schema_id()),
+                None => (None, None),
+            },
         }
     } else {
-        None
+        (None, None)
     };
 
     let mut exporter = PkgExporter::new_module_exporter(
@@ -106,6 +107,7 @@ pub async fn export_module(
             request.name.trim(),
             request.version.trim(),
             based_on_hash,
+            module_schema_id.map(|id| id.to_string()),
             module_payload,
         )
         .await?;

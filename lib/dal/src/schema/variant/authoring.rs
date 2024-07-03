@@ -6,6 +6,7 @@ use base64::Engine;
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use pkg::import::import_schema_variant;
+use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
@@ -168,6 +169,7 @@ impl VariantAuthoringClient {
                     asset_func.clone(),
                 )])),
                 create_unlocked: true,
+                schema_id: Some(Ulid::new()),
                 ..Default::default()
             }),
         )
@@ -181,7 +183,11 @@ impl VariantAuthoringClient {
         Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
 
-    #[instrument(name = "variant.authoring.clone_variant", level = "info", skip_all)]
+    #[instrument(
+        name = "variant.authoring.new_schema_with_cloned_variant",
+        level = "info",
+        skip_all
+    )]
     pub async fn new_schema_with_cloned_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -229,6 +235,7 @@ impl VariantAuthoringClient {
                         cloned_func.clone(),
                     )])),
                     create_unlocked: true,
+                    schema_id: Some(Ulid::new()),
                     ..Default::default()
                 }),
             )

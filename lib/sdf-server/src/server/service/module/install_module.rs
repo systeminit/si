@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::http::Uri;
 use axum::{response::IntoResponse, Json};
+use dal::pkg::ImportOptions;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -96,11 +97,21 @@ async fn install_module_inner(
     };
 
     let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let module_details = module_index_client.module_details(request.id).await?;
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let metadata = pkg.metadata()?;
-    let (_, svs, _import_skips) = import_pkg_from_pkg(ctx, &pkg, None).await?;
+    let (_, svs, _) = import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: module_details.schema_id().map(Into::into),
+            past_module_hashes: module_details.past_hashes,
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     track(
         &posthog_client,
