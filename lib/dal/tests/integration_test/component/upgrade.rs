@@ -12,8 +12,11 @@ use dal_test::helpers::create_component_for_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+// TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
+
+// Components that exist on the unlocked variant get auto upgraded when it gets regenerated
 #[test]
-async fn upgrade_component(ctx: &mut DalContext) {
+async fn auto_upgrade_component(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "paulsTestAsset".to_string();
     let description = None;
@@ -211,7 +214,7 @@ async fn upgrade_component(ctx: &mut DalContext) {
     // We should have a NEW schema variant id as there is a component on the graph
     assert_ne!(variant_one, variant_zero.id());
 
-    // Check that the components exist for the new variant
+    // Check that the props exist for the new variant
     Prop::find_prop_id_by_path(
         ctx,
         variant_one,
@@ -228,27 +231,25 @@ async fn upgrade_component(ctx: &mut DalContext) {
     .await
     .expect("able to find anotherProp prop for variant one");
 
+    // Check that the component has been auto upgraded
     let one_component_on_the_graph = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(one_component_on_the_graph.components.len(), 1);
-    let my_upgradable_component = one_component_on_the_graph
+    let my_upgraded_component = one_component_on_the_graph
         .components
         .first()
         .expect("unable to get the upgradable component on the graph");
-    assert!(my_upgradable_component.can_be_upgraded);
+    assert_eq!(my_upgraded_component.schema_variant_id, variant_one);
 
-    let my_upgraded_comp = initial_component
-        .upgrade_to_new_variant(ctx, variant_one)
+    let view_after_upgrade = Component::get_by_id(ctx, my_upgraded_component.component_id)
         .await
-        .expect("unable to upgrade the component");
-
-    let view_after_upgrade = my_upgraded_comp
+        .unwrap()
         .view(ctx)
         .await
         .expect("get component view");
 
-    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_comp.id())
+    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_component.id)
         .await
         .expect("unable to get root av id");
 
@@ -293,10 +294,10 @@ async fn upgrade_component(ctx: &mut DalContext) {
     );
 
     // see that there's still only one action enqueued
-    let mut actions = Action::find_for_component_id(ctx, my_upgraded_comp.id())
+    let mut actions = Action::find_for_component_id(ctx, my_upgraded_component.id)
         .await
         .expect("got the actions");
-    assert!(actions.len() == 1);
+    assert_eq!(actions.len(), 1);
 
     // and the one action is a create
     let create_action_id = actions.pop().expect("has an action");
@@ -320,11 +321,4 @@ async fn upgrade_component(ctx: &mut DalContext) {
         upgraded_component.can_be_upgraded, false,
         "the old asset should not be on the graph anymore, and the current one should be upgraded"
     );
-
-    let upgraded_component_schema_variant = my_upgraded_comp
-        .schema_variant(ctx)
-        .await
-        .expect("unable to get schema variant for my upgraded component");
-
-    assert_eq!(variant_one, upgraded_component_schema_variant.id());
 }

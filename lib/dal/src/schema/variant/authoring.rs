@@ -279,10 +279,12 @@ impl VariantAuthoringClient {
             .await?;
             Ok(sv_id)
         } else {
+            let original_is_default = sv.is_default(ctx).await?;
+
             let new_variant = Self::generate_variant_with_updates(
                 ctx,
                 sv_id,
-                schema.name,
+                &schema.name,
                 sv.display_name,
                 sv.category,
                 sv.color,
@@ -296,6 +298,12 @@ impl VariantAuthoringClient {
                 Component::get_by_id(ctx, component_id)
                     .await?
                     .upgrade_to_new_variant(ctx, new_variant.id)
+                    .await?;
+            }
+
+            if original_is_default {
+                schema
+                    .set_default_schema_variant(ctx, new_variant.id)
                     .await?;
             }
 

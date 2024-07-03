@@ -803,6 +803,12 @@ impl SchemaVariant {
         self.is_locked
     }
 
+    pub async fn is_default(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
+        let schema_id = Self::schema_id_for_schema_variant_id(ctx, self.id).await?;
+
+        Ok(Self::get_default_id_for_schema(ctx, schema_id).await? == self.id)
+    }
+
     pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {
         let asset_func_id = self
             .asset_func_id
