@@ -4,7 +4,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
-import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaId, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
@@ -250,7 +250,7 @@ export const useAssetStore = () => {
           if (changeSetId === changeSetsStore.headChangeSetId)
             changeSetsStore.creatingChangeSet = true;
           return new ApiRequest<
-            { id: SchemaVariantId; success: boolean },
+            { schemaId: SchemaId; schemaVariantId: SchemaVariantId },
             SchemaVariantCreateRequest
           >({
             method: "post",

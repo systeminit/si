@@ -102,6 +102,8 @@ pub enum SchemaVariantError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("{0} exists, but is not a schema variant id")]
+    IdForWrongType(Ulid),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("layer db error: {0}")]
@@ -574,8 +576,16 @@ impl SchemaVariant {
                     err.into()
                 }
             })?;
+
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
+
+        let NodeWeight::Content(content) = &node_weight else {
+            return Err(SchemaVariantError::IdForWrongType(id.into()));
+        };
+
+        let ContentAddress::SchemaVariant(hash) = content.content_address() else {
+            return Err(SchemaVariantError::IdForWrongType(id.into()));
+        };
 
         let content: SchemaVariantContent = ctx
             .layer_db()

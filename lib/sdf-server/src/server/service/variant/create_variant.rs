@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, Schema, SchemaId, Visibility, WsEvent};
+use dal::{ChangeSet, Schema, SchemaId, SchemaVariantId, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -21,7 +21,8 @@ pub struct CreateVariantRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantResponse {
-    pub id: SchemaId,
+    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
 }
 
 pub async fn create_variant(
@@ -51,6 +52,7 @@ pub async fn create_variant(
     )
     .await?;
 
+    let schema_variant_id = created_schema_variant.id;
     let schema = created_schema_variant.schema(&ctx).await?;
 
     track(
@@ -78,6 +80,7 @@ pub async fn create_variant(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
     Ok(response.body(serde_json::to_string(&CreateVariantResponse {
-        id: schema.id(),
+        schema_id: schema.id(),
+        schema_variant_id,
     })?)?)
 }
