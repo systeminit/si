@@ -1830,9 +1830,12 @@ impl SchemaVariant {
         Ok(schema_variant_ids)
     }
 
-    /// List all [`SchemaVariantIds`](SchemaVariant) for the provided [action](FuncKind::Action)
-    /// [`Func`].
-    pub async fn list_for_action_func(
+    /// List all [`SchemaVariantIds`](SchemaVariant) with their [`ActionPrototypes`](ActionPrototype) corresponding to
+    /// the provided [action](FuncKind::Action) [`FuncId`](Func).
+    ///
+    /// _Note: [`SchemaVariantIds`](SchemaVariant) are not de-duplicated and can appear multiple times for different
+    /// [`ActionPrototypes`](ActionPrototype).
+    pub async fn list_with_action_prototypes_for_action_func(
         ctx: &DalContext,
         func_id: FuncId,
     ) -> SchemaVariantResult<Vec<(SchemaVariantId, ActionPrototypeId)>> {
@@ -1845,13 +1848,13 @@ impl SchemaVariant {
             .await?
         {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-            if let NodeWeight::ActionPrototype(node_weight) = node_weight {
-                action_prototype_raw_ids.push(node_weight.id());
+            if let NodeWeight::ActionPrototype(inner) = node_weight {
+                action_prototype_raw_ids.push(inner.id());
             }
         }
 
-        // Second, collect all the schema variants using the action prototype.
-        let mut schema_variant_ids = Vec::new();
+        // Second, collect all the schema variants alongside the action prototypes.
+        let mut pairs = Vec::new();
         for action_prototype_raw_id in action_prototype_raw_ids {
             for node_index in workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(
@@ -1861,17 +1864,15 @@ impl SchemaVariant {
                 .await?
             {
                 let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-
                 if let Some(ContentAddressDiscriminants::SchemaVariant) =
                     node_weight.content_address_discriminants()
                 {
-                    schema_variant_ids
-                        .push((node_weight.id().into(), action_prototype_raw_id.into()));
+                    pairs.push((node_weight.id().into(), action_prototype_raw_id.into()));
                 }
             }
         }
 
-        Ok(schema_variant_ids)
+        Ok(pairs)
     }
 
     pub async fn remove_direct_connected_edges(&self, ctx: &DalContext) -> SchemaVariantResult<()> {

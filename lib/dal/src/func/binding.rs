@@ -61,8 +61,6 @@ pub enum FuncBindingsError {
     CannotCompileTypes(FuncId),
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
-    #[error("failed to remove attribute value for leaf")]
-    FailedToRemoveLeafAttributeValue,
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -385,11 +383,7 @@ impl FuncBindings {
     }
 
     /// For a given [`FuncId`], gather all of the bindings for every place where it is being used
-    #[instrument(
-        level = "debug",
-        skip(ctx),
-        name = "func.binding.delete_all_bindings_for_func_id"
-    )]
+    #[instrument(level = "debug", skip(ctx), name = "func.binding.from_func_id")]
     pub async fn from_func_id(
         ctx: &DalContext,
         func_id: FuncId,

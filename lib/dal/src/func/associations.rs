@@ -89,7 +89,8 @@ impl FuncAssociations {
         let (associations, input_type) = match func.kind {
             FuncKind::Action => {
                 let schemas_and_prototypes =
-                    SchemaVariant::list_for_action_func(ctx, func.id).await?;
+                    SchemaVariant::list_with_action_prototypes_for_action_func(ctx, func.id)
+                        .await?;
                 let schema_variant_ids = schemas_and_prototypes
                     .clone()
                     .into_iter()

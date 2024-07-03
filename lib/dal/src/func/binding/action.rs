@@ -16,9 +16,10 @@ impl ActionBinding {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingsResult<Vec<FuncBinding>> {
-        let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func_id).await?;
-        let mut bindings = vec![];
-        for (schema_variant_id, action_prototype_id) in schema_variant_ids {
+        let mut bindings = Vec::new();
+        for (schema_variant_id, action_prototype_id) in
+            SchemaVariant::list_with_action_prototypes_for_action_func(ctx, func_id).await?
+        {
             let action_prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
             bindings.push(FuncBinding::Action {
                 kind: action_prototype.kind,
@@ -30,13 +31,13 @@ impl ActionBinding {
         Ok(bindings)
     }
 
+    /// Updates the [`ActionKind`] for a given [`ActionPrototypeId`] by removing the existing [`ActionPrototype`]
+    /// and creating a new one in its place
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.action.update_action_binding"
     )]
-    /// Updates the [`ActionKind`] for a given [`ActionPrototypeId`] by removing the existing [`ActionPrototype`]
-    /// and creating a new one in its place
     pub async fn update_action_binding(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
@@ -62,31 +63,33 @@ impl ActionBinding {
         Ok(new_binding)
     }
 
+    /// Creates an [`ActionPrototype`] with the specified [`ActionKind`] for a given [`SchemaVariantId`]
+    /// Checks to ensure there isn't already an Action with that Kind in the case of Create/Delete/Refresh
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.action.create_action_binding"
     )]
-    /// Creates an [`ActionPrototype`] with the specified [`ActionKind`] for a given [`SchemaVariantId`]
-    /// Checks to ensure there isn't already an Action with that Kind in the case of Create/Delete/Refresh
     pub async fn create_action_binding(
         ctx: &DalContext,
         func_id: FuncId,
         action_kind: ActionKind,
         schema_variant_id: SchemaVariantId,
     ) -> FuncBindingsResult<FuncBindings> {
-        let existing_action_prototypes =
-            ActionPrototype::for_variant(ctx, schema_variant_id).await?;
-        if action_kind != ActionKind::Manual
-            && existing_action_prototypes
+        if action_kind != ActionKind::Manual {
+            let existing_action_prototypes_for_variant =
+                ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+            if existing_action_prototypes_for_variant
                 .iter()
                 .any(|p| p.kind == action_kind)
-        {
-            return Err(FuncBindingsError::ActionKindAlreadyExists(
-                action_kind,
-                schema_variant_id,
-            ));
+            {
+                return Err(FuncBindingsError::ActionKindAlreadyExists(
+                    action_kind,
+                    schema_variant_id,
+                ));
+            }
         }
+
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
         ActionPrototype::new(
             ctx,
@@ -102,12 +105,12 @@ impl ActionBinding {
         Ok(new_binding)
     }
 
+    /// Deletes an [`ActionPrototype`] by the [`ActionPrototypeId`]
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.action.delete_action_binding"
     )]
-    /// Deletes an [`ActionPrototype`] by the [`ActionPrototypeId`]
     pub async fn delete_action_binding(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
@@ -123,7 +126,8 @@ impl ActionBinding {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingsResult<String> {
-        let schema_variant_ids = SchemaVariant::list_for_action_func(ctx, func_id).await?;
+        let schema_variant_ids =
+            SchemaVariant::list_with_action_prototypes_for_action_func(ctx, func_id).await?;
         let mut ts_types = vec![];
         for (variant_id, _) in schema_variant_ids {
             let path = "root";
