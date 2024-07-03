@@ -98,7 +98,6 @@ export const useAssetStore = () => {
       state: () => ({
         variantList: [] as SchemaVariantListEntry[],
         variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
-        openVariantFuncIds: {} as { [key: SchemaVariantId]: FuncId[] },
 
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,
@@ -163,20 +162,26 @@ export const useAssetStore = () => {
           // no last selected func
           funcsStore.selectedFuncId = undefined;
         },
+        async setFuncSelection(id?: FuncId) {
+          // ignore the old func selections and replace with one func or no funcs
+          funcsStore.selectedFuncId = id;
+          if (id) {
+            await funcsStore.FETCH_CODE(id);
+            this.selectedFuncs = [id];
+          } else {
+            this.selectedFuncs = [];
+          }
+          this.syncSelectionIntoUrl();
+        },
         async addFuncSelection(id: FuncId) {
           if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
           await funcsStore.FETCH_CODE(id);
-          if (this.selectedSchemaVariant)
-            this.openFunc(this.selectedSchemaVariant?.schemaVariantId, id);
           funcsStore.selectedFuncId = id;
           this.syncSelectionIntoUrl();
         },
         removeFuncSelection(id: FuncId) {
           const idx = this.selectedFuncs.indexOf(id);
           if (idx !== -1) this.selectedFuncs.splice(idx, 1);
-
-          const idxx = funcsStore.openFuncIds.indexOf(id);
-          if (idxx !== -1) funcsStore.openFuncIds.splice(idxx, 1);
           this.syncSelectionIntoUrl();
         },
         syncSelectionIntoUrl(returnQuery?: boolean) {
@@ -221,29 +226,8 @@ export const useAssetStore = () => {
               }
             });
             await Promise.all(promises);
-            for (const id of fnIds)
-              if (this.selectedSchemaVariants[0])
-                this.openFunc(this.selectedSchemaVariants[0], id);
-
             funcsStore.selectedFuncId = fnIds[fnIds.length - 1];
           }
-        },
-
-        openFunc(schemaVariantId: SchemaVariantId, funcId: FuncId) {
-          const funcs = this.openVariantFuncIds[schemaVariantId] ?? [];
-          if (!funcs.includes(funcId)) {
-            funcs.push(funcId);
-          }
-
-          this.openVariantFuncIds[schemaVariantId] = funcs;
-        },
-
-        closeFunc(schemaVariantId: SchemaVariantId, funcId: FuncId) {
-          const funcs = this.openVariantFuncIds[schemaVariantId] ?? [];
-          this.openVariantFuncIds[schemaVariantId] = funcs.filter(
-            (fId) => fId !== funcId,
-          );
-          this.removeFuncSelection(funcId);
         },
 
         // MOCK DATA GENERATION

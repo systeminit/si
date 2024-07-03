@@ -1,51 +1,62 @@
 <template>
-  <div
-    class="h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
+  <RequestStatusMessage
+    v-if="loadFuncDetailsReq.isPending && !editingFunc"
+    :loadingMessage="`Loading function &quot;${selectedFuncSummary?.name}&quot;`"
+    :requestStatus="loadFuncDetailsReq"
+  />
+  <ScrollArea
+    v-else-if="
+      selectedAsset &&
+      loadFuncDetailsReq.isSuccess &&
+      typeof editingFunc === 'string'
+    "
+    class="flex flex-col h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
   >
-    <div
-      v-if="loadFuncDetailsReq.isPending && !editingFunc"
-      class="w-full flex flex-col items-center gap-4 p-xl"
-    >
-      <LoadingMessage
-        >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
-      >
-    </div>
-    <template
-      v-else-if="
-        loadFuncDetailsReq.isSuccess && typeof editingFunc === 'string'
-      "
-    >
-      <CodeEditor
-        :id="
-          changeSetsStore.headChangeSetId !==
-            changeSetsStore.selectedChangeSetId && selectedFuncCode
-            ? `func-${selectedFuncCode.funcId}`
-            : undefined
-        "
-        v-model="editingFunc"
-        :typescript="selectedFuncCode?.types"
-        @change="updateFuncCode"
-        @close="emit('close')"
+    <template #top>
+      <AssetEditorHeader
+        :selectedAsset="selectedAsset"
+        :selectedFunc="selectedFuncSummary"
       />
     </template>
-    <ErrorMessage
-      v-else-if="loadFuncDetailsReq.isError"
-      :requestStatus="loadFuncDetailsReq"
+
+    <CodeEditor
+      :id="
+        changeSetsStore.headChangeSetId !==
+          changeSetsStore.selectedChangeSetId && selectedFuncCode
+          ? `func-${selectedFuncCode.funcId}`
+          : undefined
+      "
+      v-model="editingFunc"
+      :typescript="selectedFuncCode?.types"
+      @change="updateFuncCode"
+      @close="emit('close')"
     />
-    <LoadingMessage v-else />
-  </div>
+  </ScrollArea>
+  <ErrorMessage
+    v-else-if="loadFuncDetailsReq.isError"
+    :requestStatus="loadFuncDetailsReq"
+  />
+  <LoadingMessage v-else />
 </template>
 
 <script lang="ts" setup>
-import { PropType, ref, watch } from "vue";
+import { PropType, computed, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { LoadingMessage, ErrorMessage } from "@si/vue-lib/design-system";
+import {
+  LoadingMessage,
+  ErrorMessage,
+  RequestStatusMessage,
+  ScrollArea,
+} from "@si/vue-lib/design-system";
 import { FuncId } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "@/components/CodeEditor.vue";
+import { useAssetStore } from "@/store/asset.store";
+import AssetEditorHeader from "../AssetEditorHeader.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const assetStore = useAssetStore();
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },
@@ -55,6 +66,8 @@ const funcStore = useFuncStore();
 const { selectedFuncSummary, selectedFuncCode } = storeToRefs(funcStore);
 
 const editingFunc = ref<string>(selectedFuncCode.value?.code ?? "");
+
+const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
 
 const loadFuncDetailsReq = funcStore.getRequestStatus(
   "FETCH_CODE",
