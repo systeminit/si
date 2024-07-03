@@ -208,7 +208,6 @@ impl FuncAuthoringClient {
         level = "info",
         skip(ctx)
     )]
-
     pub async fn create_new_action_func(
         ctx: &DalContext,
         name: Option<String>,
@@ -226,7 +225,6 @@ impl FuncAuthoringClient {
         level = "info",
         skip(ctx)
     )]
-
     pub async fn create_new_leaf_func(
         ctx: &DalContext,
         name: Option<String>,

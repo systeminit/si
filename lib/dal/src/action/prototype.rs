@@ -92,12 +92,13 @@ impl From<ActionKind> for si_events::ActionKind {
         }
     }
 }
+
 impl From<si_events::ActionKind> for ActionKind {
     fn from(value: si_events::ActionKind) -> Self {
         match value {
             si_events::ActionKind::Create => ActionKind::Create,
             si_events::ActionKind::Destroy => ActionKind::Destroy,
-            si_events::ActionKind::Manual => ActionKind::Refresh,
+            si_events::ActionKind::Manual => ActionKind::Manual,
             si_events::ActionKind::Refresh => ActionKind::Refresh,
             si_events::ActionKind::Update => ActionKind::Update,
         }

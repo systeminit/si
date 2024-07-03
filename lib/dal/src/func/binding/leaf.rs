@@ -9,10 +9,7 @@ use crate::{
     Prop, SchemaVariant, SchemaVariantId,
 };
 
-use super::{
-    AttributeBinding, EventualParent, FuncBinding, FuncBindings, FuncBindingsError,
-    FuncBindingsResult,
-};
+use super::{AttributeBinding, EventualParent, FuncBinding, FuncBindings, FuncBindingsResult};
 
 pub struct LeafBinding;
 
@@ -73,13 +70,13 @@ impl LeafBinding {
             .collect())
     }
 
+    /// Create an Attribute Prototype for the given [`LeafKind`], with the provided input locations.
+    /// If no input locations are provided, default to [`LeafInputLocation::Domain`].
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.leaf.create_leaf_func_binding"
     )]
-    /// Create an Attribute Prototype for the given [`LeafKind`], with the provided input locations.
-    /// If no input locations are provided, default to [`LeafInputLocation::Domain`]
     pub async fn create_leaf_func_binding(
         ctx: &DalContext,
         func_id: FuncId,
@@ -114,13 +111,13 @@ impl LeafBinding {
         Ok(new_bindings)
     }
 
+    /// Updates the inputs for the given [`LeafKind`], by deleting the existing prototype arguments
+    /// and creating new ones for the inputs provided
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.leaf.update_leaf_func_binding"
     )]
-    /// Updates the inputs for the given [`LeafKind`], by deleting the existing prototype arguments
-    /// and creating new ones for the inputs provided
     pub async fn update_leaf_func_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -133,19 +130,22 @@ impl LeafBinding {
         let mut inputs = vec![];
         for location in input_locations {
             let arg_name = location.arg_name();
-            let arg = match existing_args
+            let arg_id = match existing_args
                 .iter()
                 .find(|arg| arg.name.as_str() == arg_name)
             {
-                Some(existing_arg) => existing_arg.clone(),
+                Some(existing_arg) => existing_arg.id,
                 None => {
-                    FuncArgument::new(ctx, arg_name, location.arg_kind(), None, func_id).await?
+                    let new_arg =
+                        FuncArgument::new(ctx, arg_name, location.arg_kind(), None, func_id)
+                            .await?;
+                    new_arg.id
                 }
             };
 
             inputs.push(LeafInput {
                 location: *location,
-                func_argument_id: arg.id,
+                func_argument_id: arg_id,
             });
         }
 
@@ -185,37 +185,37 @@ impl LeafBinding {
         Ok(updated_bindings)
     }
 
+    /// Deletes the attribute prototype for the given [`LeafKind`], including deleting the existing prototype arguments
+    /// and the created attribute value/prop beneath the Root Prop node for the [`LeafKind`].
     #[instrument(
         level = "info",
         skip(ctx),
         name = "func.binding.leaf.delete_leaf_func_binding"
     )]
-    /// Deletes the attribute prototype for the given [`LeafKind`], including deleting the existing prototype arguments
-    /// and the created attribute value/prop beneath the Root Prop node for the [`LeafKind`]
     pub async fn delete_leaf_func_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
     ) -> FuncBindingsResult<FuncBindings> {
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
-        let current_attribute_prototype_arguments =
-            AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
-        for apa in current_attribute_prototype_arguments {
-            AttributePrototypeArgument::remove(ctx, apa).await?;
-        }
-        if let Some(attribute_value_for_leaf_item) =
-            AttributePrototype::attribute_value_id(ctx, attribute_prototype_id).await?
+
+        // Delete all attribute prototype arguments for the given prototype.
+        for attribute_prototype_argument_id in
+            AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?
         {
-            AttributeValue::remove_by_id(ctx, attribute_value_for_leaf_item).await?;
-            AttributePrototype::remove(ctx, attribute_prototype_id).await?;
-        } else {
-            return Err(FuncBindingsError::FailedToRemoveLeafAttributeValue);
+            AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id).await?;
         }
 
-        let updated_bindings = FuncBindings::from_func_id(ctx, func_id).await?;
+        // Delete all attribute values using the prototype (all components who did not override the leaf function) and
+        // then delete the prototype itself.
+        for attribute_value_id in
+            AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id).await?
+        {
+            AttributeValue::remove_by_id(ctx, attribute_value_id).await?;
+        }
+        AttributePrototype::remove(ctx, attribute_prototype_id).await?;
 
-        Ok(updated_bindings)
-
-        //brit todo delete the attribute value for the thing too
+        // Return the updated bindings.
+        FuncBindings::from_func_id(ctx, func_id).await
     }
 
     pub(crate) async fn compile_leaf_func_types(
