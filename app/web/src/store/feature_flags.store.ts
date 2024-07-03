@@ -7,7 +7,6 @@ import { posthog } from "@/utils/posthog";
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
-  IMMUTABLE_SCHEMA_VARIANTS: "immutable_schema_variants",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

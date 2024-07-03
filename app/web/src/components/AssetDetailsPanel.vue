@@ -10,7 +10,7 @@
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :disabled="saveAssetReqStatus.isPending"
+            :disabled="saveAssetReqStatus.isPending || editingAsset.isLocked"
             :loading="updateAssetReqStatus.isPending"
             :requestStatus="updateAssetReqStatus"
             icon="bolt"
@@ -65,7 +65,7 @@
         <VormInput
           id="schemaName"
           v-model="editingAsset.schemaName"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="Asset Name"
           placeholder="(mandatory) Provide the asset a name"
@@ -76,7 +76,7 @@
         <VormInput
           id="displayName"
           v-model="editingAsset.displayName"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="Display name"
           placeholder="(optional) Provide the asset version a display name"
@@ -86,7 +86,7 @@
         <VormInput
           id="category"
           v-model="editingAsset.category"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="Category"
           placeholder="(mandatory) Provide a category for the asset"
@@ -96,7 +96,7 @@
         <VormInput
           id="componentType"
           v-model="editingAsset.componentType"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           :options="componentTypeOptions"
           compact
           label="Component Type"
@@ -106,7 +106,7 @@
         <VormInput
           id="description"
           v-model="editingAsset.description"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="Description"
           placeholder="(optional) Provide a brief description of the asset"
@@ -114,7 +114,7 @@
           @blur="updateAsset"
         />
         <VormInput
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="color"
           type="container"
@@ -129,7 +129,7 @@
         <VormInput
           id="link"
           v-model="editingAsset.link"
-          :disabled="ffStore.IMMUTABLE_SCHEMA_VARIANTS && editingAsset.isLocked"
+          :disabled="editingAsset.isLocked"
           compact
           label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
@@ -180,7 +180,6 @@ import {
 import * as _ from "lodash-es";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
@@ -190,7 +189,6 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
-const ffStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT",
@@ -256,7 +254,12 @@ const saveAssetReqStatus = assetStore.getRequestStatus(
 );
 const executeAsset = async () => {
   if (editingAsset.value) {
-    await assetStore.REGENERATE_VARIANT(editingAsset.value.schemaVariantId);
+    const resp = await assetStore.REGENERATE_VARIANT(
+      editingAsset.value.schemaVariantId,
+    );
+    if (resp.result.success) {
+      assetStore.setSchemaVariantSelection(resp.result.data.schemaVariantId);
+    }
   }
 };
 
@@ -272,7 +275,7 @@ const cloneAsset = async (name: string) => {
     );
     if (result.result.success) {
       cloneAssetModalRef.value?.modal?.close();
-      await assetStore.setSchemaVariantSelection(result.result.data.id, true);
+      assetStore.setSchemaVariantSelection(result.result.data.id, true);
     }
   }
 };

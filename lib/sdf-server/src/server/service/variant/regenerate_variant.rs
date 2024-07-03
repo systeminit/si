@@ -3,8 +3,8 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::Visibility;
 use dal::{ChangeSet, WsEvent};
+use dal::{SchemaVariantId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -12,7 +12,7 @@ use crate::service::variant::SchemaVariantResult;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateVariantRequest {
+pub struct RegenerateVariantRequest {
     // We need to get the updated data here, to ensure we create the prop the user is seeing
     pub variant: si_frontend_types::SchemaVariant,
     pub code: String,
@@ -20,16 +20,22 @@ pub struct UpdateVariantRequest {
     pub visibility: Visibility,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RegenerateVariantResponse {
+    pub schema_variant_id: SchemaVariantId,
+}
+
 pub async fn regenerate_variant(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(UpdateVariantRequest {
+    Json(RegenerateVariantRequest {
         variant,
         code,
         visibility,
-    }): Json<UpdateVariantRequest>,
+    }): Json<RegenerateVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
@@ -77,5 +83,10 @@ pub async fn regenerate_variant(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response.body(axum::body::Empty::new())?)
+
+    Ok(
+        response.body(serde_json::to_string(&RegenerateVariantResponse {
+            schema_variant_id: updated_schema_variant_id,
+        })?)?,
+    )
 }

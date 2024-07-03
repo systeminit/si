@@ -18,12 +18,9 @@
           : `asset-${assetId}`
       "
       v-model="editingAsset"
+      :disabled="selectedAsset.isLocked"
+      :recordId="selectedAsset.schemaVariantId"
       :typescript="editorTs || ''"
-      :disabled="
-        isReadOnly ||
-        (useFeatureFlagsStore().IMMUTABLE_SCHEMA_VARIANTS &&
-          selectedAsset.isLocked)
-      "
       @change="onChange"
     />
   </ScrollArea>
@@ -48,7 +45,6 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { editor_ts, loadEditorTs } from "@/utils/load_editor_ts";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CodeEditor from "./CodeEditor.vue";
 import AssetEditorHeader from "./AssetEditorHeader.vue";
 
@@ -69,10 +65,6 @@ const selectedAssetFuncCode = computed(() => {
   const fId = selectedAsset.value?.assetFuncId;
   if (!fId) return null;
   return funcStore.funcCodeById[fId]?.code;
-});
-
-const isReadOnly = computed(() => {
-  return false;
 });
 
 const editingAsset = ref<string>(selectedAssetFuncCode.value ?? "");
@@ -100,7 +92,7 @@ watch(
   },
 );
 
-const onChange = () => {
+const onChange = (_: string, code: string) => {
   if (
     !selectedAsset.value ||
     selectedAssetFuncCode.value === editingAsset.value ||
@@ -115,7 +107,7 @@ const onChange = () => {
       {
         ...selectedAsset.value,
       },
-      editingAsset.value,
+      code,
     );
 };
 

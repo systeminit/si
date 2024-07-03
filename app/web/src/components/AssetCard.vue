@@ -49,11 +49,7 @@
           />
 
           <IconButton
-            v-if="
-              ffStore.IMMUTABLE_SCHEMA_VARIANTS &&
-              asset.isLocked &&
-              editingVersionDoesNotExist
-            "
+            v-if="asset.isLocked && editingVersionDoesNotExist"
             class="hover:scale-125"
             variant="simple"
             icon="sliders-vertical"
@@ -70,7 +66,7 @@
     </div>
     <div class="flex flex-col">
       <ErrorMessage
-        v-if="asset && ffStore.IMMUTABLE_SCHEMA_VARIANTS && asset.isLocked"
+        v-if="asset && asset.isLocked"
         icon="lock"
         variant="block"
         tone="warning"
@@ -92,7 +88,6 @@ import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
 import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import IconButton from "./IconButton.vue";
@@ -104,7 +99,6 @@ const props = defineProps({
 });
 
 const { theme } = useTheme();
-const ffStore = useFeatureFlagsStore();
 
 const editingVersionDoesNotExist = computed<boolean>(() => {
   const unlockedExists = assetStore.variantList.some(

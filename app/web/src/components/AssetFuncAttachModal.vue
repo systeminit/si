@@ -119,6 +119,7 @@
         <CodeEditor
           v-if="loadFuncDetailsReq && !loadFuncDetailsReq?.value.isPending"
           v-model="selectedFuncCode"
+          :recordId="selectedExistingFuncId"
           disabled
           typescript="yes"
           noLint

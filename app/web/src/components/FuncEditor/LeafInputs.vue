@@ -4,16 +4,36 @@
       Function inputs
     </h2>
     <div class="flex flex-col gap-2xs py-xs">
-      <VormInput v-model="codeSelected" noLabel type="checkbox">
+      <VormInput
+        v-model="codeSelected"
+        noLabel
+        :disabled="$props.disabled"
+        type="checkbox"
+      >
         Code</VormInput
       >
-      <VormInput v-model="deletedAtSelected" noLabel type="checkbox">
+      <VormInput
+        v-model="deletedAtSelected"
+        noLabel
+        :disabled="$props.disabled"
+        type="checkbox"
+      >
         Deleted At
       </VormInput>
-      <VormInput v-model="domainSelected" noLabel type="checkbox">
+      <VormInput
+        v-model="domainSelected"
+        noLabel
+        :disabled="$props.disabled"
+        type="checkbox"
+      >
         Domain</VormInput
       >
-      <VormInput v-model="resourceSelected" noLabel type="checkbox">
+      <VormInput
+        v-model="resourceSelected"
+        noLabel
+        :disabled="$props.disabled"
+        type="checkbox"
+      >
         Resource
       </VormInput>
       <VormInput
@@ -22,6 +42,7 @@
         label="Function Depends on Secrets"
         prompt="Run the authentication function first, to make sure the secret is applied?"
         type="radio"
+        :disabled="$props.disabled"
         :options="[
           { value: true, label: 'Yes' },
           { value: false, label: 'No' },

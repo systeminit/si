@@ -1,6 +1,6 @@
 <template>
   <div class="p-3 flex flex-col gap-xs">
-    <LeafInputs v-model="inputs" @change="update" />
+    <LeafInputs v-model="inputs" :disabled="func?.isLocked" @change="update" />
   </div>
 </template>
 
@@ -17,6 +17,10 @@ const props = defineProps<{
   schemaVariantId: string;
   disabled?: boolean;
 }>();
+
+const func = computed(() => {
+  return funcStore.funcsById[props.funcId];
+});
 
 const binding = computed(() => {
   const bindings = funcStore.qualificationBindings[props.funcId];
