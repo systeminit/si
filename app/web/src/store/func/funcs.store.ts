@@ -1,8 +1,6 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-
-import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,
@@ -52,8 +50,6 @@ export type FuncExecutionLog = {
 export interface DeleteFuncResponse {
   success: boolean;
 }
-
-const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -125,8 +121,6 @@ export const useFuncStore = () => {
         authenticationBindings: {} as Record<FuncId, Authentication[]>,
         codegenBindings: {} as Record<FuncId, CodeGeneration[]>,
         qualificationBindings: {} as Record<FuncId, Qualification[]>,
-        // open editor tabs, this is duplicated in asset store
-        openFuncIds: [] as FuncId[],
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
@@ -163,7 +157,6 @@ export const useFuncStore = () => {
               });
 
               this.funcsById = _.keyBy(response, (f) => f.funcId);
-              this.recoverOpenFuncIds();
             },
           });
         },
@@ -433,37 +426,6 @@ export const useFuncStore = () => {
           });
         },
 
-        async recoverOpenFuncIds() {
-          // fetch the list of open funcs from localstorage
-          const localStorageFuncIds = (
-            storage.getItem(LOCAL_STORAGE_FUNC_IDS_KEY) ?? ""
-          ).split(",") as FuncId[];
-          // Filter out cached ids that don't correspond to funcs anymore
-          const newOpenFuncIds = _.intersection(
-            localStorageFuncIds,
-            _.keys(this.funcsById),
-          );
-          if (!_.isEqual(newOpenFuncIds, this.openFuncIds)) {
-            this.openFuncIds = newOpenFuncIds;
-          }
-        },
-
-        setOpenFuncId(id: FuncId, isOpen: boolean, unshift?: boolean) {
-          if (isOpen) {
-            if (!this.openFuncIds.includes(id)) {
-              this.openFuncIds[unshift ? "unshift" : "push"](id);
-            }
-          } else {
-            const funcIndex = _.indexOf(this.openFuncIds, id);
-            if (funcIndex >= 0) this.openFuncIds.splice(funcIndex, 1);
-          }
-
-          storage.setItem(
-            LOCAL_STORAGE_FUNC_IDS_KEY,
-            this.openFuncIds.join(","),
-          );
-        },
-
         updateFuncCode(funcId: FuncId, code: string) {
           const func = _.cloneDeep(this.funcCodeById[funcId]);
           if (!func || func.code === code) return;
@@ -553,15 +515,6 @@ export const useFuncStore = () => {
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
-
-              const assetId = assetStore.selectedVariantId;
-              if (
-                assetId &&
-                this.selectedFuncId &&
-                assetStore.selectedFuncs.includes(this.selectedFuncId)
-              ) {
-                assetStore.closeFunc(assetId, this.selectedFuncId);
-              }
             },
           },
           {
