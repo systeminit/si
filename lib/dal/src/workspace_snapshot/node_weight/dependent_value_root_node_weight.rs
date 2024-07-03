@@ -8,8 +8,8 @@ use super::NodeWeightResult;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DependentValueRootNodeWeight {
-    id: Ulid,
-    lineage_id: Ulid,
+    pub id: Ulid,
+    pub lineage_id: Ulid,
     value_id: Ulid,
     pub touch_count: u16, // unused
     merkle_tree_hash: MerkleTreeHash,

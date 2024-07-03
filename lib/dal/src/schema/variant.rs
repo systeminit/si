@@ -498,6 +498,7 @@ impl SchemaVariant {
 
     pub async fn lock(self, ctx: &DalContext) -> SchemaVariantResult<SchemaVariant> {
         self.modify(ctx, |sv| {
+            sv.version = Self::generate_version_string();
             sv.is_locked = true;
             Ok(())
         })
@@ -669,6 +670,17 @@ impl SchemaVariant {
             .find(|v| !v.is_locked))
     }
 
+    pub async fn get_latest_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<Option<Self>> {
+        let mut variants = Self::list_for_schema(ctx, schema_id).await?;
+
+        variants.sort_by_key(|v| v.version().to_string());
+
+        Ok(variants.last().cloned())
+    }
+
     pub async fn get_default_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -789,6 +801,12 @@ impl SchemaVariant {
 
     pub fn is_locked(&self) -> bool {
         self.is_locked
+    }
+
+    pub async fn is_default(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
+        let schema_id = Self::schema_id_for_schema_variant_id(ctx, self.id).await?;
+
+        Ok(Self::get_default_id_for_schema(ctx, schema_id).await? == self.id)
     }
 
     pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {
@@ -1897,8 +1915,7 @@ impl SchemaVariant {
     }
 
     pub fn generate_version_string() -> String {
-        let date = Utc::now();
-        format!("{}", date.format("%Y%m%d%H%M%S"))
+        format!("{}", Utc::now().format("%Y%m%d%H%M%S"))
     }
 
     /// Lists all default [`SchemaVariantIds`](SchemaVariant) that have a secret definition.

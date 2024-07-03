@@ -20,10 +20,10 @@ pub struct ContentNodeWeight {
     /// internal implementation detail, and the content ID wrapped by the
     /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
     /// example, the name, or type of a [`Prop`].)
-    id: Ulid,
+    pub id: Ulid,
     /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
     /// should be trying to receive updates.
-    lineage_id: LineageId,
+    pub lineage_id: LineageId,
     /// What type of thing is this node representing, and what is the content hash used to
     /// retrieve the data for this specific node.
     content_address: ContentAddress,

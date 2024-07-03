@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{OriginalUri, Path},
     http::StatusCode,
@@ -5,9 +7,10 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use thiserror::Error;
+
 use dal::{ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk};
 use si_frontend_types as frontend_types;
-use thiserror::Error;
 
 use crate::{
     server::{
@@ -35,15 +38,26 @@ pub async fn list_schema_variants(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let mut schema_variants = Vec::new();
+    let mut schema_variants = HashMap::new();
 
     for schema_id in Schema::list_ids(&ctx).await? {
-        // NOTE(fnichol): Yes there is `SchemaVariant::list_default_ids()`, but shortly we'll be
-        // asking for more than only the defaults which reduces us back to looping through schemas
-        // to filter appropriate schema variants.
-        let schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
-        if !schema_variant.ui_hidden() {
-            schema_variants.push(schema_variant.into_frontend_type(&ctx, schema_id).await?);
+        let default_schema_variant = SchemaVariant::get_default_for_schema(&ctx, schema_id).await?;
+        if !default_schema_variant.ui_hidden() {
+            schema_variants.insert(
+                default_schema_variant.id,
+                default_schema_variant
+                    .into_frontend_type(&ctx, schema_id)
+                    .await?,
+            );
+        }
+
+        if let Some(unlocked) = SchemaVariant::get_unlocked_for_schema(&ctx, schema_id).await? {
+            if !unlocked.ui_hidden() {
+                schema_variants.insert(
+                    unlocked.id,
+                    unlocked.into_frontend_type(&ctx, schema_id).await?,
+                );
+            }
         }
     }
 
@@ -55,7 +69,7 @@ pub async fn list_schema_variants(
         serde_json::json!({}),
     );
 
-    Ok(Json(schema_variants))
+    Ok(Json(schema_variants.into_values().collect()))
 }
 
 pub async fn get_variant(

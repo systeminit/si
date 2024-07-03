@@ -408,8 +408,6 @@ impl Component {
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Self> {
-        let name: String = name.into();
-
         let content = ComponentContentV1 {
             timestamp: Timestamp::now(),
             x: DEFAULT_COMPONENT_X_POSITION.to_string(),
@@ -429,9 +427,20 @@ impl Component {
             )
             .await?;
 
+        Self::new_with_content_address(ctx, name, schema_variant_id, hash).await
+    }
+
+    pub async fn new_with_content_address(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        schema_variant_id: SchemaVariantId,
+        content_address: ContentHash,
+    ) -> ComponentResult<Self> {
+        let name: String = name.into();
+
         let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_component(change_set, id, hash)?;
+        let node_weight = NodeWeight::new_component(change_set, id, content_address)?;
 
         // Attach component to category and add use edge to schema variant
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -3680,53 +3689,71 @@ impl Component {
     ) -> ComponentResult<Component> {
         let original_component = Self::get_by_id(ctx, self.id).await?;
 
-        let original_component_name = self.name(ctx).await?;
-        let mut new_component =
-            Component::new(ctx, original_component_name.clone(), schema_variant_id).await?;
+        // ================================================================================
+        // Cache original component data
+        // ================================================================================
+        let snap = ctx.workspace_snapshot()?;
 
-        let new_comp_schema_variant_id = new_component.schema_variant(ctx).await?.id();
-        if new_comp_schema_variant_id != schema_variant_id {
+        let original_component_node_weight =
+            snap.get_node_weight_by_id(original_component.id).await?;
+
+        let original_component_name = self.name(ctx).await?;
+        let original_component_id = self.id();
+        let original_component_lineage_id = original_component_node_weight.lineage_id();
+
+        let original_incoming_connections = original_component.incoming_connections(ctx).await?;
+        let original_outgoing_connections = original_component.outgoing_connections(ctx).await?;
+
+        // ================================================================================
+        // Create new component and run changes that depend on the old one still existing
+        // ================================================================================
+        let new_component_with_temp_id = Component::new_with_content_address(
+            ctx,
+            original_component_name.clone(),
+            schema_variant_id,
+            original_component_node_weight.content_hash(),
+        )
+        .await?;
+
+        let new_schema_variant_id = new_component_with_temp_id.schema_variant(ctx).await?.id();
+        if new_schema_variant_id != schema_variant_id {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
-                new_component.id(),
+                new_component_with_temp_id.id(),
             ));
         }
 
-        new_component
+        new_component_with_temp_id
             .merge_from_component_with_different_schema_variant(ctx, original_component.id())
             .await?;
 
-        new_component
-            .set_geometry(ctx, self.x(), self.y(), self.width(), self.height())
-            .await?;
-
         if schema_variant_id
-            != Component::get_by_id(ctx, new_component.id())
+            != Component::get_by_id(ctx, new_component_with_temp_id.id())
                 .await?
                 .schema_variant(ctx)
                 .await?
                 .id()
         {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
-                new_component.id(),
+                new_component_with_temp_id.id(),
             ));
         }
 
-        //Re-attach to any parent it has
+        // Restore parent connection on new component
         if let Some(parent) = original_component.parent(ctx).await? {
-            Frame::upsert_parent(ctx, new_component.id(), parent)
+            Frame::upsert_parent(ctx, new_component_with_temp_id.id(), parent)
                 .await
                 .map_err(Box::new)?;
         }
 
-        // Re-attach any children to the new component
-        for child in Component::get_children_for_id(ctx, original_component.id).await? {
-            Frame::upsert_parent(ctx, child, new_component.id())
+        // Restore child connections on new component
+        for child in Component::get_children_for_id(ctx, original_component_id).await? {
+            Frame::upsert_parent(ctx, child, new_component_with_temp_id.id())
                 .await
                 .map_err(Box::new)?;
         }
 
-        // Let's change the incoming connections to the component!
-        for incoming in original_component.incoming_connections(ctx).await? {
+        // Remove old component connections
+        for incoming in &original_incoming_connections {
             Component::remove_connection(
                 ctx,
                 incoming.from_component_id,
@@ -3735,29 +3762,9 @@ impl Component {
                 incoming.to_input_socket_id,
             )
             .await?;
-
-            let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
-            if let Some(socket) =
-                InputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
-            {
-                Component::connect(
-                    ctx,
-                    incoming.from_component_id,
-                    incoming.from_output_socket_id,
-                    new_component.id(),
-                    socket.id(),
-                )
-                .await?;
-            } else {
-                debug!(
-                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
-                    socket.id(),
-                    new_component.id()
-                );
-            }
         }
 
-        for outgoing in original_component.outgoing_connections(ctx).await? {
+        for outgoing in &original_outgoing_connections {
             Component::remove_connection(
                 ctx,
                 outgoing.from_component_id,
@@ -3766,14 +3773,72 @@ impl Component {
                 outgoing.to_input_socket_id,
             )
             .await?;
+        }
 
+        // Let's requeue any Actions for the component
+        Self::requeue_actions_for_upgraded_component(
+            ctx,
+            original_component.id(),
+            new_component_with_temp_id.id(),
+            new_schema_variant_id,
+        )
+        .await?;
+
+        // ========================================
+        // Delete original component
+        // ========================================
+
+        // Remove the original resource so that we don't queue a delete action
+        original_component.clear_resource(ctx).await?;
+        Self::remove(ctx, original_component.id).await?;
+        snap.cleanup().await?;
+
+        // ========================================
+        // Finish up the new component
+        // ========================================
+
+        // Now we replace the new component id with the id of the original one
+        snap.update_node_id(
+            new_component_with_temp_id.id,
+            original_component_id,
+            original_component_lineage_id,
+        )
+        .await?;
+
+        // Re fetch the component with the old id
+        let finalized_new_component = Self::get_by_id(ctx, original_component_id).await?;
+
+        // Restore connections on new component
+        for incoming in &original_incoming_connections {
+            let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
+            if let Some(socket) =
+                InputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
+            {
+                Component::connect(
+                    ctx,
+                    incoming.from_component_id,
+                    incoming.from_output_socket_id,
+                    finalized_new_component.id(),
+                    socket.id(),
+                )
+                .await?;
+            } else {
+                debug!(
+                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
+                    socket.id(),
+                    finalized_new_component.id()
+                );
+            }
+        }
+
+        for outgoing in &original_outgoing_connections {
             let socket = OutputSocket::get_by_id(ctx, outgoing.from_output_socket_id).await?;
             if let Some(socket) =
                 OutputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
             {
                 Component::connect(
                     ctx,
-                    new_component.id(),
+                    finalized_new_component.id(),
                     socket.id(),
                     outgoing.to_component_id,
                     outgoing.to_input_socket_id,
@@ -3783,25 +3848,12 @@ impl Component {
                 debug!(
                     "Unable to reconnect to socket_id: {0} for component_id: {1}",
                     socket.id(),
-                    new_component.id()
+                    finalized_new_component.id()
                 );
             }
         }
 
-        // Let's requeue any Actions for the component
-        Self::requeue_actions_for_upgraded_component(
-            ctx,
-            original_component.id(),
-            new_component.id(),
-            new_comp_schema_variant_id,
-        )
-        .await?;
-
-        // Let's remove the original resource so that we don't queue a delete action
-        original_component.clear_resource(ctx).await?;
-        original_component.delete(ctx).await?;
-
-        Ok(new_component)
+        Ok(finalized_new_component)
     }
 
     async fn requeue_actions_for_upgraded_component(

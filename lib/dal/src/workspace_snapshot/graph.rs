@@ -225,6 +225,24 @@ impl WorkspaceSnapshotGraph {
         &self.graph
     }
 
+    pub async fn update_node_id(
+        &mut self,
+        current_idx: NodeIndex,
+        new_id: impl Into<Ulid>,
+        new_lineage_id: LineageId,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let new_id = new_id.into();
+
+        self.graph
+            .node_weight_mut(current_idx)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+            .set_id_and_lineage(new_id, new_lineage_id);
+
+        self.add_node_finalize(new_id, new_lineage_id, current_idx)?;
+
+        Ok(())
+    }
+
     pub fn get_latest_node_idx_opt(
         &self,
         node_idx: NodeIndex,

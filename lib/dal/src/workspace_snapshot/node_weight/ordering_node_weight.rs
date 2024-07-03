@@ -9,8 +9,8 @@ use crate::EdgeWeightKindDiscriminants;
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
-    id: Ulid,
-    lineage_id: Ulid,
+    pub id: Ulid,
+    pub lineage_id: Ulid,
     /// The `id` of the items, in the order that they should appear in the container.
     order: Vec<Ulid>,
     content_hash: ContentHash,

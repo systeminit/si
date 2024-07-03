@@ -19,6 +19,7 @@ use crate::{
 };
 
 use crate::func::FuncKind;
+use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
@@ -185,6 +186,63 @@ impl NodeWeight {
             NodeWeight::Prop(weight) => weight.lineage_id(),
             NodeWeight::Secret(weight) => weight.lineage_id(),
             NodeWeight::DependentValueRoot(weight) => weight.lineage_id(),
+        }
+    }
+
+    pub fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+        match self {
+            NodeWeight::Action(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::ActionPrototype(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::AttributePrototypeArgument(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::AttributeValue(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Category(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Component(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Content(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Func(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::FuncArgument(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Ordering(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Prop(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::Secret(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
+            NodeWeight::DependentValueRoot(weight) => {
+                weight.id = id.into();
+                weight.lineage_id = lineage_id;
+            }
         }
     }
 
