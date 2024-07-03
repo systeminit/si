@@ -62,8 +62,7 @@ export class ValueFromBuilder implements IValueFromBuilder {
    */
   setSocketName(name: string): this {
     if (
-      this.valueFrom.kind !== "inputSocket"
-      && this.valueFrom.kind !== "outputSocket"
+      this.valueFrom.kind !== "inputSocket" && this.valueFrom.kind !== "outputSocket"
     ) {
       return this;
     }
@@ -301,8 +300,7 @@ export interface IPropWidgetDefinitionBuilder {
  *  .setKind("text")
  *  .build()
  */
-export class PropWidgetDefinitionBuilder
-implements IPropWidgetDefinitionBuilder {
+export class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilder {
   propWidget = <PropWidgetDefinition>{};
 
   constructor() {
@@ -450,8 +448,7 @@ export interface ISiPropValueFromDefinitionBuilder {
   build(): SiPropValueFromDefinition;
 }
 
-export class SiPropValueFromDefinitionBuilder
-implements ISiPropValueFromDefinitionBuilder {
+export class SiPropValueFromDefinitionBuilder implements ISiPropValueFromDefinitionBuilder {
   definition = <SiPropValueFromDefinition>{};
 
   constructor() {
@@ -791,12 +788,15 @@ export class PropBuilder implements IPropBuilder {
 
 export interface SecretPropDefinition extends PropDefinition {
   hasInputSocket: boolean;
+  connectionAnnotation: string;
 }
 
 export interface ISecretPropBuilder {
   setName(name: string): this;
 
   setSecretKind(kind: string): this;
+
+  setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;
 
@@ -856,6 +856,11 @@ export class SecretPropBuilder implements ISecretPropBuilder {
    */
   setSecretKind(kind: string): this {
     this.prop.widget?.options.push({ label: "secretKind", value: kind });
+    return this;
+  }
+
+  setConnectionAnnotation(annotation: string): this {
+    this.prop.connectionAnnotation = annotation;
     return this;
   }
 
@@ -1102,8 +1107,7 @@ export class AssetBuilder implements IAssetBuilder {
       );
 
     if (
-      definition.connectionAnnotations
-      && definition.connectionAnnotations !== ""
+      definition.connectionAnnotations && definition.connectionAnnotations !== ""
     ) {
       outputSocketBuilder.setConnectionAnnotation(
         definition.connectionAnnotations,

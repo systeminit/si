@@ -113,6 +113,8 @@ pub enum FuncRunnerError {
     Secret(#[from] SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}")]
+    TooManyAttributePrototypeArguments(ComponentId, PropId, Vec<AttributePrototypeArgumentId>),
     #[error("too many attribute values for component ({0}) and prop ({1})")]
     TooManyAttributeValues(ComponentId, PropId),
     #[error("transactions error: {0}")]
@@ -1151,6 +1153,16 @@ impl FuncRunner {
                 let attribute_prototype_argument_ids =
                     AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id)
                         .await?;
+                if attribute_prototype_argument_ids.len() > 1 {
+                    return Err(FuncRunnerError::TooManyAttributePrototypeArguments(
+                        component_id,
+                        secret_child_prop_id,
+                        attribute_prototype_argument_ids.clone(),
+                    ));
+                }
+
+                // If there's not attribute prototype argument yet, the prototype is either using "si:unset" or nothing
+                // has been connected to us.
                 let attribute_prototype_argument_id = match attribute_prototype_argument_ids.first()
                 {
                     Some(attribute_prototype_argument_id) => *attribute_prototype_argument_id,

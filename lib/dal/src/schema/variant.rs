@@ -1907,14 +1907,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
         let mut ids = Vec::new();
         for maybe_secret_defining_id in Self::list_default_ids(ctx).await? {
-            if Prop::find_prop_id_by_path_opt(
-                ctx,
-                maybe_secret_defining_id,
-                &PropPath::new(["root", "secret_definition"]),
-            )
-            .await?
-            .is_some()
-            {
+            if Self::is_secret_defining(ctx, maybe_secret_defining_id).await? {
                 ids.push(maybe_secret_defining_id);
             }
         }
@@ -1945,5 +1938,17 @@ impl SchemaVariant {
             SchemaVariantError::SecretDefiningSchemaVariantMissingOutputSocket(secret_defining_id),
         )?;
         Ok(secret_output_socket.to_owned())
+    }
+
+    /// Determines if the given [`SchemaVariant`] defines a [`Secret`](crate::Secret).
+    pub async fn is_secret_defining(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<bool> {
+        Ok(
+            Prop::find_prop_id_by_path_opt(ctx, id, &PropPath::new(["root", "secret_definition"]))
+                .await?
+                .is_some(),
+        )
     }
 }
