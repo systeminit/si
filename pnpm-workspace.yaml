@@ -2,6 +2,7 @@
 packages:
   - app/auth-portal
   - app/web
+  - app/docs
   - bin/auth-api
   - bin/lang-js
   - lib/eslint-config

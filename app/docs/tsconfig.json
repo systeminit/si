@@ -1,0 +1,25 @@
+{
+  "extends": "@si/tsconfig/tsconfig.browser.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "declaration": false,
+    "declarationMap": false,
+    "types": [
+      "vite/client",
+      "vite-svg-loader",
+      "unplugin-icons/types/raw",
+    ],
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/lib/confetti.js"
+  ]
+}
