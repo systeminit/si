@@ -1,15 +1,18 @@
 <template>
-  <Modal ref="modal" size="sm" :title="props.title">
+  <Modal ref="modal" :title="props.title" size="sm">
     <VormInput
       ref="assetNameVorm"
       v-model="assetName"
-      type="text"
+      :disabled="loading"
       label="Asset Name"
       noLabel
       required
+      type="text"
       @enterPressed="submit"
     />
-    <VButton class="mt-sm" @click="submit">{{ props.buttonLabel }}</VButton>
+    <VButton :loading="loading" class="mt-sm" @click="submit"
+      >{{ props.buttonLabel }}
+    </VButton>
   </Modal>
 </template>
 
@@ -20,6 +23,7 @@ import { Modal, VormInput, VButton } from "@si/vue-lib/design-system";
 const props = defineProps<{
   title: string;
   buttonLabel: string;
+  loading?: boolean;
 }>();
 
 const modal = ref<InstanceType<typeof Modal>>();
@@ -27,19 +31,24 @@ const assetName = ref("");
 const assetNameVorm = ref<InstanceType<typeof VormInput>>();
 
 const submit = () => {
-  emit("submit", assetName.value);
+  if (!assetNameVorm.value?.validationState.isError) {
+    emit("submit", assetName.value);
+  }
+};
+
+const reset = () => {
   assetName.value = "";
+  assetNameVorm.value?.validationMethods.reset();
 };
 
 const setError = (msg: string) => {
-  if (assetNameVorm.value) {
-    assetNameVorm.value.setError(msg);
-  }
+  assetNameVorm.value?.setError(msg);
 };
 
 defineExpose({
   modal,
   setError,
+  reset,
 });
 const emit = defineEmits(["submit"]);
 </script>

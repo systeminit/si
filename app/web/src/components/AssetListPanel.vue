@@ -15,26 +15,26 @@
         </template>
         <div class="flex flex-row gap-xs items-center">
           <IconButton
+            :requestStatus="createAssetReqStatus"
             class="hover:scale-125"
             icon="plus"
-            size="sm"
             loadingIcon="loader"
-            :requestStatus="createAssetReqStatus"
-            variant="simple"
+            loadingTooltip="Creating Asset..."
+            size="sm"
             tooltip="New Asset"
             tooltipPlacement="top"
-            loadingTooltip="Creating Asset..."
+            variant="simple"
             @click="() => newAssetModalRef?.modal?.open()"
           />
           <IconButton
             v-if="canContribute || true"
+            :selected="contributeAssetModalRef?.isOpen || false"
             class="hover:scale-125"
             icon="cloud-upload"
             size="sm"
-            variant="simple"
             tooltip="Contribute All"
             tooltipPlacement="top"
-            :selected="contributeAssetModalRef?.isOpen || false"
+            variant="simple"
             @click="contributeAsset"
           />
           <IconButton
@@ -42,22 +42,23 @@
             class="hover:scale-125"
             icon="code-deployed"
             size="sm"
-            variant="simple"
             tooltip="Update All"
             tooltipPlacement="top"
+            variant="simple"
           />
         </div>
         <AssetNameModal
           ref="newAssetModalRef"
-          title="New Asset"
+          :loading="createAssetReqStatus.isPending"
           buttonLabel="Create Asset"
+          title="New Asset"
           @submit="(name) => newAsset(name)"
         />
       </SidebarSubpanelTitle>
       <SiSearch
         ref="searchRef"
-        placeholder="search assets"
         :filters="searchFiltersWithCounts"
+        placeholder="search assets"
         @search="onSearch"
       />
       <!-- <div
@@ -70,13 +71,13 @@
       <TreeNode
         v-for="category in Object.keys(categorizedAssets)"
         :key="category"
+        :color="categoryColor(category)"
         :label="category"
         :primaryIcon="getAssetIcon(category)"
-        :color="categoryColor(category)"
-        enableDefaultHoverClasses
-        enableGroupToggle
         alwaysShowArrow
         clickLabelToToggle
+        enableDefaultHoverClasses
+        enableGroupToggle
         indentationSize="none"
       >
         <template #icons>
@@ -95,12 +96,12 @@
     </template>
     <ModuleExportModal
       ref="contributeAssetModalRef"
-      title="Contribute Assets"
-      label="Contribute to System Initiative"
       :loadingText="_.sample(contributeLoadingTexts)"
       :preSelectedSchemaVariantId="
         assetStore.selectedSchemaVariant?.schemaVariantId
       "
+      label="Contribute to System Initiative"
+      title="Contribute Assets"
       @export-success="onExport"
     />
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
@@ -232,13 +233,15 @@ const categoryColor = (category: string) => {
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
-    assetStore.setSchemaVariantSelection(result.result.data.id, true);
+    assetStore.setSchemaVariantSelection(
+      result.result.data.schemaVariantId,
+      true,
+    );
     newAssetModalRef.value?.modal?.close();
   } else if (result.result.statusCode === 409) {
-    if (newAssetModalRef.value) {
-      newAssetModalRef.value.setError("That name is already in use");
-    }
+    newAssetModalRef.value?.setError("That name is already in use");
   }
+  newAssetModalRef.value?.reset();
 };
 
 const contributeAsset = () => contributeAssetModalRef.value?.open();
