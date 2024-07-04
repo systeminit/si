@@ -21,6 +21,7 @@ bin/si/src/version.txt
 prelude
 
 app/docs/src/.vitepress/cache/
+app/docs/dist/
 
 .turbo
 .netlify

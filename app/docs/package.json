@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run start",
-    "start": "vitepress dev src"
+    "start": "vitepress dev src",
+    "build": "vitepress build src"
   },
   "devDependencies": {
     "@si/eslint-config": "workspace:*",
