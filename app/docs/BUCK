@@ -28,3 +28,14 @@ pnpm_task_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+pnpm_task_binary(
+    name = "build",
+    command = "build",
+    srcs = glob(["src/**/*"]),
+    path = "app/docs",
+    deps = [
+        "//:node_modules",
+    ],
+    visibility = ["PUBLIC"],
+)

@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -12,6 +13,8 @@ export default defineConfig({
       dark: "github-dark",
     },
   },
+  outDir: path.join(__dirname, "../../dist"),
+  ignoreDeadLinks: true,
   cleanUrls: true,
   themeConfig: {
     nav: [
