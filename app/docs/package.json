@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "docs:dev": "vitepress dev src"
+    "dev": "pnpm run start",
+    "start": "vitepress dev src"
   },
   "devDependencies": {
     "@si/eslint-config": "workspace:*",
@@ -16,5 +17,8 @@
   },
   "volta": {
     "extends": "../../package.json"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
   }
 }
