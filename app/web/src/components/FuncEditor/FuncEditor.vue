@@ -27,6 +27,8 @@
           : undefined
       "
       v-model="editingFunc"
+      :disabled="selectedFuncSummary?.isLocked"
+      :recordId="selectedFuncSummary?.funcId || ''"
       :typescript="selectedFuncCode?.types"
       @change="updateFuncCode"
       @close="emit('close')"
@@ -75,7 +77,7 @@ const loadFuncDetailsReq = funcStore.getRequestStatus(
 );
 
 watch(
-  selectedFuncCode,
+  () => selectedFuncCode.value?.funcId,
   () => {
     if (!selectedFuncCode.value) {
       return;
@@ -101,12 +103,13 @@ watch(
     updatedHead.value = false;
   },
 );
-const updateFuncCode = (code: string) => {
+const updateFuncCode = (funcId: string, code: string) => {
   if (updatedHead.value) return;
+  if (!funcId) return; // protecting empty string, should never happen
 
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
-  funcStore.updateFuncCode(props.funcId, code);
+  funcStore.updateFuncCode(funcId, code);
 };
 
 const emit = defineEmits<{

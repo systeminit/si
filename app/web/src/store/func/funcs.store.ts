@@ -49,6 +49,7 @@ export type FuncExecutionLog = {
 
 export interface DeleteFuncResponse {
   success: boolean;
+  name: string;
 }
 
 export const useFuncStore = () => {
@@ -200,15 +201,20 @@ export const useFuncStore = () => {
             },
           });
         },
-        // TODO: jobelenus, doesn't exist yet...
-        async DELETE_FUNC(funcId: FuncId) {
+        async CREATE_UNLOCKED_COPY(funcId: FuncId) {
+          return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
+            method: "post",
+            url: `${API_PREFIX}/${funcId}/create_unlocked_copy`,
+            onSuccess: (response) => {
+              this.funcsById[response.summary.funcId] = response.summary;
+              this.funcCodeById[response.code.funcId] = response.code;
+            },
+          });
+        },
+        async DELETE_UNLOCKED_FUNC(funcId: FuncId) {
           return new ApiRequest<DeleteFuncResponse>({
             method: "post",
-            url: "func/delete_func",
-            params: {
-              id: funcId,
-              ...visibility,
-            },
+            url: `${API_PREFIX}/${funcId}/delete`,
           });
         },
         async UPDATE_FUNC(func: FuncSummary) {
@@ -490,6 +496,24 @@ export const useFuncStore = () => {
                 const func = this.funcsById[funcId];
                 if (func) func.bindings = data.bindings;
               }
+            },
+          },
+          {
+            eventType: "FuncCreated",
+            callback: (data) => {
+              if (data.changeSetId !== selectedChangeSetId) return;
+              this.funcsById[data.funcSummary.funcId] = data.funcSummary;
+              const bindings = processBindings(data.funcSummary);
+              this.actionBindings[data.funcSummary.funcId] =
+                bindings.actionBindings;
+              this.attributeBindings[data.funcSummary.funcId] =
+                bindings.attributeBindings;
+              this.authenticationBindings[data.funcSummary.funcId] =
+                bindings.authenticationBindings;
+              this.qualificationBindings[data.funcSummary.funcId] =
+                bindings.qualificationBindings;
+              this.codegenBindings[data.funcSummary.funcId] =
+                bindings.codegenBindings;
             },
           },
           {

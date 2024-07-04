@@ -1,6 +1,6 @@
 <template>
   <div class="p-xs flex flex-col gap-xs">
-    <LeafInputs v-model="inputs" @change="update" />
+    <LeafInputs v-model="inputs" :disabled="func?.isLocked" @change="update" />
   </div>
 </template>
 
@@ -16,6 +16,10 @@ const props = defineProps<{
   schemaVariantId: string;
   funcId: string;
 }>();
+
+const func = computed(() => {
+  return funcStore.funcsById[props.funcId];
+});
 
 const binding = computed(() => {
   const bindings = funcStore.codegenBindings[props.funcId];

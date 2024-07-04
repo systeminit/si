@@ -511,6 +511,7 @@
           <CodeEditor
             :id="`${changeSetsStore.selectedChangeSetId}/${attributeDef.valueId}`"
             v-model="newValueString"
+            :recordId="attributeDef.valueId"
           />
         </template>
       </div>

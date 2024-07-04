@@ -15,7 +15,7 @@
         <SelectMenu
           v-model="selectedVariant"
           class="flex-auto"
-          :options="schemaVariantOptions"
+          :options="schemaVariantOptionsUnlocked"
           @change="variantChanged"
         />
       </template>
@@ -67,7 +67,8 @@ import { useComponentsStore } from "@/store/components.store";
 import { nilId } from "@/utils/nilId";
 
 const componentsStore = useComponentsStore();
-const { schemaVariantOptions } = storeToRefs(componentsStore);
+const { schemaVariantOptionsUnlocked, schemaVariantOptions } =
+  storeToRefs(componentsStore);
 
 const funcStore = useFuncStore();
 

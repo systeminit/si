@@ -5,7 +5,7 @@
       class="w-full flex p-xs gap-2xs border-b dark:border-neutral-600"
     >
       <VButton
-        :disabled="disabled"
+        :disabled="disabled || variant?.isLocked"
         tone="success"
         icon="plus"
         label="Add Binding"
@@ -69,14 +69,14 @@
           </ul>
           <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
             <VButton
-              :disabled="disabled"
+              :disabled="disabled || bind.schemaVariant?.isLocked"
               tone="neutral"
               label="Edit Binding"
               size="md"
               @click="openModal(bind)"
             />
             <VButton
-              :disabled="disabled"
+              :disabled="disabled || bind.schemaVariant?.isLocked"
               variant="transparent"
               tone="destructive"
               icon="x"
@@ -118,7 +118,11 @@ import {
   AttributePrototypeId,
 } from "@/api/sdf/dal/func";
 import { PropId } from "@/api/sdf/dal/prop";
-import { OutputSocketId, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  OutputSocketId,
+  SchemaVariant,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 import { nonNullable } from "@/utils/typescriptLinter";
@@ -145,6 +149,12 @@ const binding = computed(() => {
   return binding;
 });
 
+const variant = computed(() => {
+  return componentStore.schemaVariantsById[
+    binding.value?.schemaVariantId || ""
+  ];
+});
+
 const getPropPathFrom = (
   schemaVariantId: SchemaVariantId | null,
   propId: PropId,
@@ -166,6 +176,7 @@ const getSocketNameFrom = (
 interface ExtendedBinding extends Attribute {
   outputDescription: string;
   attributePrototypeId: AttributePrototypeId;
+  schemaVariant: SchemaVariant | undefined;
 }
 const bindings = computed(() => {
   let b;
@@ -175,6 +186,8 @@ const bindings = computed(() => {
   }
   b = ((b as ExtendedBinding[]) || []).filter(nonNullable);
   return b.map((_b) => {
+    _b.schemaVariant =
+      componentStore.schemaVariantsById[_b.schemaVariantId || ""];
     if (_b.outputSocketId) {
       _b.outputDescription =
         getSocketNameFrom(_b.schemaVariantId, _b.outputSocketId) || "N/A";

@@ -287,10 +287,9 @@ export const useAssetStore = () => {
         enqueueVariantSave(schemaVariant: SchemaVariant, code: string) {
           this.editingFuncLatestCode[schemaVariant.schemaVariantId] = code;
 
-          if (changeSetsStore.headSelected)
-            return this.SAVE_SCHEMA_VARIANT(schemaVariant, code);
-
-          this.variantsById[schemaVariant.schemaVariantId] = schemaVariant;
+          // don't see how this should ever happen
+          /* if (changeSetsStore.headSelected)
+            return this.SAVE_SCHEMA_VARIANT(schemaVariant, code); */
 
           if (!assetSaveDebouncer) {
             assetSaveDebouncer = keyedDebouncer((id: SchemaVariantId) => {
@@ -364,7 +363,9 @@ export const useAssetStore = () => {
 
           if (!code) throw new Error(`${schemaVariantId} Code does not exist`);
 
-          return new ApiRequest<null>({
+          return new ApiRequest<{
+            schemaVariantId: SchemaVariantId;
+          }>({
             method: "post",
             url: "/variant/regenerate_variant",
             keyRequestStatusBy: schemaVariantId,

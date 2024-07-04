@@ -6,45 +6,51 @@
     secondaryText="Select a function from the list on the left panel to view its details here."
   />
   <div
-    v-else-if="selectedFuncSummary && editingFunc"
+    v-else-if="editingFunc"
     :class="clsx('h-full w-full flex flex-col overflow-hidden')"
   >
     <div class="flex flex-col">
       <SidebarSubpanelTitle
+        :label="editingFunc.name"
         icon="func"
         variant="subtitle"
-        :label="selectedFuncSummary.name"
       >
-        <template v-if="ffStore.IMMUTABLE_SCHEMA_VARIANTS">
-          <EditingPill
-            v-if="!selectedFuncSummary.isLocked"
-            color="#666"
-          ></EditingPill>
+        <div class="flex flex-row">
+          <EditingPill v-if="!editingFunc.isLocked" color="#666"></EditingPill>
+          <IconButton
+            v-if="!editingFunc.isLocked"
+            :loading="isDeleting"
+            class="mx-xs hover:scale-125"
+            icon="trash"
+            iconTone="destructive"
+            loadingTooltip="Deleting..."
+            size="sm"
+            tooltip="Delete"
+            tooltipPlacement="top"
+            @click="deleteFunc"
+          />
           <IconButton
             v-else
             class="hover:scale-125"
-            variant="simple"
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
+            variant="simple"
+            @click="unlock"
           />
-        </template>
+        </div>
       </SidebarSubpanelTitle>
       <ErrorMessage
-        v-if="isConnectedToOtherAssetTypes"
+        v-if="isConnectedToOtherSchemas"
         icon="alert-triangle"
-        variant="block"
         tone="warning"
+        variant="block"
       >
         This function is connected to other
-        {{
-          selectedFuncSummary.kind === FuncKind.Attribute
-            ? "attributes"
-            : "assets"
-        }}.
+        {{ editingFunc.kind === FuncKind.Attribute ? "attributes" : "assets" }}.
       </ErrorMessage>
       <ErrorMessage
-        v-if="selectedFuncSummary.kind === FuncKind.Action"
+        v-if="editingFunc.kind === FuncKind.Action"
         icon="alert-triangle"
         tone="warning"
         variant="block"
@@ -60,42 +66,36 @@
         class="flex flex-row gap-2xs items-center justify-evenly py-xs border-b border-neutral-200 dark:border-neutral-600"
       >
         <IconButton
+          :disabled="
+            !(editingFunc.kind !== FuncKind.Authentication) ||
+            editingFunc.isLocked
+          "
+          :requestStatus="execFuncReqStatus"
           icon="save"
-          loadingIcon="loader"
           iconTone="success"
+          loadingIcon="loader"
           loadingTooltip="Executing..."
           tooltip="Execute"
           tooltipPlacement="top"
-          :requestStatus="execFuncReqStatus"
-          :disabled="!(selectedFuncSummary.kind !== FuncKind.Authentication)"
           @click="execFunc"
         />
         <IconButton
-          tooltip="Test"
-          tooltipPlacement="top"
+          :disabled="!enableTestPanel"
           icon="test-tube"
           iconTone="action"
-          :disabled="!enableTestPanel"
+          tooltip="Test"
+          tooltipPlacement="top"
           @click="funcDetailsTabGroupRef.selectTab('test')"
         />
         <IconButton
+          :disabled="editingFunc.isLocked"
           :loading="isDetaching"
-          iconTone="warning"
           icon="unlink"
+          iconTone="warning"
+          loadingTooltip="Detaching..."
           tooltip="Detach"
           tooltipPlacement="top"
-          loadingTooltip="Detaching..."
           @click="detachFunc"
-        />
-        <IconButton
-          :loading="isDeleting"
-          iconTone="destructive"
-          :disabled="hasAssociations"
-          icon="trash"
-          tooltip="Delete"
-          tooltipPlacement="top"
-          loadingTooltip="Deleting..."
-          @click="deleteFunc"
         />
       </div>
     </div>
@@ -110,109 +110,115 @@
             class="flex flex-col absolute inset-0 overflow-y-auto overflow-x-hidden border-t border-neutral-200 dark:border-neutral-600"
           >
             <TreeNode
-              label="Attributes"
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
               defaultOpen
               enableGroupToggle
-              alwaysShowArrow
-              noIndentationOrLeftBorder
+              label="Attributes"
               labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              noIndentationOrLeftBorder
             >
               <Stack class="p-xs" spacing="none">
                 <VormInput
                   v-model="editingFunc.name"
+                  :disabled="editingFunc.isLocked"
+                  compact
                   label="Name"
                   required
-                  compact
                   @blur="updateFunc"
                 />
                 <VormInput
                   v-model="editingFunc.displayName"
+                  :disabled="editingFunc.isLocked"
+                  compact
                   label="Display Name"
                   required
-                  compact
                   @blur="updateFunc"
                 />
                 <VormInput
                   v-model="editingFunc.description"
-                  type="textarea"
+                  :disabled="editingFunc.isLocked"
                   compact
                   label="Description"
+                  type="textarea"
                   @blur="updateFunc"
                 />
               </Stack>
             </TreeNode>
 
             <ActionDetails
-              v-if="selectedFuncSummary.kind === FuncKind.Action"
+              v-if="editingFunc.kind === FuncKind.Action"
               ref="detachRef"
-              :funcId="selectedFuncSummary.funcId"
+              :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
             <AuthenticationDetails
-              v-if="selectedFuncSummary.kind === FuncKind.Authentication"
+              v-if="editingFunc.kind === FuncKind.Authentication"
               ref="detachRef"
-              :funcId="selectedFuncSummary.funcId"
+              :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
             <CodeGenerationDetails
-              v-if="selectedFuncSummary.kind === FuncKind.CodeGeneration"
+              v-if="editingFunc.kind === FuncKind.CodeGeneration"
               ref="detachRef"
-              :funcId="selectedFuncSummary.funcId"
+              :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
             <QualificationDetails
-              v-if="selectedFuncSummary.kind === FuncKind.Qualification"
+              v-if="editingFunc.kind === FuncKind.Qualification"
               ref="detachRef"
-              :funcId="selectedFuncSummary.funcId"
+              :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
 
             <TreeNode
-              v-if="selectedFuncSummary?.kind === FuncKind.Attribute"
-              label="Arguments"
+              v-if="editingFunc?.kind === FuncKind.Attribute"
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
               defaultOpen
               enableGroupToggle
-              alwaysShowArrow
               indentationSize="none"
-              leftBorderSize="none"
+              label="Arguments"
               labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              leftBorderSize="none"
             >
-              <FuncArguments :funcId="editingFunc.funcId" />
+              <FuncArguments
+                :disabled="editingFunc.isLocked"
+                :funcId="editingFunc.funcId"
+              />
             </TreeNode>
 
             <TreeNode
               v-if="
-                selectedFuncSummary?.kind === FuncKind.Attribute &&
+                editingFunc?.kind === FuncKind.Attribute &&
                 $props.schemaVariantId
               "
-              label="Bindings"
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
               defaultOpen
               enableGroupToggle
-              alwaysShowArrow
               indentationSize="none"
-              leftBorderSize="none"
+              label="Bindings"
               labelClasses="border-b border-neutral-200 dark:border-neutral-600"
-              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              leftBorderSize="none"
             >
               <AttributeBindings
                 ref="detachRef"
+                :funcId="editingFunc.funcId"
                 :schemaVariantId="$props.schemaVariantId"
-                :funcId="selectedFuncSummary.funcId"
               />
             </TreeNode>
           </div>
         </TabGroupItem>
 
         <TabGroupItem
-          v-if="selectedFuncSummary?.kind === FuncKind.Attribute"
+          v-if="editingFunc?.kind === FuncKind.Attribute"
           label="Bindings"
           slug="bindings"
         >
           <AttributeBindings
             ref="detachRef"
-            :funcId="selectedFuncSummary.funcId"
+            :funcId="editingFunc.funcId"
             class="border-t border-neutral-200 dark:border-neutral-600"
           />
         </TabGroupItem>
@@ -244,16 +250,10 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import {
-  FuncKind,
-  FuncId,
-  FuncBinding,
-  FuncBindingKind,
-} from "@/api/sdf/dal/func";
+import { FuncKind, FuncId, FuncBindingKind } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -275,7 +275,6 @@ const funcDetailsTabGroupRef = ref();
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
-const ffStore = useFeatureFlagsStore();
 
 const emit = defineEmits<{
   (e: "expandPanel"): void;
@@ -321,29 +320,22 @@ const updateFunc = () => {
   if (editingFunc.value) funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
-// THIS FEELS UNNECESSARY NOW
-const isConnectedToOtherAssetTypes = computed<boolean>(() => {
-  if (
-    selectedFuncSummary.value &&
-    selectedFuncSummary.value.bindings.length > 0
-  ) {
-    return selectedFuncSummary.value.bindings
-      .map((b: FuncBinding) => {
-        switch (b.bindingKind) {
-          case FuncBindingKind.Qualification:
-          case FuncBindingKind.CodeGeneration:
-            return !!b.schemaVariantId;
-          case FuncBindingKind.Action:
-            return !!b.schemaVariantId;
-          case FuncBindingKind.Attribute:
-            return !!b.attributePrototypeId;
-          default:
-            return false;
-        }
-      })
-      .some(Boolean);
+const unlock = async () => {
+  if (editingFunc.value?.funcId) {
+    const resp = await funcStore.CREATE_UNLOCKED_COPY(editingFunc.value.funcId);
+    if (resp.result.success) {
+      await assetStore.setFuncSelection(resp.result.data.summary.funcId);
+    }
   }
-  return false;
+};
+
+const isConnectedToOtherSchemas = computed<boolean>(() => {
+  if (!editingFunc.value) return false;
+
+  if (editingFunc.value.bindings.length === 1) return false;
+
+  // TODO this is wrong for attribute funcs, since they can have multiple bindings on the same variant
+  return true;
 });
 
 const execFuncReqStatus = funcStore.getRequestStatus(
@@ -368,21 +360,24 @@ const detachFunc = async () => {
 const isDeleting = ref(false);
 const deleteFunc = async () => {
   if (!funcId.value) return;
-  await funcStore.DELETE_FUNC(funcId.value);
+  await funcStore.DELETE_UNLOCKED_FUNC(funcId.value);
+  assetStore.setFuncSelection(undefined);
 };
 
+/* dont think we need this anymore
 const hasAssociations = computed(() => {
-  if (selectedFuncSummary.value?.bindings.length === 0) return true;
+  if (editingFunc.value?.bindings.length === 0) return true;
   return false;
 });
+*/
 
 // The parent component can allow the test panel to be enabled, but we need to dynamically enable
 // it based on the func kind.
 const enableTestPanel = computed(() => {
   return (
     props.allowTestPanel &&
-    selectedFuncSummary.value &&
-    selectedFuncSummary.value.bindings
+    editingFunc.value &&
+    editingFunc.value.bindings
       .map((b) => b.bindingKind)
       .filter((kind) =>
         [

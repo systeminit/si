@@ -443,6 +443,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentResource(): Resource | undefined {
             return this.componentResourceById[this.selectedComponentId || 0];
           },
+          schemaVariantOptionsUnlocked: (
+            state,
+          ): { label: string; value: string }[] => {
+            return Object.values(state.schemaVariantsById)
+              .filter((v) => !v.isLocked)
+              .map((sv) => ({
+                label: sv.displayName || sv.schemaName,
+                value: sv.schemaVariantId,
+              }));
+          },
           schemaVariantOptions: (state): { label: string; value: string }[] => {
             return Object.values(state.schemaVariantsById).map((sv) => ({
               label: sv.displayName || sv.schemaName,
@@ -530,7 +540,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (!variants) return null;
                 return {
                   displayName: category,
-                  schemaVariants: variants,
+                  schemaVariants: variants.filter(
+                    (v) => v.canCreateNewComponents,
+                  ),
                 };
               })
               .filter(nonNullable);

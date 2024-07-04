@@ -70,6 +70,7 @@ import {
 const props = defineProps({
   id: String,
   modelValue: { type: String, required: true },
+  recordId: { type: String, required: true },
   disabled: { type: Boolean },
   json: Boolean,
   typescript: { type: String },
@@ -81,24 +82,25 @@ const props = defineProps({
 const emit = defineEmits<{
   "update:modelValue": [v: string];
   blur: [v: string];
-  change: [v: string];
+  change: [id: string, v: string];
   close: [];
 }>();
 
 watch(
   () => props.modelValue,
   () => {
-    if (!props.id && yText) {
-      view.update([
-        view.state.update({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: props.modelValue,
-          },
-        }),
-      ]);
-    }
+    // always up the code editor with the new text that comes from the prop
+    // Note: props are read only, and will change when the selected func/variant changes
+    // this does not change as a result of a user typing
+    view.update([
+      view.state.update({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: props.modelValue,
+        },
+      }),
+    ]);
   },
 );
 
@@ -130,7 +132,7 @@ function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
 
   emit("update:modelValue", update.state.doc.toString());
-  emit("change", view.state.doc.toString());
+  emit("change", props.recordId, view.state.doc.toString());
 
   const serializedState = update.view.state.toJSON({ history: historyField });
   if (props.id && serializedState.history) {
@@ -296,7 +298,7 @@ let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
   if (view) {
-    emit("change", view.state.doc.toString());
+    emit("change", props.recordId, view.state.doc.toString());
     emit("blur", view.state.doc.toString());
     wsProvider?.destroy();
   }
@@ -384,7 +386,7 @@ const mountEditor = async () => {
     });
 
     view.contentDOM.onblur = () => {
-      emit("change", view.state.doc.toString());
+      emit("change", props.recordId, view.state.doc.toString());
       emit("blur", view.state.doc.toString());
     };
   };

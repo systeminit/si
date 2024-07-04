@@ -5,7 +5,7 @@
         id="create"
         v-model="isCreate"
         title="This action creates a resource"
-        :disabled="disabled"
+        :disabled="disabled || func?.isLocked"
         @update:model-value="setCreate"
       />
     </div>
@@ -14,7 +14,7 @@
         id="refresh"
         v-model="isRefresh"
         title="This action refreshes a resource"
-        :disabled="disabled"
+        :disabled="disabled || func?.isLocked"
         @update:model-value="setRefresh"
       />
     </div>
@@ -23,7 +23,7 @@
         id="delete"
         v-model="isDelete"
         title="This action deletes a resource"
-        :disabled="disabled"
+        :disabled="disabled || func?.isLocked"
         @update:model-value="setDelete"
       />
     </div>
@@ -56,6 +56,10 @@ const props = defineProps<{
 const isCreate = ref(false);
 const isDelete = ref(false);
 const isRefresh = ref(false);
+
+const func = computed(() => {
+  return funcStore.funcsById[props.funcId];
+});
 
 const binding = computed(() => {
   const bindings = funcStore.actionBindings[props.funcId];
