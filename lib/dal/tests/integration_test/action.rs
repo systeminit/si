@@ -2,14 +2,14 @@ use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
     action::ActionState, AttributeValue, Component, DalContext,
 };
-use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn prototype_id(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
         .await
         .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -46,7 +46,7 @@ async fn prototype_id(ctx: &mut DalContext) {
 
 #[test]
 async fn component(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
         .await
         .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -81,7 +81,7 @@ async fn component(ctx: &mut DalContext) {
 
 #[test]
 async fn get_by_id(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
         .await
         .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -117,7 +117,7 @@ async fn get_by_id(ctx: &mut DalContext) {
 
 #[test]
 async fn set_state(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
         .await
         .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -149,7 +149,7 @@ async fn set_state(ctx: &mut DalContext) {
 
 #[test]
 async fn run(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
         .await
         .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
@@ -176,7 +176,7 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
-    let component = create_component_for_schema_name(ctx, "swifty", "jack antonoff")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "jack antonoff")
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -227,7 +227,7 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
-    let component = create_component_for_schema_name(ctx, "swifty", "jack antonoff")
+    let component = create_component_for_default_schema_name(ctx, "swifty", "jack antonoff")
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)

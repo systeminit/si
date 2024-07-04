@@ -27,7 +27,7 @@ use super::{SchemaVariantError, SchemaVariantResult};
 /// [`Func`](crate::Func) within the same [`map`](crate::PropKind::Map). The kind of
 /// [`Func`](crate::Func) allowed corresponds to the [`LeafKind`].
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, EnumIter)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).

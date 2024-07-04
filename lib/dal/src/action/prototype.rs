@@ -460,7 +460,7 @@ impl ActionPrototype {
     pub async fn remove(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<()> {
         let change_set = ctx.change_set()?;
         // check if there are existing actions queued for this prototype and remove them
-        let enqueued_actions = dbg!(Self::find_enqueued_actions(ctx, id).await?);
+        let enqueued_actions = Self::find_enqueued_actions(ctx, id).await?;
 
         for action in enqueued_actions {
             ctx.workspace_snapshot()?

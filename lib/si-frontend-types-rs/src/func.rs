@@ -28,6 +28,7 @@ pub struct FuncSummary {
     pub kind: FuncKind,
     pub name: String,
     pub display_name: Option<String>,
+    pub description: Option<String>,
     pub is_locked: bool,
     pub arguments: Vec<FuncArgument>,
     #[serde(flatten)]

@@ -11,26 +11,18 @@ async fn save_and_exec_action_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
+
+    let new_func = FuncAuthoringClient::create_unlocked_func_copy(ctx, func_id, None)
         .await
-        .expect("could not assemble func view");
+        .expect("could not create unlocked copy");
+    FuncAuthoringClient::update_func(ctx, new_func.id, Some("woo hoo".to_string()), None)
+        .await
+        .expect("could not update func");
 
-    FuncAuthoringClient::save_func(
-        ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        func_view.code,
-        func_view.associations,
-    )
-    .await
-    .expect("could not save func");
-
-    FuncAuthoringClient::execute_func(ctx, func_view.id)
+    FuncAuthoringClient::execute_func(ctx, new_func.id)
         .await
         .expect("could not execute func");
 
@@ -49,23 +41,17 @@ async fn save_and_exec_attribute_func(ctx: &mut DalContext) {
     let func = Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
+    FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
+    let new_func = FuncAuthoringClient::create_unlocked_func_copy(ctx, func_id, None)
+        .await
+        .expect("could not create unlocked copy");
+    FuncAuthoringClient::update_func(ctx, new_func.id, Some("woo hoo".to_string()), None)
+        .await
+        .expect("could not update func");
 
-    FuncAuthoringClient::save_func(
-        ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        func_view.code,
-        func_view.associations,
-    )
-    .await
-    .expect("could not save func");
-
-    FuncAuthoringClient::execute_func(ctx, func_view.id)
+    FuncAuthoringClient::execute_func(ctx, new_func.id)
         .await
         .expect("could not execute func");
 

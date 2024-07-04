@@ -22,9 +22,10 @@ pub struct SchemaVariant {
     pub input_sockets: Vec<InputSocket>,
     pub output_sockets: Vec<OutputSocket>,
     pub props: Vec<Prop>,
-    pub is_locked: bool,
+    pub is_locked: bool, // if unlocked, show in both places
     #[serde(flatten)]
     pub timestamp: Timestamp,
+    pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
 }
 
 #[remain::sorted]

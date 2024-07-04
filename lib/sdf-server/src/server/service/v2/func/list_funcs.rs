@@ -29,7 +29,7 @@ pub async fn list_funcs(
         .await?;
     let mut funcs = Vec::new();
 
-    for func in Func::list(&ctx).await? {
+    for func in Func::list_for_default_and_editing(&ctx).await? {
         funcs.push(func.into_frontend_type(&ctx).await?);
     }
     Ok(Json(funcs))

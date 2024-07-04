@@ -1,7 +1,7 @@
 use dal::component::debug::ComponentDebugView;
 use dal::prop::PropPath;
 use dal::{AttributeValue, Component, DalContext, Prop};
-use dal_test::helpers::create_component_for_schema_name;
+use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -9,7 +9,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn get_debug_view(ctx: &mut DalContext) {
     //create a new component for starfield schema
-    let component: Component = create_component_for_schema_name(ctx, "starfield", "new component")
+    let component: Component = create_component_for_default_schema_name(ctx, "starfield", "new component")
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)

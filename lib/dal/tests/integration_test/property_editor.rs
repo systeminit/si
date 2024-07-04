@@ -3,7 +3,7 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_schema_name, PropEditorTestView,
+    connect_components_with_socket_names, create_component_for_default_schema_name, PropEditorTestView,
 };
 use dal_test::test;
 use serde_json::json;
@@ -39,7 +39,7 @@ async fn assemble(ctx: &DalContext) {
 
 #[test]
 async fn array_map_manipulation(ctx: &DalContext) {
-    let component = create_component_for_schema_name(ctx, "pirate", "ss poopcanoe")
+    let component = create_component_for_default_schema_name(ctx, "pirate", "ss poopcanoe")
         .await
         .expect("could not create component");
 
@@ -294,7 +294,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
 #[test]
 async fn override_value_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -393,7 +393,7 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
 #[test]
 async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", original_pirate_name)
+    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -490,7 +490,7 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
 #[test]
 async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
     let pirate_name = "Blackbeard";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name)
+    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", pirate_name)
         .await
         .expect("could not create component");
 
@@ -528,7 +528,7 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
             .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia")
+    let pet_shop_component = create_component_for_default_schema_name(ctx, "pet_shop", "Petopia")
         .await
         .expect("could not create component");
 
@@ -571,7 +571,7 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
 async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
     let pirate_name = "Long John Silver";
     let parrot_name = "Captain Flint";
-    let pirate_component = create_component_for_schema_name(ctx, "pirate", pirate_name)
+    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", pirate_name)
         .await
         .expect("could not create component");
 
@@ -609,7 +609,7 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
             .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_schema_name(ctx, "pet_shop", "Petopia")
+    let pet_shop_component = create_component_for_default_schema_name(ctx, "pet_shop", "Petopia")
         .await
         .expect("could not create component");
 

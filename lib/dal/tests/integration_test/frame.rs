@@ -4,7 +4,7 @@ use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagr
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_schema_name,
+    connect_components_with_socket_names, create_component_for_default_schema_name,
     create_component_for_schema_name_with_type, get_component_input_socket_value,
     get_component_output_socket_value, update_attribute_value_for_component, ChangeSetTestHelpers,
 };
@@ -19,11 +19,11 @@ mod with_actions;
 async fn frames_and_connections(ctx: &mut DalContext) {
     //create 1 components and draw edges to another 1
     let first_component =
-        create_component_for_schema_name(ctx, "small even lego", "first_component")
+        create_component_for_default_schema_name(ctx, "small even lego", "first_component")
             .await
             .expect("could not create component");
     let second_component =
-        create_component_for_schema_name(ctx, "small odd lego", "second_component")
+        create_component_for_default_schema_name(ctx, "small odd lego", "second_component")
             .await
             .expect("could not create component");
 
@@ -61,11 +61,11 @@ async fn frames_and_connections(ctx: &mut DalContext) {
     //create 2 of the same schema variant, only use frames to connect them
     //create 1 components and draw edges to another 1
     let third_component =
-        create_component_for_schema_name(ctx, "small even lego", "third_component")
+        create_component_for_default_schema_name(ctx, "small even lego", "third_component")
             .await
             .expect("could not create component");
     let fourth_component =
-        create_component_for_schema_name(ctx, "small odd lego", "fourth_component")
+        create_component_for_default_schema_name(ctx, "small odd lego", "fourth_component")
             .await
             .expect("could not create component");
     fourth_component
@@ -477,7 +477,7 @@ async fn simple_frames(ctx: &mut DalContext) {
 #[test]
 async fn output_sockets_can_have_both(ctx: &mut DalContext) {
     // create an even frame
-    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even")
+    let even_frame = create_component_for_default_schema_name(ctx, "large even lego", "even")
         .await
         .expect("could not create component");
 
@@ -485,7 +485,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .set_type(ctx, ComponentType::ConfigurationFrameDown)
         .await
         .expect("could not set type");
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd1")
+    let odd_component = create_component_for_default_schema_name(ctx, "large odd lego", "odd1")
         .await
         .expect("could not create component");
     odd_component
@@ -512,7 +512,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // create another odd component, but manually connect to the frame (not a child!)
-    let odd_component_2 = create_component_for_schema_name(ctx, "large odd lego", "odd2")
+    let odd_component_2 = create_component_for_default_schema_name(ctx, "large odd lego", "odd2")
         .await
         .expect("could not create component");
     odd_component_2
@@ -855,7 +855,7 @@ async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
 
 #[test]
 async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
-    let even_frame = create_component_for_schema_name(ctx, "large even lego", "even")
+    let even_frame = create_component_for_default_schema_name(ctx, "large even lego", "even")
         .await
         .expect("could not create component");
     let even_frame_component_id = even_frame.id();
@@ -864,7 +864,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
 
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd")
+    let odd_component = create_component_for_default_schema_name(ctx, "large odd lego", "odd")
         .await
         .expect("could not create component");
     odd_component
@@ -913,7 +913,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // create first greatgrandparent
     let first_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1")
+        create_component_for_default_schema_name(ctx, "medium even lego", "greatgrandparent 1")
             .await
             .expect("could not create component");
 
@@ -923,7 +923,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .expect("could not set type");
     // create grandparent frame
     let first_grand_parent_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "grandparent")
+        create_component_for_default_schema_name(ctx, "medium odd lego", "grandparent")
             .await
             .expect("could not create component");
     first_grand_parent_frame
@@ -931,7 +931,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     // create parent frame
-    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent")
+    let parent_frame = create_component_for_default_schema_name(ctx, "small even lego", "parent")
         .await
         .expect("could not create component");
     parent_frame
@@ -939,7 +939,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     // create child components
-    let first_child_component = create_component_for_schema_name(ctx, "medium odd lego", "child 1")
+    let first_child_component = create_component_for_default_schema_name(ctx, "medium odd lego", "child 1")
         .await
         .expect("could not create component");
     first_child_component
@@ -947,7 +947,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     let second_child_component =
-        create_component_for_schema_name(ctx, "medium even lego", "child 2")
+        create_component_for_default_schema_name(ctx, "medium even lego", "child 2")
             .await
             .expect("could not create component");
     second_child_component
@@ -1044,7 +1044,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // now create the other great grandparent and grandparent frame and move the parent into it
     let second_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2")
+        create_component_for_default_schema_name(ctx, "medium even lego", "grandparent 2")
             .await
             .expect("could not create component");
 
@@ -1053,7 +1053,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     let second_grand_parent_frame =
-        create_component_for_schema_name(ctx, "small odd lego", "grandparent")
+        create_component_for_default_schema_name(ctx, "small odd lego", "grandparent")
             .await
             .expect("could not create component");
     second_grand_parent_frame
@@ -1151,7 +1151,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // create first greatgrandparent
     let first_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "greatgrandparent 1")
+        create_component_for_default_schema_name(ctx, "medium even lego", "greatgrandparent 1")
             .await
             .expect("could not create component");
 
@@ -1161,7 +1161,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .expect("could not set type");
     // create grandparent frame
     let first_grand_parent_frame =
-        create_component_for_schema_name(ctx, "medium odd lego", "grandparent")
+        create_component_for_default_schema_name(ctx, "medium odd lego", "grandparent")
             .await
             .expect("could not create component");
     first_grand_parent_frame
@@ -1169,7 +1169,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     // create parent frame
-    let parent_frame = create_component_for_schema_name(ctx, "small even lego", "parent")
+    let parent_frame = create_component_for_default_schema_name(ctx, "small even lego", "parent")
         .await
         .expect("could not create component");
     parent_frame
@@ -1177,7 +1177,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     // create child components
-    let first_child_component = create_component_for_schema_name(ctx, "medium odd lego", "child 1")
+    let first_child_component = create_component_for_default_schema_name(ctx, "medium odd lego", "child 1")
         .await
         .expect("could not create component");
     first_child_component
@@ -1267,7 +1267,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 
     // now create the other great grandparent and grandparent frame and move the parent into it
     let second_greatgrandparent_frame =
-        create_component_for_schema_name(ctx, "medium even lego", "grandparent 2")
+        create_component_for_default_schema_name(ctx, "medium even lego", "grandparent 2")
             .await
             .expect("could not create component");
 
@@ -1276,7 +1276,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     let second_grand_parent_frame =
-        create_component_for_schema_name(ctx, "small odd lego", "grandparent")
+        create_component_for_default_schema_name(ctx, "small odd lego", "grandparent")
             .await
             .expect("could not create component");
     second_grand_parent_frame
@@ -1364,7 +1364,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
 #[test]
 async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     // create parent frame
-    let even_parent_frame = create_component_for_schema_name(ctx, "large even lego", "even parent")
+    let even_parent_frame = create_component_for_default_schema_name(ctx, "large even lego", "even parent")
         .await
         .expect("could not create component");
 
@@ -1373,7 +1373,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
     // create child frame
-    let even_child_frame = create_component_for_schema_name(ctx, "medium even lego", "even child")
+    let even_child_frame = create_component_for_default_schema_name(ctx, "medium even lego", "even child")
         .await
         .expect("could not create component");
 
@@ -1386,7 +1386,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
         .await
         .expect("can upsert parent");
     // create component
-    let odd_component = create_component_for_schema_name(ctx, "large odd lego", "odd")
+    let odd_component = create_component_for_default_schema_name(ctx, "large odd lego", "odd")
         .await
         .expect("could not create component");
     odd_component
@@ -1492,7 +1492,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
 
 #[test]
 async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
-    let even_component = create_component_for_schema_name(ctx, "small even lego", "even")
+    let even_component = create_component_for_default_schema_name(ctx, "small even lego", "even")
         .await
         .expect("could not create component");
 
@@ -1501,7 +1501,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
         .await
         .expect("could not set type");
 
-    let odd_up_frame = create_component_for_schema_name(ctx, "large odd lego", "odd")
+    let odd_up_frame = create_component_for_default_schema_name(ctx, "large odd lego", "odd")
         .await
         .expect("could not create component");
     odd_up_frame
@@ -1541,7 +1541,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
 
     //let's add another component to the frame, to drive the "3" input socket
     let another_even_component =
-        create_component_for_schema_name(ctx, "medium even lego", "another even")
+        create_component_for_default_schema_name(ctx, "medium even lego", "another even")
             .await
             .expect("could not create component");
 
@@ -1583,7 +1583,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     assert_eq!(input_value, serde_json::json!("3"));
 
     //now let's drop that up frame into an even up frame, driving the even values
-    let even_up_frame = create_component_for_schema_name(ctx, "large even lego", "another even")
+    let even_up_frame = create_component_for_default_schema_name(ctx, "large even lego", "another even")
         .await
         .expect("could not create component");
 
@@ -1631,15 +1631,15 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
 async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     // create two components to feed an up frame
     let first_component =
-        create_component_for_schema_name(ctx, "medium even lego", "first_component")
+        create_component_for_default_schema_name(ctx, "medium even lego", "first_component")
             .await
             .expect("could not create component");
 
     let second_component =
-        create_component_for_schema_name(ctx, "medium even lego", "second_component")
+        create_component_for_default_schema_name(ctx, "medium even lego", "second_component")
             .await
             .expect("could not create component");
-    let first_up_frame = create_component_for_schema_name(ctx, "medium odd lego", "first_frame")
+    let first_up_frame = create_component_for_default_schema_name(ctx, "medium odd lego", "first_frame")
         .await
         .expect("could not create component");
     first_up_frame
@@ -1698,14 +1698,14 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     assert_eq!(input_value, serde_json::json!(["1", "2"]));
     // create two more components in another up frame
     let third_component =
-        create_component_for_schema_name(ctx, "medium even lego", "first_component")
+        create_component_for_default_schema_name(ctx, "medium even lego", "first_component")
             .await
             .expect("could not create component");
     let fourth_component =
-        create_component_for_schema_name(ctx, "medium even lego", "second_component")
+        create_component_for_default_schema_name(ctx, "medium even lego", "second_component")
             .await
             .expect("could not create component");
-    let second_up_frame = create_component_for_schema_name(ctx, "medium odd lego", "first_frame")
+    let second_up_frame = create_component_for_default_schema_name(ctx, "medium odd lego", "first_frame")
         .await
         .expect("could not create component");
     //cache ids for later
@@ -1763,7 +1763,7 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     assert_eq!(input_value, serde_json::json!(["3", "4"]));
     // both up frames feed the final up frame
 
-    let parent_up_frame = create_component_for_schema_name(ctx, "small even lego", "parent_frame")
+    let parent_up_frame = create_component_for_default_schema_name(ctx, "small even lego", "parent_frame")
         .await
         .expect("could not create component");
     let parent_up_frame_id = parent_up_frame.id();

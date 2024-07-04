@@ -6,7 +6,7 @@ use axum::{
 use dal::{
     func::binding::{
         action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-        leaf::LeafBinding, AttributeArgumentBinding, EventualParent, FuncBindings,
+        leaf::LeafBinding, AttributeArgumentBinding, EventualParent,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
@@ -211,10 +211,11 @@ pub async fn create_binding(
     );
 
     let types = get_types(&ctx, func_id).await?;
-
-    let binding = FuncBindings::from_func_id(&ctx, func_id)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
         .await?
-        .into_frontend_type();
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
 
     WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
         .await?

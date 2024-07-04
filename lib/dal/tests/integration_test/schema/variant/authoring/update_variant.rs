@@ -14,7 +14,10 @@ use dal::{
     AttributePrototype, AttributePrototypeId, Component, DalContext, Func, Prop, SchemaVariant,
     SchemaVariantId,
 };
-use dal_test::helpers::{create_component_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_default_schema_name, create_component_for_unlocked_schema_name,
+    ChangeSetTestHelpers,
+};
 use dal_test::test;
 
 #[test]
@@ -76,7 +79,7 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_eq!(first_variant.id(), updated_sv_id);
 
     // Add a component to the diagram
-    create_component_for_schema_name(ctx, schema.name.clone(), "demo component")
+    create_component_for_default_schema_name(ctx, schema.name.clone(), "demo component")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -122,7 +125,7 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_ne!(second_updated_sv_id, first_variant.id());
 
     // Let's ensure that our latest prop is visible in the component
-    create_component_for_schema_name(ctx, schema.name.clone(), "demo component 2")
+    create_component_for_default_schema_name(ctx, schema.name.clone(), "demo component 2")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -212,7 +215,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     .expect("could not create func");
 
     // Create a component using the new variant (and schema).
-    create_component_for_schema_name(ctx, &schema.name, "component")
+    create_component_for_default_schema_name(ctx, &schema.name, "component")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -246,7 +249,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     assert_ne!(second_updated_variant_id, first_variant.id());
 
     // Create another component and check that the second prop exists on it.
-    create_component_for_schema_name(ctx, schema.name, "component two")
+    create_component_for_default_schema_name(ctx, schema.name, "component two")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -326,7 +329,6 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
 }
 
 #[test]
-#[ignore]
 async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let schema_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
@@ -389,7 +391,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     );
 
     // Create a component.
-    let component_one = create_component_for_schema_name(ctx, &schema.name, "one")
+    let component_one = create_component_for_default_schema_name(ctx, &schema.name, "one")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -457,7 +459,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     .expect("could not save func");
 
     // Create a second component.
-    let component_two = create_component_for_schema_name(ctx, &schema.name, "two")
+    let component_two = create_component_for_default_schema_name(ctx, &schema.name, "two")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -625,6 +627,9 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     FuncAuthoringClient::save_code(ctx, created_func_two.id, code.to_string())
         .await
         .expect("can save code");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot");
 
     // Check the qualifications for all components.
     let component_one_qualifications =
@@ -637,11 +642,11 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
             .expect("could not list qualifications"));
 
     assert_eq!(
-        2,                                  // expected
+        3,                                  // expected
         component_one_qualifications.len()  // actual
     );
     assert_eq!(
-        2,                                  // expected
+        3,                                  // expected
         component_two_qualifications.len()  // actual
     );
     let component_one_qualification_one_result = component_one_qualifications
@@ -719,7 +724,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     );
 
     // Create a third component and re-check all qualifications.
-    let component_three = create_component_for_schema_name(ctx, &schema.name, "three")
+    let component_three = create_component_for_unlocked_schema_name(ctx, &schema.name, "three")
         .await
         .expect("could not create component");
     let diagram = Diagram::assemble(ctx)
@@ -733,6 +738,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check qualifications for all components.
+    // With the new regenerate flow, all components get the updates, not just the original two
     let component_one_qualifications = Component::list_qualifications(ctx, component_one.id())
         .await
         .expect("could not list qualifications");
@@ -743,11 +749,11 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .await
         .expect("could not list qualifications");
     assert_eq!(
-        2,                                  // expected
+        3,                                  // expected
         component_one_qualifications.len()  // actual
     );
     assert_eq!(
-        2,                                  // expected
+        3,                                  // expected
         component_two_qualifications.len()  // actual
     );
     assert_eq!(

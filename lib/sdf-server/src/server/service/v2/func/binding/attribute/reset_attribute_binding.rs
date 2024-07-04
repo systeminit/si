@@ -4,8 +4,8 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{attribute::AttributeBinding, FuncBindings},
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    func::binding::attribute::AttributeBinding, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
+    WsEvent,
 };
 use si_frontend_types as frontend_types;
 
@@ -67,9 +67,12 @@ pub async fn reset_attribute_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let binding = FuncBindings::from_func_id(&ctx, func_id)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
         .await?
-        .into_frontend_type();
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
+
     let types = get_types(&ctx, func_id).await?;
     WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
         .await?

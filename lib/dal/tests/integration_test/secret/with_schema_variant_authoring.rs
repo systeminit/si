@@ -1,8 +1,9 @@
-use dal::func::authoring::FuncAuthoringClient;
+use dal::func::binding::leaf::LeafBinding;
+use dal::func::binding::{EventualParent, FuncBinding};
 use dal::func::view::FuncView;
 use dal::func::FuncAssociations;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::LeafInputLocation;
+use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{DalContext, Func};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
@@ -31,54 +32,51 @@ async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut D
     let func_view = FuncView::assemble(ctx, &func)
         .await
         .expect("could not get func view");
-    let (mut schema_variant_ids, component_ids, mut inputs) =
-        match func_view.associations.expect("no associations found") {
-            FuncAssociations::CodeGeneration {
-                schema_variant_ids,
-                component_ids,
-                inputs,
-            } => (schema_variant_ids, component_ids, inputs),
-            associations => panic!("unexpected associations kind: {associations:?}"),
-        };
+    dbg!(&func_view);
+    let (_, _, mut inputs) = match func_view.associations.expect("no associations found") {
+        FuncAssociations::CodeGeneration {
+            schema_variant_ids,
+            component_ids,
+            inputs,
+        } => (schema_variant_ids, component_ids, inputs),
+        associations => panic!("unexpected associations kind: {associations:?}"),
+    };
 
-    // Add the schema variant and commit.
-    schema_variant_ids.push(schema_variant.id());
-    FuncAuthoringClient::save_func(
+    let bindings = LeafBinding::create_leaf_func_binding(
         ctx,
-        func_view.id,
-        func_view.display_name.clone(),
-        func_view.name.clone(),
-        func_view.description.clone(),
-        func_view.code.clone(),
-        Some(FuncAssociations::CodeGeneration {
-            schema_variant_ids: schema_variant_ids.clone(),
-            component_ids: component_ids.clone(),
-            inputs: inputs.clone(),
-        }),
+        func_id,
+        EventualParent::SchemaVariant(schema_variant.id()),
+        LeafKind::CodeGeneration,
+        inputs.as_slice(),
     )
     .await
-    .expect("could not save func");
+    .expect("could not add leaf func");
+
+    let FuncBinding::CodeGeneration(bindings) = bindings
+        .iter()
+        .find(|func_binding| {
+            if let FuncBinding::CodeGeneration(binding) = func_binding {
+                binding.eventual_parent == EventualParent::SchemaVariant(schema_variant.id())
+            } else {
+                false
+            }
+        })
+        .expect("could not find binding for new variant")
+    else {
+        panic!("could not add leaf node")
+    };
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Add the secrets input and commit.
     inputs.push(LeafInputLocation::Secrets);
-    FuncAuthoringClient::save_func(
-        ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        func_view.code,
-        Some(FuncAssociations::CodeGeneration {
-            schema_variant_ids,
-            component_ids,
-            inputs,
-        }),
-    )
-    .await
-    .expect("could not save func");
+    // can't update leaf bindings without unlocking all attached things!! because this changes the func args AND the prototype args :facepalm:
+    LeafBinding::update_leaf_func_binding(ctx, bindings.attribute_prototype_id, inputs.as_slice())
+        .await
+        .expect("could not update leaf binding");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

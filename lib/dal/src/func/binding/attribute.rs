@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
@@ -17,16 +18,27 @@ use crate::{
 
 use super::{
     AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
-    EventualParent, FuncBinding, FuncBindings, FuncBindingsError, FuncBindingsResult,
+    EventualParent, FuncBinding, FuncBindingError, FuncBindingResult,
 };
 
-pub struct AttributeBinding;
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AttributeBinding {
+    // unique ids
+    pub func_id: FuncId,
+    pub attribute_prototype_id: AttributePrototypeId,
+    // things needed for create
+    pub eventual_parent: EventualParent,
+
+    // things that can be updated
+    pub output_location: AttributeFuncDestination,
+    pub argument_bindings: Vec<AttributeArgumentBinding>,
+}
 
 impl AttributeBinding {
     pub async fn find_eventual_parent(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<EventualParent> {
+    ) -> FuncBindingResult<EventualParent> {
         let eventual_parent =
             AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
         let parent = match eventual_parent {
@@ -52,7 +64,7 @@ impl AttributeBinding {
     pub(crate) async fn find_output_location(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<AttributeFuncDestination> {
+    ) -> FuncBindingResult<AttributeFuncDestination> {
         let eventual_parent =
             AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
         let output_location = match eventual_parent {
@@ -69,7 +81,7 @@ impl AttributeBinding {
                 AttributeFuncDestination::Prop(prop_id)
             }
             AttributePrototypeEventualParent::SchemaVariantFromInputSocket(_, _) => {
-                return Err(FuncBindingsError::MalformedInput("()".to_owned()));
+                return Err(FuncBindingError::MalformedInput("()".to_owned()));
             }
         };
         Ok(output_location)
@@ -79,7 +91,7 @@ impl AttributeBinding {
         ctx: &DalContext,
         component_id: Option<si_events::ComponentId>,
         schema_variant_id: Option<si_events::SchemaVariantId>,
-    ) -> FuncBindingsResult<Option<EventualParent>> {
+    ) -> FuncBindingResult<Option<EventualParent>> {
         let eventual_parent = match (component_id, schema_variant_id) {
             (None, None) => None,
             (None, Some(schema_variant)) => {
@@ -92,7 +104,7 @@ impl AttributeBinding {
                 {
                     Some(EventualParent::SchemaVariant(schema_variant.into()))
                 } else {
-                    return Err(FuncBindingsError::MalformedInput(
+                    return Err(FuncBindingError::MalformedInput(
                         "component and schema variant mismatch".to_owned(),
                     ));
                 }
@@ -103,7 +115,7 @@ impl AttributeBinding {
     pub fn assemble_attribute_output_location(
         prop_id: Option<si_events::PropId>,
         output_socket_id: Option<si_events::OutputSocketId>,
-    ) -> FuncBindingsResult<AttributeFuncDestination> {
+    ) -> FuncBindingResult<AttributeFuncDestination> {
         let output_location = match (prop_id, output_socket_id) {
             (None, Some(output_socket_id)) => {
                 AttributeFuncDestination::OutputSocket(output_socket_id.into())
@@ -111,7 +123,7 @@ impl AttributeBinding {
 
             (Some(prop_id), None) => AttributeFuncDestination::Prop(prop_id.into()),
             _ => {
-                return Err(FuncBindingsError::MalformedInput(
+                return Err(FuncBindingError::MalformedInput(
                     "cannot set more than one output location".to_owned(),
                 ))
             }
@@ -122,7 +134,7 @@ impl AttributeBinding {
     pub(crate) async fn assemble_attribute_bindings(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingsResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
         let mut bindings = vec![];
         for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func_id).await?
         {
@@ -139,14 +151,13 @@ impl AttributeBinding {
                         .await?,
                 );
             }
-
-            bindings.push(FuncBinding::Attribute {
+            bindings.push(FuncBinding::Attribute(AttributeBinding {
                 func_id,
                 attribute_prototype_id,
                 eventual_parent,
                 output_location,
                 argument_bindings,
-            });
+            }));
         }
         Ok(bindings)
     }
@@ -161,26 +172,31 @@ impl AttributeBinding {
     /// [`AttributeArgumentBinding`]s
     /// Collect impacted AttributeValues along the way and enqueue them for DependentValuesUpdate
     /// so the functions run upon being attached.
+    /// Returns an error if we're trying to upsert an attribute binding for a locked [`SchemaVariant`]
     pub async fn upsert_attribute_binding(
         ctx: &DalContext,
         func_id: FuncId,
         eventual_parent: Option<EventualParent>,
         output_location: AttributeFuncDestination,
         prototype_arguments: Vec<AttributeArgumentBinding>,
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
         if func.kind != FuncKind::Attribute {
-            return Err(FuncBindingsError::UnexpectedFuncKind(func.kind));
+            return Err(FuncBindingError::UnexpectedFuncKind(func.kind));
         }
-        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
-        let attribute_prototype_id = attribute_prototype.id;
-        let mut affected_attribute_value_ids = vec![];
         // if a parent was specified, use it. otherwise find the schema variant
         // for the output location
         let eventual_parent = match eventual_parent {
             Some(eventual) => eventual,
             None => EventualParent::SchemaVariant(output_location.find_schema_variant(ctx).await?),
         };
+        // return an error if the parent is a schema variant and it's locked
+        eventual_parent.error_if_locked(ctx).await?;
+
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype_id = attribute_prototype.id;
+        let mut affected_attribute_value_ids = vec![];
+
         match output_location {
             AttributeFuncDestination::Prop(prop_id) => {
                 match eventual_parent {
@@ -278,7 +294,10 @@ impl AttributeBinding {
                         WorkspaceSnapshotError::WorkspaceSnapshotGraph(
                             WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
                         ),
-                    ) if raw_id == arg.func_argument_id.into() => continue,
+                    ) if raw_id == arg.func_argument_id.into() => {
+                        dbg!("raw id == arg.func_arg.id.into");
+                        continue;
+                    }
                     err => return Err(err.into()),
                 }
             }
@@ -308,8 +327,7 @@ impl AttributeBinding {
                 }
             };
         }
-        let new_bindings = FuncBindings::from_func_id(ctx, func_id).await?;
-        Ok(new_bindings)
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 
     #[instrument(
@@ -323,7 +341,11 @@ impl AttributeBinding {
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
         prototype_arguments: Vec<AttributeArgumentBinding>,
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // don't update binding args if the parent is locked
+        let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
+        eventual_parent.error_if_locked(ctx).await?;
+
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
         //remove existing arguments first
         Self::delete_attribute_prototype_args(ctx, attribute_prototype_id).await?;
@@ -367,14 +389,23 @@ impl AttributeBinding {
                 }
             };
         }
-        let new_bindings = FuncBindings::from_func_id(ctx, func_id).await?;
-        Ok(new_bindings)
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 
+    #[instrument(
+        level = "info",
+        skip(ctx),
+        name = "func.binding.attribute.reset_attribute_binding"
+    )]
+    /// Deletes the current [`AttributePrototype`] node and all associated [`AttributePrototypeArgument`]s
     pub(crate) async fn delete_attribute_prototype_and_args(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<()> {
+    ) -> FuncBindingResult<()> {
+        // don't update binding args if the parent is locked
+        let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
+        eventual_parent.error_if_locked(ctx).await?;
+
         Self::delete_attribute_prototype_args(ctx, attribute_prototype_id).await?;
         // should we fire a WsEvent here in case we just dropped an existing user authored
         // attribute func?
@@ -384,7 +415,7 @@ impl AttributeBinding {
     async fn delete_attribute_prototype_args(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<()> {
+    ) -> FuncBindingResult<()> {
         let current_attribute_prototype_arguments =
             AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?;
         for apa in current_attribute_prototype_arguments {
@@ -406,7 +437,11 @@ impl AttributeBinding {
     pub async fn reset_attribute_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // don't update binding args if the parent is locked
+        let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
+        eventual_parent.error_if_locked(ctx).await?;
+
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
 
         if let Some(attribute_value_id) =
@@ -430,27 +465,21 @@ impl AttributeBinding {
                 AttributePrototypeArgument::remove(ctx, apa).await?;
             }
         }
-        let new_binding = FuncBindings::from_func_id(ctx, func_id).await?;
-        Ok(new_binding)
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 
     pub(crate) async fn compile_attribute_types(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingsResult<String> {
+    ) -> FuncBindingResult<String> {
         let mut input_ts_types = "type Input = {\n".to_string();
 
         let mut output_ts_types = vec![];
         let mut argument_types = HashMap::new();
         let bindings = Self::assemble_attribute_bindings(ctx, func_id).await?;
         for binding in bindings {
-            if let FuncBinding::Attribute {
-                output_location,
-                argument_bindings,
-                ..
-            } = binding
-            {
-                for arg in argument_bindings {
+            if let FuncBinding::Attribute(attribute) = binding {
+                for arg in attribute.argument_bindings {
                     if let AttributeFuncArgumentSource::Prop(prop_id) =
                         arg.attribute_func_input_location
                     {
@@ -469,15 +498,16 @@ impl AttributeBinding {
                             }
                         }
                     }
-                    let output_type =
-                        if let AttributeFuncDestination::Prop(output_prop_id) = output_location {
-                            Prop::get_by_id_or_error(ctx, output_prop_id)
-                                .await?
-                                .ts_type(ctx)
-                                .await?
-                        } else {
-                            "any".to_string()
-                        };
+                    let output_type = if let AttributeFuncDestination::Prop(output_prop_id) =
+                        attribute.output_location
+                    {
+                        Prop::get_by_id_or_error(ctx, output_prop_id)
+                            .await?
+                            .ts_type(ctx)
+                            .await?
+                    } else {
+                        "any".to_string()
+                    };
                     if !output_ts_types.contains(&output_type) {
                         output_ts_types.push(output_type);
                     }
@@ -496,5 +526,49 @@ impl AttributeBinding {
         let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
 
         Ok(format!("{}\n{}", input_ts_types, output_ts))
+    }
+
+    /// Take the existing [`AttributeBinding`] and recreate it for the new [`Func`]
+    pub(crate) async fn port_binding_to_new_func(
+        &self,
+        ctx: &DalContext,
+        new_func_id: FuncId,
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // get the updated AttributeArgumentBindings (pointing at the new func arg ids)
+        let mut args_to_update = vec![];
+
+        let new_args = FuncArgument::list_for_func(ctx, new_func_id).await?;
+        for arg in &self.argument_bindings {
+            // get the func arg mapping in the new func
+            let old_arg = FuncArgument::get_name_by_id(ctx, arg.func_argument_id).await?;
+            if let Some(new_arg) = new_args.clone().into_iter().find(|arg| arg.name == old_arg) {
+                args_to_update.push(AttributeArgumentBinding {
+                    func_argument_id: new_arg.id,
+                    attribute_prototype_argument_id: None,
+                    attribute_func_input_location: arg.attribute_func_input_location.clone(),
+                })
+            } else {
+                return Err(FuncBindingError::FuncArgumentMissing(
+                    arg.func_argument_id,
+                    old_arg,
+                ));
+            }
+        }
+        // delete and recreate attribute prototype and args
+
+        Self::upsert_attribute_binding(
+            ctx,
+            new_func_id,
+            None,
+            self.output_location,
+            args_to_update,
+        )
+        .await?;
+
+        // // then update the prototype arguments
+        // Self::update_attribute_binding_arguments(ctx, self.attribute_prototype_id, args_to_update)
+        //     .await?;
+
+        FuncBinding::for_func_id(ctx, new_func_id).await
     }
 }

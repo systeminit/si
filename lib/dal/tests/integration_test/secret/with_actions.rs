@@ -6,20 +6,20 @@ use dal::qualification::QualificationSubCheckStatus;
 use dal::Workspace;
 use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{create_component_for_schema_name, encrypt_message};
+use dal_test::helpers::{create_component_for_default_schema_name, encrypt_message};
 use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     // Create the components we need and commit.
-    let source_component = create_component_for_schema_name(ctx, "dummy-secret", "source")
+    let source_component = create_component_for_default_schema_name(ctx, "dummy-secret", "source")
         .await
         .expect("could not create component");
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
-    let destination_component = create_component_for_schema_name(ctx, "fallout", "destination")
+    let destination_component = create_component_for_default_schema_name(ctx, "fallout", "destination")
         .await
         .expect("could not create component");
     let destination_schema_variant_id =

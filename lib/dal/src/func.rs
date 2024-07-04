@@ -1,7 +1,8 @@
 use argument::{FuncArgument, FuncArgumentError};
 use authoring::FuncAuthoringError;
 use base64::{engine::general_purpose, Engine};
-use binding::{FuncBindings, FuncBindingsError};
+use binding::{FuncBinding, FuncBindingError};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use si_events::CasValue;
 use si_events::{ulid::Ulid, ContentHash};
@@ -16,7 +17,7 @@ use thiserror::Error;
 use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{FuncContent, FuncContentV1};
+use crate::layer_db_types::{FuncContent, FuncContentV2};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -70,7 +71,9 @@ pub enum FuncError {
     #[error("func authoring client error: {0}")]
     FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
     #[error("func bindings error: {0}")]
-    FuncBindings(#[from] Box<FuncBindingsError>),
+    FuncBinding(#[from] Box<FuncBindingError>),
+    #[error("cannot modify locked func: {0}")]
+    FuncLocked(FuncId),
     #[error("func name already in use {0}")]
     FuncNameInUse(String),
     #[error("func to be deleted has associations: {0}")]
@@ -99,9 +102,9 @@ pub enum FuncError {
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
-impl From<Func> for FuncContentV1 {
+impl From<Func> for FuncContent {
     fn from(value: Func) -> Self {
-        Self {
+        Self::V2(FuncContentV2 {
             timestamp: value.timestamp,
             display_name: value.display_name,
             description: value.description,
@@ -113,7 +116,8 @@ impl From<Func> for FuncContentV1 {
             handler: value.handler,
             code_base64: value.code_base64,
             code_blake3: value.code_blake3,
-        }
+            is_locked: value.is_locked,
+        })
     }
 }
 
@@ -169,11 +173,11 @@ pub struct Func {
     pub handler: Option<String>,
     pub code_base64: Option<String>,
     pub code_blake3: ContentHash,
+    pub is_locked: bool,
 }
 
 impl Func {
-    pub fn assemble(node_weight: &FuncNodeWeight, content: &FuncContentV1) -> Self {
-        let content = content.to_owned();
+    pub fn assemble(node_weight: &FuncNodeWeight, content: FuncContentV2) -> Self {
         Self {
             id: node_weight.id().into(),
             name: node_weight.name().to_owned(),
@@ -190,6 +194,7 @@ impl Func {
             handler: content.handler,
             code_base64: content.code_base64,
             code_blake3: content.code_blake3,
+            is_locked: content.is_locked,
         }
     }
 
@@ -245,7 +250,7 @@ impl Func {
             ContentHash::new("".as_bytes())
         };
 
-        let content = FuncContentV1 {
+        let content = FuncContentV2 {
             timestamp,
             display_name: display_name.map(Into::into),
             description: description.map(Into::into),
@@ -257,13 +262,14 @@ impl Func {
             handler: handler.map(Into::into),
             code_base64,
             code_blake3,
+            is_locked: false,
         };
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(FuncContent::V1(content.clone()).into()),
+                Arc::new(FuncContent::V2(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -288,9 +294,16 @@ impl Func {
 
         let func_node_weight = node_weight.get_func_node_weight()?;
 
-        Ok(Self::assemble(&func_node_weight, &content))
+        Ok(Self::assemble(&func_node_weight, content))
     }
 
+    pub async fn lock(self, ctx: &DalContext) -> FuncResult<Func> {
+        self.modify(ctx, |func| {
+            func.is_locked = true;
+            Ok(())
+        })
+        .await
+    }
     pub fn metadata_view(&self) -> FuncMetadataView {
         FuncMetadataView {
             display_name: self
@@ -331,10 +344,10 @@ impl Func {
             WorkspaceSnapshotError::MissingContentFromStore(func_node_weight.id()),
         )?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let FuncContent::V1(inner) = content;
+        // migrate if necessary!
+        let inner: FuncContentV2 = content.extract();
 
-        Ok(Self::assemble(func_node_weight, &inner))
+        Ok(Self::assemble(func_node_weight, inner))
     }
 
     pub async fn find_id_by_name(
@@ -406,6 +419,13 @@ impl Func {
         Ok(modified_func)
     }
 
+    pub fn error_if_locked(&self) -> FuncResult<()> {
+        if self.is_locked {
+            return Err(FuncError::FuncLocked(self.id));
+        }
+        Ok(())
+    }
+
     async fn get_node_weight_and_content_hash(
         ctx: &DalContext,
         func_id: FuncId,
@@ -445,8 +465,10 @@ impl Func {
         L: FnOnce(&mut Self) -> FuncResult<()>,
     {
         let mut func = self;
-
-        let before = FuncContentV1::from(func.clone());
+        if func.is_locked {
+            return Err(FuncError::FuncLocked(func.id));
+        }
+        let before = FuncContent::from(func.clone());
         lambda(&mut func)?;
 
         let (mut node_weight, _) =
@@ -473,14 +495,14 @@ impl Func {
                 .replace_references(original_node_index)
                 .await?;
         }
-        let updated = FuncContentV1::from(func.clone());
+        let updated = FuncContent::from(func.clone());
 
         if updated != before {
             let (hash, _) = ctx
                 .layer_db()
                 .cas()
                 .write(
-                    Arc::new(FuncContent::V1(updated.clone()).into()),
+                    Arc::new((updated.clone()).into()),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
@@ -491,7 +513,7 @@ impl Func {
                 .await?;
         }
 
-        Ok(Self::assemble(&node_weight, &updated))
+        Ok(Self::assemble(&node_weight, updated.extract()))
     }
 
     /// Deletes the [`Func`] and returns the name.
@@ -544,7 +566,8 @@ impl Func {
             .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }
 
-    pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
+    /// List all [`Funcs`](Func) in the workspace
+    pub async fn list_all(ctx: &DalContext) -> FuncResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let func_category_id = workspace_snapshot
@@ -570,6 +593,26 @@ impl Func {
         }
 
         Self::list_inner(ctx, func_node_weights, func_content_hashes).await
+    }
+
+    /// List all [`Funcs`](Func) in the workspace that are either unlocked, attached to a default
+    /// [`SchemaVariant`] or attached to an unlocked Schema Variant
+    pub async fn list_for_default_and_editing(ctx: &DalContext) -> FuncResult<Vec<Self>> {
+        let funcs = Self::list_all(ctx).await?;
+        let mut pruned_funcs = vec![];
+        for func in funcs {
+            if func.is_locked {
+                let bindings = FuncBinding::get_bindings_for_default_schema_variants(ctx, func.id)
+                    .await
+                    .map_err(Box::new)?;
+                if !bindings.is_empty() {
+                    pruned_funcs.push(func);
+                }
+            } else {
+                pruned_funcs.push(func);
+            }
+        }
+        Ok(pruned_funcs)
     }
 
     /// List all [`Funcs`](Func) corresponding to the provided [`FuncIds`](Func).
@@ -605,10 +648,9 @@ impl Func {
         for node_weight in func_node_weights {
             match func_contents.get(&node_weight.content_hash()) {
                 Some(func_content) => {
-                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let FuncContent::V1(inner) = func_content;
-
-                    funcs.push(Func::assemble(&node_weight, inner));
+                    // migrates if needed!
+                    let content = func_content.clone().extract();
+                    funcs.push(Func::assemble(&node_weight, content));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -619,7 +661,45 @@ impl Func {
         Ok(funcs)
     }
 
-    pub async fn duplicate(&self, ctx: &DalContext, new_name: String) -> FuncResult<Self> {
+    /// Creates an exact clone of the current func that is not locked, including recreating all
+    /// [`FuncArgument`]s
+    pub async fn create_unlocked_func_copy(&self, ctx: &DalContext) -> FuncResult<Self> {
+        let new_func = Self::new(
+            ctx,
+            self.name.clone(),
+            self.display_name.clone(),
+            self.description.clone(),
+            self.link.clone(),
+            self.hidden,
+            false,
+            self.backend_kind,
+            self.backend_response_type,
+            self.handler.clone(),
+            self.code_base64.clone(),
+        )
+        .await?;
+
+        for arg in FuncArgument::list_for_func(ctx, self.id)
+            .await
+            .map_err(Box::new)?
+        {
+            dbg!(&arg);
+            // create new func args for the new func
+            FuncArgument::new(ctx, arg.name, arg.kind, arg.element_kind, new_func.id)
+                .await
+                .map_err(Box::new)?;
+        }
+        dbg!(FuncArgument::list_for_func(ctx, new_func.id)
+            .await
+            .map_err(Box::new)?);
+        Ok(new_func)
+    }
+
+    pub async fn clone_func_with_new_name(
+        &self,
+        ctx: &DalContext,
+        new_name: String,
+    ) -> FuncResult<Self> {
         if new_name == self.name.clone() {
             return Err(FuncError::FuncNameInUse(new_name));
         }
@@ -656,18 +736,21 @@ impl Func {
                 timestamp: arg.timestamp.into(),
             });
         }
-        let bindings = FuncBindings::from_func_id(ctx, self.id)
+        let bindings: Vec<si_frontend_types::FuncBinding> = FuncBinding::for_func_id(ctx, self.id)
             .await
             .map_err(Box::new)?
-            .into_frontend_type();
+            .into_iter()
+            .map(Into::into)
+            .collect_vec();
         Ok(FuncSummary {
             func_id: self.id.into(),
             kind: self.kind.into(),
             name: self.name.clone(),
             display_name: self.display_name.clone(),
-            is_locked: false,
+            description: self.description.clone(),
+            is_locked: self.is_locked,
             arguments,
-            bindings,
+            bindings: si_frontend_types::FuncBindings { bindings },
         })
     }
 }

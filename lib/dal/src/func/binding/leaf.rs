@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
@@ -9,15 +10,27 @@ use crate::{
     Prop, SchemaVariant, SchemaVariantId,
 };
 
-use super::{AttributeBinding, EventualParent, FuncBinding, FuncBindings, FuncBindingsResult};
+use super::{AttributeBinding, EventualParent, FuncBinding, FuncBindingResult};
 
-pub struct LeafBinding;
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LeafBinding {
+    // unique ids
+    pub func_id: FuncId,
+    pub attribute_prototype_id: AttributePrototypeId,
+    // things needed for create
+    pub eventual_parent: EventualParent,
+    // thing that can be updated
+    pub inputs: Vec<LeafInputLocation>,
+    // kind to differentiate if needed
+    pub leaf_kind: LeafKind,
+}
 
 impl LeafBinding {
-    pub(crate) async fn assemble_code_gen_bindings(
+    pub(crate) async fn assemble_leaf_func_bindings(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingsResult<Vec<FuncBinding>> {
+        leaf_kind: LeafKind,
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
         let inputs = Self::list_leaf_function_inputs(ctx, func_id).await?;
         let mut bindings = vec![];
         let attribute_prototype_ids =
@@ -27,34 +40,24 @@ impl LeafBinding {
             let eventual_parent =
                 AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
 
-            bindings.push(FuncBinding::CodeGeneration {
-                eventual_parent,
-                func_id,
-                inputs: inputs.clone(),
-                attribute_prototype_id,
-            });
-        }
-        Ok(bindings)
-    }
+            let binding = match leaf_kind {
+                LeafKind::CodeGeneration => FuncBinding::CodeGeneration(LeafBinding {
+                    func_id,
+                    attribute_prototype_id,
+                    eventual_parent,
+                    inputs: inputs.clone(),
+                    leaf_kind,
+                }),
+                LeafKind::Qualification => FuncBinding::Qualification(LeafBinding {
+                    func_id,
+                    attribute_prototype_id,
+                    eventual_parent,
+                    inputs: inputs.clone(),
+                    leaf_kind,
+                }),
+            };
 
-    pub(crate) async fn assemble_qualification_bindings(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> FuncBindingsResult<Vec<FuncBinding>> {
-        let inputs = Self::list_leaf_function_inputs(ctx, func_id).await?;
-        let mut bindings = vec![];
-        let attribute_prototype_ids =
-            AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
-
-        for attribute_prototype_id in attribute_prototype_ids {
-            let eventual_parent =
-                AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
-            bindings.push(FuncBinding::Qualification {
-                eventual_parent,
-                func_id,
-                inputs: inputs.clone(),
-                attribute_prototype_id,
-            });
+            bindings.push(binding)
         }
         Ok(bindings)
     }
@@ -62,7 +65,7 @@ impl LeafBinding {
     async fn list_leaf_function_inputs(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingsResult<Vec<LeafInputLocation>> {
+    ) -> FuncBindingResult<Vec<LeafInputLocation>> {
         Ok(FuncArgument::list_for_func(ctx, func_id)
             .await?
             .iter()
@@ -83,7 +86,10 @@ impl LeafBinding {
         eventual_parent: EventualParent,
         leaf_kind: LeafKind,
         inputs: &[LeafInputLocation],
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // don't create binding if parent is locked
+        eventual_parent.error_if_locked(ctx).await?;
+
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
         match eventual_parent {
             EventualParent::SchemaVariant(schema_variant_id) => {
@@ -107,12 +113,27 @@ impl LeafBinding {
             }
         }
 
-        let new_bindings = FuncBindings::from_func_id(ctx, func_id).await?;
+        let new_bindings = FuncBinding::for_func_id(ctx, func_id).await?;
         Ok(new_bindings)
     }
 
-    /// Updates the inputs for the given [`LeafKind`], by deleting the existing prototype arguments
-    /// and creating new ones for the inputs provided
+    pub(crate) async fn port_binding_to_new_func(
+        ctx: &DalContext,
+        new_func_id: FuncId,
+        existing_prototype_id: AttributePrototypeId,
+        leaf_kind: LeafKind,
+        eventual_parent: EventualParent,
+        inputs: &[LeafInputLocation],
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // remove the exisiting binding
+        LeafBinding::delete_leaf_func_binding(ctx, existing_prototype_id).await?;
+
+        // create one for the new func_id
+        LeafBinding::create_leaf_func_binding(ctx, new_func_id, eventual_parent, leaf_kind, inputs)
+            .await?;
+        FuncBinding::for_func_id(ctx, new_func_id).await
+    }
+
     #[instrument(
         level = "info",
         skip(ctx),
@@ -122,7 +143,12 @@ impl LeafBinding {
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
         input_locations: &[LeafInputLocation],
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // don't update binding if parent is locked
+        let eventual_parent =
+            AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
+        eventual_parent.error_if_locked(ctx).await?;
+
         // find the prototype
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
         // update the input locations
@@ -179,10 +205,7 @@ impl LeafBinding {
                 // .await?;
             }
         }
-
-        let updated_bindings = FuncBindings::from_func_id(ctx, func_id).await?;
-
-        Ok(updated_bindings)
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 
     /// Deletes the attribute prototype for the given [`LeafKind`], including deleting the existing prototype arguments
@@ -195,7 +218,12 @@ impl LeafBinding {
     pub async fn delete_leaf_func_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingsResult<FuncBindings> {
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // don't delete binding if parent is locked
+        let eventual_parent =
+            AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
+        eventual_parent.error_if_locked(ctx).await?;
+
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
 
         // Delete all attribute prototype arguments for the given prototype.
@@ -215,13 +243,13 @@ impl LeafBinding {
         AttributePrototype::remove(ctx, attribute_prototype_id).await?;
 
         // Return the updated bindings.
-        FuncBindings::from_func_id(ctx, func_id).await
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 
     pub(crate) async fn compile_leaf_func_types(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingsResult<String> {
+    ) -> FuncBindingResult<String> {
         let attribute_prorotypes = AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
         let mut schema_variant_ids = vec![];
         for attribute_prototype_id in attribute_prorotypes {
@@ -260,7 +288,7 @@ impl LeafBinding {
         ctx: &DalContext,
         variant_ids: &[SchemaVariantId],
         path: &PropPath,
-    ) -> FuncBindingsResult<String> {
+    ) -> FuncBindingResult<String> {
         let mut per_variant_types = vec![];
 
         for variant_id in variant_ids {

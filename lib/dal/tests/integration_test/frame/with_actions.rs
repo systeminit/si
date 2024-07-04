@@ -6,7 +6,7 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{Component, DalContext};
 use dal::{ComponentType, Prop, Secret};
 use dal_test::helpers::{
-    create_component_for_schema_name, encrypt_message, fetch_resource_last_synced_value,
+    create_component_for_default_schema_name, encrypt_message, fetch_resource_last_synced_value,
     ChangeSetTestHelpers,
 };
 use dal_test::{test, WorkspaceSignup};
@@ -19,7 +19,7 @@ use pretty_assertions_sorted::assert_eq;
 async fn delete_frame_with_child_with_resource(ctx: &mut DalContext, nw: WorkspaceSignup) {
     // Create the components we need and commit.
     let parent_component_id = {
-        let parent_component = create_component_for_schema_name(ctx, "dummy-secret", "parent")
+        let parent_component = create_component_for_default_schema_name(ctx, "dummy-secret", "parent")
             .await
             .expect("could not create component");
         parent_component
@@ -29,7 +29,7 @@ async fn delete_frame_with_child_with_resource(ctx: &mut DalContext, nw: Workspa
         parent_component.id()
     };
     let child_component_id = {
-        let child_component = create_component_for_schema_name(ctx, "fallout", "child")
+        let child_component = create_component_for_default_schema_name(ctx, "fallout", "child")
             .await
             .expect("could not create component");
         child_component.id()

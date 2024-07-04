@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
     SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
@@ -5,6 +6,7 @@ use si_pkg::{
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
 use std::collections::HashSet;
+use std::fmt::Debug;
 use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
@@ -100,7 +102,7 @@ async fn import_change_set(
                 func_spec,
                 installed_pkg.clone(),
                 thing_map,
-                options.is_builtin,
+                options.create_unlocked,
             )
             .await?
             {
@@ -342,7 +344,7 @@ pub async fn import_func(
     func_spec: &SiPkgFunc<'_>,
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
-    is_builtin: bool,
+    create_unlocked: bool,
 ) -> PkgResult<Option<Func>> {
     let func = {
         let mut existing_func: Option<Func> = None;
@@ -358,7 +360,7 @@ pub async fn import_func(
         }
 
         let (func, created) = match existing_func {
-            None => (create_func(ctx, func_spec, is_builtin).await?, true),
+            None => (create_func(ctx, func_spec, false).await?, true),
             Some(installed_func_record) => (installed_func_record, true),
         };
 
@@ -374,6 +376,9 @@ pub async fn import_func(
         );
 
         if created {
+            if !create_unlocked {
+                func.clone().lock(ctx).await?;
+            }
             Some(func)
         } else {
             None
@@ -949,10 +954,8 @@ pub async fn import_only_new_funcs(
 
             func
         };
-
         thing_map.insert(func_spec.unique_id().into(), Thing::Func(func));
     }
-
     Ok(thing_map)
 }
 
@@ -1004,11 +1007,18 @@ pub(crate) async fn import_schema_variant(
                         asset_func_id = Some(asset_func.id)
                     }
                 }
+                let old_versions = ["v0", "v1", "v2"];
+                let version_date = if old_versions.contains(&variant_spec.version()) {
+                    let date = NaiveDateTime::UNIX_EPOCH;
+                    format!("{}", date.format("%Y%m%d%H%M%S"))
+                } else {
+                    variant_spec.version().to_owned()
+                };
 
                 let variant = SchemaVariant::new(
                     ctx,
                     schema.id(),
-                    variant_spec.version(),
+                    version_date,
                     metadata.display_name,
                     metadata.category,
                     metadata.color,

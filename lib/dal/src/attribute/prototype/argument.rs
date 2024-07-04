@@ -34,9 +34,8 @@ use self::{
     value_source::ValueSource,
 };
 
-pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
-
 use super::AttributePrototypeError;
+pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 
 pub mod static_value;
 pub mod value_source;

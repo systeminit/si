@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{action::ActionBinding, leaf::LeafBinding, FuncBindings},
+    func::binding::{action::ActionBinding, leaf::LeafBinding},
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
@@ -93,9 +93,12 @@ pub async fn delete_binding(
             return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };
-    let binding = FuncBindings::from_func_id(&ctx, func_id)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
         .await?
-        .into_frontend_type();
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
+
     track(
         &posthog_client,
         &ctx,

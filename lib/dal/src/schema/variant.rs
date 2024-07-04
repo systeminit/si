@@ -23,7 +23,7 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
-    ContentTypeError, FuncContent, InputSocketContent, OutputSocketContent, SchemaVariantContent,
+    ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV2,
 };
 use crate::prop::{PropError, PropPath};
@@ -146,6 +146,8 @@ pub enum SchemaVariantError {
     Schema(#[from] SchemaError),
     #[error("schema not found for schema variant: {0}")]
     SchemaNotFound(SchemaVariantId),
+    #[error("schema variant locked: {0}")]
+    SchemaVariantLocked(SchemaVariantId),
     #[error("secret defining schema variant ({0}) has no output sockets and needs one for the secret corresponding to its secret definition")]
     SecretDefiningSchemaVariantMissingOutputSocket(SchemaVariantId),
     #[error("found too many output sockets ({0:?}) for secret defining schema variant ({1})")]
@@ -222,6 +224,8 @@ impl SchemaVariant {
             .collect();
 
         let schema = Schema::get_by_id(ctx, schema_id).await?;
+
+        let is_default = schema.get_default_schema_variant_id(ctx).await? == Some(self.id());
         let props = Self::all_props(ctx, self.id()).await?;
         let mut front_end_props = Vec::with_capacity(props.len());
         for prop in props {
@@ -253,6 +257,7 @@ impl SchemaVariant {
             is_locked: self.is_locked,
             timestamp: self.timestamp.into(),
             props: front_end_props,
+            can_create_new_components: is_default || !self.is_locked,
         })
     }
 }
@@ -295,6 +300,15 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         let payload = schema_variant.into_frontend_type(ctx, schema_id).await?;
         WsEvent::new(ctx, WsPayload::SchemaVariantCreated(payload)).await
+    }
+
+    pub async fn schema_variant_updated(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariant,
+    ) -> WsEventResult<Self> {
+        let payload = schema_variant_id.into_frontend_type(ctx, schema_id).await?;
+        WsEvent::new(ctx, WsPayload::SchemaVariantUpdated(payload)).await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -678,6 +692,21 @@ impl SchemaVariant {
             .await?
             .into_iter()
             .find(|v| !v.is_locked))
+    }
+
+    pub async fn is_locked_by_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<bool> {
+        let schema_variant = Self::get_by_id(ctx, schema_variant_id).await?;
+        Ok(schema_variant.is_locked)
+    }
+
+    pub async fn error_if_locked(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<()> {
+        match Self::is_locked_by_id(ctx, id).await? {
+            true => Err(SchemaVariantError::SchemaVariantLocked(id)),
+            false => Ok(()),
+        }
     }
 
     pub async fn get_latest_for_schema(
@@ -1287,7 +1316,6 @@ impl SchemaVariant {
                     let (_, new_proto) =
                         SchemaVariant::add_leaf(ctx, func.id, schema_variant_id, leaf_kind, inputs)
                             .await?;
-
                     // Before returning the new prototype, we need to ensure all existing components use the new
                     // leaf prop (either qualification or code gen).
                     let mut new_attribute_value_ids = Vec::new();
@@ -1564,43 +1592,11 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<Func>> {
-        let func_ids = Self::all_func_ids(ctx, schema_variant_id).await?;
+        let func_id_set = Self::all_func_ids(ctx, schema_variant_id).await?;
+        let func_ids = Vec::from_iter(func_id_set.into_iter());
+        let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let mut node_weights = Vec::new();
-        let mut content_hashes = Vec::new();
-        for func_id in func_ids {
-            let node_weight = workspace_snapshot
-                .get_node_weight_by_id(func_id)
-                .await?
-                .get_func_node_weight()?;
-            content_hashes.push(node_weight.content_hash());
-            node_weights.push(node_weight);
-        }
-
-        let contents: HashMap<ContentHash, FuncContent> = ctx
-            .layer_db()
-            .cas()
-            .try_read_many_as(content_hashes.as_slice())
-            .await?;
-
-        let mut funcs = Vec::new();
-        for node_weight in node_weights {
-            match contents.get(&node_weight.content_hash()) {
-                Some(content) => {
-                    // NOTE(nick): if we had a v2, then there would be migration logic here.
-                    let FuncContent::V1(inner) = content;
-
-                    funcs.push(Func::assemble(&node_weight, inner));
-                }
-                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
-                    node_weight.id(),
-                ))?,
-            }
-        }
-
-        // Filter out intrinsic funcs.
+        // Filter out intrinsic funcs. kkep this here
         let mut filtered_funcs = Vec::new();
         for func in &funcs {
             if IntrinsicFunc::maybe_from_str(&func.name).is_none() {
