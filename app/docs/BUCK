@@ -20,7 +20,7 @@ load(
 
 pnpm_task_binary(
     name = "dev",
-    command = "docs:dev",
+    command = "dev",
     srcs = glob(["src/**/*"]),
     path = "app/docs",
     deps = [

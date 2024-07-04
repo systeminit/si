@@ -103,6 +103,10 @@ importers:
         version: 1.8.27(typescript@4.9.5)
 
   app/docs:
+    dependencies:
+      dotenv:
+        specifier: ^16.0.3
+        version: 16.0.3
     devDependencies:
       '@si/eslint-config':
         specifier: workspace:*
