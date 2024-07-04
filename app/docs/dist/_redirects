@@ -1,0 +1,2 @@
+# Force to https
+http://*   https://:splat  301!
