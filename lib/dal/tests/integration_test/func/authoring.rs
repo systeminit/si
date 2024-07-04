@@ -6,16 +6,11 @@ use dal::{
             AttributeFuncArgumentSource, AttributeFuncDestination, EventualParent, FuncBinding,
         },
     },
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{LeafInputLocation, LeafKind},
-    },
-    DalContext, Func, InputSocket, Prop, Schema, SchemaVariant,
+    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    DalContext, Func, InputSocket, Prop, SchemaVariant,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use si_frontend_types::FuncSummary;
 
 mod binding;
 mod create_func;
@@ -269,7 +264,7 @@ async fn create_unlocked_copy_auth_func(ctx: &mut DalContext) {
         existing_bindings.len()  // actual
     );
 
-    let code_gen_binding = existing_bindings.pop().expect("has one binding");
+    existing_bindings.pop().expect("has one binding");
 
     let new_display_name = Some("woo hoo".to_string());
 

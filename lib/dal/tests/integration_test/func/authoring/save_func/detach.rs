@@ -1,11 +1,9 @@
-use dal::action::prototype::{ActionKind, ActionPrototype};
-use dal::action::{Action, ActionId};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::summary::FuncSummary;
 use dal::func::view::FuncView;
-use dal::func::{AttributePrototypeBag, FuncAssociations};
+use dal::func::{AttributePrototypeBag};
 use dal::{DalContext, Func, Schema, SchemaVariant};
-use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{ChangeSetTestHelpers};
 use dal_test::test;
 
 #[test]

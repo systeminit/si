@@ -40,13 +40,24 @@ impl LeafBinding {
             let eventual_parent =
                 AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
 
-            bindings.push(FuncBinding::CodeGeneration(LeafBinding {
-                func_id,
-                attribute_prototype_id,
-                eventual_parent,
-                inputs: inputs.clone(),
-                leaf_kind,
-            }));
+            let binding = match leaf_kind {
+                LeafKind::CodeGeneration => FuncBinding::CodeGeneration(LeafBinding {
+                    func_id,
+                    attribute_prototype_id,
+                    eventual_parent,
+                    inputs: inputs.clone(),
+                    leaf_kind,
+                }),
+                LeafKind::Qualification => FuncBinding::Qualification(LeafBinding {
+                    func_id,
+                    attribute_prototype_id,
+                    eventual_parent,
+                    inputs: inputs.clone(),
+                    leaf_kind,
+                }),
+            };
+
+            bindings.push(binding)
         }
         Ok(bindings)
     }

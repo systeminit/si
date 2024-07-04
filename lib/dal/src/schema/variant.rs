@@ -1329,7 +1329,7 @@ impl SchemaVariant {
                             .await
                             .map_err(Box::new)?;
 
-                        let new_attribute_value = dbg!(AttributeValue::new(
+                        let new_attribute_value = AttributeValue::new(
                             ctx,
                             ValueIsFor::Prop(leaf_item_prop_id),
                             Some(component_id),
@@ -1337,7 +1337,7 @@ impl SchemaVariant {
                             key.clone(),
                         )
                         .await
-                        .map_err(Box::new)?);
+                        .map_err(Box::new)?;
                         new_attribute_value_ids.push(new_attribute_value.id);
                     }
                     if !new_attribute_value_ids.is_empty() {

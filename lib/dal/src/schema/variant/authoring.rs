@@ -604,7 +604,7 @@ impl VariantAuthoringClient {
         let schema_spec = metadata.to_schema_spec(existing_variant_spec)?;
         let creator_email = ctx.history_actor().email(ctx).await?;
         let pkg_spec = PkgSpec::builder()
-            .name(schema.name().clone())
+            .name(schema.name())
             .created_by(creator_email)
             .funcs(variant_funcs.clone())
             .func(unlocked_asset_spec)

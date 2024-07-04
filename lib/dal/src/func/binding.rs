@@ -15,24 +15,23 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
+use crate::func::argument::FuncArgumentError;
+use crate::func::FuncKind;
+use crate::prop::PropError;
+use crate::schema::variant::leaves::LeafKind;
 use crate::socket::output::OutputSocketError;
+use crate::{
+    socket::input::InputSocketError, AttributePrototypeId, ComponentError, DalContext, Func,
+    FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
+};
 use crate::{
     ChangeSetId, ComponentId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError,
     WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 pub use attribute_argument::AttributeArgumentBinding;
 pub use attribute_argument::AttributeFuncArgumentSource;
-
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::func::argument::FuncArgumentError;
-use crate::func::FuncKind;
-use crate::prop::PropError;
-use crate::schema::variant::leaves::LeafKind;
-use crate::{
-    socket::input::InputSocketError, AttributePrototypeId, ComponentError, DalContext, Func,
-    FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
-};
 
 use super::argument::FuncArgumentId;
 
@@ -240,7 +239,7 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
 
 /// A [`FuncBinding`] represents the intersection of a function and the [`SchemaVariant`] (or [`Component`])
 /// specific information required to know when to run a function, what it's inputs are, and where the result of
-/// the function is recorded  
+/// the function is recorded
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, EnumDiscriminants, Hash)]
 pub enum FuncBinding {
     /// An Action function can only (currently) be attached to a [`Schema Variant`]
@@ -379,25 +378,24 @@ impl FuncBinding {
         for binding in bindings {
             if let Some(schema_variant_id) = binding.get_schema_variant() {
                 // check the schema for this variant
-                let schema =
+                let schema_id =
                     SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
-                let maybe_variant = schema_variant_map.get(&schema);
+                let maybe_variant = schema_variant_map.get(&schema_id);
                 match maybe_variant {
                     Some(_) => {
                         // if there's a thing in here, it might be the default one. replace if this one's unlocked
                         if !SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await? {
-                            schema_variant_map.insert(schema, (schema_variant_id, binding));
+                            schema_variant_map.insert(schema_id, (schema_variant_id, binding));
                         }
                     }
                     None => {
-                        if !SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await? {
-                            schema_variant_map.insert(schema, (schema_variant_id, binding));
-                        } else if SchemaVariant::get_by_id(ctx, schema_variant_id)
-                            .await?
-                            .is_default(ctx)
-                            .await?
+                        if !SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?
+                            || SchemaVariant::get_by_id(ctx, schema_variant_id)
+                                .await?
+                                .is_default(ctx)
+                                .await?
                         {
-                            schema_variant_map.insert(schema, (schema_variant_id, binding));
+                            schema_variant_map.insert(schema_id, (schema_variant_id, binding));
                         }
                     }
                 }

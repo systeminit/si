@@ -26,8 +26,6 @@ impl ActionBinding {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let schema_variant_ids =
-            SchemaVariant::list_with_action_prototypes_for_action_func(ctx, func_id).await?;
         let mut bindings = vec![];
         for (schema_variant_id, action_prototype_id) in
             SchemaVariant::list_with_action_prototypes_for_action_func(ctx, func_id).await?

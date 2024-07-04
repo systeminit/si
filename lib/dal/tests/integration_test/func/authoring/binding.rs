@@ -1,9 +1,3 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::FuncBinding;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Func, SchemaVariant};
-use dal_test::test;
-use pretty_assertions_sorted::assert_eq;
 
 mod action;
 mod attribute;

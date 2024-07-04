@@ -585,15 +585,11 @@ impl FuncAuthoringClient {
         schema_variant_id: Option<SchemaVariantId>,
     ) -> FuncAuthoringResult<Func> {
         match schema_variant_id {
-            Some(schema_variant_id) => Ok(Self::create_unlocked_func_copy_for_single_variant(
-                ctx,
-                func_id,
-                schema_variant_id,
-            )
-            .await?),
-            None => {
-                Ok(Self::create_unlocked_func_copy_for_all_schema_variants(ctx, func_id).await?)
+            Some(schema_variant_id) => {
+                Self::create_unlocked_func_copy_for_single_variant(ctx, func_id, schema_variant_id)
+                    .await
             }
+            None => Self::create_unlocked_func_copy_for_all_schema_variants(ctx, func_id).await,
         }
     }
 
@@ -624,7 +620,7 @@ impl FuncAuthoringClient {
             }
             // ws event
 
-            return Ok(new_func);
+            Ok(new_func)
         } else if current_schema_variant.is_default(ctx).await? {
             let new_schema_variant =
                 VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
@@ -658,7 +654,7 @@ impl FuncAuthoringClient {
         }
     }
 
-    /// Find all of the latest [`SchemaVariant`]s that have bindings for the given [`FuncId`]
+    /// Find all the latest [`SchemaVariant`]s that have bindings for the given [`FuncId`]
     /// If any of them are currently locked, create unlocked copies of the variants
     /// Then, create an unlocked copy of the current Func, delete the binding for the now 'old'
     /// func and recreate the exact binding for the newly unlocked copy for the potentially new,
@@ -669,7 +665,8 @@ impl FuncAuthoringClient {
     ) -> FuncAuthoringResult<Func> {
         let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
 
-        for (schema_variant_id, binding) in
+        // Create unlocked versions of all schema variants that are locked, default and have a bindings to old func
+        for (schema_variant_id, _) in
             FuncBinding::get_bindings_for_default_and_unlocked_schema_variants(ctx, old_func.id)
                 .await?
         {
@@ -697,13 +694,11 @@ impl FuncAuthoringClient {
         // this will include any newly unlocked variants if they exist
         let unlocked_latest =
             FuncBinding::get_bindings_for_unlocked_schema_variants(ctx, func_id).await?;
-        dbg!(&unlocked_latest);
         // create the unlocked copy of the func
         let new_func = old_func.create_unlocked_func_copy(ctx).await?;
 
         // loop through the other bindings and port them to the new func
         for binding in unlocked_latest {
-            dbg!(&binding);
             // for the binding, remove it and create the equivalent for the new one
             binding.port_binding_to_new_func(ctx, new_func.id).await?;
         }
@@ -721,7 +716,7 @@ impl FuncAuthoringClient {
                 .collect();
         WsEvent::func_bindings_updated(
             ctx,
-            si_frontend_types::FuncBindings { bindings: bindings },
+            si_frontend_types::FuncBindings { bindings },
             Self::compile_types_from_bindings(ctx, func_id).await?,
         )
         .await?

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::integration_test::func::authoring::save_func::save_func_setup;
 use dal::attribute::prototype::argument::value_source::ValueSource;
 use dal::attribute::prototype::argument::AttributePrototypeArgument;
@@ -18,9 +16,9 @@ use dal::{
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 pub use si_frontend_types;
+use std::collections::HashSet;
 
 #[test]
-#[ignore]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {
     let (func_id, _) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
 
@@ -43,11 +41,11 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     // Cache the variables we need.
     let schema = Schema::find_by_name(ctx, "starfield")
         .await
-        .expect("could not find schema")
+        .expect("could not execute find schema")
         .expect("schema not found");
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await
-        .expect("no schema variant found")
+        .expect("execute get_unlocked_for_schema")
         .expect("value is some")
         .id();
 
@@ -142,7 +140,7 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         attribute_prototype_ids.len()  // actual
     );
 
-    // Gather up the expected bindings.
+    // Gather the expected bindings.
     let mut expected: HashSet<si_frontend_types::FuncBinding> = HashSet::new();
     for attribute_prototype_id in attribute_prototype_ids {
         let mut attribute_prototype_argument_ids =
@@ -230,7 +228,9 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
 
 #[test]
 async fn detach_attribute_func(ctx: &mut DalContext) {
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit and update snapshot");
     let schema = Schema::find_by_name(ctx, "starfield")
         .await
         .expect("unable to find by name")

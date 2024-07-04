@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
@@ -535,12 +534,10 @@ impl AttributeBinding {
         ctx: &DalContext,
         new_func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let existing_func_id = self.func_id;
-
         // get the updated AttributeArgumentBindings (pointing at the new func arg ids)
         let mut args_to_update = vec![];
 
-        let new_args = FuncArgument::list_for_func(ctx, existing_func_id).await?;
+        let new_args = FuncArgument::list_for_func(ctx, new_func_id).await?;
         for arg in &self.argument_bindings {
             // get the func arg mapping in the new func
             let old_arg = FuncArgument::get_name_by_id(ctx, arg.func_argument_id).await?;

@@ -11,7 +11,7 @@ async fn save_and_exec_action_func(ctx: &mut DalContext) {
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+    Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
 
@@ -41,7 +41,7 @@ async fn save_and_exec_attribute_func(ctx: &mut DalContext) {
     let func = Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
+    FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
     let new_func = FuncAuthoringClient::create_unlocked_func_copy(ctx, func_id, None)

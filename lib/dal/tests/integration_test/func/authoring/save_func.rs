@@ -39,7 +39,6 @@ pub async fn save_func_setup(
         .await
         .expect("could not perform find func by name")
         .expect("no func found");
-    dbg!(&Func::get_by_id(ctx, old_func_id).await.expect("hello"));
 
     let func_id = FuncAuthoringClient::create_unlocked_func_copy(ctx, old_func_id, None)
         .await
@@ -51,6 +50,7 @@ pub async fn save_func_setup(
     let before = FuncView::assemble(ctx, &func)
         .await
         .expect("could not assemble func view");
+
     FuncAuthoringClient::update_func(ctx, func_id, Some("woo hoo".to_string()), None)
         .await
         .expect("could not save func");
@@ -74,7 +74,5 @@ pub async fn save_func_setup(
         before.types, // expected
         after.types,  // actual
     );
-    dbg!(&before);
-    dbg!(&after);
     (func_id, after)
 }

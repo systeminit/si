@@ -17,7 +17,6 @@ use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
-#[ignore]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {
     let (func_id, saved_func) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
 
