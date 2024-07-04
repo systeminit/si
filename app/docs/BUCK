@@ -1,0 +1,30 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "eslint",
+    "e2e_test",
+    "export_file",
+    "package_node_modules",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
+    "typescript_check",
+    "vite_app",
+)
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_library",
+    "pnpm_task_binary",
+    "pnpm_task_test",
+)
+
+pnpm_task_binary(
+    name = "dev",
+    command = "docs:dev",
+    srcs = glob(["src/**/*"]),
+    path = "app/docs",
+    deps = [
+        "//:node_modules",
+    ],
+    visibility = ["PUBLIC"],
+)

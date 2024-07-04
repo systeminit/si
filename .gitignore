@@ -20,6 +20,8 @@ app/web/cypress/videos/
 bin/si/src/version.txt
 prelude
 
+app/docs/src/.vitepress/cache/
+
 .turbo
 .netlify
 

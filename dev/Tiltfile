@@ -309,3 +309,22 @@ local_resource(
         link("https://auth.systeminit.com", "auth"),
     ],
 )
+
+docs_target = "//app/docs:dev"
+local_resource(
+    "docs",
+    labels = ["docs"],
+    cmd = "buck2 build {}".format(docs_target),
+    serve_cmd = "buck2 run {}".format(docs_target),
+    allow_parallel = True,
+    resource_deps = [],
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 5173,
+        ),
+    ),
+    links = [
+        link("http://localhost:5173", "docs"),
+    ],
+)
