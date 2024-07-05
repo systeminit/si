@@ -54,7 +54,7 @@ pub async fn get_variant(
     let default_schema_variant_id = schema.get_default_schema_variant_id(&ctx).await?.ok_or(
         SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
     )?;
-    let variant = SchemaVariant::get_by_id(&ctx, default_schema_variant_id).await?;
+    let variant = SchemaVariant::get_by_id_or_error(&ctx, default_schema_variant_id).await?;
 
     // Collect the funcs for all schema variants corresponding to the schema. We want this because
     // while asset editing generally corresponds to the current default schema variant id, you are

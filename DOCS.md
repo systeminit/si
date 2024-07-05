@@ -241,6 +241,17 @@ However, if you are a contributor seeking build times suitable for rapid iterati
 > _Contributors should test your changes with integration tests and with release optimizations when running the full stack._
 > _The aforementioned options are solely recommended for rapid iteration._
 
+## What if I want to access my local instance remotely?
+
+You run the full stack the same way, but with additional environment variables.
+
+```shell
+TILT_HOST=0.0.0.0 DEV_HOST=0.0.0.0 buck2 run dev:up
+```
+
+> [!CAUTION]
+> _The user is responsible for maintaining secure access (local, remote, etc.) to their local instance._
+
 # Using LocalStack for Secrets and Credentials
 
 This section contains information related to using [LocalStack](https://github.com/localstack/localstack) when working on the System Initiative software.
@@ -377,6 +388,32 @@ Short version: you'll use the following pattern:
 # Pattern for integration tests
 <ENV> buck2 run <PATH/TO/RUST/LIBRARY/DIRECTORY/WITH/BUCK>:test-integration -- <ARGS>
 ```
+
+## How do I build all Rust targets with `buck2`?
+
+With `xargs` installed, run the following command:
+
+```shell
+buck2 uquery 'kind("rust_(binary|library|test)", set("//bin/..." "//lib/..."))' | xargs buck2 build
+```
+
+This commands queries for all `rust_binary`, `rust_library` and `rust_test` targets found in `bin/**` `lib/**` directories with `BUCK` files.
+Then, it pipes that output into `buck2 build`.
+
+## How do I build all runnable services written in Rust with `buck2`?
+
+If you intend to run these services with optimial performance, you need to build with release mode.
+Here is an example building `sdf`, `pinga`, `veritech` and `rebaser` from the repository root:
+
+```shell
+buck2 build @//mode/release bin/sdf bin/pinga bin/veritech bin/rebaser
+```
+
+## What are modes used in `buck2` builds?
+
+Specifying modes (i.e. `@//mode/<mode>`) from the [mode](mode) directory changes the build optimizations for buildable targets.
+The build cache is not shared between modes and changing modes does not invalidate the cache for other modes.
+In other words, you build the same buildable target with two different modes and retain both caches.
 
 ## Where are `buck2` users hanging out?
 

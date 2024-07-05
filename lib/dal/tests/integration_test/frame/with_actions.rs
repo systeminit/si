@@ -19,9 +19,10 @@ use pretty_assertions_sorted::assert_eq;
 async fn delete_frame_with_child_with_resource(ctx: &mut DalContext, nw: WorkspaceSignup) {
     // Create the components we need and commit.
     let parent_component_id = {
-        let parent_component = create_component_for_default_schema_name(ctx, "dummy-secret", "parent")
-            .await
-            .expect("could not create component");
+        let parent_component =
+            create_component_for_default_schema_name(ctx, "dummy-secret", "parent")
+                .await
+                .expect("could not create component");
         parent_component
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await

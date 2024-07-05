@@ -60,7 +60,7 @@
 
       <Stack class="p-xs" spacing="none">
         <div>
-          <ErrorMessage :requestStatus="updateAssetReqStatus" />
+          <ErrorMessage :requestStatus="updateAssetReqStatus" variant="block" />
         </div>
         <VormInput
           id="schemaName"

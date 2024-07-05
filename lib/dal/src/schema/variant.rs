@@ -577,7 +577,10 @@ impl SchemaVariant {
         Ok(all_props)
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
+    pub async fn get_by_id_or_error(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node_index = workspace_snapshot
@@ -698,7 +701,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<bool> {
-        let schema_variant = Self::get_by_id(ctx, schema_variant_id).await?;
+        let schema_variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
         Ok(schema_variant.is_locked)
     }
 
@@ -728,7 +731,7 @@ impl SchemaVariant {
             .await?
             .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
 
-        Self::get_by_id(ctx, default_schema_variant_id).await
+        Self::get_by_id_or_error(ctx, default_schema_variant_id).await
     }
 
     pub async fn get_default_id_for_schema(

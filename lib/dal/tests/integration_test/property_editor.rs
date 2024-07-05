@@ -3,7 +3,8 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name, PropEditorTestView,
+    connect_components_with_socket_names, create_component_for_default_schema_name,
+    PropEditorTestView,
 };
 use dal_test::test;
 use serde_json::json;
@@ -294,9 +295,10 @@ async fn array_map_manipulation(ctx: &DalContext) {
 #[test]
 async fn override_value_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
-        .await
-        .expect("could not create component");
+    let pirate_component =
+        create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -393,9 +395,10 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
 #[test]
 async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
-        .await
-        .expect("could not create component");
+    let pirate_component =
+        create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

@@ -1,9 +1,9 @@
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::summary::FuncSummary;
 use dal::func::view::FuncView;
-use dal::func::{AttributePrototypeBag};
+use dal::func::AttributePrototypeBag;
 use dal::{DalContext, Func, Schema, SchemaVariant};
-use dal_test::helpers::{ChangeSetTestHelpers};
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]

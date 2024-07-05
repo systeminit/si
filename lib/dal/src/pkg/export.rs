@@ -329,7 +329,7 @@ impl PkgExporter {
         ctx: &DalContext,
         variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<SiPropFuncSpec>> {
-        let _variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
+        let _variant = SchemaVariant::get_by_id_or_error(ctx, variant_id).await?;
         let mut specs = vec![];
 
         for kind in SiPropFuncSpecKind::iter() {
@@ -1029,7 +1029,7 @@ impl PkgExporter {
             }
         }
 
-        let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
 
         // Asset Funcs are not stored in the FuncMap
         // So we need to look it up directly then store it!

@@ -107,7 +107,7 @@ pub async fn schema_variant(
     let mut added_edges = HashSet::new();
     let mut root_node_id: Option<Ulid> = None;
 
-    let sv = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
+    let sv = SchemaVariant::get_by_id_or_error(&ctx, request.schema_variant_id).await?;
     let workspace_snapshot = ctx.workspace_snapshot()?;
 
     let sv_node: GraphVizNode = {

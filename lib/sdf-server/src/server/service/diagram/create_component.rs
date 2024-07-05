@@ -45,7 +45,7 @@ pub async fn create_component(
 
     let name = generate_name();
 
-    let variant = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
+    let variant = SchemaVariant::get_by_id_or_error(&ctx, request.schema_variant_id).await?;
 
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
 

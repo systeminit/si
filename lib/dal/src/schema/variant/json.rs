@@ -49,7 +49,7 @@ impl SchemaVariantMetadataJson {
 /// The json definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
 /// more in the future).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SchemaVariantJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]

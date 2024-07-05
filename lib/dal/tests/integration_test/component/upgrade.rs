@@ -116,10 +116,13 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     assert_eq!(variant_zero.id(), updated_variant_id);
 
     // Add a component to the diagram
-    let initial_component =
-        create_component_for_default_schema_name(ctx, my_asset_schema.name.clone(), "demo component")
-            .await
-            .expect("could not create component");
+    let initial_component = create_component_for_default_schema_name(
+        ctx,
+        my_asset_schema.name.clone(),
+        "demo component",
+    )
+    .await
+    .expect("could not create component");
     let initial_diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");

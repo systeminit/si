@@ -1459,7 +1459,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariant> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
-        Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
+        Ok(SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?)
     }
 
     pub async fn schema_variant(&self, ctx: &DalContext) -> ComponentResult<SchemaVariant> {
