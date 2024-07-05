@@ -322,7 +322,10 @@ const updateFunc = () => {
 
 const unlock = async () => {
   if (editingFunc.value?.funcId) {
-    const resp = await funcStore.CREATE_UNLOCKED_COPY(editingFunc.value.funcId);
+    const resp = await funcStore.CREATE_UNLOCKED_COPY(
+      editingFunc.value.funcId,
+      assetStore.selectedVariantId,
+    );
     if (resp.result.success) {
       await assetStore.setFuncSelection(resp.result.data.summary.funcId);
     }
