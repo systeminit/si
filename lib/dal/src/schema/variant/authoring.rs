@@ -420,7 +420,7 @@ impl VariantAuthoringClient {
 
         // Now we can reimport all parts of the schema variant in place!
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
-        if let Some(new_schema_variant) = import_schema_variant(
+        let new_schema_variant = import_schema_variant(
             ctx,
             &schema,
             schema_spec.clone(),
@@ -429,28 +429,27 @@ impl VariantAuthoringClient {
             &mut thing_map,
             Some(schema_variant),
         )
-        .await?
-        {
-            if new_schema_variant.id != current_schema_variant_id {
-                return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
-                    current_schema_variant_id,
-                ));
-            }
+        .await?;
 
-            // Let's update the SV struct now to reflect any changes
-            new_schema_variant
-                .clone()
-                .modify(ctx, |sv| {
-                    sv.description = description;
-                    sv.link = link;
-                    sv.category.clone_from(&category);
-                    sv.component_type = component_type;
-                    sv.color.clone_from(&color);
-                    sv.display_name = display_name;
-                    Ok(())
-                })
-                .await?;
+        if new_schema_variant.id != current_schema_variant_id {
+            return Err(VariantAuthoringError::SchemaVariantUpdatedFailed(
+                current_schema_variant_id,
+            ));
         }
+
+        // Let's update the SV struct now to reflect any changes
+        new_schema_variant
+            .clone()
+            .modify(ctx, |sv| {
+                sv.description = description;
+                sv.link = link;
+                sv.category.clone_from(&category);
+                sv.component_type = component_type;
+                sv.color.clone_from(&color);
+                sv.display_name = display_name;
+                Ok(())
+            })
+            .await?;
 
         Ok(())
     }
@@ -547,7 +546,7 @@ impl VariantAuthoringClient {
 
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
 
-        if let Some(new_schema_variant) = import_schema_variant(
+        Ok(import_schema_variant(
             ctx,
             &schema,
             schema_spec.clone(),
@@ -556,12 +555,7 @@ impl VariantAuthoringClient {
             &mut thing_map,
             None,
         )
-        .await?
-        {
-            Ok(new_schema_variant)
-        } else {
-            Err(VariantAuthoringError::NoAssetCreated)
-        }
+        .await?)
     }
 
     // Note(victor): This is very similar to the logic in update_and_generate_variant_with_new_version, with a few differences:
@@ -636,7 +630,7 @@ impl VariantAuthoringClient {
 
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
 
-        if let Some(new_schema_variant) = import_schema_variant(
+        Ok(import_schema_variant(
             ctx,
             &schema,
             schema_spec.clone(),
@@ -645,12 +639,7 @@ impl VariantAuthoringClient {
             &mut thing_map,
             None,
         )
-        .await?
-        {
-            Ok(new_schema_variant)
-        } else {
-            Err(VariantAuthoringError::NoAssetCreated)
-        }
+        .await?)
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -505,26 +505,24 @@ async fn import_schema(
             )
             .await?;
 
-            if let Some(variant) = variant {
-                let variant_id = variant.id();
-                if !create_unlocked {
-                    variant.lock(ctx).await?;
-                }
-
-                installed_schema_variant_ids.push(variant_id);
-
-                set_default_schema_variant_id(
-                    ctx,
-                    &mut schema,
-                    schema_spec
-                        .data()
-                        .as_ref()
-                        .and_then(|data| data.default_schema_variant()),
-                    variant_spec.unique_id(),
-                    variant_id,
-                )
-                .await?;
+            let variant_id = variant.id();
+            if !create_unlocked {
+                variant.lock(ctx).await?;
             }
+
+            installed_schema_variant_ids.push(variant_id);
+
+            set_default_schema_variant_id(
+                ctx,
+                &mut schema,
+                schema_spec
+                    .data()
+                    .as_ref()
+                    .and_then(|data| data.default_schema_variant()),
+                variant_spec.unique_id(),
+                variant_id,
+            )
+            .await?;
         }
 
         Ok((Some(schema.id()), installed_schema_variant_ids))
@@ -980,318 +978,288 @@ pub(crate) async fn import_schema_variant(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     installed_schema_variant: Option<SchemaVariant>,
-) -> PkgResult<Option<SchemaVariant>> {
-    let schema_variant = {
-        let mut existing_schema_variant: Option<SchemaVariant> = None;
-        if let Some(installed_pkg) = installed_module.clone() {
-            let associated_schema_variants =
-                installed_pkg.list_associated_schema_variants(ctx).await?;
-            let mut maybe_matching_schema_variant: Vec<SchemaVariant> = associated_schema_variants
-                .into_iter()
-                .filter(|s| s.version() == schema_spec.name())
-                .collect();
-            if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
-                existing_schema_variant = Some(matching_schema_variant);
+) -> PkgResult<SchemaVariant> {
+    let mut existing_schema_variant: Option<SchemaVariant> = None;
+    if let Some(installed_pkg) = installed_module.clone() {
+        let associated_schema_variants = installed_pkg.list_associated_schema_variants(ctx).await?;
+        let mut maybe_matching_schema_variant: Vec<SchemaVariant> = associated_schema_variants
+            .into_iter()
+            .filter(|s| s.version() == schema_spec.name())
+            .collect();
+        if let Some(matching_schema_variant) = maybe_matching_schema_variant.pop() {
+            existing_schema_variant = Some(matching_schema_variant);
+        }
+    }
+
+    if let Some(existing_sv) = installed_schema_variant {
+        existing_schema_variant = Some(existing_sv);
+    }
+
+    let schema_variant = if let Some(variant) = existing_schema_variant {
+        variant
+    } else {
+        let spec = schema_spec.to_spec().await?;
+        let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
+
+        let mut asset_func_id: Option<FuncId> = None;
+        if let Some(variant_spec_data) = variant_spec.data() {
+            let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+            if let Thing::Func(asset_func) =
+                thing_map
+                    .get(&func_unique_id)
+                    .ok_or(PkgError::MissingFuncUniqueId(
+                        func_unique_id.to_string(),
+                        "error found while importing schema variant",
+                    ))?
+            {
+                asset_func_id = Some(asset_func.id)
             }
         }
-
-        if let Some(existing_sv) = installed_schema_variant {
-            existing_schema_variant = Some(existing_sv);
-        }
-
-        // TODO `created` is always true. if that's correct, none of the sv vars should be optional, including the return type
-        let (variant, created) = match existing_schema_variant {
-            None => {
-                let spec = schema_spec.to_spec().await?;
-                let metadata = SchemaVariantJson::metadata_from_spec(spec)?;
-
-                let mut asset_func_id: Option<FuncId> = None;
-                if let Some(variant_spec_data) = variant_spec.data() {
-                    let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-                    if let Thing::Func(asset_func) =
-                        thing_map
-                            .get(&func_unique_id)
-                            .ok_or(PkgError::MissingFuncUniqueId(
-                                func_unique_id.to_string(),
-                                "error found while importing schema variant",
-                            ))?
-                    {
-                        asset_func_id = Some(asset_func.id)
-                    }
-                }
-                let old_versions = ["v0", "v1", "v2"];
-                let version_date = if old_versions.contains(&variant_spec.version()) {
-                    let date = NaiveDateTime::UNIX_EPOCH;
-                    format!("{}", date.format("%Y%m%d%H%M%S"))
-                } else {
-                    variant_spec.version().to_owned()
-                };
-
-                let variant = SchemaVariant::new(
-                    ctx,
-                    schema.id(),
-                    version_date,
-                    metadata.display_name,
-                    metadata.category,
-                    metadata.color,
-                    metadata.component_type,
-                    metadata.link,
-                    metadata.description,
-                    asset_func_id,
-                    variant_spec.is_builtin(),
-                )
-                .await?
-                .0;
-
-                (variant, true)
-            }
-            Some(installed_variant) => (installed_variant, true),
+        let old_versions = ["v0", "v1", "v2"];
+        let version_date = if old_versions.contains(&variant_spec.version()) {
+            let date = NaiveDateTime::UNIX_EPOCH;
+            format!("{}", date.format("%Y%m%d%H%M%S"))
+        } else {
+            variant_spec.version().to_owned()
         };
 
-        if let Some(module) = installed_module.clone() {
-            module.create_association(ctx, variant.id().into()).await?;
-        }
-
-        if created {
-            Some(variant)
-        } else {
-            None
-        }
+        SchemaVariant::new(
+            ctx,
+            schema.id(),
+            version_date,
+            metadata.display_name,
+            metadata.category,
+            metadata.color,
+            metadata.component_type,
+            metadata.link,
+            metadata.description,
+            asset_func_id,
+            variant_spec.is_builtin(),
+        )
+        .await?
+        .0
     };
 
-    let schema_variant = match schema_variant {
-        None => None,
-        Some(schema_variant) => {
-            if let Some(unique_id) = variant_spec.unique_id() {
-                thing_map.insert(
-                    unique_id.to_owned(),
-                    Thing::SchemaVariant(schema_variant.to_owned()),
-                );
-            }
-
-            if let Some(data) = variant_spec.data() {
-                if let Some(color) = data.color() {
-                    let current_color = schema_variant.get_color(ctx).await?;
-                    if current_color != color {
-                        schema_variant.set_color(ctx, color).await?
-                    }
-                }
-
-                schema_variant
-                    .set_type(ctx, data.component_type().to_string())
-                    .await?;
-            }
-
-            let mut side_effects = CreatePropsSideEffects::default();
-
-            let domain_prop_id = Prop::find_prop_id_by_path(
-                ctx,
-                schema_variant.id(),
-                &PropPath::new(["root", "domain"]),
-            )
+    if let Some(module) = installed_module.clone() {
+        module
+            .create_association(ctx, schema_variant.id().into())
             .await?;
+    }
 
-            side_effects.extend(
-                create_props(
-                    ctx,
-                    variant_spec,
-                    SchemaVariantSpecPropRoot::Domain,
-                    domain_prop_id,
-                    schema_variant.id(),
-                )
-                .await?,
-            );
+    if let Some(unique_id) = variant_spec.unique_id() {
+        thing_map.insert(
+            unique_id.to_owned(),
+            Thing::SchemaVariant(schema_variant.to_owned()),
+        );
+    }
 
-            let resource_value_prop_id = Prop::find_prop_id_by_path(
-                ctx,
-                schema_variant.id(),
-                &PropPath::new(["root", "resource_value"]),
-            )
-            .await?;
-
-            side_effects.extend(
-                create_props(
-                    ctx,
-                    variant_spec,
-                    SchemaVariantSpecPropRoot::ResourceValue,
-                    resource_value_prop_id,
-                    schema_variant.id(),
-                )
-                .await?,
-            );
-
-            let secrets_prop_id = Prop::find_prop_id_by_path(
-                ctx,
-                schema_variant.id(),
-                &PropPath::new(["root", "secrets"]),
-            )
-            .await?;
-
-            side_effects.extend(
-                create_props(
-                    ctx,
-                    variant_spec,
-                    SchemaVariantSpecPropRoot::Secrets,
-                    secrets_prop_id,
-                    schema_variant.id(),
-                )
-                .await?,
-            );
-
-            if !variant_spec.secret_definitions()?.is_empty() {
-                let root_prop_id =
-                    Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))
-                        .await?;
-
-                let secret_definition_prop = Prop::new_without_ui_optionals(
-                    ctx,
-                    "secret_definition",
-                    PropKind::Object,
-                    root_prop_id,
-                )
-                .await?;
-                let secret_definition_prop_id = secret_definition_prop.id();
-
-                side_effects.extend(
-                    create_props(
-                        ctx,
-                        variant_spec,
-                        SchemaVariantSpecPropRoot::SecretDefinition,
-                        secret_definition_prop_id,
-                        schema_variant.id(),
-                    )
-                    .await?,
-                );
+    if let Some(data) = variant_spec.data() {
+        if let Some(color) = data.color() {
+            let current_color = schema_variant.get_color(ctx).await?;
+            if current_color != color {
+                schema_variant.set_color(ctx, color).await?
             }
-
-            SchemaVariant::finalize(ctx, schema_variant.id()).await?;
-
-            for socket in variant_spec.sockets()? {
-                import_socket(ctx, socket, schema_variant.id(), thing_map).await?;
-            }
-
-            for action_func in &variant_spec.action_funcs()? {
-                let prototype =
-                    import_action_func(ctx, action_func, schema_variant.id(), thing_map).await?;
-
-                if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-                    thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));
-                }
-            }
-
-            for auth_func in &variant_spec.auth_funcs()? {
-                let prototype =
-                    import_auth_func(ctx, auth_func, schema_variant.id(), thing_map).await?;
-
-                if let (Some(prototype), Some(unique_id)) = (prototype, auth_func.unique_id()) {
-                    thing_map.insert(unique_id.to_owned(), Thing::AuthPrototype(prototype));
-                }
-            }
-
-            for leaf_func in variant_spec.leaf_functions()? {
-                import_leaf_function(ctx, leaf_func, schema_variant.id(), thing_map).await?;
-            }
-
-            // Default values must be set before attribute functions are configured so they don't
-            // override the prototypes set there
-            for default_value_info in side_effects.default_values {
-                set_default_value(ctx, default_value_info).await?;
-            }
-
-            // Set a default name value for all name props, this ensures region has a name before
-            // the function is executed
-            {
-                let name_prop_id = Prop::find_prop_id_by_path(
-                    ctx,
-                    schema_variant.id(),
-                    &PropPath::new(["root", "si", "name"]),
-                )
-                .await?;
-                let name_default_value_info = DefaultValueInfo::String {
-                    prop_id: name_prop_id,
-                    default_value: schema.name.to_owned().to_lowercase(),
-                };
-
-                set_default_value(ctx, name_default_value_info).await?;
-            }
-
-            for si_prop_func in variant_spec.si_prop_funcs()? {
-                let prop_id = Prop::find_prop_id_by_path(
-                    ctx,
-                    schema_variant.id(),
-                    &PropPath::new(si_prop_func.kind().prop_path()),
-                )
-                .await?;
-                import_attr_func_for_prop(
-                    ctx,
-                    schema_variant.id(),
-                    AttrFuncInfo {
-                        func_unique_id: si_prop_func.func_unique_id().to_owned(),
-                        prop_id,
-                        inputs: si_prop_func
-                            .inputs()?
-                            .iter()
-                            .map(|input| input.to_owned().into())
-                            .collect(),
-                    },
-                    None,
-                    thing_map,
-                )
-                .await?;
-            }
-
-            let mut has_resource_value_func = false;
-            for root_prop_func in variant_spec.root_prop_funcs()? {
-                if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
-                    has_resource_value_func = true;
-                }
-
-                let prop_id = Prop::find_prop_id_by_path(
-                    ctx,
-                    schema_variant.id(),
-                    &PropPath::new(root_prop_func.prop().path_parts()),
-                )
-                .await?;
-                import_attr_func_for_prop(
-                    ctx,
-                    schema_variant.id(),
-                    AttrFuncInfo {
-                        func_unique_id: root_prop_func.func_unique_id().to_owned(),
-                        prop_id,
-                        inputs: root_prop_func
-                            .inputs()?
-                            .iter()
-                            .map(|input| input.to_owned().into())
-                            .collect(),
-                    },
-                    None,
-                    thing_map,
-                )
-                .await?;
-            }
-            if !has_resource_value_func {
-                attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
-            }
-
-            for attr_func in side_effects.attr_funcs {
-                import_attr_func_for_prop(ctx, schema_variant.id(), attr_func, None, thing_map)
-                    .await?;
-            }
-
-            for (key, map_key_func) in side_effects.map_key_funcs {
-                import_attr_func_for_prop(
-                    ctx,
-                    schema_variant.id(),
-                    map_key_func,
-                    Some(key),
-                    thing_map,
-                )
-                .await?;
-            }
-
-            Some(schema_variant)
         }
-    };
+
+        schema_variant
+            .set_type(ctx, data.component_type().to_string())
+            .await?;
+    }
+
+    let mut side_effects = CreatePropsSideEffects::default();
+
+    let domain_prop_id =
+        Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root", "domain"]))
+            .await?;
+
+    side_effects.extend(
+        create_props(
+            ctx,
+            variant_spec,
+            SchemaVariantSpecPropRoot::Domain,
+            domain_prop_id,
+            schema_variant.id(),
+        )
+        .await?,
+    );
+
+    let resource_value_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        schema_variant.id(),
+        &PropPath::new(["root", "resource_value"]),
+    )
+    .await?;
+
+    side_effects.extend(
+        create_props(
+            ctx,
+            variant_spec,
+            SchemaVariantSpecPropRoot::ResourceValue,
+            resource_value_prop_id,
+            schema_variant.id(),
+        )
+        .await?,
+    );
+
+    let secrets_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        schema_variant.id(),
+        &PropPath::new(["root", "secrets"]),
+    )
+    .await?;
+
+    side_effects.extend(
+        create_props(
+            ctx,
+            variant_spec,
+            SchemaVariantSpecPropRoot::Secrets,
+            secrets_prop_id,
+            schema_variant.id(),
+        )
+        .await?,
+    );
+
+    if !variant_spec.secret_definitions()?.is_empty() {
+        let root_prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"])).await?;
+
+        let secret_definition_prop = Prop::new_without_ui_optionals(
+            ctx,
+            "secret_definition",
+            PropKind::Object,
+            root_prop_id,
+        )
+        .await?;
+        let secret_definition_prop_id = secret_definition_prop.id();
+
+        side_effects.extend(
+            create_props(
+                ctx,
+                variant_spec,
+                SchemaVariantSpecPropRoot::SecretDefinition,
+                secret_definition_prop_id,
+                schema_variant.id(),
+            )
+            .await?,
+        );
+    }
+
+    SchemaVariant::finalize(ctx, schema_variant.id()).await?;
+
+    for socket in variant_spec.sockets()? {
+        import_socket(ctx, socket, schema_variant.id(), thing_map).await?;
+    }
+
+    for action_func in &variant_spec.action_funcs()? {
+        let prototype =
+            import_action_func(ctx, action_func, schema_variant.id(), thing_map).await?;
+
+        if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
+            thing_map.insert(unique_id.to_owned(), Thing::ActionPrototype(prototype));
+        }
+    }
+
+    for auth_func in &variant_spec.auth_funcs()? {
+        let prototype = import_auth_func(ctx, auth_func, schema_variant.id(), thing_map).await?;
+
+        if let (Some(prototype), Some(unique_id)) = (prototype, auth_func.unique_id()) {
+            thing_map.insert(unique_id.to_owned(), Thing::AuthPrototype(prototype));
+        }
+    }
+
+    for leaf_func in variant_spec.leaf_functions()? {
+        import_leaf_function(ctx, leaf_func, schema_variant.id(), thing_map).await?;
+    }
+
+    // Default values must be set before attribute functions are configured so they don't
+    // override the prototypes set there
+    for default_value_info in side_effects.default_values {
+        set_default_value(ctx, default_value_info).await?;
+    }
+
+    // Set a default name value for all name props, this ensures region has a name before
+    // the function is executed
+    {
+        let name_prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant.id(),
+            &PropPath::new(["root", "si", "name"]),
+        )
+        .await?;
+        let name_default_value_info = DefaultValueInfo::String {
+            prop_id: name_prop_id,
+            default_value: schema.name.to_owned().to_lowercase(),
+        };
+
+        set_default_value(ctx, name_default_value_info).await?;
+    }
+
+    for si_prop_func in variant_spec.si_prop_funcs()? {
+        let prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant.id(),
+            &PropPath::new(si_prop_func.kind().prop_path()),
+        )
+        .await?;
+        import_attr_func_for_prop(
+            ctx,
+            schema_variant.id(),
+            AttrFuncInfo {
+                func_unique_id: si_prop_func.func_unique_id().to_owned(),
+                prop_id,
+                inputs: si_prop_func
+                    .inputs()?
+                    .iter()
+                    .map(|input| input.to_owned().into())
+                    .collect(),
+            },
+            None,
+            thing_map,
+        )
+        .await?;
+    }
+
+    let mut has_resource_value_func = false;
+    for root_prop_func in variant_spec.root_prop_funcs()? {
+        if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
+            has_resource_value_func = true;
+        }
+
+        let prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant.id(),
+            &PropPath::new(root_prop_func.prop().path_parts()),
+        )
+        .await?;
+        import_attr_func_for_prop(
+            ctx,
+            schema_variant.id(),
+            AttrFuncInfo {
+                func_unique_id: root_prop_func.func_unique_id().to_owned(),
+                prop_id,
+                inputs: root_prop_func
+                    .inputs()?
+                    .iter()
+                    .map(|input| input.to_owned().into())
+                    .collect(),
+            },
+            None,
+            thing_map,
+        )
+        .await?;
+    }
+    if !has_resource_value_func {
+        attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
+    }
+
+    for attr_func in side_effects.attr_funcs {
+        import_attr_func_for_prop(ctx, schema_variant.id(), attr_func, None, thing_map).await?;
+    }
+
+    for (key, map_key_func) in side_effects.map_key_funcs {
+        import_attr_func_for_prop(ctx, schema_variant.id(), map_key_func, Some(key), thing_map)
+            .await?;
+    }
 
     Ok(schema_variant)
 }
