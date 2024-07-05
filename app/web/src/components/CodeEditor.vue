@@ -3,26 +3,26 @@
     <div v-if="!noVim" class="absolute right-xs top-xs flex gap-xs">
       <VButton
         v-if="disabled"
+        class="pointer-events-none"
+        icon="read-only"
         size="xs"
         tone="warning"
-        icon="read-only"
         variant="ghost"
-        class="pointer-events-none"
       >
         Read-only
       </VButton>
       <template v-else>
         <VButton
           v-if="props.json || props.typescript"
+          label="Format"
           size="xs"
           tone="neutral"
-          label="Format"
           @click="format"
         />
         <VButton
-          size="xs"
           :tone="vimEnabled ? 'success' : 'neutral'"
           icon="logo-vim"
+          size="xs"
           @click="vimEnabled = !vimEnabled"
         />
       </template>
@@ -87,7 +87,7 @@ const emit = defineEmits<{
 }>();
 
 watch(
-  () => props.modelValue,
+  () => props.id,
   () => {
     // always up the code editor with the new text that comes from the prop
     // Note: props are read only, and will change when the selected func/variant changes
@@ -285,6 +285,7 @@ const codeTooltip = {
 };
 
 const presenceStore = usePresenceStore();
+
 function getUserInfo(userId: { id: string }) {
   const user = presenceStore.usersById[userId.id];
   return {
