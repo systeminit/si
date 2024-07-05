@@ -137,7 +137,7 @@ async fn import_change_set(
                     func_spec,
                     installed_pkg.clone(),
                     thing_map,
-                    options.is_builtin,
+                    options.create_unlocked,
                 )
                 .await?
             };
