@@ -1,6 +1,7 @@
 use axum::{
-    extract::{OriginalUri, Path, Query},
+    extract::{OriginalUri, Path},
     response::IntoResponse,
+    Json,
 };
 use dal::{
     func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, FuncId, SchemaVariantId,
@@ -19,7 +20,7 @@ use super::{get_code_response, get_types, FuncAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct GetRequest {
+pub struct UnlockFuncRequest {
     pub schema_variant_id: Option<SchemaVariantId>,
 }
 #[derive(Deserialize, Serialize, Debug)]
@@ -34,8 +35,8 @@ pub async fn create_unlocked_copy(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Query(request): Query<GetRequest>,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
+    Json(request): Json<UnlockFuncRequest>,
 ) -> FuncAPIResult<impl IntoResponse> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))

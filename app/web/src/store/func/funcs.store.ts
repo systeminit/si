@@ -23,6 +23,7 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -201,10 +202,16 @@ export const useFuncStore = () => {
             },
           });
         },
-        async CREATE_UNLOCKED_COPY(funcId: FuncId) {
+        async CREATE_UNLOCKED_COPY(
+          funcId: FuncId,
+          schemaVariantId?: SchemaVariantId,
+        ) {
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
             url: `${API_PREFIX}/${funcId}/create_unlocked_copy`,
+            params: {
+              schemaVariantId,
+            },
             onSuccess: (response) => {
               this.funcsById[response.summary.funcId] = response.summary;
               this.funcCodeById[response.code.funcId] = response.code;
